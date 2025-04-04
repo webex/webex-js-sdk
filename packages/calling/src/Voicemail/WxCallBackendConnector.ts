@@ -170,10 +170,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const sortParam = Object.values(SORT).includes(sort) ? sort : SORT.DEFAULT;
 
       try {
-        const headers: Record<string, string> = {};
-        if (this.webex.config.fedramp) {
-          headers.Authorization = await this.webex.credentials.getUserToken();
-        }
+        const headers: Record<string, string> = await this.getAuthHeaders();
 
         const response = <WebexRequestPayload>await this.webex.request({
           uri: `${urlXsi}`,
@@ -242,10 +239,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}`;
-      const headers: Record<string, string> = {};
-      if (this.webex.config.fedramp) {
-        headers.Authorization = await this.webex.credentials.getUserToken();
-      }
+      const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${voicemailContentUrl}`,
@@ -295,11 +289,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
     try {
       const voicemailSummaryUrl = `${this.xsiEndpoint}/${BW_XSI_ENDPOINT_VERSION}/${USER}/${this.userId}/${CALLS}/${MESSAGE_SUMMARY}`;
-      const headers: Record<string, string> = {};
-
-      if (this.webex.config.fedramp) {
-        headers.Authorization = await this.webex.credentials.getUserToken();
-      }
+      const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${voicemailSummaryUrl}`,
@@ -357,11 +347,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${MARK_AS_READ}`;
-      const headers: Record<string, string> = {};
-
-      if (this.webex.config.fedramp) {
-        headers.Authorization = await this.webex.credentials.getUserToken();
-      }
+      const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${voicemailContentUrl}`,
@@ -398,11 +384,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${MARK_AS_UNREAD}`;
-      const headers: Record<string, string> = {};
-
-      if (this.webex.config.fedramp) {
-        headers.Authorization = await this.webex.credentials.getUserToken();
-      }
+      const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${voicemailContentUrl}`,
@@ -439,11 +421,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}`;
-      const headers: Record<string, string> = {};
-
-      if (this.webex.config.fedramp) {
-        headers.Authorization = await this.webex.credentials.getUserToken();
-      }
+      const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${voicemailContentUrl}`,
@@ -480,11 +458,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${TRANSCRIPT}`;
-      const headers: Record<string, string> = {};
-
-      if (this.webex.config.fedramp) {
-        headers.Authorization = await this.webex.credentials.getUserToken();
-      }
+      const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
         uri: voicemailContentUrl,
@@ -521,5 +495,15 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public resolveContact(callingPartyInfo: CallingPartyInfo): Promise<DisplayInformation | null> {
     return resolveContact(callingPartyInfo);
+  }
+
+  private async getAuthHeaders(): Promise<{[key: string]: string}> {
+    if (this.webex.config.fedramp) {
+      return {
+        Authorization: await this.webex.credentials.getUserToken(),
+      };
+    }
+
+    return {};
   }
 }
