@@ -43,14 +43,6 @@ const logSpy = jest.spyOn(log, 'info');
 const warnSpy = jest.spyOn(log, 'warn');
 const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
 
-Object.defineProperty(global, 'import', {
-  value: {
-    meta: {
-      url: 'http://test.url/mockWebWorker.ts',
-    },
-  },
-});
-
 describe('Registration Tests', () => {
   const originalProcessNextTick = process.nextTick;
   function flushPromises() {
