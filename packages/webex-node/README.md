@@ -24,6 +24,8 @@
 
 ```bash
 npm install --save webex-node
+(or)
+yarn add webex-node
 ```
 
 ## Usage
