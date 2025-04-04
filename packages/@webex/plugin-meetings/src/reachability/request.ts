@@ -50,15 +50,6 @@ class ReachabilityRequest {
     const appType = this.webex?.config?.support?.appType;
     const appVersion = this.webex?.config?.support?.appVersion;
 
-    const clientEnv = {
-      'client-environment': {
-        components: {
-          ...(appType && appVersion ? {[appType]: appVersion} : {}),
-          ...clientEnvironment?.components,
-        },
-      },
-    };
-
     // we only measure latency for the initial startup call, not for other triggers
     const callWrapper =
       trigger === 'startup'
@@ -81,7 +72,7 @@ class ReachabilityRequest {
               'early-call-min-clusters': true,
             },
             'previous-report': previousReport,
-            ...clientEnv,
+            'client-environment': {components: {[appType]: appVersion}},
             trigger,
           },
           timeout: this.webex.config.meetings.reachabilityGetClusterTimeout,

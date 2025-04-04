@@ -20,6 +20,11 @@ describe('plugin-meetings/reachability', () => {
       },
     });
 
+    webex.config.support = {
+      'appType': 'NetworkChecker',
+      'appVersion': '43.3.0.1',
+    }
+
     webex.meetings.clientRegion = {
       countryCode: 'US',
       regionCode: 'WEST-COAST',
@@ -57,12 +62,12 @@ describe('plugin-meetings/reachability', () => {
 
       previousReport = {
         id: 'fake previous report',
-      }
+      };
 
       clientEnvironment = {
         components: {
-              'NetworkChecker': '43.3.0.1',
-            },
+          [webex.config.support.appType]: webex.config.support.appVersion,
+        },
       };
     });
 
