@@ -4,7 +4,7 @@
 
 >
 
-- [@webex/test-helper-test-users](#webextest-webex-node)
+- [@webex/test-webex-node](#webextest-webex-node)
   - [Install](#install)
   - [Usage](#usage)
     - [Environment Defaults](#environment-defaults)
