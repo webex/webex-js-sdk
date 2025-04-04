@@ -1222,6 +1222,29 @@ export default class Meetings extends WebexPlugin {
    *
    * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
    *
+   * @param {string} conversationUrl - url for conversation
+   * @returns {Promise<Meeting>} A new Meeting.
+   * @public
+   * @memberof Meetings
+   */
+  public fetchStaticMeetingLink(conversationUrl: string): Promise<Meeting> {
+    return (
+      this.meetingInfo
+        .fetchStaticMeetingLink(conversationUrl)
+        // Catch a failure to fetch static meeting link.
+        .catch((error) => {
+          LoggerProxy.logger.error(
+            `Meetings:index#fetchStaticMeetingLink --> ERROR, unable to fetch persistent meeting link: ${error.message}`
+          );
+        })
+    );
+  }
+
+  /**
+   * Create a meeting or return an existing meeting.
+   *
+   * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
+   *
    * @param {string} destination - sipURL, phonenumber, or locus object}
    * @param {DESTINATION_TYPE} [type] - the optional specified type, such as locusId
    * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info

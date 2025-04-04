@@ -16,6 +16,8 @@ const CAPTCHA_ERROR_DEFAULT_MESSAGE =
   'Captcha required. Call fetchMeetingInfo() with captchaInfo argument';
 const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
+const FETCH_STATIC_MEETING_LINK =
+  'Failed fetching static meeting link, please contact support team';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
 const CAPTCHA_ERROR_REQUIRES_REGISTRATION_ID_CODES = [423007];
 
@@ -194,6 +196,35 @@ export class MeetingInfoV2JoinForbiddenError extends Error {
 }
 
 /**
+ * Error preventing join because of a forbidden error
+ */
+export class MeetingInfoV2FetchStaticMeetingLinkError extends Error {
+  meetingInfo: any;
+  sdkMessage: any;
+  wbxAppApiCode: any;
+  body: any;
+  /**
+   *
+   * @constructor
+   * @param {Number} [wbxAppApiErrorCode]
+   * @param {Object} [meetingInfo]
+   * @param {String} [message]
+   */
+  constructor(
+    wbxAppApiErrorCode?: number,
+    meetingInfo?: object,
+    message: string = FETCH_STATIC_MEETING_LINK
+  ) {
+    super(`${message}, code=${wbxAppApiErrorCode}`);
+    this.name = ' MeetingInfoV2FetchStaticMeetingLinkError';
+    this.sdkMessage = message;
+    this.stack = new Error().stack;
+    this.wbxAppApiCode = wbxAppApiErrorCode;
+    this.meetingInfo = meetingInfo;
+  }
+}
+
+/**
  * @class MeetingInfo
  */
 export default class MeetingInfoV2 {
@@ -360,6 +391,46 @@ export default class MeetingInfoV2 {
           stack: err.stack,
         });
         throw new MeetingInfoV2AdhocMeetingError(err.body?.code, err.body?.message);
+      });
+  }
+
+  /**
+   * Fetches details for static meeting link
+   * @param {String} conversationUrl conversationUrl to start adhoc meeting on
+   * @returns {Promise} returns a meeting info object
+   * @public
+   * @memberof MeetingInfo
+   */
+  async fetchStaticMeetingLink(conversationUrl: string) {
+    if (!this.webex.meetings.preferredWebexSite) {
+      throw Error('No preferred webex site found');
+    }
+
+    const body = {
+      spaceUrl: conversationUrl,
+    };
+
+    const uri = this.webex.meetings.preferredWebexSite
+      ? `https://${this.webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/query`
+      : '';
+
+    return this.webex
+      .request({
+        method: HTTP_VERBS.POST,
+        uri,
+        body,
+      })
+      .then((requestResult) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_PERSISTENT_MEETING_LINK_SUCCESS);
+
+        return requestResult;
+      })
+      .catch((err) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_PERSISTENT_MEETING_LINK_FAILURE, {
+          reason: err.message,
+          stack: err.stack,
+        });
+        throw new MeetingInfoV2FetchStaticMeetingLinkError(err.body?.code, err.body?.message);
       });
   }
 
