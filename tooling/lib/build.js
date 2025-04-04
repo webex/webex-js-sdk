@@ -104,6 +104,7 @@ exports.buildSamples = async function buildSamples() {
 <html>
 <head>
   <title>Samples</title>
+  <meta http-equiv="refresh" content="0; url=../">
 </head><body>
 <h1>Hosted Samples</h1>
 <ul>
