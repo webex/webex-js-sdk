@@ -39,7 +39,7 @@ export default class TaskManager extends EventEmitter {
 
   private handleIncomingWebCall = (call: ICall) => {
     const currentTask = Object.values(this.taskCollection).find(
-      (task) => task.data.interaction.mediaChannel === 'telephony'
+      (task) => task.data.interaction.mediaType === 'telephony'
     );
 
     if (currentTask) {
@@ -77,7 +77,8 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT:
             task = new Task(this.contact, this.webCallingService, {
               ...payload.data,
-              wrapUpRequired: payload.data.interaction.participants[payload.data.agentId]?.isWrapUp,
+              wrapUpRequired:
+                payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp || false,
             });
             this.taskCollection[payload.data.interactionId] = task;
             this.emit(TASK_EVENTS.TASK_HYDRATE, task);
@@ -90,7 +91,7 @@ export default class TaskManager extends EventEmitter {
             this.taskCollection[payload.data.interactionId] = task;
             if (
               this.webCallingService.loginOption !== LoginOption.BROWSER ||
-              task.data.interaction.mediaChannel !== 'telephony' // for digital channels
+              task.data.interaction.mediaType !== 'telephony' // for digital channels
             ) {
               this.emit(TASK_EVENTS.TASK_INCOMING, task);
             } else if (this.call) {
