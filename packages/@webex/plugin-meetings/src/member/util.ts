@@ -127,6 +127,9 @@ MemberUtil.isDevice = (participant: any) => participant && participant.type === 
 MemberUtil.isModeratorAssignmentProhibited = (participant) =>
   participant && participant.moderatorAssignmentNotAllowed;
 
+MemberUtil.isPresenterAssignmentProhibited = (participant) =>
+  participant && participant.presenterAssignmentNotAllowed;
+
 /**
  * checks to see if the participant id is the same as the passed id
  * there are multiple ids that can be used
