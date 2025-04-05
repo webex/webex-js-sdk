@@ -367,7 +367,7 @@ async function initiateConsult() {
   };
 
   try {
-    await task.consult(consultPayload);
+    await currentTask.consult(consultPayload);
     console.log('Consult initiated successfully');
     // Disable the blind transfer button after initiating consult, only enable it once consult is confirmed
     disableCallControlPostConsult();
@@ -1028,15 +1028,15 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   if(currentTask.data.interaction.mediaType === 'chat')
   {
     answerElm.disabled = false;
-    declineElm.disabled = false;
+    declineElm.disabled = true;
 
-    incomingDetailsElm.innerText = `Incoming chat from ${callerDisplay}`;
+    incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
   } else if(currentTask.data.interaction.mediaType === 'email')
   {
     answerElm.disabled = false;
-    declineElm.disabled = false;
+    declineElm.disabled = true;
 
-    incomingDetailsElm.innerText = `Incoming email from ${callerDisplay}`;
+    incomingDetailsElm.innerText = `Email from ${callerDisplay}`;
   } else if (currentTask.webCallingService.loginOption === 'BROWSER') {
     answerElm.disabled = false;
     declineElm.disabled = false;
@@ -1340,21 +1340,25 @@ function renderTaskList(taskList) {
   }
   
   // Add event listeners for accept and decline buttons
-  document.querySelectorAll('.accept-task').forEach((button) => {
+  // Fix for the accept-task button click handler
+document.querySelectorAll('.accept-task').forEach((button) => {
   button.addEventListener('click', (event) => {
     const taskId = event.target.getAttribute('data-task-id');
-    const task = taskList.find((t) => t?.data?.interactionId === taskId);
+    // Replace the .find() with direct object access by key
+    const task = taskList[taskId];
     if (task) acceptTask(task);
   });
-  });
+});
 
-  document.querySelectorAll('.decline-task').forEach((button) => {
-    button.addEventListener('click', (event) => {
-      const taskId = event.target.getAttribute('data-task-id');
-      const task = taskList.find((t) => t?.data?.interactionId === taskId);
-      if (task) declineTask(task);
-    });
+// Fix for the decline-task button click handler
+document.querySelectorAll('.decline-task').forEach((button) => {
+  button.addEventListener('click', (event) => {
+    const taskId = event.target.getAttribute('data-task-id');
+    // Replace the .find() with direct object access by key
+    const task = taskList[taskId];
+    if (task) declineTask(task);
   });
+});
 }
 
 function handleTaskClick(task) {
