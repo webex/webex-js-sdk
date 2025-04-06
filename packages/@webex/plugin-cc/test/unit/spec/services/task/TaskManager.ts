@@ -320,7 +320,7 @@ describe('TaskManager', () => {
         agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
         eventTime: 1733211616959,
         eventType: 'RoutingMessage',
-        interaction: {state: 'new'},
+        interaction: {state: 'new', mediaType: 'telephony'},
         interactionId: taskId,
         orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
         trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
@@ -790,7 +790,7 @@ describe('TaskManager', () => {
     };
     webSocketManagerMock.emit('message', JSON.stringify(consultingPayload));
     expect(taskEmitSpy).toHaveBeenCalledWith(CC_EVENTS.AGENT_CONSULTING, consultingPayload.data);
-   // expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONSULTING, taskManager.getTask(taskId));
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONSULTING, taskManager.getTask(taskId));
   });
 
   it('should emit TASK_END event on AGENT_CONTACT_UNASSIGNED', () => {

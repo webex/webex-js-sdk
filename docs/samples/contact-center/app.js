@@ -64,7 +64,7 @@ const consultTransferBtn = document.querySelector('#consult-transfer');
 const transferElm = document.getElementById('transfer');
 const timerElm = document.querySelector('#timerDisplay');
 const chatElm = document.querySelector('#chatWidget');
-var isBundleLoaded = false;
+let isBundleLoaded = false; // this is just to check before loading/using engage widgets
 
 loadMomentumLibs();
 
@@ -434,7 +434,7 @@ async function initiateConsultTransfer() {
 
 // Function to end consult
 async function endConsult() {
-  const taskId = currentTask.data.interactionId;
+  const taskId = currentTask.data?.interactionId;
 
   const consultEndPayload = {
     isConsult: true,
@@ -532,8 +532,7 @@ function registerTaskListeners(task) {
   });
   task.on('task:end', (task) => {
     incomingDetailsElm.innerText = '';
-    updateTaskList(); // Update the task list UI
-    //TODO: need to update from the task object for the list of tasks if not active task
+    updateTaskList(); // Update the task list UI to have latest tasks
     if (currentTask.data.interactionId === task.data.interactionId) {
       if (!task.data.wrapUpRequired) {
         answerElm.disabled = true;
@@ -1025,7 +1024,7 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   updateTaskList();
   taskId = event.detail.task.data.interactionId;
 
-  const callerDisplay = currentTask.data.interaction.callAssociatedDetails.ani;
+  const callerDisplay = currentTask.data.interaction?.callAssociatedDetails?.ani;
   registerTaskListeners(currentTask);
   if(currentTask.data.interaction.mediaType === 'chat')
   {
@@ -1367,9 +1366,9 @@ function handleTaskClick(task) {
   // Handle the task click event
   console.log('Task clicked:', task);
   currentTask = task
-  if (task.data.interaction.mediaType === 'chat') { // TODO: add answered state condition
+  if (task.data.interaction.mediaType === 'chat' && isBundleLoaded) {
     loadChatWidget(task);
-  } else if (task.data.interaction.mediaType === 'email') {
+  } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded) {
     loadEmailWidget(task);
   }
   updateCallControlUI(task); // Enable/disable transfer controls

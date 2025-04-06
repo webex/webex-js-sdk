@@ -230,7 +230,7 @@ export default class TaskManager extends EventEmitter {
   }
 
   private removeTaskFromCollection(task: ITask) {
-    if (task && task.data && task.data.interactionId) {
+    if (task?.data?.interactionId) {
       delete this.taskCollection[task.data.interactionId];
       LoggerProxy.info(`Task removed from collection: ${task.data.interactionId}`, {
         module: TASK_MANAGER_FILE,
@@ -240,7 +240,10 @@ export default class TaskManager extends EventEmitter {
   }
 
   private handleTaskCleanup(task: ITask) {
-    if (this.webCallingService.loginOption === LoginOption.BROWSER) {
+    if (
+      this.webCallingService.loginOption === LoginOption.BROWSER &&
+      task.data.interaction.mediaType === 'telephony'
+    ) {
       task.unregisterWebCallListeners();
       this.webCallingService.cleanUpCall();
     }
