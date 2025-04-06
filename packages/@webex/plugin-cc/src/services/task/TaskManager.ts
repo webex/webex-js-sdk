@@ -167,7 +167,7 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             // Do not emit anything since this be received only as a result of an API invocation(handled by a promise)
             break;
-          case CC_EVENTS.AGENT_OFFER_CONSULT: {
+          case CC_EVENTS.AGENT_OFFER_CONSULT:
             // Received when other agent sends us a consult offer
             task = this.updateTaskData(task, {
               ...payload.data,
@@ -175,7 +175,6 @@ export default class TaskManager extends EventEmitter {
             });
 
             break;
-          }
           case CC_EVENTS.AGENT_CONSULTING:
             // Received when agent is in an active consult state
             task = this.updateTaskData(task, payload.data);
