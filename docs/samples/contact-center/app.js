@@ -6,6 +6,7 @@ let deviceId;
 let agentStatusId;
 let agentStatus;
 let agentId;
+let agentName
 let taskControl;
 let currentTask;
 let taskId;
@@ -659,7 +660,7 @@ function updateCallControlUI(task) {
     consultTabBtn.disabled = true;
     declineElm.disabled = true;
     transferElm.disabled = false;
-  } else if (currentTask?.data?.interaction?.mediaType === 'telephony') {
+  } else if (task?.data?.interaction?.mediaType === 'telephony') {
     // hold/resume call
     const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
     holdResumeElm.disabled = isTerminated;
@@ -783,6 +784,7 @@ function register() {
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teams;
         agentId = agentProfile.agentId;
+        agentName = agentProfile.agentName;
         wrapupCodes = agentProfile.wrapupCodes;
         populateWrapupCodesDropdown();
         listTeams.forEach((team) => {
@@ -1393,7 +1395,7 @@ function loadEmailWidget(task) {
     <imi-email-composer
   taskId="${mediaId}"
   orgId="${task.data.orgId}"
-  agentName="${agentId}"
+  agentName="${agentName}"
   agentId="${agentId}"
   interactionId="${task.data.interactionId}"
 ></imi-email-composer>`;
