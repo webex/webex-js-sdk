@@ -182,6 +182,9 @@ export default class TaskManager extends EventEmitter {
             if (task.data.isConsulted) {
               // Fire only if you are the agent who received the consult request
               task.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, task);
+            } else {
+              // Fire only if you are the agent who initiated the consult
+              task.emit(TASK_EVENTS.TASK_CONSULTING, task);
             }
             break;
           case CC_EVENTS.AGENT_CONSULT_FAILED:

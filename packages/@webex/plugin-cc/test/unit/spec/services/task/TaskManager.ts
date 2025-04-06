@@ -785,7 +785,7 @@ describe('TaskManager', () => {
       data: {
         ...initalPayload.data,
         type: CC_EVENTS.AGENT_CONSULTING,
-        isConsulted: true,
+        isConsulted: false,
       },
     };
     webSocketManagerMock.emit('message', JSON.stringify(consultingPayload));
