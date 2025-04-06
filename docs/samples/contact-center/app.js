@@ -578,7 +578,7 @@ function registerTaskListeners(task) {
   task.on('task:consultQueueFailed', (task) => {
     // When trying to consult queue fails
     if (currentTask.data.interactionId === task.data.interactionId) {
-      console.error(`Received task:consultQueueFailed for task: ${task.interactionId}`);
+      console.error(`Received task:consultQueueFailed for task: ${task.data.interactionId}`);
       hideEndConsultButton();
       showConsultButton();
     }
@@ -587,7 +587,7 @@ function registerTaskListeners(task) {
   task.on('task:consultQueueCancelled', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
       // When we manually cancel consult to queue before it is accepted by other agent
-      console.log(`Received task:consultQueueCancelled for task: ${task.interactionId}`);
+      console.log(`Received task:consultQueueCancelled for task: ${task.data.interactionId}`);
       hideEndConsultButton();
       showConsultButton();
     }
@@ -659,7 +659,7 @@ function updateCallControlUI(task) {
     consultTabBtn.disabled = true;
     declineElm.disabled = true;
     transferElm.disabled = false;
-  } else if (currentTask.data.interaction.mediaType == 'telephony') {
+  } else if (currentTask?.data?.interaction?.mediaType === 'telephony') {
     // hold/resume call
     const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
     holdResumeElm.disabled = isTerminated;
@@ -1058,7 +1058,7 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 function decline() {
   answerElm.disabled = true;
   declineElm.disabled = true;
-  task.decline(taskId);
+  currentTask.decline(taskId);
   updateTaskList();
   incomingDetailsElm.innerText = 'No incoming calls';
 }
