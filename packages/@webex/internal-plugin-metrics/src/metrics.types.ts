@@ -73,7 +73,6 @@ export type MetricEventVerb =
   | 'list'
   | 'load'
   | 'login'
-  | 'relogin'
   | 'logout'
   | 'notify'
   | 'offer'
