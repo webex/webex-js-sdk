@@ -199,7 +199,6 @@ export class MeetingInfoV2JoinForbiddenError extends Error {
  * Error preventing join because of a forbidden error
  */
 export class MeetingInfoV2FetchStaticMeetingLinkError extends Error {
-  meetingInfo: any;
   sdkMessage: any;
   wbxAppApiCode: any;
   body: any;
@@ -415,12 +414,12 @@ export default class MeetingInfoV2 {
         body,
       })
       .then((requestResult) => {
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_PERSISTENT_MEETING_LINK_SUCCESS);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_SUCCESS);
 
         return requestResult;
       })
       .catch((err) => {
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_PERSISTENT_MEETING_LINK_FAILURE, {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_SUCCESS, {
           reason: err.message,
           stack: err.stack,
         });
