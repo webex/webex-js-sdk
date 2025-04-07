@@ -904,7 +904,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       await wxCallBackendConnector.voicemailMarkAsRead(messageId.$);
 
       expect(webex.request).toBeCalledOnceWith({
-        method: HTTP_METHODS.GET,
+        method: HTTP_METHODS.PUT,
         uri: `${MOCK_FEDRAMP_URL}${messageId.$}/MarkAsRead`,
         headers: {Authorization: 'mockAuthToken'},
       });
@@ -918,7 +918,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       await wxCallBackendConnector.voicemailMarkAsUnread(messageId.$);
 
       expect(webex.request).toBeCalledOnceWith({
-        method: HTTP_METHODS.GET,
+        method: HTTP_METHODS.PUT,
         uri: `${MOCK_FEDRAMP_URL}${messageId.$}/MarkAsUnread`,
         headers: {Authorization: 'mockAuthToken'},
       });
@@ -932,7 +932,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       await wxCallBackendConnector.deleteVoicemail(messageId.$);
 
       expect(webex.request).toBeCalledOnceWith({
-        method: HTTP_METHODS.GET,
+        method: HTTP_METHODS.DELETE,
         uri: `${MOCK_FEDRAMP_URL}${messageId.$}`,
         headers: {Authorization: 'mockAuthToken'},
       });

@@ -350,8 +350,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
-        uri: `${voicemailContentUrl}`,
-        method: HTTP_METHODS.GET,
+        uri: voicemailContentUrl,
+        method: HTTP_METHODS.PUT,
         headers,
       });
 
@@ -387,8 +387,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
-        uri: `${voicemailContentUrl}`,
-        method: HTTP_METHODS.GET,
+        uri: voicemailContentUrl,
+        method: HTTP_METHODS.PUT,
         headers,
       });
 
@@ -424,8 +424,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
-        uri: `${voicemailContentUrl}`,
-        method: HTTP_METHODS.GET,
+        uri: voicemailContentUrl,
+        method: HTTP_METHODS.DELETE,
         headers,
       });
 
