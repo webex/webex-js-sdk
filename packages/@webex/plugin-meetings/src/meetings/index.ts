@@ -1370,6 +1370,30 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * Enable static meeting links for given conversation url.
+   *
+   *
+   * @param {string} conversationUrl - url for conversation
+   * @returns {Promise<Meeting>} A new Meeting.
+   * @public
+   * @memberof Meetings
+   */
+  public enableStaticMeetingLink(conversationUrl: string): Promise<Meeting> {
+    return (
+      this.meetingInfo
+        .enableStaticMeetingLink(conversationUrl)
+        // Catch a failure to enable static meeting link.
+        .catch((error) => {
+          LoggerProxy.logger.error(
+            `Meetings:index#enableStaticMeetingLink --> ERROR, unable to enable static meeting link: ${error.message}`
+          );
+
+          return Promise.reject(error);
+        })
+    );
+  }
+
+  /**
    * Create meeting
    *
    * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
