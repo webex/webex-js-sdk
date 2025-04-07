@@ -35,7 +35,7 @@ export default class MetricsManager {
 
   // eslint-disable-next-line no-use-before-define
   private static instance: MetricsManager;
-  private metricsDisabled = true; // TODO: SPARK-637285
+  private metricsDisabled = false; // TODO: SPARK-637285
 
   // eslint-disable-next-line no-useless-constructor
   private constructor() {}
