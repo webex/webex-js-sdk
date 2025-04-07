@@ -190,7 +190,7 @@ describe('webex.cc', () => {
       agentName: 'John',
       teams: [],
       agentProfileID: '',
-      loginVoiceOptions: [],
+      loginVoiceOptions: ['BROWSER', 'EXTENSION'],
       idleCodes: [],
       wrapupCodes: [],
       defaultDn: '',
@@ -447,6 +447,8 @@ describe('webex.cc', () => {
 
       webex.cc.agentConfig = {
         agentId: 'agentId',
+        webRtcEnabled: true,
+        loginVoiceOptions: ['BROWSER', 'EXTENSION', 'AGENT_DN']
       };
 
       const registerWebCallingLineSpy = jest.spyOn(
@@ -584,6 +586,10 @@ describe('webex.cc', () => {
     });
 
     it('should login successfully with other LoginOption', async () => {
+      webex.cc.agentConfig = {
+        webRtcEnabled: true
+      };
+
       const options = {
         teamId: 'teamId',
         loginOption: LoginOption.AGENT_DN,
@@ -630,6 +636,10 @@ describe('webex.cc', () => {
     });
 
     it('should handle error during stationLogin', async () => {
+      webex.cc.agentConfig = {
+        webRtcEnabled: true
+      };
+
       const options = {
         teamId: 'teamId',
         loginOption: LoginOption.EXTENSION,
