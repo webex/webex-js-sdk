@@ -17,7 +17,7 @@ import MeetingInfo, {
   MeetingInfoV2PolicyError,
   MeetingInfoV2JoinWebinarError,
   MeetingInfoV2JoinForbiddenError,
-  MeetingInfoV2FetchStaticMeetingLinkError,
+  MeetingInfoV2StaticLinkDoesNotExistError,
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
@@ -108,7 +108,7 @@ describe('plugin-meetings', () => {
         assert(Metrics.sendBehavioralMetric.calledOnce);
         assert.calledWith(
           Metrics.sendBehavioralMetric,
-          BEHAVIORAL_METRICS.FETCH_PERSISTENT_MEETING_LINK_SUCCESS
+          BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_SUCCESS
         );
 
         assert.deepEqual(result, requestResponse);
@@ -132,27 +132,40 @@ describe('plugin-meetings', () => {
         }
       });
 
-      it('handles error when fetching static link', async () => {
+      it('handles error for MeetingInfoV2StaticLinkDoesNotExistError', async () => {
         const conversationUrl = 'conv.fakeconversationurl.com';
-        const body = {spaceUrl: conversationUrl};
-        const requestResponse = {statusCode: 200, body};
-        webex.request.resolves(requestResponse);
         webex.request = sinon
           .stub()
           .rejects({stack: 'a stack', message: 'a message', statusCode: 403, body: {code: 400000}});
         try {
           await meetingInfo.fetchStaticMeetingLink(conversationUrl);
         } catch (err) {
-          assert.instanceOf(err, MeetingInfoV2FetchStaticMeetingLinkError);
+          assert.equal(err.wbxAppApiCode, 400000);
+          assert.instanceOf(err, MeetingInfoV2StaticLinkDoesNotExistError);
           assert.deepEqual(
             err.message,
-            'Failed fetching static meeting link, please contact support team, code=400000'
+            'Meeting link does not exists for conversation, code=400000'
           );
-          assert.equal(err.wbxAppApiCode, 400000);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.MEETING_LINK_DOES_NOT_EXIST_ERROR,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+
+      it('handles generic error when fetching static link', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon
+          .stub()
+          .rejects({stack: 'a stack', message: 'a message', statusCode: 500, body: {code: 400000}});
+        try {
+          await meetingInfo.fetchStaticMeetingLink(conversationUrl);
+        } catch (err) {
           assert(Metrics.sendBehavioralMetric.calledOnce);
           assert.calledWith(
             Metrics.sendBehavioralMetric,
-            BEHAVIORAL_METRICS.FETCH_PERSISTENT_MEETING_LINK_FAILURE,
+            BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_FAILURE,
             {reason: 'a message', stack: 'a stack'}
           );
         }

@@ -16,8 +16,7 @@ const CAPTCHA_ERROR_DEFAULT_MESSAGE =
   'Captcha required. Call fetchMeetingInfo() with captchaInfo argument';
 const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
-const FETCH_STATIC_MEETING_LINK =
-  'Failed fetching static meeting link, please contact support team';
+const FETCH_STATIC_MEETING_LINK = 'Meeting link does not exists for conversation';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
 const CAPTCHA_ERROR_REQUIRES_REGISTRATION_ID_CODES = [423007];
 
@@ -198,7 +197,7 @@ export class MeetingInfoV2JoinForbiddenError extends Error {
 /**
  * Error preventing join because of a forbidden error
  */
-export class MeetingInfoV2FetchStaticMeetingLinkError extends Error {
+export class MeetingInfoV2StaticLinkDoesNotExistError extends Error {
   sdkMessage: any;
   wbxAppApiCode: any;
   body: any;
@@ -210,7 +209,7 @@ export class MeetingInfoV2FetchStaticMeetingLinkError extends Error {
    */
   constructor(wbxAppApiErrorCode?: number, message: string = FETCH_STATIC_MEETING_LINK) {
     super(`${message}, code=${wbxAppApiErrorCode}`);
-    this.name = 'MeetingInfoV2FetchStaticMeetingLinkError';
+    this.name = 'MeetingInfoV2StaticLinkDoesNotExistError';
     this.sdkMessage = message;
     this.stack = new Error().stack;
     this.wbxAppApiCode = wbxAppApiErrorCode;
@@ -419,11 +418,20 @@ export default class MeetingInfoV2 {
         return requestResult;
       })
       .catch((err) => {
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_SUCCESS, {
+        if (err?.statusCode === 403) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_LINK_DOES_NOT_EXIST_ERROR, {
+            reason: err.message,
+            stack: err.stack,
+          });
+
+          throw new MeetingInfoV2StaticLinkDoesNotExistError(err.body?.code, err.body?.message);
+        }
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_FAILURE, {
           reason: err.message,
           stack: err.stack,
         });
-        throw new MeetingInfoV2FetchStaticMeetingLinkError(err.body?.code, err.body?.message);
+
+        throw err;
       });
   }
 

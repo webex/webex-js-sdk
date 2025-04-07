@@ -54,6 +54,7 @@ const BEHAVIORAL_METRICS = {
   ADHOC_MEETING_FAILURE: 'js_sdk_adhoc_meeting_failure',
   FETCH_STATIC_MEETING_LINK_SUCCESS: 'js_sdk_fetch_static_meeting_link_success',
   FETCH_STATIC_MEETING_LINK_FAILURE: 'js_sdk_fetch_static_meeting_link_failure',
+  MEETING_LINK_DOES_NOT_EXIST_ERROR: 'js_sdk_meeting_link_does_not_exist_error',
   VERIFY_PASSWORD_SUCCESS: 'js_sdk_verify_password_success',
   VERIFY_PASSWORD_ERROR: 'js_sdk_verify_password_error',
   VERIFY_CAPTCHA_ERROR: 'js_sdk_verify_captcha_error',
