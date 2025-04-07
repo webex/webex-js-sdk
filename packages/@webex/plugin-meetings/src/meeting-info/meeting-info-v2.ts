@@ -16,6 +16,8 @@ const CAPTCHA_ERROR_DEFAULT_MESSAGE =
   'Captcha required. Call fetchMeetingInfo() with captchaInfo argument';
 const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
+const MEETING_IS_IN_PROGRESS_MESSAGE = 'Meeting is in progress';
+const STATIC_MEETING_LINK_ALREADY_EXISTS_MESSAGE = 'Static meeting link already exists';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
 const CAPTCHA_ERROR_REQUIRES_REGISTRATION_ID_CODES = [423007];
 
@@ -206,7 +208,7 @@ export class MeetingInfoV2MeetingIsInProgressError extends Error {
    * @param {Number} [wbxAppApiErrorCode]
    * @param {String} [message]
    */
-  constructor(wbxAppApiErrorCode?: number, message?: string) {
+  constructor(wbxAppApiErrorCode?: number, message = MEETING_IS_IN_PROGRESS_MESSAGE) {
     super(`${message}, code=${wbxAppApiErrorCode}`);
     this.name = 'MeetingInfoV2MeetingIsInProgressError';
     this.sdkMessage = message;
@@ -228,7 +230,7 @@ export class MeetingInfoV2StaticMeetingLinkAlreadyExists extends Error {
    * @param {Number} [wbxAppApiErrorCode]
    * @param {String} [message]
    */
-  constructor(wbxAppApiErrorCode?: number, message?: string) {
+  constructor(wbxAppApiErrorCode?: number, message = STATIC_MEETING_LINK_ALREADY_EXISTS_MESSAGE) {
     super(`${message}, code=${wbxAppApiErrorCode}`);
     this.name = 'MeetingInfoV2StaticMeetingLinkAlreadyExists';
     this.sdkMessage = message;
