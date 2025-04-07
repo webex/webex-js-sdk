@@ -167,7 +167,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             method: this.connectWebsocket.name,
           });
 
-          if (this.agentConfig.webRtcEnabled) {
+          if (
+            this.agentConfig.webRtcEnabled &&
+            this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
+          ) {
             this.$webex.internal.mercury
               .connect()
               .then(() => {
@@ -228,7 +231,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
       });
 
-      if (data.loginOption === LoginOption.BROWSER) {
+      if (this.agentConfig.webRtcEnabled && data.loginOption === LoginOption.BROWSER) {
         await this.webCallingService.registerWebCallingLine();
       }
 

@@ -438,7 +438,7 @@ describe('webex.cc', () => {
   });
 
   describe('stationLogin', () => {
-    it('should login successfully with LoginOption.BROWSER', async () => {
+    it('should login successfully with LoginOption.BROWSER and webrtc enabled', async () => {
       const mockTask = {};
       const options = {
         teamId: 'teamId',
@@ -453,7 +453,6 @@ describe('webex.cc', () => {
         webex.cc.webCallingService,
         'registerWebCallingLine'
       );
-
 
       const mockData = {
         data: {
@@ -528,6 +527,60 @@ describe('webex.cc', () => {
       messageCallback(JSON.stringify(agentMultiLoginEventData));
 
       expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_MULTI_LOGIN, agentMultiLoginEventData.data);
+    });
+
+    it('should not attempt mobius registration for LoginOption.BROWSER if webrtc is disabled', async () => {
+      const options = {
+        teamId: 'teamId',
+        loginOption: LoginOption.BROWSER,
+      };
+
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false
+      };
+
+      const mockData = {
+        data: {
+          loginOption: LoginOption.BROWSER,
+          agentId: 'agentId',
+          teamId: 'teamId',
+          siteId: 'siteId',
+          roles: [AGENT],
+          trackingId: '1234',
+          eventType: 'DESKTOP_MESSAGE',
+        },
+        trackingId: '1234',
+        orgId: 'orgId',
+        type: 'StationLoginSuccess',
+        eventType: 'STATION_LOGIN',
+      }
+
+      const registerWebCallingLineSpy = jest.spyOn(
+        webex.cc.webCallingService,
+        'registerWebCallingLine'
+      );
+
+      const stationLoginSpy = jest
+        .spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue(mockData as unknown as StationLoginSuccess);
+
+      await webex.cc.stationLogin(options);
+
+      expect(registerWebCallingLineSpy).not.toHaveBeenCalled();
+      expect(stationLoginSpy).toHaveBeenCalledWith({
+        data: {
+          dialNumber: 'agentId',
+          teamId: 'teamId',
+          deviceType: LoginOption.BROWSER,
+          isExtension: false,
+          deviceId: `${WEB_RTC_PREFIX}agentId`,
+          roles: [AGENT],
+          teamName: '',
+          siteId: '',
+          usesOtherDN: false,
+          auxCodeId: '',
+        },
+      });
     });
 
     it('should login successfully with other LoginOption', async () => {
