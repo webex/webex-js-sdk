@@ -9,6 +9,7 @@
   "workspaces": [
     "./packages/@webex/*",
     "./packages/webex",
+    "./packages/webex-node",
     "./packages/calling",
     "./packages/byods",
     "./packages/byods-demo-server",

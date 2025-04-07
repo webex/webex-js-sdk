@@ -31,12 +31,25 @@ import HttpRequest from './services/core/HttpRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
-import {Profile, WelcomeEvent, CC_EVENTS, CC_AGENT_EVENTS} from './services/config/types';
-import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
+import {
+  Profile,
+  WelcomeEvent,
+  CC_EVENTS,
+  CC_AGENT_EVENTS,
+  ContactServiceQueue,
+} from './services/config/types';
+import {
+  AGENT_STATE_AVAILABLE,
+  AGENT_STATE_AVAILABLE_ID,
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+} from './services/config/constants';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
 import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
+import MetricsManager from './metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from './metrics/constants';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -48,6 +61,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private services: Services;
   private httpRequest: HttpRequest;
   private taskManager: TaskManager;
+  private metricsManager: MetricsManager;
   public LoggerProxy = LoggerProxy;
 
   constructor(...args) {
@@ -76,6 +90,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
+      this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
         this.services.contact,
         this.webCallingService,
@@ -189,6 +204,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     try {
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.STATION_LOGIN);
       const loginResponse = this.services.agent.stationLogin({
         data: {
           dialNumber:
@@ -212,13 +228,31 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.webCallingService.setLoginOption(data.loginOption);
 
-      await loginResponse;
+      const resp = await loginResponse;
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_LOGIN,
+        {
+          isSuccess: true,
+          loginType: data.loginOption,
+          agentId: resp.data.agentId,
+          teamId: resp.data.teamId,
+          siteId: resp.data.siteId,
+          roles: resp.data.roles.join(','),
+          trackingId: resp.data.trackingId,
+          notifTrackingId: resp.trackingId,
+          orgId: resp.orgId,
+          dataEventType: resp.data.eventType,
+          eventType: resp.type,
+        },
+        ['behavioral', 'business', 'operational']
+      );
 
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       // this.services.webSocketManager.on('message', this.handleWebSocketMessage);
       // this.incomingTaskListener();
 
-      return loginResponse;
+      return resp;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'stationLogin', CC_FILE);
       throw detailedError;
@@ -486,5 +520,43 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const {error: detailedError} = getErrorDetails(error, 'startOutdial', CC_FILE);
       throw detailedError;
     }
+  }
+
+  /**
+   * This is used for getting the list of queues.
+   * @param search - optional
+   * @param filter - optional
+   * @param page - default is 0
+   * @param pageSize - default is 100
+   * @returns Promise<ContactServiceQueue[]>
+   * @throws Error
+   *
+   * @example
+   * ```typescript
+   * const search = 'queue';
+   * const filter = 'id == "e23ad456-1ebd-1b43-b9d0-34f39c7dcb5e"';
+   * const page = 0;
+   * const pageSize = 100;
+   * const result = await webex.cc.getQueues(search, filter, page, pageSize);
+   * ```
+   */
+  public async getQueues(
+    search?: string,
+    filter?: string,
+    page = DEFAULT_PAGE,
+    pageSize = DEFAULT_PAGE_SIZE
+  ): Promise<ContactServiceQueue[]> {
+    const orgId = this.$webex.credentials.getOrgId();
+
+    if (!orgId) {
+      LoggerProxy.error('Org ID not found.', {
+        module: CC_FILE,
+        method: this.getQueues.name,
+      });
+
+      throw new Error('Org ID not found.');
+    }
+
+    return this.services.config.getQueues(orgId, page, pageSize, search, filter);
   }
 }
