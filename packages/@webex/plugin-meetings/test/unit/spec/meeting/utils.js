@@ -560,6 +560,17 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.liveAnnotationSupported, true);
       });
 
+      it('#Should call meetingRequest.joinMeeting with alias passed through', async () => {
+        await MeetingUtil.joinMeeting(meeting, {
+          alias: 'alias name',
+        });
+
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+
+        assert.equal(parameter.alias, 'alias name');
+      });
+
       it('#Should call meetingRequest.joinMeeting with locale=en_UK, deviceCapabilities=["TEST"] when they are passed in as those values', async () => {
         await MeetingUtil.joinMeeting(meeting, {
           locale: 'en_UK',
