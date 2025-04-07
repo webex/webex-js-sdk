@@ -45,6 +45,7 @@ import {
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
+import {getWorkerURL} from '../../common/webWorkerUtils';
 
 /**
  *
@@ -689,7 +690,7 @@ export class Registration implements IRegistration {
         const accessToken = await this.webex.credentials.getUserToken();
 
         if (!this.webWorker) {
-          this.webWorker = new Worker(new URL('./webWorker.js', import.meta.url));
+          this.webWorker = new Worker(getWorkerURL('./webWorker.js'));
 
           this.webWorker.postMessage({
             type: WorkerMessageType.START_KEEPALIVE,
