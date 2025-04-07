@@ -585,3 +585,41 @@ export type Profile = {
   lastStateChangeTimestamp?: number;
   lastIdleCodeChangeTimestamp?: number;
 };
+
+export type CallDistributionGroup = {
+  agentGroups: {teamId: string}[];
+  order: number;
+  duration: number;
+};
+
+export type ContactServiceQueue = {
+  id: string;
+  name: string;
+  description: string;
+  queueType: string;
+  checkAgentAvailability: boolean;
+  channelType: string;
+  serviceLevelThreshold: number;
+  maxActiveContacts: number;
+  maxTimeInQueue: number;
+  defaultMusicInQueueMediaFileId: string;
+  timezone: string;
+  active: boolean;
+  outdialCampaignEnabled: boolean;
+  monitoringPermitted: boolean;
+  parkingPermitted: boolean;
+  recordingPermitted: boolean;
+  recordingAllCallsPermitted: boolean;
+  pauseRecordingPermitted: boolean;
+  recordingPauseDuration: number;
+  controlFlowScriptUrl: string;
+  ivrRequeueUrl: string;
+  routingType: string;
+  queueRoutingType: string;
+  queueSkillRequirements: object[];
+  agents: object[];
+  callDistributionGroups: CallDistributionGroup[];
+  links: Array<string>;
+  createdTime: string;
+  lastUpdatedTime: string;
+};
