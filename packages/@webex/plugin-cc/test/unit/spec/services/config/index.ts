@@ -927,4 +927,70 @@ describe('AgentConfigService', () => {
       );
     });
   });
+
+  describe('getQueues', () => {
+    const mockQueues = [
+      {id: 'queue1', name: 'Queue 1'},
+      {id: 'queue2', name: 'Queue 2'},
+    ];
+
+    const mockError = new Error('API call failed');
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should return a list of queues successfully', async () => {
+      const mockResponse = {statusCode: 200, body: {data: mockQueues}};
+      mockHttpRequest.request.mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getQueues(mockOrgId, 0, 100, 'queue', 'id==someid');
+
+      expect(mockHttpRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/contact-service-queue?page=0&pageSize=100&desktopProfileFilter=true&search=queue&filter=id==someid`,
+        method: 'GET',
+      });
+      expect(result).toEqual(mockQueues);
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getQueues API success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getQueues',
+      });
+    });
+
+    it('should throw an error if the API call fails', async () => {
+      mockHttpRequest.request.mockRejectedValue(mockError);
+
+      await expect(agentConfigService.getQueues(mockOrgId, 0, 100)).rejects.toThrow(
+        'API call failed'
+      );
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getQueues API call failed with Error: API call failed',
+        {module: CONFIG_FILE_NAME, method: 'getQueues'}
+      );
+      expect(mockHttpRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/contact-service-queue?page=0&pageSize=100&desktopProfileFilter=true`,
+        method: 'GET',
+      });
+    });
+
+    it('should throw an error if the API call returns a non-200 status code', async () => {
+      const mockResponse = {statusCode: 500};
+      mockHttpRequest.request.mockResolvedValue(mockResponse);
+
+      await expect(agentConfigService.getQueues(mockOrgId, 0, 100)).rejects.toThrow(
+        'API call failed with 500'
+      );
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getQueues API call failed with Error: API call failed with 500',
+        {module: CONFIG_FILE_NAME, method: 'getQueues'}
+      );
+      expect(mockHttpRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/contact-service-queue?page=0&pageSize=100&desktopProfileFilter=true`,
+        method: 'GET',
+      });
+    });
+  });
 });

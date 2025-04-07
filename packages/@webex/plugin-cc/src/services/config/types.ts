@@ -41,6 +41,7 @@ export const CC_TASK_EVENTS = {
   AGENT_CONTACT: 'AgentContact',
   AGENT_OFFER_CONTACT: 'AgentOfferContact',
   AGENT_CONTACT_ASSIGNED: 'AgentContactAssigned',
+  AGENT_CONTACT_UNASSIGNED: 'AgentContactUnassigned',
 } as const;
 
 // Define the CC_AGENT_EVENTS object
@@ -583,4 +584,42 @@ export type Profile = {
   lastStateAuxCodeId?: string;
   lastStateChangeTimestamp?: number;
   lastIdleCodeChangeTimestamp?: number;
+};
+
+export type CallDistributionGroup = {
+  agentGroups: {teamId: string}[];
+  order: number;
+  duration: number;
+};
+
+export type ContactServiceQueue = {
+  id: string;
+  name: string;
+  description: string;
+  queueType: string;
+  checkAgentAvailability: boolean;
+  channelType: string;
+  serviceLevelThreshold: number;
+  maxActiveContacts: number;
+  maxTimeInQueue: number;
+  defaultMusicInQueueMediaFileId: string;
+  timezone: string;
+  active: boolean;
+  outdialCampaignEnabled: boolean;
+  monitoringPermitted: boolean;
+  parkingPermitted: boolean;
+  recordingPermitted: boolean;
+  recordingAllCallsPermitted: boolean;
+  pauseRecordingPermitted: boolean;
+  recordingPauseDuration: number;
+  controlFlowScriptUrl: string;
+  ivrRequeueUrl: string;
+  routingType: string;
+  queueRoutingType: string;
+  queueSkillRequirements: object[];
+  agents: object[];
+  callDistributionGroups: CallDistributionGroup[];
+  links: Array<string>;
+  createdTime: string;
+  lastUpdatedTime: string;
 };
