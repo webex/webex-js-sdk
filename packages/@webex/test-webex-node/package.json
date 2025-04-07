@@ -1,0 +1,18 @@
+{
+  "name": "@webex/test-webex-node",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "scripts": {
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "test": "node dist/index.js"
+  },
+  "devDependencies": {
+    "@webex/legacy-tools": "workspace:*"
+  },
+  "dependencies": {
+    "webex-node": "workspace:*"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "Package that helps test the webex-node package"
+}
