@@ -16,14 +16,26 @@ import config from '../../../src/config';
 import {CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
 import * as Utils from '../../../src/services/core/Utils';
-import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN, OUTDIAL_DIRECTION, OUTBOUND_TYPE, ATTRIBUTES, OUTDIAL_MEDIA_TYPE} from '../../../src/constants';
+import {
+  CC_FILE,
+  AGENT_STATE_CHANGE,
+  AGENT_MULTI_LOGIN,
+  OUTDIAL_DIRECTION,
+  OUTBOUND_TYPE,
+  ATTRIBUTES,
+  OUTDIAL_MEDIA_TYPE,
+} from '../../../src/constants';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
+<<<<<<< HEAD
 import { AgentContact, TASK_EVENTS } from '../../../src/services/task/types';
 <<<<<<< HEAD
+=======
+import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
+>>>>>>> a100a55ffd6d9ad54be25666f973043b9013c256
 import MetricsManager from '../../../src/metrics/MetricsManager';
 =======
 >>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
@@ -420,7 +432,10 @@ describe('webex.cc', () => {
       );
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
+=======
+>>>>>>> a100a55ffd6d9ad54be25666f973043b9013c256
       const mockData = {
         data: {
           loginOption: LoginOption.BROWSER,
@@ -435,7 +450,7 @@ describe('webex.cc', () => {
         orgId: 'orgId',
         type: 'StationLoginSuccess',
         eventType: 'STATION_LOGIN',
-      }
+      };
 
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
@@ -527,7 +542,7 @@ describe('webex.cc', () => {
         orgId: 'orgId',
         type: 'StationLoginSuccess',
         eventType: 'STATION_LOGIN',
-      }
+      };
 
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
@@ -1081,13 +1096,76 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.dialer, 'startOutdial').mockRejectedValue(error);
 
-      await expect(webex.cc.startOutdial(invalidDestination)).rejects.toThrow(error.details.data.reason);
+      await expect(webex.cc.startOutdial(invalidDestination)).rejects.toThrow(
+        error.details.data.reason
+      );
 
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `startOutdial failed with trackingId: ${error.details.trackingId}`,
         {module: CC_FILE, method: 'startOutdial'}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'startOutdial', CC_FILE);
+    });
+  });
+
+  describe('getQueues', () => {
+    it('should return queues response when successful', async () => {
+      const mockQueuesResponse = [
+        {
+          queueId: 'queue1',
+          queueName: 'Queue 1',
+        },
+        {
+          queueId: 'queue2',
+          queueName: 'Queue 2',
+        },
+      ];
+
+      webex.cc.services.config.getQueues = jest.fn().mockResolvedValue(mockQueuesResponse);
+
+      const result = await webex.cc.getQueues();
+
+      expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
+        'mockOrgId',
+        0,
+        100,
+        undefined,
+        undefined
+      );
+      expect(result).toEqual(mockQueuesResponse);
+    });
+
+    it('shoule throw an error if orgId is not present', async () => {
+      jest.spyOn(webex.credentials, 'getOrgId').mockResolvedValue(undefined);
+      webex.cc.services.config.getQueues = jest.fn();
+
+      try {
+        await webex.cc.getQueues();
+      } catch (error) {
+        expect(error).toEqual(new Error('Org ID not found.'));
+        expect(LoggerProxy.error).toHaveBeenCalledWith('Org ID not found.', {
+          module: CC_FILE,
+          method: 'getQueues',
+        });
+        expect(webex.cc.services.config.getQueues).not.toHaveBeenCalled();
+      }
+    });
+
+    it('shoule throw an error if config getQueues throws an error', async () => {
+      webex.cc.services.config.getQueues = jest.fn().mockRejectedValue(new Error('Test error.'));
+
+      try {
+        await webex.cc.getQueues();
+      } catch (error) {
+        expect(error).toEqual(new Error('Test error.'));
+        expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
+          'mockOrgId',
+          0,
+          100,
+          undefined,
+          undefined
+        );
+      }
     });
   });
 });

@@ -23,10 +23,14 @@
   },
   "dependencies": {
 <<<<<<< HEAD
+<<<<<<< HEAD
     "@webex/internal-media-core": "2.14.4",
 =======
     "@webex/internal-media-core": "2.14.2",
 >>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
+=======
+    "@webex/internal-media-core": "2.14.7",
+>>>>>>> a100a55ffd6d9ad54be25666f973043b9013c256
     "@webex/ts-events": "^1.1.0",
     "@webex/web-media-effects": "2.19.0"
   },

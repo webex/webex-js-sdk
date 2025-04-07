@@ -176,6 +176,7 @@ const MeetingUtil = {
         deviceCapabilities: options.deviceCapabilities,
         liveAnnotationSupported: options.liveAnnotationSupported,
         clientMediaPreferences,
+        alias: options.alias,
       })
       .then((res) => {
         const parsed = MeetingUtil.parseLocusJoin(res);

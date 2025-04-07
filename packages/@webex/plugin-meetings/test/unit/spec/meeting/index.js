@@ -7758,24 +7758,33 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#setIsoLocalClientMeetingJoinTime', () => {
-        it('should set the isoLocalClientMeetingJoinTime when passed in', () => {
-          assert.equal(meeting.isoLocalClientMeetingJoinTime, isoLocalClientMeetingJoinTime);
-          meeting.isoLocalClientMeetingJoinTime = 'test';
-          assert.equal(meeting.isoLocalClientMeetingJoinTime, 'test');
-          meeting.isoLocalClientMeetingJoinTime = 'test2';
-          assert.equal(meeting.isoLocalClientMeetingJoinTime, 'test2');
-        });
-
-        it('should set the isoLocalClientMeetingJoin time once and only once when not passed in', () => {
-          assert.equal(meeting.isoLocalClientMeetingJoinTime, isoLocalClientMeetingJoinTime);
+      describe('#setIsoLocalClientMeetingJoinTime', () => {      
+        it('should fallback to system clock ISO string when given an undefined value', () => {
+          const currentSystemTime = new Date().toISOString();
           meeting.isoLocalClientMeetingJoinTime = undefined;
+<<<<<<< HEAD
           const time = meeting.isoLocalClientMeetingJoinTime;
           assert.equal(meeting.isoLocalClientMeetingJoinTime, time);
           meeting.isoLocalClientMeetingJoinTime = 'test2';
           assert.equal(meeting.isoLocalClientMeetingJoinTime, 'test2');
 =======
 >>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
+=======
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
+        });
+      
+        it('should fallback to system clock ISO string when given an invalid value', () => {
+          const currentSystemTime = new Date().toISOString();
+          meeting.isoLocalClientMeetingJoinTime = 'invalid-date';
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
+        });
+      
+        it('should set the isoLocalClientMeetingJoinTime correctly for a valid date string', () => {
+          const validDateString = 'Tue, 01 Apr 2025 13:00:36 GMT';
+          const expectedISOString = new Date(validDateString).toISOString();
+          meeting.isoLocalClientMeetingJoinTime = validDateString;
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, expectedISOString);
+>>>>>>> a100a55ffd6d9ad54be25666f973043b9013c256
         });
       });
 

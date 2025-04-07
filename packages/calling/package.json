@@ -38,7 +38,11 @@
   "dependencies": {
     "@types/platform": "1.3.4",
 <<<<<<< HEAD
+<<<<<<< HEAD
     "@webex/internal-media-core": "2.14.4",
+=======
+    "@webex/internal-media-core": "2.14.7",
+>>>>>>> a100a55ffd6d9ad54be25666f973043b9013c256
     "@webex/internal-plugin-metrics": "workspace:*",
 =======
     "@webex/internal-media-core": "2.14.2",
