@@ -285,7 +285,8 @@ describe('plugin-meetings', () => {
 
       describe('failure', () => {
         it('should not accept non-number input', () => {
-          const logUploadIntervalMultiplicationFactor = webex.meetings.config.logUploadIntervalMultiplicationFactor;
+          const logUploadIntervalMultiplicationFactor =
+            webex.meetings.config.logUploadIntervalMultiplicationFactor;
 
           webex.meetings._setLogUploadIntervalMultiplicationFactor('test');
           assert.equal(
@@ -928,6 +929,27 @@ describe('plugin-meetings', () => {
 
               assert.calledOnce(MeetingUtil.cleanUp);
             });
+          });
+        });
+      });
+      describe('#enableStaticMeetingLink', () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+
+        afterEach(() => {
+          sinon.restore();
+        });
+
+        it('should have #enableStaticMeetingLink', () => {
+          assert.exists(webex.meetings.enableStaticMeetingLink);
+        });
+
+        it('should call MeetingInfo#enableStaticMeetingLink() with proper params', () => {
+          webex.meetings.meetingInfo.enableStaticMeetingLink = sinon
+            .stub()
+            .resolves(conversationUrl);
+
+          return webex.meetings.enableStaticMeetingLink(conversationUrl).then(() => {
+            assert.calledWith(webex.meetings.meetingInfo.enableStaticMeetingLink, conversationUrl);
           });
         });
       });

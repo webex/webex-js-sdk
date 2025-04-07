@@ -17,12 +17,13 @@ import MeetingInfo, {
   MeetingInfoV2PolicyError,
   MeetingInfoV2JoinWebinarError,
   MeetingInfoV2JoinForbiddenError,
+  MeetingInfoV2MeetingIsInProgressError,
+  MeetingInfoV2StaticMeetingLinkAlreadyExists,
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {forEach} from 'lodash';
-import {MeetingInfoV2MeetingIsInProgressError} from 'packages/@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 
 describe('plugin-meetings', () => {
   const conversation = {
@@ -92,17 +93,50 @@ describe('plugin-meetings', () => {
     });
 
     describe('#enableStaticMeetingLink', () => {
+      const setup = () => {
+        const invitee = [];
+
+        invitee.push({
+          email: conversation.participants.items[0].emailAddress,
+          ciUserUuid: conversation.participants.items[0].entryUUID,
+        });
+
+        invitee.push({
+          email: conversation.participants.items[1].emailAddress,
+          ciUserUuid: conversation.participants.items[1].entryUUID,
+        });
+
+        return {invitee};
+      };
+
       it('should enable static meeting link', async () => {
+        const {invitee} = setup();
+        const installedOrgID = '12345';
         const conversationUrl = 'conv.fakeconversationurl.com';
-        const body = {spaceUrl: conversationUrl};
-        const requestResponse = {statusCode: 200, body};
-        webex.request.resolves(requestResponse);
+        webex.request.resolves({
+          statusCode: 200,
+          body: conversation,
+        });
         const result = await meetingInfo.enableStaticMeetingLink(conversationUrl);
+
+        assert.calledWith(webex.request, {
+          uri: conversationUrl,
+          qs: {includeParticipants: true},
+          disableTransform: true,
+        });
 
         assert.calledWith(webex.request, {
           method: 'POST',
           uri: `https://${webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant`,
-          body,
+          body: {
+            title: conversation.displayName,
+            spaceUrl: conversation.url,
+            keyUrl: conversation.encryptionKeyUrl,
+            kroUrl: conversation.kmsResourceObjectUrl,
+            invitees: invitee,
+            installedOrgID: undefined,
+            schedule: true,
+          },
         });
 
         assert(Metrics.sendBehavioralMetric.calledOnce);
@@ -111,7 +145,10 @@ describe('plugin-meetings', () => {
           BEHAVIORAL_METRICS.ENABLE_STATIC_METTING_LINK_SUCCESS
         );
 
-        assert.deepEqual(result, requestResponse);
+        assert.deepEqual(result, {
+          body: conversation,
+          statusCode: 200,
+        });
       });
 
       it('should not enable static meeting link for given conversation url if no preferred webex site', async () => {
@@ -145,24 +182,43 @@ describe('plugin-meetings', () => {
           assert.deepEqual(err.message, 'Meeting is in progress, code=33003');
           assert.calledWith(
             Metrics.sendBehavioralMetric,
-            BEHAVIORAL_METRICS.MEETING_LINK_DOES_NOT_EXIST_ERROR,
+            BEHAVIORAL_METRICS.MEETING_IS_IN_PROGRESS_ERROR,
             {reason: 'a message', stack: 'a stack'}
           );
         }
       });
 
-      it('handles generic error when fetching static link', async () => {
+      it('handles error for MeetingInfoV2StaticMeetingLinkAlreadyExists', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon
+          .stub()
+          .rejects({stack: 'a stack', message: 'a message', statusCode: 409, body: {code: 409000}});
+        try {
+          await meetingInfo.enableStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert.equal(err.wbxAppApiCode, 409000);
+          assert.instanceOf(err, MeetingInfoV2StaticMeetingLinkAlreadyExists);
+          assert.deepEqual(err.message, 'Static meeting link already exists, code=409000');
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.STATIC_MEETING_LINK_ALREADY_EXISTS_ERROR,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+
+      it('handles generic error when enabling static link', async () => {
         const conversationUrl = 'conv.fakeconversationurl.com';
         webex.request = sinon
           .stub()
           .rejects({stack: 'a stack', message: 'a message', statusCode: 500, body: {code: 400000}});
         try {
-          await meetingInfo.fetchStaticMeetingLink(conversationUrl);
+          await meetingInfo.enableStaticMeetingLink(conversationUrl);
         } catch (err) {
           assert(Metrics.sendBehavioralMetric.calledOnce);
           assert.calledWith(
             Metrics.sendBehavioralMetric,
-            BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_FAILURE,
+            BEHAVIORAL_METRICS.ENABLE_STATIC_METTING_LINK_FAILURE,
             {reason: 'a message', stack: 'a stack'}
           );
         }
@@ -227,14 +283,12 @@ describe('plugin-meetings', () => {
         const body = {meetingKey: '1234323'};
         const requestResponse = {statusCode: 200, body};
 
-        sinon
-          .stub(MeetingInfoUtil, 'getDestinationType')
-          .returns(
-            Promise.resolve({
-              type: DESTINATION_TYPE.SIP_URI,
-              destination: 'example@something.webex.com',
-            })
-          );
+        sinon.stub(MeetingInfoUtil, 'getDestinationType').returns(
+          Promise.resolve({
+            type: DESTINATION_TYPE.SIP_URI,
+            destination: 'example@something.webex.com',
+          })
+        );
         sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
         sinon.stub(MeetingInfoUtil, 'getDirectMeetingInfoURI').returns('https://example.com');
         webex.request.resolves(requestResponse);
@@ -930,6 +984,7 @@ describe('plugin-meetings', () => {
             kroUrl: conversation.kmsResourceObjectUrl,
             invitees: invitee,
             installedOrgID: installedOrgID,
+            schedule: false,
           },
         });
         assert.calledOnce(Metrics.sendBehavioralMetric);
@@ -961,6 +1016,7 @@ describe('plugin-meetings', () => {
             kroUrl: conversation.kmsResourceObjectUrl,
             invitees: invitee,
             installedOrgID,
+            schedule: false,
           },
         });
         assert(Metrics.sendBehavioralMetric.calledOnce);
