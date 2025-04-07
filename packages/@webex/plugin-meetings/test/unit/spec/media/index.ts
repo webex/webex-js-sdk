@@ -79,7 +79,7 @@ describe('createMediaConnection', () => {
       enableRtx: ENABLE_RTX,
       enableExtmap: ENABLE_EXTMAP,
       turnServerInfo: {
-        url: 'turns:turn-server-url:443?transport=tcp',
+        urls: ['turns:turn-server-url-1:443?transport=tcp', 'turns:turn-server-url-2:443?transport=tcp'],
         username: 'turn username',
         password: 'turn password',
       },
@@ -91,12 +91,7 @@ describe('createMediaConnection', () => {
       {
         iceServers: [
           {
-            urls: 'turn:turn-server-url:5004?transport=tcp',
-            username: 'turn username',
-            credential: 'turn password',
-          },
-          {
-            urls: 'turns:turn-server-url:443?transport=tcp',
+            urls: ['turns:turn-server-url-1:443?transport=tcp', 'turns:turn-server-url-2:443?transport=tcp'],
             username: 'turn username',
             credential: 'turn password',
           },
@@ -159,7 +154,7 @@ describe('createMediaConnection', () => {
       },
       rtcMetrics,
       turnServerInfo: {
-        url: 'turns:turn-server-url:443?transport=tcp',
+        urls: ['turns:turn-server-url-1:443?transport=tcp', 'turns:turn-server-url-2:443?transport=tcp'],
         username: 'turn username',
         password: 'turn password',
       },
@@ -171,12 +166,7 @@ describe('createMediaConnection', () => {
       {
         iceServers: [
           {
-            urls: 'turn:turn-server-url:5004?transport=tcp',
-            username: 'turn username',
-            credential: 'turn password',
-          },
-          {
-            urls: 'turns:turn-server-url:443?transport=tcp',
+            urls: ['turns:turn-server-url-1:443?transport=tcp', 'turns:turn-server-url-2:443?transport=tcp'],
             username: 'turn username',
             credential: 'turn password',
           },
@@ -212,7 +202,7 @@ describe('createMediaConnection', () => {
     {testCase: 'turnServerInfo is undefined', turnServerInfo: undefined},
     {
       testCase: 'turnServerInfo.url is empty string',
-      turnServerInfo: {url: '', username: 'turn username', password: 'turn password'},
+      turnServerInfo: {urls: [], username: 'turn username', password: 'turn password'},
     },
   ].forEach(({testCase, turnServerInfo}) => {
     it(`passes empty ICE servers array to MultistreamRoapMediaConnection if ${testCase} (multistream enabled)`, () => {
@@ -276,7 +266,7 @@ describe('createMediaConnection', () => {
     {testCase: 'turnServerInfo is undefined', turnServerInfo: undefined},
     {
       testCase: 'turnServerInfo.url is empty string',
-      turnServerInfo: {url: '', username: 'turn username', password: 'turn password'},
+      turnServerInfo: {urls: [], username: 'turn username', password: 'turn password'},
     },
   ].forEach(({testCase, turnServerInfo}) => {
     it(`passes empty ICE servers array to RoapMediaConnection if ${testCase} (multistream disabled)`, () => {
