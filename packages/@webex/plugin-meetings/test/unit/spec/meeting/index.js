@@ -115,9 +115,9 @@ import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagno
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
-import {createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
+import { createBrbState } from '@webex/plugin-meetings/src/meeting/brbState';
 import JoinForbiddenError from '../../../../src/common/errors/join-forbidden-error';
-import {EventEmitter} from 'stream';
+import { EventEmitter } from 'stream';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -282,7 +282,7 @@ describe('plugin-meetings', () => {
     testDestination = `testDestination-${uuid.v4()}`;
     correlationId = uuid.v4();
     uploadEvent = new EventEmitter();
-    uploadEvent.addListener('progress', () => {});
+    uploadEvent.addListener('progress', () => {})
 
     meeting = new Meeting(
       {
@@ -3884,7 +3884,7 @@ describe('plugin-meetings', () => {
             } catch (err) {
               assert.instanceOf(err, Error);
               assert.equal(err.message, 'setBrb failed');
-              assert.isRejected(Promise.reject());
+              assert.isRejected((Promise.reject()));
             }
           });
         });
@@ -4047,11 +4047,7 @@ describe('plugin-meetings', () => {
 
             locusMediaRequestStub = sinon
               .stub(WebexPlugin.prototype, 'request')
-              .resolves({
-                body: {locus: {fullState: {}}},
-                upload: sinon.match.instanceOf(EventEmitter),
-                download: sinon.match.instanceOf(EventEmitter),
-              });
+              .resolves({body: {locus: {fullState: {}}}, upload: sinon.match.instanceOf(EventEmitter), download: sinon.match.instanceOf(EventEmitter)});
 
             // setup some things and mocks so that the call to join() works
             // (we need to call join() because it creates the LocusMediaRequest instance
@@ -7531,19 +7527,19 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#setIsoLocalClientMeetingJoinTime', () => {
+      describe('#setIsoLocalClientMeetingJoinTime', () => {      
         it('should fallback to system clock ISO string when given an undefined value', () => {
           const currentSystemTime = new Date().toISOString();
           meeting.isoLocalClientMeetingJoinTime = undefined;
           assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
         });
-
+      
         it('should fallback to system clock ISO string when given an invalid value', () => {
           const currentSystemTime = new Date().toISOString();
           meeting.isoLocalClientMeetingJoinTime = 'invalid-date';
           assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
         });
-
+      
         it('should set the isoLocalClientMeetingJoinTime correctly for a valid date string', () => {
           const validDateString = 'Tue, 01 Apr 2025 13:00:36 GMT';
           const expectedISOString = new Date(validDateString).toISOString();

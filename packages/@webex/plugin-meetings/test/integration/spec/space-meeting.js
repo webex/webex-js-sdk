@@ -161,14 +161,8 @@ skipInNode(describe)('plugin-meetings', () => {
     });
 
     it('Bob and Alice addsMedia', () =>
-      integrationTestUtils
-        .addMedia(bob, {microphone: localTracks.bob.microphone, camera: localTracks.bob.camera})
-        .then(() =>
-          integrationTestUtils.addMedia(alice, {
-            microphone: localTracks.alice.microphone,
-            camera: localTracks.alice.camera,
-          })
-        ));
+      integrationTestUtils.addMedia(bob, {microphone: localTracks.bob.microphone, camera: localTracks.bob.camera})
+        .then(() => integrationTestUtils.addMedia(alice, {microphone: localTracks.alice.microphone, camera: localTracks.alice.camera})));
 
     it('Bob has flowing streams on reconnect', () => {
       const retrieveStats = () => {
@@ -223,12 +217,7 @@ skipInNode(describe)('plugin-meetings', () => {
           localTracks.guest.microphone = await createMicrophoneStream();
           localTracks.guest.camera = await createCameraStream();
         })
-        .then(() =>
-          integrationTestUtils.addMedia(guest, {
-            microphone: localTracks.guest.microphone,
-            camera: localTracks.guest.camera,
-          })
-        )
+        .then(() => integrationTestUtils.addMedia(guest, {microphone: localTracks.guest.microphone, camera: localTracks.guest.camera}))
         .catch((e) => {
           console.error('Error chris joining the meeting ', e);
           throw e;
@@ -488,12 +477,7 @@ skipInNode(describe)('plugin-meetings', () => {
                 localTracks.guest.microphone = await createMicrophoneStream();
                 localTracks.guest.camera = await createCameraStream();
               })
-              .then(() =>
-                integrationTestUtils.addMedia(guest, {
-                  microphone: localTracks.guest.microphone,
-                  camera: localTracks.guest.camera,
-                })
-              );
+              .then(() => integrationTestUtils.addMedia(guest, {microphone: localTracks.guest.microphone, camera: localTracks.guest.camera}));
           })
           .catch((e) => {
             console.error('Error guest joining the meeting ', e);
@@ -529,16 +513,17 @@ skipInNode(describe)('plugin-meetings', () => {
               testUtils.waitForCallEnded(alice, alice.sipAddress),
               testUtils.waitForCallEnded(bob, alice.sipAddress),
               testUtils.waitForCallEnded(chris, alice.sipAddress),
-            ]).then(() => {
-              if (localTracks.guest.microphone) {
-                localTracks.guest.microphone.stop();
-                localTracks.guest.microphone = undefined;
-              }
-              if (localTracks.guest.camera) {
-                localTracks.guest.camera.stop();
-                localTracks.guest.camera = undefined;
-              }
-            })
+            ])
+          .then(() => {
+            if (localTracks.guest.microphone) {
+              localTracks.guest.microphone.stop();
+              localTracks.guest.microphone = undefined;
+            }
+            if (localTracks.guest.camera) {
+              localTracks.guest.camera.stop();
+              localTracks.guest.camera = undefined;
+            }
+          })
           ));
     });
   });

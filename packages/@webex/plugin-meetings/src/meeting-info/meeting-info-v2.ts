@@ -195,7 +195,7 @@ export class MeetingInfoV2JoinForbiddenError extends Error {
 }
 
 /**
- * Error preventing join because of a forbidden error
+ * Error fetching static link for a conversation when it does not exist
  */
 export class MeetingInfoV2StaticLinkDoesNotExistError extends Error {
   sdkMessage: any;
