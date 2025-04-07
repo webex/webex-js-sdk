@@ -23,7 +23,10 @@ import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
 import { AgentContact, TASK_EVENTS } from '../../../src/services/task/types';
+<<<<<<< HEAD
 import MetricsManager from '../../../src/metrics/MetricsManager';
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -46,7 +49,10 @@ describe('webex.cc', () => {
   let webex;
   let mockContact;
   let mockTaskManager;
+<<<<<<< HEAD
   let mockMetricsManager;
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   let mockWebSocketManager;
   let getErrorDetailsSpy;
 
@@ -130,12 +136,15 @@ describe('webex.cc', () => {
       unregisterIncomingCallEvent: jest.fn(),
     };
 
+<<<<<<< HEAD
     mockMetricsManager = {
       trackEvent: jest.fn(),
       timeEvent: jest.fn(),
     };
 
     jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
     jest.spyOn(Services, 'getInstance').mockReturnValue(mockServicesInstance);
     jest.spyOn(TaskManager, 'getTaskManager').mockReturnValue(mockTaskManager);
     // Instantiate ContactCenter to ensure it's fully initialized
@@ -147,13 +156,22 @@ describe('webex.cc', () => {
     jest.clearAllMocks();
   });
 
+<<<<<<< HEAD
   it('should initialize services and logger proxy on ready event', () => {
     webex.once('ready', () => {
+=======
+  it('should initialize services and logger proxy on READY event', () => {
+    webex.once('READY', () => {
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
       expect(Services.getInstance).toHaveBeenCalled();
       expect(LoggerProxy.initialize).toHaveBeenCalledWith(webex.logger);
     });
 
+<<<<<<< HEAD
     webex.emit('ready');
+=======
+    webex.emit('READY');
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   });
 
   describe('cc.getDeviceId', () => {
@@ -401,6 +419,7 @@ describe('webex.cc', () => {
         'registerWebCallingLine'
       );
 
+<<<<<<< HEAD
 
       const mockData = {
         data: {
@@ -421,6 +440,11 @@ describe('webex.cc', () => {
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
         .mockResolvedValue(mockData as unknown as StationLoginSuccess);
+=======
+      const stationLoginMock = jest
+        .spyOn(webex.cc.services.agent, 'stationLogin')
+        .mockResolvedValue({} as StationLoginSuccess);
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 
       const result = await webex.cc.stationLogin(options);
 
@@ -439,7 +463,11 @@ describe('webex.cc', () => {
           auxCodeId: '',
         },
       });
+<<<<<<< HEAD
       expect(result).toEqual(mockData);
+=======
+      expect(result).toEqual({});
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 
       const onSpy = jest.spyOn(mockTaskManager, 'on');
       const emitSpy = jest.spyOn(webex.cc, 'trigger');
@@ -484,6 +512,7 @@ describe('webex.cc', () => {
         dialNumber: '1234567890',
       };
 
+<<<<<<< HEAD
       const mockData = {
         data: {
           loginOption: LoginOption.AGENT_DN,
@@ -503,6 +532,11 @@ describe('webex.cc', () => {
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
         .mockResolvedValue(mockData as unknown as StationLoginSuccess);
+=======
+      const stationLoginMock = jest
+        .spyOn(webex.cc.services.agent, 'stationLogin')
+        .mockResolvedValue({} as StationLoginSuccess);
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 
       const result = await webex.cc.stationLogin(options);
 
@@ -520,7 +554,11 @@ describe('webex.cc', () => {
           auxCodeId: '',
         },
       });
+<<<<<<< HEAD
       expect(result).toEqual(mockData);
+=======
+      expect(result).toEqual({});
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
     });
 
     it('should handle error during stationLogin', async () => {
@@ -534,7 +572,11 @@ describe('webex.cc', () => {
         details: {
           trackingId: '1234',
           data: {
+<<<<<<< HEAD
             reason: 'Error while performing stationLogin',
+=======
+            reason: 'Error while performing station login',
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
           },
         },
       };
@@ -994,7 +1036,11 @@ describe('webex.cc', () => {
 
       // Construct Payload for startOutdial.
       const newPayload = {
+<<<<<<< HEAD
         destination,
+=======
+        destination, 
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         entryPointId: 'test-entry-point',
         direction: OUTDIAL_DIRECTION,
         attributes: ATTRIBUTES,

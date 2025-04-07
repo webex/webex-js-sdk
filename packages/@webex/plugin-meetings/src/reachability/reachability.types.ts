@@ -7,11 +7,14 @@ export type TransportResult = {
   clientMediaIPs?: string[];
 };
 
+<<<<<<< HEAD
 export enum NatType {
   Unknown = 'unknown',
   SymmetricNat = 'symmetric-nat',
 }
 
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 // reachability result for a specific media cluster
 export type ClusterReachabilityResult = {
   udp: TransportResult;
@@ -32,7 +35,10 @@ export type ReachabilityMetrics = {
   reachability_vmn_tcp_failed: number;
   reachability_vmn_xtls_success: number;
   reachability_vmn_xtls_failed: number;
+<<<<<<< HEAD
   natType: NatType;
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 };
 
 /**

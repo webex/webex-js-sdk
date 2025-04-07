@@ -15,7 +15,10 @@ import uuid from 'uuid';
 import {omit} from 'lodash';
 import { glob } from 'glob';
 import { expect } from 'chai';
+<<<<<<< HEAD
 import { ClientEmailInput, ClientUserNameInput } from '@webex/internal-plugin-metrics/src/metrics.types';
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
@@ -59,6 +62,7 @@ describe('internal-plugin-metrics', () => {
       id: '3',
       correlationId: 'correlationId3',
       sessionCorrelationId: 'sessionCorrelationId3',
+<<<<<<< HEAD
     };
 
     const fakeMeeting4 = {
@@ -73,14 +77,19 @@ describe('internal-plugin-metrics', () => {
       sessionCorrelationId: 'sessionCorrelationId5',
       userNameInput: 'test',
       emailInput: 'test@test.com'
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
     };
 
     const fakeMeetings = {
       1: fakeMeeting,
       2: fakeMeeting2,
       3: fakeMeeting3,
+<<<<<<< HEAD
       4: fakeMeeting4,
       5: fakeMeeting5,
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
     };
 
     let webex;
@@ -947,7 +956,58 @@ describe('internal-plugin-metrics', () => {
         ]);
       });
 
+<<<<<<< HEAD
+    it('should prepare diagnostic event successfully when triggeredTime is supplied in the options object', () => {
+      const options = {meetingId: fakeMeeting.id, triggeredTime: 'fake-triggered-time'};
+      const getOriginStub = sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+      const clearEmptyKeysRecursivelyStub = sinon.stub(
+        CallDiagnosticUtils,
+        'clearEmptyKeysRecursively'
+      );
+
+      const res = cd.prepareDiagnosticEvent(
+        {
+          canProceed: false,
+          identifiers: {
+            correlationId: 'id',
+            webexConferenceIdStr: 'webexConferenceIdStr1',
+            globalMeetingId: 'globalMeetingId1',
+          },
+          name: 'client.alert.displayed',
+        },
+        options
+      );
+
+      assert.calledWith(getOriginStub, options, options.meetingId);
+      assert.calledOnce(clearEmptyKeysRecursivelyStub);
+      assert.deepEqual(res, {
+        event: {
+          canProceed: false,
+          identifiers: {
+            correlationId: 'id',
+            webexConferenceIdStr: 'webexConferenceIdStr1',
+            globalMeetingId: 'globalMeetingId1',
+          },
+          name: 'client.alert.displayed',
+        },
+        eventId: 'my-fake-id',
+        origin: {
+          origin: 'fake-origin',
+        },
+        originTime: {
+          sent: 'not_defined_yet',
+          triggered: 'fake-triggered-time',
+        },
+        senderCountryCode: 'UK',
+        version: 1,
+      });
+    });
+
+    describe('#submitClientEvent', () => {
+      it('should submit client event successfully with meetingId', () => {
+=======
       it('should submit client event successfully with meetingId which has a sessionCorrelationId', () => {
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
@@ -1026,6 +1086,206 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+        assert.calledWith(validatorSpy, {
+          type: 'ce',
+          event: {
+            event: {
+              canProceed: true,
+              eventData: {
+                webClientDomain: 'whatever',
+              },
+              identifiers: {
+                correlationId: 'correlationId3',
+                sessionCorrelationId: 'sessionCorrelationId3',
+                deviceId: 'deviceUrl',
+                locusId: 'url',
+                locusStartTime: 'lastActive',
+                locusUrl: 'locus/url',
+                mediaAgentAlias: 'alias',
+                mediaAgentGroupId: '1',
+                orgId: 'orgId',
+                userId: 'userId',
+              },
+              loginType: 'login-ci',
+              name: 'client.alert.displayed',
+              userType: 'host',
+              isConvergedArchitectureEnabled: undefined,
+              webexSubServiceType: undefined,
+              webClientPreload: undefined,
+            },
+            eventId: 'my-fake-id',
+            origin: {
+              origin: 'fake-origin',
+            },
+            originTime: {
+              sent: 'not_defined_yet',
+              triggered: now.toISOString(),
+            },
+            senderCountryCode: 'UK',
+            version: 1,
+          },
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+      });
+
+      it('should submit client event successfully with meetingId which has a sessionCorrelationId', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const validatorSpy = sinon.spy(cd, 'validator');
+        sinon.stub(window.navigator, 'userAgent').get(() => userAgent);
+        sinon.stub(bowser, 'getParser').returns(userAgent);
+
+        const options = {
+          meetingId: fakeMeeting3.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+<<<<<<< HEAD
+        assert.called(getIdentifiersSpy);
+=======
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+
+        assert.deepEqual(webexLoggerLogCalls.length, 4);
+
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @createClientEventObjectInMeeting => collected browser data',
+          `${JSON.stringify(userAgent)}`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[3].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+      });
+
+      it('should submit client event successfully with correlationId, webexConferenceIdStr, sessionCorrelationId, and globalMeetingId', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        const options = {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          sessionCorrelationId: 'sessionCorrelationId1',
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
+        assert.calledWith(getIdentifiersSpy, {
+          meeting: {...fakeMeeting3, sessionCorrelationId: 'sessionCorrelationId3'},
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          webexConferenceIdStr: undefined,
+          globalMeetingId: undefined,
+          sessionCorrelationId: undefined,
+        });
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId3',
+              sessionCorrelationId: 'sessionCorrelationId3',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+<<<<<<< HEAD
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+=======
+            webClientPreload: undefined
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId3',
+              sessionCorrelationId: 'sessionCorrelationId3',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+<<<<<<< HEAD
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+=======
+            webClientPreload: undefined
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1610,8 +1870,11 @@ describe('internal-plugin-metrics', () => {
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
           sessionCorrelationId: 'sessionCorrelationId1',
+<<<<<<< HEAD
           userNameInput: 'current' as ClientUserNameInput,
           emailInput: 'current' as ClientEmailInput,
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         };
 
         cd.submitClientEvent({
@@ -1677,8 +1940,11 @@ describe('internal-plugin-metrics', () => {
               },
               eventData: {webClientDomain: 'whatever'},
               loginType: 'login-ci',
+<<<<<<< HEAD
               userNameInput: 'current',
               emailInput: 'current',
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
               webClientPreload: undefined,
             },
           },
@@ -3159,6 +3425,7 @@ describe('internal-plugin-metrics', () => {
           webexScheduled: true,
           pmr: false,
           enableEvent: true,
+<<<<<<< HEAD
           enableConvergedArchitecture: false,
         };
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webinar');
@@ -3170,16 +3437,28 @@ describe('internal-plugin-metrics', () => {
           isConvergedWebinar: true,
           isConvergedWebinarWebcast: false,
           enableConvergedArchitecture: true,
+=======
+          isConvergedWebinar: true,
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         };
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webinar');
       });
 
+<<<<<<< HEAD
       it('returns subServicetype as Webcast when meeting is converged Webinar and enable webcast', () => {
         fakeMeeting.meetingInfo = {
           enableEvent: true,
           isConvergedWebinar: false,
           isConvergedWebinarWebcast: true,
           enableConvergedArchitecture: true,
+=======
+      it('returns subServicetype as Webcast when meeting is Webinar and enable webcast', () => {
+        fakeMeeting.meetingInfo = {
+          webexScheduled: true,
+          pmr: false,
+          enableEvent: true,
+          isConvergedWebinarWebcast: true,
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         };
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webcast');
       });

@@ -6,7 +6,11 @@ import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 import EventsScope from '../common/events/events-scope';
 
 import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
+<<<<<<< HEAD
 import {ClusterReachabilityResult, NatType} from './reachability.types';
+=======
+import {ClusterReachabilityResult} from './reachability.types';
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 
 // data for the Events.resultReady event
 export type ResultEventData = {

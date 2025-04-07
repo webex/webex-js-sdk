@@ -304,11 +304,18 @@ async function initiateConsult() {
   try {
     await task.consult(consultPayload);
     console.log('Consult initiated successfully');
+<<<<<<< HEAD
     // Disable the blind transfer button after initiating consult, only enable it once consult is confirmed
     disableCallControlPostConsult();
     disableTransferControls();
     hideConsultButton();
     showEndConsultButton();
+=======
+    hideConsultButton();
+    showEndConsultButton();
+    consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
+    consultTransferBtn.disabled = false; // Enable the consult transfer button
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   } catch (error) {
     console.error('Failed to initiate consult', error);
     alert('Failed to initiate consult');
@@ -441,6 +448,7 @@ function disableTransferControls() {
   transferElm.disabled = true;
 }
 
+<<<<<<< HEAD
 // Disable all buttons post consulting
 function disableCallControlPostConsult() {
   holdResumeElm.disabled = true;
@@ -455,6 +463,8 @@ function enableCallControlPostConsult() {
   endElm.disabled = false;
 }
 
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 // Register task listeners
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
@@ -471,6 +481,7 @@ function registerTaskListeners(task) {
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
+<<<<<<< HEAD
   task.on('task:end', (wrapupData) => {
     incomingDetailsElm.innerText = '';
     if (!wrapupData.wrapupRequired) {
@@ -480,6 +491,15 @@ function registerTaskListeners(task) {
     }
     else {
       console.info('Call ended successfully');
+=======
+  task.on('task:end', () => {
+    console.log('Call ended without call being answered');
+    answerElm.disabled = true;
+    declineElm.disabled = true;
+    incomingDetailsElm.innerText = '';
+    if (!endElm.disabled) {
+      console.info('Call ended successfully by the external user');
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
       updateButtonsPostEndCall();
     }
   });
@@ -501,12 +521,15 @@ function registerTaskListeners(task) {
     consultTransferBtn.disabled = true; // Disable the consult transfer button since we are not yet owner of the call
   });
 
+<<<<<<< HEAD
   task.on('task:consulting', (task) => {
     // When we are consulting with the other agent
     consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
     consultTransferBtn.disabled = false; // Enable the consult transfer button
   });
 
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   task.on('task:consultQueueFailed', (task) => {
     // When trying to consult queue fails
     console.error(`Received task:consultQueueFailed for task: ${task.interactionId}`);
@@ -524,8 +547,11 @@ function registerTaskListeners(task) {
   task.on('task:consultEnd', (task) => {
     hideEndConsultButton();
     showConsultButton();
+<<<<<<< HEAD
     enableTransferControls();
     enableCallControlPostConsult();
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
     consultTransferBtn.style.display = 'none';
     consultTransferBtn.disabled = true;
 
@@ -651,6 +677,10 @@ function register() {
             teamsDropdown.add(option);
         });
         const loginVoiceOptions = agentProfile.loginVoiceOptions;
+<<<<<<< HEAD
+=======
+        agentLogin.innerHTML = '<option value="" selected>Choose Agent Login ...</option>'; // Clear previously selected option on agentLogin.
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         dialNumber.value = agentProfile.defaultDn ? agentProfile.defaultDn : '';
         dialNumber.disabled = agentProfile.defaultDn ? false : true;
         if (loginVoiceOptions.length > 0) loginAgentElm.disabled = false;
@@ -1071,8 +1101,12 @@ function togglePauseResumeRecording() {
     });
   } else {
     pauseResumeRecordingElm.disabled = true;
+<<<<<<< HEAD
     const resumeParams = autoResumed ? { autoResumed: autoResumed } : undefined;
     task.resumeRecording(resumeParams).then(() => {
+=======
+    task.resumeRecording({ autoResumed: autoResumed }).then(() => {
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
       console.info('Recording resumed successfully');
       pauseResumeRecordingElm.innerText = 'Pause Recording';
       pauseResumeRecordingElm.disabled = false;
@@ -1101,7 +1135,10 @@ function wrapupCall() {
   const auxCodeId = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].value;
   task.wrapup({wrapUpReason: wrapupReason, auxCodeId: auxCodeId}).then(() => {
     console.info('Call wrapped up successfully');
+<<<<<<< HEAD
     holdResumeElm.innerText = 'Hold';
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
     holdResumeElm.disabled = true;
     endElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;

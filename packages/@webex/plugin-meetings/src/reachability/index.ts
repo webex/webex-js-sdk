@@ -23,7 +23,10 @@ import {
   ReachabilityResultsForBackend,
   TransportResultForBackend,
   GetClustersTrigger,
+<<<<<<< HEAD
   NatType,
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 } from './reachability.types';
 import {
   ClientMediaIpsUpdatedEventData,
@@ -66,7 +69,10 @@ export default class Reachability extends EventsScope {
   resultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
   startTime = undefined;
   totalDuration = undefined;
+<<<<<<< HEAD
   natType = NatType.Unknown;
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 
   protected lastTrigger?: string;
 
@@ -267,6 +273,7 @@ export default class Reachability extends EventsScope {
   }
 
   /**
+<<<<<<< HEAD
    * Stops all reachability checks that are in progress
    * @public
    * @memberof Reachability
@@ -293,6 +300,8 @@ export default class Reachability extends EventsScope {
   }
 
   /**
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
    * Returns statistics about last reachability results. The returned value is an object
    * with a flat list of properties so that it can be easily sent with metrics
    *

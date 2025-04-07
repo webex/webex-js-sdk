@@ -274,8 +274,11 @@ export default class Task extends EventEmitter implements ITask {
     resumeRecordingPayload: ResumeRecordingPayload
   ): Promise<TaskResponse> {
     try {
+<<<<<<< HEAD
       resumeRecordingPayload ??= {autoResumed: false};
 
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
       const result = await this.contact.resumeRecording({
         interactionId: this.data.interactionId,
         data: resumeRecordingPayload,

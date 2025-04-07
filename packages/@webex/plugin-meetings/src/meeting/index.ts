@@ -122,9 +122,14 @@ import {
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   NAMED_MEDIA_GROUP_TYPE_AUDIO,
   WEBINAR_ERROR_WEBCAST,
+<<<<<<< HEAD
   WEBINAR_ERROR_REGISTRATION_ID,
   JOIN_BEFORE_HOST,
   REGISTRATION_ID_STATUS,
+=======
+  WEBINAR_ERROR_REGISTRATIONID,
+  JOIN_BEFORE_HOST,
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -164,7 +169,10 @@ import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
 import JoinWebinarError from '../common/errors/join-webinar-error';
 import Member from '../member';
+<<<<<<< HEAD
 import {BrbState, createBrbState} from './brbState';
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 import MultistreamNotSupportedError from '../common/errors/multistream-not-supported-error';
 import JoinForbiddenError from '../common/errors/join-forbidden-error';
 
@@ -1630,6 +1638,7 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+<<<<<<< HEAD
    * Getter - Returns callStateForMetrics.userNameInput
    * @returns {string}
    */
@@ -1662,6 +1671,8 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
    * Getter - Returns callStateForMetrics.sessionCorrelationId
    * @returns {string}
    */
@@ -1855,15 +1866,23 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION;
         if (WEBINAR_ERROR_WEBCAST.includes(err.wbxAppApiCode)) {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NEED_JOIN_WITH_WEBCAST;
+<<<<<<< HEAD
         } else if (WEBINAR_ERROR_REGISTRATION_ID.includes(err.wbxAppApiCode)) {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATION_ID;
+=======
+        } else if (WEBINAR_ERROR_REGISTRATIONID.includes(err.wbxAppApiCode)) {
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATIONID;
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         }
         this.meetingInfoFailureCode = err.wbxAppApiCode;
 
         if (err.meetingInfo) {
           this.meetingInfo = err.meetingInfo;
         }
+<<<<<<< HEAD
         this.requiredCaptcha = null;
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 
         throw new JoinWebinarError();
       } else if (err instanceof MeetingInfoV2JoinForbiddenError) {
@@ -3544,7 +3563,10 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED, (payload) => {
+<<<<<<< HEAD
       this.brbState?.handleServerBrbUpdate(payload?.brb?.enabled);
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
       Trigger.trigger(
         this,
         {
@@ -3788,7 +3810,26 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.reject(error);
     }
 
+<<<<<<< HEAD
     return this.brbState.enable(enabled, this.sendSlotManager);
+=======
+    // this logic should be applied only to multistream meetings
+    return this.meetingRequest
+      .setBrb({
+        enabled,
+        locusUrl: this.locusUrl,
+        deviceUrl: this.deviceUrl,
+        selfId: this.selfId,
+      })
+      .then(() => {
+        this.sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
+
+        return Promise.reject(error);
+      });
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   }
 
   /**
@@ -6227,12 +6268,18 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {undefined}
    */
   public roapMessageReceived = (roapMessage: RoapMessage) => {
+<<<<<<< HEAD
     const mediaServer =
       roapMessage.messageType === 'ANSWER'
         ? MeetingsUtil.getMediaServer(roapMessage.sdp)
         : undefined;
 
     if (this.isMultistream && mediaServer && mediaServer !== 'homer') {
+=======
+    const mediaServer = MeetingsUtil.getMediaServer(roapMessage.sdp);
+
+    if (this.isMultistream && mediaServer !== 'homer') {
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
       throw new MultistreamNotSupportedError(
         `Client asked for multistream backend (Homer), but got ${mediaServer} instead`
       );
@@ -7589,6 +7636,7 @@ export default class Meeting extends StatelessWebexPlugin {
           );
 
           await this.downgradeFromMultistreamToTranscoded();
+<<<<<<< HEAD
 
           // Establish new media connection with forced TURN discovery
           // We need to do TURN discovery again, because backend will be creating a new confluence, so it might land on a different node or cluster
@@ -7605,6 +7653,21 @@ export default class Meeting extends StatelessWebexPlugin {
 
       LoggerProxy.logger.info(`${LOG_HEADER} media connected, finalizing...`);
 
+=======
+
+          // Establish new media connection with forced TURN discovery
+          // We need to do TURN discovery again, because backend will be creating a new confluence, so it might land on a different node or cluster
+          await this.establishMediaConnection(
+            remoteMediaManagerConfig,
+            bundlePolicy,
+            true,
+            undefined
+          );
+        } else {
+          throw error;
+        }
+      }
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
       if (this.mediaProperties.hasLocalShareStream()) {
         await this.enqueueScreenShareFloorRequest();
       }
@@ -8737,9 +8800,14 @@ export default class Meeting extends StatelessWebexPlugin {
       // SDK to TypeScript 5, which may affect other packages, use bracket notation for now, since
       // all we're doing here is adding metrics.
       // eslint-disable-next-line dot-notation
+<<<<<<< HEAD
       displaySurface: shareVideoStreamSettings?.['displaySurface'],
       isMultistream: this.isMultistream,
       frameRate: shareVideoStreamSettings?.frameRate,
+=======
+      displaySurface: this.mediaProperties?.shareVideoStream?.getSettings()['displaySurface'],
+      isMultistream: this.isMultistream,
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
     });
   };
 

@@ -362,6 +362,7 @@ describe('plugin-device', () => {
 
         assert.calledWith(registerSpy, {includeDetails: CatalogDetails.websocket});
       });
+<<<<<<< HEAD
 
       it('does not process refresh if log out between start and end of request', async () => {
         setup();
@@ -425,6 +426,8 @@ describe('plugin-device', () => {
         assert.calledOnce(device.processRegistrationSuccess);
       });
 
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
     });
 
     describe('deleteDevices()', () => {
@@ -559,6 +562,7 @@ describe('plugin-device', () => {
           name: 'internal.register.device.request',
         });
       });
+<<<<<<< HEAD
 
       it('calls delete devices when errors with User has excessive device registrations', async () => {
         setup();
@@ -571,6 +575,20 @@ describe('plugin-device', () => {
 
         const result = await device.register();
 
+=======
+
+      it('calls delete devices when errors with User has excessive device registrations', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        const deleteDeviceSpy = sinon.stub(device, 'deleteDevices').callsFake(() => Promise.resolve());
+        const registerStub = sinon.stub(device, '_registerInternal');
+        
+        registerStub.onFirstCall().rejects({body: {message: 'User has excessive device registrations'}});
+        registerStub.onSecondCall().callsFake(() => Promise.resolve({exampleKey: 'example response value',}));
+
+        const result = await device.register();
+
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         assert.calledOnce(deleteDeviceSpy);
 
         assert.equal(registerStub.callCount, 2);
@@ -608,6 +626,7 @@ describe('plugin-device', () => {
         assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
           name: 'internal.register.device.response',
         });
+<<<<<<< HEAD
       });
 
       it('does not process registration if log out between start and end of request', async () => {
@@ -668,6 +687,8 @@ describe('plugin-device', () => {
         await resultPromise;
 
         assert.calledOnce(device.processRegistrationSuccess);
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
       });
 
 
@@ -743,6 +764,7 @@ describe('plugin-device', () => {
           headers: {},
           qs: {includeUpstreamServices: 'all'},
         });
+<<<<<<< HEAD
       });
 
       it('calls request with the expected properties when includeDetails is specified', async () => {
@@ -820,6 +842,85 @@ describe('plugin-device', () => {
         assert.calledWith(refreshSpy, {includeDetails: CatalogDetails.websocket});
       });
 
+=======
+      });
+
+      it('calls request with the expected properties when includeDetails is specified', async () => {
+        setup();
+
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        const requestSpy = sinon.spy(device, 'request');
+        const refreshSpy = sinon.spy(device, 'refresh');
+
+        device.setEnergyForecastConfig(false);
+
+        await device.register({includeDetails: CatalogDetails.features});
+
+        assert.calledWith(requestSpy, {
+          method: 'POST',
+          service: 'wdm',
+          resource: 'devices',
+          body: {},
+          headers: {},
+          qs: {includeUpstreamServices: CatalogDetails.features},
+        });
+
+        assert.notCalled(refreshSpy);
+      });
+
+      it('calls request with the expected properties when includeDetails is not specified', async () => {
+        setup();
+
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        const requestSpy = sinon.spy(device, 'request');
+        const refreshSpy = sinon.spy(device, 'refresh');
+
+        device.setEnergyForecastConfig(false);
+
+        await device.register();
+
+        assert.calledWith(requestSpy, {
+          method: 'POST',
+          service: 'wdm',
+          resource: 'devices',
+          body: {},
+          headers: {},
+          qs: {includeUpstreamServices: CatalogDetails.all},
+        });
+
+        assert.notCalled(refreshSpy);
+      });
+
+      it('calls refresh with default includeDetails when registered', async () => {
+        setup();
+
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        const refreshSpy = sinon.spy(device, 'refresh');
+
+        device.setEnergyForecastConfig(false);
+        device.set('registered', true);
+
+        await device.register();
+
+        assert.calledWith(refreshSpy, {});
+      });
+
+      it('calls refresh with specified includeDetails when registered', async () => {
+        setup();
+
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        const requestSpy = sinon.spy(device, 'request');
+        const refreshSpy = sinon.spy(device, 'refresh');
+
+        device.setEnergyForecastConfig(false);
+        device.set('registered', true);
+
+        await device.register({includeDetails: CatalogDetails.websocket});
+
+        assert.calledWith(refreshSpy, {includeDetails: CatalogDetails.websocket});
+      });
+
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
       it('works when request returns 404 when already registered', async () => {
         setup();
         

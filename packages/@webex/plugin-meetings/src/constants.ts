@@ -202,7 +202,11 @@ export const RETRY_TIMEOUT = 3000;
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
 export const WEBINAR_ERROR_WEBCAST = [403026];
+<<<<<<< HEAD
 export const WEBINAR_ERROR_REGISTRATION_ID = [403037, 403137];
+=======
+export const WEBINAR_ERROR_REGISTRATIONID = [403037, 403137];
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 export const JOIN_BEFORE_HOST = 403003;
 
 // ******************** REGEX **********************
@@ -1347,7 +1351,11 @@ export const MEETING_INFO_FAILURE_REASON = {
   POLICY: 'POLICY', // meeting info request violates some meeting policy
   WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
   NEED_JOIN_WITH_WEBCAST: 'NEED_JOIN_WITH_WEBCAST', // webinar need using webcast join
+<<<<<<< HEAD
   WEBINAR_NEED_REGISTRATION_ID: 'WEBINAR_NEED_REGISTRATION_ID', // webinar need registrationID
+=======
+  WEBINAR_NEED_REGISTRATIONID: 'WEBINAR_NEED_REGISTRATIONID', // webinar need registrationID
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   NOT_REACH_JBH: 'NOT_REACH_JBH', // Meeting is not allow to access since not reach JBH (join before host) time
   JOIN_FORBIDDEN: 'JOIN_FORBIDDEN', // meeting is not allow join
   OTHER: 'OTHER', // any other error (network, etc)

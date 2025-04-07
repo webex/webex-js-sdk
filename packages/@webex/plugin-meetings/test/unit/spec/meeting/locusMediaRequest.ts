@@ -52,8 +52,13 @@ describe('LocusMediaRequest.send()', () => {
       reachability: {
         version: '1',
         result: 'some fake reachability result',
+<<<<<<< HEAD
       },
     },
+=======
+      }
+    }
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   };
 
   const createExpectedRoapBody = (
@@ -75,13 +80,22 @@ describe('LocusMediaRequest.send()', () => {
         joinCookie: {
           anycastEntryPoint: 'aws-eu-west-1',
           clientIpAddress: 'some ip',
+<<<<<<< HEAD
           timeShot: '2023-05-23T08:03:49Z',
+=======
+          timeShot: '2023-05-23T08:03:49Z'
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         },
         reachability: {
           version: '1',
           result: 'some fake reachability result',
+<<<<<<< HEAD
         },
       },
+=======
+        }
+      }
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
     };
   };
 

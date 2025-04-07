@@ -133,8 +133,11 @@ export type SubmitClientEventOptions = {
   joinFlowVersion?: MetricEventJoinFlowVersion;
   meetingJoinPhase?: MetricEventMeetingJoinPhase;
   triggeredTime?: string;
+<<<<<<< HEAD
   emailInput?: ClientEmailInput;
   userNameInput?: ClientUserNameInput;
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 };
 
 export type SubmitMQEOptions = {

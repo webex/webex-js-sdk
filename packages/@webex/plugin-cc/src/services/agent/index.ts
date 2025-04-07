@@ -5,8 +5,11 @@ import AqmReqs from '../core/aqm-reqs';
 import {HTTP_METHODS} from '../../types';
 import {WCC_API_GATEWAY} from '../constants';
 import {CC_EVENTS} from '../config/types';
+<<<<<<< HEAD
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 
 /*
  * routingAgent
@@ -15,8 +18,11 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
  */
 
 export default function routingAgent(routing: AqmReqs) {
+<<<<<<< HEAD
   const metricsManager = MetricsManager.getInstance();
 
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   return {
     reload: routing.reqEmpty(() => ({
       host: WCC_API_GATEWAY,
@@ -62,6 +68,7 @@ export default function routingAgent(routing: AqmReqs) {
       url: '/v1/agents/login',
       host: WCC_API_GATEWAY,
       data: p.data,
+<<<<<<< HEAD
       err: /* istanbul ignore next */ (e: any) => {
         metricsManager.trackEvent(
           METRIC_EVENT_NAMES.STATION_LOGIN,
@@ -80,6 +87,14 @@ export default function routingAgent(routing: AqmReqs) {
           trackingId: e.response?.headers?.trackingid?.split('_')[1],
         });
       },
+=======
+      err: /* istanbul ignore next */ (e: any) =>
+        new Err.Details('Service.aqm.agent.stationLogin', {
+          status: e.response?.status ?? 0,
+          type: e.response?.data?.errorType,
+          trackingId: e.response?.headers?.trackingid?.split('_')[1],
+        }),
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
       notifSuccess: {
         bind: {
           type: CC_EVENTS.AGENT_STATION_LOGIN,

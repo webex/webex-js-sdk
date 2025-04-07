@@ -73,8 +73,11 @@ const BEHAVIORAL_METRICS = {
   JOIN_WEBINAR_ERROR: 'js_sdk_join_webinar_error',
   GUEST_ENTERED_LOBBY: 'js_sdk_guest_entered_lobby',
   GUEST_EXITED_LOBBY: 'js_sdk_guest_exited_lobby',
+<<<<<<< HEAD
   VERIFY_REGISTRATION_ID_SUCCESS: 'js_sdk_verify_registrationId_success',
   VERIFY_REGISTRATION_ID_ERROR: 'js_sdk_verify_registrationId_error',
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   JOIN_FORBIDDEN_ERROR: 'js_sdk_join_forbidden_error',
 };
 

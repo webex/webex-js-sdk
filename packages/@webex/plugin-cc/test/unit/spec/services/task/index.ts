@@ -696,6 +696,7 @@ describe('Task', () => {
     });
   });
 
+<<<<<<< HEAD
   it('should resume the recording of the task if the payload is empty', async () => {
     const resumePayload = {
       autoResumed: false,
@@ -709,6 +710,8 @@ describe('Task', () => {
     });
   });
 
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   it('should handle errors in resumeRecording method', async () => {
     const error = {
       details: {

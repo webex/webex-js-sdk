@@ -1937,6 +1937,7 @@ describe('gatherReachability', () => {
     });
   });
 
+<<<<<<< HEAD
   describe('stopReachability', () => {
     let reachability;
     let receivedEvents;
@@ -2017,6 +2018,9 @@ describe('gatherReachability', () => {
       assert.equal(receivedEvents['reachability:firstResultAvailable'], undefined);
     });
   });
+=======
+  
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 });
 
 describe('getReachabilityResults', () => {

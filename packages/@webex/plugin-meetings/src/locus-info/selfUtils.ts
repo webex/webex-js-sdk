@@ -340,12 +340,21 @@ SelfUtils.isUserUnadmitted = (oldSelf: object, changedSelf: object) => {
     throw new ParameterError(
       'changedSelf must be defined to determine if self is unadmitted as guest.'
     );
+<<<<<<< HEAD
   }
 
   if (SelfUtils.isLocusUserUnadmitted(oldSelf)) {
     return false;
   }
 
+=======
+  }
+
+  if (SelfUtils.isLocusUserUnadmitted(oldSelf)) {
+    return false;
+  }
+
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   return SelfUtils.isLocusUserUnadmitted(changedSelf);
 };
 

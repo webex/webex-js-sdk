@@ -3,7 +3,10 @@ import {deprecated, oneFlight} from '@webex/common';
 import {persist, waitForValue, WebexPlugin} from '@webex/webex-core';
 import {safeSetTimeout} from '@webex/common-timers';
 import {orderBy} from 'lodash';
+<<<<<<< HEAD
 import uuid from 'uuid';
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 
 import METRICS from './metrics';
 import {FEATURE_COLLECTION_NAMES, DEVICE_EVENT_REGISTRATION_SUCCESS} from './constants';
@@ -413,9 +416,12 @@ const Device = WebexPlugin.extend({
 
       const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
 
+<<<<<<< HEAD
       const requestId = uuid.v4();
       this.set('refresh-request-id', requestId);
 
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
       return this.request({
         method: 'PUT',
         uri: this.url,
@@ -551,6 +557,7 @@ const Device = WebexPlugin.extend({
 
     // Merge body configurations, overriding defaults.
     const body = this._getBody();
+<<<<<<< HEAD
 
     // Merge header configurations, overriding defaults.
     const headers = {
@@ -612,6 +619,59 @@ const Device = WebexPlugin.extend({
         this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
           fields: {error},
         });
+=======
+
+    // Merge header configurations, overriding defaults.
+    const headers = {
+      ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
+      ...(this.config.headers ? this.config.headers : {}),
+    };
+
+    // Append a ttl value if the device is marked as ephemeral
+    if (this.config.ephemeral) {
+      body.ttl = this.config.ephemeralDeviceTTL;
+    }
+    this.webex.internal.newMetrics.submitInternalEvent({
+      name: 'internal.register.device.request',
+    });
+
+    const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
+
+    // This will be replaced by a `create()` method.
+    return this.request({
+      method: 'POST',
+      service: 'wdm',
+      resource: 'devices',
+      body,
+      headers,
+      qs: {
+        includeUpstreamServices: `${includeDetails}${
+          this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
+        }`,
+      },
+    })
+      .catch((error) => {
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.register.device.response',
+        });
+
+        throw error;
+      })
+      .then((response) => {
+        // Do not add any processing of response above this as that will affect timestamp
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.register.device.response',
+        });
+
+        this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL);
+
+        return this.processRegistrationSuccess(response);
+      })
+      .catch((error) => {
+        this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
+          fields: {error},
+        });
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         throw error;
       });
   },

@@ -1,9 +1,12 @@
 import {CallingClientConfig} from '@webex/calling';
+<<<<<<< HEAD
 import {
   SubmitBehavioralEvent,
   SubmitOperationalEvent,
   SubmitBusinessEvent,
 } from '@webex/internal-plugin-metrics/src/metrics.types';
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
 import {Profile} from './services/config/types';
@@ -119,10 +122,15 @@ interface IWebexInternal {
       contactsService: string;
     };
   };
+<<<<<<< HEAD
   newMetrics: {
     submitBehavioralEvent: SubmitBehavioralEvent;
     submitOperationalEvent: SubmitOperationalEvent;
     submitBusinessEvent: SubmitBusinessEvent;
+=======
+  metrics: {
+    submitClientMetrics: (name: string, data: unknown) => void;
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   };
 }
 export interface WebexSDK {

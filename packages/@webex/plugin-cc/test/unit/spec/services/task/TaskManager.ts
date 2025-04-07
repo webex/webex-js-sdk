@@ -333,10 +333,14 @@ describe('TaskManager', () => {
     taskManager.currentTask.data = payload.data;
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
+<<<<<<< HEAD
     expect(taskEmitSpy).toHaveBeenCalledWith(
       TASK_EVENTS.TASK_END, 
       { wrapupRequired: false }
     );
+=======
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END);
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
     expect(webCallListenerSpy).toHaveBeenCalledWith();
     expect(callOffSpy).toHaveBeenCalledWith(
       CALL_EVENT_KEYS.REMOTE_MEDIA,
@@ -349,6 +353,7 @@ describe('TaskManager', () => {
     expect(offSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, offSpy.mock.calls[1][1]);
   });
 
+<<<<<<< HEAD
   it('should emit TASK_END event with wrapupRequired on regular call end', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
@@ -379,6 +384,8 @@ describe('TaskManager', () => {
     );
   });
 
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
   it('should emit TASK_HYDRATE event on AGENT_CONTACT event', () => {
     const payload = {
       data: {
@@ -772,6 +779,7 @@ describe('TaskManager', () => {
     expect(taskEmitSpy).not.toHaveBeenCalled();
     expect(taskUpdateTaskDataSpy).not.toHaveBeenCalled();
   });
+<<<<<<< HEAD
 
   it('should emit TASK_CONSULTING event when agent is consulting', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
@@ -811,3 +819,7 @@ describe('TaskManager', () => {
   });
 });
 
+=======
+});
+  
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004

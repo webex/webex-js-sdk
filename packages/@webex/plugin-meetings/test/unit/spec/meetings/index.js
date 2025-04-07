@@ -435,6 +435,7 @@ describe('plugin-meetings', () => {
           webex.meetings.registered = false;
           await webex.meetings.register();
           assert.calledOnceWithExactly(webex.internal.device.register, undefined);
+<<<<<<< HEAD
           assert.called(webex.internal.services.getMeetingPreferences);
           assert.called(webex.internal.services.fetchClientRegionInfo);
           assert.called(webex.internal.mercury.connect);
@@ -448,6 +449,8 @@ describe('plugin-meetings', () => {
 
           await webex.meetings.register();
           assert.calledOnceWithExactly(webex.internal.device.register, undefined);
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
           assert.called(webex.internal.services.getMeetingPreferences);
           assert.called(webex.internal.services.fetchClientRegionInfo);
           assert.called(webex.internal.mercury.connect);

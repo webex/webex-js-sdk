@@ -397,6 +397,20 @@ describe('plugin-meetings', () => {
           },
           getWebexObject: sinon.stub().returns(webex),
           setLocus: sinon.stub(),
+<<<<<<< HEAD
+        };
+      });
+
+      it('#Should call `meetingRequest.joinMeeting', async () => {
+        meeting.isMultistream = true;
+
+        const FAKE_REACHABILITY_REPORT = {
+          id: 'fake reachability report',
+        };
+        const FAKE_CLIENT_MEDIA_PREFERENCES = {
+          id: 'fake client media preferences',
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         };
       });
 
@@ -420,6 +434,19 @@ describe('plugin-meetings', () => {
           .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
           .get(() => true);
 
+<<<<<<< HEAD
+        webex.meetings.reachability.getReachabilityReportToAttachToRoap.resolves(FAKE_REACHABILITY_REPORT);
+        webex.meetings.reachability.getClientMediaPreferences.resolves(FAKE_CLIENT_MEDIA_PREFERENCES);
+
+        sinon
+          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
+          .get(() => true);
+        sinon
+          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
+          .get(() => true);
+
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         await MeetingUtil.joinMeeting(meeting, {
           reachability: 'reachability',
           roapMessage: 'roapMessage',
@@ -460,6 +487,7 @@ describe('plugin-meetings', () => {
         });
       });
 
+<<<<<<< HEAD
 
       it('#Should call `meetingRequest.joinMeeting and handle a date header in the response : isoLocalClientMeetingJoinedTime', async () => {
         meeting.isMultistream = true;
@@ -516,6 +544,20 @@ describe('plugin-meetings', () => {
       it('should not attach reachability if there is no roap message', async () => {
         await MeetingUtil.joinMeeting(meeting, {});
 
+=======
+      it('should handle failed reachability report retrieval', async () => {
+        webex.meetings.reachability.getReachabilityReportToAttachToRoap.rejects(
+          new Error('fake error')
+        );
+        await MeetingUtil.joinMeeting(meeting, {});
+        // Verify meeting join still proceeds
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+      });
+
+      it('should not attach reachability if there is no roap message', async () => {
+        await MeetingUtil.joinMeeting(meeting, {});
+
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         assert.notCalled(webex.meetings.reachability.getReachabilityReportToAttachToRoap);
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
 

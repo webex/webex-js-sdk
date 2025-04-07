@@ -565,7 +565,11 @@ describe('plugin-mercury', () => {
             assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
           }));
 
+<<<<<<< HEAD
       it('disconnects the WebSocket with code 3050', () =>
+=======
+      it('disconnects the WebSocket with code 1050', () =>
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         mercury
           .connect()
           .then(() => {
@@ -574,7 +578,11 @@ describe('plugin-mercury', () => {
             const promise = mercury.disconnect();
 
             mockWebSocket.emit('close', {
+<<<<<<< HEAD
               code: 3050,
+=======
+              code: 1050,
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
               reason: 'done (permanent)',
             });
 

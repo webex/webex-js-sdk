@@ -166,6 +166,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       if (meetingInfo?.webexScheduled && !meetingInfo?.enableEvent && !meetingInfo?.pmr) {
         return WEBEX_SUB_SERVICE_TYPES.SCHEDULED_MEETING;
       }
+<<<<<<< HEAD
 
       // if ConvergedArchitecture enable and isConvergedWebinarWebcast -- then webcast
       if (meetingInfo?.enableConvergedArchitecture && meetingInfo?.enableEvent) {
@@ -176,7 +177,25 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       // if Scheduled, enable event, not pmr - then Webinar
       if (meetingInfo?.webexScheduled && meetingInfo?.enableEvent && !meetingInfo?.pmr) {
+=======
+      // if Scheduled, Webinar, not pmr - then Webinar
+      if (
+        meetingInfo?.webexScheduled &&
+        meetingInfo?.enableEvent &&
+        !meetingInfo?.pmr &&
+        meetingInfo?.isConvergedWebinar
+      ) {
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
         return WEBEX_SUB_SERVICE_TYPES.WEBINAR;
+      }
+      // if Scheduled, Webinar enable webcast - then webcast
+      if (
+        meetingInfo?.webexScheduled &&
+        meetingInfo?.enableEvent &&
+        !meetingInfo?.pmr &&
+        meetingInfo?.isConvergedWebinarWebcast
+      ) {
+        return WEBEX_SUB_SERVICE_TYPES.WEBCAST;
       }
     }
 
@@ -736,10 +755,13 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (joinFlowVersion) {
       clientEventObject.joinFlowVersion = joinFlowVersion;
     }
+<<<<<<< HEAD
     const meetingJoinedTime = meeting.isoLocalClientMeetingJoinTime;
     if (meetingJoinedTime) {
       clientEventObject.meetingJoinedTime = meetingJoinedTime;
     }
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
 
     if (options.meetingJoinPhase) {
       clientEventObject.meetingJoinPhase = options.meetingJoinPhase;
@@ -798,6 +820,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       clientEventObject.meetingJoinPhase = options.meetingJoinPhase;
     }
 
+<<<<<<< HEAD
     if (options.userNameInput) {
       clientEventObject.userNameInput = options.userNameInput;
     }
@@ -806,6 +829,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       clientEventObject.emailInput = options.emailInput;
     }
 
+=======
+>>>>>>> 49c76aacf427049b733518e96f6570fdfa283004
     return clientEventObject;
   }
 
