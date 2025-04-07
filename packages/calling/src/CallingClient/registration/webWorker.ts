@@ -1,6 +1,11 @@
 /* eslint-env worker */
 import {v4 as uuid} from 'uuid';
-import {HTTP_METHODS, WorkerMessageType} from '../../common/types';
+import {
+  HTTP_METHODS,
+  KeepAliveFailureMessage,
+  KeepAliveSuccessMessage,
+  WorkerMessageType,
+} from '../../common/types';
 
 let keepaliveTimer: NodeJS.Timer | undefined;
 
@@ -40,12 +45,19 @@ export const messageHandler = (event: MessageEvent) => {
           const res = await postKeepAlive(accessToken, deviceUrl, url);
           const statusCode = res.status;
           if (keepAliveRetryCount > 0) {
-            postMessage({type: WorkerMessageType.KEEPALIVE_SUCCESS, statusCode});
+            postMessage({
+              type: WorkerMessageType.KEEPALIVE_SUCCESS,
+              statusCode,
+            } as KeepAliveSuccessMessage);
           }
           keepAliveRetryCount = 0;
         } catch (err: unknown) {
           keepAliveRetryCount += 1;
-          postMessage({type: WorkerMessageType.KEEPALIVE_FAILURE, err, keepAliveRetryCount});
+          postMessage({
+            type: WorkerMessageType.KEEPALIVE_FAILURE,
+            err,
+            keepAliveRetryCount,
+          } as KeepAliveFailureMessage);
         }
       }
     }, interval * 1000);
