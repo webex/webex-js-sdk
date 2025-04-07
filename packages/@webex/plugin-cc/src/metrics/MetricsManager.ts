@@ -10,7 +10,7 @@ import {BehavioralEventTaxonomy, getEventTaxonomy} from './behavioral-events';
 import LoggerProxy from '../logger-proxy';
 import {METRIC_EVENT_NAMES} from './constants';
 import {Failure} from '../services/core/GlobalTypes';
-import {EMPTY_STRING, PRODUCT_NAME} from '../constants';
+import {PRODUCT_NAME} from '../constants';
 
 type BehavioralEvent = {
   taxonomy: BehavioralEventTaxonomy;
@@ -277,18 +277,30 @@ export default class MetricsManager {
   }
 
   public static getCommonTrackingFieldForAQMResponse(response: any): Record<string, any> {
+    let teamId;
+    if (response?.data?.teamId) {
+      teamId = response.data.teamId;
+    } else if (response?.teamId) {
+      teamId = response.teamId;
+    } else if (Array.isArray(response?.data?.teams) && response.data.teams.length > 0) {
+      teamId = response.data.teams[0].id;
+    } else if (Array.isArray(response?.teams) && response.teams.length > 0) {
+      teamId = response.teams[0].id;
+    }
+
     const fields = {
-      agentId: response?.data?.agentId || EMPTY_STRING,
-      teamId: response?.data?.teamId || EMPTY_STRING, // TODO: handle multiple teams
-      siteId: response?.data?.siteId || EMPTY_STRING,
-      orgId: response?.orgId || EMPTY_STRING,
-      eventType: response?.type || EMPTY_STRING,
-      trackingId: response?.data?.trackingId || EMPTY_STRING,
-      notifTrackingId: response?.trackingId || EMPTY_STRING,
+      agentId: response?.data?.agentId || response?.agentId,
+      agentSessionId: response?.data?.agentSessionId || response?.agentSessionId,
+      teamId, // multiple teams is returned only when doing websocket register
+      siteId: response?.data?.siteId || response?.siteId,
+      orgId: response?.data?.orgId || response?.orgId,
+      eventType: response?.type,
+      trackingId: response?.data?.trackingId,
+      notifTrackingId: response?.trackingId,
     };
 
     Object.keys(fields).forEach((key) => {
-      if (fields[key] === '' || fields[key] === undefined || fields[key] === null) {
+      if (typeof fields[key] === 'undefined' || fields[key] === null) {
         delete fields[key];
       }
     });
@@ -300,17 +312,17 @@ export default class MetricsManager {
     failureResponse: Failure
   ): Record<string, any> {
     const fields = {
-      agentId: failureResponse?.data?.agentId || EMPTY_STRING,
-      trackingId: failureResponse?.trackingId || EMPTY_STRING,
-      notifTrackingId: failureResponse?.trackingId || EMPTY_STRING,
-      orgId: failureResponse?.orgId || EMPTY_STRING,
-      failureType: failureResponse?.type || EMPTY_STRING,
-      failureReason: failureResponse?.data?.reason || EMPTY_STRING,
-      reasonCode: failureResponse?.data?.reasonCode || EMPTY_STRING,
+      agentId: failureResponse?.data?.agentId,
+      trackingId: failureResponse?.trackingId,
+      notifTrackingId: failureResponse?.trackingId,
+      orgId: failureResponse?.orgId,
+      failureType: failureResponse?.type,
+      failureReason: failureResponse?.data?.reason,
+      reasonCode: failureResponse?.data?.reasonCode,
     };
 
     Object.keys(fields).forEach((key) => {
-      if (fields[key] === '' || fields[key] === undefined || fields[key] === null) {
+      if (typeof fields[key] === 'undefined' || fields[key] === null) {
         delete fields[key];
       }
     });

@@ -417,7 +417,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(agentStatusResponse),
-          state: data.state,
+          requestedState: data.state,
+          teamId: this.agentConfig.teams[0]?.teamId,
+          status: agentStatusResponse.data.status,
+          subStatus: agentStatusResponse.data.subStatus,
           auxCodeId: data.auxCodeId,
           lastStateChangeReason: data.lastStateChangeReason || EMPTY_STRING,
         },
