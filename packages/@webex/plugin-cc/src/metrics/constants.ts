@@ -1,3 +1,5 @@
+type Enum<T extends Record<string, unknown>> = T[keyof T];
+
 export const METRIC_EVENT_NAMES = {
   STATION_LOGIN_SUCCESS: 'Station Login Success',
   STATION_LOGIN_FAILED: 'Station Login Failed',
