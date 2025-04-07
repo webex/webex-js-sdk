@@ -63,7 +63,7 @@ const agentMultiLoginAlert = document.querySelector('#agentMultiLoginAlert');
 const consultTransferBtn = document.querySelector('#consult-transfer');
 const transferElm = document.getElementById('transfer');
 const timerElm = document.querySelector('#timerDisplay');
-const chatElm = document.querySelector('#chatWidget');
+const engageElm = document.querySelector('#engageWidget');
 let isBundleLoaded = false; // this is just to check before loading/using engage widgets
 
 loadMomentumLibs();
@@ -1378,7 +1378,7 @@ function loadChatWidget(task) {
   const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
   incomingDetailsElm.innerText = `chat from ${callerDisplay}`;
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
-  chatElm.innerHTML = `
+  engageElm.innerHTML = `
   <imi-engage
     theme="LIGHT"
     lang="en-US"
@@ -1390,12 +1390,12 @@ function loadEmailWidget(task) {
   const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
   incomingDetailsElm.innerText = `email from ${callerDisplay}`;
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
-  emailElm.innerHTML = `
-    <imi-email-composer
+  engageElm.innerHTML = `
+  <imi-email-composer
   taskId="${mediaId}"
   orgId="${task.data.orgId}"
   agentName="${agentName}"
   agentId="${agentId}"
-  interactionId="${task.data.interactionId}"
-></imi-email-composer>`;
+  interactionId="${task.data.interactionId}"> 
+  </imi-email-composer>`;
 }
