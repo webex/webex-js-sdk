@@ -66,8 +66,6 @@ const timerElm = document.querySelector('#timerDisplay');
 const engageElm = document.querySelector('#engageWidget');
 let isBundleLoaded = false; // this is just to check before loading/using engage widgets
 
-loadMomentumLibs();
-
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
   tokenElm.value = sessionStorage.getItem('access-token');
@@ -731,7 +729,7 @@ function initWebex(e) {
     registerStatus.innerHTML = 'Not Subscribed';
     registerBtn.disabled = false;
     // Dynamically add the IMI Engage controller bundle script
-    loadEngageWidget();
+    initializeEngageWidget();
   });
 
   return false;
@@ -1240,69 +1238,48 @@ function declineTask(task) {
 const handleBundleLoaded = () => {
   console.log("bundle.js has been loaded.");
   isBundleLoaded = true;
-  const config = {
-    logger: {
-      info: (data) => {
-        console.log(data);
-      },
-      error: (data) => {
-        console.error(data);
-      },
-      warn: (data) => {
-        console.warn(data);
-      },
-      debug: (data) => {
-        console.debug(data);
-      },
-    },
-    cb: (name, data) => {
-      const event = new CustomEvent(name, {
-        detail: data,
-      });
-      window.dispatchEvent(event);
-      // showNotification('EVENT', name);
-    },
-  };
-  const imiEngageWC = new window.ImiEngageWC(config);
-  imiEngageWC.setParam("data", {
-    jwt: tokenElm.value,
-    lang: "en-US",
-    source: "wxcc",
-  });
-
 };
+
+const initializeEngageWidget = () => {
+  if (isBundleLoaded) {
+    const config = {
+      logger: {
+        info: (data) => {
+          console.log(data);
+        },
+        error: (data) => {
+          console.error(data);
+        },
+        warn: (data) => {
+          console.warn(data);
+        },
+        debug: (data) => {
+          console.debug(data);
+        },
+      },
+      cb: (name, data) => {
+        const event = new CustomEvent(name, {
+          detail: data,
+        });
+        window.dispatchEvent(event);
+        // showNotification('EVENT', name);
+      },
+    };
+    const imiEngageWC = new window.ImiEngageWC(config);
+    imiEngageWC.setParam("data", {
+      jwt: tokenElm.value,
+      lang: "en-US",
+      source: "wxcc",
+    });
+  } else {
+    console.error("Bundle not loaded yet.");
+  }
+}
 
 document.addEventListener(
   "imi-engage-bundle-load-success",
   handleBundleLoaded
 );
-
-function loadEngageWidget() {
-  const imiControllerBundleScript = document.createElement('script');
-  imiControllerBundleScript.id = "imi-controller-bundle";
-  imiControllerBundleScript.setAttribute('dc', 'produs1');
-  imiControllerBundleScript.src = "https://wc.imiengage.io/engage.js";
-  document.head.appendChild(imiControllerBundleScript);
-}
-
-function loadMomentumLibs() {
-  // Dynamically add the required script and stylesheets for Momentum UI This is required for the IMI Engage widget to work properly
-  const momentumScript = document.createElement('script');
-  momentumScript.src = "https://wc.imiengage.io/v0.9.11/momentum/momentum.js";
-  document.head.appendChild(momentumScript);
-
-  const momentumStylesheet = document.createElement('link');
-  momentumStylesheet.rel = "stylesheet";
-  momentumStylesheet.type = "text/css";
-  momentumStylesheet.href = "https://wc.imiengage.io/v0.9.11/momentum/css/momentum-ui.min.css";
-  document.head.appendChild(momentumStylesheet);
-
-  const momentumIconsStylesheet = document.createElement('link');
-  momentumIconsStylesheet.rel = "stylesheet";
-  momentumIconsStylesheet.type = "text/css";
-  momentumIconsStylesheet.href = "https://wc.imiengage.io/v0.9.11/momentum/css/momentum-ui-icons.css";
-  document.head.appendChild(momentumIconsStylesheet);
-}
 
 function updateTaskList() {
   const taskList = webex.cc.taskManager.getAllTasks(); // Update the global task list
