@@ -1054,6 +1054,7 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   answerElm.disabled = true;
   declineElm.disabled = true;
   await currentTask.accept();
+  updateTaskList();
   handleTaskClick(currentTask);
   incomingDetailsElm.innerText = 'Task Accepted';
 }

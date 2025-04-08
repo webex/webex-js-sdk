@@ -280,20 +280,24 @@ describe('Task', () => {
 
   it('should accept a task when mediaType chat', async () => {
     task.data.interaction.mediaType = 'chat';
+    const answerCallSpy = jest.spyOn(webCallingService, 'answerCall');
     
     await task.accept();
     expect(contactMock.accept).toHaveBeenCalledWith({
       interactionId: taskId,
     });
+    expect(answerCallSpy).not.toHaveBeenCalled();
   });
 
   it('should accept a task when mediaType email', async () => {
     task.data.interaction.mediaType = 'email';
-    
+    const answerCallSpy = jest.spyOn(webCallingService, 'answerCall');
+
     await task.accept();
     expect(contactMock.accept).toHaveBeenCalledWith({
       interactionId: taskId,
     });
+    expect(answerCallSpy).not.toHaveBeenCalled();
   });
 
   it('should call accept API for Extension login option', async () => {
