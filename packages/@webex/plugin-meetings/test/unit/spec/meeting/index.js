@@ -8695,7 +8695,6 @@ describe('plugin-meetings', () => {
           });
 
           it('should send metrics for SdpAnswerHandlingError error', () => {
-            // Add check that timer was closed
             meeting.sdpResponseTimer = '1234';
             
             const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
