@@ -16,14 +16,23 @@ import config from '../../../src/config';
 import {CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
 import * as Utils from '../../../src/services/core/Utils';
-import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN, OUTDIAL_DIRECTION, OUTBOUND_TYPE, ATTRIBUTES, OUTDIAL_MEDIA_TYPE} from '../../../src/constants';
+import {
+  CC_FILE,
+  AGENT_STATE_CHANGE,
+  AGENT_MULTI_LOGIN,
+  OUTDIAL_DIRECTION,
+  OUTBOUND_TYPE,
+  ATTRIBUTES,
+  OUTDIAL_MEDIA_TYPE,
+} from '../../../src/constants';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
-import { AgentContact, TASK_EVENTS } from '../../../src/services/task/types';
+import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
 import MetricsManager from '../../../src/metrics/MetricsManager';
+import Mercury from '@webex/internal-plugin-mercury';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -54,6 +63,7 @@ describe('webex.cc', () => {
     webex = MockWebex({
       children: {
         cc: ContactCenter,
+        mercury: Mercury,
       },
       logger: {
         log: jest.fn(),
@@ -182,57 +192,223 @@ describe('webex.cc', () => {
   });
 
   describe('register', () => {
+    const mockAgentProfile: Profile = {
+      agentId: 'agent123',
+      agentMailId: '',
+      agentName: 'John',
+      teams: [],
+      agentProfileID: '',
+      loginVoiceOptions: ['BROWSER', 'EXTENSION'],
+      idleCodes: [],
+      wrapupCodes: [],
+      defaultDn: '',
+      forceDefaultDn: false,
+      forceDefaultDnForAgent: false,
+      regexUS: '',
+      regexOther: '',
+      dialPlan: {
+        type: '',
+        dialPlanEntity: [],
+      },
+      skillProfileId: '',
+      siteId: '',
+      enterpriseId: '',
+      privacyShieldVisible: true,
+      defaultWrapupCode: '',
+      wrapUpData: {
+        wrapUpProps: {
+          autoWrapup: undefined,
+          autoWrapupInterval: undefined,
+          lastAgentRoute: undefined,
+          wrapUpReasonList: [],
+          wrapUpCodesList: undefined,
+          idleCodesAccess: undefined,
+          interactionId: undefined,
+          allowCancelAutoWrapup: undefined,
+        },
+      },
+      isOutboundEnabledForTenant: false,
+      isOutboundEnabledForAgent: false,
+      isAdhocDialingEnabled: false,
+      isAgentAvailableAfterOutdial: false,
+      isCampaignManagementEnabled: false,
+      outDialEp: '',
+      isEndCallEnabled: false,
+      isEndConsultEnabled: false,
+      agentDbId: '',
+      allowConsultToQueue: false,
+      agentPersonalStatsEnabled: false,
+      isTimeoutDesktopInactivityEnabled: false,
+      webRtcEnabled: true,
+      lostConnectionRecoveryTimeout: 0,
+    };
+
     it('should register successfully and return agent profile', async () => {
-      const mockAgentProfile: Profile = {
+      const mercuryConnect = jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
+      const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
+      const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          deviceType: LoginOption.EXTENSION,
+          dn: '12345',
+        },
+      });
+      const configSpy = jest
+        .spyOn(webex.cc.services.config, 'getAgentConfig')
+        .mockResolvedValue(mockAgentProfile);
+      mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
-        agentMailId: '',
-        agentName: 'John',
-        teams: [],
-        agentProfileID: '',
-        loginVoiceOptions: [],
-        idleCodes: [],
-        wrapupCodes: [],
-        defaultDn: '',
-        forceDefaultDn: false,
-        forceDefaultDnForAgent: false,
-        regexUS: '',
-        regexOther: '',
-        dialPlan: {
-          type: '',
-          dialPlanEntity: [],
+      });
+
+      const result = await webex.cc.register();
+
+      expect(mercuryConnect).toHaveBeenCalled();
+      expect(connectWebsocketSpy).toHaveBeenCalled();
+      expect(setupEventListenersSpy).toHaveBeenCalled();
+      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
         },
-        skillProfileId: '',
-        siteId: '',
-        enterpriseId: '',
-        privacyShieldVisible: true,
-        defaultWrapupCode: '',
-        wrapUpData: {
-          wrapUpProps: {
-            autoWrapup: undefined,
-            autoWrapupInterval: undefined,
-            lastAgentRoute: undefined,
-            wrapUpReasonList: [],
-            wrapUpCodesList: undefined,
-            idleCodesAccess: undefined,
-            interactionId: undefined,
-            allowCancelAutoWrapup: undefined,
-          },
+      });
+
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_INCOMING,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
+
+      expect(configSpy).toHaveBeenCalled();
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
+        module: CC_FILE,
+        method: 'mockConstructor',
+      });
+      expect(reloadSpy).toHaveBeenCalled();
+      expect(result).toEqual(mockAgentProfile);
+    });
+
+    it('should not register when config is undefined', async () => {
+      webex.cc.$config = undefined;
+      jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
+      const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
         },
-        isOutboundEnabledForTenant: false,
-        isOutboundEnabledForAgent: false,
-        isAdhocDialingEnabled: false,
-        isAgentAvailableAfterOutdial: false,
-        isCampaignManagementEnabled: false,
-        outDialEp: '',
-        isEndCallEnabled: false,
-        isEndConsultEnabled: false,
-        agentDbId: '',
-        allowConsultToQueue: false,
-        agentPersonalStatsEnabled: false,
-        isTimeoutDesktopInactivityEnabled: false,
-        webRtcEnabled: false,
-        lostConnectionRecoveryTimeout: 0,
-      };
+      });
+
+      const configSpy = jest
+        .spyOn(webex.cc.services.config, 'getAgentConfig')
+        .mockResolvedValue(mockAgentProfile);
+
+      mockWebSocketManager.initWebSocket.mockResolvedValue({
+        agentId: 'agent123',
+      });
+
+      const result = await webex.cc.register();
+
+      expect(connectWebsocketSpy).toHaveBeenCalled();
+      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: true,
+        },
+      });
+      expect(configSpy).toHaveBeenCalled();
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
+        module: CC_FILE,
+        method: 'mockConstructor',
+      });
+      expect(reloadSpy).not.toHaveBeenCalled();
+      expect(result).toEqual(mockAgentProfile);
+    });
+
+    it('should log error and reject if registration fails', async () => {
+      jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
+      const mockError = new Error('Error while performing register');
+      mockWebSocketManager.initWebSocket.mockRejectedValue(mockError);
+
+      await expect(webex.cc.register()).rejects.toThrow('Error while performing register');
+
+      expect(LoggerProxy.error).toHaveBeenCalledWith(`Error during register: ${mockError}`, {
+        module: CC_FILE,
+        method: 'register',
+      });
+    });
+
+    it('should log error if mercury connect fails but cc.register() should not fail', async () => {
+      const mockError = new Error('Error while performing mercury connect');
+      jest.spyOn(webex.internal.mercury, 'connect').mockRejectedValue(mockError);
+
+      const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
+      const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          deviceType: LoginOption.EXTENSION,
+          dn: '12345',
+        },
+      });
+      const configSpy = jest
+        .spyOn(webex.cc.services.config, 'getAgentConfig')
+        .mockResolvedValue(mockAgentProfile);
+      mockWebSocketManager.initWebSocket.mockResolvedValue({
+        agentId: 'agent123',
+      });
+
+      const result = await webex.cc.register();
+
+      expect(LoggerProxy.error).toHaveBeenCalledWith(`Error occurred during mercury.connect() ${mockError}`, {
+        module: CC_FILE,
+        method: 'mockConstructor',
+      });
+      expect(connectWebsocketSpy).toHaveBeenCalled();
+      expect(setupEventListenersSpy).toHaveBeenCalled();
+      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        },
+      });
+
+
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_INCOMING,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
+
+      expect(configSpy).toHaveBeenCalled();
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
+        module: CC_FILE,
+        method: 'mockConstructor',
+      });
+      expect(reloadSpy).toHaveBeenCalled();
+      expect(result).toEqual(mockAgentProfile);
+    });
+
+    it('should not attempt for mercury connection when webrtc is disabled', async () => {
+      mockAgentProfile.webRtcEnabled = false;
+      const mercurySpy = jest.spyOn(webex.internal.mercury, 'connect');
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
       const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
@@ -263,129 +439,14 @@ describe('webex.cc', () => {
         },
       });
 
-      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
-      expect(mockTaskManager.on).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_INCOMING,
-        expect.any(Function)
-      );
-      expect(mockTaskManager.on).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_HYDRATE,
-        expect.any(Function)
-      );
-      expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
-
       expect(configSpy).toHaveBeenCalled();
-      expect(LoggerProxy.log).toHaveBeenCalledWith('agent config is fetched successfully', {
-        module: CC_FILE,
-        method: 'mockConstructor',
-      });
-      expect(reloadSpy).toHaveBeenCalled();
+      expect(mercurySpy).not.toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
-    });
-
-    it('should not register when config is undefined', async () => {
-      webex.cc.$config = undefined;
-      const mockAgentProfile: Profile = {
-        agentId: 'agent123',
-        agentMailId: '',
-        agentName: 'John',
-        teams: [],
-        loginVoiceOptions: [],
-        idleCodes: [],
-        wrapupCodes: [],
-        defaultDn: '',
-        forceDefaultDn: false,
-        forceDefaultDnForAgent: false,
-        regexUS: '',
-        regexOther: '',
-        agentProfileID: '',
-        dialPlan: {
-          type: '',
-          dialPlanEntity: [],
-        },
-        skillProfileId: '',
-        siteId: '',
-        enterpriseId: '',
-        privacyShieldVisible: false,
-        defaultWrapupCode: '',
-        wrapUpData: {
-          wrapUpProps: {
-            autoWrapup: undefined,
-            autoWrapupInterval: undefined,
-            lastAgentRoute: undefined,
-            wrapUpReasonList: [],
-            wrapUpCodesList: undefined,
-            idleCodesAccess: undefined,
-            interactionId: undefined,
-            allowCancelAutoWrapup: undefined,
-          },
-        },
-        isOutboundEnabledForTenant: false,
-        isOutboundEnabledForAgent: false,
-        isAdhocDialingEnabled: false,
-        isAgentAvailableAfterOutdial: false,
-        isCampaignManagementEnabled: false,
-        outDialEp: '',
-        isEndCallEnabled: false,
-        isEndConsultEnabled: false,
-        agentDbId: '',
-        allowConsultToQueue: false,
-        agentPersonalStatsEnabled: false,
-        isTimeoutDesktopInactivityEnabled: false,
-        webRtcEnabled: false,
-        lostConnectionRecoveryTimeout: 0,
-      };
-      const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
-      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
-        data: {
-          auxCodeId: 'auxCodeId',
-          agentId: 'agentId',
-        },
-      });
-
-      const configSpy = jest
-        .spyOn(webex.cc.services.config, 'getAgentConfig')
-        .mockResolvedValue(mockAgentProfile);
-
-      mockWebSocketManager.initWebSocket.mockResolvedValue({
-        agentId: 'agent123',
-      });
-
-      const result = await webex.cc.register();
-
-      expect(connectWebsocketSpy).toHaveBeenCalled();
-      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: true,
-        },
-      });
-      expect(configSpy).toHaveBeenCalled();
-      expect(LoggerProxy.log).toHaveBeenCalledWith('agent config is fetched successfully', {
-        module: CC_FILE,
-        method: 'mockConstructor',
-      });
-      expect(reloadSpy).not.toHaveBeenCalled();
-      expect(result).toEqual(mockAgentProfile);
-    });
-
-    it('should log error and reject if registration fails', async () => {
-      const mockError = new Error('Error while performing register');
-      mockWebSocketManager.initWebSocket.mockRejectedValue(mockError);
-
-      await expect(webex.cc.register()).rejects.toThrow('Error while performing register');
-
-      expect(LoggerProxy.error).toHaveBeenCalledWith(`Error during register: ${mockError}`, {
-        module: CC_FILE,
-        method: 'register',
-      });
     });
   });
 
   describe('stationLogin', () => {
-    it('should login successfully with LoginOption.BROWSER', async () => {
+    it('should login successfully with LoginOption.BROWSER and webrtc enabled', async () => {
       const mockTask = {};
       const options = {
         teamId: 'teamId',
@@ -394,13 +455,14 @@ describe('webex.cc', () => {
 
       webex.cc.agentConfig = {
         agentId: 'agentId',
+        webRtcEnabled: true,
+        loginVoiceOptions: ['BROWSER', 'EXTENSION', 'AGENT_DN']
       };
 
       const registerWebCallingLineSpy = jest.spyOn(
         webex.cc.webCallingService,
         'registerWebCallingLine'
       );
-
 
       const mockData = {
         data: {
@@ -416,7 +478,7 @@ describe('webex.cc', () => {
         orgId: 'orgId',
         type: 'StationLoginSuccess',
         eventType: 'STATION_LOGIN',
-      }
+      };
 
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
@@ -477,7 +539,65 @@ describe('webex.cc', () => {
       expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_MULTI_LOGIN, agentMultiLoginEventData.data);
     });
 
+    it('should not attempt mobius registration for LoginOption.BROWSER if webrtc is disabled', async () => {
+      const options = {
+        teamId: 'teamId',
+        loginOption: LoginOption.BROWSER,
+      };
+
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: false
+      };
+
+      const mockData = {
+        data: {
+          loginOption: LoginOption.BROWSER,
+          agentId: 'agentId',
+          teamId: 'teamId',
+          siteId: 'siteId',
+          roles: [AGENT],
+          trackingId: '1234',
+          eventType: 'DESKTOP_MESSAGE',
+        },
+        trackingId: '1234',
+        orgId: 'orgId',
+        type: 'StationLoginSuccess',
+        eventType: 'STATION_LOGIN',
+      }
+
+      const registerWebCallingLineSpy = jest.spyOn(
+        webex.cc.webCallingService,
+        'registerWebCallingLine'
+      );
+
+      const stationLoginSpy = jest
+        .spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue(mockData as unknown as StationLoginSuccess);
+
+      await webex.cc.stationLogin(options);
+
+      expect(registerWebCallingLineSpy).not.toHaveBeenCalled();
+      expect(stationLoginSpy).toHaveBeenCalledWith({
+        data: {
+          dialNumber: 'agentId',
+          teamId: 'teamId',
+          deviceType: LoginOption.BROWSER,
+          isExtension: false,
+          deviceId: `${WEB_RTC_PREFIX}agentId`,
+          roles: [AGENT],
+          teamName: '',
+          siteId: '',
+          usesOtherDN: false,
+          auxCodeId: '',
+        },
+      });
+    });
+
     it('should login successfully with other LoginOption', async () => {
+      webex.cc.agentConfig = {
+        webRtcEnabled: true
+      };
+
       const options = {
         teamId: 'teamId',
         loginOption: LoginOption.AGENT_DN,
@@ -498,7 +618,7 @@ describe('webex.cc', () => {
         orgId: 'orgId',
         type: 'StationLoginSuccess',
         eventType: 'STATION_LOGIN',
-      }
+      };
 
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
@@ -524,6 +644,10 @@ describe('webex.cc', () => {
     });
 
     it('should handle error during stationLogin', async () => {
+      webex.cc.agentConfig = {
+        webRtcEnabled: true
+      };
+
       const options = {
         teamId: 'teamId',
         loginOption: LoginOption.EXTENSION,
@@ -1035,13 +1159,76 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.dialer, 'startOutdial').mockRejectedValue(error);
 
-      await expect(webex.cc.startOutdial(invalidDestination)).rejects.toThrow(error.details.data.reason);
+      await expect(webex.cc.startOutdial(invalidDestination)).rejects.toThrow(
+        error.details.data.reason
+      );
 
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `startOutdial failed with trackingId: ${error.details.trackingId}`,
         {module: CC_FILE, method: 'startOutdial'}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'startOutdial', CC_FILE);
+    });
+  });
+
+  describe('getQueues', () => {
+    it('should return queues response when successful', async () => {
+      const mockQueuesResponse = [
+        {
+          queueId: 'queue1',
+          queueName: 'Queue 1',
+        },
+        {
+          queueId: 'queue2',
+          queueName: 'Queue 2',
+        },
+      ];
+
+      webex.cc.services.config.getQueues = jest.fn().mockResolvedValue(mockQueuesResponse);
+
+      const result = await webex.cc.getQueues();
+
+      expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
+        'mockOrgId',
+        0,
+        100,
+        undefined,
+        undefined
+      );
+      expect(result).toEqual(mockQueuesResponse);
+    });
+
+    it('shoule throw an error if orgId is not present', async () => {
+      jest.spyOn(webex.credentials, 'getOrgId').mockResolvedValue(undefined);
+      webex.cc.services.config.getQueues = jest.fn();
+
+      try {
+        await webex.cc.getQueues();
+      } catch (error) {
+        expect(error).toEqual(new Error('Org ID not found.'));
+        expect(LoggerProxy.error).toHaveBeenCalledWith('Org ID not found.', {
+          module: CC_FILE,
+          method: 'getQueues',
+        });
+        expect(webex.cc.services.config.getQueues).not.toHaveBeenCalled();
+      }
+    });
+
+    it('shoule throw an error if config getQueues throws an error', async () => {
+      webex.cc.services.config.getQueues = jest.fn().mockRejectedValue(new Error('Test error.'));
+
+      try {
+        await webex.cc.getQueues();
+      } catch (error) {
+        expect(error).toEqual(new Error('Test error.'));
+        expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
+          'mockOrgId',
+          0,
+          100,
+          undefined,
+          undefined
+        );
+      }
     });
   });
 });

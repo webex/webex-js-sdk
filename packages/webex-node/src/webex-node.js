@@ -9,8 +9,6 @@
 /* eslint camelcase: [0] */
 
 require('@webex/plugin-authorization');
-// explicitly load wdm, since we're relying on preDiscoveryServices and the
-// url interceptor
 require('@webex/internal-plugin-calendar');
 require('@webex/internal-plugin-device');
 require('@webex/internal-plugin-presence');
@@ -19,7 +17,6 @@ require('@webex/internal-plugin-llm');
 require('@webex/plugin-attachment-actions');
 require('@webex/plugin-device-manager');
 require('@webex/plugin-logger');
-require('@webex/plugin-meetings');
 require('@webex/plugin-messages');
 require('@webex/plugin-memberships');
 require('@webex/plugin-people');
@@ -33,16 +30,7 @@ const WebexCore = require('@webex/webex-core').default;
 
 const config = require('./config');
 
-// documentation.js puts hashes in relative urls, so need to specify full urls
-// here
-/**
- * See {@link https://webex.github.io/webex-js-sdk/example/browsers|Browser Guide} and
- * {@link https://webex.github.io/webex-js-sdk/example/servers|Server Guide}
- * @see {@link /example/browsers|Browser Guide}
- * @see {@link /example/servers|Server Guide}
- * @class Webex
- */
-const Webex = WebexCore.extend({
+const WebexNode = WebexCore.extend({
   webex: true,
   version: PACKAGE_VERSION,
 });
@@ -51,8 +39,8 @@ const Webex = WebexCore.extend({
  * Create a new {@link Webex} instance
  *
  * @example
- * <caption>Create a new Webex instance configured for your OAuth client</caption>
- * const webex = Webex.init({
+ * <caption>Create a new WebexNode instance configured for your OAuth client</caption>
+ * const webex = WebexNode.init({
  *   config: {
  *     credentials: {
  *       authorizationString: `<AUTHORIZATION URL FROM DEVELOPER PORTAL>`
@@ -61,8 +49,8 @@ const Webex = WebexCore.extend({
  * });
  *
  * @example
- * <caption>Create a new Webex instance configured for a Bot</caption>
- * const webex = Webex.init({
+ * <caption>Create a new WebexNode instance configured for a Bot</caption>
+ * const webex = WebexNode.init({
  *   credentials: `<BOT TOKEN FROM DEVELOPER PORTAL>`
  * });
  *
@@ -72,16 +60,16 @@ const Webex = WebexCore.extend({
  * @memberof Webex
  * @returns {Webex}
  */
-Webex.init = function init(attrs = {}) {
+WebexNode.init = function init(attrs = {}) {
   attrs.config = merge(
     {
-      sdkType: 'webex',
+      sdkType: 'webex-node',
     },
     config,
     attrs.config
   ); // eslint-disable-line no-param-reassign
 
-  return new Webex(attrs);
+  return new WebexNode(attrs);
 };
 
-module.exports = Webex;
+module.exports = WebexNode;
