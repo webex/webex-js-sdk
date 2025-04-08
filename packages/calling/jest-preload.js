@@ -17,7 +17,3 @@ global.Worker = class {
 
   terminate() {}
 };
-
-jest.mock('./src/common/webWorkerConstant', () => ({
-  BASE_URL: 'https://example.com/some/path/module.js',
-}));

@@ -1,11 +1,6 @@
 /* eslint-env worker */
 import {v4 as uuid} from 'uuid';
-import {
-  HTTP_METHODS,
-  KeepAliveFailureMessage,
-  KeepAliveSuccessMessage,
-  WorkerMessageType,
-} from '../../common/types';
+import {HTTP_METHODS, KeepaliveStatusMessage, WorkerMessageType} from '../../common/types';
 
 let keepaliveTimer: NodeJS.Timer | undefined;
 
@@ -48,7 +43,7 @@ export const messageHandler = (event: MessageEvent) => {
             postMessage({
               type: WorkerMessageType.KEEPALIVE_SUCCESS,
               statusCode,
-            } as KeepAliveSuccessMessage);
+            } as KeepaliveStatusMessage);
           }
           keepAliveRetryCount = 0;
         } catch (err: unknown) {
@@ -57,7 +52,7 @@ export const messageHandler = (event: MessageEvent) => {
             type: WorkerMessageType.KEEPALIVE_FAILURE,
             err,
             keepAliveRetryCount,
-          } as KeepAliveFailureMessage);
+          } as KeepaliveStatusMessage);
         }
       }
     }, interval * 1000);
