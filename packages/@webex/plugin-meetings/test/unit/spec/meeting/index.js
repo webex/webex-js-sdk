@@ -8696,6 +8696,9 @@ describe('plugin-meetings', () => {
 
           it('should send metrics for SdpAnswerHandlingError error', () => {
             meeting.sdpResponseTimer = '1234';
+            meeting.deferSDPAnswer = {
+              reject: sinon.stub(),
+            };
             
             const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
 
@@ -8713,6 +8716,7 @@ describe('plugin-meetings', () => {
               fakeErrorMessage,
               fakeRootCauseName
             );
+            assert.calledOnce(meeting.deferSDPAnswer.reject);
             assert.calledOnce(clearTimeoutSpy);
           });
 
