@@ -611,15 +611,8 @@ function registerTaskListeners(task) {
   });
   
   task.on('task:rejected', (reason) => {
-    if (currentTask.data.interactionId === task.data.interactionId) {
-      console.info('Task is rejected with reason:', reason);
-      if (reason === 'RONA_TIMER_EXPIRED') {
-        answerElm.disabled = true;
-        declineElm.disabled = true;
-        incomingDetailsElm.innerText = 'No incoming calls';
-      }
-      showAgentStatePopup(reason);
-    }
+    console.info('Task is rejected with reason:', reason);
+    showAgentStatePopup(reason);
   });
 }
 
@@ -1309,7 +1302,7 @@ function renderTaskList(taskList) {
         <div class="task-item-content">
         <p>${callerDisplay}</p>
         ${isNew ? `<button class="accept-task" data-task-id="${taskId}">Accept</button>` : ''}
-        ${isTelephony ? `<button class="decline-task" data-task-id="${taskId}">Decline</button>` : ''}
+        ${isTelephony && isNew ? `<button class="decline-task" data-task-id="${taskId}">Decline</button>` : ''}
         </div>
         <hr class="task-separator">
         `;
