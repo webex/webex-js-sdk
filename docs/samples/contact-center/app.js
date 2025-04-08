@@ -1021,13 +1021,13 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 
   const callerDisplay = currentTask.data.interaction?.callAssociatedDetails?.ani;
   registerTaskListeners(currentTask);
-  if(currentTask.data.interaction.mediaType === 'chat')
-  {
+  if(currentTask?.data?.interaction?.mediaType === 'chat')  
+    {
     answerElm.disabled = false;
     declineElm.disabled = true;
 
     incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
-  } else if(currentTask.data.interaction.mediaType === 'email')
+  } else if(currentTask?.data?.interaction?.mediaType === 'email')
   {
     answerElm.disabled = false;
     declineElm.disabled = true;
