@@ -40,8 +40,7 @@ class ReachabilityRequest {
   getClusters = (
     trigger: GetClustersTrigger,
     ipVersion?: IP_VERSION,
-    previousReport?: any,
-    clientEnvironment?: {components: Record<string, string>}
+    previousReport?: any
   ): Promise<{
     clusters: ClusterList;
     joinCookie: any;
@@ -72,7 +71,10 @@ class ReachabilityRequest {
               'early-call-min-clusters': true,
             },
             'previous-report': previousReport,
-            'client-environment': {components: {[appType]: appVersion}},
+            ...(appType &&
+              appVersion && {
+                'client-environment': {components: {[appType]: appVersion}},
+              }),
             trigger,
           },
           timeout: this.webex.config.meetings.reachabilityGetClusterTimeout,

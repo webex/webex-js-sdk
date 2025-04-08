@@ -12,6 +12,9 @@ describe('plugin-meetings/reachability', () => {
   let reachabilityRequest;
   let webex;
 
+  let appType;
+  let appVersion;
+
   beforeEach(() => {
     webex = new MockWebex({
       children: {
@@ -24,6 +27,9 @@ describe('plugin-meetings/reachability', () => {
       'appType': 'NetworkChecker',
       'appVersion': '43.3.0.1',
     }
+
+    appType = webex?.config?.support?.appType;
+    appVersion = webex?.config?.support?.appVersion;
 
     webex.meetings.clientRegion = {
       countryCode: 'US',
@@ -64,11 +70,7 @@ describe('plugin-meetings/reachability', () => {
         id: 'fake previous report',
       };
 
-      clientEnvironment = {
-        components: {
-          [webex.config.support.appType]: webex.config.support.appVersion,
-        },
-      };
+
     });
 
     afterEach(() => {
@@ -91,7 +93,9 @@ describe('plugin-meetings/reachability', () => {
             'report-version': 1,
             'early-call-min-clusters': true,
           },
-          'client-environment': clientEnvironment,
+          ...(appType && appVersion && {
+            'client-environment': { components: { [appType]: appVersion } },
+          }),
           'previous-report': previousReport,
           trigger: 'startup',
         },
@@ -118,7 +122,9 @@ describe('plugin-meetings/reachability', () => {
             'report-version': 1,
             'early-call-min-clusters': true,
           },
-          'client-environment': clientEnvironment,
+          ...(appType && appVersion && {
+            'client-environment': { components: { [appType]: appVersion } },
+          }),
           'previous-report': previousReport,
           trigger: 'early-call/no-min-reached',
         },
