@@ -131,11 +131,9 @@ describe('plugin-meetings/reachability', () => {
     });
 
     it('sends a POST request with the correct params when appVersion is undefined', async () => {
-      // Mocking appType & appVersion to undefined
+      // Setting appType & appVersion to undefined
       webex.config.support.appType = undefined;
       webex.config.support.appVersion = undefined;
-      appType = webex?.config?.support?.appType;
-      appVersion = webex?.config?.support?.appVersion;
     
       const res = await reachabilityRequest.getClusters('startup', IP_VERSION.only_ipv4, previousReport);
       const requestParams = webex.request.getCall(0).args[0];
