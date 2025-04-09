@@ -17,13 +17,3 @@ global.Worker = class {
 
   terminate() {}
 };
-
-jest.mock('./src/common/webWorkerUtils', () => {
-  return {
-    getWorkerURL: (relativePath) => {
-      const fallbackUrl = 'http://test.url/mockWebWorker.ts';
-
-      return new URL(relativePath, fallbackUrl);
-    },
-  };
-});

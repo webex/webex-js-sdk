@@ -68,10 +68,39 @@ describe('webWorker', () => {
       },
     });
     expect(postMessageSpy).not.toHaveBeenCalled();
+
+    const fakeFailureRespponse = {ok: false, status: 401};
+    (global.fetch as jest.Mock).mockResolvedValue(fakeFailureRespponse);
+
+    messageHandler({
+      data: {
+        type: WorkerMessageType.START_KEEPALIVE,
+        accessToken: 'dummy',
+        deviceUrl: 'dummyDevice',
+        interval: 1,
+        retryCountThreshold: 3,
+        url: 'http://example.com',
+      },
+    } as MessageEvent);
+
+    // Manually invoke the captured interval callback to simulate one tick
+    await capturedIntervalCallback();
+
+    expect((global.fetch as jest.Mock).mock.calls.length).toBe(2);
+    expect(postMessageSpy).toHaveBeenCalledWith({
+      err: new Error(`Keepalive failed with status: 401`),
+      keepAliveRetryCount: 1,
+      type: 'KEEPALIVE_FAILURE',
+    });
   });
 
   it('should post KEEPALIVE_FAILURE when fetch fails', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ok: false, status: 401});
+    const mockError = new Error('Network error');
+    (global.fetch as jest.Mock).mockRejectedValue({
+      ok: false,
+      err: mockError,
+      status: 401,
+    });
 
     messageHandler({
       data: {
@@ -88,7 +117,12 @@ describe('webWorker', () => {
 
     expect(postMessageSpy).toHaveBeenCalledWith({
       type: WorkerMessageType.KEEPALIVE_FAILURE,
-      err: expect.any(Error),
+      err: {
+        ok: false,
+        err: mockError,
+        status: 401,
+      },
+      keepAliveRetryCount: 1,
     });
   });
 
@@ -140,5 +174,28 @@ describe('webWorker', () => {
     jest.advanceTimersByTime(3000);
     expect((global.fetch as jest.Mock).mock.calls.length).toBeLessThanOrEqual(3);
     expect(clearIntervalSpy).toHaveBeenCalled();
+  });
+
+  it('improve coverage: should not clear keepalive timer on receiving CLEAR_KEEPALIVE message without keepTimer', async () => {
+    jest.spyOn(global, 'setInterval').mockReturnValue(undefined);
+    const fakeSuccessResponse = {ok: true, status: 200};
+    (global.fetch as jest.Mock).mockResolvedValue(fakeSuccessResponse);
+
+    const startEvent = {
+      data: {
+        type: WorkerMessageType.START_KEEPALIVE,
+        accessToken: 'dummy',
+        deviceUrl: 'dummyDevice',
+        interval: 1,
+        retryCountThreshold: 1,
+        url: 'http://example.com',
+      },
+    };
+
+    messageHandler(startEvent as MessageEvent);
+    messageHandler({data: {type: WorkerMessageType.CLEAR_KEEPALIVE}} as MessageEvent);
+
+    jest.advanceTimersByTime(3000);
+    expect(clearIntervalSpy).not.toHaveBeenCalled();
   });
 });

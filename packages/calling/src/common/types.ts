@@ -266,3 +266,10 @@ export enum WorkerMessageType {
   KEEPALIVE_SUCCESS = 'KEEPALIVE_SUCCESS',
   KEEPALIVE_FAILURE = 'KEEPALIVE_FAILURE',
 }
+
+export type KeepaliveStatusMessage = {
+  type: WorkerMessageType.KEEPALIVE_SUCCESS | WorkerMessageType.KEEPALIVE_FAILURE;
+  err?: unknown;
+  keepAliveRetryCount?: number;
+  statusCode?: number;
+};
