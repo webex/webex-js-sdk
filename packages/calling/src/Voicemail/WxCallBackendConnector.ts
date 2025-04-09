@@ -381,12 +381,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${MARK_AS_UNREAD}`;
-      const headers: Record<string, string> = await this.getAuthHeaders();
-
       const response = <WebexRequestPayload>await this.webex.request({
         uri: voicemailContentUrl,
         method: HTTP_METHODS.PUT,
-        headers,
+        headers: {...this.authHeaders},
       });
 
       const responseDetails: VoicemailResponseEvent = {
