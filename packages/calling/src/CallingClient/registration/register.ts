@@ -689,14 +689,6 @@ export class Registration implements IRegistration {
         const accessToken = await this.webex.credentials.getUserToken();
 
         if (!this.webWorker) {
-          // eslint-disable-next-line no-console
-          console.log(`Web-worker:`, import.meta.url);
-
-          // eslint-disable-next-line no-console
-          console.log(`Web-worker:`, new URL('./webWorker.js', import.meta.url));
-
-          // eslint-disable-next-line no-console
-          console.log(`Web-worker:`, new Worker(new URL('./webWorker.js', import.meta.url)));
           this.webWorker = new Worker(new URL('./webWorker.js', import.meta.url));
 
           this.webWorker.postMessage({

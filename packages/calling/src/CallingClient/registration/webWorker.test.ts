@@ -71,7 +71,12 @@ describe('webWorker', () => {
   });
 
   it('should post KEEPALIVE_FAILURE when fetch fails', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({ok: false, status: 401});
+    const mockError = new Error('Network error');
+    (global.fetch as jest.Mock).mockRejectedValue({
+      ok: false,
+      err: mockError,
+      status: 401,
+    });
 
     messageHandler({
       data: {
@@ -88,7 +93,11 @@ describe('webWorker', () => {
 
     expect(postMessageSpy).toHaveBeenCalledWith({
       type: WorkerMessageType.KEEPALIVE_FAILURE,
-      err: expect.any(Error),
+      err: {
+        ok: false,
+        err: mockError,
+        status: 401,
+      },
       keepAliveRetryCount: 1,
     });
   });
