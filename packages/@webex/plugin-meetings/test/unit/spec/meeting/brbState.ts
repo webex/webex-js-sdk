@@ -5,7 +5,7 @@ import testUtils from '../../../utils/testUtils';
 import {BrbState, createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
 import { MuteState } from '@webex/plugin-meetings/src/meeting/muteState';
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   let meeting: any;
   let brbState: BrbState;
   let audioMuteStateMock: MuteState = sinon.stub();
