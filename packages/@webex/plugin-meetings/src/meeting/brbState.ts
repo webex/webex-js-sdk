@@ -2,6 +2,7 @@ import {MediaType} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import type Meeting from '.';
 import SendSlotManager from '../multistream/sendSlotManager';
+import {MuteState} from './muteState';
 
 export const createBrbState = (meeting: Meeting, enabled: boolean) => {
   LoggerProxy.logger.info(
@@ -53,21 +54,23 @@ export class BrbState {
    *
    * @param {boolean} enabled
    * @param {SendSlotManager} sendSlotManager
+   * @param {MuteState} audioMuteState
    * @returns {Promise}
    */
-  public enable(enabled: boolean, sendSlotManager: SendSlotManager) {
+  public enable(enabled: boolean, sendSlotManager: SendSlotManager, audioMuteState: MuteState) {
     this.state.client.enabled = enabled;
 
-    return this.applyClientStateToServer(sendSlotManager);
+    return this.applyClientStateToServer(sendSlotManager, audioMuteState);
   }
 
   /**
    * Updates the server local and remote brb values so that they match the current client desired state.
    *
    * @param {SendSlotManager} sendSlotManager
+   * @param {MuteState} audioMuteState
    * @returns {Promise}
    */
-  private applyClientStateToServer(sendSlotManager: SendSlotManager) {
+  private applyClientStateToServer(sendSlotManager: SendSlotManager, audioMuteState: MuteState) {
     if (this.state.syncToServerInProgress) {
       LoggerProxy.logger.info(
         `Meeting:brbState#applyClientStateToServer: request to server in progress, we need to wait for it to complete`
@@ -92,7 +95,7 @@ export class BrbState {
 
     this.state.syncToServerInProgress = true;
 
-    return this.sendLocalBrbStateToServer(sendSlotManager)
+    return this.sendLocalBrbStateToServer(sendSlotManager, audioMuteState)
       .then(() => {
         this.state.syncToServerInProgress = false;
         LoggerProxy.logger.info(
@@ -100,7 +103,7 @@ export class BrbState {
         );
 
         // need to check if a new sync is required, because this.state.client may have changed while we were doing the current sync
-        this.applyClientStateToServer(sendSlotManager);
+        this.applyClientStateToServer(sendSlotManager, audioMuteState);
       })
       .catch((e) => {
         this.state.syncToServerInProgress = false;
@@ -112,9 +115,13 @@ export class BrbState {
    * Send the local brb state to the server
    *
    * @param {SendSlotManager} sendSlotManager
+   * @param {MuteState} audioMuteState
    * @returns {Promise}
    */
-  private async sendLocalBrbStateToServer(sendSlotManager: SendSlotManager) {
+  private async sendLocalBrbStateToServer(
+    sendSlotManager: SendSlotManager,
+    audioMuteState: MuteState
+  ) {
     const {enabled} = this.state.client;
 
     if (!this.meeting.isMultistream) {
@@ -146,6 +153,11 @@ export class BrbState {
       })
       .then(() => {
         sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
+
+        // locus mutes the participant with brb enabled request, so we need to explicitly update remote mute for correct logic flow
+        if (enabled) {
+          audioMuteState.setServerRemoteMute(true);
+        }
       })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:brbState#sendLocalBrbStateToServer: Error ', error);

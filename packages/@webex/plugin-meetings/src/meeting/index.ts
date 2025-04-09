@@ -3802,7 +3802,7 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.reject(error);
     }
 
-    return this.brbState.enable(enabled, this.sendSlotManager);
+    return this.brbState.enable(enabled, this.sendSlotManager, this.audio);
   }
 
   /**

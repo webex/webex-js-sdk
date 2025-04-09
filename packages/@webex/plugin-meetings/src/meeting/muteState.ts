@@ -466,4 +466,19 @@ export class MuteState {
   public isLocallyMuted() {
     return this.getClientLocalMuteState();
   }
+
+  /**
+   * This method sets the `remoteMute` property in the server state to the provided value
+   *
+   * @public
+   * @memberof MuteState
+   * @param {boolean} muteState - The new remote mute state.
+   * @returns {void}
+   */
+  public setServerRemoteMute(muteState: boolean) {
+    this.state.server.remoteMute = muteState;
+    LoggerProxy.logger.info(
+      `Meeting:muteState#setServerRemoteMute --> ${this.type}: setting server remote mute to ${muteState}`
+    );
+  }
 }

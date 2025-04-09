@@ -3,10 +3,12 @@ import {assert} from '@webex/test-helper-chai';
 
 import testUtils from '../../../utils/testUtils';
 import {BrbState, createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
+import { MuteState } from '@webex/plugin-meetings/src/meeting/muteState';
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   let meeting: any;
   let brbState: BrbState;
+  let audioMuteStateMock: MuteState = sinon.stub();
 
   beforeEach(async () => {
     meeting = {
@@ -45,7 +47,7 @@ describe('plugin-meetings', () => {
     });
 
     it('can be enabled', async () => {
-      brbState.enable(true, meeting.sendSlotManager);
+      brbState.enable(true, meeting.sendSlotManager, audioMuteStateMock);
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
 
@@ -54,7 +56,7 @@ describe('plugin-meetings', () => {
     });
 
     it('can be disabled', async () => {
-      brbState.enable(false, meeting.sendSlotManager);
+      brbState.enable(false, meeting.sendSlotManager, audioMuteStateMock);
       brbState.handleServerBrbUpdate(false);
       await testUtils.flushPromises();
 
@@ -64,7 +66,7 @@ describe('plugin-meetings', () => {
 
     it('does not send local brb state to server if it is not a multistream meeting', async () => {
       meeting.isMultistream = false;
-      brbState.enable(true, meeting.sendSlotManager);
+      brbState.enable(true, meeting.sendSlotManager, audioMuteStateMock);
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
 
@@ -73,7 +75,7 @@ describe('plugin-meetings', () => {
 
     it('does not send local brb state to server if webrtc media connection is not defined', async () => {
       meeting.mediaProperties.webrtcMediaConnection = undefined;
-      brbState.enable(true, meeting.sendSlotManager);
+      brbState.enable(true, meeting.sendSlotManager, audioMuteStateMock);
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
 
@@ -82,14 +84,14 @@ describe('plugin-meetings', () => {
 
     it('does not send request twice when in progress', async () => {
       brbState.state.syncToServerInProgress = true;
-      brbState.enable(true, meeting.sendSlotManager);
+      brbState.enable(true, meeting.sendSlotManager, audioMuteStateMock);
       await testUtils.flushPromises();
 
       assert.isTrue(meeting.meetingRequest.setBrb.notCalled);
     });
 
     it('syncs with server when client state does not match server state', async () => {
-      brbState.enable(true, meeting.sendSlotManager);
+      brbState.enable(true, meeting.sendSlotManager, audioMuteStateMock);
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
 
@@ -97,7 +99,7 @@ describe('plugin-meetings', () => {
     });
 
     it('sets source state override when client state does not match server state', async () => {
-      brbState.enable(true, meeting.sendSlotManager);
+      brbState.enable(true, meeting.sendSlotManager, audioMuteStateMock);
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
 
