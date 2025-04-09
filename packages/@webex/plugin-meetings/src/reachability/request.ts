@@ -34,7 +34,6 @@ class ReachabilityRequest {
    * @param {string} trigger that's passed to Orpheus
    * @param {IP_VERSION} ipVersion information about current ip network we're on
    * @param {Object} previousReport last reachability result
-   * @param {Object} clientEnvironment information about the client environment
    * @returns {Promise}
    */
   getClusters = (
