@@ -261,9 +261,9 @@ async function initCalling(e) {
 
   const clientConfig = {
     calling: !fedrampBox.checked,
-    contact: true,
+    contact: !fedrampBox.checked,
     callHistory: true,
-    callSettings: true,
+    callSettings: !fedrampBox.checked,
     voicemail: true,
   }
 

@@ -74,6 +74,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
   private webex: WebexSDK;
 
+  private authHeaders: Record<string, string> | null = null;
+
   /**
    * @param webex - An object of the webex-js-sdk type.
    * @param logger - Logger interface.
@@ -94,7 +96,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    *
    * @returns Response.
    */
-  public init() {
+  public async init() {
+    this.authHeaders = await this.getAuthHeaders();
     const loggerContext = {
       file: WEBEX_CALLING_CONNECTOR_FILE,
       method: 'init',
@@ -170,12 +173,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const sortParam = Object.values(SORT).includes(sort) ? sort : SORT.DEFAULT;
 
       try {
-        const headers: Record<string, string> = await this.getAuthHeaders();
-
         const response = <WebexRequestPayload>await this.webex.request({
           uri: `${urlXsi}`,
           method: HTTP_METHODS.GET,
-          headers,
+          headers: {...this.authHeaders},
         });
 
         const voicemailListResponse = response.body as VoicemailList;
@@ -239,12 +240,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}`;
-      const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${voicemailContentUrl}`,
         method: HTTP_METHODS.GET,
-        headers,
+        headers: {...this.authHeaders},
       });
 
       const parser = new DOMParser();
@@ -289,12 +289,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
     try {
       const voicemailSummaryUrl = `${this.xsiEndpoint}/${BW_XSI_ENDPOINT_VERSION}/${USER}/${this.userId}/${CALLS}/${MESSAGE_SUMMARY}`;
-      const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${voicemailSummaryUrl}`,
         method: HTTP_METHODS.GET,
-        headers,
+        headers: {...this.authHeaders},
       });
 
       const parser = new DOMParser();
@@ -421,12 +420,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}`;
-      const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
         uri: voicemailContentUrl,
         method: HTTP_METHODS.DELETE,
-        headers,
+        headers: {...this.authHeaders},
       });
 
       const responseDetails: VoicemailResponseEvent = {
@@ -458,12 +456,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${TRANSCRIPT}`;
-      const headers: Record<string, string> = await this.getAuthHeaders();
 
       const response = <WebexRequestPayload>await this.webex.request({
         uri: voicemailContentUrl,
         method: HTTP_METHODS.GET,
-        headers,
+        headers: {...this.authHeaders},
       });
 
       const parser = new DOMParser();

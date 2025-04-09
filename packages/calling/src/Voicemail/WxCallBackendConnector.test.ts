@@ -837,11 +837,12 @@ describe('Voicemail webex call Backend Connector Test case', () => {
     webex.config.fedramp = true;
     const MOCK_FEDRAMP_URL = 'https://mock-fedramp-url/com.broadsoft.xsi-actions';
 
-    beforeAll(() => {
+    beforeAll(async () => {
+      webex.credentials.getUserToken.mockResolvedValue('mockAuthToken');
       jest.spyOn(utils, 'getXsiActionEndpoint').mockResolvedValue(MOCK_FEDRAMP_URL);
       wxCallBackendConnector = new WxCallBackendConnector(webex, {level: LOGGER.INFO});
       jest.spyOn(webex, 'request');
-      wxCallBackendConnector.init();
+      await wxCallBackendConnector.init();
       wxCallBackendConnector['context'] = CONTEXT;
       wxCallBackendConnector.getSDKConnector();
     });
@@ -855,7 +856,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
     it('getVoicemailList: adds the authorization header when in fedramp', async () => {
       const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
       webex.request.mockResolvedValueOnce(voiceMailPayload);
-      webex.credentials.getUserToken.mockResolvedValue('mockAuthToken');
 
       await wxCallBackendConnector.getVoicemailList(0, 4, SORT.ASC, true);
 
@@ -872,7 +872,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
 
       webex.request.mockResolvedValueOnce(voiceMailPayload);
-      webex.credentials.getUserToken.mockResolvedValue('mockAuthToken');
       await wxCallBackendConnector.getVoicemailContent(messageId.$);
 
       expect(webex.request).toBeCalledOnceWith({
@@ -886,7 +885,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
 
       webex.request.mockResolvedValueOnce(voiceMailPayload);
-      webex.credentials.getUserToken.mockResolvedValue('mockAuthToken');
       await wxCallBackendConnector.getVoicemailSummary();
 
       expect(webex.request).toBeCalledOnceWith({
@@ -899,7 +897,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
     it('voicemailMarkAsRead: adds the authorization header when in fedramp', async () => {
       const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
       webex.request.mockResolvedValueOnce(voiceMailPayload);
-      webex.credentials.getUserToken.mockResolvedValue('mockAuthToken');
 
       await wxCallBackendConnector.voicemailMarkAsRead(messageId.$);
 
@@ -913,7 +910,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
     it('voicemailMarkAsUnread: adds the authorization header when in fedramp', async () => {
       const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
       webex.request.mockResolvedValueOnce(voiceMailPayload);
-      webex.credentials.getUserToken.mockResolvedValue('mockAuthToken');
 
       await wxCallBackendConnector.voicemailMarkAsUnread(messageId.$);
 
@@ -927,7 +923,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
     it('deleteVoicemail: adds the authorization header when in fedramp', async () => {
       const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
       webex.request.mockResolvedValueOnce(voiceMailPayload);
-      webex.credentials.getUserToken.mockResolvedValue('mockAuthToken');
 
       await wxCallBackendConnector.deleteVoicemail(messageId.$);
 
@@ -941,7 +936,6 @@ describe('Voicemail webex call Backend Connector Test case', () => {
     it('getVMTranscript: adds the authorization header when in fedramp', async () => {
       const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
       webex.request.mockResolvedValueOnce(voiceMailPayload);
-      webex.credentials.getUserToken.mockResolvedValue('mockAuthToken');
 
       await wxCallBackendConnector.getVMTranscript(messageId.$);
 
