@@ -22,6 +22,8 @@ const decryptFileBtn = document.querySelector('#decrypt-my-file-btn');
 const decryptFileResult = document.querySelector('#decrypt-file-result');
 const mimeTypeDropdown = document.querySelector('#mime-types');
 
+const something = true
+
 // Store and Grab `access-token` from localstorage
 if (localStorage.getItem('date') > new Date().getTime()) {
   tokenElm.value = localStorage.getItem('access-token');
