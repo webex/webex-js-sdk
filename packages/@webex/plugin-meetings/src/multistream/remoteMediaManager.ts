@@ -1055,21 +1055,43 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
+   * Set multiple remote video CSIs at once
+   * @param remoteMediaCsis The remote medias and CSIs to set them to
+   * @returns {void}
+   */
+  public setRemoteVideoCsis(remoteMediaCsis: {remoteMedia: RemoteMedia; csi?: CSI | null}[]) {
+    if (!remoteMediaCsis.length) {
+      return;
+    }
+
+    // Check all remote medias are known
+    remoteMediaCsis.forEach(({remoteMedia}) => {
+      if (!Object.values(this.media.video.memberPanes).includes(remoteMedia)) {
+        throw new Error(`remoteMedia ${remoteMedia.id} not found`);
+      }
+    });
+
+    // Set remote video CSIs
+    remoteMediaCsis.forEach(({remoteMedia, csi}) => {
+      if (csi) {
+        remoteMedia.sendMediaRequest(csi, false);
+      } else {
+        remoteMedia.cancelMediaRequest(false);
+      }
+    });
+
+    // Commit the changes
+    this.mediaRequestManagers.video.commit();
+  }
+
+  /**
    * Sets a new CSI on a given remote media object
    *
    * @param {RemoteMedia} remoteMedia remote Media object to modify
    * @param {CSI} csi new CSI value, can be null if we want to stop receiving media
    */
-  public setRemoteVideoCsi(remoteMedia: RemoteMedia, csi: CSI | null) {
-    if (!Object.values(this.media.video.memberPanes).includes(remoteMedia)) {
-      throw new Error('remoteMedia not found');
-    }
-
-    if (csi) {
-      remoteMedia.sendMediaRequest(csi, true);
-    } else {
-      remoteMedia.cancelMediaRequest(true);
-    }
+  public setRemoteVideoCsi(remoteMedia: RemoteMedia, csi?: CSI | null) {
+    this.setRemoteVideoCsis([{remoteMedia, csi}]);
   }
 
   /**

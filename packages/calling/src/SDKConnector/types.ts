@@ -44,7 +44,7 @@ export type ClientRegionInfo = {
 };
 
 export type Logger = {
-  log: (mess: string) => void;
+  log: (payload: string) => void;
   error: (payload: string) => void;
   warn: (payload: string) => void;
   info: (payload: string) => void;
@@ -56,6 +56,7 @@ export type Logger = {
 // This defines the shape for the webex SDK, if a typing doesn't exist, it should be added here
 export interface WebexSDK {
   // top level primitives/funcs
+  config: {fedramp: boolean};
   version: string;
   canAuthorize: boolean;
   credentials: {

@@ -111,6 +111,8 @@ export default class MediaConnectionAwaiter {
 
     this.clearCallbacks();
 
+    LoggerProxy.logger.warn('Media:MediaConnectionAwaiter#connectionStateChange --> Resolving');
+
     this.defer.resolve();
   }
 

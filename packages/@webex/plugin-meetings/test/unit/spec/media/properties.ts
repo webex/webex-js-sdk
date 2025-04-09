@@ -66,6 +66,21 @@ describe('MediaProperties', () => {
       assert.equal(numTransports, 0);
     });
 
+    it('handles time out in the case when getStats() is not resolving', async () => {
+      // Promise that never resolves
+      mockMC.getStats = new Promise(() => {});
+
+      const promise = mediaProperties.getCurrentConnectionInfo();
+
+      await clock.tickAsync(1000);
+
+      const {connectionType, selectedCandidatePairChanges, numTransports} = await promise;
+
+      assert.equal(connectionType, 'unknown');
+      assert.equal(selectedCandidatePairChanges, -1);
+      assert.equal(numTransports, 0);
+    });
+
     describe('selectedCandidatePairChanges and numTransports', () => {
       it('returns correct values when getStats() returns no transport stats at all', async () => {
         mockMC.getStats.resolves([{type: 'something', id: '1234'}]);

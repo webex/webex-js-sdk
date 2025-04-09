@@ -36,6 +36,8 @@ export const HOST = 'host';
 
 export const JOIN = 'join';
 
+export const JOIN_LINK_MTID = 'MTID';
+
 export const LEAVE = 'leave';
 export const LIVE = 'live';
 export const LOCAL = 'local';
@@ -104,6 +106,7 @@ export const _ON_HOLD_LOBBY_ = 'ON_HOLD_LOBBY';
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
 export const _MEETING_ = 'MEETING';
+export const _SPACE_SHARE_ = 'SPACE_SHARE';
 export const _MEETING_CENTER_ = 'MEETING_CENTER';
 export const _MEETING_ID_ = 'MEETING_ID';
 
@@ -199,7 +202,8 @@ export const RETRY_TIMEOUT = 3000;
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
 export const WEBINAR_ERROR_WEBCAST = [403026];
-export const WEBINAR_ERROR_REGISTRATIONID = [403037, 403137];
+export const WEBINAR_ERROR_REGISTRATION_ID = [403037, 403137];
+export const JOIN_BEFORE_HOST = 403003;
 
 // ******************** REGEX **********************
 // Please alphabetize
@@ -550,6 +554,11 @@ export const ERROR_DICTIONARY = {
     MESSAGE: 'Client asked for multistream backend (Homer), but got something else instead',
     CODE: 17,
   },
+  JoinForbiddenError: {
+    NAME: 'JoinForbiddenError',
+    MESSAGE: 'Meeting join forbidden.',
+    CODE: 18,
+  },
 };
 
 export const FLOOR_ACTION = {
@@ -895,6 +904,7 @@ export enum SELF_POLICY {
   ENFORCE_VIRTUAL_BACKGROUND = 'enforceVirtualBackground',
   SUPPORT_LOCAL_RECORD = 'supportLocalRecord',
   SUPPORT_NETWORK_BASED_RECORD = 'supportNetworkBasedRecord',
+  SUPPORT_PREMISE_RECORD = 'supportPremiseRecord',
   SUPPORT_REALTIME_CLOSE_CAPTION = 'supportRealtimeCloseCaption',
   SUPPORT_CHAT = 'supportChat',
   SUPPORT_DESKTOP_SHARE_REMOTE = 'supportDesktopShareRemote',
@@ -1322,14 +1332,24 @@ export const PASSWORD_STATUS = {
   VERIFIED: 'VERIFIED', // client has already provided the password and it has been verified, client can proceed to call join()
 };
 
+export const REGISTRATION_ID_STATUS = {
+  NOT_REQUIRED: 'NOT_REQUIRED', // registrationId is not required to join the meeting
+  REQUIRED: 'REQUIRED', // client needs to provide the registrationId by calling verifyRegistrationId() before calling join()
+  UNKNOWN: 'UNKNOWN', // we are waiting for information from the backend if registrationId is required or not
+  VERIFIED: 'VERIFIED', // client has already provided the registrationId and it has been verified, client can proceed to call join()
+};
+
 export const MEETING_INFO_FAILURE_REASON = {
   NONE: 'NONE', // meeting info was retrieved succesfully
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
+  WRONG_REGISTRATION_ID: 'WRONG_REGISTRATION_ID', // meeting requires registrationId and no registrationId or wrong one was provided
   POLICY: 'POLICY', // meeting info request violates some meeting policy
   WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
   NEED_JOIN_WITH_WEBCAST: 'NEED_JOIN_WITH_WEBCAST', // webinar need using webcast join
-  WEBINAR_NEED_REGISTRATIONID: 'WEBINAR_NEED_REGISTRATIONID', // webinar need registrationID
+  WEBINAR_NEED_REGISTRATION_ID: 'WEBINAR_NEED_REGISTRATION_ID', // webinar need registrationID
+  NOT_REACH_JBH: 'NOT_REACH_JBH', // Meeting is not allow to access since not reach JBH (join before host) time
+  JOIN_FORBIDDEN: 'JOIN_FORBIDDEN', // meeting is not allow join
   OTHER: 'OTHER', // any other error (network, etc)
 };
 
@@ -1389,3 +1409,12 @@ export const DESTINATION_TYPE = {
 } as const;
 
 export type DESTINATION_TYPE = Enum<typeof DESTINATION_TYPE>;
+
+export const INITIAL_REGISTRATION_STATUS = {
+  fetchWebexSite: false,
+  getGeoHint: false,
+  startReachability: false,
+  deviceRegister: false,
+  mercuryConnect: false,
+  checkH264Support: false,
+};

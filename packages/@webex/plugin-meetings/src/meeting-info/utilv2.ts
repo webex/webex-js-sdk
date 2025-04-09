@@ -19,6 +19,7 @@ import {
   UUID_REG,
   VALID_EMAIL_ADDRESS,
   DEFAULT_MEETING_INFO_REQUEST_BODY,
+  JOIN_LINK_MTID,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -70,7 +71,8 @@ export default class MeetingInfoUtil {
           parsedUrl.pathname.includes(`/${MEET_M}`) ||
           parsedUrl.pathname.includes(`/${MEET_CISCO}`) ||
           parsedUrl.pathname.includes(`/${MEET_CO}`) ||
-          parsedUrl.pathname.includes(`/${JOIN}`));
+          parsedUrl.pathname.includes(`/${JOIN}`) ||
+          (parsedUrl.search && parsedUrl.search.includes(JOIN_LINK_MTID)));
     }
 
     return hostNameBool && pathNameBool;
@@ -226,8 +228,16 @@ export default class MeetingInfoUtil {
    * @returns {Object} returns an object with {resource, method}
    */
   static getRequestBody(options: {type: DESTINATION_TYPE; destination: object} | any) {
-    const {type, destination, password, captchaInfo, installedOrgID, locusId, extraParams} =
-      options;
+    const {
+      type,
+      destination,
+      password,
+      captchaInfo,
+      installedOrgID,
+      locusId,
+      extraParams,
+      registrationId,
+    } = options;
     const body: any = {
       ...DEFAULT_MEETING_INFO_REQUEST_BODY,
       ...extraParams,
@@ -267,6 +277,10 @@ export default class MeetingInfoUtil {
 
     if (password) {
       body.password = password;
+    }
+
+    if (registrationId) {
+      body.registrationId = registrationId;
     }
 
     if (captchaInfo) {

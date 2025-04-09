@@ -1554,8 +1554,9 @@ export function modifySdpForIPv4(sdp: string): string {
  * @param webex - Webex object to get service urls.
  * @param data - Data to be uploaded.
  */
-export async function uploadLogs(webex: WebexSDK, data = {}) {
+export async function uploadLogs(data = {}) {
   try {
+    const webex = SDKConnector.getWebex();
     await webex.internal.support.submitLogs(data);
   } catch (error) {
     log.error(error as ExtendedError, {

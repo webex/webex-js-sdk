@@ -120,6 +120,17 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     this.mediaEngine = Media;
 
+    const adaptedLogger: Media.Logger = {
+      log: (...args) => webex.logger.log(args.join(' : ')),
+      error: (...args) => webex.logger.error(args.join(' : ')),
+      warn: (...args) => webex.logger.warn(args.join(' : ')),
+      info: (...args) => webex.logger.info(args.join(' : ')),
+      trace: (...args) => webex.logger.trace(args.join(' : ')),
+      debug: (...args) => webex.logger.debug(args.join(' : ')),
+    };
+
+    this.mediaEngine.setLogger(adaptedLogger);
+
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
     let mobiusServiceHost = '';
@@ -518,7 +529,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       data = {...data, feedbackId: uuid()};
     }
 
-    return uploadLogs(this.webex, data);
+    return uploadLogs(data);
   }
 }
 

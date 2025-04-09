@@ -37,11 +37,13 @@ import {
   LOCUSINFO,
   EVENT_TRIGGERS,
   DESTINATION_TYPE,
+  INITIAL_REGISTRATION_STATUS,
 } from '../../../../src/constants';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
 import {forEach} from 'lodash';
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
+import JoinForbiddenError from '@webex/plugin-meetings/src/common/errors/join-forbidden-error';
 import {NoiseReductionEffect, VirtualBackgroundEffect} from '@webex/media-helpers';
 import NoMeetingInfoError from '../../../../src/common/errors/no-meeting-info';
 
@@ -267,6 +269,33 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_setLogUploadIntervalMultiplicationFactor', () => {
+      it('should have _setLogUploadIntervalMultiplicationFactor', () => {
+        assert.equal(typeof webex.meetings._setLogUploadIntervalMultiplicationFactor, 'function');
+      });
+
+      describe('success', () => {
+        it('should update the config', () => {
+          const someValue = 1.23;
+
+          webex.meetings._setLogUploadIntervalMultiplicationFactor(someValue);
+          assert.equal(webex.meetings.config.logUploadIntervalMultiplicationFactor, someValue);
+        });
+      });
+
+      describe('failure', () => {
+        it('should not accept non-number input', () => {
+          const logUploadIntervalMultiplicationFactor = webex.meetings.config.logUploadIntervalMultiplicationFactor;
+
+          webex.meetings._setLogUploadIntervalMultiplicationFactor('test');
+          assert.equal(
+            webex.meetings.config.logUploadIntervalMultiplicationFactor,
+            logUploadIntervalMultiplicationFactor
+          );
+        });
+      });
+    });
+
     describe('#_toggleUnifiedMeetings', () => {
       it('should have toggleUnifiedMeetings', () => {
         assert.equal(typeof webex.meetings._toggleUnifiedMeetings, 'function');
@@ -375,21 +404,21 @@ describe('plugin-meetings', () => {
           assert.isTrue(webex.meetings.registered);
         });
 
-        it('rejects when SDK canAuthorize is false', () => {
+        it('rejects when SDK canAuthorize is false', async () => {
           webex.canAuthorize = false;
-          assert.isRejected(webex.meetings.register());
+          await assert.isRejected(webex.meetings.register());
         });
 
-        it('rejects when device.register fails', () => {
+        it('rejects when device.register fails', async () => {
           webex.canAuthorize = true;
           webex.internal.device.register = sinon.stub().returns(Promise.reject());
-          assert.isRejected(webex.meetings.register());
+          await assert.isRejected(webex.meetings.register());
         });
 
-        it('rejects when mercury.connect fails', () => {
+        it('rejects when mercury.connect fails', async () => {
           webex.canAuthorize = true;
           webex.internal.mercury.connect = sinon.stub().returns(Promise.reject());
-          assert.isRejected(webex.meetings.register());
+          await assert.isRejected(webex.meetings.register());
         });
 
         it('resolves immediately if already registered', async () => {
@@ -412,6 +441,19 @@ describe('plugin-meetings', () => {
           assert.isTrue(webex.meetings.registered);
         });
 
+        it('resolves even if startReachability() rejects', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+          webex.meetings.startReachability = sinon.stub().rejects(new Error('fake error'));
+
+          await webex.meetings.register();
+          assert.calledOnceWithExactly(webex.internal.device.register, undefined);
+          assert.called(webex.internal.services.getMeetingPreferences);
+          assert.called(webex.internal.services.fetchClientRegionInfo);
+          assert.called(webex.internal.mercury.connect);
+          assert.isTrue(webex.meetings.registered);
+        });
+
         it('passes on the device registration options', async () => {
           webex.canAuthorize = true;
           webex.meetings.registered = false;
@@ -419,6 +461,100 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(webex.internal.device.register, {
             includeDetails: CatalogDetails.features,
           });
+        });
+
+        it('updates registration status as expected', async () => {
+          const clock = sinon.useFakeTimers();
+
+          const delay = (secs) => () =>
+            new Promise((resolve) => {
+              setTimeout(resolve, secs * 1000);
+            });
+
+          let i = 1;
+          sinon.stub(webex.meetings, 'fetchUserPreferredWebexSite').callsFake(delay(i++));
+          MeetingsUtil.checkH264Support.callsFake(delay(i++));
+          webex.meetings.startReachability.callsFake(delay(i++));
+          webex.internal.device.register.callsFake(delay(i++));
+          sinon.stub(webex.meetings, 'getGeoHint').callsFake(delay(i++));
+          webex.internal.mercury.connect.callsFake(delay(i++));
+
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          const registerPromise = webex.meetings.register({
+            includeDetails: CatalogDetails.features,
+          });
+
+          await clock.tick(1000);
+          await webex.meetings.fetchUserPreferredWebexSite;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: false,
+            startReachability: false,
+            deviceRegister: false,
+            mercuryConnect: false,
+            checkH264Support: false,
+          });
+
+          await clock.tick(1000);
+          await MeetingsUtil.checkH264Support;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: false,
+            startReachability: false,
+            deviceRegister: false,
+            mercuryConnect: false,
+            checkH264Support: true,
+          });
+
+          await clock.tick(1000);
+          await webex.meetings.startReachability;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: false,
+            startReachability: true,
+            deviceRegister: false,
+            mercuryConnect: false,
+            checkH264Support: true,
+          });
+
+          await clock.tick(1000);
+          await webex.internal.device.register;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: false,
+            startReachability: true,
+            deviceRegister: true,
+            mercuryConnect: false,
+            checkH264Support: true,
+          });
+
+          await clock.tick(1000);
+          await webex.meetings.getGeoHint;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: true,
+            startReachability: true,
+            deviceRegister: true,
+            mercuryConnect: false,
+            checkH264Support: true,
+          });
+
+          await clock.tick(6000);
+          await webex.internal.mercury.connect;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: true,
+            startReachability: true,
+            deviceRegister: true,
+            mercuryConnect: true,
+            checkH264Support: true,
+          });
+
+          await registerPromise;
+
+          clock.restore();
         });
       });
 
@@ -440,24 +576,33 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('rejects when device.unregister fails', () => {
+        it('rejects when device.unregister fails', async () => {
           webex.meetings.registered = true;
           webex.internal.device.unregister = sinon.stub().returns(Promise.reject());
-          assert.isRejected(webex.meetings.unregister());
+          await assert.isRejected(webex.meetings.unregister());
         });
 
-        it('rejects when mercury.disconnect fails', () => {
+        it('rejects when mercury.disconnect fails', async () => {
           webex.meetings.registered = true;
           webex.internal.mercury.disconnect = sinon.stub().returns(Promise.reject());
-          assert.isRejected(webex.meetings.unregister());
+          await assert.isRejected(webex.meetings.unregister());
         });
 
-        it('resolves immediately if already registered', (done) => {
+        it('resolves immediately if not registered', (done) => {
           webex.meetings.registered = false;
           webex.meetings.unregister().then(() => {
-            assert.notCalled(webex.internal.device.register);
-            assert.notCalled(webex.internal.mercury.connect);
+            assert.notCalled(webex.internal.device.unregister);
+            assert.notCalled(webex.internal.mercury.disconnect);
             assert.isFalse(webex.meetings.registered);
+            done();
+          });
+        });
+
+        it('resets registration status', (done) => {
+          webex.meetings.registered = true;
+          webex.meetings.registrationStatus = {foo: 'bar'};
+          webex.meetings.unregister().then(() => {
+            assert.deepEqual(webex.meetings.registrationStatus, INITIAL_REGISTRATION_STATUS);
             done();
           });
         });
@@ -1920,6 +2065,11 @@ describe('plugin-meetings', () => {
                 error: new PermissionError(),
                 debugLogMessage:
                   'Meetings:index#createMeeting --> Debug PermissionError: Not allowed to execute the function, some properties on server, or local client state do not allow you to complete this action. fetching /meetingInfo for creation.',
+              },
+              {
+                error: new JoinForbiddenError(),
+                debugLogMessage:
+                  'Meetings:index#createMeeting --> Debug JoinForbiddenError: Meeting join forbidden. fetching /meetingInfo for creation.',
               },
               {
                 error: new Error(),

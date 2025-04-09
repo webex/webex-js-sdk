@@ -21,3 +21,13 @@ export const MEETING_KEY = {
 } as const;
 
 export type MEETING_KEY = Enum<typeof MEETING_KEY>;
+
+// finer grained status for registration steps
+export type MeetingRegistrationStatus = {
+  fetchWebexSite: boolean;
+  getGeoHint: boolean;
+  startReachability: boolean;
+  deviceRegister: boolean;
+  mercuryConnect: boolean;
+  checkH264Support: boolean;
+};

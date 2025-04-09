@@ -1,5 +1,5 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-import {cloneDeep} from 'lodash';
+import {cloneDeep, clone} from 'lodash';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
@@ -42,6 +42,7 @@ import {
   _ON_HOLD_LOBBY_,
   _WAIT_,
   DESTINATION_TYPE,
+  INITIAL_REGISTRATION_STATUS,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
@@ -53,12 +54,18 @@ import Request from './request';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 import MeetingCollection from './collection';
-import {MEETING_KEY, INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
+import {
+  MEETING_KEY,
+  INoiseReductionEffect,
+  IVirtualBackgroundEffect,
+  MeetingRegistrationStatus,
+} from './meetings.types';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
 import JoinWebinarError from '../common/errors/join-webinar-error';
 import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 import NoMeetingInfoError from '../common/errors/no-meeting-info';
+import JoinForbiddenError from '../common/errors/join-forbidden-error';
 
 let mediaLogger;
 
@@ -179,6 +186,7 @@ export default class Meetings extends WebexPlugin {
   mediaHelpers: any;
   breakoutLocusForHandleLater: any;
   namespace = MEETINGS;
+  registrationStatus: MeetingRegistrationStatus;
 
   /**
    * Initializes the Meetings Plugin
@@ -693,6 +701,20 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to change log upload interval. Setting the factor to 0 will disable periodic log uploads.
+   *
+   * @param {number} factor new factor value
+   * @returns {void}
+   */
+  private _setLogUploadIntervalMultiplicationFactor(factor: number) {
+    if (typeof factor !== 'number') {
+      return;
+    }
+    // @ts-ignore
+    this.config.logUploadIntervalMultiplicationFactor = factor;
+  }
+
+  /**
    * API to toggle unified meetings
    * @param {Boolean} changeState
    * @private
@@ -786,6 +808,18 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * Executes a registration step and updates the registration status.
+   * @param {Function} step - The registration step to execute.
+   * @param {string} stepName - The name of the registration step.
+   * @returns {Promise} A promise that resolves when the step is completed.
+   */
+  executeRegistrationStep(step: () => Promise<any>, stepName: string) {
+    return step().then(() => {
+      this.registrationStatus[stepName] = true;
+    });
+  }
+
+  /**
    * Explicitly sets up the meetings plugin by registering
    * the device, connecting to mercury, and listening for locus events.
    *
@@ -795,6 +829,8 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   public register(deviceRegistrationOptions?: DeviceRegistrationOptions): Promise<any> {
+    this.registrationStatus = clone(INITIAL_REGISTRATION_STATUS);
+
     // @ts-ignore
     if (!this.webex.canAuthorize) {
       LoggerProxy.logger.error(
@@ -813,24 +849,39 @@ export default class Meetings extends WebexPlugin {
     }
 
     return Promise.all([
-      this.fetchUserPreferredWebexSite(),
-      this.getGeoHint(),
-      this.startReachability('registration').catch((error) => {
-        LoggerProxy.logger.error(`Meetings:index#register --> GDM error, ${error.message}`);
-      }),
-      // @ts-ignore
-      this.webex.internal.device
-        .register(deviceRegistrationOptions)
-        // @ts-ignore
-        .then(() =>
-          LoggerProxy.logger.info(
+      this.executeRegistrationStep(() => this.fetchUserPreferredWebexSite(), 'fetchWebexSite'),
+      this.executeRegistrationStep(() => this.getGeoHint(), 'getGeoHint'),
+      this.executeRegistrationStep(
+        () =>
+          this.startReachability('registration').catch((error) => {
+            LoggerProxy.logger.warn(`Meetings:index#register --> startReachability failed:`, error);
+          }),
+        'startReachability'
+      ),
+      this.executeRegistrationStep(
+        () =>
+          // @ts-ignore
+          this.webex.internal.device
+            .register(deviceRegistrationOptions)
             // @ts-ignore
-            `Meetings:index#register --> INFO, Device registered ${this.webex.internal.device.url}`
-          )
+            .then(() => {
+              LoggerProxy.logger.info(
+                // @ts-ignore
+                `Meetings:index#register --> INFO, Device registered ${this.webex.internal.device.url}`
+              );
+            }),
+        'deviceRegister'
+      ).then(() =>
+        this.executeRegistrationStep(
+          // @ts-ignore
+          () => this.webex.internal.mercury.connect(),
+          'mercuryConnect'
         )
-        // @ts-ignore
-        .then(() => this.webex.internal.mercury.connect()),
-      MeetingsUtil.checkH264Support.call(this),
+      ),
+      this.executeRegistrationStep(
+        () => Promise.resolve(MeetingsUtil.checkH264Support.call(this)),
+        'checkH264Support'
+      ),
     ])
       .then(() => {
         this.listenForEvents();
@@ -894,6 +945,7 @@ export default class Meetings extends WebexPlugin {
             EVENT_TRIGGERS.MEETINGS_UNREGISTERED
           );
           this.registered = false;
+          this.registrationStatus = clone(INITIAL_REGISTRATION_STATUS);
         })
     );
   }
@@ -1412,7 +1464,8 @@ export default class Meetings extends WebexPlugin {
         !(err instanceof CaptchaError) &&
         !(err instanceof PasswordError) &&
         !(err instanceof PermissionError) &&
-        !(err instanceof JoinWebinarError)
+        !(err instanceof JoinWebinarError) &&
+        !(err instanceof JoinForbiddenError)
       ) {
         LoggerProxy.logger.info(
           `Meetings:index#createMeeting --> Info Unable to fetch meeting info for ${destination}.`

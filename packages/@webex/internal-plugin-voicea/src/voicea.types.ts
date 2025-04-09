@@ -57,6 +57,8 @@ interface Highlight {
 interface TranscriptionResponse {
   type: TRANSCRIPTION_TYPES;
   id: string;
+  sender: string;
+  data_source: string;
   transcript_id: string;
   translations?: {[x: string]: string};
   transcripts?: Transcription[];
