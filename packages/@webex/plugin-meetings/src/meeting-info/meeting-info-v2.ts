@@ -207,9 +207,14 @@ export class MeetingInfoV2MeetingIsInProgressError extends Error {
    * @constructor
    * @param {Number} [wbxAppApiErrorCode]
    * @param {String} [message]
+   * @param {Boolean} [enable]
    */
-  constructor(wbxAppApiErrorCode?: number, message = MEETING_IS_IN_PROGRESS_MESSAGE) {
-    super(`${message}, code=${wbxAppApiErrorCode}`);
+  constructor(
+    wbxAppApiErrorCode?: number,
+    message = MEETING_IS_IN_PROGRESS_MESSAGE,
+    enable = false
+  ) {
+    super(`${message}, code=${wbxAppApiErrorCode}, enable=${enable}`);
     this.name = 'MeetingInfoV2MeetingIsInProgressError';
     this.sdkMessage = message;
     this.stack = new Error().stack;
@@ -454,7 +459,7 @@ export default class MeetingInfoV2 {
             stack: err.stack,
           });
 
-          throw new MeetingInfoV2MeetingIsInProgressError(err.body?.code, err.body?.message);
+          throw new MeetingInfoV2MeetingIsInProgressError(err.body?.code, err.body?.message, true);
         }
 
         if (err?.statusCode === 409) {

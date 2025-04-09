@@ -179,7 +179,7 @@ describe('plugin-meetings', () => {
         } catch (err) {
           assert.equal(err.wbxAppApiCode, 33003);
           assert.instanceOf(err, MeetingInfoV2MeetingIsInProgressError);
-          assert.deepEqual(err.message, 'Meeting is in progress, code=33003');
+          assert.deepEqual(err.message, 'Meeting is in progress, code=33003, enable=true');
           assert.calledWith(
             Metrics.sendBehavioralMetric,
             BEHAVIORAL_METRICS.MEETING_IS_IN_PROGRESS_ERROR,
