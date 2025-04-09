@@ -24,6 +24,7 @@ type GenericEvent = {
 
 export type MetricsType = 'behavioral' | 'operational' | 'business';
 
+const PRODUCT_NAME_UPPER = PRODUCT_NAME.toUpperCase();
 export default class MetricsManager {
   private webex: WebexSDK;
   private readonly runningEvents: Record<string, {startTime: number; keys: Set<string>}> = {};
@@ -87,7 +88,7 @@ export default class MetricsManager {
       this.pendingOperationalEvents.length = 0;
       eventsToSubmit.forEach((event) => {
         this.webex.internal.newMetrics.submitOperationalEvent({
-          name: event.name,
+          name: `${PRODUCT_NAME_UPPER}_${event.name}`,
           payload: event.payload,
         });
       });
@@ -103,7 +104,7 @@ export default class MetricsManager {
       this.pendingBusinessEvents.length = 0;
       eventsToSubmit.forEach((event) => {
         this.webex.internal.newMetrics.submitBusinessEvent({
-          name: event.name,
+          name: `${PRODUCT_NAME_UPPER}_${event.name}`,
           payload: event.payload,
           metadata: {
             appType: PRODUCT_NAME,
@@ -134,12 +135,20 @@ export default class MetricsManager {
     return str.replace(/ /g, '_');
   }
 
-  private static preparePayload(options: EventPayload): EventPayload {
+  private static preparePayload(obj: EventPayload): EventPayload {
     const payload: EventPayload = {};
 
-    for (const [key, value] of Object.entries(options)) {
-      payload[MetricsManager.spacesToUnderscore(key)] = value; // Replace spaces with underscores
-    }
+    Object.keys(obj).forEach((key) => {
+      if (
+        obj[key] !== undefined &&
+        obj[key] !== null &&
+        obj[key] !== '' &&
+        !Array.isArray(obj[key]) &&
+        !(typeof obj[key] === 'object' && Object.keys(obj[key]).length === 0)
+      ) {
+        payload[MetricsManager.spacesToUnderscore(key)] = obj[key];
+      }
+    });
 
     if (typeof window === 'undefined') {
       return payload;
@@ -277,7 +286,10 @@ export default class MetricsManager {
   }
 
   public static getCommonTrackingFieldForAQMResponse(response: any): Record<string, any> {
-    let teamId;
+    // This method is used to extract common tracking fields from the AQM response
+    // and return them as an object. The fields are extracted from the response
+    // object and its data property.
+    let teamId: string | undefined;
     if (response?.data?.teamId) {
       teamId = response.data.teamId;
     } else if (response?.teamId) {
@@ -299,18 +311,15 @@ export default class MetricsManager {
       notifTrackingId: response?.trackingId,
     };
 
-    Object.keys(fields).forEach((key) => {
-      if (typeof fields[key] === 'undefined' || fields[key] === null) {
-        delete fields[key];
-      }
-    });
-
     return fields;
   }
 
   public static getCommonTrackingFieldForAQMResponseFailed(
     failureResponse: Failure
   ): Record<string, any> {
+    // This method is used to extract common tracking fields from the AQM response failure
+    // and return them as an object. The fields are extracted from the response
+    // object and its data property.
     const fields = {
       agentId: failureResponse?.data?.agentId,
       trackingId: failureResponse?.trackingId,
@@ -320,12 +329,6 @@ export default class MetricsManager {
       failureReason: failureResponse?.data?.reason,
       reasonCode: failureResponse?.data?.reasonCode,
     };
-
-    Object.keys(fields).forEach((key) => {
-      if (typeof fields[key] === 'undefined' || fields[key] === null) {
-        delete fields[key];
-      }
-    });
 
     return fields;
   }

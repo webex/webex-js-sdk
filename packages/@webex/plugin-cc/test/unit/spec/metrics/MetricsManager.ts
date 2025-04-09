@@ -52,12 +52,12 @@ describe('MetricsManagerImplementation', () => {
       });
 
       expect(webex.internal.newMetrics.submitOperationalEvent).toHaveBeenCalledWith({
-        name: METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS.replace(/ /g, '_').toUpperCase(),
+        name: PRODUCT_NAME.toUpperCase() + "_" + METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS.replace(/ /g, '_').toUpperCase(),
         payload: data,
       });
 
       expect(webex.internal.newMetrics.submitBusinessEvent).toHaveBeenCalledWith({
-        name: METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS.replace(/ /g, '_').toUpperCase(),
+        name: PRODUCT_NAME.toUpperCase() + "_" + METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS.replace(/ /g, '_').toUpperCase(),
         payload: data,
         metadata: {
           appType: PRODUCT_NAME,
@@ -372,5 +372,120 @@ describe('MetricsManagerInstantiation', () => {
     readyCallback();
 
     expect(setReadyToSubmitEventsSpy).toHaveBeenCalled();
+  });
+});
+
+describe('getCommonTrackingFieldForAQMResponse', () => {
+  it('should extract common tracking fields from a response with nested data', () => {
+    const response = {
+      data: {
+        agentId: 'agent1',
+        agentSessionId: 'session1',
+        teamId: 'team1',
+        siteId: 'site1',
+        orgId: 'org1',
+        trackingId: 'track1'
+      },
+      trackingId: 'notifTrack1',
+      type: 'some_event'
+    };
+    const expected = {
+      agentId: 'agent1',
+      agentSessionId: 'session1',
+      teamId: 'team1',
+      siteId: 'site1',
+      orgId: 'org1',
+      eventType: 'some_event',
+      trackingId: 'track1',
+      notifTrackingId: 'notifTrack1'
+    };
+    const result = MetricsManager.getCommonTrackingFieldForAQMResponse(response);
+    expect(result).toEqual(expected);
+  });
+
+  it('should extract common tracking fields from a flat response', () => {
+    const response = {
+      agentId: 'agent2',
+      agentSessionId: 'session2',
+      teamId: 'team2',
+      siteId: 'site2',
+      orgId: 'org2',
+      type: 'event_type',
+      trackingId: 'notifTrack2'
+    };
+    const expected = {
+      agentId: 'agent2',
+      agentSessionId: 'session2',
+      teamId: 'team2',
+      siteId: 'site2',
+      orgId: 'org2',
+      eventType: 'event_type',
+      trackingId: undefined,
+      notifTrackingId: 'notifTrack2'
+    };
+    const result = MetricsManager.getCommonTrackingFieldForAQMResponse(response);
+    expect(result).toEqual(expected);
+  });
+
+  it('should handle responses with missing fields gracefully', () => {
+    const response = {};
+    const expected = {
+      agentId: undefined,
+      agentSessionId: undefined,
+      teamId: undefined,
+      siteId: undefined,
+      orgId: undefined,
+      eventType: undefined,
+      trackingId: undefined,
+      notifTrackingId: undefined
+    };
+    const result = MetricsManager.getCommonTrackingFieldForAQMResponse(response);
+    expect(result).toEqual(expected);
+  });
+});
+
+describe('getCommonTrackingFieldForAQMResponseFailed', () => {
+  it('should extract common tracking fields from a failure response with complete fields', () => {
+    const failureResponse = {
+      data: {
+        agentId: 'agent1',
+        reason: 'Some reason',
+        reasonCode: 'R001'
+      },
+      trackingId: 'notifTrack1',
+      orgId: 'org1',
+      type: 'failure_event'
+    };
+    const expected = {
+      agentId: 'agent1',
+      trackingId: 'notifTrack1',
+      notifTrackingId: 'notifTrack1',
+      orgId: 'org1',
+      failureType: 'failure_event',
+      failureReason: 'Some reason',
+      reasonCode: 'R001'
+    };
+    const result = MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failureResponse);
+    expect(result).toEqual(expected);
+  });
+
+  it('should handle failure responses with missing fields gracefully', () => {
+    const failureResponse = {
+      data: {},
+      trackingId: undefined,
+      orgId: 'org2',
+      type: undefined
+    };
+    const expected = {
+      agentId: undefined,
+      trackingId: undefined,
+      notifTrackingId: undefined,
+      orgId: 'org2',
+      failureType: undefined,
+      failureReason: undefined,
+      reasonCode: undefined
+    };
+    const result = MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failureResponse);
+    expect(result).toEqual(expected);
   });
 });

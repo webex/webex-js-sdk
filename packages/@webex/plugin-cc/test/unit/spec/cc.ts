@@ -32,6 +32,7 @@ import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
 import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
 import MetricsManager from '../../../src/metrics/MetricsManager';
+import { METRIC_EVENT_NAMES } from '../../../src/metrics/constants';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -289,6 +290,10 @@ describe('webex.cc', () => {
       });
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
+      expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED
+      ]);
     });
 
     it('should not register when config is undefined', async () => {
@@ -377,6 +382,10 @@ describe('webex.cc', () => {
       });
       expect(reloadSpy).not.toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
+      expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED
+      ]);
     });
 
     it('should log error and reject if registration fails', async () => {
@@ -446,6 +455,7 @@ describe('webex.cc', () => {
           auxCodeId: '',
         },
       });
+      expect(mockMetricsManager.timeEvent).toBeCalledWith([METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS, METRIC_EVENT_NAMES.STATION_LOGIN_FAILED]);
       expect(result).toEqual(mockData);
 
       const onSpy = jest.spyOn(mockTaskManager, 'on');
@@ -580,6 +590,10 @@ describe('webex.cc', () => {
       // );
       // expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
       expect(result).toEqual(response);
+      expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
+        METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
+        METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED
+      ]);
     });
 
     it('should handle error during stationLogout', async () => {
@@ -616,6 +630,10 @@ describe('webex.cc', () => {
 
       expect(stationLoginMock).toHaveBeenCalled();
       expect(result).toEqual(response);
+      expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
+        METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS,
+        METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED
+      ]);
     });
 
     it('should handle error during relogin', async () => {
@@ -669,6 +687,10 @@ describe('webex.cc', () => {
         module: CC_FILE,
         method: 'setAgentState',
       });
+      expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED
+      ]);
     });
 
     it('should set agent status successfully when status is Meeting', async () => {
@@ -691,6 +713,10 @@ describe('webex.cc', () => {
         module: CC_FILE,
         method: 'setAgentState',
       });
+      expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED
+      ]);
     });
 
     it('should handle error during setAgentStatus when status is Meeting', async () => {
@@ -790,6 +816,10 @@ describe('webex.cc', () => {
       });
 
       expect(result).toEqual(buddyAgentsResponse);
+      expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS,
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED
+      ]);
     });
 
     it('should handle error', async () => {

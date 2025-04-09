@@ -429,7 +429,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(agentStatusResponse),
           requestedState: data.state,
-          teamId: this.agentConfig?.teams[0]?.teamId,
+          teamId: this.agentConfig?.teams[0]?.teamId ?? EMPTY_STRING,
           status: agentStatusResponse.data?.status,
           subStatus: agentStatusResponse.data?.subStatus,
           auxCodeId: data.auxCodeId,
