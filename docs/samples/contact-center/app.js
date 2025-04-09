@@ -168,6 +168,13 @@ function initOauth() {
   });
 }
 
+function toggleIfQueueConsultEnabled () {
+  document.querySelectorAll('option[value="queue"]').forEach(item => {
+    if(webex && !webex.cc.agentConfig.allowConsultToQueue) item.style.display = 'none';
+    else item.style.display = 'block';
+  });
+}
+
 const taskEvents = new CustomEvent('task:incoming', {
   detail: {
     task: task,
@@ -225,6 +232,17 @@ function toggleTransferOptions() {
   transferOptionsElm.style.display = isTransferOptionsShown ? 'block' : 'none';
 }
 
+async function getQueueListForTelephonyChannel() {
+  try {
+    let queueList = await webex.cc.getQueues();
+    queueList = queueList.filter(queue => queue.channelType === 'TELEPHONY');
+  
+    return queueList;
+  } catch (error) {
+    console.log('Failed to fetch queue list', error);
+  }
+}
+
 async function onConsultTypeSelectionChanged(){
 
   consultDestinationHolderElm.innerHTML = '';
@@ -245,6 +263,35 @@ async function onConsultTypeSelectionChanged(){
     refreshButton.id = 'refresh-buddy-agents-for-consult';
     refreshButton.innerHTML = 'Refresh agent list <i class="fa fa-refresh"></i>';
     refreshButton.onclick = refreshBuddyAgentsForConsult;
+    consultDestinationHolderElm.appendChild(refreshButton);
+  } else if (destinationTypeDropdown.value === 'queue') {
+    async function refreshQueueListForConsult() {
+      const queueList = await getQueueListForTelephonyChannel();
+  
+      if(queueList.length > 0) {
+        // Make consultDestinationInput into a dropdown
+        consultDestinationInput = document.createElement('select');
+        consultDestinationInput.id = 'consultDestination';
+  
+        queueList.forEach((queue) => {
+          const option = document.createElement('option');
+          option.text = queue.name;
+          option.value = queue.id;
+          consultDestinationInput.appendChild(option);
+        });
+      } else {
+        consultDestinationInput.disabled = true;
+        consultDestinationInput.innerText = 'No queues available';
+      }
+    }
+
+    await refreshQueueListForConsult();
+
+    // Add a refresh button to refresh the queue list
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-queue-list';
+    refreshButton.innerHTML = 'Refresh queue list <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshQueueListForConsult;
     consultDestinationHolderElm.appendChild(refreshButton);
   } else {
     // Make consultDestinationInput into a text input
@@ -274,6 +321,20 @@ async function onTransferTypeSelectionChanged() {
 
     const agentNodeList = await fetchBuddyAgentsNodeList();
     agentNodeList.forEach(n => { transferDestinationInput.appendChild(n) });
+  } else if (document.querySelector('#transfer-destination-type').value === 'queue') {
+    const queueList = await getQueueListForTelephonyChannel();
+    if (queueList.length > 0) {
+      // Make transferDestinationInput into a dropdown
+      transferDestinationInput = document.createElement('select');
+      transferDestinationInput.id = 'transfer-destination';
+
+      queueList.forEach((queue) => {
+        const option = document.createElement('option');
+        option.text = queue.name;
+        option.value = queue.id;
+        transferDestinationInput.appendChild(option);
+      });
+    }
   } else {
     // Make transferDestinationInput into a text input
     transferDestinationInput = document.createElement('input');
@@ -304,10 +365,11 @@ async function initiateConsult() {
   try {
     await task.consult(consultPayload);
     console.log('Consult initiated successfully');
+    // Disable the blind transfer button after initiating consult, only enable it once consult is confirmed
+    disableCallControlPostConsult();
+    disableTransferControls();
     hideConsultButton();
     showEndConsultButton();
-    consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
-    consultTransferBtn.disabled = false; // Enable the consult transfer button
   } catch (error) {
     console.error('Failed to initiate consult', error);
     alert('Failed to initiate consult');
@@ -440,6 +502,20 @@ function disableTransferControls() {
   transferElm.disabled = true;
 }
 
+// Disable all buttons post consulting
+function disableCallControlPostConsult() {
+  holdResumeElm.disabled = true;
+  pauseResumeRecordingElm.disabled = true;
+  endElm.disabled = true;
+}
+
+// Enable all buttons post consulting
+function enableCallControlPostConsult() {
+  holdResumeElm.disabled = false;
+  pauseResumeRecordingElm.disabled = false;
+  endElm.disabled = false;
+}
+
 // Register task listeners
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
@@ -452,16 +528,20 @@ function registerTaskListeners(task) {
     endElm.disabled = false;
     enableConsultControls(); // Enable consult controls
     enableTransferControls(); // Enable transfer controls
+    toggleIfQueueConsultEnabled();
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
-  task.on('task:end', () => {
-    answerElm.disabled = true;
-    declineElm.disabled = true;
+  task.on('task:end', (wrapupData) => {
     incomingDetailsElm.innerText = '';
-    if (!endElm.disabled) {
-      console.info('Call ended successfully by the external user');
+    if (!wrapupData.wrapupRequired) {
+      answerElm.disabled = true;
+      declineElm.disabled = true;
+      console.log('Call ended without call being answered');
+    }
+    else {
+      console.info('Call ended successfully');
       updateButtonsPostEndCall();
     }
   });
@@ -483,6 +563,12 @@ function registerTaskListeners(task) {
     consultTransferBtn.disabled = true; // Disable the consult transfer button since we are not yet owner of the call
   });
 
+  task.on('task:consulting', (task) => {
+    // When we are consulting with the other agent
+    consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
+    consultTransferBtn.disabled = false; // Enable the consult transfer button
+  });
+
   task.on('task:consultQueueFailed', (task) => {
     // When trying to consult queue fails
     console.error(`Received task:consultQueueFailed for task: ${task.interactionId}`);
@@ -500,6 +586,8 @@ function registerTaskListeners(task) {
   task.on('task:consultEnd', (task) => {
     hideEndConsultButton();
     showConsultButton();
+    enableTransferControls();
+    enableCallControlPostConsult();
     consultTransferBtn.style.display = 'none';
     consultTransferBtn.disabled = true;
 
@@ -1076,6 +1164,7 @@ function wrapupCall() {
   const auxCodeId = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].value;
   task.wrapup({wrapUpReason: wrapupReason, auxCodeId: auxCodeId}).then(() => {
     console.info('Call wrapped up successfully');
+    holdResumeElm.innerText = 'Hold';
     holdResumeElm.disabled = true;
     endElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
