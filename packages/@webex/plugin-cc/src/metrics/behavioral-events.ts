@@ -21,40 +21,89 @@ export function getEventTaxonomy(name: METRIC_EVENT_NAMES): BehavioralEventTaxon
   const product: MetricEventProduct = PRODUCT_NAME;
 
   switch (name) {
-    case METRIC_EVENT_NAMES.STATION_LOGIN:
+    case METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS:
       return {
         product,
         agent: 'user',
-        target: 'station',
-        verb: 'login',
-      };
-    case METRIC_EVENT_NAMES.CALL_COMPLETED:
-      return {
-        product,
-        agent: 'user',
-        target: 'call',
+        target: 'station_login',
         verb: 'complete',
       };
-    case METRIC_EVENT_NAMES.CALL_CONSULT_ACTIVATE:
+    case METRIC_EVENT_NAMES.STATION_LOGIN_FAILED:
       return {
         product,
         agent: 'user',
-        target: 'call_consult',
-        verb: 'activate',
+        target: 'station_login',
+        verb: 'fail',
       };
-    case METRIC_EVENT_NAMES.CALL_TRANSFER_ACTIVATE:
+    case METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS:
       return {
         product,
         agent: 'user',
-        target: 'call_transfer',
-        verb: 'activate',
+        target: 'station_logout',
+        verb: 'complete',
       };
-    case METRIC_EVENT_NAMES.CALL_ANSWERED:
+    case METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED:
       return {
         product,
         agent: 'user',
-        target: 'call',
-        verb: 'answer',
+        target: 'station_logout',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'station_relogin',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'station_relogin',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'state_change',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'state_change',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'buddy_agents_fetch',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'buddy_agents_fetch',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'websocket_register',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'websocket_register',
+        verb: 'fail',
       };
     case METRIC_EVENT_NAMES.AGENT_RONA:
       return {
@@ -62,13 +111,6 @@ export function getEventTaxonomy(name: METRIC_EVENT_NAMES): BehavioralEventTaxon
         agent: 'service',
         target: 'agent_rona',
         verb: 'set',
-      };
-    case METRIC_EVENT_NAMES.TASK_END:
-      return {
-        product,
-        agent: 'user',
-        target: 'task',
-        verb: 'complete',
       };
     default:
       break;

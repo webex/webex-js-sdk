@@ -50,6 +50,7 @@ import WebCallingService from './services/WebCallingService';
 import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
+import {Failure} from './services/core/GlobalTypes';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -125,10 +126,31 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async register(): Promise<Profile> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
+      ]);
       this.setupEventListeners();
 
-      return await this.connectWebsocket();
+      const resp = await this.connectWebsocket();
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
+          deviceType: resp.deviceType || EMPTY_STRING,
+        },
+        ['operational']
+      );
+
+      return resp;
     } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
+        {
+          orgId: error.orgId,
+        },
+        ['operational']
+      );
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
         method: this.register.name,
@@ -148,10 +170,38 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
     try {
-      return await this.services.agent.buddyAgents({
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS,
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
+      ]);
+      const resp = await this.services.agent.buddyAgents({
         data: {agentProfileId: this.agentConfig.agentProfileID, ...data},
       });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
+          mediaType: data.mediaType,
+          buddyAgentState: data.state,
+          buddyAgentCount: resp.data.agentList.length,
+        },
+        ['operational']
+      );
+
+      return resp;
     } catch (error) {
+      const failureResp = error.details as Failure;
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failureResp),
+          mediaType: data.mediaType,
+          buddyAgentState: data.state,
+        },
+        ['operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'getBuddyAgents', CC_FILE);
       throw detailedError;
     }
@@ -224,7 +274,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     try {
-      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.STATION_LOGIN);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
+        METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
+      ]);
       const loginResponse = this.services.agent.stationLogin({
         data: {
           dialNumber:
@@ -246,24 +299,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await this.webCallingService.registerWebCallingLine();
       }
 
-      this.webCallingService.setLoginOption(data.loginOption);
-
       const resp = await loginResponse;
 
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_LOGIN,
+        METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
         {
-          isSuccess: true,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
           loginType: data.loginOption,
-          agentId: resp.data.agentId,
-          teamId: resp.data.teamId,
-          siteId: resp.data.siteId,
-          roles: resp.data.roles.join(','),
-          trackingId: resp.data.trackingId,
-          notifTrackingId: resp.trackingId,
-          orgId: resp.orgId,
-          dataEventType: resp.data.eventType,
-          eventType: resp.type,
+          status: resp.data.status, // 'LoggedIn'
+          type: resp.data.type, // 'AgentStationLoginSuccess'
+          roles: resp.data.roles?.join(',') || EMPTY_STRING,
         },
         ['behavioral', 'business', 'operational']
       );
@@ -274,6 +319,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return resp;
     } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          loginType: data.loginOption,
+        },
+        ['behavioral', 'business', 'operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'stationLogin', CC_FILE);
       throw detailedError;
     }
@@ -286,11 +340,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogout(data: Logout): Promise<StationLogoutResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
+        METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
+      ]);
       const logoutResponse = this.services.agent.logout({
         data,
       });
 
-      await logoutResponse;
+      const resp = await logoutResponse;
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
+          logoutReason: data.logoutReason,
+        },
+        ['behavioral', 'business', 'operational']
+      );
 
       if (this.webCallingService) {
         this.webCallingService.deregisterWebCallingLine();
@@ -302,8 +369,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       // this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
 
-      return logoutResponse;
+      return resp;
     } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          logoutReason: data.logoutReason,
+        },
+        ['behavioral', 'business', 'operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'stationLogout', CC_FILE);
       throw detailedError;
     }
@@ -315,10 +391,29 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationReLogin(): Promise<StationReLoginResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS,
+        METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED,
+      ]);
       const reLoginResponse = await this.services.agent.reload();
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(reLoginResponse),
+        },
+        ['behavioral', 'business', 'operational']
+      );
 
       return reLoginResponse;
     } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+        },
+        ['behavioral', 'business', 'operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'stationReLogin', CC_FILE);
       throw detailedError;
     }
@@ -341,9 +436,27 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   public async setAgentState(data: StateChange): Promise<SetStateResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
+      ]);
       const agentStatusResponse = await this.services.agent.stateChange({
         data: {...data, agentId: data.agentId || this.agentConfig.agentId},
       });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(agentStatusResponse),
+          requestedState: data.state,
+          teamId: this.agentConfig?.teams[0]?.teamId ?? EMPTY_STRING,
+          status: agentStatusResponse.data?.status,
+          subStatus: agentStatusResponse.data?.subStatus,
+          auxCodeId: data.auxCodeId,
+          lastStateChangeReason: data.lastStateChangeReason || EMPTY_STRING,
+        },
+        ['behavioral', 'business', 'operational']
+      );
 
       LoggerProxy.log(`SET AGENT STATUS API SUCCESS`, {
         module: CC_FILE,
@@ -352,6 +465,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return agentStatusResponse;
     } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          state: data.state,
+          auxCodeId: data.auxCodeId,
+          lastStateChangeReason: data.lastStateChangeReason || EMPTY_STRING,
+        },
+        ['behavioral', 'business', 'operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'setAgentState', CC_FILE);
       throw detailedError;
     }
