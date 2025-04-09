@@ -289,21 +289,10 @@ export default class MetricsManager {
     // This method is used to extract common tracking fields from the AQM response
     // and return them as an object. The fields are extracted from the response
     // object and its data property.
-    let teamId: string | undefined;
-    if (response?.data?.teamId) {
-      teamId = response.data.teamId;
-    } else if (response?.teamId) {
-      teamId = response.teamId;
-    } else if (Array.isArray(response?.data?.teams) && response.data.teams.length > 0) {
-      teamId = response.data.teams[0].id;
-    } else if (Array.isArray(response?.teams) && response.teams.length > 0) {
-      teamId = response.teams[0].id;
-    }
-
     const fields = {
       agentId: response?.data?.agentId || response?.agentId,
       agentSessionId: response?.data?.agentSessionId || response?.agentSessionId,
-      teamId, // multiple teams is returned only when doing websocket register
+      teamId: response?.teamId ?? response?.data?.teamId ?? undefined,
       siteId: response?.data?.siteId || response?.siteId,
       orgId: response?.data?.orgId || response?.orgId,
       eventType: response?.type,
