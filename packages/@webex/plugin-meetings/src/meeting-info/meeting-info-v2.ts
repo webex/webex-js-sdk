@@ -16,6 +16,7 @@ const CAPTCHA_ERROR_DEFAULT_MESSAGE =
   'Captcha required. Call fetchMeetingInfo() with captchaInfo argument';
 const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
+const MEETING_IS_IN_PROGRESS_MESSAGE = 'Meeting is in progress';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
 const CAPTCHA_ERROR_REQUIRES_REGISTRATION_ID_CODES = [423007];
 
@@ -194,6 +195,33 @@ export class MeetingInfoV2JoinForbiddenError extends Error {
 }
 
 /**
+ * Error enabling/disabling static meeting link
+ */
+export class MeetingInfoV2MeetingIsInProgressError extends Error {
+  sdkMessage: any;
+  wbxAppApiCode: any;
+  body: any;
+  /**
+   *
+   * @constructor
+   * @param {Number} [wbxAppApiErrorCode]
+   * @param {String} [message]
+   * @param {Boolean} [enable]
+   */
+  constructor(
+    wbxAppApiErrorCode?: number,
+    message = MEETING_IS_IN_PROGRESS_MESSAGE,
+    enable = false
+  ) {
+    super(`${message}, code=${wbxAppApiErrorCode}, enable=${enable}`);
+    this.name = 'MeetingInfoV2MeetingIsInProgressError';
+    this.sdkMessage = message;
+    this.stack = new Error().stack;
+    this.wbxAppApiCode = wbxAppApiErrorCode;
+  }
+}
+
+/**
  * @class MeetingInfo
  */
 export default class MeetingInfoV2 {
@@ -360,6 +388,55 @@ export default class MeetingInfoV2 {
           stack: err.stack,
         });
         throw new MeetingInfoV2AdhocMeetingError(err.body?.code, err.body?.message);
+      });
+  }
+
+  /**
+   * disables static meeting link for given conversation url
+   * @param {String} conversationUrl conversationUrl that's required to disable static meeting link if it exists
+   * @returns {Promise} returns a meeting info object
+   * @public
+   * @memberof MeetingInfo
+   */
+  async disableStaticMeetingLink(conversationUrl: string) {
+    if (!this.webex.meetings.preferredWebexSite) {
+      throw Error('No preferred webex site found');
+    }
+
+    const body = {
+      spaceUrl: conversationUrl,
+    };
+
+    const uri = this.webex.meetings.preferredWebexSite
+      ? `https://${this.webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/deletePersistentMeeting`
+      : '';
+
+    return this.webex
+      .request({
+        method: HTTP_VERBS.POST,
+        uri,
+        body,
+      })
+      .then((requestResult) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DISABLE_STATIC_MEETING_LINK_SUCCESS);
+
+        return requestResult;
+      })
+      .catch((err) => {
+        if (err?.statusCode === 403) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_IS_IN_PROGRESS_ERROR, {
+            reason: err.message,
+            stack: err.stack,
+          });
+
+          throw new MeetingInfoV2MeetingIsInProgressError(err.body?.code, err.body?.message);
+        }
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DISABLE_STATIC_MEETING_LINK_FAILURE, {
+          reason: err.message,
+          stack: err.stack,
+        });
+
+        throw err;
       });
   }
 
