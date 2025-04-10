@@ -225,6 +225,90 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#disableStaticMeetingLink', () => {
+      it('should disable static meeting link for given conversation url', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        const body = {spaceUrl: conversationUrl};
+        const requestResponse = {statusCode: 204};
+        webex.request.resolves(requestResponse);
+        const result = await meetingInfo.disableStaticMeetingLink(conversationUrl);
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          uri: `https://${webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/deletePersistentMeeting`,
+          body,
+        });
+
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.DISABLE_STATIC_MEETING_LINK_SUCCESS
+        );
+
+        assert.deepEqual(result, requestResponse);
+      });
+
+      it('should not disable static meeting link for given conversation url if no preferred webex site', async () => {
+        webex.meetings.preferredWebexSite = undefined;
+
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        try {
+          await meetingInfo.disableStaticMeetingLink(conversationUrl);
+
+          assert.calledWith(webex.request, {
+            method: 'POST',
+            uri: `https://${webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/deletePersistentMeeting`,
+            body,
+          });
+        } catch (err) {
+          assert.deepEqual(err.message, 'No preferred webex site found');
+          assert.notCalled(webex.request);
+        }
+      });
+
+      it('handles error for MeetingInfoV2MeetingIsInProgressError for disable', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon.stub().rejects({
+          stack: 'a stack',
+          message: 'a message',
+          statusCode: 403,
+          body: {code: 33003},
+        });
+        try {
+          await meetingInfo.disableStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert.equal(err.wbxAppApiCode, 33003);
+          assert.instanceOf(err, MeetingInfoV2MeetingIsInProgressError);
+          assert.deepEqual(err.message, 'Meeting is in progress, code=33003, enable=false');
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.MEETING_IS_IN_PROGRESS_ERROR,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+
+      it('handles generic error when disabling static link', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon.stub().rejects({
+          stack: 'a stack',
+          message: 'a message',
+          statusCode: 500,
+          body: {code: 400000},
+        });
+        try {
+          await meetingInfo.disableStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.DISABLE_STATIC_MEETING_LINK_FAILURE,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+    });
+
     describe('#fetchMeetingInfo', () => {
       it('should fetch meeting info for the destination type', async () => {
         const body = {meetingKey: '1234323'};

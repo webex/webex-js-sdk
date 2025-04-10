@@ -484,6 +484,55 @@ export default class MeetingInfoV2 {
   }
 
   /**
+   * Disables static meeting link for given conversation url
+   * @param {String} conversationUrl conversationUrl that's required to disable static meeting link if it exists
+   * @returns {Promise} returns a meeting info object
+   * @public
+   * @memberof MeetingInfo
+   */
+  async disableStaticMeetingLink(conversationUrl: string) {
+    if (!this.webex.meetings.preferredWebexSite) {
+      throw Error('No preferred webex site found');
+    }
+
+    const body = {
+      spaceUrl: conversationUrl,
+    };
+
+    const uri = this.webex.meetings.preferredWebexSite
+      ? `https://${this.webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/deletePersistentMeeting`
+      : '';
+
+    return this.webex
+      .request({
+        method: HTTP_VERBS.POST,
+        uri,
+        body,
+      })
+      .then((requestResult) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DISABLE_STATIC_MEETING_LINK_SUCCESS);
+
+        return requestResult;
+      })
+      .catch((err) => {
+        if (err?.statusCode === 403) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_IS_IN_PROGRESS_ERROR, {
+            reason: err.message,
+            stack: err.stack,
+          });
+
+          throw new MeetingInfoV2MeetingIsInProgressError(err.body?.code, err.body?.message);
+        }
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DISABLE_STATIC_MEETING_LINK_FAILURE, {
+          reason: err.message,
+          stack: err.stack,
+        });
+
+        throw err;
+      });
+  }
+
+  /**
    * Fetches meeting info from the server
    * @param {String} destination one of many different types of destinations to look up info for
    * @param {DESTINATION_TYPE} [type] to match up with the destination value

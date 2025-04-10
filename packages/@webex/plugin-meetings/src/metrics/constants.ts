@@ -54,6 +54,8 @@ const BEHAVIORAL_METRICS = {
   STATIC_MEETING_LINK_ALREADY_EXISTS_ERROR: 'js_sdk_static_meeting_link_already_exists_error',
   FETCH_MEETING_INFO_V1_SUCCESS: 'js_sdk_fetch_meeting_info_v1_success',
   FETCH_MEETING_INFO_V1_FAILURE: 'js_sdk_fetch_meeting_info_v1_failure',
+  DISABLE_STATIC_MEETING_LINK_SUCCESS: 'js_sdk_disable_static_meeting_link_success',
+  DISABLE_STATIC_MEETING_LINK_FAILURE: 'js_sdk_disable_static_meeting_link_failure',
   ADHOC_MEETING_SUCCESS: 'js_sdk_adhoc_meeting_success',
   ADHOC_MEETING_FAILURE: 'js_sdk_adhoc_meeting_failure',
   VERIFY_PASSWORD_SUCCESS: 'js_sdk_verify_password_success',

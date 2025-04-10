@@ -953,6 +953,27 @@ describe('plugin-meetings', () => {
           });
         });
       });
+      describe('#disableStaticMeetingLink', () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+
+        afterEach(() => {
+          sinon.restore();
+        });
+
+        it('should have #disableStaticMeetingLink', () => {
+          assert.exists(webex.meetings.disableStaticMeetingLink);
+        });
+
+        it('should call MeetingInfo#disableStaticMeetingLink() with proper params', () => {
+          webex.meetings.meetingInfo.disableStaticMeetingLink = sinon
+            .stub()
+            .resolves(conversationUrl);
+
+          return webex.meetings.disableStaticMeetingLink(conversationUrl).then(() => {
+            assert.calledWith(webex.meetings.meetingInfo.disableStaticMeetingLink, conversationUrl);
+          });
+        });
+      });
       describe('#create', () => {
         let infoOptions;
 
