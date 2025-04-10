@@ -932,6 +932,27 @@ describe('plugin-meetings', () => {
           });
         });
       });
+      describe('#fetchStaticMeetingLink', () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+
+        afterEach(() => {
+          sinon.restore();
+        });
+
+        it('should have #fetchStaticMeetingLink', () => {
+          assert.exists(webex.meetings.fetchStaticMeetingLink);
+        });
+
+        it('should call MeetingInfo#fetchStaticMeetingLink() with proper params', () => {
+          webex.meetings.meetingInfo.fetchStaticMeetingLink = sinon
+            .stub()
+            .resolves(conversationUrl);
+
+          return webex.meetings.fetchStaticMeetingLink(conversationUrl).then(() => {
+            assert.calledWith(webex.meetings.meetingInfo.fetchStaticMeetingLink, conversationUrl);
+          });
+        });
+      });
       describe('#enableStaticMeetingLink', () => {
         const conversationUrl = 'conv.fakeconversationurl.com';
 

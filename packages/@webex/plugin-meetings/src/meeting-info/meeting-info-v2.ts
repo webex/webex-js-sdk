@@ -18,6 +18,7 @@ const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
 const MEETING_IS_IN_PROGRESS_MESSAGE = 'Meeting is in progress';
 const STATIC_MEETING_LINK_ALREADY_EXISTS_MESSAGE = 'Static meeting link already exists';
+const FETCH_STATIC_MEETING_LINK = 'Meeting link does not exists for conversation';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
 const CAPTCHA_ERROR_REQUIRES_REGISTRATION_ID_CODES = [423007];
 
@@ -192,6 +193,28 @@ export class MeetingInfoV2JoinForbiddenError extends Error {
     this.stack = new Error().stack;
     this.wbxAppApiCode = wbxAppApiErrorCode;
     this.meetingInfo = meetingInfo;
+  }
+}
+
+/**
+ * Error fetching static link for a conversation when it does not exist
+ */
+export class MeetingInfoV2StaticLinkDoesNotExistError extends Error {
+  sdkMessage: any;
+  wbxAppApiCode: any;
+  body: any;
+  /**
+   *
+   * @constructor
+   * @param {Number} [wbxAppApiErrorCode]
+   * @param {String} [message]
+   */
+  constructor(wbxAppApiErrorCode?: number, message: string = FETCH_STATIC_MEETING_LINK) {
+    super(`${message}, code=${wbxAppApiErrorCode}`);
+    this.name = 'MeetingInfoV2StaticLinkDoesNotExistError';
+    this.sdkMessage = message;
+    this.stack = new Error().stack;
+    this.wbxAppApiCode = wbxAppApiErrorCode;
   }
 }
 
@@ -435,9 +458,58 @@ export default class MeetingInfoV2 {
   }
 
   /**
+   * Fetches details for static meeting link
+   * @param {String} conversationUrl conversationUrl that's required to find static meeting link if it exists
+   * @returns {Promise} returns a Promise
+   * @public
+   * @memberof MeetingInfo
+   */
+  async fetchStaticMeetingLink(conversationUrl: string) {
+    if (!this.webex.meetings.preferredWebexSite) {
+      throw Error('No preferred webex site found');
+    }
+
+    const body = {
+      spaceUrl: conversationUrl,
+    };
+
+    const uri = this.webex.meetings.preferredWebexSite
+      ? `https://${this.webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/query`
+      : '';
+
+    return this.webex
+      .request({
+        method: HTTP_VERBS.POST,
+        uri,
+        body,
+      })
+      .then((requestResult) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_SUCCESS);
+
+        return requestResult;
+      })
+      .catch((err) => {
+        if (err?.statusCode === 403) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_LINK_DOES_NOT_EXIST_ERROR, {
+            reason: err.message,
+            stack: err.stack,
+          });
+
+          throw new MeetingInfoV2StaticLinkDoesNotExistError(err.body?.code, err.body?.message);
+        }
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_FAILURE, {
+          reason: err.message,
+          stack: err.stack,
+        });
+
+        throw err;
+      });
+  }
+
+  /**
    * Enables static meeting link
    * @param {String} conversationUrl conversationUrl that's required to enable static meeting link
-   * @returns {Promise} returns a meeting info object
+   * @returns {Promise} returns a Promise
    * @public
    * @memberof MeetingInfo
    */
@@ -486,7 +558,7 @@ export default class MeetingInfoV2 {
   /**
    * Disables static meeting link for given conversation url
    * @param {String} conversationUrl conversationUrl that's required to disable static meeting link if it exists
-   * @returns {Promise} returns a meeting info object
+   * @returns {Promise} returns a Promise
    * @public
    * @memberof MeetingInfo
    */

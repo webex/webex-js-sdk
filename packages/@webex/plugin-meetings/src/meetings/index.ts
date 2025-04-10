@@ -1218,6 +1218,29 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * Fetch static meeting link for given conversation url.
+   *
+   * @param {string} conversationUrl - url for conversation
+   * @returns {Promise}
+   * @public
+   * @memberof Meetings
+   */
+  public fetchStaticMeetingLink(conversationUrl: string): Promise<any> {
+    return (
+      this.meetingInfo
+        .fetchStaticMeetingLink(conversationUrl)
+        // Catch a failure to fetch static meeting link.
+        .catch((error) => {
+          LoggerProxy.logger.error(
+            `Meetings:index#fetchStaticMeetingLink --> ERROR, unable to fetch persistent meeting link: ${error.message}`
+          );
+
+          return Promise.reject(error);
+        })
+    );
+  }
+
+  /**
    * Create a meeting or return an existing meeting.
    *
    * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
@@ -1374,11 +1397,11 @@ export default class Meetings extends WebexPlugin {
    *
    *
    * @param {string} conversationUrl - url for conversation
-   * @returns {Promise<Meeting>} A new Meeting.
+   * @returns {Promise}
    * @public
    * @memberof Meetings
    */
-  public enableStaticMeetingLink(conversationUrl: string): Promise<Meeting> {
+  public enableStaticMeetingLink(conversationUrl: string): Promise<any> {
     return (
       this.meetingInfo
         .enableStaticMeetingLink(conversationUrl)
@@ -1398,11 +1421,11 @@ export default class Meetings extends WebexPlugin {
    *
    *
    * @param {string} conversationUrl - url for conversation
-   * @returns {Promise<Meeting>} A new Meeting.
+   * @returns {Promise}
    * @public
    * @memberof Meetings
    */
-  public disableStaticMeetingLink(conversationUrl: string): Promise<Meeting> {
+  public disableStaticMeetingLink(conversationUrl: string): Promise<any> {
     return (
       this.meetingInfo
         .disableStaticMeetingLink(conversationUrl)

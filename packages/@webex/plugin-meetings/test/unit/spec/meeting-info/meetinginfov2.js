@@ -19,6 +19,7 @@ import MeetingInfo, {
   MeetingInfoV2JoinForbiddenError,
   MeetingInfoV2MeetingIsInProgressError,
   MeetingInfoV2StaticMeetingLinkAlreadyExists,
+  MeetingInfoV2StaticLinkDoesNotExistError,
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
@@ -90,6 +91,87 @@ describe('plugin-meetings', () => {
       });
 
       meetingInfo = new MeetingInfo(webex);
+    });
+
+    describe('#fetchStaticMeetingLink', () => {
+      it('should fetch static meeting link for given conversation url', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        const body = {spaceUrl: conversationUrl};
+        const requestResponse = {statusCode: 200, body};
+        webex.request.resolves(requestResponse);
+        const result = await meetingInfo.fetchStaticMeetingLink(conversationUrl);
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          uri: `https://${webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/query`,
+          body,
+        });
+
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_SUCCESS
+        );
+
+        assert.deepEqual(result, requestResponse);
+      });
+
+      it('should not fetch static meeting link for given conversation url if no preferred webex site', async () => {
+        webex.meetings.preferredWebexSite = undefined;
+
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        try {
+          await meetingInfo.fetchStaticMeetingLink(conversationUrl);
+
+          assert.calledWith(webex.request, {
+            method: 'POST',
+            uri: `https://${webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/query`,
+            body,
+          });
+        } catch (err) {
+          assert.deepEqual(err.message, 'No preferred webex site found');
+          assert.notCalled(webex.request);
+        }
+      });
+
+      it('handles error for MeetingInfoV2StaticLinkDoesNotExistError', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon
+          .stub()
+          .rejects({stack: 'a stack', message: 'a message', statusCode: 403, body: {code: 400000}});
+        try {
+          await meetingInfo.fetchStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert.equal(err.wbxAppApiCode, 400000);
+          assert.instanceOf(err, MeetingInfoV2StaticLinkDoesNotExistError);
+          assert.deepEqual(
+            err.message,
+            'Meeting link does not exists for conversation, code=400000'
+          );
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.MEETING_LINK_DOES_NOT_EXIST_ERROR,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+
+      it('handles generic error when fetching static link', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon
+          .stub()
+          .rejects({stack: 'a stack', message: 'a message', statusCode: 500, body: {code: 400000}});
+        try {
+          await meetingInfo.fetchStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_FAILURE,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
     });
 
     describe('#enableStaticMeetingLink', () => {
