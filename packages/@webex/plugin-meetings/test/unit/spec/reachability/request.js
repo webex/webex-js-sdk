@@ -12,6 +12,9 @@ describe('plugin-meetings/reachability', () => {
   let reachabilityRequest;
   let webex;
 
+  let appType;
+  let appVersion;
+
   beforeEach(() => {
     webex = new MockWebex({
       children: {
@@ -19,6 +22,14 @@ describe('plugin-meetings/reachability', () => {
         newMetrics: NewMetrics
       },
     });
+
+    webex.config.support = {
+      'appType': 'NetworkChecker',
+      'appVersion': '43.3.0.1',
+    }
+
+    appType = webex?.config?.support?.appType;
+    appVersion = webex?.config?.support?.appVersion;
 
     webex.meetings.clientRegion = {
       countryCode: 'US',
@@ -56,7 +67,9 @@ describe('plugin-meetings/reachability', () => {
 
       previousReport = {
         id: 'fake previous report',
-      }
+      };
+
+
     });
 
     afterEach(() => {
@@ -79,6 +92,7 @@ describe('plugin-meetings/reachability', () => {
             'report-version': 1,
             'early-call-min-clusters': true,
           },
+          'client-environment': { components: { [appType]: appVersion } },
           'previous-report': previousReport,
           trigger: 'startup',
         },
@@ -105,6 +119,7 @@ describe('plugin-meetings/reachability', () => {
             'report-version': 1,
             'early-call-min-clusters': true,
           },
+          'client-environment': { components: { [appType]: appVersion } },
           'previous-report': previousReport,
           trigger: 'early-call/no-min-reached',
         },
@@ -113,6 +128,36 @@ describe('plugin-meetings/reachability', () => {
       assert.deepEqual(res.clusters.clusterId, {udp: "testUDP", isVideoMesh: true})
       assert.deepEqual(res.joinCookie, {anycastEntryPoint: "aws-eu-west-1"})
       assert.notCalled(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency);
+    });
+
+    it('sends a POST request with the correct params when appVersion is undefined', async () => {
+      // Setting appType & appVersion to undefined
+      webex.config.support.appType = undefined;
+      webex.config.support.appVersion = undefined;
+    
+      const res = await reachabilityRequest.getClusters('startup', IP_VERSION.only_ipv4, previousReport);
+      const requestParams = webex.request.getCall(0).args[0];
+    
+      assert.deepEqual(requestParams, {
+        method: 'POST',
+        resource: `clusters`,
+        api: 'calliopeDiscovery',
+        shouldRefreshAccessToken: false,
+        timeout: 3000,
+        body: {
+          ipver: IP_VERSION.only_ipv4,
+          'supported-options': {
+            'report-version': 1,
+            'early-call-min-clusters': true,
+          },
+          'previous-report': previousReport,
+          trigger: 'startup',
+        },
+      });
+    
+      assert.deepEqual(res.clusters.clusterId, {udp: "testUDP", isVideoMesh: true});
+      assert.deepEqual(res.joinCookie, {anycastEntryPoint: "aws-eu-west-1"});
+      assert.calledOnceWithExactly(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency, sinon.match.func, 'internal.get.cluster.time');
     });
   });
 });

@@ -5,8 +5,6 @@ import AqmReqs from '../core/aqm-reqs';
 import {HTTP_METHODS} from '../../types';
 import {WCC_API_GATEWAY} from '../constants';
 import {CC_EVENTS} from '../config/types';
-import MetricsManager from '../../metrics/MetricsManager';
-import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
 /*
  * routingAgent
@@ -15,8 +13,6 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
  */
 
 export default function routingAgent(routing: AqmReqs) {
-  const metricsManager = MetricsManager.getInstance();
-
   return {
     reload: routing.reqEmpty(() => ({
       host: WCC_API_GATEWAY,
@@ -63,17 +59,6 @@ export default function routingAgent(routing: AqmReqs) {
       host: WCC_API_GATEWAY,
       data: p.data,
       err: /* istanbul ignore next */ (e: any) => {
-        metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.STATION_LOGIN,
-          {
-            ...p.data,
-            isSuccess: false,
-            trackingId: e.response?.headers?.trackingid?.split('_')[1],
-            roles: Array.isArray(p.data.roles) ? p.data.roles.join(',') : '',
-          },
-          ['operational', 'behavioral', 'business']
-        );
-
         return new Err.Details('Service.aqm.agent.stationLogin', {
           status: e.response?.status ?? 0,
           type: e.response?.data?.errorType,

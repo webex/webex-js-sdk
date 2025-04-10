@@ -718,6 +718,10 @@ function register() {
         dialNumber.disabled = agentProfile.defaultDn ? false : true;
         if (loginVoiceOptions.length > 0) loginAgentElm.disabled = false;
         loginVoiceOptions.forEach((voiceOptions)=> {
+          if (!agentProfile.webRtcEnabled && voiceOptions === 'BROWSER') {
+            // Skiping the addition of browser option for webrtc disabled case
+            return;
+          }
           const option = document.createElement('option');
           option.text = voiceOptions;
           option.value = voiceOptions;
