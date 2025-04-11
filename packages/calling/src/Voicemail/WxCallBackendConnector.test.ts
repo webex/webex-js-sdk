@@ -5,6 +5,8 @@ import {HTTP_METHODS, SORT, WebexRequestPayload} from '../common/types';
 import {CallingPartyInfo, IWxCallBackendConnector} from './types';
 import {NO_VOICEMAIL_MSG, NO_VOICEMAIL_STATUS_CODE} from './constants';
 import {
+  braodworksUserMessageInfo,
+  broadworksUserMessageId,
   getAscVoicemailListJsonWXC,
   getDescVoicemailListJsonWXC,
   getEmptyVoicemailListJsonWxC,
@@ -14,6 +16,7 @@ import {
   mockVoicemailTranscriptResponse,
   mockWXCData,
   responseDetails422,
+  userId,
   voicemailSummaryUrl,
 } from './voicemailFixture';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
@@ -354,6 +357,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       expect(webex.request).toBeCalledOnceWith({
         method: HTTP_METHODS.GET,
         uri: voicemailSummaryUrl,
+        headers: {},
       });
 
       expect(response).toStrictEqual(responseDetails);
@@ -377,6 +381,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       expect(webex.request).toBeCalledOnceWith({
         method: HTTP_METHODS.GET,
         uri: `${xsiActionsEndpointUrl}${messageId}`,
+        headers: {},
       });
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(expect.anything(), {
         file: 'WxCallBackendConnector',
@@ -431,6 +436,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       expect(webex.request).toBeCalledOnceWith({
         method: HTTP_METHODS.GET,
         uri: voicemailSummaryUrl,
+        headers: {},
       });
       expect(response).toStrictEqual(responseDetails);
     });
@@ -469,6 +475,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       expect(webex.request).toBeCalledOnceWith({
         method: HTTP_METHODS.GET,
         uri: voicemailSummaryUrl,
+        headers: {},
       });
       expect(response).toStrictEqual(responseDetails);
     });
@@ -823,6 +830,120 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         samplePeopleListResponse.items[0].phoneNumbers[0].value
       );
       expect(displayInfo?.avatarSrc).toStrictEqual(samplePeopleListResponse.items[0].avatar);
+    });
+  });
+
+  describe('Voicemail Fedramp webex call Backend Connector Test case', () => {
+    webex.config.fedramp = true;
+    const MOCK_FEDRAMP_URL = 'https://mock-fedramp-url/com.broadsoft.xsi-actions';
+
+    beforeAll(async () => {
+      webex.credentials.getUserToken.mockResolvedValue('mockAuthToken');
+      jest.spyOn(utils, 'getXsiActionEndpoint').mockResolvedValue(MOCK_FEDRAMP_URL);
+      wxCallBackendConnector = new WxCallBackendConnector(webex, {level: LOGGER.INFO});
+      jest.spyOn(webex, 'request');
+      await wxCallBackendConnector.init();
+      wxCallBackendConnector['context'] = CONTEXT;
+      wxCallBackendConnector.getSDKConnector();
+    });
+
+    beforeEach(() => {
+      getSortedVoicemailListSpy = jest.spyOn(utils, 'getSortedVoicemailList');
+      storeVoicemailListSpy = jest.spyOn(utils, 'storeVoicemailList');
+      fetchVoicemailListSpy = jest.spyOn(utils, 'fetchVoicemailList');
+    });
+
+    it('getVoicemailList: adds the authorization header when in fedramp', async () => {
+      const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
+      webex.request.mockResolvedValueOnce(voiceMailPayload);
+
+      await wxCallBackendConnector.getVoicemailList(0, 4, SORT.ASC, true);
+
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.GET,
+        uri: `${MOCK_FEDRAMP_URL}/v2.0/user/${userId}/VoiceMessagingMessages?format=json`,
+        headers: {
+          Authorization: 'mockAuthToken',
+        },
+      });
+    });
+
+    it('getVoicemailContent: adds the authorization header when in fedramp', async () => {
+      const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
+
+      webex.request.mockResolvedValueOnce(voiceMailPayload);
+      await wxCallBackendConnector.getVoicemailContent(messageId.$);
+
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.GET,
+        uri: `${MOCK_FEDRAMP_URL}${braodworksUserMessageInfo}/${broadworksUserMessageId}`,
+        headers: {Authorization: 'mockAuthToken'},
+      });
+    });
+
+    it('getVoicemailSummary: adds the authorization header when in fedramp', async () => {
+      const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
+
+      webex.request.mockResolvedValueOnce(voiceMailPayload);
+      await wxCallBackendConnector.getVoicemailSummary();
+
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.GET,
+        uri: `${MOCK_FEDRAMP_URL}/v2.0/user/${userId}/calls/MessageSummary`,
+        headers: {Authorization: 'mockAuthToken'},
+      });
+    });
+
+    it('voicemailMarkAsRead: adds the authorization header when in fedramp', async () => {
+      const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
+      webex.request.mockResolvedValueOnce(voiceMailPayload);
+
+      await wxCallBackendConnector.voicemailMarkAsRead(messageId.$);
+
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.PUT,
+        uri: `${MOCK_FEDRAMP_URL}${messageId.$}/MarkAsRead`,
+        headers: {Authorization: 'mockAuthToken'},
+      });
+    });
+
+    it('voicemailMarkAsUnread: adds the authorization header when in fedramp', async () => {
+      const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
+      webex.request.mockResolvedValueOnce(voiceMailPayload);
+
+      await wxCallBackendConnector.voicemailMarkAsUnread(messageId.$);
+
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.PUT,
+        uri: `${MOCK_FEDRAMP_URL}${messageId.$}/MarkAsUnread`,
+        headers: {Authorization: 'mockAuthToken'},
+      });
+    });
+
+    it('deleteVoicemail: adds the authorization header when in fedramp', async () => {
+      const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
+      webex.request.mockResolvedValueOnce(voiceMailPayload);
+
+      await wxCallBackendConnector.deleteVoicemail(messageId.$);
+
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.DELETE,
+        uri: `${MOCK_FEDRAMP_URL}${messageId.$}`,
+        headers: {Authorization: 'mockAuthToken'},
+      });
+    });
+
+    it('getVMTranscript: adds the authorization header when in fedramp', async () => {
+      const voiceMailPayload = <WebexRequestPayload>getVoicemailListJsonWXC;
+      webex.request.mockResolvedValueOnce(voiceMailPayload);
+
+      await wxCallBackendConnector.getVMTranscript(messageId.$);
+
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.GET,
+        uri: `${MOCK_FEDRAMP_URL}${messageId.$}/transcript`,
+        headers: {Authorization: 'mockAuthToken'},
+      });
     });
   });
 });

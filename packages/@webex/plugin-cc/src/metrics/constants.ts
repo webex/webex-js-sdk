@@ -1,12 +1,18 @@
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 export const METRIC_EVENT_NAMES = {
-  STATION_LOGIN: 'Station Login',
-  CALL_COMPLETED: 'Call Completed',
-  TASK_END: 'Task End',
-  CALL_CONSULT_ACTIVATE: 'Call Consult Activate',
-  CALL_TRANSFER_ACTIVATE: 'Call Transfer Activated',
-  CALL_ANSWERED: 'Call Answered',
+  STATION_LOGIN_SUCCESS: 'Station Login Success',
+  STATION_LOGIN_FAILED: 'Station Login Failed',
+  STATION_LOGOUT_SUCCESS: 'Station Logout Success',
+  STATION_LOGOUT_FAILED: 'Station Logout Failed',
+  STATION_RELOGIN_SUCCESS: 'Station Relogin Success',
+  STATION_RELOGIN_FAILED: 'Station Relogin Failed',
+  AGENT_STATE_CHANGE_SUCCESS: 'Agent State Change Success',
+  AGENT_STATE_CHANGE_FAILED: 'Agent State Change Failed',
+  FETCH_BUDDY_AGENTS_SUCCESS: 'Fetch Buddy Agents Success',
+  FETCH_BUDDY_AGENTS_FAILED: 'Fetch Buddy Agents Failed',
+  WEBSOCKET_REGISTER_SUCCESS: 'Websocket Register Success',
+  WEBSOCKET_REGISTER_FAILED: 'Websocket Register Failed',
   AGENT_RONA: 'Agent RONA',
 } as const;
 
