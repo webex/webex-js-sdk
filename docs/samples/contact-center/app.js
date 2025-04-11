@@ -865,7 +865,7 @@ function handleTaskHydrate(task) {
   }
 
 
-  handleTaskClick(currentTask);
+  handleTaskSelect(currentTask);
   
 }
 
@@ -1021,14 +1021,12 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 
   const callerDisplay = currentTask.data.interaction?.callAssociatedDetails?.ani;
   registerTaskListeners(currentTask);
-  if(currentTask?.data?.interaction?.mediaType === 'chat')  
-    {
+  if (currentTask?.data?.interaction?.mediaType === 'chat') {
     answerElm.disabled = false;
     declineElm.disabled = true;
 
     incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
-  } else if(currentTask?.data?.interaction?.mediaType === 'email')
-  {
+  } else if (currentTask?.data?.interaction?.mediaType === 'email') {
     answerElm.disabled = false;
     declineElm.disabled = true;
 
@@ -1048,7 +1046,7 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   declineElm.disabled = true;
   await currentTask.accept();
   updateTaskList();
-  handleTaskClick(currentTask);
+  handleTaskSelect(currentTask);
   incomingDetailsElm.innerText = 'Task Accepted';
 }
 
@@ -1211,7 +1209,10 @@ function wrapupCall() {
 
 function acceptTask(task) {
   const taskId = task?.data?.interactionId;
-  if (!taskId) return;
+  if (!taskId) {
+    console.error(`Error accepting task: Task ID not found from task object`);
+    return;
+  }
 
   task.accept(taskId).then(() => {
     console.log(`Task ${taskId} accepted successfully`);
@@ -1223,7 +1224,10 @@ function acceptTask(task) {
 
 function declineTask(task) {
   const taskId = task?.data?.interactionId;
-  if (!taskId) return;
+  if (!taskId) {
+    console.error(`Error declining task: Task ID not found from task object`);
+    return;
+  }
 
   task.decline(taskId).then(() => {
     console.log(`Task ${taskId} declined successfully`);
@@ -1241,26 +1245,12 @@ const handleBundleLoaded = () => {
 const initializeEngageWidget = () => {
   if (isBundleLoaded) {
     const config = {
-      logger: {
-        info: (data) => {
-          console.log(data);
-        },
-        error: (data) => {
-          console.error(data);
-        },
-        warn: (data) => {
-          console.warn(data);
-        },
-        debug: (data) => {
-          console.debug(data);
-        },
-      },
+      logger: console,
       cb: (name, data) => {
         const event = new CustomEvent(name, {
           detail: data,
         });
         window.dispatchEvent(event);
-        // showNotification('EVENT', name);
       },
     };
     const imiEngageWC = new window.ImiEngageWC(config);
@@ -1309,7 +1299,7 @@ function renderTaskList(taskList) {
 
     // Add click event listener for the task item
     taskElement.addEventListener('click', () => {
-      handleTaskClick(task); // Call the function when the task is clicked
+      handleTaskSelect(task); // Call the function when the task is clicked
     });
 
     taskListContainer.appendChild(taskElement);
@@ -1323,6 +1313,10 @@ document.querySelectorAll('.accept-task').forEach((button) => {
     // Replace the .find() with direct object access by key
     const task = taskList[taskId];
     if (task) acceptTask(task);
+    else {
+      console.error(`Task not found for ID: ${taskId}`);
+      alert('Cannot accept task: The task may have been removed or is no longer available.');
+    }
   });
 });
 
@@ -1333,11 +1327,15 @@ document.querySelectorAll('.decline-task').forEach((button) => {
     // Replace the .find() with direct object access by key
     const task = taskList[taskId];
     if (task) declineTask(task);
+    else {
+      console.error(`Task not found for ID: ${taskId}`);
+      alert('Cannot decline task: The task may have been removed or is no longer available.');
+    }
   });
 });
 }
 
-function handleTaskClick(task) {
+function handleTaskSelect(task) {
   // Handle the task click event
   console.log('Task clicked:', task);
   currentTask = task
@@ -1354,11 +1352,12 @@ function loadChatWidget(task) {
   incomingDetailsElm.innerText = `chat from ${callerDisplay}`;
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
   engageElm.innerHTML = `
-  <imi-engage
-    theme="LIGHT"
-    lang="en-US"
-    conversationid="${mediaId}"
-  ></imi-engage>`;
+    <imi-engage 
+      theme="LIGHT" 
+      lang="en-US" 
+      conversationid="${mediaId}"
+    ></imi-engage>
+  `;
 }
 
 function loadEmailWidget(task) {
@@ -1366,11 +1365,12 @@ function loadEmailWidget(task) {
   incomingDetailsElm.innerText = `email from ${callerDisplay}`;
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
   engageElm.innerHTML = `
-  <imi-email-composer
-  taskId="${mediaId}"
-  orgId="${task.data.orgId}"
-  agentName="${agentName}"
-  agentId="${agentId}"
-  interactionId="${task.data.interactionId}"> 
-  </imi-email-composer>`;
+    <imi-email-composer
+      taskId="${mediaId}"
+      orgId="${task.data.orgId}"
+      agentName="${agentName}"
+      agentId="${agentId}"
+      interactionId="${task.data.interactionId}"
+    ></imi-email-composer>
+  `;
 }
