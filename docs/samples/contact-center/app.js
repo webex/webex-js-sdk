@@ -447,6 +447,20 @@ async function endConsult() {
   }
 }
 
+// Function to auto answer an outdial call.
+function autoAnswerOutdial(task) {
+  try {
+    console.log('Auto-answering the outdial call');
+    task.accept(task.data.interactionId); 
+    answerElm.disabled = true;
+    declineElm.disabled = true;
+    incomingDetailsElm.innerText = 'Outdial call auto-answered';
+    console.log('Outdial call auto-answered successfully');
+  } catch (error) {
+    console.error('Failed to auto-answer the outdial call', error);
+  }
+}
+
 // Function to start an outdial call.
 async function startOutdial() {
 
@@ -466,6 +480,8 @@ async function startOutdial() {
     console.log('Making an outdial call');
     await webex.cc.startOutdial(destination);
     console.log('Outdial call initiated successfully');
+    // Auto-answer the outdial call
+    autoAnswerOutdial(outdialTask);
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
     alert('Failed to initiate outdial call');
