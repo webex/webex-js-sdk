@@ -13,6 +13,7 @@ import {
   BuddyAgentsResponse,
   BuddyAgents,
   SubscribeRequest,
+  UploadLogsResponse,
 } from './types';
 import {
   READY,
@@ -702,5 +703,44 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     return this.services.config.getQueues(orgId, page, pageSize, search, filter);
+  }
+
+  /**
+   * This is used for uploading the logs to backend/mats.
+   * @param feedbackId - optional
+   * @returns Promise<SubmitLogsResponse>
+   * @throws Error
+   */
+  public async uploadLogs(feedbackId = crypto.randomUUID()): Promise<UploadLogsResponse> {
+    try {
+      const response = await this.httpRequest.uploadLogs({feedbackId});
+      LoggerProxy.info(`Logs uploaded successfully: ${response}`, {
+        module: CC_FILE,
+        method: this.uploadLogs.name,
+      });
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.UPLOAD_LOGS_SUCCESS,
+        {
+          trackingId: response?.trackingid,
+          feedbackId,
+        },
+        ['behavioral']
+      );
+
+      return {...response, feedbackId};
+    } catch (error) {
+      LoggerProxy.error(`Error uploading logs: ${error}`, {
+        module: CC_FILE,
+        method: this.uploadLogs.name,
+      });
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.UPLOAD_LOGS_FAILED,
+        {
+          stack: error?.stack?.toString(),
+        },
+        ['behavioral']
+      );
+      throw error;
+    }
   }
 }

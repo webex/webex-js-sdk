@@ -1,4 +1,11 @@
-import {WebexSDK, HTTP_METHODS, IHttpResponse, RequestBody} from '../../types';
+import {
+  WebexSDK,
+  HTTP_METHODS,
+  IHttpResponse,
+  RequestBody,
+  UploadLogsResponse,
+  LogsMetaData,
+} from '../../types';
 
 class HttpRequest {
   private webex: WebexSDK;
@@ -31,6 +38,15 @@ class HttpRequest {
       method,
       body,
     });
+  }
+
+  /**
+   * Uploads logs to backend/mats.
+   *
+   * @param metaData - meta data to be uploaded.
+   */
+  public async uploadLogs(metaData: LogsMetaData): Promise<UploadLogsResponse> {
+    return this.webex.internal.support.submitLogs(metaData);
   }
 }
 

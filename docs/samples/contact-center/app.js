@@ -62,6 +62,7 @@ const agentMultiLoginAlert = document.querySelector('#agentMultiLoginAlert');
 const consultTransferBtn = document.querySelector('#consult-transfer');
 const transferElm = document.getElementById('transfer');
 const timerElm = document.querySelector('#timerDisplay');
+const uploadLogsResultElm = document.getElementById('upload-logs-result');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -82,6 +83,17 @@ setAgentStateButton.addEventListener('click', () => {
   setAgentStatus();
   popup.classList.add('hidden');
 });
+
+async function uploadLogs() {
+  try {
+    const uploadResponse =await webex.cc.uploadLogs();
+    console.log('Logs uploaded successfully');
+    uploadLogsResultElm.innerText = `Logs uploaded successfully with feedbackId: ${uploadResponse.feedbackId}`;
+  } catch (error) {
+    console.error('Failed to upload logs:', error);
+    uploadLogsResultElm.innerText = 'Failed to upload logs';
+  }
+}
 
 function changeAuthType() {
   switch (authTypeElm.value) {

@@ -64,4 +64,36 @@ describe('HttpRequest', () => {
       ).rejects.toThrow('Request failed');
     });
   });
+
+  describe('uploadLogs', () => {
+    it('should upload logs and return the response', async () => {
+      const mockMetaData = { key: 'value' };
+      const mockResponse = { statusCode: 200, body: { message: 'Logs uploaded' } };
+
+      mockWebex.internal = {
+        support: {
+          submitLogs: jest.fn().mockResolvedValueOnce(mockResponse),
+        },
+      };
+
+      const result = await httpRequest.uploadLogs(mockMetaData);
+
+      expect(result).toEqual(mockResponse);
+      expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith(mockMetaData);
+    });
+
+    it('should log and throw an error if the upload fails', async () => {
+      const mockMetaData = { key: 'value' };
+      const mockError = new Error('Upload failed');
+
+      mockWebex.internal = {
+        support: {
+          submitLogs: jest.fn().mockRejectedValueOnce(mockError),
+        },
+      };
+
+      await expect(httpRequest.uploadLogs(mockMetaData)).rejects.toThrow('Upload failed');
+    });
+  }
+  );
 });

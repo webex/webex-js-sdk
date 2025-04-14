@@ -34,6 +34,8 @@ import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
 import MetricsManager from '../../../src/metrics/MetricsManager';
 import { METRIC_EVENT_NAMES } from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
+import Support from 'packages/@webex/internal-plugin-support/src/support';
+import { use } from 'chai';
 
 
 jest.mock('../../../src/logger-proxy', () => ({
@@ -1262,4 +1264,54 @@ describe('webex.cc', () => {
       }
     });
   });
+
+  describe('uploadLogs', () => {
+    it('should upload logs successfully', async () => {
+
+      const uploadLogsMock = jest
+        .spyOn(webex.cc.httpRequest, 'uploadLogs')
+        .mockResolvedValue({
+          trackingId: '1234',
+        });
+
+      const result = await webex.cc.uploadLogs('12345');
+
+      expect(uploadLogsMock).toHaveBeenCalledWith({
+        feedbackId: '12345',
+      });
+      
+      expect(result).toEqual({
+        trackingId: '1234',
+        feedbackId: '12345',
+      });
+
+      expect(mockMetricsManager.trackEvent).toBeCalledWith(
+        "Upload Logs Success", 
+        {"feedbackId": "12345", "trackingId": undefined}, 
+        ["behavioral"]
+      );
+    });
+
+    it('should handle error during uploadLogs', async () => {
+      const mockMetaData = {
+        feedbackId: '12345',
+      };
+
+      const error = new Error('Error while performing uploadLogs');
+      error.stack = "My stack"
+
+      jest.spyOn(webex.cc.httpRequest, 'uploadLogs').mockRejectedValue(error);
+
+      await expect(webex.cc.uploadLogs('12345')).rejects.toThrow(error);
+
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `Error uploading logs: ${error}`,
+        {module: CC_FILE, method: 'uploadLogs'}
+      );
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(METRIC_EVENT_NAMES.UPLOAD_LOGS_FAILED, {"stack": "My stack"}, ["behavioral"]);
+
+    });
+  }
+  );
 });
