@@ -156,7 +156,7 @@ export class BrbState {
 
         // locus mutes the participant with brb enabled request, so we need to explicitly update remote mute for correct logic flow
         if (enabled) {
-          audioMuteState.setServerRemoteMute(true);
+          audioMuteState.handleServerRemoteMuteUpdate(this.meeting, enabled);
         }
       })
       .catch((error) => {

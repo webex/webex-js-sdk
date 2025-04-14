@@ -147,7 +147,6 @@ export class MuteState {
    * @public
    * @memberof MuteState
    * @param {Object} [meeting] the meeting object
-   * @param {Boolean} [mute] true for muting, false for unmuting request
    * @returns {void}
    */
   public handleLocalStreamMuteStateChange(meeting?: any) {
@@ -350,7 +349,6 @@ export class MuteState {
    * @param {Meeting} meeting
    * @returns {void}
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private applyUnmuteAllowedToStream(meeting: any) {
     if (this.type === AUDIO) {
       meeting.mediaProperties.audioStream?.setUnmuteAllowed(this.state.server.unmuteAllowed);
@@ -465,20 +463,5 @@ export class MuteState {
    */
   public isLocallyMuted() {
     return this.getClientLocalMuteState();
-  }
-
-  /**
-   * This method sets the `remoteMute` property in the server state to the provided value
-   *
-   * @public
-   * @memberof MuteState
-   * @param {boolean} muteState - The new remote mute state.
-   * @returns {void}
-   */
-  public setServerRemoteMute(muteState: boolean) {
-    this.state.server.remoteMute = muteState;
-    LoggerProxy.logger.info(
-      `Meeting:muteState#setServerRemoteMute --> ${this.type}: setting server remote mute to ${muteState}`
-    );
   }
 }
