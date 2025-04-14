@@ -7,16 +7,16 @@ import {
   LogsMetaData,
 } from '../../types';
 
-class HttpRequest {
+class WebexRequest {
   private webex: WebexSDK;
-  private static instance: HttpRequest;
+  private static instance: WebexRequest;
 
-  public static getInstance(options?: {webex: WebexSDK}): HttpRequest {
-    if (!HttpRequest.instance && options && options.webex) {
-      HttpRequest.instance = new HttpRequest(options);
+  public static getInstance(options?: {webex: WebexSDK}): WebexRequest {
+    if (!WebexRequest.instance && options && options.webex) {
+      WebexRequest.instance = new WebexRequest(options);
     }
 
-    return HttpRequest.instance;
+    return WebexRequest.instance;
   }
 
   private constructor(options: {webex: WebexSDK}) {
@@ -50,4 +50,4 @@ class HttpRequest {
   }
 }
 
-export default HttpRequest;
+export default WebexRequest;

@@ -1269,7 +1269,7 @@ describe('webex.cc', () => {
     it('should upload logs successfully', async () => {
 
       const uploadLogsMock = jest
-        .spyOn(webex.cc.httpRequest, 'uploadLogs')
+        .spyOn(webex.cc.webexRequest, 'uploadLogs')
         .mockResolvedValue({
           trackingId: '1234',
         });
@@ -1300,7 +1300,7 @@ describe('webex.cc', () => {
       const error = new Error('Error while performing uploadLogs');
       error.stack = "My stack"
 
-      jest.spyOn(webex.cc.httpRequest, 'uploadLogs').mockRejectedValue(error);
+      jest.spyOn(webex.cc.webexRequest, 'uploadLogs').mockRejectedValue(error);
 
       await expect(webex.cc.uploadLogs('12345')).rejects.toThrow(error);
 

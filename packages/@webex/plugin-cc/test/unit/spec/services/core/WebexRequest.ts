@@ -1,4 +1,4 @@
-import HttpRequest from '../../../../../src/services/core/HttpRequest';
+import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import {HTTP_METHODS, WebexSDK} from '../../../../../src/types';
 import {IHttpResponse} from '../../../../../src/types';
 
@@ -17,10 +17,10 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe('HttpRequest', () => {
-  let httpRequest;
+describe('WebexRequest', () => {
+  let webexRequest;
   beforeEach(() => {
-    httpRequest = HttpRequest.getInstance({webex: mockWebex});
+    webexRequest = WebexRequest.getInstance({webex: mockWebex});
   });
 
   describe('request', () => {
@@ -34,7 +34,7 @@ describe('HttpRequest', () => {
 
       mockRequest.mockResolvedValueOnce(mockResponse);
 
-      const result = await httpRequest.request({
+      const result = await webexRequest.request({
         service: 'service',
         resource: 'resource',
         method: HTTP_METHODS.POST,
@@ -55,7 +55,7 @@ describe('HttpRequest', () => {
       mockRequest.mockRejectedValueOnce(mockError);
 
       await expect(
-        httpRequest.request({
+        webexRequest.request({
           service: 'service',
           resource: 'resource',
           method: HTTP_METHODS.POST,
@@ -76,7 +76,7 @@ describe('HttpRequest', () => {
         },
       };
 
-      const result = await httpRequest.uploadLogs(mockMetaData);
+      const result = await webexRequest.uploadLogs(mockMetaData);
 
       expect(result).toEqual(mockResponse);
       expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith(mockMetaData);
@@ -92,7 +92,7 @@ describe('HttpRequest', () => {
         },
       };
 
-      await expect(httpRequest.uploadLogs(mockMetaData)).rejects.toThrow('Upload failed');
+      await expect(webexRequest.uploadLogs(mockMetaData)).rejects.toThrow('Upload failed');
     });
   }
   );

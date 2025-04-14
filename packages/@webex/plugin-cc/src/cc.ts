@@ -28,7 +28,7 @@ import {
 } from './constants';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
-import HttpRequest from './services/core/HttpRequest';
+import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
@@ -61,7 +61,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private agentConfig: Profile;
   private webCallingService: WebCallingService;
   private services: Services;
-  private httpRequest: HttpRequest;
+  private webexRequest: WebexRequest;
   private taskManager: TaskManager;
   private metricsManager: MetricsManager;
   public LoggerProxy = LoggerProxy;
@@ -80,7 +80,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       /**
        * This is used for handling the async requests by sending webex.request and wait for corresponding websocket event.
        */
-      this.httpRequest = HttpRequest.getInstance({
+      this.webexRequest = WebexRequest.getInstance({
         webex: this.$webex,
       });
 
@@ -713,7 +713,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async uploadLogs(feedbackId = crypto.randomUUID()): Promise<UploadLogsResponse> {
     try {
-      const response = await this.httpRequest.uploadLogs({feedbackId});
+      const response = await this.webexRequest.uploadLogs({feedbackId});
       LoggerProxy.info(`Logs uploaded successfully: ${response}`, {
         module: CC_FILE,
         method: this.uploadLogs.name,

@@ -15,7 +15,7 @@ import {
   AuxCode,
   ContactServiceQueue,
 } from './types';
-import HttpRequest from '../core/HttpRequest';
+import WebexRequest from '../core/WebexRequest';
 import {WCC_API_GATEWAY} from '../constants';
 import {CONFIG_FILE_NAME} from '../../constants';
 import {parseAgentConfigs} from './Util';
@@ -31,9 +31,9 @@ import {
 The AgentConfigService class provides methods to fetch agent configuration data.
 */
 export default class AgentConfigService {
-  private httpReq: HttpRequest;
+  private httpReq: WebexRequest;
   constructor() {
-    this.httpReq = HttpRequest.getInstance();
+    this.httpReq = WebexRequest.getInstance();
   }
 
   /**
