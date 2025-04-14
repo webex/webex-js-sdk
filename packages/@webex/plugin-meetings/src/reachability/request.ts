@@ -45,6 +45,9 @@ class ReachabilityRequest {
     joinCookie: any;
     discoveryOptions?: Record<string, any>;
   }> => {
+    const appType = this.webex?.config?.support?.appType;
+    const appVersion = this.webex?.config?.support?.appVersion;
+
     // we only measure latency for the initial startup call, not for other triggers
     const callWrapper =
       trigger === 'startup'
@@ -67,6 +70,10 @@ class ReachabilityRequest {
               'early-call-min-clusters': true,
             },
             'previous-report': previousReport,
+            ...(appType &&
+              appVersion && {
+                'client-environment': {components: {[appType]: appVersion}},
+              }),
             trigger,
           },
           timeout: this.webex.config.meetings.reachabilityGetClusterTimeout,
