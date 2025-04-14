@@ -5,7 +5,7 @@ import testUtils from '../../../utils/testUtils';
 import {BrbState, createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
 import { MuteState } from '@webex/plugin-meetings/src/meeting/muteState';
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   let meeting: any;
   let brbState: BrbState;
   let audioMuteStateMock: MuteState;
@@ -125,7 +125,7 @@ describe.only('plugin-meetings', () => {
       assert.isTrue(handleServerRemoteMuteUpdateStub.calledOnce);
     });
 
-    it.only('does not update remote mute state when brb is disabled but sync to server is not required', async () => {
+    it('does not update remote mute state when brb is disabled but sync to server is not required', async () => {
       brbState.enable(false, meeting.sendSlotManager, audioMuteStateMock);
       brbState.handleServerBrbUpdate(false);
       await testUtils.flushPromises();
