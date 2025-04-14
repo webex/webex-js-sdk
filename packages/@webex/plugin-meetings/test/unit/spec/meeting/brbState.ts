@@ -26,12 +26,7 @@ describe('plugin-meetings', () => {
     };
 
     brbState = new BrbState(meeting, false);
-
     await testUtils.flushPromises();
-  });
-
-  afterEach(() => {
-    sinon.restore();
   });
 
   describe('brbState library', () => {
@@ -108,31 +103,6 @@ describe('plugin-meetings', () => {
 
       assert.isTrue(meeting.sendSlotManager.setSourceStateOverride.calledOnce);
     });
-
-    // it.only('updates remote mute state when brb is enabled and sync to server required', async () => {
-    //   brbState.enable(true, meeting.sendSlotManager, audioMuteStateMock);
-    //   brbState.handleServerBrbUpdate(true);
-    //   await testUtils.flushPromises();
-    //
-    //   sinon.assert.calledOnce(handleServerRemoteMuteUpdateStub);
-    //   // sinon.assert.calledWithExactly(handleServerRemoteMuteUpdateStub, meeting, true, undefined);
-    // });
-    //
-    // it('does not update remote mute state when brb is disabled but sync to server is required', async () => {
-    //   brbState.enable(false, meeting.sendSlotManager, audioMuteStateMock);
-    //   brbState.handleServerBrbUpdate(true);
-    //   await testUtils.flushPromises();
-    //
-    //   assert.isTrue(handleServerRemoteMuteUpdateStub.notCalled);
-    // });
-    //
-    // it('does not update remote mute state when brb is disabled but sync to server is not required', async () => {
-    //   brbState.enable(false, meeting.sendSlotManager, audioMuteStateMock);
-    //   brbState.handleServerBrbUpdate(false);
-    //   await testUtils.flushPromises();
-    //
-    //   assert.isTrue(handleServerRemoteMuteUpdateStub.notCalled);
-    // });
 
     it('handles server update', async () => {
       brbState.handleServerBrbUpdate(true);

@@ -3824,7 +3824,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe.only(`#beRightBack`, () => {
+      describe(`#beRightBack`, () => {
         const fakeMultistreamRoapMediaConnection = {
           createSendSlot: sinon.stub().returns({
             setSourceStateOverride: sinon.stub().resolves(),
