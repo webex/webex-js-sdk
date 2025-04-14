@@ -31,7 +31,7 @@ import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess} from './services/agent/types';
-import {getErrorDetails} from './services/core/Utils';
+import {getErrorDetails, uploadLogs} from './services/core/Utils';
 import {
   Profile,
   WelcomeEvent,
@@ -712,35 +712,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws Error
    */
   public async uploadLogs(feedbackId = crypto.randomUUID()): Promise<UploadLogsResponse> {
-    try {
-      const response = await this.webexRequest.uploadLogs({feedbackId});
-      LoggerProxy.info(`Logs uploaded successfully: ${response}`, {
-        module: CC_FILE,
-        method: this.uploadLogs.name,
-      });
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.UPLOAD_LOGS_SUCCESS,
-        {
-          trackingId: response?.trackingid,
-          feedbackId,
-        },
-        ['behavioral']
-      );
-
-      return {...response, feedbackId};
-    } catch (error) {
-      LoggerProxy.error(`Error uploading logs: ${error}`, {
-        module: CC_FILE,
-        method: this.uploadLogs.name,
-      });
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.UPLOAD_LOGS_FAILED,
-        {
-          stack: error?.stack?.toString(),
-        },
-        ['behavioral']
-      );
-      throw error;
-    }
+    return uploadLogs({
+      feedbackId,
+    });
   }
 }

@@ -24,6 +24,7 @@ import {
   OUTBOUND_TYPE,
   ATTRIBUTES,
   OUTDIAL_MEDIA_TYPE,
+  UTILS_FILE,
 } from '../../../src/constants';
 
 // Mock the Worker API
@@ -1285,6 +1286,11 @@ describe('webex.cc', () => {
         feedbackId: '12345',
       });
 
+      expect(LoggerProxy.info).toHaveBeenCalledWith(
+        `Logs uploaded successfully`,
+        {module: UTILS_FILE, method: 'uploadLogs'}
+      );
+
       expect(mockMetricsManager.trackEvent).toBeCalledWith(
         "Upload Logs Success", 
         {"feedbackId": "12345", "trackingId": undefined}, 
@@ -1306,7 +1312,7 @@ describe('webex.cc', () => {
 
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `Error uploading logs: ${error}`,
-        {module: CC_FILE, method: 'uploadLogs'}
+        {module: UTILS_FILE, method: 'uploadLogs'}
       );
 
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(METRIC_EVENT_NAMES.UPLOAD_LOGS_FAILED, {"stack": "My stack"}, ["behavioral"]);
