@@ -15,6 +15,7 @@ let isTransferOptionsShown = false; // Add this variable to track the state of t
 let entryPointId = '';
 let stateTimer;
 let currentConsultQueueId;
+let consultTransferDestAgentId;
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -435,17 +436,15 @@ async function initiateTransfer() {
 
 // Function to initiate consult transfer
 async function initiateConsultTransfer() {
-  const destinationType = destinationTypeDropdown.value;
-  const consultDestination = consultDestinationInput.value;
-
-  if (!consultDestination) {
+  if (!consultTransferDestAgentId) {
     alert('Please enter a destination');
     return;
   }
 
+  // Right now only agent is allowed (no need for queues)
   const consultTransferPayload = {
-    to: consultDestination,
-    destinationType: destinationType,
+    to: consultTransferDestAgentId,
+    destinationType: 'agent',
   };
 
   try {
@@ -453,6 +452,7 @@ async function initiateConsultTransfer() {
     console.log('Consult transfer initiated successfully');
     consultTransferBtn.disabled = true; // Disable the consult transfer button after initiating consult transfer
     consultTransferBtn.style.display = 'none'; // Hide the consult transfer button after initiating consult transfer
+    consultTransferDestAgentId = undefined; // Reset the consult destination agent ID
   } catch (error) {
     console.error('Failed to initiate consult transfer', error);
   }
@@ -610,6 +610,7 @@ function registerTaskListeners(task) {
 
   task.on('task:consulting', (task) => {
     // When we are consulting with the other agent
+    consultTransferDestAgentId = task.data.destAgentId;
     consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
     consultTransferBtn.disabled = false; // Enable the consult transfer button
   });
