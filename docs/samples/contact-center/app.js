@@ -448,8 +448,6 @@ async function initiateConsultTransfer() {
     destinationType: destinationType,
   };
 
-  console.info('Initiating consult transfer with payload:', consultTransferPayload);
-
   try {
     await task.consultTransfer(consultTransferPayload);
     console.log('Consult transfer initiated successfully');
@@ -523,6 +521,8 @@ function pressKey(value) {
 // Enable consult button after task is accepted
 function enableConsultControls() {
   consultTabBtn.disabled = false;
+  consultTabBtn.style.display = 'inline-block';
+  endConsultBtn.style.display = 'none';
 }
 
 // Disable consult button after task is accepted
