@@ -12,50 +12,91 @@ describe('metrics/behavioral-events', () => {
         verb: 'set',
       });
 
-      expect(getEventTaxonomy(METRIC_EVENT_NAMES.STATION_LOGIN)).toEqual({
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS)).toEqual({
         product,
         agent: 'user',
-        target: 'station',
-        verb: 'login',
-      });
-
-      expect(getEventTaxonomy(METRIC_EVENT_NAMES.CALL_COMPLETED)).toEqual({
-        product,
-        agent: 'user',
-        target: 'call',
+        target: 'station_login',
         verb: 'complete',
       });
 
-      expect(getEventTaxonomy(METRIC_EVENT_NAMES.CALL_CONSULT_ACTIVATE)).toEqual({
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.STATION_LOGIN_FAILED)).toEqual({
         product,
         agent: 'user',
-        target: 'call_consult',
-        verb: 'activate',
+        target: 'station_login',
+        verb: 'fail',
       });
 
-      expect(getEventTaxonomy(METRIC_EVENT_NAMES.CALL_TRANSFER_ACTIVATE)).toEqual({
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS)).toEqual({
         product,
         agent: 'user',
-        target: 'call_transfer',
-        verb: 'activate',
-      });
-
-      expect(getEventTaxonomy(METRIC_EVENT_NAMES.CALL_ANSWERED)).toEqual({
-        product,
-        agent: 'user',
-        target: 'call',
-        verb: 'answer',
-      });
-
-      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_END)).toEqual({
-        product,
-        agent: 'user',
-        target: 'task',
+        target: 'station_logout',
         verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'station_logout',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'station_relogin',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'station_relogin',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'state_change',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'state_change',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'buddy_agents_fetch',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'buddy_agents_fetch',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'websocket_register',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'websocket_register',
+        verb: 'fail',
       });
 
       expect(getEventTaxonomy('' as METRIC_EVENT_NAMES)).toEqual(undefined);
-
     });
   });
 });

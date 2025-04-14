@@ -13,6 +13,7 @@ import {
   Profile,
   ListTeamsResponse,
   AuxCode,
+  ContactServiceQueue,
 } from './types';
 import HttpRequest from '../core/HttpRequest';
 import {WCC_API_GATEWAY} from '../constants';
@@ -527,6 +528,50 @@ export default class AgentConfigService {
       LoggerProxy.error(`getDialPlanData API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
         method: 'getDialPlanData',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches the list of queues for the given orgId.
+   * @param {string} orgId
+   * @param {number} page
+   * @param {number} pageSize
+   * @param {string} search - optional search string
+   * @param {string} filter - optional filter string
+   * @returns Promise<ContactServiceQueue[]>
+   */
+  public async getQueues(
+    orgId: string,
+    page: number,
+    pageSize: number,
+    search?: string,
+    filter?: string
+  ): Promise<ContactServiceQueue[]> {
+    try {
+      let queryParams = `page=${page}&pageSize=${pageSize}&desktopProfileFilter=true`;
+      if (search) queryParams += `&search=${search}`;
+      if (filter) queryParams += `&filter=${filter}`;
+
+      const resource = endPointMap.queueList(orgId, queryParams);
+      const response = await this.httpReq.request({
+        service: WCC_API_GATEWAY,
+        resource,
+        method: HTTP_METHODS.GET,
+      });
+
+      if (response.statusCode !== 200) {
+        throw new Error(`API call failed with ${response.statusCode}`);
+      }
+
+      LoggerProxy.log('getQueues API success.', {module: CONFIG_FILE_NAME, method: 'getQueues'});
+
+      return response.body?.data;
+    } catch (error) {
+      LoggerProxy.error(`getQueues API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getQueues',
       });
       throw error;
     }

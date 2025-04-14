@@ -1218,6 +1218,29 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * Fetch static meeting link for given conversation url.
+   *
+   * @param {string} conversationUrl - url for conversation
+   * @returns {Promise}
+   * @public
+   * @memberof Meetings
+   */
+  public fetchStaticMeetingLink(conversationUrl: string): Promise<any> {
+    return (
+      this.meetingInfo
+        .fetchStaticMeetingLink(conversationUrl)
+        // Catch a failure to fetch static meeting link.
+        .catch((error) => {
+          LoggerProxy.logger.error(
+            `Meetings:index#fetchStaticMeetingLink --> ERROR, unable to fetch persistent meeting link: ${error.message}`
+          );
+
+          return Promise.reject(error);
+        })
+    );
+  }
+
+  /**
    * Create a meeting or return an existing meeting.
    *
    * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
@@ -1365,6 +1388,54 @@ export default class Meetings extends WebexPlugin {
 
           // Return the existing meeting.
           return Promise.resolve(meeting);
+        })
+    );
+  }
+
+  /**
+   * Enable static meeting links for given conversation url.
+   *
+   *
+   * @param {string} conversationUrl - url for conversation
+   * @returns {Promise}
+   * @public
+   * @memberof Meetings
+   */
+  public enableStaticMeetingLink(conversationUrl: string): Promise<any> {
+    return (
+      this.meetingInfo
+        .enableStaticMeetingLink(conversationUrl)
+        // Catch a failure to enable static meeting link.
+        .catch((error) => {
+          LoggerProxy.logger.error(
+            `Meetings:index#enableStaticMeetingLink --> ERROR, unable to enable static meeting link: ${error.message}`
+          );
+
+          return Promise.reject(error);
+        })
+    );
+  }
+
+  /**
+   * Disable static meeting links for given conversation url.
+   *
+   *
+   * @param {string} conversationUrl - url for conversation
+   * @returns {Promise}
+   * @public
+   * @memberof Meetings
+   */
+  public disableStaticMeetingLink(conversationUrl: string): Promise<any> {
+    return (
+      this.meetingInfo
+        .disableStaticMeetingLink(conversationUrl)
+        // Catch a failure to disable static meeting link.
+        .catch((error) => {
+          LoggerProxy.logger.error(
+            `Meetings:index#disableStaticMeetingLink --> ERROR, unable to disable static meeting link: ${error.message}`
+          );
+
+          return Promise.reject(error);
         })
     );
   }

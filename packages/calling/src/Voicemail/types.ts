@@ -111,7 +111,7 @@ export interface IVoicemail {
    * Initializes the voicemail service and returns a voicemail response event.
    *
    */
-  init(): VoicemailResponseEvent;
+  init(): VoicemailResponseEvent | Promise<VoicemailResponseEvent>;
 
   /**
    * Retrieves a list of voicemails with optional pagination and sorting options.

@@ -8614,11 +8614,17 @@ describe('plugin-meetings', () => {
           const fakeErrorMessage = 'test error';
           const fakeRootCauseName = 'root cause name';
           const fakeErrorName = 'test error name';
+          let clock;
 
           beforeEach(() => {
+            clock = sinon.useFakeTimers();
             meeting.setupMediaConnectionListeners();
             webex.internal.newMetrics.submitClientEvent.resetHistory();
             Metrics.sendBehavioralMetric.resetHistory();
+          });
+
+          afterEach(() => {
+            clock.restore();
           });
 
           const checkMetricSent = (event, error) => {
@@ -8689,6 +8695,13 @@ describe('plugin-meetings', () => {
           });
 
           it('should send metrics for SdpAnswerHandlingError error', () => {
+            meeting.sdpResponseTimer = '1234';
+            meeting.deferSDPAnswer = {
+              reject: sinon.stub(),
+            };
+            
+            const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
+
             const fakeError = new Errors.SdpAnswerHandlingError(fakeErrorMessage, {
               name: fakeErrorName,
               cause: {name: fakeRootCauseName},
@@ -8703,6 +8716,8 @@ describe('plugin-meetings', () => {
               fakeErrorMessage,
               fakeRootCauseName
             );
+            assert.calledOnce(meeting.deferSDPAnswer.reject);
+            assert.calledOnce(clearTimeoutSpy);
           });
 
           it('should send metrics for SdpError error', () => {
