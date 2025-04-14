@@ -125,7 +125,7 @@ describe.only('plugin-meetings', () => {
       assert.isTrue(handleServerRemoteMuteUpdateStub.calledOnce);
     });
 
-    it.only('does not update remote mute state when brb is enabled but sync to server is not required', async () => {
+    it.only('does not update remote mute state when brb is disabled but sync to server is not required', async () => {
       brbState.enable(false, meeting.sendSlotManager, audioMuteStateMock);
       brbState.handleServerBrbUpdate(false);
       await testUtils.flushPromises();
