@@ -448,6 +448,8 @@ async function initiateConsultTransfer() {
     destinationType: destinationType,
   };
 
+  console.info('Initiating consult transfer with payload:', consultTransferPayload);
+
   try {
     await task.consultTransfer(consultTransferPayload);
     console.log('Consult transfer initiated successfully');
@@ -622,6 +624,7 @@ function registerTaskListeners(task) {
   task.on('task:consultQueueCancelled', (task) => {
     // When we manually cancel consult to queue before it is accepted by other agent
     console.log(`Received task:consultQueueCancelled for task: ${task.interactionId}`);
+    currentConsultQueueId = undefined;
     hideEndConsultButton();
     showConsultButton();
   });
@@ -651,12 +654,6 @@ function registerTaskListeners(task) {
       incomingDetailsElm.innerText = 'No incoming calls';
     }
     showAgentStatePopup(reason);
-  });
-  
-  task.on('task:consultQueueCancelled', () => {
-    console.log('Queue consult cancelled');
-    currentConsultQueueId = undefined;
-    refreshUIPostConsult();
   });
 }
 
