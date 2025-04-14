@@ -19,7 +19,7 @@
     "prebuild": "rimraf dist",
     "test": "yarn test:style && yarn test:unit",
     "test:style": "eslint 'src/**/*.ts'",
-    "test:unit": "webex-legacy-tools test --unit --runner jest",
+    "test:unit": "NODE_ENV=test webex-legacy-tools test --unit --runner jest",
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
@@ -41,6 +41,8 @@
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
     "@webex/test-helper-mock-webex": "workspace:*",
+    "babel-plugin-transform-import-meta": "^2.3.2",
+    "cross-env": "^7.0.3",
     "eslint": "^8.24.0",
     "eslint-config-airbnb-base": "15.0.0",
     "eslint-config-prettier": "8.3.0",
