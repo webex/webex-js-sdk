@@ -35,8 +35,6 @@ import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
 import MetricsManager from '../../../src/metrics/MetricsManager';
 import { METRIC_EVENT_NAMES } from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
-import Support from 'packages/@webex/internal-plugin-support/src/support';
-import { use } from 'chai';
 
 
 jest.mock('../../../src/logger-proxy', () => ({

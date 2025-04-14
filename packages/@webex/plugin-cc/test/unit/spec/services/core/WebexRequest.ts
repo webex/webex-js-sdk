@@ -94,6 +94,5 @@ describe('WebexRequest', () => {
 
       await expect(webexRequest.uploadLogs(mockMetaData)).rejects.toThrow('Upload failed');
     });
-  }
-  );
+  });
 });
