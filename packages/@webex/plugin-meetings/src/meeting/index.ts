@@ -3802,7 +3802,13 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.reject(error);
     }
 
-    return this.brbState.enable(enabled, this.sendSlotManager, this.audio);
+    return this.brbState.enable(enabled, this.sendSlotManager).then(() => {
+      if (this.audio && enabled) {
+        // locus mutes the participant with brb enabled request,
+        // so we need to explicitly update remote mute for correct logic flow
+        this.audio.handleServerRemoteMuteUpdate(this, enabled);
+      }
+    });
   }
 
   /**

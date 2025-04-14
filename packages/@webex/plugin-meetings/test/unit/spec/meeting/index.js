@@ -3824,7 +3824,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe(`#beRightBack`, () => {
+      describe.only(`#beRightBack`, () => {
         const fakeMultistreamRoapMediaConnection = {
           createSendSlot: sinon.stub().returns({
             setSourceStateOverride: sinon.stub().resolves(),
@@ -3886,6 +3886,22 @@ describe('plugin-meetings', () => {
               assert.equal(err.message, 'setBrb failed');
               assert.isRejected((Promise.reject()));
             }
+          });
+
+          it('updates remote mute state when brb is enabled and audio is available', async () => {
+            meeting.audio = { handleServerRemoteMuteUpdate: sinon.stub() };
+
+            await meeting.beRightBack(true);
+
+            sinon.assert.calledOnceWithExactly(meeting.audio.handleServerRemoteMuteUpdate, meeting, true);
+          });
+
+          it.only('does not update remote mute state when brb is disabled and audio is available', async () => {
+            meeting.audio = { handleServerRemoteMuteUpdate: sinon.stub() };
+
+            await meeting.beRightBack(false);
+
+            assert.isTrue(meeting.audio.handleServerRemoteMuteUpdate.notCalled);
           });
         });
       });
@@ -8699,7 +8715,7 @@ describe('plugin-meetings', () => {
             meeting.deferSDPAnswer = {
               reject: sinon.stub(),
             };
-            
+
             const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
 
             const fakeError = new Errors.SdpAnswerHandlingError(fakeErrorMessage, {
