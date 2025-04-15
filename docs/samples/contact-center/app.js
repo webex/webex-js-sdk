@@ -396,7 +396,7 @@ async function handleQueueConsult(consultPayload) {
     alert('Failed to initiate queue consult');
     // Restore UI state
     refreshUIPostConsult();
-    currentConsultQueueId = undefined;
+    currentConsultQueueId = null;
   }
 }
 
@@ -452,7 +452,7 @@ async function initiateConsultTransfer() {
     console.log('Consult transfer initiated successfully');
     consultTransferBtn.disabled = true; // Disable the consult transfer button after initiating consult transfer
     consultTransferBtn.style.display = 'none'; // Hide the consult transfer button after initiating consult transfer
-    consultTransferDestAgentId = undefined; // Reset the consult destination agent ID
+    consultTransferDestAgentId = null; // Reset the consult destination agent ID
   } catch (error) {
     console.error('Failed to initiate consult transfer', error);
   }
@@ -625,7 +625,7 @@ function registerTaskListeners(task) {
   task.on('task:consultQueueCancelled', (task) => {
     // When we manually cancel consult to queue before it is accepted by other agent
     console.log(`Received task:consultQueueCancelled for task: ${task.interactionId}`);
-    currentConsultQueueId = undefined;
+    currentConsultQueueId = null;
     hideEndConsultButton();
     showConsultButton();
   });
@@ -640,7 +640,7 @@ function registerTaskListeners(task) {
 
     answerElm.disabled = true;
     declineElm.disabled = true;
-    currentConsultQueueId = undefined;
+    currentConsultQueueId = null;
     if(task.data.isConsulted) {
       updateButtonsPostEndCall();
       incomingDetailsElm.innerText = '';
