@@ -67,7 +67,12 @@ class WebexRequest {
         ['behavioral']
       );
 
-      return {...response, feedbackId};
+      return {
+        trackingid: response.trackingid,
+        ...(response.url ? {url: response.url} : {}),
+        ...(response.userId ? {userId: response.userId} : {}),
+        feedbackId,
+      };
     } catch (error) {
       LoggerProxy.error(`Error uploading logs: ${error}`, {
         module: WEBEX_REQUEST_FILE,

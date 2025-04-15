@@ -96,7 +96,7 @@ describe('WebexRequest', () => {
 
     it('should upload logs and return the response', async () => {
       const mockMetaData = { key: 'value' };
-      const mockResponse = { trackingId: '1234'};
+      const mockResponse = { trackingid: '1234'};
 
       mockWebex.internal = {
         support: {
@@ -113,7 +113,7 @@ describe('WebexRequest', () => {
       );
       expect(mockMetricsManager.trackEvent).toBeCalledWith(
         "Upload Logs Success", 
-        {feedbackId: "mocked-uuid-12345", trackingId: undefined}, 
+        {feedbackId: "mocked-uuid-12345", trackingId: '1234'}, 
         ["behavioral"]
       );
       expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith({... mockMetaData, feedbackId: "mocked-uuid-12345"});
