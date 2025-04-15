@@ -17,6 +17,7 @@ import {
   ConsultEndPayload,
   TransferPayLoad,
   DESTINATION_TYPE,
+  CONSULT_TRANSFER_DESTINATION_TYPE,
   ConsultTransferPayLoad,
 } from './types';
 import WebCallingService from '../WebCallingService';
@@ -398,6 +399,19 @@ export default class Task extends EventEmitter implements ITask {
     consultTransferPayload: ConsultTransferPayLoad
   ): Promise<TaskResponse> {
     try {
+      // For queue destinations, use the destAgentId from task data
+      if (consultTransferPayload.destinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
+        if (!this.data.destAgentId) {
+          throw new Error('No agent has accepted this queue consult yet');
+        }
+
+        // Override the destination with the agent who accepted the queue consult
+        consultTransferPayload = {
+          to: this.data.destAgentId,
+          destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+        };
+      }
+
       const result = await this.contact.consultTransfer({
         interactionId: this.data.interactionId,
         data: consultTransferPayload,
