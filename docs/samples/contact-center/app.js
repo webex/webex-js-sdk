@@ -185,10 +185,7 @@ const taskEvents = new CustomEvent('task:incoming', {
 });
 
 function updateButtonsPostEndCall() {
-  holdResumeElm.disabled = true;
-  muteElm.disabled = true;
-  endElm.disabled = true;
-  pauseResumeRecordingElm.disabled = true;
+  disableAllCallControls();
   if(currentTask) {
     wrapupElm.disabled = false;
     wrapupCodesDropdownElm.disabled = false;
@@ -196,12 +193,6 @@ function updateButtonsPostEndCall() {
     wrapupElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
   }
-  hideEndConsultButton();
-  showConsultButton()
-  disableTransferControls();
-  consultTabBtn.disabled = true;
-  incomingDetailsElm.innerText = '';
-  pauseResumeRecordingElm.innerText = 'Pause Recording';
 }
 
 function showInitiateConsultDialog() {
@@ -617,6 +608,15 @@ function registerTaskListeners(task) {
   });
 }
 
+function disableAllCallControls() {
+  holdResumeElm.disabled = true;
+  muteElm.disabled = true;
+  pauseResumeRecordingElm.disabled = true;
+  consultTabBtn.disabled = true;
+  declineElm.disabled = true;
+  transferElm.disabled = true;
+  endElm.disabled = true;
+}
 function updateCallControlUI(task) {
   const { data } = task;
   const { interaction, mediaResourceId } = data;
@@ -634,40 +634,28 @@ function updateCallControlUI(task) {
   }
   wrapupElm.disabled = true;
   wrapupCodesDropdownElm.disabled = true;
-  holdResumeElm.disabled = false;
-  muteElm.disabled = false;
-  holdResumeElm.innerText = 'Hold';
-  pauseResumeRecordingElm.disabled = false;
-  pauseResumeRecordingElm.innerText = 'Pause Recording';
-  endElm.disabled = false;
-  enableConsultControls(); // Enable consult controls
-  enableTransferControls(); // Enable transfer controls
   const hasParticipants = Object.keys(participants).length > 1;
-  endElm.disabled = !hasParticipants;
   const isNew = task.data.interaction.state === 'new';
 
   if (isNew) {
-    holdResumeElm.disabled = true;
-    muteElm.disabled = true;
-    pauseResumeRecordingElm.disabled = true;
-    consultTabBtn.disabled = true;
-    declineElm.disabled = true;
-    transferElm.disabled = true;
-    endElm.disabled = true;
-  }
-
-  if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'email') {
+    disableAllCallControls();
+  } else if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'email') {
     holdResumeElm.disabled = true;
     muteElm.disabled = true;
     pauseResumeRecordingElm.disabled = true;
     consultTabBtn.disabled = true;
     declineElm.disabled = true;
     transferElm.disabled = false;
+    endElm.disabled = !hasParticipants;
   } else if (task?.data?.interaction?.mediaType === 'telephony') {
     // hold/resume call
     const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
     holdResumeElm.disabled = isTerminated;
     holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
+    transferElm.disabled = false;
+    muteElm.disabled = false;
+    endElm.disabled = !hasParticipants;
+    consultTabBtn.disabled = false;
 
     if (callProcessingDetails) {
       const { pauseResumeEnabled, isPaused } = callProcessingDetails;
@@ -1293,20 +1281,14 @@ function renderTaskList(taskList) {
   taskListContainer.innerHTML = ''; // Clear existing tasks
 
   if (!taskList || Object.keys(taskList).length === 0) {
-    answerElm.disabled = true;
-    declineElm.disabled = true;
+    disableAnswerDeclineButtons();
     incomingDetailsElm.innerText = '';
-    holdResumeElm.disabled = true;
-    muteElm.disabled = true;
-    pauseResumeRecordingElm.disabled = true;
-    consultTabBtn.disabled = true;
-    declineElm.disabled = true;
-    transferElm.disabled = true;
+    disableAllCallControls();
     wrapupElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
-    endElm.disabled = true;
     taskListContainer.innerHTML = '<p>No tasks available</p>';
     engageElm.innerHTML = ``;
+    currentTask = undefined;
     return;
   }
   
@@ -1402,9 +1384,25 @@ function renderTaskList(taskList) {
   });
 }
 
+function enableAnswerDeclineButtons(task) {
+  if (task.data.interaction.state === 'new') {
+    answerElm.disabled = false;
+    declineElm.disabled = !(task.data.interaction.mediaType === 'telephony' && webex.cc.taskManager.webCallingService.loginOption === 'BROWSER')
+  } else {
+    answerElm.disabled = true;
+    declineElm.disabled = true;
+  }
+}
+
+function disableAnswerDeclineButtons() {
+  answerElm.disabled = true;
+  declineElm.disabled = true;
+}
+
 function handleTaskSelect(task) {
   // Handle the task click event
   console.log('Task clicked:', task);
+  enableAnswerDeclineButtons(task);
   engageElm.innerHTML = ``;
   currentTask = task
   if (task.data.interaction.mediaType === 'chat' && isBundleLoaded) {
@@ -1416,12 +1414,7 @@ function handleTaskSelect(task) {
 }
 
 function loadChatWidget(task) {
-  if (task.data.interaction.state === 'new') {
-    engageElm.innerHTML = ``;
-    answerElm.disabled = false;
-    declineElm.disabled = true;
-    return;
-  }
+
   const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
   incomingDetailsElm.innerText = `chat from ${callerDisplay}`;
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
@@ -1435,12 +1428,7 @@ function loadChatWidget(task) {
 }
 
 function loadEmailWidget(task) {
-  if (task.data.interaction.state === 'new') {
-    engageElm.innerHTML = ``;
-    answerElm.disabled = false;
-    declineElm.disabled = true;
-    return;
-  }
+
   const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
   incomingDetailsElm.innerText = `email from ${callerDisplay}`;
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
