@@ -117,50 +117,44 @@ export default class TaskManager extends EventEmitter {
             });
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-            task = this.updateTaskDataAndEmitEvent(task, payload.data, TASK_EVENTS.TASK_ASSIGNED);
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_ASSIGNED, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
-            task = this.updateTaskDataAndEmitEvent(
-              task,
-              {
-                ...payload.data,
-                wrapUpRequired: true,
-              },
-              TASK_EVENTS.TASK_END
-            );
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              wrapUpRequired: true,
+            });
             this.handleTaskCleanup(task);
+            task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
             task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             this.handleTaskCleanup(task);
+            task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
           case CC_EVENTS.CONTACT_ENDED:
-            task = this.updateTaskDataAndEmitEvent(
-              task,
-              {
-                ...payload.data,
-                wrapUpRequired: payload.data.interaction.state !== 'new',
-              },
-              TASK_EVENTS.TASK_END
-            );
-
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              wrapUpRequired: payload.data.interaction.state !== 'new',
+            });
             this.handleTaskCleanup(task);
+            task.emit(TASK_EVENTS.TASK_END, task);
+
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
             // As soon as the main interaction is held, we need to emit TASK_HOLD
-            task = this.updateTaskDataAndEmitEvent(task, payload.data, TASK_EVENTS.TASK_HOLD);
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_HOLD, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_UNHELD:
             // As soon as the main interaction is unheld, we need to emit TASK_RESUME
-            task = this.updateTaskDataAndEmitEvent(task, payload.data, TASK_EVENTS.TASK_RESUME);
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_RESUME, task);
             break;
           case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
-            task = this.updateTaskDataAndEmitEvent(
-              task,
-              payload.data,
-              TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED
-            );
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED, task);
             break;
           case CC_EVENTS.AGENT_CONSULT_CREATED:
             // Received when self agent initiates a consult
@@ -192,24 +186,18 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             break;
           case CC_EVENTS.AGENT_CONSULT_ENDED:
-            task = this.updateTaskDataAndEmitEvent(
-              task,
-              payload.data,
-              TASK_EVENTS.TASK_CONSULT_END
-            );
+            task = this.updateTaskData(task, payload.data);
             if (task.data.isConsulted) {
               // This will be the end state of the task as soon as we end the consult in case of
               // us being offered a consult
               this.removeTaskFromCollection(task);
             }
+            task.emit(TASK_EVENTS.TASK_CONSULT_END, task);
             break;
           case CC_EVENTS.AGENT_CTQ_CANCELLED:
             // This event is received when the consult using queue is cancelled using API
-            task = this.updateTaskDataAndEmitEvent(
-              task,
-              payload.data,
-              TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED
-            );
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED, task);
             break;
           case CC_EVENTS.AGENT_WRAPUP:
             task = this.updateTaskData(task, payload.data);
@@ -222,14 +210,6 @@ export default class TaskManager extends EventEmitter {
         }
       }
     });
-  }
-
-  private updateTaskDataAndEmitEvent(task: ITask, taskData: TaskData, event: TASK_EVENTS): ITask {
-    const currentTask = task.updateTaskData(taskData);
-    this.taskCollection[taskData.interactionId] = currentTask;
-    currentTask.emit(event, currentTask);
-
-    return currentTask;
   }
 
   private updateTaskData(task: ITask, taskData: TaskData): ITask {
@@ -258,6 +238,8 @@ export default class TaskManager extends EventEmitter {
       this.webCallingService.cleanUpCall();
     }
     if (task.data.interaction.state === 'new') {
+      // Only remove tasks in 'new' state immediately. For other states,
+      // retain tasks until they complete wrap-up, unless the task disconnected before being answered.
       this.removeTaskFromCollection(task);
     }
   }

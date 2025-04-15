@@ -644,6 +644,18 @@ function updateCallControlUI(task) {
   enableTransferControls(); // Enable transfer controls
   const hasParticipants = Object.keys(participants).length > 1;
   endElm.disabled = !hasParticipants;
+  const isNew = task.data.interaction.state === 'new';
+
+  if (isNew) {
+    holdResumeElm.disabled = true;
+    muteElm.disabled = true;
+    pauseResumeRecordingElm.disabled = true;
+    consultTabBtn.disabled = true;
+    declineElm.disabled = true;
+    transferElm.disabled = true;
+    endElm.disabled = true;
+  }
+
   if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'email') {
     holdResumeElm.disabled = true;
     muteElm.disabled = true;
@@ -927,6 +939,7 @@ function setAgentStatus() {
   if(agentStatus !== 'Available') state = 'Idle';
   webex.cc.setAgentState({state, auxCodeId, lastStateChangeReason: agentStatus, agentId}).then((response) => {
     console.log('Agent status set successfully', response);
+    updateTaskList();
   }).catch(error => {
     console.error('Agent status set failed', error);
   });
@@ -1032,7 +1045,7 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
     declineElm.disabled = true;
 
     incomingDetailsElm.innerText = `Email from ${callerDisplay}`;
-  } else if (currentTask.webCallingService.loginOption === 'BROWSER') {
+  } else if (webex.cc.taskManager.webCallingService.loginOption === 'BROWSER') {
     answerElm.disabled = false;
     declineElm.disabled = false;
 
@@ -1280,6 +1293,18 @@ function renderTaskList(taskList) {
   taskListContainer.innerHTML = ''; // Clear existing tasks
 
   if (!taskList || Object.keys(taskList).length === 0) {
+    answerElm.disabled = true;
+    declineElm.disabled = true;
+    incomingDetailsElm.innerText = '';
+    holdResumeElm.disabled = true;
+    muteElm.disabled = true;
+    pauseResumeRecordingElm.disabled = true;
+    consultTabBtn.disabled = true;
+    declineElm.disabled = true;
+    transferElm.disabled = true;
+    wrapupElm.disabled = true;
+    wrapupCodesDropdownElm.disabled = true;
+    endElm.disabled = true;
     taskListContainer.innerHTML = '<p>No tasks available</p>';
     engageElm.innerHTML = ``;
     return;
@@ -1308,7 +1333,7 @@ function renderTaskList(taskList) {
     // Determine task properties
     const isNew = task.data.interaction.state === 'new';
     const isTelephony = task.data.interaction.mediaType === 'telephony';
-    const isBrowserPhone = task.webCallingService.loginOption === 'BROWSER';
+    const isBrowserPhone = webex.cc.taskManager.webCallingService.loginOption === 'BROWSER';
 
     // Determine which buttons to show
     const showAcceptButton = isNew && (isBrowserPhone || !isTelephony);
@@ -1391,6 +1416,12 @@ function handleTaskSelect(task) {
 }
 
 function loadChatWidget(task) {
+  if (task.data.interaction.state === 'new') {
+    engageElm.innerHTML = ``;
+    answerElm.disabled = false;
+    declineElm.disabled = true;
+    return;
+  }
   const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
   incomingDetailsElm.innerText = `chat from ${callerDisplay}`;
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
@@ -1404,6 +1435,12 @@ function loadChatWidget(task) {
 }
 
 function loadEmailWidget(task) {
+  if (task.data.interaction.state === 'new') {
+    engageElm.innerHTML = ``;
+    answerElm.disabled = false;
+    declineElm.disabled = true;
+    return;
+  }
   const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
   incomingDetailsElm.innerText = `email from ${callerDisplay}`;
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
