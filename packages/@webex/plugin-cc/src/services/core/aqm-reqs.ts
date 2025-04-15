@@ -6,17 +6,17 @@ import LoggerProxy from '../../logger-proxy';
 import {CbRes, Conf, ConfEmpty, Pending, Req, Res, ResEmpty} from './types';
 import {TIMEOUT_REQ} from './constants';
 import {AQM_REQS_FILE} from '../../constants';
-import HttpRequest from './HttpRequest';
+import WebexRequest from './WebexRequest';
 import {WebSocketManager} from './websocket/WebSocketManager';
 
 export default class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};
   private pendingNotifCancelrequest: Record<string, Pending> = {};
-  private httpRequest: HttpRequest;
+  private webexRequest: WebexRequest;
   private webSocketManager: WebSocketManager;
 
   constructor(webSocketManager: WebSocketManager) {
-    this.httpRequest = HttpRequest.getInstance();
+    this.webexRequest = WebexRequest.getInstance();
     this.webSocketManager = webSocketManager;
     this.webSocketManager.on('message', this.onMessage.bind(this));
   }
@@ -113,7 +113,7 @@ export default class AqmReqs {
         };
       }
       let response: WebexRequestPayload | null = null;
-      this.httpRequest
+      this.webexRequest
         .request({
           service: c.host ?? '',
           resource: c.url,

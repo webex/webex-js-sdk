@@ -60,11 +60,8 @@ import {
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsUtil from '../common/events/util';
 import Trigger from '../common/events/trigger-proxy';
-import Roap, {
-  type TurnDiscoveryResult,
-  type TurnServerInfo,
-  type TurnDiscoverySkipReason,
-} from '../roap/index';
+import Roap, {type TurnDiscoveryResult, type TurnDiscoverySkipReason} from '../roap/index';
+import {type TurnServerInfo} from '../roap/types';
 import Media, {type BundlePolicy} from '../media';
 import MediaProperties from '../media/properties';
 import MeetingStateMachine from './state';
@@ -6870,7 +6867,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {AddMediaOptions} [options] Options for enabling/disabling audio/video
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
-  private async createMediaConnection(turnServerInfo, bundlePolicy?: BundlePolicy) {
+  private async createMediaConnection(
+    turnServerInfo?: TurnServerInfo,
+    bundlePolicy?: BundlePolicy
+  ) {
     this.rtcMetrics = this.isMultistream
       ? // @ts-ignore
         new RtcMetrics(this.webex, {meetingId: this.id}, this.correlationId)

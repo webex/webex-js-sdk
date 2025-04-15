@@ -19,6 +19,7 @@ export const CONSULT_TRANSFER_DESTINATION_TYPE = {
   AGENT: 'agent',
   ENTRYPOINT: 'entryPoint',
   DIALNUMBER: 'dialNumber',
+  QUEUE: 'queue',
 };
 
 export type ConsultTransferDestinationType = Enum<typeof CONSULT_TRANSFER_DESTINATION_TYPE>;

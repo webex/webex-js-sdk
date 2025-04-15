@@ -112,6 +112,20 @@ export function getEventTaxonomy(name: METRIC_EVENT_NAMES): BehavioralEventTaxon
         target: 'agent_rona',
         verb: 'set',
       };
+    case METRIC_EVENT_NAMES.UPLOAD_LOGS_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'upload_logs',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.UPLOAD_LOGS_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'upload_logs',
+        verb: 'fail',
+      };
     default:
       break;
   }
