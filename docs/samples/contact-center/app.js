@@ -522,6 +522,7 @@ function enableCallControlPostConsult() {
 // Register task listeners
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
+    updateTaskList(); // Update the task list UI to have latest tasks
     console.info('Call has been accepted for task: ', task.data.interactionId);
     updateCallControlUI(task); // Enable transfer controls
   });
@@ -530,7 +531,6 @@ function registerTaskListeners(task) {
   });
   task.on('task:end', (task) => {
     incomingDetailsElm.innerText = '';
-    updateTaskList(); // Update the task list UI to have latest tasks
     if (currentTask.data.interactionId === task.data.interactionId) {
       if (!task.data.wrapUpRequired) {
         answerElm.disabled = true;
@@ -541,6 +541,7 @@ function registerTaskListeners(task) {
         console.info('Call ended successfully');
         updateButtonsPostEndCall();
       }
+      updateTaskList(); // Update the task list UI to have latest tasks
     }
   });
 
@@ -1278,7 +1279,7 @@ function renderTaskList(taskList) {
   const taskListContainer = document.getElementById('taskList');
   taskListContainer.innerHTML = ''; // Clear existing tasks
 
-  if (!taskList || taskList.length === 0) {
+  if (!taskList || Object.keys(taskList).length === 0) {
     taskListContainer.innerHTML = '<p>No tasks available</p>';
     engageElm.innerHTML = ``;
     return;
