@@ -6202,10 +6202,7 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         options: {meetingId: this.id, rawError: error},
       });
-    } else if (
-      error instanceof Errors.SdpOfferHandlingError ||
-      error instanceof Errors.SdpAnswerHandlingError
-    ) {
+    } else if (error instanceof Errors.SdpOfferHandlingError) {
       sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.correlationId);
 
       // @ts-ignore
@@ -6216,6 +6213,24 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         options: {meetingId: this.id, rawError: error},
       });
+    } else if (error instanceof Errors.SdpAnswerHandlingError) {
+      sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.correlationId);
+
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.media-engine.remote-sdp-received',
+        payload: {
+          canProceed: false,
+        },
+        options: {meetingId: this.id, rawError: error},
+      });
+
+      if (this.deferSDPAnswer) {
+        clearTimeout(this.sdpResponseTimer);
+        this.sdpResponseTimer = undefined;
+
+        this.deferSDPAnswer.reject();
+      }
     } else if (error instanceof Errors.SdpError) {
       // this covers also the case of Errors.IceGatheringError which extends Errors.SdpError
       sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, error, this.correlationId);

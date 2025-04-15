@@ -1,10 +1,11 @@
 import merge from 'lodash/merge';
 import WebexCore from '@webex/webex-core';
 
-import config from './config';
-
 require('@webex/plugin-authorization');
 require('@webex/plugin-cc');
+require('@webex/internal-plugin-mercury');
+
+const config = require('./config');
 
 const Webex = WebexCore.extend({
   webex: true,
@@ -17,4 +18,4 @@ Webex.init = function init(attrs = {}) {
   return new Webex(attrs);
 };
 
-module.exports = Webex;
+export default Webex;

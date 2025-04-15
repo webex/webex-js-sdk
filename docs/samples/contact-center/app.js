@@ -14,6 +14,7 @@ let isConsultOptionsShown = false;
 let isTransferOptionsShown = false; // Add this variable to track the state of transfer options
 let entryPointId = '';
 let stateTimer;
+let currentConsultQueueId;
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -230,6 +231,7 @@ function toggleTransferOptions() {
   isTransferOptionsShown = !isTransferOptionsShown;
   const transferOptionsElm = document.querySelector('#transfer-options');
   transferOptionsElm.style.display = isTransferOptionsShown ? 'block' : 'none';
+  updateButtonsPostEndCall();
 }
 
 async function getQueueListForTelephonyChannel() {
@@ -362,18 +364,48 @@ async function initiateConsult() {
     destinationType: destinationType,
   };
 
+  if (destinationType === 'queue') {
+    handleQueueConsult(consultPayload);
+    return;
+  }
+
   try {
     await task.consult(consultPayload);
     console.log('Consult initiated successfully');
     // Disable the blind transfer button after initiating consult, only enable it once consult is confirmed
-    disableCallControlPostConsult();
-    disableTransferControls();
-    hideConsultButton();
-    showEndConsultButton();
+    updateConsultUI();
   } catch (error) {
     console.error('Failed to initiate consult', error);
     alert('Failed to initiate consult');
   }
+}
+
+async function handleQueueConsult(consultPayload) {
+  // Update UI immediately
+  currentConsultQueueId = consultPayload.to;
+  endConsultBtn.innerText = 'Cancel Consult';
+  updateConsultUI();
+  
+  try {
+    await task.consult(consultPayload);
+    endConsultBtn.innerText = 'End Consult';
+    currentConsultQueueId = null;
+    console.log('Queue Consult initiated successfully');
+  } catch (error) {
+    console.error('Failed to initiate queue consult', error);
+    alert('Failed to initiate queue consult');
+    // Restore UI state
+    refreshUIPostConsult();
+    currentConsultQueueId = null;
+  }
+}
+
+// Updates UI state for queue consult initiation
+function updateConsultUI() {
+  disableCallControlPostConsult();
+  disableTransferControls();
+  hideConsultButton();
+  showEndConsultButton();
 }
 
 // Function to initiate transfer
@@ -431,7 +463,12 @@ async function initiateConsultTransfer() {
 async function endConsult() {
   const taskId = task.data.interactionId;
 
-  const consultEndPayload = {
+  const consultEndPayload = currentConsultQueueId ? {
+    isConsult: true,
+    taskId: taskId,
+    queueId: currentConsultQueueId,
+  } : 
+  {
     isConsult: true,
     taskId: taskId,
   };
@@ -485,6 +522,8 @@ function pressKey(value) {
 // Enable consult button after task is accepted
 function enableConsultControls() {
   consultTabBtn.disabled = false;
+  consultTabBtn.style.display = 'inline-block';
+  endConsultBtn.style.display = 'none';
 }
 
 // Disable consult button after task is accepted
@@ -514,6 +553,13 @@ function enableCallControlPostConsult() {
   holdResumeElm.disabled = false;
   pauseResumeRecordingElm.disabled = false;
   endElm.disabled = false;
+}
+
+function refreshUIPostConsult() {
+  enableCallControlPostConsult();
+  enableTransferControls();
+  showConsultButton();
+  hideEndConsultButton();
 }
 
 // Register task listeners
@@ -579,8 +625,11 @@ function registerTaskListeners(task) {
   task.on('task:consultQueueCancelled', (task) => {
     // When we manually cancel consult to queue before it is accepted by other agent
     console.log(`Received task:consultQueueCancelled for task: ${task.interactionId}`);
+    currentConsultQueueId = null;
     hideEndConsultButton();
     showConsultButton();
+    enableTransferControls();
+    enableCallControlPostConsult();
   });
 
   task.on('task:consultEnd', (task) => {
@@ -593,6 +642,7 @@ function registerTaskListeners(task) {
 
     answerElm.disabled = true;
     declineElm.disabled = true;
+    currentConsultQueueId = null;
     if(task.data.isConsulted) {
       updateButtonsPostEndCall();
       incomingDetailsElm.innerText = '';
@@ -718,6 +768,10 @@ function register() {
         dialNumber.disabled = agentProfile.defaultDn ? false : true;
         if (loginVoiceOptions.length > 0) loginAgentElm.disabled = false;
         loginVoiceOptions.forEach((voiceOptions)=> {
+          if (!agentProfile.webRtcEnabled && voiceOptions === 'BROWSER') {
+            // Skiping the addition of browser option for webrtc disabled case
+            return;
+          }
           const option = document.createElement('option');
           option.text = voiceOptions;
           option.value = voiceOptions;

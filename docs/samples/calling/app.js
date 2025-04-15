@@ -30,6 +30,7 @@ const voicemailOffset = 0;
 const voicemailOffsetLimit = 20;
 const voicemailSort = 'DESC';
 const credentialsFormElm = document.querySelector('#credentials');
+const fedrampBox = document.getElementById('fedramp');
 const tokenElm = document.querySelector('#access-token');
 const jwtTokenForDestElm = document.querySelector('#jwt-token-for-dest');
 const guestContainerElm = document.querySelector('#guest-container');
@@ -216,7 +217,9 @@ async function initCalling(e) {
   authStatusElm.innerText = 'initializing...';
 
   const webexConfig = {
+    fedramp: fedrampBox.checked,
     config: {
+      fedramp: fedrampBox.checked,
       logger: {
         level: 'debug', // set the desired log level
       },
@@ -248,11 +251,19 @@ async function initCalling(e) {
     };
   }
 
+  if (fedrampBox.checked) {
+    webexConfig.config.services = {
+      discovery: {
+        u2c: 'https://u2c.gov.ciscospark.com/u2c/api/v1',
+      },
+    };
+  }
+
   const clientConfig = {
-    calling: true,
-    contact: true,
+    calling: !fedrampBox.checked,
+    contact: !fedrampBox.checked,
     callHistory: true,
-    callSettings: true,
+    callSettings: !fedrampBox.checked,
     voicemail: true,
   }
 
@@ -321,7 +332,9 @@ async function initCalling(e) {
       registerElm.classList.add('btn--green');
       registerElm.disabled = false;
 
+      if(window.callingClient === undefined && calling.callingClient !== undefined) {
       callingClient = window.callingClient = calling.callingClient;
+    }
 
       if (window.contacts === undefined) {
         contacts = window.contacts = calling.contactClient;
@@ -339,7 +352,7 @@ async function initCalling(e) {
         voicemail = window.voicemail = calling.voicemailClient;
       }
 
-      fetchLines();
+      if(callingClient) fetchLines();
     });
   });
 
@@ -389,6 +402,7 @@ function userSession() {
 }
 
 function createDevice() {
+  if (!callingClient) return ;
   line.register();
   userSession();
   line.on('registered', (deviceInfo) => {

@@ -92,6 +92,7 @@ interface IWebexInternal {
   mercury: {
     on: Listener;
     off: ListenerOff;
+    connect: () => Promise<void>;
     connected: boolean;
     connecting: boolean;
   };
