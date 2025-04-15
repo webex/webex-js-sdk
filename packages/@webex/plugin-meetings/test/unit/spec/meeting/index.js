@@ -3888,7 +3888,7 @@ describe('plugin-meetings', () => {
             }
           });
 
-          it('updates remote mute state when brb is enabled and audio is available', async () => {
+          it('updates remote mute state when brb is enabled', async () => {
             meeting.audio = { handleServerRemoteMuteUpdate: sinon.stub() };
 
             await meeting.beRightBack(true);
@@ -3896,7 +3896,7 @@ describe('plugin-meetings', () => {
             sinon.assert.calledOnceWithExactly(meeting.audio.handleServerRemoteMuteUpdate, meeting, true);
           });
 
-          it('does not update remote mute state when brb is disabled and audio is available', async () => {
+          it('does not update remote mute state when brb is disabled', async () => {
             meeting.audio = { handleServerRemoteMuteUpdate: sinon.stub() };
 
             await meeting.beRightBack(false);
