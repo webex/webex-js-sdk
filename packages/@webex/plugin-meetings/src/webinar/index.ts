@@ -136,7 +136,7 @@ const Webinar = WebexPlugin.extend({
    * @returns {void}
    */
   updatePracticeSessionStatus(payload) {
-    this.set('practiceSessionEnabled', payload.enabled);
+    this.set('practiceSessionEnabled', !!payload?.enabled);
   },
 
   /**

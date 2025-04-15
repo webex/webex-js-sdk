@@ -43,7 +43,8 @@
     "@webex/webex-core": "workspace:*",
     "ampersand-collection": "^2.0.2",
     "ampersand-state": "^5.0.3",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "uuid": "^3.3.2"
   },
   "scripts": {
     "build": "yarn build:src",

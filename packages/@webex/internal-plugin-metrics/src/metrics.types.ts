@@ -16,11 +16,15 @@ export type ClientLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['clientLaunchMethod'];
 
+export type ClientUserNameInput = NonNullable<RawClientEvent['userNameInput']>;
+
+export type ClientEmailInput = NonNullable<RawClientEvent['emailInput']>;
+
 export type BrowserLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['browserLaunchMethod'];
 
-export type MetricEventProduct = 'webex' | 'wxcc_desktop';
+export type MetricEventProduct = 'webex' | 'wxcc_desktop' | 'wxcc_crm' | 'wxcc_sdk';
 
 export type MetricEventAgent = 'user' | 'browser' | 'system' | 'sdk' | 'redux' | 'service' | 'api';
 
@@ -129,6 +133,8 @@ export type SubmitClientEventOptions = {
   joinFlowVersion?: MetricEventJoinFlowVersion;
   meetingJoinPhase?: MetricEventMeetingJoinPhase;
   triggeredTime?: string;
+  emailInput?: ClientEmailInput;
+  userNameInput?: ClientUserNameInput;
 };
 
 export type SubmitMQEOptions = {
@@ -281,6 +287,13 @@ export type SubmitOperationalEvent = (args: {
   payload: EventPayload;
 }) => void;
 
+export type SubmitBusinessEvent = (args: {
+  name: OperationalEvent['metricName'];
+  payload: EventPayload;
+  metadata?: EventPayload;
+  table?: Table;
+}) => void;
+
 export type SubmitMQE = (args: {
   name: MediaQualityEvent['name'];
   payload: SubmitMQEPayload;
@@ -319,4 +332,10 @@ export interface IMetricsAttributes {
   data: any[];
   meetingId?: string;
   callId?: string;
+}
+
+export interface DelayedClientEvent {
+  name: ClientEvent['name'];
+  payload?: RecursivePartial<ClientEvent['payload']>;
+  options?: SubmitClientEventOptions;
 }

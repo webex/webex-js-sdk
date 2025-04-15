@@ -122,18 +122,14 @@ export default class Socket extends EventEmitter {
       }
 
       options = options || {};
-      if (
-        options.code &&
-        options.code !== 1000 &&
-        options.code !== 1050 &&
-        (options.code < 3000 || options.code > 4999)
-      ) {
-        reject(
-          new Error('`options.code` must be 1000 or 1050 or between 3000 and 4999 (inclusive)')
-        );
+      if (options.code && options.code !== 1000 && (options.code < 3000 || options.code > 4999)) {
+        reject(new Error('`options.code` must be 1000 or between 3000 and 4999 (inclusive)'));
 
         return;
       }
+
+      const originalCode = options.code;
+      const originalReason = options.reason;
 
       options = defaults(options, {
         code: 1000,
@@ -145,8 +141,8 @@ export default class Socket extends EventEmitter {
           this.logger.info(`socket,${this._domain}: no close event received, forcing closure`);
           resolve(
             this.onclose(
-              options.code === 1050
-                ? {code: 1050, reason: options.reason}
+              originalCode
+                ? {code: originalCode, reason: originalReason || 'Done (unknown)'}
                 : {
                     code: 1000,
                     reason: 'Done (forced)',

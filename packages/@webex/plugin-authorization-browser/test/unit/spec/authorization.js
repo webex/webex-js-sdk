@@ -408,6 +408,65 @@ describe('plugin-authorization-browser', () => {
           assert.include(webex.getWindow().location, 'response_type=token');
         });
       });
+
+      it('redirects to the login page in the same window by default', () => {
+        const webex = makeWebexCore();
+
+        return webex.authorization.initiateImplicitGrant().then(() => {
+          assert.isDefined(webex.getWindow().location);
+          assert.isUndefined(webex.getWindow().open);
+        });
+      });
+
+      it('opens login page in a new window when separateWindow is true', () => {
+        const webex = makeWebexCore();
+        webex.getWindow().open = sinon.spy();
+
+        return webex.authorization.initiateImplicitGrant({ separateWindow: true }).then(() => {
+          assert.called(webex.getWindow().open);
+          const openCall = webex.getWindow().open.getCall(0);
+          assert.equal(openCall.args[1], '_blank');
+          assert.equal(openCall.args[2], 'width=600,height=800');
+        });
+      });
+
+      it('opens login page in a new window with custom dimensions', () => {
+        const webex = makeWebexCore();
+        webex.getWindow().open = sinon.spy();
+
+        const customWindow = {
+          width: 800,
+          height: 600,
+          menubar: 'no',
+          toolbar: 'no'
+        };
+
+        return webex.authorization.initiateImplicitGrant({ 
+          separateWindow: customWindow 
+        }).then(() => {
+          assert.called(webex.getWindow().open);
+          const openCall = webex.getWindow().open.getCall(0);
+          assert.equal(openCall.args[1], '_blank');
+          assert.equal(
+            openCall.args[2], 
+            'width=800,height=600,menubar=no,toolbar=no'
+          );
+        });
+      });
+
+      it('preserves other options when using separateWindow', () => {
+        const webex = makeWebexCore();
+        webex.getWindow().open = sinon.spy();
+
+        return webex.authorization.initiateImplicitGrant({ 
+          separateWindow: true,
+          state: {}
+        }).then(() => {
+          assert.called(webex.getWindow().open);
+          const url = webex.getWindow().open.getCall(0).args[0];
+          assert.include(url, "https://idbrokerbts.webex.com/idb/oauth2/v1/authorize?response_type=token&separateWindow=true&client_id=fake&redirect_uri=http%3A%2F%2Fexample.com&scope=scope%3Aone");
+        });
+      });
     });
 
     describe('#initiateAuthorizationCodeGrant()', () => {

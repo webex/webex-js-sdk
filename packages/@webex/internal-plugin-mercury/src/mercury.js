@@ -104,10 +104,16 @@ const Mercury = WebexPlugin.extend({
   },
 
   logout() {
+    this.logger.info(`${this.namespace}: logout() called`);
+    this.logger.info(
+      `${this.namespace}: debug_mercury_logging stack: `,
+      new Error('debug_mercury_logging').stack
+    );
+
     return this.disconnect(
       this.config.beforeLogoutOptionsCloseReason &&
         !normalReconnectReasons.includes(this.config.beforeLogoutOptionsCloseReason)
-        ? {code: 1050, reason: this.config.beforeLogoutOptionsCloseReason}
+        ? {code: 3050, reason: this.config.beforeLogoutOptionsCloseReason}
         : undefined
     );
   },
@@ -269,8 +275,8 @@ const Mercury = WebexPlugin.extend({
         // may end up suppressing metrics during outages, but we might not care
         // (especially since many of our outages happen in a way that client
         // metrics can't be trusted).
-        if (reason.code !== 1006 && this.backoffCall && this.backoffCall.getNumRetries() > 0) {
-          this._emit('connection_failed', reason, {retries: this.backoffCall.getNumRetries()});
+        if (reason.code !== 1006 && this.backoffCall && this.backoffCall?.getNumRetries() > 0) {
+          this._emit('connection_failed', reason, {retries: this.backoffCall?.getNumRetries()});
         }
         this.logger.info(
           `${this.namespace}: connection attempt failed`,
@@ -474,7 +480,7 @@ const Mercury = WebexPlugin.extend({
           // if (code == 1011 && reason !== ping error) metric: unexpected disconnect
           break;
         case 1000:
-        case 1050: // 1050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
+        case 3050: // 3050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
           if (normalReconnectReasons.includes(reason)) {
             this.logger.info(`${this.namespace}: socket disconnected; reconnecting`);
             this._emit('offline.transient', event);

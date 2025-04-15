@@ -192,6 +192,15 @@ describe('plugin-meetings', () => {
         assert.equal(res.meetingUUID, 'xsddsdsdsdssdsdsdsdsd');
       });
 
+      it('for registrationId', () => {
+        const res = MeetingInfoUtil.getRequestBody({
+          type: DESTINATION_TYPE.MEETING_UUID,
+          registrationId: 'registrationId',
+        });
+
+        assert.equal(res.registrationId, 'registrationId');
+      });
+
       it('for DESTINATION_TYPE.LOCUS_ID', () => {
         const res = MeetingInfoUtil.getRequestBody({
           type: DESTINATION_TYPE.LOCUS_ID,
@@ -343,6 +352,23 @@ describe('plugin-meetings', () => {
           }),
           null
         );
+      });
+    });
+
+    describe('#isMeetingLink', () => {
+      it('should return true for valid join meeting link with MTID', () => {
+        const result = MeetingInfoUtil.isMeetingLink('https://cisco.webex.com/cisco/j.php?MTID=m9fe0afd8c435e892afcce9ea25b97046');
+        expect(result).to.be.true;
+      });
+
+      it('should return true for valid join meeting link without cisco domain', () => {
+        const result = MeetingInfoUtil.isMeetingLink('https://test.webex.com/test/j.php?MTID=m9fe0afd8c435e892afcce9ea25b97046');
+        expect(result).to.be.true;
+      });
+
+      it('should return false for an invalid meeting link', () => {
+        const result = MeetingInfoUtil.isMeetingLink('https://test.webex.com/test/j.php?MiD=m9fe0afd8c435e892afcce9ea25b97046');
+        expect(result).to.be.false;
       });
     });
   });

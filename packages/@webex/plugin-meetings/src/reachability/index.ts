@@ -23,11 +23,13 @@ import {
   ReachabilityResultsForBackend,
   TransportResultForBackend,
   GetClustersTrigger,
+  NatType,
 } from './reachability.types';
 import {
   ClientMediaIpsUpdatedEventData,
   ClusterReachability,
   Events,
+  NatTypeUpdatedEventData,
   ResultEventData,
 } from './clusterReachability';
 import EventsScope from '../common/events/events-scope';
@@ -64,6 +66,7 @@ export default class Reachability extends EventsScope {
   resultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
   startTime = undefined;
   totalDuration = undefined;
+  natType = NatType.Unknown;
 
   protected lastTrigger?: string;
 
@@ -143,6 +146,10 @@ export default class Reachability extends EventsScope {
    * @memberof Reachability
    */
   public async gatherReachability(trigger: string): Promise<ReachabilityResults> {
+    // @ts-ignore
+    if (!this.webex.config.meetings.enableReachabilityChecks) {
+      throw new Error('enableReachabilityChecks is disabled in config');
+    }
     // Fetch clusters and measure latency
     try {
       this.lastTrigger = trigger;
@@ -260,6 +267,32 @@ export default class Reachability extends EventsScope {
   }
 
   /**
+   * Stops all reachability checks that are in progress
+   * @public
+   * @memberof Reachability
+   * @returns {void}
+   */
+  public stopReachability() {
+    // overallTimer is always there only if there is reachability in progress
+    if (this.overallTimer) {
+      LoggerProxy.logger.log(
+        'Reachability:index#stopReachability --> stopping reachability checks'
+      );
+      this.abortCurrentChecks();
+      this.emit(
+        {
+          file: 'reachability',
+          function: 'stopReachability',
+        },
+        'reachability:stopped',
+        {}
+      );
+      this.sendMetric(true);
+      this.resolveReachabilityPromise();
+    }
+  }
+
+  /**
    * Returns statistics about last reachability results. The returned value is an object
    * with a flat list of properties so that it can be easily sent with metrics
    *
@@ -279,6 +312,7 @@ export default class Reachability extends EventsScope {
       reachability_vmn_tcp_failed: 0,
       reachability_vmn_xtls_success: 0,
       reachability_vmn_xtls_failed: 0,
+      natType: this.natType,
     };
 
     const updateStats = (clusterType: 'public' | 'vmn', result: ClusterReachabilityResult) => {
@@ -637,9 +671,10 @@ export default class Reachability extends EventsScope {
   /**
    * Sends a metric with all the statistics about how long reachability took
    *
+   * @param {boolean} aborted true if the reachability checks were aborted
    * @returns {void}
    */
-  protected async sendMetric() {
+  protected async sendMetric(aborted = false) {
     const results = [];
 
     Object.values(this.clusterReachability).forEach((clusterReachability) => {
@@ -650,6 +685,7 @@ export default class Reachability extends EventsScope {
     });
 
     const stats = {
+      aborted,
       vmn: {
         udp: this.getStatistics(results, 'udp', true),
       },
@@ -932,6 +968,13 @@ export default class Reachability extends EventsScope {
           results[key][data.protocol].clientMediaIPs = data.clientMediaIPs;
 
           await this.storeResults(results);
+        }
+      );
+
+      this.clusterReachability[key].on(
+        Events.natTypeUpdated,
+        async (data: NatTypeUpdatedEventData) => {
+          this.natType = data.natType;
         }
       );
 

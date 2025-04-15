@@ -7,10 +7,7 @@ import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import Device from '@webex/internal-plugin-device';
 import Mercury from '@webex/internal-plugin-mercury';
-import {
-  DESTINATION_TYPE,
-  WBXAPPAPI_SERVICE,
-} from '@webex/plugin-meetings/src/constants';
+import {DESTINATION_TYPE, WBXAPPAPI_SERVICE} from '@webex/plugin-meetings/src/constants';
 
 import Meetings from '@webex/plugin-meetings/src/meetings';
 import MeetingInfo, {
@@ -19,6 +16,10 @@ import MeetingInfo, {
   MeetingInfoV2AdhocMeetingError,
   MeetingInfoV2PolicyError,
   MeetingInfoV2JoinWebinarError,
+  MeetingInfoV2JoinForbiddenError,
+  MeetingInfoV2MeetingIsInProgressError,
+  MeetingInfoV2StaticMeetingLinkAlreadyExists,
+  MeetingInfoV2StaticLinkDoesNotExistError,
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
@@ -92,6 +93,304 @@ describe('plugin-meetings', () => {
       meetingInfo = new MeetingInfo(webex);
     });
 
+    describe('#fetchStaticMeetingLink', () => {
+      it('should fetch static meeting link for given conversation url', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        const body = {spaceUrl: conversationUrl};
+        const requestResponse = {statusCode: 200, body};
+        webex.request.resolves(requestResponse);
+        const result = await meetingInfo.fetchStaticMeetingLink(conversationUrl);
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          uri: `https://${webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/query`,
+          body,
+        });
+
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_SUCCESS
+        );
+
+        assert.deepEqual(result, requestResponse);
+      });
+
+      it('should not fetch static meeting link for given conversation url if no preferred webex site', async () => {
+        webex.meetings.preferredWebexSite = undefined;
+
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        try {
+          await meetingInfo.fetchStaticMeetingLink(conversationUrl);
+
+          assert.calledWith(webex.request, {
+            method: 'POST',
+            uri: `https://${webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/query`,
+            body,
+          });
+        } catch (err) {
+          assert.deepEqual(err.message, 'No preferred webex site found');
+          assert.notCalled(webex.request);
+        }
+      });
+
+      it('handles error for MeetingInfoV2StaticLinkDoesNotExistError', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon
+          .stub()
+          .rejects({stack: 'a stack', message: 'a message', statusCode: 403, body: {code: 400000}});
+        try {
+          await meetingInfo.fetchStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert.equal(err.wbxAppApiCode, 400000);
+          assert.instanceOf(err, MeetingInfoV2StaticLinkDoesNotExistError);
+          assert.deepEqual(
+            err.message,
+            'Meeting link does not exists for conversation, code=400000'
+          );
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.MEETING_LINK_DOES_NOT_EXIST_ERROR,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+
+      it('handles generic error when fetching static link', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon
+          .stub()
+          .rejects({stack: 'a stack', message: 'a message', statusCode: 500, body: {code: 400000}});
+        try {
+          await meetingInfo.fetchStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_FAILURE,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+    });
+
+    describe('#enableStaticMeetingLink', () => {
+      const setup = () => {
+        const invitee = [];
+
+        invitee.push({
+          email: conversation.participants.items[0].emailAddress,
+          ciUserUuid: conversation.participants.items[0].entryUUID,
+        });
+
+        invitee.push({
+          email: conversation.participants.items[1].emailAddress,
+          ciUserUuid: conversation.participants.items[1].entryUUID,
+        });
+
+        return {invitee};
+      };
+
+      it('should enable static meeting link', async () => {
+        const {invitee} = setup();
+        const installedOrgID = '12345';
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request.resolves({
+          statusCode: 200,
+          body: conversation,
+        });
+        const result = await meetingInfo.enableStaticMeetingLink(conversationUrl);
+
+        assert.calledWith(webex.request, {
+          uri: conversationUrl,
+          qs: {includeParticipants: true},
+          disableTransform: true,
+        });
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          uri: `https://${webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant`,
+          body: {
+            title: conversation.displayName,
+            spaceUrl: conversation.url,
+            keyUrl: conversation.encryptionKeyUrl,
+            kroUrl: conversation.kmsResourceObjectUrl,
+            invitees: invitee,
+            installedOrgID: undefined,
+            schedule: true,
+          },
+        });
+
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.ENABLE_STATIC_METTING_LINK_SUCCESS
+        );
+
+        assert.deepEqual(result, {
+          body: conversation,
+          statusCode: 200,
+        });
+      });
+
+      it('should not enable static meeting link for given conversation url if no preferred webex site', async () => {
+        webex.meetings.preferredWebexSite = undefined;
+
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        try {
+          await meetingInfo.enableStaticMeetingLink(conversationUrl);
+
+          assert.calledWith(webex.request, {
+            method: 'POST',
+            uri: `https://${webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant`,
+            body,
+          });
+        } catch (err) {
+          assert.deepEqual(err.message, 'No preferred webex site found');
+          assert.notCalled(webex.request);
+        }
+      });
+
+      it('handles error for MeetingInfoV2MeetingIsInProgressError', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon
+          .stub()
+          .rejects({stack: 'a stack', message: 'a message', statusCode: 403, body: {code: 33003}});
+        try {
+          await meetingInfo.enableStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert.equal(err.wbxAppApiCode, 33003);
+          assert.instanceOf(err, MeetingInfoV2MeetingIsInProgressError);
+          assert.deepEqual(err.message, 'Meeting is in progress, code=33003, enable=true');
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.MEETING_IS_IN_PROGRESS_ERROR,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+
+      it('handles error for MeetingInfoV2StaticMeetingLinkAlreadyExists', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon
+          .stub()
+          .rejects({stack: 'a stack', message: 'a message', statusCode: 409, body: {code: 409000}});
+        try {
+          await meetingInfo.enableStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert.equal(err.wbxAppApiCode, 409000);
+          assert.instanceOf(err, MeetingInfoV2StaticMeetingLinkAlreadyExists);
+          assert.deepEqual(err.message, 'Static meeting link already exists, code=409000');
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.STATIC_MEETING_LINK_ALREADY_EXISTS_ERROR,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+
+      it('handles generic error when enabling static link', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon
+          .stub()
+          .rejects({stack: 'a stack', message: 'a message', statusCode: 500, body: {code: 400000}});
+        try {
+          await meetingInfo.enableStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ENABLE_STATIC_METTING_LINK_FAILURE,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+    });
+
+    describe('#disableStaticMeetingLink', () => {
+      it('should disable static meeting link for given conversation url', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        const body = {spaceUrl: conversationUrl};
+        const requestResponse = {statusCode: 204};
+        webex.request.resolves(requestResponse);
+        const result = await meetingInfo.disableStaticMeetingLink(conversationUrl);
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          uri: `https://${webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/deletePersistentMeeting`,
+          body,
+        });
+
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.DISABLE_STATIC_MEETING_LINK_SUCCESS
+        );
+
+        assert.deepEqual(result, requestResponse);
+      });
+
+      it('should not disable static meeting link for given conversation url if no preferred webex site', async () => {
+        webex.meetings.preferredWebexSite = undefined;
+
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        try {
+          await meetingInfo.disableStaticMeetingLink(conversationUrl);
+
+          assert.calledWith(webex.request, {
+            method: 'POST',
+            uri: `https://${webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/deletePersistentMeeting`,
+            body,
+          });
+        } catch (err) {
+          assert.deepEqual(err.message, 'No preferred webex site found');
+          assert.notCalled(webex.request);
+        }
+      });
+
+      it('handles error for MeetingInfoV2MeetingIsInProgressError for disable', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon.stub().rejects({
+          stack: 'a stack',
+          message: 'a message',
+          statusCode: 403,
+          body: {code: 33003},
+        });
+        try {
+          await meetingInfo.disableStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert.equal(err.wbxAppApiCode, 33003);
+          assert.instanceOf(err, MeetingInfoV2MeetingIsInProgressError);
+          assert.deepEqual(err.message, 'Meeting is in progress, code=33003, enable=false');
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.MEETING_IS_IN_PROGRESS_ERROR,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+
+      it('handles generic error when disabling static link', async () => {
+        const conversationUrl = 'conv.fakeconversationurl.com';
+        webex.request = sinon.stub().rejects({
+          stack: 'a stack',
+          message: 'a message',
+          statusCode: 500,
+          body: {code: 400000},
+        });
+        try {
+          await meetingInfo.disableStaticMeetingLink(conversationUrl);
+        } catch (err) {
+          assert(Metrics.sendBehavioralMetric.calledOnce);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.DISABLE_STATIC_MEETING_LINK_FAILURE,
+            {reason: 'a message', stack: 'a stack'}
+          );
+        }
+      });
+    });
+
     describe('#fetchMeetingInfo', () => {
       it('should fetch meeting info for the destination type', async () => {
         const body = {meetingKey: '1234323'};
@@ -150,14 +449,20 @@ describe('plugin-meetings', () => {
         const body = {meetingKey: '1234323'};
         const requestResponse = {statusCode: 200, body};
 
-        sinon
-          .stub(MeetingInfoUtil, 'getDestinationType')
-          .returns(Promise.resolve({type: DESTINATION_TYPE.SIP_URI, destination: 'example@something.webex.com'}));
+        sinon.stub(MeetingInfoUtil, 'getDestinationType').returns(
+          Promise.resolve({
+            type: DESTINATION_TYPE.SIP_URI,
+            destination: 'example@something.webex.com',
+          })
+        );
         sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
         sinon.stub(MeetingInfoUtil, 'getDirectMeetingInfoURI').returns('https://example.com');
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('example@something.webex.com', DESTINATION_TYPE.SIP_URI);
+        const result = await meetingInfo.fetchMeetingInfo(
+          'example@something.webex.com',
+          DESTINATION_TYPE.SIP_URI
+        );
 
         assert.calledWith(MeetingInfoUtil.getDestinationType, {
           destination: 'example@something.webex.com',
@@ -185,10 +490,15 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, 'abc', {
-          id: '999',
-          code: 'aabbcc11',
-        });
+        const result = await meetingInfo.fetchMeetingInfo(
+          '1234323',
+          DESTINATION_TYPE.MEETING_ID,
+          'abc',
+          {
+            id: '999',
+            code: 'aabbcc11',
+          }
+        );
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -217,7 +527,13 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, null, null, installedOrgID);
+        const result = await meetingInfo.fetchMeetingInfo(
+          '1234323',
+          DESTINATION_TYPE.MEETING_ID,
+          null,
+          null,
+          installedOrgID
+        );
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -244,7 +560,14 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, null, null, null, locusId);
+        const result = await meetingInfo.fetchMeetingInfo(
+          '1234323',
+          DESTINATION_TYPE.MEETING_ID,
+          null,
+          null,
+          null,
+          locusId
+        );
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -267,11 +590,19 @@ describe('plugin-meetings', () => {
 
       it('should fetch meeting info with provided extraParams', async () => {
         const requestResponse = {statusCode: 200, body: {meetingKey: '1234323'}};
-        const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
+        const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'};
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, null, null, null, null, extraParams);
+        const result = await meetingInfo.fetchMeetingInfo(
+          '1234323',
+          DESTINATION_TYPE.MEETING_ID,
+          null,
+          null,
+          null,
+          null,
+          extraParams
+        );
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -304,7 +635,7 @@ describe('plugin-meetings', () => {
       it('create adhoc meeting when conversationUrl and installedOrgID passed with enableAdhocMeetings toggle', async () => {
         sinon.stub(meetingInfo, 'createAdhocSpaceMeeting').returns(Promise.resolve());
 
-        const installedOrgID = '12345'
+        const installedOrgID = '12345';
 
         await meetingInfo.fetchMeetingInfo(
           'conversationUrl',
@@ -322,7 +653,6 @@ describe('plugin-meetings', () => {
         assert.notCalled(webex.request);
         meetingInfo.createAdhocSpaceMeeting.restore();
       });
-
 
       it('should not call createAdhocSpaceMeeting if enableAdhocMeetings toggle is off', async () => {
         webex.config.meetings.experimental.enableAdhocMeetings = false;
@@ -349,7 +679,9 @@ describe('plugin-meetings', () => {
       it('should throw an error MeetingInfoV2AdhocMeetingError if not able to start adhoc meeting for a conversation', async () => {
         webex.config.meetings.experimental.enableAdhocMeetings = true;
 
-        webex.request = sinon.stub().rejects({stack: 'a stack', message: 'a message', statusCode: 403, body: {code: 400000}});
+        webex.request = sinon
+          .stub()
+          .rejects({stack: 'a stack', message: 'a message', statusCode: 403, body: {code: 400000}});
         try {
           await meetingInfo.createAdhocSpaceMeeting('conversationUrl');
         } catch (err) {
@@ -415,7 +747,8 @@ describe('plugin-meetings', () => {
               );
               assert.fail('fetchMeetingInfo should have thrown, but has not done that');
             } catch (err) {
-              const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+              const submitInternalEventCalls =
+                webex.internal.newMetrics.submitInternalEvent.getCalls();
               const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
 
               if (sendCAevents) {
@@ -426,7 +759,7 @@ describe('plugin-meetings', () => {
                 assert.deepEqual(submitClientEventCalls[0].args[0], {
                   name: 'client.meetinginfo.request',
                   options: {
-                    meetingId: 'meeting-id'
+                    meetingId: 'meeting-id',
                   },
                 });
 
@@ -479,11 +812,14 @@ describe('plugin-meetings', () => {
         ],
         ({meetingId, sendCAevents, shouldSendCAevents, confIdStr}) => {
           it('should send CA metric if meetingId is provided and send CA events is authorized', async () => {
-            const requestResponse = {statusCode: 200, body: {meetingKey: '1234323', meetingId: '123', confID: '321'}};
+            const requestResponse = {
+              statusCode: 200,
+              body: {meetingKey: '1234323', meetingId: '123', confID: '321'},
+            };
             if (confIdStr) {
               requestResponse.body.confIdStr = confIdStr;
             }
-            const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
+            const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'};
 
             webex.request.resolves(requestResponse);
 
@@ -516,10 +852,11 @@ describe('plugin-meetings', () => {
               BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS
             );
 
-            const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+            const submitInternalEventCalls =
+              webex.internal.newMetrics.submitInternalEvent.getCalls();
             const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
 
-            if(shouldSendCAevents) {
+            if (shouldSendCAevents) {
               assert.deepEqual(submitInternalEventCalls[0].args[0], {
                 name: 'internal.client.meetinginfo.request',
               });
@@ -527,7 +864,7 @@ describe('plugin-meetings', () => {
                 name: 'client.meetinginfo.request',
                 options: {
                   meetingId,
-                }
+                },
               });
 
               assert.deepEqual(submitInternalEventCalls[1].args[0], {
@@ -543,20 +880,25 @@ describe('plugin-meetings', () => {
                 options: {
                   meetingId,
                   globalMeetingId: requestResponse.body?.meetingId,
-                  webexConferenceIdStr: confIdStr ? requestResponse.body?.confIdStr : requestResponse.body?.confID,
-                }
+                  webexConferenceIdStr: confIdStr
+                    ? requestResponse.body?.confIdStr
+                    : requestResponse.body?.confID,
+                },
               });
             } else {
               assert.notCalled(webex.internal.newMetrics.submitClientEvent);
               assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
             }
-          })
+          });
         }
-      )
+      );
 
       it('should send CA metric if meetingId is provided and send CA events is authorized', async () => {
-        const requestResponse = {statusCode: 200, body: {meetingKey: '1234323', confID: '123', meetingId: '321'}};
-        const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
+        const requestResponse = {
+          statusCode: 200,
+          body: {meetingKey: '1234323', confID: '123', meetingId: '321'},
+        };
+        const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'};
 
         webex.request.resolves(requestResponse);
 
@@ -599,7 +941,7 @@ describe('plugin-meetings', () => {
           name: 'client.meetinginfo.request',
           options: {
             meetingId: 'meetingId',
-          }
+          },
         });
 
         assert.deepEqual(submitInternalEventCalls[1].args[0], {
@@ -616,47 +958,41 @@ describe('plugin-meetings', () => {
             meetingId: 'meetingId',
             globalMeetingId: requestResponse.body?.meetingId,
             webexConferenceIdStr: requestResponse.body?.confID,
-          }
+          },
         });
       });
 
-      forEach(
-        [
-          {sendCAevents: true},
-          {sendCAevents: false},
-        ],
-        ({sendCAevents}) => {
-          it(`should not send CA metric if meetingId is not provided disregarding if sendCAevents is ${sendCAevents}`, async () => {
-            const message = 'a message';
-            const meetingInfoData = 'meeting info';
+      forEach([{sendCAevents: true}, {sendCAevents: false}], ({sendCAevents}) => {
+        it(`should not send CA metric if meetingId is not provided disregarding if sendCAevents is ${sendCAevents}`, async () => {
+          const message = 'a message';
+          const meetingInfoData = 'meeting info';
 
-            webex.request = sinon.stub().rejects({
-              statusCode: 403,
-              body: {message, code: 403102, data: {meetingInfo: meetingInfoData}},
-              url: 'http://api-url.com',
-            });
-            try {
-              await meetingInfo.fetchMeetingInfo(
-                '1234323',
-                DESTINATION_TYPE.MEETING_ID,
-                'abc',
-                {
-                  id: '999',
-                  code: 'aabbcc11',
-                },
-                null,
-                null,
-                undefined,
-                {meetingId: undefined, sendCAevents}
-              );
-              assert.fail('fetchMeetingInfo should have thrown, but has not done that');
-            } catch (err) {
-              assert.notCalled(webex.internal.newMetrics.submitClientEvent);
-              assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
-            }
+          webex.request = sinon.stub().rejects({
+            statusCode: 403,
+            body: {message, code: 403102, data: {meetingInfo: meetingInfoData}},
+            url: 'http://api-url.com',
           });
-        }
-      );
+          try {
+            await meetingInfo.fetchMeetingInfo(
+              '1234323',
+              DESTINATION_TYPE.MEETING_ID,
+              'abc',
+              {
+                id: '999',
+                code: 'aabbcc11',
+              },
+              null,
+              null,
+              undefined,
+              {meetingId: undefined, sendCAevents}
+            );
+            assert.fail('fetchMeetingInfo should have thrown, but has not done that');
+          } catch (err) {
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+            assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+          }
+        });
+      });
 
       it('should throw MeetingInfoV2PasswordError for 403 response', async () => {
         const FAKE_MEETING_INFO = {blablabla: 'some_fake_meeting_info'};
@@ -785,23 +1121,24 @@ describe('plugin-meetings', () => {
           ciUserUuid: conversation.participants.items[1].entryUUID,
         });
 
-        return {invitee}
-      }
+        return {invitee};
+      };
 
       it('Make a request to /spaceInstant when conversationUrl', async () => {
         const {invitee} = setup();
 
         webex.request.resolves({
           statusCode: 200,
-          body: conversation
+          body: conversation,
         });
 
-        const result = await meetingInfo.createAdhocSpaceMeeting(conversationUrl,installedOrgID);
+        const result = await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
 
-        assert.calledWith(
-          webex.request,
-          {uri:conversationUrl, qs: {includeParticipants: true}, disableTransform: true}
-        )
+        assert.calledWith(webex.request, {
+          uri: conversationUrl,
+          qs: {includeParticipants: true},
+          disableTransform: true,
+        });
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -812,14 +1149,15 @@ describe('plugin-meetings', () => {
             keyUrl: conversation.encryptionKeyUrl,
             kroUrl: conversation.kmsResourceObjectUrl,
             invitees: invitee,
-            installedOrgID: installedOrgID
+            installedOrgID: installedOrgID,
+            schedule: false,
           },
         });
         assert.calledOnce(Metrics.sendBehavioralMetric);
         assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
         assert.deepEqual(result, {
           body: conversation,
-          statusCode: 200
+          statusCode: 200,
         });
       });
       it('Make a request to /spaceInstant when conversationUrl with installed org ID', async () => {
@@ -844,12 +1182,12 @@ describe('plugin-meetings', () => {
             kroUrl: conversation.kmsResourceObjectUrl,
             invitees: invitee,
             installedOrgID,
+            schedule: false,
           },
         });
         assert(Metrics.sendBehavioralMetric.calledOnce);
         assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
       });
-
 
       forEach(
         [
@@ -884,7 +1222,6 @@ describe('plugin-meetings', () => {
                 BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR,
                 {code: errorCode}
               );
-
             }
           });
         }
@@ -925,11 +1262,40 @@ describe('plugin-meetings', () => {
                 BEHAVIORAL_METRICS.JOIN_WEBINAR_ERROR,
                 {code: errorCode}
               );
-
             }
           });
         }
       );
+
+      forEach([{errorCode: 403003}], ({errorCode}) => {
+        it(`should throw a MeetingInfoV2JoinForbiddenError for error code ${errorCode}`, async () => {
+          const message = 'a message';
+          const meetingInfoData = 'meeting info';
+
+          webex.request = sinon.stub().rejects({
+            statusCode: 403,
+            body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+          });
+          try {
+            await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, 'abc', {
+              id: '999',
+              code: 'aabbcc11',
+            });
+          } catch (err) {
+            assert.instanceOf(err, MeetingInfoV2JoinForbiddenError);
+            assert.deepEqual(err.message, `${message}, code=${errorCode}`);
+            assert.equal(err.wbxAppApiCode, errorCode);
+            assert.deepEqual(err.meetingInfo, meetingInfoData);
+
+            assert(Metrics.sendBehavioralMetric.calledOnce);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.JOIN_FORBIDDEN_ERROR,
+              {code: errorCode}
+            );
+          }
+        });
+      });
     });
   });
 });

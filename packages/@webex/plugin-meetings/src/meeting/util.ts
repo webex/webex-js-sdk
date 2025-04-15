@@ -176,11 +176,12 @@ const MeetingUtil = {
         deviceCapabilities: options.deviceCapabilities,
         liveAnnotationSupported: options.liveAnnotationSupported,
         clientMediaPreferences,
+        alias: options.alias,
       })
       .then((res) => {
         const parsed = MeetingUtil.parseLocusJoin(res);
         meeting.setLocus(parsed);
-
+        meeting.isoLocalClientMeetingJoinTime = res?.headers?.date; // read from header if exist, else fall back to system clock : https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-555657
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.join.response',
           payload: {

@@ -9,7 +9,9 @@ import {
   ResultEventData,
   Events,
   ClientMediaIpsUpdatedEventData,
+  NatTypeUpdatedEventData,
 } from '@webex/plugin-meetings/src/reachability/clusterReachability'; // replace with actual path
+import { NatType } from 'packages/@webex/plugin-meetings/dist/reachability/reachability.types';
 
 describe('ClusterReachability', () => {
   let previousRTCPeerConnection;
@@ -17,15 +19,17 @@ describe('ClusterReachability', () => {
   let fakePeerConnection;
   let gatherIceCandidatesSpy;
 
-  const emittedEvents: Record<Events, (ResultEventData | ClientMediaIpsUpdatedEventData)[]> = {
+  const emittedEvents: Record<Events, (ResultEventData | ClientMediaIpsUpdatedEventData | NatTypeUpdatedEventData)[]> = {
     [Events.resultReady]: [],
     [Events.clientMediaIpsUpdated]: [],
+    [Events.natTypeUpdated]: [],
   };
   const FAKE_OFFER = {type: 'offer', sdp: 'fake sdp'};
 
   const resetEmittedEvents = () => {
     emittedEvents[Events.resultReady].length = 0;
     emittedEvents[Events.clientMediaIpsUpdated].length = 0;
+    emittedEvents[Events.natTypeUpdated].length = 0;
   };
   beforeEach(() => {
     fakePeerConnection = {
@@ -55,6 +59,10 @@ describe('ClusterReachability', () => {
 
     clusterReachability.on(Events.clientMediaIpsUpdated, (data: ClientMediaIpsUpdatedEventData) => {
       emittedEvents[Events.clientMediaIpsUpdated].push(data);
+    });
+
+    clusterReachability.on(Events.natTypeUpdated, (data: NatTypeUpdatedEventData) => {
+      emittedEvents[Events.natTypeUpdated].push(data);
     });
   });
 
@@ -438,6 +446,44 @@ describe('ClusterReachability', () => {
         },
         tcp: {result: 'reachable', latencyInMilliseconds: 40},
         xtls: {result: 'reachable', latencyInMilliseconds: 40},
+      });
+    });
+
+    it('determines correctly if symmetric-nat is detected', async () => {
+      const promise = clusterReachability.start();
+
+      // generate candidates with duplicate addresses
+      await clock.tickAsync(10);
+      fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1', relatedPort: 3478, port: 1000}});
+
+      // check events emitted: there shouldn't be any natTypeUpdated emitted
+      assert.equal(emittedEvents[Events.natTypeUpdated].length, 0);
+
+      await clock.tickAsync(10);
+      fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1', relatedPort: 3478, port: 2000}});
+
+      // should emit natTypeUpdated event
+      assert.equal(emittedEvents[Events.natTypeUpdated].length, 1);
+      assert.deepEqual(emittedEvents[Events.natTypeUpdated][0], {
+        natType: 'symmetric-nat',
+      });
+
+      // send also a relay candidate so that the reachability check finishes
+      fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp'}});
+      fakePeerConnection.onicecandidate({
+        candidate: {type: 'relay', address: 'someTurnRelayIp', port: 443},
+      });
+
+      await promise;
+
+      assert.deepEqual(clusterReachability.getResult(), {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 10,
+          clientMediaIPs: ['somePublicIp1'],
+        },
+        tcp: {result: 'reachable', latencyInMilliseconds: 20},
+        xtls: {result: 'reachable', latencyInMilliseconds: 20},
       });
     });
   });
