@@ -77,7 +77,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.$config = this.config;
 
       /**
-       * This is used for handling the async requests by sending webex.request and wait for corresponding websocket event.
+       * This is used for handling the async requests by sending webex.request and wait for corresponding websocket events.
        */
       this.httpRequest = HttpRequest.getInstance({
         webex: this.$webex,
