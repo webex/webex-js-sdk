@@ -3901,7 +3901,7 @@ describe('plugin-meetings', () => {
 
             await meeting.beRightBack(false);
 
-            assert.isTrue(meeting.audio.handleServerRemoteMuteUpdate.notCalled);
+            assert.notCalled(meeting.audio.handleServerRemoteMuteUpdate);
           });
         });
       });
