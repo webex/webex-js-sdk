@@ -31,7 +31,7 @@ import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess} from './services/agent/types';
-import {getErrorDetails, uploadLogs} from './services/core/Utils';
+import {getErrorDetails} from './services/core/Utils';
 import {
   Profile,
   WelcomeEvent,
@@ -706,14 +706,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * This is used for uploading the logs to backend/mats.
-   * @param feedbackId - optional
+   * Uploads logs to help troubleshoot SDK issues.
+   *
+   * This method collects the current SDK logs including network requests, WebSocket
+   * messages, and client-side events, then securely submits them to Webex's diagnostics
+   * service. The returned tracking ID, feedbackID can be provided to Webex support for faster
+   * issue resolution.
    * @returns Promise<SubmitLogsResponse>
    * @throws Error
    */
-  public async uploadLogs(feedbackId = crypto.randomUUID()): Promise<UploadLogsResponse> {
-    return uploadLogs({
-      feedbackId,
-    });
+  public async uploadLogs(): Promise<UploadLogsResponse> {
+    return this.webexRequest.uploadLogs();
   }
 }

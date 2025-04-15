@@ -1,3 +1,7 @@
+import {WEBEX_REQUEST_FILE} from '../../constants';
+import LoggerProxy from '../../logger-proxy';
+import {METRIC_EVENT_NAMES} from '../../metrics/constants';
+import MetricsManager from '../../metrics/MetricsManager';
 import {
   WebexSDK,
   HTTP_METHODS,
@@ -41,12 +45,45 @@ class WebexRequest {
   }
 
   /**
-   * Uploads logs to backend/mats.
+   * This is used for uploading the logs to backend/mats.
    *
    * @param metaData - meta data to be uploaded.
    */
-  public async uploadLogs(metaData: LogsMetaData): Promise<UploadLogsResponse> {
-    return this.webex.internal.support.submitLogs(metaData);
+  public async uploadLogs(metaData: LogsMetaData = {}): Promise<UploadLogsResponse> {
+    const feedbackId = crypto.randomUUID();
+    try {
+      const response = await this.webex.internal.support.submitLogs({...metaData, feedbackId});
+      LoggerProxy.info(`Logs uploaded successfully`, {
+        module: WEBEX_REQUEST_FILE,
+        method: this.uploadLogs.name,
+      });
+
+      MetricsManager.getInstance().trackEvent(
+        METRIC_EVENT_NAMES.UPLOAD_LOGS_SUCCESS,
+        {
+          trackingId: response?.trackingid,
+          feedbackId,
+        },
+        ['behavioral']
+      );
+
+      return {...response, feedbackId};
+    } catch (error) {
+      LoggerProxy.error(`Error uploading logs: ${error}`, {
+        module: WEBEX_REQUEST_FILE,
+        method: this.uploadLogs.name,
+      });
+
+      MetricsManager.getInstance().trackEvent(
+        METRIC_EVENT_NAMES.UPLOAD_LOGS_FAILED,
+        {
+          stack: error?.stack,
+          feedbackId,
+        },
+        ['behavioral']
+      );
+      throw error;
+    }
   }
 }
 

@@ -31,9 +31,9 @@ import {
 The AgentConfigService class provides methods to fetch agent configuration data.
 */
 export default class AgentConfigService {
-  private httpReq: WebexRequest;
+  private webexReq: WebexRequest;
   constructor() {
-    this.httpReq = WebexRequest.getInstance();
+    this.webexReq = WebexRequest.getInstance();
   }
 
   /**
@@ -140,7 +140,7 @@ export default class AgentConfigService {
   public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentResponse> {
     try {
       const resource = endPointMap.userByCI(orgId, agentId);
-      const response = await this.httpReq.request({
+      const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
@@ -177,7 +177,7 @@ export default class AgentConfigService {
   ): Promise<DesktopProfileResponse> {
     try {
       const resource = endPointMap.desktopProfile(orgId, desktopProfileId);
-      const response = await this.httpReq.request({
+      const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
@@ -220,7 +220,7 @@ export default class AgentConfigService {
   ): Promise<ListTeamsResponse> {
     try {
       const resource = endPointMap.listTeams(orgId, page, pageSize, filter, attributes);
-      const response = await this.httpReq.request({
+      const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
@@ -303,7 +303,7 @@ export default class AgentConfigService {
   ): Promise<ListAuxCodesResponse> {
     try {
       const resource = endPointMap.listAuxCodes(orgId, page, pageSize, filter, attributes);
-      const response = await this.httpReq.request({
+      const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
@@ -379,7 +379,7 @@ export default class AgentConfigService {
   public async getOrgInfo(orgId: string): Promise<OrgInfo> {
     try {
       const resource = endPointMap.orgInfo(orgId);
-      const response = await this.httpReq.request({
+      const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
@@ -409,7 +409,7 @@ export default class AgentConfigService {
   public async getOrganizationSetting(orgId: string): Promise<OrgSettings> {
     try {
       const resource = endPointMap.orgSettings(orgId);
-      const response = await this.httpReq.request({
+      const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
@@ -442,7 +442,7 @@ export default class AgentConfigService {
   public async getTenantData(orgId: string): Promise<TenantData> {
     try {
       const resource = endPointMap.tenantData(orgId);
-      const response = await this.httpReq.request({
+      const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
@@ -475,7 +475,7 @@ export default class AgentConfigService {
   public async getURLMapping(orgId: string): Promise<URLMapping[]> {
     try {
       const resource = endPointMap.urlMapping(orgId);
-      const response = await this.httpReq.request({
+      const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
@@ -508,7 +508,7 @@ export default class AgentConfigService {
   public async getDialPlanData(orgId: string): Promise<DialPlanEntity[]> {
     try {
       const resource = endPointMap.dialPlan(orgId);
-      const response = await this.httpReq.request({
+      const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
@@ -555,7 +555,7 @@ export default class AgentConfigService {
       if (filter) queryParams += `&filter=${filter}`;
 
       const resource = endPointMap.queueList(orgId, queryParams);
-      const response = await this.httpReq.request({
+      const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,

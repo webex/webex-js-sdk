@@ -1,7 +1,9 @@
 import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import {HTTP_METHODS, WebexSDK} from '../../../../../src/types';
 import {IHttpResponse} from '../../../../../src/types';
-
+import LoggerProxy from '../../../../../src/logger-proxy';
+import {WEBEX_REQUEST_FILE} from '../../../../../src/constants';
+import MetricsManager from '../../../../../src/metrics/MetricsManager';
 const mockWebex = {
   request: jest.fn(),
   logger: {
@@ -12,6 +14,16 @@ const mockWebex = {
 
 // Cast the request function to a Jest mock function
 const mockRequest = mockWebex.request as jest.Mock;
+
+jest.mock('../../../../../src/logger-proxy', () => ({
+  __esModule: true,
+  default: {
+    log: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    initialize: jest.fn(),
+  },
+}));
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -66,9 +78,25 @@ describe('WebexRequest', () => {
   });
 
   describe('uploadLogs', () => {
+    let mockMetricsManager;
+    beforeEach(() => {
+      // Mock the crypto.randomUUID function
+      global.crypto = {
+        randomUUID: jest.fn().mockReturnValue("mocked-uuid-12345")
+      } as unknown as Crypto;
+
+      mockMetricsManager = {
+        trackEvent: jest.fn(),
+        timeEvent: jest.fn(),
+      };
+      
+      jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
+      
+    });
+
     it('should upload logs and return the response', async () => {
       const mockMetaData = { key: 'value' };
-      const mockResponse = { statusCode: 200, body: { message: 'Logs uploaded' } };
+      const mockResponse = { trackingId: '1234'};
 
       mockWebex.internal = {
         support: {
@@ -78,14 +106,23 @@ describe('WebexRequest', () => {
 
       const result = await webexRequest.uploadLogs(mockMetaData);
 
-      expect(result).toEqual(mockResponse);
-      expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith(mockMetaData);
+      expect(result).toEqual({...mockResponse, feedbackId: "mocked-uuid-12345"});
+      expect(LoggerProxy.info).toHaveBeenCalledWith(
+        `Logs uploaded successfully`,
+        {module: WEBEX_REQUEST_FILE, method: 'uploadLogs'}
+      );
+      expect(mockMetricsManager.trackEvent).toBeCalledWith(
+        "Upload Logs Success", 
+        {feedbackId: "mocked-uuid-12345", trackingId: undefined}, 
+        ["behavioral"]
+      );
+      expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith({... mockMetaData, feedbackId: "mocked-uuid-12345"});
     });
 
     it('should log and throw an error if the upload fails', async () => {
       const mockMetaData = { key: 'value' };
       const mockError = new Error('Upload failed');
-
+      mockError.stack = "My stack"
       mockWebex.internal = {
         support: {
           submitLogs: jest.fn().mockRejectedValueOnce(mockError),
@@ -93,6 +130,15 @@ describe('WebexRequest', () => {
       };
 
       await expect(webexRequest.uploadLogs(mockMetaData)).rejects.toThrow('Upload failed');
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `Error uploading logs: ${mockError}`,
+        {module: WEBEX_REQUEST_FILE, method: 'uploadLogs'}
+      );
+      expect(mockMetricsManager.trackEvent).toBeCalledWith(
+        "Upload Logs Failed", 
+        {stack: "My stack", feedbackId: "mocked-uuid-12345"}, 
+        ["behavioral"]
+      );
     });
   });
 });

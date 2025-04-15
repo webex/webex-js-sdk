@@ -139,7 +139,7 @@ interface IWebexInternal {
     submitBusinessEvent: SubmitBusinessEvent;
   };
   support: {
-    submitLogs: (data: LogsMetaData) => Promise<UploadLogsResponse>;
+    submitLogs: (metaData: LogsMetaData) => Promise<UploadLogsResponse>;
   };
 }
 export interface WebexSDK {

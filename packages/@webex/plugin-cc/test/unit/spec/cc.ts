@@ -24,7 +24,6 @@ import {
   OUTBOUND_TYPE,
   ATTRIBUTES,
   OUTDIAL_MEDIA_TYPE,
-  UTILS_FILE,
 } from '../../../src/constants';
 
 // Mock the Worker API
@@ -1266,56 +1265,28 @@ describe('webex.cc', () => {
 
   describe('uploadLogs', () => {
     it('should upload logs successfully', async () => {
-
-      const uploadLogsMock = jest
-        .spyOn(webex.cc.webexRequest, 'uploadLogs')
-        .mockResolvedValue({
-          trackingId: '1234',
-        });
-
-      const result = await webex.cc.uploadLogs('12345');
-
-      expect(uploadLogsMock).toHaveBeenCalledWith({
-        feedbackId: '12345',
-      });
-      
-      expect(result).toEqual({
+      const uploadLogsMock = jest.spyOn(webex.cc.webexRequest, 'uploadLogs').mockResolvedValue({
         trackingId: '1234',
         feedbackId: '12345',
       });
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith(
-        `Logs uploaded successfully`,
-        {module: UTILS_FILE, method: 'uploadLogs'}
-      );
+      const result = await webex.cc.uploadLogs('12345');
 
-      expect(mockMetricsManager.trackEvent).toBeCalledWith(
-        "Upload Logs Success", 
-        {"feedbackId": "12345", "trackingId": undefined}, 
-        ["behavioral"]
-      );
+      expect(uploadLogsMock).toHaveBeenCalled();
+
+      expect(result).toEqual({
+        trackingId: '1234',
+        feedbackId: '12345',
+      });
     });
 
     it('should handle error during uploadLogs', async () => {
-      const mockMetaData = {
-        feedbackId: '12345',
-      };
-
       const error = new Error('Error while performing uploadLogs');
-      error.stack = "My stack"
+      error.stack = 'My stack';
 
       jest.spyOn(webex.cc.webexRequest, 'uploadLogs').mockRejectedValue(error);
 
       await expect(webex.cc.uploadLogs('12345')).rejects.toThrow(error);
-
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `Error uploading logs: ${error}`,
-        {module: UTILS_FILE, method: 'uploadLogs'}
-      );
-
-      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(METRIC_EVENT_NAMES.UPLOAD_LOGS_FAILED, {"stack": "My stack"}, ["behavioral"]);
-
     });
-  }
-  );
+  });
 });
