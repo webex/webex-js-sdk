@@ -112,6 +112,192 @@ export function getEventTaxonomy(name: METRIC_EVENT_NAMES): BehavioralEventTaxon
         target: 'agent_rona',
         verb: 'set',
       };
+    // Added Task events
+    case METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_accept',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_accept',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_decline',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_DECLINE_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_decline',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.TASK_END_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_end',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_END_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_end',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.TASK_WRAPUP_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_wrapup',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_wrapup',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_hold',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_HOLD_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_hold',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_resume',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_RESUME_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_resume',
+        verb: 'fail',
+      };
+
+    // Advanced Tasks handling
+    case METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_consult_start',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_consult_start',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_consult_end',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_consult_end',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_transfer',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_transfer',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_resume_recording',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_resume_recording',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_pause_recording',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_pause_recording',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.TASK_ACCEPT_CONSULT_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_accept_consult',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_ACCEPT_CONSULT_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_accept_consult',
+        verb: 'fail',
+      };
+    case METRIC_EVENT_NAMES.TASK_OUTDIAL_SUCCESS:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_outdial',
+        verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.TASK_OUTDIAL_FAILED:
+      return {
+        product,
+        agent: 'user',
+        target: 'task_outdial',
+        verb: 'fail',
+      };
+
     default:
       break;
   }

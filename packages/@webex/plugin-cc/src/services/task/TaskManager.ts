@@ -9,6 +9,8 @@ import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
 import {LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import Task from '.';
+import MetricsManager from '../../metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -114,6 +116,18 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
             this.currentTask.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
+
+            if (payload.data.reason === 'RONA_TIMER_EXPIRED') {
+              MetricsManager.getInstance().trackEvent(
+                METRIC_EVENT_NAMES.AGENT_RONA,
+                {
+                  ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
+                  taskId: payload.data.interactionId,
+                  reason: payload.data.reason,
+                },
+                ['behavioral', 'operational']
+              );
+            }
             this.handleTaskCleanup();
             break;
           case CC_EVENTS.CONTACT_ENDED:

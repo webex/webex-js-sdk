@@ -18,6 +18,7 @@ import {
   ConsultTransferPayLoad,
   TransferPayLoad,
 } from '../../../../../src/services/task/types';
+import MetricsManager from '../../../../../src/metrics/MetricsManager';
 
 jest.mock('@webex/calling');
 
@@ -25,6 +26,7 @@ describe('Task', () => {
   let onSpy;
   let task;
   let contactMock;
+  let mockMetricsManager;
   let taskDataMock;
   let webCallingService;
   let getErrorDetailsSpy;
@@ -61,6 +63,13 @@ describe('Task', () => {
       pauseRecording: jest.fn().mockResolvedValue({}),
       resumeRecording: jest.fn().mockResolvedValue({}),
     };
+
+    mockMetricsManager = {
+      trackEvent: jest.fn(),
+      timeEvent: jest.fn(),
+    };
+
+    jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
 
     webCallingService = new WebCallingService(
       webex,
@@ -283,6 +292,7 @@ describe('Task', () => {
     await task.accept();
 
     expect(contactMock.accept).toHaveBeenCalledWith({interactionId: taskId});
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in accept method', async () => {
@@ -301,6 +311,7 @@ describe('Task', () => {
 
     await expect(task.accept()).rejects.toThrow(new Error(error.details.data.reason));
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'accept', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should decline call using webCallingService', async () => {
@@ -311,6 +322,7 @@ describe('Task', () => {
 
     expect(declineCallSpy).toHaveBeenCalledWith(taskId);
     expect(offSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, offSpy.mock.calls[0][1]);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in decline method', async () => {
@@ -328,6 +340,7 @@ describe('Task', () => {
     });
     await expect(task.decline()).rejects.toThrow(new Error(error.details.data.reason));
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'decline', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should hold the task and return the expected response', async () => {
@@ -341,6 +354,7 @@ describe('Task', () => {
       data: {mediaResourceId: taskDataMock.mediaResourceId},
     });
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in hold method', async () => {
@@ -358,6 +372,7 @@ describe('Task', () => {
 
     await expect(task.hold()).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'hold', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should resume the task and return the expected response', async () => {
@@ -369,6 +384,7 @@ describe('Task', () => {
       data: {mediaResourceId: taskDataMock.mediaResourceId},
     });
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in resume method', async () => {
@@ -386,6 +402,7 @@ describe('Task', () => {
 
     await expect(task.resume()).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'resume', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should initiate a consult call and return the expected response', async () => {
@@ -400,6 +417,7 @@ describe('Task', () => {
 
     expect(contactMock.consult).toHaveBeenCalledWith({interactionId: taskId, data: consultPayload});
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in consult method', async () => {
@@ -422,6 +440,7 @@ describe('Task', () => {
 
     await expect(task.consult(consultPayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'consult', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should end the consult call and return the expected response', async () => {
@@ -439,6 +458,7 @@ describe('Task', () => {
       data: consultEndPayload,
     });
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in endConsult method', async () => {
@@ -461,6 +481,7 @@ describe('Task', () => {
 
     await expect(task.endConsult(consultEndPayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'endConsult', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should do consult transfer the task to consulted agent and return the expected response', async () => {
@@ -483,6 +504,7 @@ describe('Task', () => {
 
     const consultTransferResponse = await task.consultTransfer(consultTransferPayload);
     expect(contactMock.consultTransfer).toHaveBeenCalledWith({interactionId: taskId, data: consultTransferPayload});
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in consult transfer', async () => {
@@ -517,6 +539,7 @@ describe('Task', () => {
 
     await expect(task.consultTransfer(consultTransferPayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'consultTransfer', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should do vteamTransfer if destinationType is queue and return the expected response', async () => {
@@ -532,6 +555,7 @@ describe('Task', () => {
 
     expect(contactMock.vteamTransfer).toHaveBeenCalledWith({interactionId: taskId, data: transferPayload});
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should do blindTransfer if destinationType is anything other than queue and return the expected response', async () => {
@@ -547,6 +571,7 @@ describe('Task', () => {
 
     expect(contactMock.blindTransfer).toHaveBeenCalledWith({interactionId: taskId, data: transferPayload});
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in transfer method', async () => {
@@ -569,6 +594,7 @@ describe('Task', () => {
 
     await expect(task.transfer(blindTransferPayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'transfer', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should end the task and return the expected response', async () => {
@@ -579,6 +605,7 @@ describe('Task', () => {
 
     expect(contactMock.end).toHaveBeenCalledWith({interactionId: taskId});
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in end method', async () => {
@@ -596,6 +623,7 @@ describe('Task', () => {
 
     await expect(task.end()).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'end', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should wrap up the task and return the expected response', async () => {
@@ -610,6 +638,7 @@ describe('Task', () => {
 
     expect(contactMock.wrapup).toHaveBeenCalledWith({interactionId: taskId, data: wrapupPayload});
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in wrapup method', async () => {
@@ -632,6 +661,7 @@ describe('Task', () => {
 
     await expect(task.wrapup(wrapupPayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'wrapup', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should throw an error if auxCodeId is missing in wrapup method', async () => {
@@ -664,6 +694,7 @@ describe('Task', () => {
     await task.pauseRecording();
 
     expect(contactMock.pauseRecording).toHaveBeenCalledWith({interactionId: taskId});
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in pauseRecording method', async () => {
@@ -681,6 +712,7 @@ describe('Task', () => {
 
     await expect(task.pauseRecording()).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'pauseRecording', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should resume the recording of the task', async () => {
@@ -694,6 +726,7 @@ describe('Task', () => {
       interactionId: taskId,
       data: resumePayload,
     });
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should resume the recording of the task if the payload is empty', async () => {
@@ -707,6 +740,7 @@ describe('Task', () => {
       interactionId: taskId,
       data: resumePayload,
     });
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
   it('should handle errors in resumeRecording method', async () => {
@@ -728,6 +762,7 @@ describe('Task', () => {
 
     await expect(task.resumeRecording(resumePayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'resumeRecording', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
   });
 
 
