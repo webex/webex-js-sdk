@@ -300,7 +300,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       const resp = await loginResponse;
-
+      this.webCallingService.setLoginOption(data.loginOption);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
         {

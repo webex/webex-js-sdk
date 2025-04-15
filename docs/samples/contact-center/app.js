@@ -664,7 +664,7 @@ function updateCallControlUI(task) {
       pauseResumeRecordingElm.disabled = !pauseResumeEnabled;
       pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
     }
-
+    
     // end consult, consult transfer buttons
     const { consultMediaResourceId, destAgentId, destinationType } = data;
     if (consultMediaResourceId && destAgentId && destinationType) {
@@ -1021,26 +1021,8 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   updateTaskList();
   taskId = event.detail.task.data.interactionId;
 
-  const callerDisplay = currentTask.data.interaction?.callAssociatedDetails?.ani;
   registerTaskListeners(currentTask);
-  if (currentTask?.data?.interaction?.mediaType === 'chat') {
-    answerElm.disabled = false;
-    declineElm.disabled = true;
-
-    incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
-  } else if (currentTask?.data?.interaction?.mediaType === 'email') {
-    answerElm.disabled = false;
-    declineElm.disabled = true;
-
-    incomingDetailsElm.innerText = `Email from ${callerDisplay}`;
-  } else if (webex.cc.taskManager.webCallingService.loginOption === 'BROWSER') {
-    answerElm.disabled = false;
-    declineElm.disabled = false;
-
-    incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
-  } else {
-    incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
-  }
+  enableAnswerDeclineButtons(currentTask);
 });
 
  async function answer() {
@@ -1209,36 +1191,6 @@ function wrapupCall() {
   });
 }
 
-function acceptTask(task) {
-  const taskId = task?.data?.interactionId;
-  if (!taskId) {
-    console.error(`Error accepting task: Task ID not found from task object`);
-    return;
-  }
-
-  task.accept(taskId).then(() => {
-    console.log(`Task ${taskId} accepted successfully`);
-    updateTaskList(); // Refresh the task list
-  }).catch((error) => {
-    console.error(`Error accepting task ${taskId}:`, error);
-  });
-}
-
-function declineTask(task) {
-  const taskId = task?.data?.interactionId;
-  if (!taskId) {
-    console.error(`Error declining task: Task ID not found from task object`);
-    return;
-  }
-
-  task.decline(taskId).then(() => {
-    console.log(`Task ${taskId} declined successfully`);
-    updateTaskList(); // Refresh the task list
-  }).catch((error) => {
-    console.error(`Error declining task ${taskId}:`, error);
-  });
-}
-
 const handleBundleLoaded = () => {
   console.log("bundle.js has been loaded.");
   isBundleLoaded = true;
@@ -1360,11 +1312,14 @@ function renderTaskList(taskList) {
   // Add event listeners for accept and decline buttons
   // Rest of the function remains unchanged
   document.querySelectorAll('.accept-task').forEach((button) => {
-    button.addEventListener('click', (event) => {
+    button.addEventListener('click', async (event) => {
+      handleTaskSelect(currentTask);
       const taskId = event.target.getAttribute('data-task-id');
       const task = taskList[taskId];
-      if (task) acceptTask(task);
-      else {
+      if (task) {
+        currentTask = task;
+        await answer();
+      }  else {
         console.error(`Task not found for ID: ${taskId}`);
         alert('Cannot accept task: The task may have been removed or is no longer available.');
       }
@@ -1375,8 +1330,10 @@ function renderTaskList(taskList) {
     button.addEventListener('click', (event) => {
       const taskId = event.target.getAttribute('data-task-id');
       const task = taskList[taskId];
-      if (task) declineTask(task);
-      else {
+      if (task) {
+        currentTask = task;
+        decline();
+      } else {
         console.error(`Task not found for ID: ${taskId}`);
         alert('Cannot decline task: The task may have been removed or is no longer available.');
       }
@@ -1385,12 +1342,25 @@ function renderTaskList(taskList) {
 }
 
 function enableAnswerDeclineButtons(task) {
-  if (task.data.interaction.state === 'new') {
-    answerElm.disabled = false;
-    declineElm.disabled = !(task.data.interaction.mediaType === 'telephony' && webex.cc.taskManager.webCallingService.loginOption === 'BROWSER')
-  } else {
-    answerElm.disabled = true;
+  const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani;
+  const isNew = task.data.interaction.state === 'new'
+  if (task.data.interaction.mediaType === 'telephony') {
+    if (webex.cc.taskManager.webCallingService.loginOption === 'BROWSER') {
+      answerElm.disabled = !isNew;
+      declineElm.disabled = !isNew;
+  
+      incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
+    } else {
+      incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
+    }
+  } else if (task.data.interaction.mediaType === 'chat') {
+    answerElm.disabled = !isNew;
     declineElm.disabled = true;
+    incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
+  } else if (task.data.interaction.mediaType === 'email') {
+    answerElm.disabled = !isNew;
+    declineElm.disabled = true;
+    incomingDetailsElm.innerText = `Email from ${callerDisplay}`;
   }
 }
 
@@ -1405,7 +1375,7 @@ function handleTaskSelect(task) {
   enableAnswerDeclineButtons(task);
   engageElm.innerHTML = ``;
   currentTask = task
-  if (task.data.interaction.mediaType === 'chat' && isBundleLoaded) {
+ if (task.data.interaction.mediaType === 'chat' && isBundleLoaded) {
     loadChatWidget(task);
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded) {
     loadEmailWidget(task);
@@ -1414,9 +1384,6 @@ function handleTaskSelect(task) {
 }
 
 function loadChatWidget(task) {
-
-  const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
-  incomingDetailsElm.innerText = `chat from ${callerDisplay}`;
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
   engageElm.innerHTML = `
     <imi-engage 
@@ -1429,8 +1396,6 @@ function loadChatWidget(task) {
 
 function loadEmailWidget(task) {
 
-  const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
-  incomingDetailsElm.innerText = `email from ${callerDisplay}`;
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
   engageElm.innerHTML = `
     <imi-email-composer
