@@ -534,3 +534,9 @@ legend {
   border-top: 1px solid #ccc;
   margin: 5px 0;
 }
+
+.task-item.selected {
+  background-color: #e6f7ff;
+  border-left: 3px solid #1890ff;
+  font-weight: bold;
+}

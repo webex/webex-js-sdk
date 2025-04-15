@@ -1280,64 +1280,106 @@ function renderTaskList(taskList) {
 
   if (!taskList || taskList.length === 0) {
     taskListContainer.innerHTML = '<p>No tasks available</p>';
+    engageElm.innerHTML = ``;
     return;
   }
+  
+  // Keep track of last task for potential default selection
+  let lastTask = null;
+  let lastTaskId = null;
+  let hasSelectedTask = false;
+  
   for (const [taskId, task] of Object.entries(taskList)) {
     const taskElement = document.createElement('div');
     taskElement.className = 'task-item';
+    taskElement.setAttribute('data-task-id', taskId);
+
+    // Add 'selected' class if this is the current task
+    if (currentTask && taskId === currentTask.data.interactionId) {
+      taskElement.classList.add('selected');
+      hasSelectedTask = true;
+    }
+
+    lastTask = task;
+    lastTaskId = taskId;
+
     const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
-    const isTelephony = task.data.interaction.mediaType === 'telephony' && task.webCallingService.loginOption === 'BROWSER';
+    // Determine task properties
     const isNew = task.data.interaction.state === 'new';
+    const isTelephony = task.data.interaction.mediaType === 'telephony';
+    const isBrowserPhone = task.webCallingService.loginOption === 'BROWSER';
+
+    // Determine which buttons to show
+    const showAcceptButton = isNew && (isBrowserPhone || !isTelephony);
+    const showDeclineButton = isNew && isTelephony && isBrowserPhone;
+
+    // Build the task element
     taskElement.innerHTML = `
         <div class="task-item-content">
-        <p>${callerDisplay}</p>
-        ${isNew ? `<button class="accept-task" data-task-id="${taskId}">Accept</button>` : ''}
-        ${isTelephony && isNew ? `<button class="decline-task" data-task-id="${taskId}">Decline</button>` : ''}
+            <p>${callerDisplay}</p>
+            ${showAcceptButton ? `<button class="accept-task" data-task-id="${taskId}">Accept</button>` : ''}
+            ${showDeclineButton ? `<button class="decline-task" data-task-id="${taskId}">Decline</button>` : ''}
         </div>
         <hr class="task-separator">
-        `;
+    `;
 
     // Add click event listener for the task item
     taskElement.addEventListener('click', () => {
+      // Remove 'selected' class from all tasks
+      document.querySelectorAll('.task-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+
+      // Add 'selected' class to the clicked task
+      taskElement.classList.add('selected');
+
       handleTaskSelect(task); // Call the function when the task is clicked
     });
 
     taskListContainer.appendChild(taskElement);
   }
-  
-  // Add event listeners for accept and decline buttons
-  // Fix for the accept-task button click handler
-document.querySelectorAll('.accept-task').forEach((button) => {
-  button.addEventListener('click', (event) => {
-    const taskId = event.target.getAttribute('data-task-id');
-    // Replace the .find() with direct object access by key
-    const task = taskList[taskId];
-    if (task) acceptTask(task);
-    else {
-      console.error(`Task not found for ID: ${taskId}`);
-      alert('Cannot accept task: The task may have been removed or is no longer available.');
-    }
-  });
-});
 
-// Fix for the decline-task button click handler
-document.querySelectorAll('.decline-task').forEach((button) => {
-  button.addEventListener('click', (event) => {
-    const taskId = event.target.getAttribute('data-task-id');
-    // Replace the .find() with direct object access by key
-    const task = taskList[taskId];
-    if (task) declineTask(task);
-    else {
-      console.error(`Task not found for ID: ${taskId}`);
-      alert('Cannot decline task: The task may have been removed or is no longer available.');
+  // If no task is selected and we have at least one task, select the last one by default
+  if (!hasSelectedTask && lastTask) {
+    // Add selected class to the last task element
+    const lastTaskElement = document.querySelector(`.task-item[data-task-id="${lastTaskId}"]`);
+    if (lastTaskElement) {
+      lastTaskElement.classList.add('selected');
+      handleTaskSelect(lastTask);
     }
+  }
+
+  // Add event listeners for accept and decline buttons
+  // Rest of the function remains unchanged
+  document.querySelectorAll('.accept-task').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      const taskId = event.target.getAttribute('data-task-id');
+      const task = taskList[taskId];
+      if (task) acceptTask(task);
+      else {
+        console.error(`Task not found for ID: ${taskId}`);
+        alert('Cannot accept task: The task may have been removed or is no longer available.');
+      }
+    });
   });
-});
+
+  document.querySelectorAll('.decline-task').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      const taskId = event.target.getAttribute('data-task-id');
+      const task = taskList[taskId];
+      if (task) declineTask(task);
+      else {
+        console.error(`Task not found for ID: ${taskId}`);
+        alert('Cannot decline task: The task may have been removed or is no longer available.');
+      }
+    });
+  });
 }
 
 function handleTaskSelect(task) {
   // Handle the task click event
   console.log('Task clicked:', task);
+  engageElm.innerHTML = ``;
   currentTask = task
   if (task.data.interaction.mediaType === 'chat' && isBundleLoaded) {
     loadChatWidget(task);
