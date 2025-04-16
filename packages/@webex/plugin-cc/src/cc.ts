@@ -13,6 +13,7 @@ import {
   BuddyAgentsResponse,
   BuddyAgents,
   SubscribeRequest,
+  UploadLogsResponse,
 } from './types';
 import {
   READY,
@@ -27,7 +28,7 @@ import {
 } from './constants';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
-import HttpRequest from './services/core/HttpRequest';
+import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
@@ -60,7 +61,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private agentConfig: Profile;
   private webCallingService: WebCallingService;
   private services: Services;
-  private httpRequest: HttpRequest;
+  private webexRequest: WebexRequest;
   private taskManager: TaskManager;
   private metricsManager: MetricsManager;
   public LoggerProxy = LoggerProxy;
@@ -79,7 +80,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       /**
        * This is used for handling the async requests by sending webex.request and wait for corresponding websocket event.
        */
-      this.httpRequest = HttpRequest.getInstance({
+      this.webexRequest = WebexRequest.getInstance({
         webex: this.$webex,
       });
 
@@ -702,5 +703,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     return this.services.config.getQueues(orgId, page, pageSize, search, filter);
+  }
+
+  /**
+   * Uploads logs to help troubleshoot SDK issues.
+   *
+   * This method collects the current SDK logs including network requests, WebSocket
+   * messages, and client-side events, then securely submits them to Webex's diagnostics
+   * service. The returned tracking ID, feedbackID can be provided to Webex support for faster
+   * issue resolution.
+   * @returns Promise<SubmitLogsResponse>
+   * @throws Error
+   */
+  public async uploadLogs(): Promise<UploadLogsResponse> {
+    return this.webexRequest.uploadLogs();
   }
 }

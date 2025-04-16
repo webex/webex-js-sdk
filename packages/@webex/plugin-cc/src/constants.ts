@@ -11,6 +11,7 @@ export const CC_FILE = 'cc';
 export const CONNECTION_SERVICE_FILE = 'connection-service';
 export const WEB_SOCKET_MANAGER_FILE = 'WebSocketManager';
 export const AQM_REQS_FILE = 'aqm-reqs';
+export const WEBEX_REQUEST_FILE = 'WebexRequest';
 export const TASK_MANAGER_FILE = 'TaskManager';
 export const AGENT_STATE_CHANGE = 'agent:stateChange';
 export const AGENT_MULTI_LOGIN = 'agent:multiLogin';
