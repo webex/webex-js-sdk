@@ -577,7 +577,7 @@ function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
     updateTaskList(); // Update the task list UI to have latest tasks
     console.info('Call has been accepted for task: ', task.data.interactionId);
-    updateCallControlUI(task); // Enable transfer controls
+    handleTaskSelect(task);
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
