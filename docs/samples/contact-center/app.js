@@ -695,8 +695,8 @@ function disableAllCallControls() {
   transferElm.disabled = true;
   endElm.disabled = true;
   pauseResumeRecordingElm.disabled = true;
-  pauseResumeRecordingElm.innerText = '';
 }
+
 function updateCallControlUI(task) {
   const { data } = task;
   const { interaction, mediaResourceId } = data;
@@ -728,7 +728,6 @@ function updateCallControlUI(task) {
     transferElm.disabled = false;
     endElm.disabled = !hasParticipants;
     pauseResumeRecordingElm.disabled = true;
-    pauseResumeRecordingElm.innerText = '';
   } else if (task?.data?.interaction?.mediaType === 'telephony') {
     // hold/resume call
     const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
@@ -744,7 +743,7 @@ function updateCallControlUI(task) {
       const { pauseResumeEnabled, isPaused } = callProcessingDetails;
 
       // pause/resume recording
-      pauseResumeRecordingElm.disabled = !pauseResumeEnabled;
+      // pauseResumeRecordingElm.disabled = !pauseResumeEnabled; // TODO: recheck after rajesh PR(https://github.com/webex/widgets/pull/427/files) and why it is undefined
       pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
     }
     
@@ -1458,9 +1457,9 @@ function handleTaskSelect(task) {
   enableAnswerDeclineButtons(task);
   engageElm.innerHTML = ``;
   currentTask = task
- if (task.data.interaction.mediaType === 'chat' && isBundleLoaded) {
+ if (task.data.interaction.mediaType === 'chat' && isBundleLoaded && !task.data.wrapUpRequired) {
     loadChatWidget(task);
-  } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded) {
+  } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {
     loadEmailWidget(task);
   }
   updateCallControlUI(task); // Enable/disable transfer controls
