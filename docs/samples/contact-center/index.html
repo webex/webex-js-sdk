@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Webex JavaScript SDK Sample: Meetings Plugin</title>
+  <title>Webex JavaScript SDK Sample: contact-center Plugin</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/light.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="./style.css" />
@@ -87,6 +87,13 @@
             </div>
           </fieldset>
         </form>
+        
+        <!-- Upload logs section -->
+        <fieldset style="margin-bottom: 20px;">
+          <legend>Troubleshooting</legend>
+          <p>If you face any issues, please click <button id="upload-logs" type="button" onclick="uploadLogs()" class="btn-code">Upload Logs</button></p>
+          <p id="upload-logs-result" class="status-par"></p>
+        </fieldset>
       </div>
   </div>
   </section>

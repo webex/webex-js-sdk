@@ -5,17 +5,13 @@ import {ROAP} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import RoapRequest from './request';
-import TurnDiscovery, {TurnDiscoveryResult} from './turnDiscovery';
+import TurnDiscovery from './turnDiscovery';
+import {TurnDiscoveryResult} from './types';
 import Meeting from '../meeting';
-import MeetingUtil from '../meeting/util';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
-export {
-  type TurnDiscoveryResult,
-  type TurnServerInfo,
-  type TurnDiscoverySkipReason,
-} from './turnDiscovery';
+export {type TurnDiscoveryResult, type TurnServerInfo, type TurnDiscoverySkipReason} from './types';
 
 /**
  * Roap options
