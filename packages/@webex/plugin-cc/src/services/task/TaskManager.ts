@@ -152,6 +152,10 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RESUME, task);
             break;
+          case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
+            this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: true});
+            this.handleTaskCleanup();
+            break;
           case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
             task = this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED, task);

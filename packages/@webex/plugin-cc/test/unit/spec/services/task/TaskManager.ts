@@ -1081,5 +1081,35 @@ describe('TaskManager', () => {
     expect(task1EmitSpy).not.toHaveBeenCalledWith(TASK_EVENTS.TASK_END);
     expect(taskManager.getTask(task1Payload.data.interactionId)).toBeDefined();
   });
+
+  it('should emit TASK_END event on AGENT_VTEAM_TRANSFERRED event', () => {
+    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+    
+    const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
+    
+    const vteamTransferredPayload = {
+      data: {
+        type: CC_EVENTS.AGENT_VTEAM_TRANSFERRED,
+        agentId: initalPayload.data.agentId,
+        eventTime: initalPayload.data.eventTime,
+        eventType: initalPayload.data.eventType,
+        interaction: {},
+        interactionId: initalPayload.data.interactionId,
+        orgId: initalPayload.data.orgId,
+        trackingId: initalPayload.data.trackingId,
+        mediaResourceId: initalPayload.data.mediaResourceId,
+        destAgentId: initalPayload.data.destAgentId,
+        owner: initalPayload.data.owner,
+        queueMgr: initalPayload.data.queueMgr,
+      },
+    };
+
+    taskManager.taskCollection[taskId] = taskManager.currentTask;
+    
+    webSocketManagerMock.emit('message', JSON.stringify(vteamTransferredPayload));
+    
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END, { wrapupRequired: true });
+    expect(taskManager.getTask(taskId)).toBeUndefined(); // Verify task was removed from collection
+  });
 });
 
