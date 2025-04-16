@@ -232,7 +232,7 @@ export default class TaskManager extends EventEmitter {
       delete this.taskCollection[task.data.interactionId];
       LoggerProxy.info(`Task removed from collection: ${task.data.interactionId}`, {
         module: TASK_MANAGER_FILE,
-        method: 'removeCurrentTaskFromCollection',
+        method: 'removeTaskFromCollection',
       });
     }
   }

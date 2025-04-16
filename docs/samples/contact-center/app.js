@@ -594,6 +594,7 @@ function registerTaskListeners(task) {
         updateButtonsPostEndCall();
       }
       updateTaskList(); // Update the task list UI to have latest tasks
+      handleTaskSelect(task);
     }
   });
 
@@ -638,7 +639,7 @@ function registerTaskListeners(task) {
   task.on('task:consultQueueCancelled', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
       // When we manually cancel consult to queue before it is accepted by other agent
-      console.log(`Received task:consultQueueCancelled for task: ${task.interactionId}`);
+      console.log(`Received task:consultQueueCancelled for task: ${currentTask.data.interactionId}`);
       currentConsultQueueId = null;
       hideEndConsultButton();
       showConsultButton();
@@ -1119,8 +1120,8 @@ function decline() {
   answerElm.disabled = true;
   declineElm.disabled = true;
   currentTask.decline(taskId);
+  incomingDetailsElm.innerText = 'No incoming Tasks';
   updateTaskList();
-  incomingDetailsElm.innerText = 'No incoming calls';
 }
 
 const allCollapsibleElements = document.querySelectorAll('.collapsible');
@@ -1338,6 +1339,7 @@ function renderTaskList(taskList) {
     // Add 'selected' class if this is the current task
     if (currentTask && taskId === currentTask.data.interactionId) {
       taskElement.classList.add('selected');
+      currentTask = task;
       hasSelectedTask = true;
     }
 
@@ -1388,6 +1390,8 @@ function renderTaskList(taskList) {
       lastTaskElement.classList.add('selected');
       handleTaskSelect(lastTask);
     }
+  } else {
+    handleTaskSelect(currentTask);
   }
 
   // Add event listeners for accept and decline buttons
