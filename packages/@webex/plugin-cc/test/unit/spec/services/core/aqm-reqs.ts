@@ -1,12 +1,12 @@
 import AqmReqs from '../../../../../src/services/core/aqm-reqs';
-import HttpRequest from '../../../../../src/services/core/HttpRequest';
+import WebexRequest from '../../../../../src/services/core/WebexRequest';
 
 import LoggerProxy from '../../../../../src/logger-proxy';
 import {IHttpResponse} from '../../../../../src/types';
 import {AQM_REQS_FILE} from '../../../../../src/constants';
 import {WebSocketManager} from '../../../../../src/services/core/websocket/WebSocketManager';
 
-jest.mock('../../../../../src/services/core/HttpRequest');
+jest.mock('../../../../../src/services/core/WebexRequest');
 jest.mock('../../../../../src/logger-proxy', () => ({
   __esModule: true,
   default: {
@@ -34,13 +34,13 @@ global.window = {
   setTimeout: global.setTimeout,
 } as any;
 
-const mockHttpRequest = HttpRequest as jest.MockedClass<typeof HttpRequest>;
+const mockWebexRequest = WebexRequest as jest.MockedClass<typeof WebexRequest>;
 const mockWebSocketManager = WebSocketManager as jest.MockedClass<typeof WebSocketManager>;
 
 describe('AqmReqs', () => {
-  let httpRequestInstance: jest.Mocked<HttpRequest>;
+  let webexRequestInstance: jest.Mocked<WebexRequest>;
   let webSocketManagerInstance: jest.Mocked<WebSocketManager>;
-  const mockHttpRequestResolvedValue: IHttpResponse = {
+  const mockWebexRequestResolvedValue: IHttpResponse = {
     status: 202,
     data: { webSocketUrl: 'fake-url' },
     statusText: 'OK',
@@ -51,8 +51,8 @@ describe('AqmReqs', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    httpRequestInstance = new HttpRequest() as jest.Mocked<HttpRequest>;
-    mockHttpRequest.getInstance = jest.fn().mockReturnValue(httpRequestInstance);
+    webexRequestInstance = new WebexRequest() as jest.Mocked<WebexRequest>;
+    mockWebexRequest.getInstance = jest.fn().mockReturnValue(webexRequestInstance);
 
     const mockWorker = {
       postMessage: jest.fn(),
@@ -87,7 +87,7 @@ describe('AqmReqs', () => {
   });
 
   it('AqmReqs should be defined', async () => {
-    httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+    webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
 
     const req = aqm.req(() => ({
       url: '/url',
@@ -117,7 +117,7 @@ describe('AqmReqs', () => {
 
   describe('Aqm notifs', () => {
     it('AqmReqs notifcancel', async () => {
-      httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
     
       const req = aqm.req(() => ({
         url: '/url',
@@ -175,7 +175,7 @@ describe('AqmReqs', () => {
     });
 
     it('AqmReqs notif success', async () => {
-      httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
     
       const req = aqm.req(() => ({
         url: '/url',
@@ -233,7 +233,7 @@ describe('AqmReqs', () => {
     });
 
     it('AqmReqs notif success with async error', async () => {
-      httpRequestInstance.request.mockRejectedValueOnce(new Error('Async error'));
+      webexRequestInstance.request.mockRejectedValueOnce(new Error('Async error'));
 
       const req = aqm.req(() => ({
         url: '/url',
@@ -275,7 +275,7 @@ describe('AqmReqs', () => {
     });
 
     it('AqmReqs notif fail', async () => {
-      httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
     
       const req = aqm.req(() => ({
         url: '/url',
@@ -335,7 +335,7 @@ describe('AqmReqs', () => {
 
   describe('Event tests', () => {
     it('should handle onMessage events', async () => {
-      httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
     
       const req = aqm.req(() => ({
         url: '/url',
@@ -451,7 +451,7 @@ describe('AqmReqs', () => {
     });
 
     it('should handle reqEmpty', async () => {
-      httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
 
       const reqEmpty = aqm.reqEmpty(() => ({
         url: '/url',
@@ -480,7 +480,7 @@ describe('AqmReqs', () => {
     });
 
     it('should handle failed request with err function', async () => {
-      httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
     
       const conf = {
         host: 'fake-host',
@@ -520,7 +520,7 @@ describe('AqmReqs', () => {
     });
 
     it('should handle request with notifCancel', async () => {
-      httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
     
       const conf = {
         host: 'fake-host',

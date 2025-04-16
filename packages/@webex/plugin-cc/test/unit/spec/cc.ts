@@ -1262,4 +1262,31 @@ describe('webex.cc', () => {
       }
     });
   });
+
+  describe('uploadLogs', () => {
+    it('should upload logs successfully', async () => {
+      const uploadLogsMock = jest.spyOn(webex.cc.webexRequest, 'uploadLogs').mockResolvedValue({
+        trackingId: '1234',
+        feedbackId: '12345',
+      });
+
+      const result = await webex.cc.uploadLogs('12345');
+
+      expect(uploadLogsMock).toHaveBeenCalled();
+
+      expect(result).toEqual({
+        trackingId: '1234',
+        feedbackId: '12345',
+      });
+    });
+
+    it('should handle error during uploadLogs', async () => {
+      const error = new Error('Error while performing uploadLogs');
+      error.stack = 'My stack';
+
+      jest.spyOn(webex.cc.webexRequest, 'uploadLogs').mockRejectedValue(error);
+
+      await expect(webex.cc.uploadLogs('12345')).rejects.toThrow(error);
+    });
+  });
 });

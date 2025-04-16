@@ -14,7 +14,6 @@ export const METRIC_EVENT_NAMES = {
   WEBSOCKET_REGISTER_SUCCESS: 'Websocket Register Success',
   WEBSOCKET_REGISTER_FAILED: 'Websocket Register Failed',
   AGENT_RONA: 'Agent RONA',
-
   // Basic Tasks
   TASK_ACCEPT_SUCCESS: 'Task Accept Success',
   TASK_ACCEPT_FAILED: 'Task Accept Failed',
@@ -45,6 +44,9 @@ export const METRIC_EVENT_NAMES = {
 
   TASK_OUTDIAL_SUCCESS: 'Task Outdial Success',
   TASK_OUTDIAL_FAILED: 'Task Outdial Failed',
+  
+  UPLOAD_LOGS_SUCCESS: 'Upload Logs Success',
+  UPLOAD_LOGS_FAILED: 'Upload Logs Failed',
 } as const;
 
 // Derive the type using the utility type
