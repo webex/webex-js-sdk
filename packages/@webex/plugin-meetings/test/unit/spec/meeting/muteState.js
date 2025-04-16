@@ -2,7 +2,6 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import {createMuteState, MuteState} from '@webex/plugin-meetings/src/meeting/muteState';
-import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
 import {AUDIO, VIDEO} from '@webex/plugin-meetings/src/constants';
 
 import testUtils from '../../../utils/testUtils';
@@ -39,7 +38,6 @@ describe('plugin-meetings', () => {
       unmuteAllowed: true,
       remoteVideoMuted: false,
       unmuteVideoAllowed: true,
-
       locusInfo: {
         handleLocusDelta: sinon.stub(),
       },
