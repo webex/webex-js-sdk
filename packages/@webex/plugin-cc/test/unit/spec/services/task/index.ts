@@ -485,6 +485,46 @@ describe('Task', () => {
     expect(contactMock.consultTransfer).toHaveBeenCalledWith({interactionId: taskId, data: consultTransferPayload});
   });
 
+  it('should do consult transfer to a queue by using the destAgentId from task data', async () => {
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.consultTransfer.mockResolvedValue(expectedResponse);
+
+    const queueConsultTransferPayload: ConsultTransferPayLoad = {
+      to: 'some-queue-id',
+      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE,
+    };
+
+    const expectedPayload = {
+      to: taskDataMock.destAgentId,
+      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+    };
+
+    const response = await task.consultTransfer(queueConsultTransferPayload);
+    
+    expect(contactMock.consultTransfer).toHaveBeenCalledWith({
+      interactionId: taskId, 
+      data: expectedPayload
+    });
+    expect(response).toEqual(expectedResponse);
+  });
+
+  it('should throw error when attempting to transfer to queue with no destAgentId', async () => {
+    const taskWithoutDestAgentId = new Task(
+      contactMock, 
+      webCallingService, 
+      {...taskDataMock, destAgentId: undefined}
+    );
+
+    const queueConsultTransferPayload: ConsultTransferPayLoad = {
+      to: 'some-queue-id',
+      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE,
+    };
+
+    await expect(taskWithoutDestAgentId.consultTransfer(queueConsultTransferPayload))
+      .rejects
+      .toThrow('Error while performing consultTransfer');
+  });
+
   it('should handle errors in consult transfer', async () => {
     const consultPayload = {
       destination: '1234',

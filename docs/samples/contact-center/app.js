@@ -14,6 +14,7 @@ let isConsultOptionsShown = false;
 let isTransferOptionsShown = false; // Add this variable to track the state of transfer options
 let entryPointId = '';
 let stateTimer;
+let currentConsultQueueId;
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -62,6 +63,8 @@ const agentMultiLoginAlert = document.querySelector('#agentMultiLoginAlert');
 const consultTransferBtn = document.querySelector('#consult-transfer');
 const transferElm = document.getElementById('transfer');
 const timerElm = document.querySelector('#timerDisplay');
+const uploadLogsButton = document.getElementById('upload-logs');
+const uploadLogsResultElm = document.getElementById('upload-logs-result');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -82,6 +85,20 @@ setAgentStateButton.addEventListener('click', () => {
   setAgentStatus();
   popup.classList.add('hidden');
 });
+
+async function uploadLogs() {
+  try {
+    uploadLogsButton.disabled = true;
+    const uploadResponse = await webex.cc.uploadLogs();
+    console.log('Logs uploaded successfully');
+    uploadLogsResultElm.innerText = `Logs uploaded successfully with feedbackId: ${uploadResponse.feedbackId}`;
+    uploadLogsButton.disabled = false;
+  } catch (error) {
+    console.error('Failed to upload logs:', error);
+    uploadLogsResultElm.innerText = 'Failed to upload logs';
+    uploadLogsButton.disabled = false;
+  }
+}
 
 function changeAuthType() {
   switch (authTypeElm.value) {
@@ -362,18 +379,48 @@ async function initiateConsult() {
     destinationType: destinationType,
   };
 
+  if (destinationType === 'queue') {
+    handleQueueConsult(consultPayload);
+    return;
+  }
+
   try {
     await task.consult(consultPayload);
     console.log('Consult initiated successfully');
     // Disable the blind transfer button after initiating consult, only enable it once consult is confirmed
-    disableCallControlPostConsult();
-    disableTransferControls();
-    hideConsultButton();
-    showEndConsultButton();
+    updateConsultUI();
   } catch (error) {
     console.error('Failed to initiate consult', error);
     alert('Failed to initiate consult');
   }
+}
+
+async function handleQueueConsult(consultPayload) {
+  // Update UI immediately
+  currentConsultQueueId = consultPayload.to;
+  endConsultBtn.innerText = 'Cancel Consult';
+  updateConsultUI();
+  
+  try {
+    await task.consult(consultPayload);
+    endConsultBtn.innerText = 'End Consult';
+    currentConsultQueueId = null;
+    console.log('Queue Consult initiated successfully');
+  } catch (error) {
+    console.error('Failed to initiate queue consult', error);
+    alert('Failed to initiate queue consult');
+    // Restore UI state
+    refreshUIPostConsult();
+    currentConsultQueueId = null;
+  }
+}
+
+// Updates UI state for queue consult initiation
+function updateConsultUI() {
+  disableCallControlPostConsult();
+  disableTransferControls();
+  hideConsultButton();
+  showEndConsultButton();
 }
 
 // Function to initiate transfer
@@ -431,7 +478,12 @@ async function initiateConsultTransfer() {
 async function endConsult() {
   const taskId = task.data.interactionId;
 
-  const consultEndPayload = {
+  const consultEndPayload = currentConsultQueueId ? {
+    isConsult: true,
+    taskId: taskId,
+    queueId: currentConsultQueueId,
+  } : 
+  {
     isConsult: true,
     taskId: taskId,
   };
@@ -501,6 +553,8 @@ function pressKey(value) {
 // Enable consult button after task is accepted
 function enableConsultControls() {
   consultTabBtn.disabled = false;
+  consultTabBtn.style.display = 'inline-block';
+  endConsultBtn.style.display = 'none';
 }
 
 // Disable consult button after task is accepted
@@ -530,6 +584,13 @@ function enableCallControlPostConsult() {
   holdResumeElm.disabled = false;
   pauseResumeRecordingElm.disabled = false;
   endElm.disabled = false;
+}
+
+function refreshUIPostConsult() {
+  enableCallControlPostConsult();
+  enableTransferControls();
+  showConsultButton();
+  hideEndConsultButton();
 }
 
 // Register task listeners
@@ -595,8 +656,11 @@ function registerTaskListeners(task) {
   task.on('task:consultQueueCancelled', (task) => {
     // When we manually cancel consult to queue before it is accepted by other agent
     console.log(`Received task:consultQueueCancelled for task: ${task.interactionId}`);
+    currentConsultQueueId = null;
     hideEndConsultButton();
     showConsultButton();
+    enableTransferControls();
+    enableCallControlPostConsult();
   });
 
   task.on('task:consultEnd', (task) => {
@@ -609,6 +673,7 @@ function registerTaskListeners(task) {
 
     answerElm.disabled = true;
     declineElm.disabled = true;
+    currentConsultQueueId = null;
     if(task.data.isConsulted) {
       updateButtonsPostEndCall();
       incomingDetailsElm.innerText = '';

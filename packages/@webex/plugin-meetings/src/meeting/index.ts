@@ -60,11 +60,8 @@ import {
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsUtil from '../common/events/util';
 import Trigger from '../common/events/trigger-proxy';
-import Roap, {
-  type TurnDiscoveryResult,
-  type TurnServerInfo,
-  type TurnDiscoverySkipReason,
-} from '../roap/index';
+import Roap, {type TurnDiscoveryResult, type TurnDiscoverySkipReason} from '../roap/index';
+import {type TurnServerInfo} from '../roap/types';
 import Media, {type BundlePolicy} from '../media';
 import MediaProperties from '../media/properties';
 import MeetingStateMachine from './state';
@@ -3802,7 +3799,13 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.reject(error);
     }
 
-    return this.brbState.enable(enabled, this.sendSlotManager);
+    return this.brbState.enable(enabled, this.sendSlotManager).then(() => {
+      if (this.audio && enabled) {
+        // locus mutes the participant with brb enabled request,
+        // so we need to explicitly update remote mute for correct logic flow
+        this.audio.handleServerRemoteMuteUpdate(this, enabled);
+      }
+    });
   }
 
   /**
@@ -6870,7 +6873,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {AddMediaOptions} [options] Options for enabling/disabling audio/video
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
-  private async createMediaConnection(turnServerInfo, bundlePolicy?: BundlePolicy) {
+  private async createMediaConnection(
+    turnServerInfo?: TurnServerInfo,
+    bundlePolicy?: BundlePolicy
+  ) {
     this.rtcMetrics = this.isMultistream
       ? // @ts-ignore
         new RtcMetrics(this.webex, {meetingId: this.id}, this.correlationId)

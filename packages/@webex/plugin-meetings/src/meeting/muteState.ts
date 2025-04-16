@@ -147,7 +147,6 @@ export class MuteState {
    * @public
    * @memberof MuteState
    * @param {Object} [meeting] the meeting object
-   * @param {Boolean} [mute] true for muting, false for unmuting request
    * @returns {void}
    */
   public handleLocalStreamMuteStateChange(meeting?: any) {
@@ -350,7 +349,6 @@ export class MuteState {
    * @param {Meeting} meeting
    * @returns {void}
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private applyUnmuteAllowedToStream(meeting: any) {
     if (this.type === AUDIO) {
       meeting.mediaProperties.audioStream?.setUnmuteAllowed(this.state.server.unmuteAllowed);
