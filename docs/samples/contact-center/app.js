@@ -396,7 +396,7 @@ async function handleQueueConsult(consultPayload) {
   updateConsultUI();
   
   try {
-    await task.consult(consultPayload);
+    await currentTask.consult(consultPayload);
     endConsultBtn.innerText = 'End Consult';
     currentConsultQueueId = null;
     console.log('Queue Consult initiated successfully');
