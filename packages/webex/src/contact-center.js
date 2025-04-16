@@ -4,6 +4,8 @@ import WebexCore from '@webex/webex-core';
 require('@webex/plugin-authorization');
 require('@webex/plugin-cc');
 require('@webex/internal-plugin-mercury');
+require('@webex/plugin-logger');
+require('@webex/internal-plugin-support');
 
 const config = require('./config');
 

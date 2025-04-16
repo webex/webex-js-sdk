@@ -60,7 +60,7 @@ describe('plugin-meetings', () => {
         roap: {
           doTurnDiscovery: sinon.stub().resolves({
             turnServerInfo: {
-              url: 'fake_turn_url',
+              urls: ['fake_turn_url1', 'fake_turn_url2'],
               username: 'fake_turn_username',
               password: 'fake_turn_password',
             },
@@ -137,7 +137,7 @@ describe('plugin-meetings', () => {
       assert.calledOnce(fakeMediaConnection.reconnect);
       assert.calledWith(fakeMediaConnection.reconnect, [
         {
-          urls: 'fake_turn_url',
+          urls: ['fake_turn_url1', 'fake_turn_url2'],
           username: 'fake_turn_username',
           credential: 'fake_turn_password',
         },
@@ -152,12 +152,12 @@ describe('plugin-meetings', () => {
     });
 
     // this can happen when we land on a video mesh node
-    it('does not use TURN server if TURN url is an empty string', async () => {
+    it('does not use TURN server if TURN urls is an empty array', async () => {
       const rm = new ReconnectionManager(fakeMeeting);
 
       fakeMeeting.roap.doTurnDiscovery.resolves({
         turnServerInfo: {
-          url: '',
+          urls: [],
           username: 'whatever',
           password: 'whatever',
         },
