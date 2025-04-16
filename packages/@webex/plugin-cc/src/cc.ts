@@ -298,6 +298,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       if (this.agentConfig.webRtcEnabled && data.loginOption === LoginOption.BROWSER) {
         await this.webCallingService.registerWebCallingLine();
+        this.webCallingService.setLoginOption(data.loginOption);
       }
 
       const resp = await loginResponse;
