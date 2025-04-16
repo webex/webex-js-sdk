@@ -734,7 +734,8 @@ function updateCallControlUI(task) {
     muteElm.disabled = false;
     endElm.disabled = !hasParticipants;
     consultTabBtn.disabled = false;
-
+    pauseResumeRecordingElm.disabled = false;
+    pauseResumeRecordingElm.innerText = 'Pause Recording';
     if (callProcessingDetails) {
       const { pauseResumeEnabled, isPaused } = callProcessingDetails;
 
