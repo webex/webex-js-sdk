@@ -3,7 +3,7 @@ import {ICall, LINE_EVENTS} from '@webex/calling';
 import {WebSocketManager} from '../core/websocket/WebSocketManager';
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
-import {ITask, TASK_EVENTS, TaskData, TaskId} from './types';
+import {ITask, MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
 import {LoginOption} from '../../types';
@@ -91,7 +91,7 @@ export default class TaskManager extends EventEmitter {
             this.taskCollection[payload.data.interactionId] = task;
             if (
               this.webCallingService.loginOption !== LoginOption.BROWSER ||
-              task.data.interaction.mediaType !== 'telephony' // for digital channels
+              task.data.interaction.mediaType !== MEDIA_CHANNEL.TELEPHONY // for digital channels
             ) {
               this.emit(TASK_EVENTS.TASK_INCOMING, task);
             } else if (this.call) {

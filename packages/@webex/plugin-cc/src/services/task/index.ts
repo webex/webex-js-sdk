@@ -19,6 +19,7 @@ import {
   DESTINATION_TYPE,
   CONSULT_TRANSFER_DESTINATION_TYPE,
   ConsultTransferPayLoad,
+  MEDIA_CHANNEL,
 } from './types';
 import WebCallingService from '../WebCallingService';
 
@@ -84,7 +85,7 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async accept(): Promise<TaskResponse> {
     try {
-      if (this.data.interaction.mediaType !== 'telephony') {
+      if (this.data.interaction.mediaType !== MEDIA_CHANNEL.TELEPHONY) {
         return this.contact.accept({interactionId: this.data.interactionId});
       }
 

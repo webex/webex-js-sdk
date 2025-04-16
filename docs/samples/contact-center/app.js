@@ -674,7 +674,7 @@ function registerTaskListeners(task) {
       if(task.data.isConsulted) {
         updateButtonsPostEndCall();
         incomingDetailsElm.innerText = '';
-        currentTask = undefined; // TODO: Check if this is required
+        currentTask = undefined;
       }
     }
   });

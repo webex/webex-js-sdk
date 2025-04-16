@@ -332,7 +332,7 @@ describe('TaskManager', () => {
     };
 
     taskManager.getTask(taskId).data = payload.data;
-    const task =   taskManager.getTask(taskId)
+    const task = taskManager.getTask(taskId)
     webSocketManagerMock.emit('message', JSON.stringify(payload));
     expect(taskEmitSpy).toHaveBeenCalledWith(
       TASK_EVENTS.TASK_END, task
