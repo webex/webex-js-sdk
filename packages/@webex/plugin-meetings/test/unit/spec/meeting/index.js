@@ -3887,6 +3887,22 @@ describe('plugin-meetings', () => {
               assert.isRejected((Promise.reject()));
             }
           });
+
+          it('updates remote mute state when brb is enabled', async () => {
+            meeting.audio = { handleServerRemoteMuteUpdate: sinon.stub() };
+
+            await meeting.beRightBack(true);
+
+            sinon.assert.calledOnceWithExactly(meeting.audio.handleServerRemoteMuteUpdate, meeting, true);
+          });
+
+          it('does not update remote mute state when brb is disabled', async () => {
+            meeting.audio = { handleServerRemoteMuteUpdate: sinon.stub() };
+
+            await meeting.beRightBack(false);
+
+            assert.notCalled(meeting.audio.handleServerRemoteMuteUpdate);
+          });
         });
       });
 
@@ -7522,19 +7538,19 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#setIsoLocalClientMeetingJoinTime', () => {      
+      describe('#setIsoLocalClientMeetingJoinTime', () => {
         it('should fallback to system clock ISO string when given an undefined value', () => {
           const currentSystemTime = new Date().toISOString();
           meeting.isoLocalClientMeetingJoinTime = undefined;
           assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
         });
-      
+
         it('should fallback to system clock ISO string when given an invalid value', () => {
           const currentSystemTime = new Date().toISOString();
           meeting.isoLocalClientMeetingJoinTime = 'invalid-date';
           assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
         });
-      
+
         it('should set the isoLocalClientMeetingJoinTime correctly for a valid date string', () => {
           const validDateString = 'Tue, 01 Apr 2025 13:00:36 GMT';
           const expectedISOString = new Date(validDateString).toISOString();
@@ -8694,7 +8710,7 @@ describe('plugin-meetings', () => {
             meeting.deferSDPAnswer = {
               reject: sinon.stub(),
             };
-            
+
             const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
 
             const fakeError = new Errors.SdpAnswerHandlingError(fakeErrorMessage, {
