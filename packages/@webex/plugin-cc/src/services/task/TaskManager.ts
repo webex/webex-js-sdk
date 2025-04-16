@@ -130,6 +130,10 @@ export default class TaskManager extends EventEmitter {
             // As soon as the main interaction is unheld, we need to emit TASK_RESUME
             this.updateCurrentTaskDataAndEmitEvent(payload.data, TASK_EVENTS.TASK_RESUME);
             break;
+          case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
+            this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: true});
+            this.handleTaskCleanup();
+            break;
           case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
             this.updateCurrentTaskDataAndEmitEvent(
               payload.data,

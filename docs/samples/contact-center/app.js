@@ -247,7 +247,6 @@ function toggleTransferOptions() {
   isTransferOptionsShown = !isTransferOptionsShown;
   const transferOptionsElm = document.querySelector('#transfer-options');
   transferOptionsElm.style.display = isTransferOptionsShown ? 'block' : 'none';
-  updateButtonsPostEndCall();
 }
 
 async function getQueueListForTelephonyChannel() {
