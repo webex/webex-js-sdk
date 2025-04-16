@@ -694,6 +694,8 @@ function disableAllCallControls() {
   declineElm.disabled = true;
   transferElm.disabled = true;
   endElm.disabled = true;
+  pauseResumeRecordingElm.disabled = true;
+  pauseResumeRecordingElm.innerText = '';
 }
 function updateCallControlUI(task) {
   const { data } = task;
@@ -725,6 +727,8 @@ function updateCallControlUI(task) {
     declineElm.disabled = true;
     transferElm.disabled = false;
     endElm.disabled = !hasParticipants;
+    pauseResumeRecordingElm.disabled = true;
+    pauseResumeRecordingElm.innerText = '';
   } else if (task?.data?.interaction?.mediaType === 'telephony') {
     // hold/resume call
     const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
