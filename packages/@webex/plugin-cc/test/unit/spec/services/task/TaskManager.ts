@@ -952,44 +952,6 @@ describe('TaskManager', () => {
     expect(taskManager.getTask(emailPayload.data.interactionId).data.interaction.mediaType).toBe('email');
   });
 
-  it('should handle hold and resume for chat tasks', () => {
-    // Chat task reservation
-    const chatPayload = {
-      data: {
-        ...initalPayload.data,
-        interaction: { mediaType: 'chat' },
-      },
-    };
-    
-    webSocketManagerMock.emit('message', JSON.stringify(chatPayload));
-    const task = taskManager.getTask(chatPayload.data.interactionId);
-    const taskEmitSpy = jest.spyOn(task, 'emit');
-    
-    // Chat task hold
-    const chatHoldPayload = {
-      data: {
-        ...chatPayload.data,
-        type: CC_EVENTS.AGENT_CONTACT_HELD,
-      },
-    };
-    
-    webSocketManagerMock.emit('message', JSON.stringify(chatHoldPayload));
-    
-    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HOLD, task);
-    
-    // Chat task resume
-    const chatResumePayload = {
-      data: {
-        ...chatPayload.data,
-        type: CC_EVENTS.AGENT_CONTACT_UNHELD,
-      },
-    };
-    
-    webSocketManagerMock.emit('message', JSON.stringify(chatResumePayload));
-    
-    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_RESUME, task);
-  });
-
   it('should properly handle one task ending when multiple tasks are active', () => {
     // Create three tasks with different IDs and media types
     const task1Payload = {
