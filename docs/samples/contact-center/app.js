@@ -1459,6 +1459,7 @@ function handleTaskSelect(task) {
   console.log('Task clicked:', task);
   enableAnswerDeclineButtons(task);
   engageElm.innerHTML = ``;
+  engageElm.style.height = "100px"
   currentTask = task
  if (task.data.interaction.mediaType === 'chat' && isBundleLoaded && !task.data.wrapUpRequired) {
     loadChatWidget(task);
@@ -1470,6 +1471,7 @@ function handleTaskSelect(task) {
 
 function loadChatWidget(task) {
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
+  engageElm.style.height = '500px';
   engageElm.innerHTML = `
     <imi-engage 
       theme="LIGHT" 
@@ -1480,7 +1482,7 @@ function loadChatWidget(task) {
 }
 
 function loadEmailWidget(task) {
-
+  engageElm.style.height = '900px';
   const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
   engageElm.innerHTML = `
     <imi-email-composer
