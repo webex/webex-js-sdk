@@ -101,7 +101,7 @@ describe('Utils', () => {
       Utils.getErrorDetails(error, 'silentReLogin', moduleName);
 
       expect(LoggerProxy.error).not.toHaveBeenCalled();
-      expect(WebexRequest.getInstance().uploadLogs).not.toHaveBeenCalledWith();
+      expect(WebexRequest.getInstance().uploadLogs).not.toHaveBeenCalled();
     });
 
     it('should upload logs for normal error scenarios', () => {
@@ -124,6 +124,67 @@ describe('Utils', () => {
       );
       expect(WebexRequest.getInstance().uploadLogs).toHaveBeenCalledWith({
         correlationId: trackingId,
+      });
+    });
+
+    it('should handle null or undefined error object gracefully', () => {
+      // This should throw an error because the function tries to access error.details
+      expect(() => {
+        Utils.getErrorDetails(null, methodName, moduleName);
+      }).toThrow(TypeError);
+      
+      expect(() => {
+        Utils.getErrorDetails(undefined, methodName, moduleName);
+      }).toThrow(TypeError);
+    });
+
+    it('should handle error objects with unexpected structure', () => {
+      const unexpectedError = {
+        // No details property
+        message: 'Unexpected error structure',
+        code: 500
+      };
+
+      const result = Utils.getErrorDetails(unexpectedError, methodName, moduleName);
+
+      // Should use default error message when structure is unexpected
+      expect(result).toEqual({
+        error: new Error(`Error while performing ${methodName}`),
+        reason: `Error while performing ${methodName}`,
+      });
+      
+      // Should not throw when accessing properties with optional chaining
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `${methodName} failed with trackingId: undefined`,
+        { module: moduleName, method: methodName }
+      );
+    });
+
+    it('should prioritize trackingId from the correct location when present in multiple places', () => {
+      const detailsTrackingId = 'details-level-tracking-id';
+      const dataTrackingId = 'data-level-tracking-id';
+      
+      const error = {
+        details: {
+          data: {
+            reason: 'TEST_REASON',
+            trackingId: dataTrackingId, // This should be used for uploadLogs
+          },
+          trackingId: detailsTrackingId, // This should be used for error logging
+        },
+      };
+
+      Utils.getErrorDetails(error, methodName, moduleName);
+
+      // Check if error logging uses the trackingId from the details level
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `${methodName} failed with trackingId: ${detailsTrackingId}`,
+        { module: moduleName, method: methodName }
+      );
+      
+      // Check if uploadLogs uses the trackingId from the data level
+      expect(WebexRequest.getInstance().uploadLogs).toHaveBeenCalledWith({
+        correlationId: dataTrackingId,
       });
     });
   });
