@@ -17,7 +17,9 @@ import {
   MEETING_REMOVED_REASON,
   CALL_REMOVED_REASON,
   RECORDING_STATE,
+  BREAKOUTS,
 } from '../constants';
+
 import InfoUtils from './infoUtils';
 import FullState from './fullState';
 import SelfUtils from './selfUtils';
@@ -67,6 +69,7 @@ export default class LocusInfo extends EventsScope {
   services: any;
   resources: any;
   mainSessionLocusCache: any;
+  self: any;
   /**
    * Constructor
    * @param {function} updateMeeting callback to update the meeting object from an object
@@ -1707,7 +1710,18 @@ export default class LocusInfo extends EventsScope {
    */
   getTheLocusToUpdate(newLocus: any) {
     const switchStatus = ControlsUtils.getSessionSwitchStatus(this.controls, newLocus?.controls);
-    if (switchStatus.isReturnToMain && this.mainSessionLocusCache) {
+
+    // It is used to fix the timing issue triggered when the creator leaves session to ensure that the member list is complete
+    const needUseCache = !!(
+      this.self?.isCreator &&
+      newLocus.participants?.length === 1 &&
+      newLocus.participants?.[0].isCreator &&
+      newLocus.participants?.[0].state === MEETING_STATE.STATES.JOINED &&
+      newLocus.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.MAIN &&
+      newLocus.controls?.breakout?.groups?.length
+    );
+
+    if ((switchStatus.isReturnToMain || needUseCache) && this.mainSessionLocusCache) {
       return cloneDeep(this.mainSessionLocusCache);
     }
     const isMainSessionDTO =

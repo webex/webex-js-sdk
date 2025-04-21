@@ -2429,6 +2429,34 @@ describe('plugin-meetings', () => {
         assert.notCalled(locusInfo.clearMainSessionLocusCache);
       });
 
+      it('returns the cached locus when needUseCache conditions are met', () => {
+        locusInfo.mainSessionLocusCache = { url: 'cached-url' };
+        locusInfo.self = { isCreator: true };
+        locusInfo.controls = {
+          breakout: {
+            sessionType: 'MAIN',
+          },
+        };
+      
+        const newLocus = {
+          participants: [
+            { isCreator: true, state: 'JOINED' }, 
+          ],
+          controls: {
+            breakout: {
+              sessionType: 'MAIN', 
+              groups: [{ id: 'group1' }] 
+            },
+          },
+        };
+      
+        assert.deepEqual(locusInfo.getTheLocusToUpdate(newLocus), { url: 'cached-url' });
+
+        locusInfo.clearMainSessionLocusCache = sinon.stub();
+        locusInfo.getTheLocusToUpdate(newLocus);
+        assert.notCalled(locusInfo.clearMainSessionLocusCache);
+      });
+
       it('return the new locus if return to main session but no cache and do not clear main session cache', () => {
         locusInfo.mainSessionLocusCache = null;
         locusInfo.controls = {
