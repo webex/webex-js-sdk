@@ -53,9 +53,9 @@ class WebexRequest {
     const feedbackId = crypto.randomUUID();
     try {
       const response = await this.webex.internal.support.submitLogs({...metaData, feedbackId});
-      LoggerProxy.info(`Logs uploaded successfully`, {
+      LoggerProxy.info(`Logs uploaded successfully with feedbackId: ${feedbackId}`, {
         module: WEBEX_REQUEST_FILE,
-        method: this.uploadLogs.name,
+        method: 'uploadLogs',
       });
 
       MetricsManager.getInstance().trackEvent(
@@ -63,6 +63,7 @@ class WebexRequest {
         {
           trackingId: response?.trackingid,
           feedbackId,
+          correlationId: metaData?.correlationId,
         },
         ['behavioral']
       );
@@ -71,12 +72,13 @@ class WebexRequest {
         trackingid: response.trackingid,
         ...(response.url ? {url: response.url} : {}),
         ...(response.userId ? {userId: response.userId} : {}),
+        ...(response.correlationId ? {correlationId: response.correlationId} : {}),
         feedbackId,
       };
     } catch (error) {
       LoggerProxy.error(`Error uploading logs: ${error}`, {
         module: WEBEX_REQUEST_FILE,
-        method: this.uploadLogs.name,
+        method: 'uploadLogs',
       });
 
       MetricsManager.getInstance().trackEvent(

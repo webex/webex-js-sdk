@@ -90,7 +90,6 @@ export enum LOGGING_LEVEL {
 }
 
 export type LogsMetaData = {
-  trackingid?: string;
   feedbackId?: string;
   correlationId?: string;
 };
@@ -100,6 +99,7 @@ export type UploadLogsResponse = {
   url?: string;
   userId?: string;
   feedbackId?: string;
+  correlationId?: string;
 };
 interface IWebexInternal {
   mercury: {

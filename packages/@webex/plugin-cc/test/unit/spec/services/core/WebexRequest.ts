@@ -108,7 +108,7 @@ describe('WebexRequest', () => {
 
       expect(result).toEqual({...mockResponse, feedbackId: "mocked-uuid-12345"});
       expect(LoggerProxy.info).toHaveBeenCalledWith(
-        `Logs uploaded successfully`,
+        `Logs uploaded successfully with feedbackId: mocked-uuid-12345`,
         {module: WEBEX_REQUEST_FILE, method: 'uploadLogs'}
       );
       expect(mockMetricsManager.trackEvent).toBeCalledWith(
