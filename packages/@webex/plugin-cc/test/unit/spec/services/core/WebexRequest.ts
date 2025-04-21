@@ -116,7 +116,7 @@ describe('WebexRequest', () => {
         {feedbackId: "mocked-uuid-12345", trackingId: '1234'}, 
         ["behavioral"]
       );
-      expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith({... mockMetaData, feedbackId: "mocked-uuid-12345"});
+      expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith({... mockMetaData, feedbackId: "mocked-uuid-12345"}, undefined, {type: 'diff'});
     });
 
     it('should log and throw an error if the upload fails', async () => {
