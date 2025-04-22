@@ -21,7 +21,7 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
     });
     // we can add more conditions here if not needed for specific cases eg: silentReLogin
     WebexRequest.getInstance().uploadLogs({
-      correlationId: failure?.data?.trackingId,
+      correlationId: failure?.trackingId,
     });
   }
 
