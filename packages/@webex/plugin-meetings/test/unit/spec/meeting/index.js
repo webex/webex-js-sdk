@@ -2664,7 +2664,7 @@ describe('plugin-meetings', () => {
 
           meeting.roap.doTurnDiscovery = sinon.stub().resolves({
             turnServerInfo: {
-              url: FAKE_TURN_URL,
+              urls: [FAKE_TURN_URL],
               username: FAKE_TURN_USER,
               password: FAKE_TURN_PASSWORD,
             },
@@ -2686,7 +2686,7 @@ describe('plugin-meetings', () => {
             meeting.id,
             sinon.match({
               turnServerInfo: {
-                url: FAKE_TURN_URL,
+                urls: [FAKE_TURN_URL],
                 username: FAKE_TURN_USER,
                 password: FAKE_TURN_PASSWORD,
               },
@@ -2744,7 +2744,7 @@ describe('plugin-meetings', () => {
             .onSecondCall()
             .returns({
               turnServerInfo: {
-                url: FAKE_TURN_URL,
+                urls: [FAKE_TURN_URL],
                 username: FAKE_TURN_USER,
                 password: FAKE_TURN_PASSWORD,
               },
@@ -2956,7 +2956,7 @@ describe('plugin-meetings', () => {
             .onSecondCall()
             .returns({
               turnServerInfo: {
-                url: FAKE_TURN_URL,
+                urls: [FAKE_TURN_URL],
                 username: FAKE_TURN_USER,
                 password: FAKE_TURN_PASSWORD,
               },
@@ -3133,7 +3133,7 @@ describe('plugin-meetings', () => {
             .onSecondCall()
             .returns({
               turnServerInfo: {
-                url: FAKE_TURN_URL,
+                urls: [FAKE_TURN_URL],
                 username: FAKE_TURN_USER,
                 password: FAKE_TURN_PASSWORD,
               },
@@ -3185,7 +3185,7 @@ describe('plugin-meetings', () => {
             .onSecondCall()
             .returns({
               turnServerInfo: {
-                url: FAKE_TURN_URL,
+                urls: [FAKE_TURN_URL],
                 username: FAKE_TURN_USER,
                 password: FAKE_TURN_PASSWORD,
               },
@@ -3637,7 +3637,7 @@ describe('plugin-meetings', () => {
 
             meeting.roap.doTurnDiscovery = sinon.stub().resolves({
               turnServerInfo: {
-                url: FAKE_TURN_URL,
+                urls: [FAKE_TURN_URL],
                 username: FAKE_TURN_USER,
                 password: FAKE_TURN_PASSWORD,
               },
@@ -3663,7 +3663,7 @@ describe('plugin-meetings', () => {
               meeting.id,
               sinon.match({
                 turnServerInfo: {
-                  url: FAKE_TURN_URL,
+                  urls: [FAKE_TURN_URL],
                   username: FAKE_TURN_USER,
                   password: FAKE_TURN_PASSWORD,
                 },
@@ -3887,6 +3887,22 @@ describe('plugin-meetings', () => {
               assert.isRejected((Promise.reject()));
             }
           });
+
+          it('updates remote mute state when brb is enabled', async () => {
+            meeting.audio = { handleServerRemoteMuteUpdate: sinon.stub() };
+
+            await meeting.beRightBack(true);
+
+            sinon.assert.calledOnceWithExactly(meeting.audio.handleServerRemoteMuteUpdate, meeting, true);
+          });
+
+          it('does not update remote mute state when brb is disabled', async () => {
+            meeting.audio = { handleServerRemoteMuteUpdate: sinon.stub() };
+
+            await meeting.beRightBack(false);
+
+            assert.notCalled(meeting.audio.handleServerRemoteMuteUpdate);
+          });
         });
       });
 
@@ -3940,7 +3956,7 @@ describe('plugin-meetings', () => {
               .resolves({id: 'fake clientMediaPreferences'});
             meeting.roap.doTurnDiscovery = sinon.stub().resolves({
               turnServerInfo: {
-                url: 'turns:turn-server-url:443?transport=tcp',
+                urls: ['turns:turn-server-url1:443?transport=tcp', 'turns:turn-server-url2:443?transport=tcp'],
                 username: 'turn user',
                 password: 'turn password',
               },
@@ -3958,12 +3974,7 @@ describe('plugin-meetings', () => {
             expectedMediaConnectionConfig = {
               iceServers: [
                 {
-                  urls: 'turn:turn-server-url:5004?transport=tcp',
-                  username: 'turn user',
-                  credential: 'turn password',
-                },
-                {
-                  urls: 'turns:turn-server-url:443?transport=tcp',
+                  urls: ['turns:turn-server-url1:443?transport=tcp', 'turns:turn-server-url2:443?transport=tcp'],
                   username: 'turn user',
                   credential: 'turn password',
                 },
@@ -5231,7 +5242,7 @@ describe('plugin-meetings', () => {
                 // and check that when we fallback to transcoded we still do another TURN discovery
                 await runCheck(
                   {
-                    url: 'turns:turn-server-url:443?transport=tcp',
+                    urls: ['turns:turn-server-url1:443?transport=tcp', 'turns:turn-server-url2:443?transport=tcp'],
                     username: 'turn user',
                     password: 'turn password',
                   },
@@ -5245,7 +5256,7 @@ describe('plugin-meetings', () => {
                 // but doing it just for completeness
                 await runCheck(
                   {
-                    url: 'turns:turn-server-url:443?transport=tcp',
+                    urls: ['turns:turn-server-url1:443?transport=tcp', 'turns:turn-server-url2:443?transport=tcp'],
                     username: 'turn user',
                     password: 'turn password',
                   },
@@ -7527,19 +7538,19 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#setIsoLocalClientMeetingJoinTime', () => {      
+      describe('#setIsoLocalClientMeetingJoinTime', () => {
         it('should fallback to system clock ISO string when given an undefined value', () => {
           const currentSystemTime = new Date().toISOString();
           meeting.isoLocalClientMeetingJoinTime = undefined;
           assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
         });
-      
+
         it('should fallback to system clock ISO string when given an invalid value', () => {
           const currentSystemTime = new Date().toISOString();
           meeting.isoLocalClientMeetingJoinTime = 'invalid-date';
           assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
         });
-      
+
         it('should set the isoLocalClientMeetingJoinTime correctly for a valid date string', () => {
           const validDateString = 'Tue, 01 Apr 2025 13:00:36 GMT';
           const expectedISOString = new Date(validDateString).toISOString();
@@ -8614,11 +8625,17 @@ describe('plugin-meetings', () => {
           const fakeErrorMessage = 'test error';
           const fakeRootCauseName = 'root cause name';
           const fakeErrorName = 'test error name';
+          let clock;
 
           beforeEach(() => {
+            clock = sinon.useFakeTimers();
             meeting.setupMediaConnectionListeners();
             webex.internal.newMetrics.submitClientEvent.resetHistory();
             Metrics.sendBehavioralMetric.resetHistory();
+          });
+
+          afterEach(() => {
+            clock.restore();
           });
 
           const checkMetricSent = (event, error) => {
@@ -8689,6 +8706,13 @@ describe('plugin-meetings', () => {
           });
 
           it('should send metrics for SdpAnswerHandlingError error', () => {
+            meeting.sdpResponseTimer = '1234';
+            meeting.deferSDPAnswer = {
+              reject: sinon.stub(),
+            };
+
+            const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
+
             const fakeError = new Errors.SdpAnswerHandlingError(fakeErrorMessage, {
               name: fakeErrorName,
               cause: {name: fakeRootCauseName},
@@ -8703,6 +8727,8 @@ describe('plugin-meetings', () => {
               fakeErrorMessage,
               fakeRootCauseName
             );
+            assert.calledOnce(meeting.deferSDPAnswer.reject);
+            assert.calledOnce(clearTimeoutSpy);
           });
 
           it('should send metrics for SdpError error', () => {

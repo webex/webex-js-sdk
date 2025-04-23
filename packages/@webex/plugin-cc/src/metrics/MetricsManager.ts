@@ -9,6 +9,8 @@ import {WebexSDK} from '../types';
 import {BehavioralEventTaxonomy, getEventTaxonomy} from './behavioral-events';
 import LoggerProxy from '../logger-proxy';
 import {METRIC_EVENT_NAMES} from './constants';
+import {Failure} from '../services/core/GlobalTypes';
+import {PRODUCT_NAME} from '../constants';
 
 type BehavioralEvent = {
   taxonomy: BehavioralEventTaxonomy;
@@ -22,9 +24,10 @@ type GenericEvent = {
 
 export type MetricsType = 'behavioral' | 'operational' | 'business';
 
+const PRODUCT_NAME_UPPER = PRODUCT_NAME.toUpperCase();
 export default class MetricsManager {
   private webex: WebexSDK;
-  private readonly runningEvents: Record<string, number> = {};
+  private readonly runningEvents: Record<string, {startTime: number; keys: Set<string>}> = {};
   private pendingBehavioralEvents: BehavioralEvent[] = [];
   private pendingOperationalEvents: GenericEvent[] = [];
   private pendingBusinessEvents: GenericEvent[] = [];
@@ -33,7 +36,7 @@ export default class MetricsManager {
 
   // eslint-disable-next-line no-use-before-define
   private static instance: MetricsManager;
-  private metricsDisabled = false;
+  private metricsDisabled = false; // TODO: SPARK-637285
 
   // eslint-disable-next-line no-useless-constructor
   private constructor() {}
@@ -85,7 +88,7 @@ export default class MetricsManager {
       this.pendingOperationalEvents.length = 0;
       eventsToSubmit.forEach((event) => {
         this.webex.internal.newMetrics.submitOperationalEvent({
-          name: event.name,
+          name: `${PRODUCT_NAME_UPPER}_${event.name}`,
           payload: event.payload,
         });
       });
@@ -101,47 +104,51 @@ export default class MetricsManager {
       this.pendingBusinessEvents.length = 0;
       eventsToSubmit.forEach((event) => {
         this.webex.internal.newMetrics.submitBusinessEvent({
-          name: event.name,
+          name: `${PRODUCT_NAME_UPPER}_${event.name}`,
           payload: event.payload,
+          metadata: {
+            appType: PRODUCT_NAME,
+          },
         });
       });
     }
   }
 
-  private addDurationIfTimed(name: string, options?: EventPayload): EventPayload {
+  private addDurationIfTimed(eventName: string, options?: EventPayload): EventPayload {
     const durationKey = 'duration_ms';
-    if (name in this.runningEvents) {
-      const startTime = this.runningEvents[name];
-      delete this.runningEvents[name];
-      if (startTime && options) {
+    for (const [genericKey, timing] of Object.entries(this.runningEvents)) {
+      if (timing.keys.has(eventName)) {
+        const startTime = timing.startTime;
+        // Remove all keys for this operation.
+        delete this.runningEvents[genericKey];
+        options = options || {};
         options[durationKey] = Date.now() - startTime;
 
         return options;
       }
-      if (startTime) {
-        const payload: EventPayload = {};
-        payload[durationKey] = Date.now() - startTime;
-
-        return payload;
-      }
-    }
-    if (options) {
-      return options;
     }
 
-    return {};
+    return options || {};
   }
 
   static spacesToUnderscore(str: string): string {
     return str.replace(/ /g, '_');
   }
 
-  private static preparePayload(options: EventPayload): EventPayload {
+  private static preparePayload(obj: EventPayload): EventPayload {
     const payload: EventPayload = {};
 
-    for (const [key, value] of Object.entries(options)) {
-      payload[MetricsManager.spacesToUnderscore(key)] = value; // Replace spaces with underscores
-    }
+    Object.keys(obj).forEach((key) => {
+      if (
+        obj[key] !== undefined &&
+        obj[key] !== null &&
+        obj[key] !== '' &&
+        !Array.isArray(obj[key]) &&
+        !(typeof obj[key] === 'object' && Object.keys(obj[key]).length === 0)
+      ) {
+        payload[MetricsManager.spacesToUnderscore(key)] = obj[key];
+      }
+    });
 
     if (typeof window === 'undefined') {
       return payload;
@@ -236,12 +243,19 @@ export default class MetricsManager {
     }
   }
 
-  public timeEvent(_name: string) {
+  public timeEvent(keys: string | string[]) {
     if (this.isMetricsDisabled()) {
       return;
     }
+    const keyArray = Array.isArray(keys) ? keys : [keys];
+    // Use the first key as the tracking key.
+    if (keyArray.length === 0) {
+      LoggerProxy.error('[MetricsManager] No keys provided for timeEvent');
 
-    this.runningEvents[_name] = Date.now();
+      return;
+    }
+    const genericKey = keyArray[0];
+    this.runningEvents[genericKey] = {startTime: Date.now(), keys: new Set(keyArray)};
   }
 
   private setWebex(webex: WebexSDK) {
@@ -269,5 +283,42 @@ export default class MetricsManager {
 
   public static resetInstance() {
     MetricsManager.instance = undefined;
+  }
+
+  public static getCommonTrackingFieldForAQMResponse(response: any): Record<string, any> {
+    // This method is used to extract common tracking fields from the AQM response
+    // and return them as an object. The fields are extracted from the response
+    // object and its data property.
+    const fields = {
+      agentId: response?.data?.agentId || response?.agentId,
+      agentSessionId: response?.data?.agentSessionId || response?.agentSessionId,
+      teamId: response?.teamId ?? response?.data?.teamId ?? undefined,
+      siteId: response?.data?.siteId || response?.siteId,
+      orgId: response?.data?.orgId || response?.orgId,
+      eventType: response?.type,
+      trackingId: response?.data?.trackingId,
+      notifTrackingId: response?.trackingId,
+    };
+
+    return fields;
+  }
+
+  public static getCommonTrackingFieldForAQMResponseFailed(
+    failureResponse: Failure
+  ): Record<string, any> {
+    // This method is used to extract common tracking fields from the AQM response failure
+    // and return them as an object. The fields are extracted from the response
+    // object and its data property.
+    const fields = {
+      agentId: failureResponse?.data?.agentId,
+      trackingId: failureResponse?.trackingId,
+      notifTrackingId: failureResponse?.trackingId,
+      orgId: failureResponse?.orgId,
+      failureType: failureResponse?.type,
+      failureReason: failureResponse?.data?.reason,
+      reasonCode: failureResponse?.data?.reasonCode,
+    };
+
+    return fields;
   }
 }

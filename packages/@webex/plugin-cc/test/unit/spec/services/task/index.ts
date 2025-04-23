@@ -84,6 +84,7 @@ describe('Task', () => {
       owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
       queueMgr: 'aqm',
       interaction: {
+        mediaType: 'telephony',
         mainInteractionId: taskId,
         media: {
           '58a45567-4e61-4f4b-a580-5bc86357bef0': {
@@ -275,6 +276,28 @@ describe('Task', () => {
     expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({audio: true});
     expect(LocalMicrophoneStream).toHaveBeenCalledWith(mockStream);
     expect(answerCallSpy).toHaveBeenCalledWith(expect.any(LocalMicrophoneStream), taskId);
+  });
+
+  it('should accept a task when mediaType chat', async () => {
+    task.data.interaction.mediaType = 'chat';
+    const answerCallSpy = jest.spyOn(webCallingService, 'answerCall');
+    
+    await task.accept();
+    expect(contactMock.accept).toHaveBeenCalledWith({
+      interactionId: taskId,
+    });
+    expect(answerCallSpy).not.toHaveBeenCalled();
+  });
+
+  it('should accept a task when mediaType email', async () => {
+    task.data.interaction.mediaType = 'email';
+    const answerCallSpy = jest.spyOn(webCallingService, 'answerCall');
+
+    await task.accept();
+    expect(contactMock.accept).toHaveBeenCalledWith({
+      interactionId: taskId,
+    });
+    expect(answerCallSpy).not.toHaveBeenCalled();
   });
 
   it('should call accept API for Extension login option', async () => {
@@ -483,6 +506,46 @@ describe('Task', () => {
 
     const consultTransferResponse = await task.consultTransfer(consultTransferPayload);
     expect(contactMock.consultTransfer).toHaveBeenCalledWith({interactionId: taskId, data: consultTransferPayload});
+  });
+
+  it('should do consult transfer to a queue by using the destAgentId from task data', async () => {
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.consultTransfer.mockResolvedValue(expectedResponse);
+
+    const queueConsultTransferPayload: ConsultTransferPayLoad = {
+      to: 'some-queue-id',
+      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE,
+    };
+
+    const expectedPayload = {
+      to: taskDataMock.destAgentId,
+      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+    };
+
+    const response = await task.consultTransfer(queueConsultTransferPayload);
+    
+    expect(contactMock.consultTransfer).toHaveBeenCalledWith({
+      interactionId: taskId, 
+      data: expectedPayload
+    });
+    expect(response).toEqual(expectedResponse);
+  });
+
+  it('should throw error when attempting to transfer to queue with no destAgentId', async () => {
+    const taskWithoutDestAgentId = new Task(
+      contactMock, 
+      webCallingService, 
+      {...taskDataMock, destAgentId: undefined}
+    );
+
+    const queueConsultTransferPayload: ConsultTransferPayLoad = {
+      to: 'some-queue-id',
+      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE,
+    };
+
+    await expect(taskWithoutDestAgentId.consultTransfer(queueConsultTransferPayload))
+      .rejects
+      .toThrow('Error while performing consultTransfer');
   });
 
   it('should handle errors in consult transfer', async () => {

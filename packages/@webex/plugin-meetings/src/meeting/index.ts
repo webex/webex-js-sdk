@@ -60,11 +60,8 @@ import {
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsUtil from '../common/events/util';
 import Trigger from '../common/events/trigger-proxy';
-import Roap, {
-  type TurnDiscoveryResult,
-  type TurnServerInfo,
-  type TurnDiscoverySkipReason,
-} from '../roap/index';
+import Roap, {type TurnDiscoveryResult, type TurnDiscoverySkipReason} from '../roap/index';
+import {type TurnServerInfo} from '../roap/types';
 import Media, {type BundlePolicy} from '../media';
 import MediaProperties from '../media/properties';
 import MeetingStateMachine from './state';
@@ -3802,7 +3799,13 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.reject(error);
     }
 
-    return this.brbState.enable(enabled, this.sendSlotManager);
+    return this.brbState.enable(enabled, this.sendSlotManager).then(() => {
+      if (this.audio && enabled) {
+        // locus mutes the participant with brb enabled request,
+        // so we need to explicitly update remote mute for correct logic flow
+        this.audio.handleServerRemoteMuteUpdate(this, enabled);
+      }
+    });
   }
 
   /**
@@ -6205,10 +6208,7 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         options: {meetingId: this.id, rawError: error},
       });
-    } else if (
-      error instanceof Errors.SdpOfferHandlingError ||
-      error instanceof Errors.SdpAnswerHandlingError
-    ) {
+    } else if (error instanceof Errors.SdpOfferHandlingError) {
       sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.correlationId);
 
       // @ts-ignore
@@ -6219,6 +6219,24 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         options: {meetingId: this.id, rawError: error},
       });
+    } else if (error instanceof Errors.SdpAnswerHandlingError) {
+      sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.correlationId);
+
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.media-engine.remote-sdp-received',
+        payload: {
+          canProceed: false,
+        },
+        options: {meetingId: this.id, rawError: error},
+      });
+
+      if (this.deferSDPAnswer) {
+        clearTimeout(this.sdpResponseTimer);
+        this.sdpResponseTimer = undefined;
+
+        this.deferSDPAnswer.reject();
+      }
     } else if (error instanceof Errors.SdpError) {
       // this covers also the case of Errors.IceGatheringError which extends Errors.SdpError
       sendBehavioralMetric(BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE, error, this.correlationId);
@@ -6855,7 +6873,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {AddMediaOptions} [options] Options for enabling/disabling audio/video
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
-  private async createMediaConnection(turnServerInfo, bundlePolicy?: BundlePolicy) {
+  private async createMediaConnection(
+    turnServerInfo?: TurnServerInfo,
+    bundlePolicy?: BundlePolicy
+  ) {
     this.rtcMetrics = this.isMultistream
       ? // @ts-ignore
         new RtcMetrics(this.webex, {meetingId: this.id}, this.correlationId)

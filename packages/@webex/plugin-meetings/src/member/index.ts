@@ -23,6 +23,7 @@ export default class Member {
   isInMeeting: any;
   isModerator: any;
   isModeratorAssignmentProhibited: any;
+  isPresenterAssignmentProhibited: any;
   isMutable: any;
   isNotAdmitted: any;
   isRecording: any;
@@ -259,6 +260,14 @@ export default class Member {
 
     /**
      * @instance
+     * @type {Boolean}
+     * @public
+     * @memberof Member
+     */
+    this.isPresenterAssignmentProhibited = null;
+
+    /**
+     * @instance
      * @type {IExternalRoles}
      * @public
      * @memberof Member
@@ -309,6 +318,8 @@ export default class Member {
       this.isModerator = MemberUtil.isModerator(participant);
       this.isModeratorAssignmentProhibited =
         MemberUtil.isModeratorAssignmentProhibited(participant);
+      this.isPresenterAssignmentProhibited =
+        MemberUtil.isPresenterAssignmentProhibited(participant);
       this.processStatus(participant);
       this.processRoles(participant as ParticipantWithRoles);
       // must be done last
