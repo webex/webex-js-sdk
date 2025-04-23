@@ -463,11 +463,13 @@ legend {
   font-size: 18px;
   margin-bottom: 10px;
 }
+
 .keys {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
+
 .key {
   width: 60px;
   height: 60px;
@@ -480,6 +482,7 @@ legend {
   border-radius: 50%;
   cursor: pointer;
 }
+
 .call-btn {
   margin-top: 10px;
   background: green;
@@ -488,6 +491,52 @@ legend {
   border-radius: 50%;
   cursor: pointer;
 }
+
 .dropdown {
   margin-top: 10px;
+}
+
+.task-item-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  font-size: 14px;
+  color: #333;
+}
+
+.task-item-content p {
+  margin: 0;
+  flex: 1;
+}
+
+.task-item-content button {
+  margin-left: 10px;
+  padding: 5px 10px;
+  font-size: 12px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.accept-task {
+  background-color: #4caf50;
+  color: white;
+}
+
+.decline-task {
+  background-color: #f44336;
+  color: white;
+}
+
+.task-separator {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 5px 0;
+}
+
+.task-item.selected {
+  background-color: #e6f7ff;
+  border-left: 3px solid #1890ff;
+  font-weight: bold;
 }

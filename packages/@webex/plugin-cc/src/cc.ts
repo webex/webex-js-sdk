@@ -302,7 +302,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       const resp = await loginResponse;
-
+      this.webCallingService.setLoginOption(data.loginOption);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
         {
@@ -560,6 +560,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       let {auxCodeId} = reLoginResponse.data;
       this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp;
       this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
+      await this.handleDeviceType(deviceType as LoginOption, dn);
 
       // To handle re-registration of event listeners on silent relogin
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
@@ -594,7 +595,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       }
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
-      await this.handleDeviceType(deviceType as LoginOption, dn);
       this.agentConfig.isAgentLoggedIn = true;
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
@@ -616,6 +616,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Handles the device type specific logic
    */
   private async handleDeviceType(deviceType: LoginOption, dn: string): Promise<void> {
+    this.webCallingService.setLoginOption(deviceType);
+    this.agentConfig.deviceType = deviceType;
     switch (deviceType) {
       case LoginOption.BROWSER:
         await this.webCallingService.registerWebCallingLine();
@@ -631,8 +633,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         });
         throw new Error(`Unsupported device type: ${deviceType}`);
     }
-    this.webCallingService.setLoginOption(deviceType);
-    this.agentConfig.deviceType = deviceType;
   }
 
   /**
