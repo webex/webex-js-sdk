@@ -1006,6 +1006,11 @@ describe('webex.cc', () => {
         webex.cc.webCallingService,
         'registerWebCallingLine'
       );
+
+      const setLoginOptionSpy = jest.spyOn(
+        webex.cc.webCallingService,
+        'setLoginOption'
+      );
       const incomingTaskListenerSpy = jest.spyOn(webex.cc, 'incomingTaskListener');
       const webSocketManagerOnSpy = jest.spyOn(webex.cc.services.webSocketManager, 'on');
       await webex.cc['silentRelogin']();
@@ -1026,6 +1031,7 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toStrictEqual(12345);
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
       expect(registerWebCallingLineSpy).toHaveBeenCalled();
+      expect(setLoginOptionSpy).toHaveBeenCalledWith(LoginOption.BROWSER);
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       // expect(incomingTaskListenerSpy).toHaveBeenCalled();
       // expect(webSocketManagerOnSpy).toHaveBeenCalledWith('message', expect.any(Function));

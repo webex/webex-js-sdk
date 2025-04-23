@@ -19,6 +19,7 @@ import {
   DESTINATION_TYPE,
   CONSULT_TRANSFER_DESTINATION_TYPE,
   ConsultTransferPayLoad,
+  MEDIA_CHANNEL,
 } from './types';
 import WebCallingService from '../WebCallingService';
 import MetricsManager from '../../metrics/MetricsManager';
@@ -93,6 +94,10 @@ export default class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
         METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
       ]);
+
+      if (this.data.interaction.mediaType !== MEDIA_CHANNEL.TELEPHONY) {
+        return this.contact.accept({interactionId: this.data.interactionId});
+      }
 
       if (this.webCallingService.loginOption === LoginOption.BROWSER) {
         const constraints = {audio: true};

@@ -93,6 +93,7 @@ describe('Task', () => {
       owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
       queueMgr: 'aqm',
       interaction: {
+        mediaType: 'telephony',
         mainInteractionId: taskId,
         media: {
           '58a45567-4e61-4f4b-a580-5bc86357bef0': {
@@ -284,6 +285,28 @@ describe('Task', () => {
     expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({audio: true});
     expect(LocalMicrophoneStream).toHaveBeenCalledWith(mockStream);
     expect(answerCallSpy).toHaveBeenCalledWith(expect.any(LocalMicrophoneStream), taskId);
+  });
+
+  it('should accept a task when mediaType chat', async () => {
+    task.data.interaction.mediaType = 'chat';
+    const answerCallSpy = jest.spyOn(webCallingService, 'answerCall');
+    
+    await task.accept();
+    expect(contactMock.accept).toHaveBeenCalledWith({
+      interactionId: taskId,
+    });
+    expect(answerCallSpy).not.toHaveBeenCalled();
+  });
+
+  it('should accept a task when mediaType email', async () => {
+    task.data.interaction.mediaType = 'email';
+    const answerCallSpy = jest.spyOn(webCallingService, 'answerCall');
+
+    await task.accept();
+    expect(contactMock.accept).toHaveBeenCalledWith({
+      interactionId: taskId,
+    });
+    expect(answerCallSpy).not.toHaveBeenCalled();
   });
 
   it('should call accept API for Extension login option', async () => {
