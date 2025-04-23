@@ -18,6 +18,7 @@ export default class TaskManager extends EventEmitter {
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
+  private metricsManager: MetricsManager;
   private static taskManager;
 
   /**
@@ -35,6 +36,7 @@ export default class TaskManager extends EventEmitter {
     this.taskCollection = {};
     this.webCallingService = webCallingService;
     this.webSocketManager = webSocketManager;
+    this.metricsManager = MetricsManager.getInstance();
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
   }
@@ -132,7 +134,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
             task = this.updateTaskData(task, payload.data);
-            MetricsManager.getInstance().trackEvent(
+            this.metricsManager.trackEvent(
               METRIC_EVENT_NAMES.AGENT_RONA,
               {
                 ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
