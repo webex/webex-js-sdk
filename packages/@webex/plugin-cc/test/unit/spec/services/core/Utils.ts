@@ -182,7 +182,7 @@ describe('Utils', () => {
         { module: moduleName, method: methodName }
       );
       
-      // Check if uploadLogs uses the trackingId from the data level
+      // Check if uploadLogs uses the trackingId from the details level
       expect(WebexRequest.getInstance().uploadLogs).toHaveBeenCalledWith({
         correlationId: detailsTrackingId,
       });
