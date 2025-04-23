@@ -132,6 +132,11 @@ export type AgentResponse = {
   teamIds: string[];
 
   /**
+   * Multimedia profile ID associated with the agent.
+   */
+  multimediaProfileId: string;
+
+  /**
    * Skill profile ID of the agent.
    */
   skillProfileId: string;
@@ -295,6 +300,24 @@ export type DesktopProfileResponse = {
   stateSynchronizationWebex: boolean;
 };
 
+export type MultimediaProfileResponse = {
+  organizationId: string;
+  id: string;
+  version: 1;
+  name: string;
+  description: string;
+  chat: number;
+  email: number;
+  telephony: number;
+  social: number;
+  active: boolean;
+  blendingModeEnabled: boolean;
+  blendingMode: string;
+  systemDefault: boolean;
+  createdTime: number;
+  lastUpdatedTime: number;
+};
+
 export type SubscribeResponse = {
   statusCode: number;
   body: {
@@ -355,7 +378,12 @@ export type TeamList = {
   id: string;
   name: string;
   active: boolean;
+  siteId: string;
+  siteName: string;
+  multiMediaProfileId?: string;
   userIds: string[];
+  rankQueuesForTeam: boolean;
+  queueRankings: string[];
   dbId?: string;
   desktopLayoutId?: string;
 };
@@ -379,6 +407,14 @@ export type OrgSettings = {
   webRtcEnabled: boolean;
   maskSensitiveData: boolean;
   campaignManagerEnabled: boolean;
+};
+
+export type SiteInfo = {
+  id: string;
+  name: string;
+  active: boolean;
+  multimediaProfileId: string;
+  systemDefault: boolean;
 };
 
 export type TenantData = {
@@ -530,6 +566,7 @@ export type Profile = {
   agentMailId: string;
   agentProfileID: string;
   dialPlan: DialPlan;
+  multimediaProfileId: string;
   skillProfileId: string;
   siteId: string;
   enterpriseId: string;

@@ -18,6 +18,8 @@ export const endPointMap = {
     `organization/${orgId}/user/by-ci-user-id/${agentId}`,
   desktopProfile: (orgId: string, desktopProfileId: string) =>
     `organization/${orgId}/agent-profile/${desktopProfileId}`,
+  multimediaProfile: (orgId: string, multimediaProfileId: string) =>
+    `organization/${orgId}/multimedia-profile/${multimediaProfileId}`,
   listTeams: (
     orgId: string,
     page: number,
@@ -40,6 +42,7 @@ export const endPointMap = {
     }&attributes=${attributes}`,
   orgInfo: (orgId: string) => `organization/${orgId}`,
   orgSettings: (orgId: string) => `organization/${orgId}/v2/organization-setting?agentView=true`,
+  siteInfo: (orgId: string, siteId: string) => `organization/${orgId}/site/${siteId}`,
   tenantData: (orgId: string) => `organization/${orgId}/v2/tenant-configuration?agentView=true`,
   urlMapping: (orgId: string) => `organization/${orgId}/v2/org-url-mapping?sort=name,ASC`,
   dialPlan: (orgId: string) => `organization/${orgId}/dial-plan?agentView=true`,

@@ -13,6 +13,8 @@ import {
   Profile,
   ListTeamsResponse,
   AuxCode,
+  MultimediaProfileResponse,
+  SiteInfo,
 } from './types';
 import HttpRequest from '../core/HttpRequest';
 import {WCC_API_GATEWAY} from '../constants';
@@ -59,6 +61,7 @@ export default class AgentConfigService {
       LoggerProxy.info('Fetched user data', {module: CONFIG_FILE_NAME, method: 'getAgentConfig'});
 
       const agentProfilePromise = this.getDesktopProfileById(orgId, userConfigData.agentProfileId);
+      const siteInfoPromise = this.getSiteInfo(orgId, userConfigData.siteId);
 
       const userDialPlanPromise = agentProfilePromise.then((agentProfileConfigData) =>
         agentProfileConfigData.dialPlanEnabled ? this.getDialPlanData(orgId) : []
@@ -75,6 +78,7 @@ export default class AgentConfigService {
 
       const [
         agentProfileConfigData,
+        siteInfo,
         userDialPlanData,
         userTeamData,
         orgInfo,
@@ -84,6 +88,7 @@ export default class AgentConfigService {
         auxCodesData,
       ] = await Promise.all([
         agentProfilePromise,
+        siteInfoPromise,
         userDialPlanPromise,
         userTeamPromise,
         orgInfoPromise,
@@ -92,6 +97,11 @@ export default class AgentConfigService {
         urlMappingPromise,
         auxCodesPromise,
       ]);
+
+      const multimediaProfileId =
+        userConfigData.multimediaProfileId ||
+        userTeamData[0]?.multiMediaProfileId ||
+        siteInfo.multimediaProfileId;
 
       LoggerProxy.info('Fetched all required data', {
         module: CONFIG_FILE_NAME,
@@ -108,6 +118,7 @@ export default class AgentConfigService {
         agentProfileData: agentProfileConfigData,
         dialPlanData: userDialPlanData,
         urlMapping: urlMappingData,
+        multimediaProfileId,
       });
 
       // replace CONFIG_FILE_NAME with CONFIG_FILE_NAME
@@ -196,6 +207,43 @@ export default class AgentConfigService {
       LoggerProxy.error(`getDesktopProfileById API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
         method: 'getDesktopProfileById',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches the multimedia profile data for the given orgId and multimediaProfileId.
+   * @param {string} orgId
+   * @param {string} multimediaProfileId
+   * @returns {Promise<MultimediaProfileResponse>}
+   */
+  public async getMultimediaProfileById(
+    orgId: string,
+    multimediaProfileId: string
+  ): Promise<MultimediaProfileResponse> {
+    try {
+      const resource = endPointMap.multimediaProfile(orgId, multimediaProfileId);
+      const response = await this.httpReq.request({
+        service: WCC_API_GATEWAY,
+        resource,
+        method: HTTP_METHODS.GET,
+      });
+
+      if (response.statusCode !== 200) {
+        throw new Error(`API call failed with ${response.statusCode}`);
+      }
+
+      LoggerProxy.log('getMultimediaProfileById API success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getMultimediaProfileById',
+      });
+
+      return Promise.resolve(response.body);
+    } catch (error) {
+      LoggerProxy.error(`getMultimediaProfileById API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getMultimediaProfileById',
       });
       throw error;
     }
@@ -365,6 +413,40 @@ export default class AgentConfigService {
       LoggerProxy.error(`getAllAuxCodes API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
         method: 'getAllAuxCodes',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches the site data for the given orgId and siteId.
+   * @param {string} orgId
+   * @param {string} siteId
+   * @returns {Promise<SiteInfo>}
+   */
+  public async getSiteInfo(orgId: string, siteId: string): Promise<SiteInfo> {
+    try {
+      const resource = endPointMap.siteInfo(orgId, siteId);
+      const response = await this.httpReq.request({
+        service: WCC_API_GATEWAY,
+        resource,
+        method: HTTP_METHODS.GET,
+      });
+
+      if (response.statusCode !== 200) {
+        throw new Error(`API call failed with ${response.statusCode}`);
+      }
+
+      LoggerProxy.log('getSiteInfo api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getSiteInfo',
+      });
+
+      return Promise.resolve(response.body);
+    } catch (error) {
+      LoggerProxy.error(`getSiteInfo API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getSiteInfo',
       });
       throw error;
     }

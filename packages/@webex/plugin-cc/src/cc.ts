@@ -218,6 +218,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.webCallingService.setLoginOption(data.loginOption);
 
       const resp = await loginResponse;
+      const {channelsMap, ...loginData} = resp.data;
+      const response = {
+        ...loginData,
+        mmProfile: {
+          chat: channelsMap.chat?.length,
+          email: channelsMap.email?.length,
+          social: channelsMap.social?.length,
+          telephony: channelsMap.telephony?.length,
+        },
+        notifsTrackingId: resp.trackingId,
+      };
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN,
@@ -241,7 +252,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // this.services.webSocketManager.on('message', this.handleWebSocketMessage);
       // this.incomingTaskListener();
 
-      return resp;
+      return response;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'stationLogin', CC_FILE);
       throw detailedError;

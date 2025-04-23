@@ -139,6 +139,7 @@ function parseAgentConfigs(profileData: {
   agentProfileData: DesktopProfileResponse;
   dialPlanData: DialPlanEntity[];
   urlMapping: URLMapping[];
+  multimediaProfileId: string;
 }): Profile {
   const {
     userData,
@@ -191,12 +192,14 @@ function parseAgentConfigs(profileData: {
     agentName: `${userData.firstName} ${userData.lastName}`,
     agentMailId: userData.email,
     agentProfileID: userData.agentProfileId,
+    autoAnswer: agentProfileData.autoAnswer,
     dialPlan: agentProfileData.dialPlanEnabled
       ? {
           type: 'adhocDial',
           dialPlanEntity: getFilteredDialplanEntries(dialPlanData, agentProfileData.dialPlans),
         }
       : undefined,
+    multimediaProfileId: profileData.multimediaProfileId,
     skillProfileId: userData.skillProfileId ? userData.skillProfileId : null,
     siteId: userData.siteId,
     enterpriseId: orgInfoData.tenantId,
