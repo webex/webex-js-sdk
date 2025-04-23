@@ -1,5 +1,5 @@
 import {isEqual} from 'lodash';
-import {BREAKOUTS} from '../constants';
+import {BREAKOUTS, MEETING_STATE} from '../constants';
 
 const ControlsUtils: any = {};
 
@@ -242,30 +242,42 @@ ControlsUtils.isNeedReplaceMembers = (oldControls: any, controls: any) => {
   }
 
   return (
-    oldControls.breakout.groupId !== controls.breakout.groupId ||
-    oldControls.breakout.sessionId !== controls.breakout.sessionId
+    oldControls?.breakout?.groupId !== controls?.breakout?.groupId ||
+    oldControls?.breakout?.sessionId !== controls?.breakout?.sessionId
   );
 };
 
 /**
  * determine the switch status between breakout session and main session.
- * @param {LocusControls} oldControls
- * @param {LocusControls} controls
+ * @param {LocusInfo} oldLocus
+ * @param {LocusInfo} newLocus
  * @returns {Object}
  */
-ControlsUtils.getSessionSwitchStatus = (oldControls: any, controls: any) => {
+ControlsUtils.getSessionSwitchStatus = (oldLocus: any, newLocus: any) => {
   const status = {isReturnToMain: false, isJoinToBreakout: false};
   // no breakout case
-  if (!oldControls?.breakout || !controls?.breakout) {
+  if (!oldLocus.controls?.breakout || !newLocus.controls?.breakout) {
     return status;
   }
 
-  status.isReturnToMain =
-    oldControls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
-    controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN;
+  // It is used to fix the timing issue triggered when the creator leaves session to ensure that the member list is complete
+  const needUseCache = !!(
+    oldLocus.self?.isCreator &&
+    newLocus.participants?.length === 1 &&
+    newLocus.participants?.[0].isCreator &&
+    newLocus.participants?.[0].state === MEETING_STATE.STATES.JOINED &&
+    newLocus.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.MAIN &&
+    newLocus.controls?.breakout?.groups?.length
+  );
+
+  const isReturnToMain =
+    oldLocus.controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+    newLocus.controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN;
+
+  status.isReturnToMain = needUseCache || isReturnToMain;
   status.isJoinToBreakout =
-    oldControls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN &&
-    controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+    oldLocus.controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN &&
+    newLocus.controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
 
   return status;
 };
