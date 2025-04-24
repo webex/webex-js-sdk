@@ -1,6 +1,10 @@
 import {assert} from '@webex/test-helper-chai';
 import ControlsUtils from '@webex/plugin-meetings/src/locus-info/controlsUtils';
 import controlsUtils from "@webex/plugin-meetings/src/locus-info/controlsUtils";
+import {
+  MEETING_STATE,
+  BREAKOUTS,
+} from '../../../../src/constants';
 
 const defaultControls = {
   entryExitTone: {
@@ -432,26 +436,74 @@ describe('plugin-meetings', () => {
 
     describe('getSessionSwitchStatus', () => {
       it('if no breakout control, return switch status both false', () => {
-        const oldControls = {};
-        const newControls = {};
-        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldControls, newControls), {
+        const oldLocus = {};
+        const newLocus = {};
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
           isReturnToMain: false, isJoinToBreakout: false
         });
       });
 
       it('if switch session from breakout to main, return isReturnToMain as true', () => {
-        const oldControls = {breakout: {sessionType: 'BREAKOUT'}};
-        const newControls = {breakout: {sessionType: 'MAIN'}};
-        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldControls, newControls), {
+        const oldLocus = {controls: {breakout: {sessionType: 'BREAKOUT'}}};
+        const newLocus = {controls: {breakout: {sessionType: 'MAIN'}}};
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
           isReturnToMain: true, isJoinToBreakout: false
         });
       });
 
       it('if switch session from main to breakout, return isJoinToBreakout as true', () => {
-        const oldControls = {breakout: {sessionType: 'MAIN'}};
-        const newControls = {breakout: {sessionType: 'BREAKOUT'}};
-        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldControls, newControls), {
+        const oldLocus = {controls: {breakout: {sessionType: 'MAIN'}}};
+        const newLocus = {controls: {breakout: {sessionType: 'BREAKOUT'}}};
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
           isReturnToMain: false, isJoinToBreakout: true
+        });
+      });
+
+      it('if needUseCache conditions are met, return isJoinToBreakout as true', () => {
+        const oldLocus = {
+          self: { isCreator: true },
+          controls: { breakout: { sessionType: BREAKOUTS.SESSION_TYPES.MAIN} },
+        };
+    
+        const newLocus = {
+          participants: [
+            { isCreator: true, state: MEETING_STATE.STATES.JOINED }, 
+          ],
+          controls: {
+            breakout: {
+              sessionType: BREAKOUTS.SESSION_TYPES.MAIN, 
+              groups: [{ id: 'group1' }] 
+            },
+          },
+        };
+    
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
+          isReturnToMain: true, 
+          isJoinToBreakout: false
+        });
+      });
+    
+      it('if needUseCache conditions are not met, return newLocus and isReturnToMain as false', () => {
+        const oldLocus = {
+          self: { isCreator: false }, 
+          controls: { breakout: { sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT} },
+        };
+    
+        const newLocus = {
+          participants: [
+            { isCreator: true, state: MEETING_STATE.STATES.JOINED },
+          ],
+          controls: {
+            breakout: {
+              sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT,
+              groups: [] 
+            },
+          },
+        };
+    
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
+          isReturnToMain: false, 
+          isJoinToBreakout: false
         });
       });
     });
