@@ -90,6 +90,7 @@ class WebexRequest {
         {
           stack: error?.stack,
           feedbackId,
+          correlationId: metaData?.correlationId,
         },
         ['behavioral']
       );

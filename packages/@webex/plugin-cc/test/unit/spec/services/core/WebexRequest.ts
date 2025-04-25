@@ -120,7 +120,7 @@ describe('WebexRequest', () => {
     });
 
     it('should log and throw an error if the upload fails', async () => {
-      const mockMetaData = { key: 'value' };
+      const mockMetaData = { key: 'value' , correlationId: 'correlation-id' };
       const mockError = new Error('Upload failed');
       mockError.stack = "My stack"
       mockWebex.internal = {
@@ -136,7 +136,7 @@ describe('WebexRequest', () => {
       );
       expect(mockMetricsManager.trackEvent).toBeCalledWith(
         "Upload Logs Failed", 
-        {stack: "My stack", feedbackId: "mocked-uuid-12345"}, 
+        {stack: "My stack", feedbackId: "mocked-uuid-12345", correlationId: 'correlation-id'}, 
         ["behavioral"]
       );
     });

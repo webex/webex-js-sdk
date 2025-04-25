@@ -88,7 +88,7 @@ describe('Utils', () => {
       });
     });
 
-    it('should upload logs when reason is AGENT_NOT_FOUND and method is silentReLogin', () => {
+    it('should not upload logs when reason is AGENT_NOT_FOUND and method is silentReLogin', () => {
       const error = {
         details: {
           data: {
