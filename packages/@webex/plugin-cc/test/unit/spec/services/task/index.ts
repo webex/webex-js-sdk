@@ -18,6 +18,8 @@ import {
   ConsultTransferPayLoad,
   TransferPayLoad,
 } from '../../../../../src/services/task/types';
+import MetricsManager from '../../../../../src/metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
 
 jest.mock('@webex/calling');
 
@@ -25,6 +27,7 @@ describe('Task', () => {
   let onSpy;
   let task;
   let contactMock;
+  let mockMetricsManager;
   let taskDataMock;
   let webCallingService;
   let getErrorDetailsSpy;
@@ -61,6 +64,13 @@ describe('Task', () => {
       pauseRecording: jest.fn().mockResolvedValue({}),
       resumeRecording: jest.fn().mockResolvedValue({}),
     };
+
+    mockMetricsManager = {
+      trackEvent: jest.fn(),
+      timeEvent: jest.fn(),
+    };
+
+    jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
 
     webCallingService = new WebCallingService(
       webex,
@@ -276,12 +286,24 @@ describe('Task', () => {
     expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({audio: true});
     expect(LocalMicrophoneStream).toHaveBeenCalledWith(mockStream);
     expect(answerCallSpy).toHaveBeenCalledWith(expect.any(LocalMicrophoneStream), taskId);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+      {
+        taskId: task.data.interactionId,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(task),
+        eventType: 'AgentContactReserved',
+        notifTrackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
+        trackingId: undefined,
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should accept a task when mediaType chat', async () => {
     task.data.interaction.mediaType = 'chat';
     const answerCallSpy = jest.spyOn(webCallingService, 'answerCall');
-    
+
     await task.accept();
     expect(contactMock.accept).toHaveBeenCalledWith({
       interactionId: taskId,
@@ -306,6 +328,14 @@ describe('Task', () => {
     await task.accept();
 
     expect(contactMock.accept).toHaveBeenCalledWith({interactionId: taskId});
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should handle errors in accept method', async () => {
@@ -324,6 +354,16 @@ describe('Task', () => {
 
     await expect(task.accept()).rejects.toThrow(new Error(error.details.data.reason));
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'accept', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        error: error.toString(),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should decline call using webCallingService', async () => {
@@ -334,6 +374,14 @@ describe('Task', () => {
 
     expect(declineCallSpy).toHaveBeenCalledWith(taskId);
     expect(offSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, offSpy.mock.calls[0][1]);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+      },
+      ['operational', 'behavioral']
+    );
   });
 
   it('should handle errors in decline method', async () => {
@@ -351,6 +399,16 @@ describe('Task', () => {
     });
     await expect(task.decline()).rejects.toThrow(new Error(error.details.data.reason));
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'decline', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        error: error.toString(),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral']
+    );
   });
 
   it('should hold the task and return the expected response', async () => {
@@ -364,6 +422,16 @@ describe('Task', () => {
       data: {mediaResourceId: taskDataMock.mediaResourceId},
     });
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS,
+      {
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+        taskId: taskDataMock.interactionId,
+        mediaResourceId: taskDataMock.mediaResourceId,
+      },
+      ['operational', 'behavioral']
+    );
   });
 
   it('should handle errors in hold method', async () => {
@@ -381,6 +449,17 @@ describe('Task', () => {
 
     await expect(task.hold()).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'hold', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        mediaResourceId: taskDataMock.mediaResourceId,
+        error: error.toString(),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral']
+    );
   });
 
   it('should resume the task and return the expected response', async () => {
@@ -392,6 +471,19 @@ describe('Task', () => {
       data: {mediaResourceId: taskDataMock.mediaResourceId},
     });
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+        mainInteractionId: taskDataMock.interaction.mainInteractionId,
+        mediaResourceId:
+          taskDataMock.interaction.media[taskDataMock.interaction.mainInteractionId]
+            .mediaResourceId,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+      },
+      ['operational', 'behavioral']
+    );
   });
 
   it('should handle errors in resume method', async () => {
@@ -409,6 +501,19 @@ describe('Task', () => {
 
     await expect(task.resume()).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'resume', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        mainInteractionId: taskDataMock.interaction.mainInteractionId,
+        mediaResourceId:
+          taskDataMock.interaction.media[taskDataMock.interaction.mainInteractionId]
+            .mediaResourceId,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral']
+    );
   });
 
   it('should initiate a consult call and return the expected response', async () => {
@@ -423,6 +528,17 @@ describe('Task', () => {
 
     expect(contactMock.consult).toHaveBeenCalledWith({interactionId: taskId, data: consultPayload});
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+        destination: consultPayload.to,
+        destinationType: consultPayload.destinationType,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should handle errors in consult method', async () => {
@@ -445,6 +561,18 @@ describe('Task', () => {
 
     await expect(task.consult(consultPayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'consult', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        destination: consultPayload.to,
+        destinationType: consultPayload.destinationType,
+        error: error.toString(),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should end the consult call and return the expected response', async () => {
@@ -462,6 +590,15 @@ describe('Task', () => {
       data: consultEndPayload,
     });
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should handle errors in endConsult method', async () => {
@@ -484,6 +621,16 @@ describe('Task', () => {
 
     await expect(task.endConsult(consultEndPayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'endConsult', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        error: error.toString(),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should do consult transfer the task to consulted agent and return the expected response', async () => {
@@ -505,7 +652,21 @@ describe('Task', () => {
     };
 
     const consultTransferResponse = await task.consultTransfer(consultTransferPayload);
-    expect(contactMock.consultTransfer).toHaveBeenCalledWith({interactionId: taskId, data: consultTransferPayload});
+    expect(contactMock.consultTransfer).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: consultTransferPayload,
+    });
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      2,
+      METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+        destination: consultTransferPayload.to,
+        destinationType: consultTransferPayload.destinationType,
+        isConsultTransfer: true,
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should do consult transfer to a queue by using the destAgentId from task data', async () => {
@@ -523,29 +684,28 @@ describe('Task', () => {
     };
 
     const response = await task.consultTransfer(queueConsultTransferPayload);
-    
+
     expect(contactMock.consultTransfer).toHaveBeenCalledWith({
-      interactionId: taskId, 
-      data: expectedPayload
+      interactionId: taskId,
+      data: expectedPayload,
     });
     expect(response).toEqual(expectedResponse);
   });
 
   it('should throw error when attempting to transfer to queue with no destAgentId', async () => {
-    const taskWithoutDestAgentId = new Task(
-      contactMock, 
-      webCallingService, 
-      {...taskDataMock, destAgentId: undefined}
-    );
+    const taskWithoutDestAgentId = new Task(contactMock, webCallingService, {
+      ...taskDataMock,
+      destAgentId: undefined,
+    });
 
     const queueConsultTransferPayload: ConsultTransferPayLoad = {
       to: 'some-queue-id',
       destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE,
     };
 
-    await expect(taskWithoutDestAgentId.consultTransfer(queueConsultTransferPayload))
-      .rejects
-      .toThrow('Error while performing consultTransfer');
+    await expect(
+      taskWithoutDestAgentId.consultTransfer(queueConsultTransferPayload)
+    ).rejects.toThrow('Error while performing consultTransfer');
   });
 
   it('should handle errors in consult transfer', async () => {
@@ -578,8 +738,23 @@ describe('Task', () => {
       destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
     };
 
-    await expect(task.consultTransfer(consultTransferPayload)).rejects.toThrow(error.details.data.reason);
+    await expect(task.consultTransfer(consultTransferPayload)).rejects.toThrow(
+      error.details.data.reason
+    );
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'consultTransfer', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      2,
+      METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        destination: consultTransferPayload.to,
+        destinationType: consultTransferPayload.destinationType,
+        isConsultTransfer: true,
+        error: error.toString(),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should do vteamTransfer if destinationType is queue and return the expected response', async () => {
@@ -593,8 +768,23 @@ describe('Task', () => {
 
     const response = await task.transfer(transferPayload);
 
-    expect(contactMock.vteamTransfer).toHaveBeenCalledWith({interactionId: taskId, data: transferPayload});
+    expect(contactMock.vteamTransfer).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: transferPayload,
+    });
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+        destination: transferPayload.to,
+        destinationType: transferPayload.destinationType,
+        isConsultTransfer: false,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should do blindTransfer if destinationType is anything other than queue and return the expected response', async () => {
@@ -608,8 +798,23 @@ describe('Task', () => {
 
     const response = await task.transfer(transferPayload);
 
-    expect(contactMock.blindTransfer).toHaveBeenCalledWith({interactionId: taskId, data: transferPayload});
+    expect(contactMock.blindTransfer).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: transferPayload,
+    });
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+        destination: transferPayload.to,
+        destinationType: transferPayload.destinationType,
+        isConsultTransfer: false,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should handle errors in transfer method', async () => {
@@ -632,6 +837,19 @@ describe('Task', () => {
 
     await expect(task.transfer(blindTransferPayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'transfer', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        destination: blindTransferPayload.to,
+        destinationType: blindTransferPayload.destinationType,
+        isConsultTransfer: false,
+        error: error.toString(),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should end the task and return the expected response', async () => {
@@ -642,6 +860,15 @@ describe('Task', () => {
 
     expect(contactMock.end).toHaveBeenCalledWith({interactionId: taskId});
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_END_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should handle errors in end method', async () => {
@@ -659,6 +886,15 @@ describe('Task', () => {
 
     await expect(task.end()).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'end', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_END_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should wrap up the task and return the expected response', async () => {
@@ -673,6 +909,17 @@ describe('Task', () => {
 
     expect(contactMock.wrapup).toHaveBeenCalledWith({interactionId: taskId, data: wrapupPayload});
     expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_WRAPUP_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+        wrapUpCode: wrapupPayload.auxCodeId,
+        wrapUpReason: wrapupPayload.wrapUpReason,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should handle errors in wrapup method', async () => {
@@ -695,6 +942,17 @@ describe('Task', () => {
 
     await expect(task.wrapup(wrapupPayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'wrapup', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        wrapUpCode: wrapupPayload.auxCodeId,
+        wrapUpReason: wrapupPayload.wrapUpReason,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should throw an error if auxCodeId is missing in wrapup method', async () => {
@@ -727,6 +985,14 @@ describe('Task', () => {
     await task.pauseRecording();
 
     expect(contactMock.pauseRecording).toHaveBeenCalledWith({interactionId: taskId});
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should handle errors in pauseRecording method', async () => {
@@ -744,6 +1010,16 @@ describe('Task', () => {
 
     await expect(task.pauseRecording()).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'pauseRecording', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        error: error.toString(),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should resume the recording of the task', async () => {
@@ -757,6 +1033,14 @@ describe('Task', () => {
       interactionId: taskId,
       data: resumePayload,
     });
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should resume the recording of the task if the payload is empty', async () => {
@@ -770,6 +1054,14 @@ describe('Task', () => {
       interactionId: taskId,
       data: resumePayload,
     });
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
   it('should handle errors in resumeRecording method', async () => {
@@ -791,10 +1083,19 @@ describe('Task', () => {
 
     await expect(task.resumeRecording(resumePayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'resumeRecording', CC_FILE);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        error: error.toString(),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral', 'business']
+    );
   });
 
-
-  it ('should mute call for Desktop login mode', async () => {
+  it('should mute call for Desktop login mode', async () => {
     task.localAudioStream = mockStream;
     const muteCallSpy = jest.spyOn(webCallingService, 'muteUnmuteCall');
 
@@ -803,7 +1104,7 @@ describe('Task', () => {
     expect(muteCallSpy).toHaveBeenCalledWith(mockStream);
   });
 
-  it ('should handle errors in mute method', async () => {
+  it('should handle errors in mute method', async () => {
     const error = {
       details: {
         trackingId: '1234',

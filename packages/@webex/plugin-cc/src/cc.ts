@@ -649,6 +649,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   public async startOutdial(destination: string): Promise<TaskResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_OUTDIAL_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_OUTDIAL_FAILED,
+      ]);
+
       // Construct the outdial payload.
       const outDialPayload: DialerPayload = {
         destination,
@@ -661,8 +666,28 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       const result = await this.services.dialer.startOutdial({data: outDialPayload});
 
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_OUTDIAL_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+          destination,
+          mediaType: OUTDIAL_MEDIA_TYPE,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
       return result;
     } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_OUTDIAL_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          destination,
+          mediaType: OUTDIAL_MEDIA_TYPE,
+        },
+        ['behavioral', 'business', 'operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'startOutdial', CC_FILE);
       throw detailedError;
     }
