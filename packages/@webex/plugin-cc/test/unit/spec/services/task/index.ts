@@ -18,6 +18,7 @@ import {
   ConsultTransferPayLoad,
   TransferPayLoad,
 } from '../../../../../src/services/task/types';
+import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import MetricsManager from '../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
 
