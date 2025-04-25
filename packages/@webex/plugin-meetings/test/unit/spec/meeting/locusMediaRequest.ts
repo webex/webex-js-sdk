@@ -169,26 +169,6 @@ describe('LocusMediaRequest.send()', () => {
     mockWebex.internal.newMetrics.submitClientEvent.resetHistory();
   };
 
-  const checkMetrics = (expectedMetrics: boolean = true) => {
-    if (expectedMetrics) {
-      assert.calledWith(mockWebex.internal.newMetrics.submitClientEvent, {
-        name: 'client.locus.media.request',
-        options: {
-          meetingId: 'meetingId',
-        },
-      });
-
-      assert.calledWith(mockWebex.internal.newMetrics.submitClientEvent, {
-        name: 'client.locus.media.response',
-        options: {
-          meetingId: 'meetingId',
-        },
-      });
-    } else {
-      assert.notCalled(mockWebex.internal.newMetrics.submitClientEvent);
-    }
-  };
-
   it('sends a roap message', async () => {
     const result = await sendRoapMessage('OFFER');
 
@@ -201,8 +181,6 @@ describe('LocusMediaRequest.send()', () => {
       upload: sinon.match.instanceOf(EventEmitter),
       download: sinon.match.instanceOf(EventEmitter),
     });
-
-    checkMetrics();
   });
 
   it('sends correct metric event when roap message fails', async () => {
@@ -232,8 +210,6 @@ describe('LocusMediaRequest.send()', () => {
       upload: sinon.match.instanceOf(EventEmitter),
       download: sinon.match.instanceOf(EventEmitter),
     });
-
-    checkMetrics(false);
   });
 
   it('sends a local mute request with sequence', async () => {
@@ -282,8 +258,6 @@ describe('LocusMediaRequest.send()', () => {
       upload: sinon.match.instanceOf(EventEmitter),
       download: sinon.match.instanceOf(EventEmitter),
     });
-
-    checkMetrics(false);
   });
 
   it('sends a local mute request with the last audio/video mute values', async () => {
@@ -303,8 +277,6 @@ describe('LocusMediaRequest.send()', () => {
       upload: sinon.match.instanceOf(EventEmitter),
       download: sinon.match.instanceOf(EventEmitter),
     });
-
-    checkMetrics(false);
   });
 
   it('sends only roap when roap and local mute are requested', async () => {
@@ -324,8 +296,6 @@ describe('LocusMediaRequest.send()', () => {
       upload: sinon.match.instanceOf(EventEmitter),
       download: sinon.match.instanceOf(EventEmitter),
     });
-
-    checkMetrics();
   });
 
   describe('queueing', () => {

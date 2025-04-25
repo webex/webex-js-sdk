@@ -6,6 +6,8 @@
   <title>Webex JavaScript SDK Sample: contact-center Plugin</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/light.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" type="text/css" href="https://wc.imiengage.io/v0.9.11/momentum/css/momentum-ui.min.css">
+  <link rel="stylesheet" type="text/css" href="https://wc.imiengage.io/v0.9.11/momentum/css/momentum-ui-icons.css">
   <link rel="stylesheet" href="./style.css" />
 </head>
 
@@ -151,9 +153,9 @@
          <!-- calling / incoming -->
          <div id="incomingsection">
           <fieldset>
-            <legend>Incoming Call</legend>
+            <legend>Incoming Task</legend>
             <div class="u-mv">
-              <pre id="incoming-call"> No Incoming Calls</pre>
+              <pre id="incoming-task"> No Incoming Tasks</pre>
               <button onclick="answer()" disabled="" id="answer" class="btn--green">Answer</button>
               <button onclick="decline()" disabled="" id="decline" class="btn--red">Decline</button>
             </div>
@@ -166,7 +168,7 @@
           <!-- Agent Call Controls -->
           <div id="callcontrolsection">
             <fieldset>
-              <legend>Call Controls</legend>
+              <legend>Task Controls</legend>
               <div class="u-mv">
                 <button onclick="holdResumeCall()" id="hold-resume" class="btn--yellow" disabled>Hold</button>
                 <button onclick="muteUnmute()" id="mute-unmute" class="btn--yellow" disabled>Mute</button>
@@ -207,7 +209,7 @@
                   <button id="initiate-transfer" onclick="initiateTransfer()" class="btn--green">Initiate Transfer</button>
                 </fieldset>
                 <fieldset>
-                  <legend>Call Wrapup</legend>
+                  <legend>Task Wrapup</legend>
                   <button onclick="wrapupCall()" id="wrapup" class="btn--green" disabled>Wrapup</button>
                   <select id="wrapupCodesDropdown" disabled>
                     <option value="" selected hidden>Select Wrapup Code</option>
@@ -222,6 +224,15 @@
                     </label>
                   </div>
                 </fieldset>
+                <fieldset>
+                  <legend>TaskList</legend>
+                  <div id="taskList"></div>
+                </fieldset>
+                <fieldset>
+                  <legend>Digital Channels</legend>
+                    <div id="engageWidget"> </div>
+                </fieldset>
+                
               </div>
             </fieldset>
           </div>
@@ -286,8 +297,13 @@
       display: none;
     }
   </style>
+      <script>
+        let AGENTX_SERVICE = {}; // this is needed to avoid errors in engage widgets
+      </script>
 
   <script src="../contact-center.min.js"></script>
+  <script id="imi-controller-bundle" dc="produs1" src="https://wc.imiengage.io/engage.js" defer></script>
+  <script src="https://wc.imiengage.io/v0.9.11/momentum/momentum.js" defer></script>
   <script src="app.js"></script>
 </body>
 
