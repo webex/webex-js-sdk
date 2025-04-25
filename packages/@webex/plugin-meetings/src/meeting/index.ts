@@ -647,7 +647,7 @@ export default class Meeting extends StatelessWebexPlugin {
   allowMediaInLobby: boolean;
   localShareInstanceId: string;
   remoteShareInstanceId: string;
-  shareMetricSentStatus: {
+  shareCAEventSentStatus: {
     transmitStart: boolean;
     transmitStop: boolean;
     receiveStart: boolean;
@@ -1432,7 +1432,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @private
      * @memberof Meeting
      */
-    this.shareMetricSentStatus = {
+    this.shareCAEventSentStatus = {
       transmitStart: false,
       transmitStop: false,
       receiveStart: false,
@@ -3043,8 +3043,8 @@ export default class Meeting extends StatelessWebexPlugin {
           case SHARE_STATUS.REMOTE_SHARE_ACTIVE: {
             const sendStartedSharingRemote = () => {
               this.remoteShareInstanceId = contentShare.shareInstanceId;
-              this.shareMetricSentStatus.receiveStart = false;
-              this.shareMetricSentStatus.receiveStop = false;
+              this.shareCAEventSentStatus.receiveStart = false;
+              this.shareCAEventSentStatus.receiveStop = false;
 
               Trigger.trigger(
                 this,
@@ -3139,8 +3139,8 @@ export default class Meeting extends StatelessWebexPlugin {
         // if we got here, then some remote participant has stolen
         // the presentation from another remote participant
         this.remoteShareInstanceId = contentShare.shareInstanceId;
-        this.shareMetricSentStatus.receiveStart = false;
-        this.shareMetricSentStatus.receiveStop = false;
+        this.shareCAEventSentStatus.receiveStart = false;
+        this.shareCAEventSentStatus.receiveStop = false;
 
         Trigger.trigger(
           this,
@@ -6796,7 +6796,7 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_MEDIA_LOCAL_STARTED,
         data
       );
-      if (data.mediaType !== 'share' || !this.shareMetricSentStatus.transmitStart) {
+      if (data.mediaType !== 'share' || !this.shareCAEventSentStatus.transmitStart) {
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media.tx.start',
@@ -6810,12 +6810,12 @@ export default class Meeting extends StatelessWebexPlugin {
         });
 
         if (data.mediaType === 'share') {
-          this.shareMetricSentStatus.transmitStart = true;
+          this.shareCAEventSentStatus.transmitStart = true;
         }
       }
     });
     this.statsAnalyzer.on(StatsAnalyzerEventNames.LOCAL_MEDIA_STOPPED, (data) => {
-      if (data.mediaType !== 'share' || !this.shareMetricSentStatus.transmitStop) {
+      if (data.mediaType !== 'share' || !this.shareCAEventSentStatus.transmitStop) {
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media.tx.stop',
@@ -6829,7 +6829,7 @@ export default class Meeting extends StatelessWebexPlugin {
         });
 
         if (data.mediaType === 'share') {
-          this.shareMetricSentStatus.transmitStop = true;
+          this.shareCAEventSentStatus.transmitStop = true;
         }
       }
     });
@@ -6843,7 +6843,7 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_MEDIA_REMOTE_STARTED,
         data
       );
-      if (data.mediaType !== 'share' || !this.shareMetricSentStatus.receiveStart) {
+      if (data.mediaType !== 'share' || !this.shareCAEventSentStatus.receiveStart) {
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media.rx.start',
@@ -6869,12 +6869,12 @@ export default class Meeting extends StatelessWebexPlugin {
             },
           });
 
-          this.shareMetricSentStatus.receiveStart = true;
+          this.shareCAEventSentStatus.receiveStart = true;
         }
       }
     });
     this.statsAnalyzer.on(StatsAnalyzerEventNames.REMOTE_MEDIA_STOPPED, (data) => {
-      if (data.mediaType !== 'share' || !this.shareMetricSentStatus.receiveStop) {
+      if (data.mediaType !== 'share' || !this.shareCAEventSentStatus.receiveStop) {
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media.rx.stop',
@@ -6900,7 +6900,7 @@ export default class Meeting extends StatelessWebexPlugin {
             },
           });
 
-          this.shareMetricSentStatus.receiveStop = true;
+          this.shareCAEventSentStatus.receiveStop = true;
         }
       }
     });
@@ -7122,7 +7122,7 @@ export default class Meeting extends StatelessWebexPlugin {
         networkQualityMonitor: this.networkQualityMonitor,
         isMultistream: this.isMultistream,
       });
-      this.shareMetricSentStatus = {
+      this.shareCAEventSentStatus = {
         transmitStart: false,
         transmitStop: false,
         receiveStart: false,
@@ -9392,8 +9392,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (floorRequestNeeded) {
       this.localShareInstanceId = uuid.v4();
-      this.shareMetricSentStatus.transmitStart = false;
-      this.shareMetricSentStatus.transmitStop = false;
+      this.shareCAEventSentStatus.transmitStart = false;
+      this.shareCAEventSentStatus.transmitStop = false;
 
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({

@@ -3437,7 +3437,7 @@ describe('plugin-meetings', () => {
           });
 
           it('LOCAL_MEDIA_STARTED triggers "meeting:media:local:start" event and does not send metric because we already have', async () => {
-            meeting.shareMetricSentStatus = {
+            meeting.shareCAEventSentStatus = {
               transmitStart: true,
               transmitStop: false,
               receiveStart: false,
@@ -3487,7 +3487,7 @@ describe('plugin-meetings', () => {
           });
 
           it('LOCAL_MEDIA_STOPPED does not send metric because we already have', async () => {
-            meeting.shareMetricSentStatus = {
+            meeting.shareCAEventSentStatus = {
               transmitStart: false,
               transmitStop: true,
               receiveStart: false,
@@ -3589,7 +3589,7 @@ describe('plugin-meetings', () => {
           });
 
           it('REMOTE_MEDIA_STARTED triggers "meeting:media:remote:start" event and does not send metric because we already have', async () => {
-            meeting.shareMetricSentStatus = {
+            meeting.shareCAEventSentStatus = {
               transmitStart: false,
               transmitStop: false,
               receiveStart: true,
@@ -3654,7 +3654,7 @@ describe('plugin-meetings', () => {
           });
 
           it('REMOTE_MEDIA_STOPPED does not send metric because we already have', async () => {
-            meeting.shareMetricSentStatus = {
+            meeting.shareCAEventSentStatus = {
               transmitStart: false,
               transmitStop: false,
               receiveStart: true,
@@ -5659,7 +5659,6 @@ describe('plugin-meetings', () => {
           meeting.deviceUrl = 'deviceUrl.com';
           meeting.state = 'JOINED';
           meeting.localShareInstanceId = '1234-5678';
-          meeting.share;
         });
 
         afterEach(() => {
@@ -7784,11 +7783,11 @@ describe('plugin-meetings', () => {
           meeting.audio = {handleLocalStreamChange: sinon.stub()};
           meeting.video = {handleLocalStreamChange: sinon.stub()};
           meeting.statsAnalyzer = {updateMediaStatus: sinon.stub()};
-          meeting.shareMetricSentStatus = {
-            transmitStart: sinon.stub(),
-            transmitStop: sinon.stub(),
-            receiveStart: sinon.stub(),
-            receiveStop: sinon.stub(),
+          meeting.shareCAEventSentStatus = {
+            transmitStart: false,
+            transmitStop: false,
+            receiveStart: false,
+            receiveStop: false,
           };
           fakeMultistreamRoapMediaConnection = {
             createSendSlot: () => {
@@ -7857,8 +7856,8 @@ describe('plugin-meetings', () => {
             });
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
 
-            assert.equal(meeting.shareMetricSentStatus.transmitStart, false);
-            assert.equal(meeting.shareMetricSentStatus.transmitStop, false);
+            assert.equal(meeting.shareCAEventSentStatus.transmitStart, false);
+            assert.equal(meeting.shareCAEventSentStatus.transmitStop, false);
 
             assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
               expected: {sendShare: true},
@@ -7880,8 +7879,8 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.mediaProperties.shareAudioStream, stream);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
 
-            assert.equal(meeting.shareMetricSentStatus.transmitStart, false);
-            assert.equal(meeting.shareMetricSentStatus.transmitStop, false);
+            assert.equal(meeting.shareCAEventSentStatus.transmitStart, false);
+            assert.equal(meeting.shareCAEventSentStatus.transmitStop, false);
 
             assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
               expected: {sendShare: true},
@@ -7889,14 +7888,14 @@ describe('plugin-meetings', () => {
           };
 
           it('requests screen share floor and publishes the screen share video stream', async () => {
-            meeting.shareMetricSentStatus.transmitStart = true;
+            meeting.shareCAEventSentStatus.transmitStart = true;
             await meeting.publishStreams({screenShare: {video: videoShareStream}});
 
             checkScreenShareVideoPublished(videoShareStream);
           });
 
           it('requests screen share floor and publishes the screen share audio stream', async () => {
-            meeting.shareMetricSentStatus.transmitStart = true;
+            meeting.shareCAEventSentStatus.transmitStart = true;
             await meeting.publishStreams({screenShare: {audio: audioShareStream}});
 
             checkScreenShareAudioPublished(audioShareStream);
@@ -12190,8 +12189,8 @@ describe('plugin-meetings', () => {
               // Set the webinar attendee flag
               meeting.webinar = {selfIsAttendee: true};
               meeting.locusInfo.info.isWebinar = true;
-              meeting.shareMetricSentStatus.receiveStart = true;
-              meeting.shareMetricSentStatus.receiveStop = true;
+              meeting.shareCAEventSentStatus.receiveStart = true;
+              meeting.shareCAEventSentStatus.receiveStop = true;
 
               // Step 1: Start sharing whiteboard A
               const data1 = generateData(
@@ -12215,8 +12214,8 @@ describe('plugin-meetings', () => {
 
               // Specific assertions for webinar attendee status
               assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
-              assert.equal(meeting.shareMetricSentStatus.receiveStart, false);
-              assert.equal(meeting.shareMetricSentStatus.receiveStop, false);
+              assert.equal(meeting.shareCAEventSentStatus.receiveStart, false);
+              assert.equal(meeting.shareCAEventSentStatus.receiveStop, false);
             });
           });
 
