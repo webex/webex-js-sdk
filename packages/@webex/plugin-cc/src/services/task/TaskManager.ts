@@ -9,6 +9,8 @@ import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
 import {LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import Task from '.';
+import MetricsManager from '../../metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -16,6 +18,7 @@ export default class TaskManager extends EventEmitter {
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
+  private metricsManager: MetricsManager;
   private static taskManager;
 
   /**
@@ -33,6 +36,7 @@ export default class TaskManager extends EventEmitter {
     this.taskCollection = {};
     this.webCallingService = webCallingService;
     this.webSocketManager = webSocketManager;
+    this.metricsManager = MetricsManager.getInstance();
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
   }
@@ -130,6 +134,15 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
             task = this.updateTaskData(task, payload.data);
+            this.metricsManager.trackEvent(
+              METRIC_EVENT_NAMES.AGENT_RONA,
+              {
+                ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
+                taskId: payload.data.interactionId,
+                reason: payload.data.reason,
+              },
+              ['behavioral', 'operational']
+            );
             this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
