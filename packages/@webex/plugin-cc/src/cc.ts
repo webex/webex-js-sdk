@@ -162,6 +162,61 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * This is used to unregister the CC SDK and clean up all resources.
+   * @returns Promise<void>
+   * @throws Error
+   */
+  public async unregister(): Promise<void> {
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_SUCCESS,
+        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_FAILED,
+      ]);
+
+      this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+      this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+
+      this.services.webSocketManager.off('message', this.handleWebSocketMessage);
+      this.services.connectionService.off('connectionLost', this.handleConnectionLost);
+
+      if (this.webCallingService) {
+        await this.webCallingService.deregisterWebCallingLine();
+      }
+
+      if (!this.services.webSocketManager.isSocketClosed) {
+        this.services.webSocketManager.close(false, 'Unregistering the SDK');
+      }
+
+      // Clear any cached agent configuration
+      this.agentConfig = null;
+
+      LoggerProxy.log('CC SDK unregistered successfully', {
+        module: CC_FILE,
+        method: 'unregister',
+      });
+
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_SUCCESS, {}, [
+        'operational',
+      ]);
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_FAILED,
+        {
+          error: error.message || 'Unknown error',
+        },
+        ['operational']
+      );
+
+      LoggerProxy.error(`Error during unregister: ${error}`, {
+        module: CC_FILE,
+        method: 'unregister',
+      });
+
+      throw error;
+    }
+  }
+
+  /**
    * Returns the list of buddy agents in the given state and media according to agent profile settings
    *
    * @param {BuddyAgents} data - The data required to fetch buddy agents, including additional agent profile information.

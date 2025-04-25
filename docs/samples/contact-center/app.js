@@ -25,6 +25,7 @@ const authStatusElm = document.querySelector('#access-token-status');
 const oauthFormElm = document.querySelector('#oauth');
 const oauthStatusElm = document.querySelector('#oauth-status');
 const registerBtn = document.querySelector('#webexcc-register');
+const unregisterBtn = document.querySelector('#webexcc-unregister'); // New unregister button
 const teamsDropdown = document.querySelector('#teamsDropdown');
 const agentLogin = document.querySelector('#AgentLogin');
 const loginAgentElm = document.querySelector('#loginAgent');
@@ -68,6 +69,8 @@ const engageElm = document.querySelector('#engageWidget');
 let isBundleLoaded = false; // this is just to check before loading/using engage widgets
 const uploadLogsButton = document.getElementById('upload-logs');
 const uploadLogsResultElm = document.getElementById('upload-logs-result');
+
+unregisterBtn.style.backgroundColor = 'red';
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -853,6 +856,9 @@ function startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp) 
 function register() {
     webex.cc.register().then((agentProfile) => {
         registerStatus.innerHTML = 'Subscribed';
+        // Update button states upon successful registration
+        registerBtn.disabled = true;
+        unregisterBtn.disabled = false;
         console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teams;
@@ -936,6 +942,22 @@ function register() {
     });
     
 }
+
+// New function to handle unregistration
+function doUnregister() {
+    webex.cc.unregister().then(() => {
+        console.log('Unregistered successfully');
+        registerStatus.innerHTML = 'Unregistered';
+        // Reset button states after unregister
+        registerBtn.disabled = false;
+        unregisterBtn.disabled = true;
+    }).catch((error) => {
+        console.error('Unregister failed', error);
+    });
+}
+
+// Add event listener for new unregister button
+unregisterBtn.addEventListener('click', doUnregister);
 
 function handleTaskHydrate(task) {
   currentTask = task;

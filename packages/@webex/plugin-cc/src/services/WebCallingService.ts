@@ -130,6 +130,11 @@ export default class WebCallingService extends EventEmitter {
   }
 
   public async deregisterWebCallingLine() {
+    LoggerProxy.log('Deregistering WebCalling line and cleaning up resources', {
+      module: WEB_CALLING_SERVICE_FILE,
+      method: 'deregisterWebCallingLine',
+    });
+    this.cleanUpCall();
     this.line?.deregister();
   }
 
