@@ -303,7 +303,7 @@ describe('Task', () => {
   it('should accept a task when mediaType chat', async () => {
     task.data.interaction.mediaType = 'chat';
     const answerCallSpy = jest.spyOn(webCallingService, 'answerCall');
-    
+
     await task.accept();
     expect(contactMock.accept).toHaveBeenCalledWith({
       interactionId: taskId,
@@ -405,7 +405,7 @@ describe('Task', () => {
       {
         taskId: taskDataMock.interactionId,
         error: error.toString(),
-        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral']
     );
@@ -456,7 +456,7 @@ describe('Task', () => {
         taskId: taskDataMock.interactionId,
         mediaResourceId: taskDataMock.mediaResourceId,
         error: error.toString(),
-        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral']
     );
@@ -510,7 +510,7 @@ describe('Task', () => {
         mediaResourceId:
           taskDataMock.interaction.media[taskDataMock.interaction.mainInteractionId]
             .mediaResourceId,
-        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral']
     );
@@ -569,7 +569,7 @@ describe('Task', () => {
         destination: consultPayload.to,
         destinationType: consultPayload.destinationType,
         error: error.toString(),
-        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
     );
@@ -627,7 +627,7 @@ describe('Task', () => {
       {
         taskId: taskDataMock.interactionId,
         error: error.toString(),
-        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
     );
@@ -751,7 +751,7 @@ describe('Task', () => {
         destinationType: consultTransferPayload.destinationType,
         isConsultTransfer: true,
         error: error.toString(),
-        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
     );
@@ -846,7 +846,7 @@ describe('Task', () => {
         destinationType: blindTransferPayload.destinationType,
         isConsultTransfer: false,
         error: error.toString(),
-        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
     );
@@ -891,7 +891,7 @@ describe('Task', () => {
       METRIC_EVENT_NAMES.TASK_END_FAILED,
       {
         taskId: taskDataMock.interactionId,
-        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
     );
@@ -949,7 +949,7 @@ describe('Task', () => {
         taskId: taskDataMock.interactionId,
         wrapUpCode: wrapupPayload.auxCodeId,
         wrapUpReason: wrapupPayload.wrapUpReason,
-        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
     );
@@ -1016,7 +1016,7 @@ describe('Task', () => {
       {
         taskId: taskDataMock.interactionId,
         error: error.toString(),
-        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
     );
@@ -1089,7 +1089,7 @@ describe('Task', () => {
       {
         taskId: taskDataMock.interactionId,
         error: error.toString(),
-        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
     );
