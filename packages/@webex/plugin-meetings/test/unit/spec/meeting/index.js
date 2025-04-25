@@ -115,9 +115,9 @@ import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagno
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
-import { createBrbState } from '@webex/plugin-meetings/src/meeting/brbState';
+import {createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
 import JoinForbiddenError from '../../../../src/common/errors/join-forbidden-error';
-import { EventEmitter } from 'stream';
+import {EventEmitter} from 'stream';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -282,7 +282,7 @@ describe('plugin-meetings', () => {
     testDestination = `testDestination-${uuid.v4()}`;
     correlationId = uuid.v4();
     uploadEvent = new EventEmitter();
-    uploadEvent.addListener('progress', () => {})
+    uploadEvent.addListener('progress', () => {});
 
     meeting = new Meeting(
       {
@@ -3884,20 +3884,24 @@ describe('plugin-meetings', () => {
             } catch (err) {
               assert.instanceOf(err, Error);
               assert.equal(err.message, 'setBrb failed');
-              assert.isRejected((Promise.reject()));
+              assert.isRejected(Promise.reject());
             }
           });
 
           it('updates remote mute state when brb is enabled', async () => {
-            meeting.audio = { handleServerRemoteMuteUpdate: sinon.stub() };
+            meeting.audio = {handleServerRemoteMuteUpdate: sinon.stub()};
 
             await meeting.beRightBack(true);
 
-            sinon.assert.calledOnceWithExactly(meeting.audio.handleServerRemoteMuteUpdate, meeting, true);
+            sinon.assert.calledOnceWithExactly(
+              meeting.audio.handleServerRemoteMuteUpdate,
+              meeting,
+              true
+            );
           });
 
           it('does not update remote mute state when brb is disabled', async () => {
-            meeting.audio = { handleServerRemoteMuteUpdate: sinon.stub() };
+            meeting.audio = {handleServerRemoteMuteUpdate: sinon.stub()};
 
             await meeting.beRightBack(false);
 
@@ -3956,7 +3960,10 @@ describe('plugin-meetings', () => {
               .resolves({id: 'fake clientMediaPreferences'});
             meeting.roap.doTurnDiscovery = sinon.stub().resolves({
               turnServerInfo: {
-                urls: ['turns:turn-server-url1:443?transport=tcp', 'turns:turn-server-url2:443?transport=tcp'],
+                urls: [
+                  'turns:turn-server-url1:443?transport=tcp',
+                  'turns:turn-server-url2:443?transport=tcp',
+                ],
                 username: 'turn user',
                 password: 'turn password',
               },
@@ -3974,7 +3981,10 @@ describe('plugin-meetings', () => {
             expectedMediaConnectionConfig = {
               iceServers: [
                 {
-                  urls: ['turns:turn-server-url1:443?transport=tcp', 'turns:turn-server-url2:443?transport=tcp'],
+                  urls: [
+                    'turns:turn-server-url1:443?transport=tcp',
+                    'turns:turn-server-url2:443?transport=tcp',
+                  ],
                   username: 'turn user',
                   credential: 'turn password',
                 },
@@ -4056,9 +4066,11 @@ describe('plugin-meetings', () => {
               .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
               .returns(fakeMultistreamRoapMediaConnection);
 
-            locusMediaRequestStub = sinon
-              .stub(WebexPlugin.prototype, 'request')
-              .resolves({body: {locus: {fullState: {}}}, upload: sinon.match.instanceOf(EventEmitter), download: sinon.match.instanceOf(EventEmitter)});
+            locusMediaRequestStub = sinon.stub(WebexPlugin.prototype, 'request').resolves({
+              body: {locus: {fullState: {}}},
+              upload: sinon.match.instanceOf(EventEmitter),
+              download: sinon.match.instanceOf(EventEmitter),
+            });
 
             // setup some things and mocks so that the call to join() works
             // (we need to call join() because it creates the LocusMediaRequest instance
@@ -5242,7 +5254,10 @@ describe('plugin-meetings', () => {
                 // and check that when we fallback to transcoded we still do another TURN discovery
                 await runCheck(
                   {
-                    urls: ['turns:turn-server-url1:443?transport=tcp', 'turns:turn-server-url2:443?transport=tcp'],
+                    urls: [
+                      'turns:turn-server-url1:443?transport=tcp',
+                      'turns:turn-server-url2:443?transport=tcp',
+                    ],
                     username: 'turn user',
                     password: 'turn password',
                   },
@@ -5256,7 +5271,10 @@ describe('plugin-meetings', () => {
                 // but doing it just for completeness
                 await runCheck(
                   {
-                    urls: ['turns:turn-server-url1:443?transport=tcp', 'turns:turn-server-url2:443?transport=tcp'],
+                    urls: [
+                      'turns:turn-server-url1:443?transport=tcp',
+                      'turns:turn-server-url2:443?transport=tcp',
+                    ],
                     username: 'turn user',
                     password: 'turn password',
                   },
@@ -10684,6 +10702,11 @@ describe('plugin-meetings', () => {
               requiredDisplayHints: [],
               requiredPolicies: [SELF_POLICY.SUPPORT_POLLING_AND_QA],
             },
+            {
+              actionName: 'canShareWhiteBoard',
+              requiredDisplayHints: [DISPLAY_HINTS.SHARE_WHITEBOARD],
+              requiredPolicies: [SELF_POLICY.SUPPORT_WHITEBOARD],
+            },
           ],
           ({
             actionName,
@@ -11092,7 +11115,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(canSendReactionsSpy, null, userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
-          assert.calledWith(canShareWhiteBoardSpy, userDisplayHints);
+          assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
