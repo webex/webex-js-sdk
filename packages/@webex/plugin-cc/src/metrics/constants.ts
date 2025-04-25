@@ -14,6 +14,38 @@ export const METRIC_EVENT_NAMES = {
   WEBSOCKET_REGISTER_SUCCESS: 'Websocket Register Success',
   WEBSOCKET_REGISTER_FAILED: 'Websocket Register Failed',
   AGENT_RONA: 'Agent RONA',
+
+  // Basic Tasks
+  TASK_ACCEPT_SUCCESS: 'Task Accept Success',
+  TASK_ACCEPT_FAILED: 'Task Accept Failed',
+  TASK_DECLINE_SUCCESS: 'Task Decline Success',
+  TASK_DECLINE_FAILED: 'Task Decline Failed',
+  TASK_END_SUCCESS: 'Task End Success',
+  TASK_END_FAILED: 'Task End Failed',
+  TASK_WRAPUP_SUCCESS: 'Task Wrapup Success',
+  TASK_WRAPUP_FAILED: 'Task Wrapup Failed',
+  TASK_HOLD_SUCCESS: 'Task Hold Success',
+  TASK_HOLD_FAILED: 'Task Hold Failed',
+  TASK_RESUME_SUCCESS: 'Task Resume Success',
+  TASK_RESUME_FAILED: 'Task Resume Failed',
+
+  // Advanced Tasks
+  TASK_CONSULT_START_SUCCESS: 'Task Consult Start Success',
+  TASK_CONSULT_START_FAILED: 'Task Consult Start Failed',
+  TASK_CONSULT_END_SUCCESS: 'Task Consult End Success',
+  TASK_CONSULT_END_FAILED: 'Task Consult End Failed',
+  TASK_TRANSFER_SUCCESS: 'Task Transfer Success',
+  TASK_TRANSFER_FAILED: 'Task Transfer Failed',
+  TASK_RESUME_RECORDING_SUCCESS: 'Task Resume Recording Success',
+  TASK_RESUME_RECORDING_FAILED: 'Task Resume Recording Failed',
+  TASK_PAUSE_RECORDING_SUCCESS: 'Task Pause Recording Success',
+  TASK_PAUSE_RECORDING_FAILED: 'Task Pause Recording Failed',
+  TASK_ACCEPT_CONSULT_SUCCESS: 'Task Accept Consult Success',
+  TASK_ACCEPT_CONSULT_FAILED: 'Task Accept Consult Failed',
+
+  TASK_OUTDIAL_SUCCESS: 'Task Outdial Success',
+  TASK_OUTDIAL_FAILED: 'Task Outdial Failed',
+
   UPLOAD_LOGS_SUCCESS: 'Upload Logs Success',
   UPLOAD_LOGS_FAILED: 'Upload Logs Failed',
 } as const;
