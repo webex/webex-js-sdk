@@ -24,7 +24,7 @@ export type BrowserLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['browserLaunchMethod'];
 
-export type MetricEventProduct = 'webex' | 'wxcc_desktop' | 'wxcc_crm';
+export type MetricEventProduct = 'webex' | 'wxcc_desktop' | 'wxcc_crm' | 'wxcc_sdk';
 
 export type MetricEventAgent = 'user' | 'browser' | 'system' | 'sdk' | 'redux' | 'service' | 'api';
 
@@ -285,6 +285,13 @@ export type SubmitClientEvent = (args: {
 export type SubmitOperationalEvent = (args: {
   name: OperationalEvent['metricName'];
   payload: EventPayload;
+}) => void;
+
+export type SubmitBusinessEvent = (args: {
+  name: OperationalEvent['metricName'];
+  payload: EventPayload;
+  metadata?: EventPayload;
+  table?: Table;
 }) => void;
 
 export type SubmitMQE = (args: {

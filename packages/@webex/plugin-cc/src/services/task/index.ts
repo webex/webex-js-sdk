@@ -17,15 +17,21 @@ import {
   ConsultEndPayload,
   TransferPayLoad,
   DESTINATION_TYPE,
+  CONSULT_TRANSFER_DESTINATION_TYPE,
   ConsultTransferPayLoad,
+  MEDIA_CHANNEL,
 } from './types';
 import WebCallingService from '../WebCallingService';
+import MetricsManager from '../../metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../metrics/constants';
+import {Failure} from '../core/GlobalTypes';
 
 export default class Task extends EventEmitter implements ITask {
   private contact: ReturnType<typeof routingContact>;
   private localAudioStream: LocalMicrophoneStream;
   private webCallingService: WebCallingService;
   public data: TaskData;
+  private metricsManager: MetricsManager;
   public webCallMap: Record<TaskId, CallId>;
 
   constructor(
@@ -38,6 +44,7 @@ export default class Task extends EventEmitter implements ITask {
     this.data = data;
     this.webCallingService = webCallingService;
     this.webCallMap = {};
+    this.metricsManager = MetricsManager.getInstance();
     this.registerWebCallListeners();
   }
 
@@ -83,23 +90,57 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async accept(): Promise<TaskResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+      ]);
+
+      if (this.data.interaction.mediaType !== MEDIA_CHANNEL.TELEPHONY) {
+        return this.contact.accept({interactionId: this.data.interactionId});
+      }
+
       if (this.webCallingService.loginOption === LoginOption.BROWSER) {
-        const constraints = {
-          audio: true,
-        };
+        const constraints = {audio: true};
 
         const localStream = await navigator.mediaDevices.getUserMedia(constraints);
         const audioTrack = localStream.getAudioTracks()[0];
         this.localAudioStream = new LocalMicrophoneStream(new MediaStream([audioTrack]));
         this.webCallingService.answerCall(this.localAudioStream, this.data.interactionId);
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+          {
+            taskId: this.data.interactionId,
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(this.data),
+          },
+          ['operational', 'behavioral', 'business']
+        );
 
         return Promise.resolve(); // TODO: Update this with sending the task object received in AgentContactAssigned
       }
 
       // TODO: Invoke the accept API from services layer. This is going to be used in Outbound Dialer scenario
-      return this.contact.accept({interactionId: this.data.interactionId});
+      const response = await this.contact.accept({interactionId: this.data.interactionId});
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+          taskId: this.data.interactionId,
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      return response;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'accept', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details as Failure),
+        },
+        ['operational', 'behavioral', 'business']
+      );
       throw detailedError;
     }
   }
@@ -136,12 +177,32 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async decline(): Promise<TaskResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+      ]);
+
       this.webCallingService.declineCall(this.data.interactionId);
       this.unregisterWebCallListeners();
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
+        {taskId: this.data.interactionId},
+        ['operational', 'behavioral']
+      );
 
       return Promise.resolve();
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'decline', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral']
+      );
       throw detailedError;
     }
   }
@@ -157,12 +218,39 @@ export default class Task extends EventEmitter implements ITask {
    * */
   public async hold(): Promise<TaskResponse> {
     try {
-      return this.contact.hold({
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
+      ]);
+
+      const response = await this.contact.hold({
         interactionId: this.data.interactionId,
         data: {mediaResourceId: this.data.mediaResourceId},
       });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+          taskId: this.data.interactionId,
+          mediaResourceId: this.data.mediaResourceId,
+        },
+        ['operational', 'behavioral']
+      );
+
+      return response;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'hold', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
+        {
+          taskId: this.data.interactionId,
+          mediaResourceId: this.data.mediaResourceId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral']
+      );
       throw detailedError;
     }
   }
@@ -179,16 +267,44 @@ export default class Task extends EventEmitter implements ITask {
   public async resume(): Promise<TaskResponse> {
     try {
       const {mainInteractionId} = this.data.interaction;
-      // In case of consult call, When resume is invoked, we need to pass the mediaResourceId of the main interaction
-      // It's always good to explicitly pass the main mediaResourceId to avoid any confusion
       const {mediaResourceId} = this.data.interaction.media[mainInteractionId];
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
+      ]);
 
-      return this.contact.unHold({
+      const response = await this.contact.unHold({
         interactionId: this.data.interactionId,
         data: {mediaResourceId},
       });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          mainInteractionId,
+          mediaResourceId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral']
+      );
+
+      return response;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'resume', CC_FILE);
+      const mainInteractionId = this.data?.interaction?.mainInteractionId;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
+        {
+          taskId: this.data.interactionId,
+          mainInteractionId,
+          mediaResourceId: mainInteractionId
+            ? this.data.interaction.media[mainInteractionId].mediaResourceId
+            : '',
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral']
+      );
       throw detailedError;
     }
   }
@@ -204,9 +320,32 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async end(): Promise<TaskResponse> {
     try {
-      return this.contact.end({interactionId: this.data.interactionId});
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_END_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_END_FAILED,
+      ]);
+
+      const response = await this.contact.end({interactionId: this.data.interactionId});
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_END_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      return response;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'end', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_END_FAILED,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
       throw detailedError;
     }
   }
@@ -223,6 +362,11 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_WRAPUP_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
+      ]);
+
       if (!this.data) {
         throw new Error('No task data available');
       }
@@ -233,9 +377,35 @@ export default class Task extends EventEmitter implements ITask {
         throw new Error('WrapUpReason is required');
       }
 
-      return this.contact.wrapup({interactionId: this.data.interactionId, data: wrapupPayload});
+      const response = await this.contact.wrapup({
+        interactionId: this.data.interactionId,
+        data: wrapupPayload,
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_WRAPUP_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          wrapUpCode: wrapupPayload.auxCodeId,
+          wrapUpReason: wrapupPayload.wrapUpReason,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      return response;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'wrapup', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
+        {
+          taskId: this.data.interactionId,
+          wrapUpCode: wrapupPayload.auxCodeId,
+          wrapUpReason: wrapupPayload.wrapUpReason,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
       throw detailedError;
     }
   }
@@ -251,11 +421,34 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async pauseRecording(): Promise<TaskResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
+      ]);
+
       const result = await this.contact.pauseRecording({interactionId: this.data.interactionId});
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+        },
+        ['operational', 'behavioral', 'business']
+      );
 
       return result;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'pauseRecording', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
       throw detailedError;
     }
   }
@@ -274,6 +467,11 @@ export default class Task extends EventEmitter implements ITask {
     resumeRecordingPayload: ResumeRecordingPayload
   ): Promise<TaskResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
+      ]);
+
       resumeRecordingPayload ??= {autoResumed: false};
 
       const result = await this.contact.resumeRecording({
@@ -281,9 +479,27 @@ export default class Task extends EventEmitter implements ITask {
         data: resumeRecordingPayload,
       });
 
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
       return result;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'resumeRecording', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
       throw detailedError;
     }
   }
@@ -304,14 +520,41 @@ export default class Task extends EventEmitter implements ITask {
    * */
   public async consult(consultPayload: ConsultPayload): Promise<TaskResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
+      ]);
+
       const result = await this.contact.consult({
         interactionId: this.data.interactionId,
         data: consultPayload,
       });
 
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          destination: consultPayload.to,
+          destinationType: consultPayload.destinationType,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
       return result;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'consult', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
+        {
+          taskId: this.data.interactionId,
+          destination: consultPayload.to,
+          destinationType: consultPayload.destinationType,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
       throw detailedError;
     }
   }
@@ -332,14 +575,37 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
+      ]);
+
       const result = await this.contact.consultEnd({
         interactionId: this.data.interactionId,
         data: consultEndPayload,
       });
 
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
       return result;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'endConsult', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
       throw detailedError;
     }
   }
@@ -360,6 +626,11 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async transfer(transferPayload: TransferPayLoad): Promise<TaskResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+      ]);
+
       let result: TaskResponse;
       if (transferPayload.destinationType === DESTINATION_TYPE.QUEUE) {
         result = await this.contact.vteamTransfer({
@@ -373,9 +644,33 @@ export default class Task extends EventEmitter implements ITask {
         });
       }
 
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          destination: transferPayload.to,
+          destinationType: transferPayload.destinationType,
+          isConsultTransfer: false,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
       return result;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'transfer', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+        {
+          taskId: this.data.interactionId,
+          destination: transferPayload.to,
+          destinationType: transferPayload.destinationType,
+          isConsultTransfer: false,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
       throw detailedError;
     }
   }
@@ -398,14 +693,56 @@ export default class Task extends EventEmitter implements ITask {
     consultTransferPayload: ConsultTransferPayLoad
   ): Promise<TaskResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+      ]);
+
+      // For queue destinations, use the destAgentId from task data
+      if (consultTransferPayload.destinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
+        if (!this.data.destAgentId) {
+          throw new Error('No agent has accepted this queue consult yet');
+        }
+
+        // Override the destination with the agent who accepted the queue consult
+        consultTransferPayload = {
+          to: this.data.destAgentId,
+          destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+        };
+      }
+
       const result = await this.contact.consultTransfer({
         interactionId: this.data.interactionId,
         data: consultTransferPayload,
       });
 
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          destination: consultTransferPayload.to,
+          destinationType: consultTransferPayload.destinationType,
+          isConsultTransfer: true,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
       return result;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'consultTransfer', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+        {
+          taskId: this.data.interactionId,
+          destination: consultTransferPayload.to,
+          destinationType: consultTransferPayload.destinationType,
+          isConsultTransfer: true,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
       throw detailedError;
     }
   }

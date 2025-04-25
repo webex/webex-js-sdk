@@ -1,4 +1,9 @@
 import {CallingClientConfig} from '@webex/calling';
+import {
+  SubmitBehavioralEvent,
+  SubmitOperationalEvent,
+  SubmitBusinessEvent,
+} from '@webex/internal-plugin-metrics/src/metrics.types';
 import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
 import {Profile} from './services/config/types';
@@ -83,10 +88,24 @@ export enum LOGGING_LEVEL {
   info = 'INFO',
   trace = 'TRACE',
 }
+
+export type LogsMetaData = {
+  trackingid?: string;
+  feedbackId?: string;
+  correlationId?: string;
+};
+
+export type UploadLogsResponse = {
+  trackingid?: string;
+  url?: string;
+  userId?: string;
+  feedbackId?: string;
+};
 interface IWebexInternal {
   mercury: {
     on: Listener;
     off: ListenerOff;
+    connect: () => Promise<void>;
     connected: boolean;
     connecting: boolean;
   };
@@ -114,8 +133,13 @@ interface IWebexInternal {
       contactsService: string;
     };
   };
-  metrics: {
-    submitClientMetrics: (name: string, data: unknown) => void;
+  newMetrics: {
+    submitBehavioralEvent: SubmitBehavioralEvent;
+    submitOperationalEvent: SubmitOperationalEvent;
+    submitBusinessEvent: SubmitBusinessEvent;
+  };
+  support: {
+    submitLogs: (metaData: LogsMetaData) => Promise<UploadLogsResponse>;
   };
 }
 export interface WebexSDK {

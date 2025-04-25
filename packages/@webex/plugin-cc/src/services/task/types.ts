@@ -19,19 +19,22 @@ export const CONSULT_TRANSFER_DESTINATION_TYPE = {
   AGENT: 'agent',
   ENTRYPOINT: 'entryPoint',
   DIALNUMBER: 'dialNumber',
+  QUEUE: 'queue',
 };
 
 export type ConsultTransferDestinationType = Enum<typeof CONSULT_TRANSFER_DESTINATION_TYPE>;
 
-type MEDIA_CHANNEL =
-  | 'email'
-  | 'chat'
-  | 'telephony'
-  | 'social'
-  | 'sms'
-  | 'facebook'
-  | 'whatsapp'
-  | string;
+export const MEDIA_CHANNEL = {
+  EMAIL: 'email',
+  CHAT: 'chat',
+  TELEPHONY: 'telephony',
+  SOCIAL: 'social',
+  SMS: 'sms',
+  FACEBOOK: 'facebook',
+  WHATSAPP: 'whatsapp',
+} as const;
+
+export type MEDIA_CHANNEL = Enum<typeof MEDIA_CHANNEL>;
 
 export const TASK_EVENTS = {
   TASK_INCOMING: 'task:incoming',
@@ -44,6 +47,7 @@ export const TASK_EVENTS = {
   TASK_CONSULT_QUEUE_CANCELLED: 'task:consultQueueCancelled',
   TASK_CONSULT_QUEUE_FAILED: 'task:consultQueueFailed',
   TASK_CONSULT_ACCEPTED: 'task:consultAccepted',
+  TASK_CONSULTING: 'task:consulting',
   TASK_PAUSE: 'task:pause',
   TASK_RESUME: 'task:resume',
   TASK_END: 'task:end',
@@ -190,6 +194,7 @@ export type TaskData = {
   id?: string; // unique id in monitoring offered event
   isWebCallMute?: boolean;
   reservationInteractionId?: string;
+  wrapUpRequired?: boolean;
 };
 
 export type AgentContact = Msg<{

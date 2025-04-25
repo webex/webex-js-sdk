@@ -58,12 +58,13 @@ export default function routingAgent(routing: AqmReqs) {
       url: '/v1/agents/login',
       host: WCC_API_GATEWAY,
       data: p.data,
-      err: /* istanbul ignore next */ (e: any) =>
-        new Err.Details('Service.aqm.agent.stationLogin', {
+      err: /* istanbul ignore next */ (e: any) => {
+        return new Err.Details('Service.aqm.agent.stationLogin', {
           status: e.response?.status ?? 0,
           type: e.response?.data?.errorType,
           trackingId: e.response?.headers?.trackingid?.split('_')[1],
-        }),
+        });
+      },
       notifSuccess: {
         bind: {
           type: CC_EVENTS.AGENT_STATION_LOGIN,
