@@ -3436,6 +3436,40 @@ describe('plugin-meetings', () => {
             });
           });
 
+          it('LOCAL_MEDIA_STARTED triggers "meeting:media:local:start" event and does not send metric because we already have', async () => {
+            meeting.shareCAEventSentStatus = {
+              transmitStart: true,
+              transmitStop: false,
+              receiveStart: false,
+              receiveStop: false,
+            };
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerEventNames.LOCAL_MEDIA_STARTED,
+              {mediaType: 'share'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'addMedia',
+              },
+              EVENT_TRIGGERS.MEETING_MEDIA_LOCAL_STARTED,
+              {
+                mediaType: 'share',
+              }
+            );
+            assert.neverCalledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.tx.start',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
+
           it('LOCAL_MEDIA_STOPPED triggers the right metrics', async () => {
             statsAnalyzerStub.emit(
               {file: 'test', function: 'test'},
@@ -3446,6 +3480,28 @@ describe('plugin-meetings', () => {
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.tx.stop',
               payload: {mediaType: 'video'},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
+
+          it('LOCAL_MEDIA_STOPPED does not send metric because we already have', async () => {
+            meeting.shareCAEventSentStatus = {
+              transmitStart: false,
+              transmitStop: true,
+              receiveStart: false,
+              receiveStop: false,
+            };
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerEventNames.LOCAL_MEDIA_STOPPED,
+              {mediaType: 'share'}
+            );
+
+            assert.neverCalledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.tx.stop',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
               options: {
                 meetingId: meeting.id,
               },
@@ -3532,6 +3588,47 @@ describe('plugin-meetings', () => {
             });
           });
 
+          it('REMOTE_MEDIA_STARTED triggers "meeting:media:remote:start" event and does not send metric because we already have', async () => {
+            meeting.shareCAEventSentStatus = {
+              transmitStart: false,
+              transmitStop: false,
+              receiveStart: true,
+              receiveStop: false,
+            };
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerEventNames.REMOTE_MEDIA_STARTED,
+              {mediaType: 'share'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'addMedia',
+              },
+              EVENT_TRIGGERS.MEETING_MEDIA_REMOTE_STARTED,
+              {
+                mediaType: 'share',
+              }
+            );
+            assert.neverCalledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.render.start',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+            assert.neverCalledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.rx.start',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
+
           it('REMOTE_MEDIA_STOPPED triggers the right metrics for share', async () => {
             statsAnalyzerStub.emit(
               {file: 'test', function: 'test'},
@@ -3549,6 +3646,34 @@ describe('plugin-meetings', () => {
 
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.render.stop',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
+
+          it('REMOTE_MEDIA_STOPPED does not send metric because we already have', async () => {
+            meeting.shareCAEventSentStatus = {
+              transmitStart: false,
+              transmitStop: false,
+              receiveStart: true,
+              receiveStop: true,
+            };
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerEventNames.REMOTE_MEDIA_STOPPED,
+              {mediaType: 'share'}
+            );
+            assert.neverCalledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.render.stop',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+            assert.neverCalledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.rx.stop',
               payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
               options: {
                 meetingId: meeting.id,
@@ -7658,6 +7783,12 @@ describe('plugin-meetings', () => {
           meeting.audio = {handleLocalStreamChange: sinon.stub()};
           meeting.video = {handleLocalStreamChange: sinon.stub()};
           meeting.statsAnalyzer = {updateMediaStatus: sinon.stub()};
+          meeting.shareCAEventSentStatus = {
+            transmitStart: false,
+            transmitStop: false,
+            receiveStart: false,
+            receiveStop: false,
+          };
           fakeMultistreamRoapMediaConnection = {
             createSendSlot: () => {
               return {
@@ -7725,6 +7856,9 @@ describe('plugin-meetings', () => {
             });
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
 
+            assert.equal(meeting.shareCAEventSentStatus.transmitStart, false);
+            assert.equal(meeting.shareCAEventSentStatus.transmitStop, false);
+
             assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
               expected: {sendShare: true},
             });
@@ -7745,18 +7879,23 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.mediaProperties.shareAudioStream, stream);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
 
+            assert.equal(meeting.shareCAEventSentStatus.transmitStart, false);
+            assert.equal(meeting.shareCAEventSentStatus.transmitStop, false);
+
             assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
               expected: {sendShare: true},
             });
           };
 
           it('requests screen share floor and publishes the screen share video stream', async () => {
+            meeting.shareCAEventSentStatus.transmitStart = true;
             await meeting.publishStreams({screenShare: {video: videoShareStream}});
 
             checkScreenShareVideoPublished(videoShareStream);
           });
 
           it('requests screen share floor and publishes the screen share audio stream', async () => {
+            meeting.shareCAEventSentStatus.transmitStart = true;
             await meeting.publishStreams({screenShare: {audio: audioShareStream}});
 
             checkScreenShareAudioPublished(audioShareStream);
@@ -12055,6 +12194,8 @@ describe('plugin-meetings', () => {
               // Set the webinar attendee flag
               meeting.webinar = {selfIsAttendee: true};
               meeting.locusInfo.info.isWebinar = true;
+              meeting.shareCAEventSentStatus.receiveStart = true;
+              meeting.shareCAEventSentStatus.receiveStop = true;
 
               // Step 1: Start sharing whiteboard A
               const data1 = generateData(
@@ -12078,6 +12219,8 @@ describe('plugin-meetings', () => {
 
               // Specific assertions for webinar attendee status
               assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
+              assert.equal(meeting.shareCAEventSentStatus.receiveStart, false);
+              assert.equal(meeting.shareCAEventSentStatus.receiveStop, false);
             });
           });
 
