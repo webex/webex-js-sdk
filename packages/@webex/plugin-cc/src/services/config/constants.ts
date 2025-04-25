@@ -4,7 +4,6 @@ export const DEFAULT_PAGE_SIZE = 100;
 export const AGENT_STATE_AVAILABLE_ID = '0';
 export const AGENT_STATE_AVAILABLE = 'Available';
 export const AGENT_STATE_AVAILABLE_DESCRIPTION = 'Agent is available to receive calls';
-export const DEFAULT_TEAM_ATTRIBUTES = ['name', 'id', 'dbId', 'desktopLayoutId'];
 export const DEFAULT_AUXCODE_ATTRIBUTES = [
   'id',
   'isSystemCode',
@@ -20,16 +19,10 @@ export const endPointMap = {
     `organization/${orgId}/agent-profile/${desktopProfileId}`,
   multimediaProfile: (orgId: string, multimediaProfileId: string) =>
     `organization/${orgId}/multimedia-profile/${multimediaProfileId}`,
-  listTeams: (
-    orgId: string,
-    page: number,
-    pageSize: number,
-    filter: string[],
-    attributes: string[]
-  ) =>
+  listTeams: (orgId: string, page: number, pageSize: number, filter: string[]) =>
     `organization/${orgId}/v2/team?page=${page}&pageSize=${pageSize}${
       filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
-    }&attributes=${attributes}`,
+    }`,
   listAuxCodes: (
     orgId: string,
     page: number,

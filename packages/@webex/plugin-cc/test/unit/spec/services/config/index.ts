@@ -154,7 +154,6 @@ describe('AgentConfigService', () => {
     const page = 0;
     const pageSize = 10;
     const filter: string[] = ['123'];
-    const attributes: string[] = ['id'];
 
     it('should return team on success', async () => {
       const mockResponse = {
@@ -170,13 +169,12 @@ describe('AgentConfigService', () => {
         mockOrgId,
         page,
         pageSize,
-        filter,
-        attributes
+        filter
       );
 
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
-        resource: `organization/${mockOrgId}/v2/team?page=${page}&pageSize=${pageSize}&filter=id=in=(${filter})&attributes=${attributes}`,
+        resource: `organization/${mockOrgId}/v2/team?page=${page}&pageSize=${pageSize}&filter=id=in=(${filter})`,
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
@@ -191,7 +189,7 @@ describe('AgentConfigService', () => {
       (mockWebexRequest.request as jest.Mock).mockRejectedValue(mockError);
 
       try {
-        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter, attributes);
+        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter);
       } catch (error) {
         expect(error).toEqual(mockError);
       }
@@ -204,7 +202,7 @@ describe('AgentConfigService', () => {
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
       try {
-        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter, attributes);
+        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter);
       } catch (error) {
         expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
       }

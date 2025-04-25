@@ -25,7 +25,6 @@ import {
   DEFAULT_AUXCODE_ATTRIBUTES,
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
-  DEFAULT_TEAM_ATTRIBUTES,
   endPointMap,
 } from './constants';
 
@@ -69,12 +68,7 @@ export default class AgentConfigService {
       );
 
       const userTeamPromise = userConfigData.teamIds
-        ? this.getAllTeams(
-            orgId,
-            DEFAULT_PAGE_SIZE,
-            userConfigData.teamIds,
-            DEFAULT_TEAM_ATTRIBUTES
-          )
+        ? this.getAllTeams(orgId, DEFAULT_PAGE_SIZE, userConfigData.teamIds)
         : Promise.resolve([]);
 
       const [
@@ -263,11 +257,10 @@ export default class AgentConfigService {
     orgId: string,
     page: number,
     pageSize: number,
-    filter: string[],
-    attributes: string[]
+    filter: string[]
   ): Promise<ListTeamsResponse> {
     try {
-      const resource = endPointMap.listTeams(orgId, page, pageSize, filter, attributes);
+      const resource = endPointMap.listTeams(orgId, page, pageSize, filter);
       const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
@@ -301,21 +294,16 @@ export default class AgentConfigService {
    * @param {string[]} attributes
    * @returns {Promise<TeamList[]>}
    */
-  public async getAllTeams(
-    orgId: string,
-    pageSize: number,
-    filter: string[],
-    attributes: string[]
-  ): Promise<TeamList[]> {
+  public async getAllTeams(orgId: string, pageSize: number, filter: string[]): Promise<TeamList[]> {
     try {
       let allTeams: TeamList[] = [];
       let page = DEFAULT_PAGE;
-      const firstResponse = await this.getListOfTeams(orgId, page, pageSize, filter, attributes);
+      const firstResponse = await this.getListOfTeams(orgId, page, pageSize, filter);
       const totalPages = firstResponse.meta.totalPages;
       allTeams = allTeams.concat(firstResponse.data);
       const requests = [];
       for (page = DEFAULT_PAGE + 1; page < totalPages; page += 1) {
-        requests.push(this.getListOfTeams(orgId, page, pageSize, filter, attributes));
+        requests.push(this.getListOfTeams(orgId, page, pageSize, filter));
       }
       const responses = await Promise.all(requests);
 

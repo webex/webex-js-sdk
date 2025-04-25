@@ -377,6 +377,8 @@ export type ListAuxCodesResponse = {
 export type TeamList = {
   id: string;
   name: string;
+  teamType: string;
+  teamStatus: string;
   active: boolean;
   siteId: string;
   siteName: string;
