@@ -491,7 +491,12 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
     const taskUpdateTaskDataSpy = jest.spyOn(taskManager.getTask(taskId), 'updateTaskData');
     webSocketManagerMock.emit('message', JSON.stringify(payload));
-    expect(taskUpdateTaskDataSpy).toHaveBeenCalledWith(payload.data);
+    expect(taskUpdateTaskDataSpy).toHaveBeenCalledWith({
+      ...payload.data,
+      isConsulted: false,
+    });
+    const task = taskManager.getTask(taskId);
+    expect(task.data.isConsulted).toBe(false);
   });
 
   it('handle AGENT_OFFER_CONTACT event', () => {
