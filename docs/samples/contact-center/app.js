@@ -1021,9 +1021,17 @@ function logoutAgent() {
     console.log('Agent logged out successfully', response);
     loginAgentElm.disabled = false;
 
+     // Clear the timer when the agent logs out.
+     if (stateTimer) {
+      clearInterval(stateTimer);
+      stateTimer = null;
+    }
+
+    // Reset UI elements.
     setTimeout(() => {
       logoutAgentElm.classList.add('hidden');
       agentLogin.selectedIndex = 0;
+      timerElm.innerHTML = '00:00:00';
     }, 1000);
   }
   ).catch((error) => {

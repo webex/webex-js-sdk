@@ -575,7 +575,9 @@ const MeetingUtil = {
 
   canUserRenameOthers: (displayHints) => displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS),
 
-  canShareWhiteBoard: (displayHints) => displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD),
+  canShareWhiteBoard: (displayHints, policies) =>
+    displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD) &&
+    !!policies[SELF_POLICY.SUPPORT_WHITEBOARD],
 
   /**
    * Adds the current locus sequence information to a request body
