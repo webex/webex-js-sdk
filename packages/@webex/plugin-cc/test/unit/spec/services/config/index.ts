@@ -154,7 +154,6 @@ describe('AgentConfigService', () => {
     const page = 0;
     const pageSize = 10;
     const filter: string[] = ['123'];
-    const attributes: string[] = ['id'];
 
     it('should return team on success', async () => {
       const mockResponse = {
@@ -170,13 +169,12 @@ describe('AgentConfigService', () => {
         mockOrgId,
         page,
         pageSize,
-        filter,
-        attributes
+        filter
       );
 
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
-        resource: `organization/${mockOrgId}/v2/team?page=${page}&pageSize=${pageSize}&filter=id=in=(${filter})&attributes=${attributes}`,
+        resource: `organization/${mockOrgId}/v2/team?page=${page}&pageSize=${pageSize}&filter=id=in=(${filter})`,
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
@@ -191,7 +189,7 @@ describe('AgentConfigService', () => {
       (mockWebexRequest.request as jest.Mock).mockRejectedValue(mockError);
 
       try {
-        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter, attributes);
+        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter);
       } catch (error) {
         expect(error).toEqual(mockError);
       }
@@ -204,7 +202,7 @@ describe('AgentConfigService', () => {
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
       try {
-        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter, attributes);
+        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter);
       } catch (error) {
         expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
       }
@@ -705,13 +703,19 @@ describe('AgentConfigService', () => {
       const mockOrgInfo = {
         tenantId: 'tenant123',
         timezone: 'GMT',
-      };
+      }
 
       const mockOrgSettings = {
         campaignManagerEnabled: true,
         webRtcEnabled: true,
         maskSensitiveData: false,
       };
+
+      const mockSiteInfo = {
+        id: "c6a5451f-5ba7-49a1-aee8-fbef70c19ece",
+        name: "Site-1",
+        multimediaProfileId: "c5888e6f-5661-4871-9936-cbcec7658d41",
+      }
 
       const mockTenantData = {
         timeoutDesktopInactivityEnabled: false,
@@ -740,6 +744,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
       agentConfigService.getOrgInfo = jest.fn().mockResolvedValue(mockOrgInfo);
       agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue(mockOrgSettings);
+      agentConfigService.getSiteInfo = jest.fn().mockResolvedValue(mockSiteInfo);
       agentConfigService.getTenantData = jest.fn().mockResolvedValue(mockTenantData);
       agentConfigService.getURLMapping = jest.fn().mockResolvedValue(mockURLMapping);
       agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
@@ -777,6 +782,7 @@ describe('AgentConfigService', () => {
         agentProfileData: mockAgentProfile,
         dialPlanData: mockDialPlanData,
         urlMapping: mockURLMapping,
+        multimediaProfileId: mockSiteInfo.multimediaProfileId
       });
     });
 
@@ -841,6 +847,12 @@ describe('AgentConfigService', () => {
         maskSensitiveData: true,
       };
 
+      const mockSiteInfo = {
+        id: "c6a5451f-5ba7-49a1-aee8-fbef70c19ece",
+        name: "Site-1",
+        multimediaProfileId: "c5888e6f-5661-4871-9936-cbcec7658d41",
+      }
+
       const mockTenantData = {
         timeoutDesktopInactivityEnabled: true,
         timeoutDesktopInactivityMins: 15,
@@ -869,6 +881,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
       agentConfigService.getOrgInfo = jest.fn().mockResolvedValue(mockOrgInfo);
       agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue(mockOrgSettings);
+      agentConfigService.getSiteInfo = jest.fn().mockResolvedValue(mockSiteInfo);
       agentConfigService.getTenantData = jest.fn().mockResolvedValue(mockTenantData);
       agentConfigService.getURLMapping = jest.fn().mockResolvedValue(mockURLMapping);
       agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
@@ -906,6 +919,7 @@ describe('AgentConfigService', () => {
         agentProfileData: mockAgentProfile,
         dialPlanData: mockDialPlanData,
         urlMapping: mockURLMapping,
+        multimediaProfileId: mockSiteInfo.multimediaProfileId
       });
     });
 
