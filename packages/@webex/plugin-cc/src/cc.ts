@@ -190,6 +190,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Clear any cached agent configuration
       this.agentConfig = null;
 
+      if (this.$webex.internal.mercury.connected) {
+        this.$webex.internal.mercury.off('online');
+        this.$webex.internal.mercury.off('offline');
+        await this.$webex.internal.mercury.disconnect();
+        // @ts-ignore
+        await this.$webex.internal.device.unregister();
+        LoggerProxy.log('Mercury disconnected successfully', {
+          module: CC_FILE,
+          method: 'unregister',
+        });
+      }
+
       LoggerProxy.log('CC SDK unregistered successfully', {
         module: CC_FILE,
         method: 'unregister',
@@ -370,10 +382,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
-      // this.services.webSocketManager.on('message', this.handleWebSocketMessage);
-      // this.incomingTaskListener();
-
       return resp;
     } catch (error) {
       const failure = error.details as Failure;
@@ -419,12 +427,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (this.webCallingService) {
         this.webCallingService.deregisterWebCallingLine();
       }
-
-      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
-      // this.services.webSocketManager.off('message', this.handleWebSocketMessage);
-      // this.taskManager.unregisterIncomingCallEvent();
-      // this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-      // this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
 
       return resp;
     } catch (error) {
