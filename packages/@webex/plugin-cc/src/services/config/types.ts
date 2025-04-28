@@ -303,7 +303,7 @@ export type DesktopProfileResponse = {
 export type MultimediaProfileResponse = {
   organizationId: string;
   id: string;
-  version: 1;
+  version: number;
   name: string;
   description: string;
   chat: number;
