@@ -298,10 +298,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       if (this.agentConfig.webRtcEnabled && data.loginOption === LoginOption.BROWSER) {
         await this.webCallingService.registerWebCallingLine();
-        this.webCallingService.setLoginOption(data.loginOption);
       }
 
       const resp = await loginResponse;
+      const {channelsMap, ...loginData} = resp.data;
+      const response = {
+        ...loginData,
+        mmProfile: {
+          chat: channelsMap.chat?.length,
+          email: channelsMap.email?.length,
+          social: channelsMap.social?.length,
+          telephony: channelsMap.telephony?.length,
+        },
+        notifsTrackingId: resp.trackingId,
+      };
+
       this.webCallingService.setLoginOption(data.loginOption);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
@@ -319,7 +330,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // this.services.webSocketManager.on('message', this.handleWebSocketMessage);
       // this.incomingTaskListener();
 
-      return resp;
+      return response;
     } catch (error) {
       const failure = error.details as Failure;
       this.metricsManager.trackEvent(

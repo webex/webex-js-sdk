@@ -483,12 +483,35 @@ describe('webex.cc', () => {
           roles: [AGENT],
           trackingId: '1234',
           eventType: 'DESKTOP_MESSAGE',
+          channelsMap: {
+            chat: ["25d8ggg7-4821-7de7-b626-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            email: ["14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            social: [],
+            telephony:["14e7fff7-7de7-4821-a919-36437adec509"],
+          }
         },
-        trackingId: '1234',
+        trackingId: 'notifs_52628',
         orgId: 'orgId',
         type: 'StationLoginSuccess',
         eventType: 'STATION_LOGIN',
       };
+
+      const responseMock = {
+        loginOption: LoginOption.BROWSER,
+        agentId: 'agentId',
+        teamId: 'teamId',
+        siteId: 'siteId',
+        roles: [AGENT],
+        trackingId: '1234',
+        eventType: 'DESKTOP_MESSAGE',
+        mmProfile: {
+          chat: 2,
+          email: 3,
+          social: 0,
+          telephony: 1
+        },
+        notifsTrackingId: 'notifs_52628'
+      }
 
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
@@ -511,8 +534,9 @@ describe('webex.cc', () => {
           auxCodeId: '',
         },
       });
+
       expect(mockMetricsManager.timeEvent).toBeCalledWith([METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS, METRIC_EVENT_NAMES.STATION_LOGIN_FAILED]);
-      expect(result).toEqual(mockData);
+      expect(result).toEqual(responseMock);
 
       const onSpy = jest.spyOn(mockTaskManager, 'on');
       const emitSpy = jest.spyOn(webex.cc, 'trigger');
@@ -570,6 +594,12 @@ describe('webex.cc', () => {
           roles: [AGENT],
           trackingId: '1234',
           eventType: 'DESKTOP_MESSAGE',
+          channelsMap: {
+            chat: ["25d8ggg7-4821-7de7-b626-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            email: [],
+            social: [],
+            telephony:["14e7fff7-7de7-4821-a919-36437adec509"],
+          }
         },
         trackingId: '1234',
         orgId: 'orgId',
@@ -624,12 +654,35 @@ describe('webex.cc', () => {
           roles: [AGENT],
           trackingId: '1234',
           eventType: 'DESKTOP_MESSAGE',
+          channelsMap: {
+            chat: ["25d8ggg7-4821-7de7-b626-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            email: ["14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            social: [],
+            telephony:["14e7fff7-7de7-4821-a919-36437adec509"],
+          }
         },
-        trackingId: '1234',
+        trackingId: 'notifs_52628',
         orgId: 'orgId',
         type: 'StationLoginSuccess',
         eventType: 'STATION_LOGIN',
       };
+
+      const responseMock = {
+        loginOption: LoginOption.AGENT_DN,
+        agentId: 'agentId',
+        teamId: 'teamId',
+        siteId: 'siteId',
+        roles: [AGENT],
+        trackingId: '1234',
+        eventType: 'DESKTOP_MESSAGE',
+        mmProfile: {
+          chat: 2,
+          email: 3,
+          social: 0,
+          telephony: 1
+        },
+        notifsTrackingId: 'notifs_52628'
+      }
 
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
@@ -651,7 +704,7 @@ describe('webex.cc', () => {
           auxCodeId: '',
         },
       });
-      expect(result).toEqual(mockData);
+      expect(result).toEqual(responseMock);
     });
 
     it('should handle error during stationLogin', async () => {

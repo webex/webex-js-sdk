@@ -272,7 +272,7 @@ export type BuddyAgents = {
   state?: 'Available' | 'Idle';
 };
 
-export type StationLoginResponse = Agent.StationLoginSuccess | Error;
+export type StationLoginResponse = Agent.StationLoginSuccessResponse | Error;
 export type StationLogoutResponse = Agent.LogoutSuccess | Error;
 export type StationReLoginResponse = Agent.ReloginSuccess | Error;
 export type SetStateResponse = Agent.StateChangeSuccess | Error;
