@@ -224,10 +224,7 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED, task);
             break;
           case CC_EVENTS.AGENT_WRAPUP:
-            // Only update if task exists
-            if (task) {
-              task = this.updateTaskData(task, payload.data);
-            }
+            task = this.updateTaskData(task, payload.data);
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
             this.removeTaskFromCollection(task);
@@ -240,10 +237,30 @@ export default class TaskManager extends EventEmitter {
   }
 
   private updateTaskData(task: ITask, taskData: TaskData): ITask {
-    const currentTask = task.updateTaskData(taskData);
-    this.taskCollection[taskData.interactionId] = currentTask;
+    if (!task) {
+      return undefined;
+    }
 
-    return currentTask;
+    if (!taskData?.interactionId) {
+      LoggerProxy.warn('Received task update with missing interactionId', {
+        module: TASK_MANAGER_FILE,
+        method: 'updateTaskData',
+      });
+    }
+
+    try {
+      const currentTask = task.updateTaskData(taskData);
+      this.taskCollection[taskData.interactionId] = currentTask;
+
+      return currentTask;
+    } catch (error) {
+      LoggerProxy.error(`Failed to update task ${taskData.interactionId}`, {
+        module: TASK_MANAGER_FILE,
+        method: 'updateTaskData',
+      });
+
+      return task;
+    }
   }
 
   private removeTaskFromCollection(task: ITask) {
