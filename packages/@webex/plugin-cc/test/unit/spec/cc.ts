@@ -34,6 +34,7 @@ import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
 import MetricsManager from '../../../src/metrics/MetricsManager';
 import { METRIC_EVENT_NAMES } from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
+import WebexRequest from '../../../src/services/core/WebexRequest';
 
 
 jest.mock('../../../src/logger-proxy', () => ({
@@ -60,6 +61,7 @@ describe('webex.cc', () => {
   let mockMetricsManager;
   let mockWebSocketManager;
   let getErrorDetailsSpy;
+  let mockWebexRequest;
 
   beforeEach(() => {
     webex = MockWebex({
@@ -76,7 +78,7 @@ describe('webex.cc', () => {
         getOrgId: jest.fn(() => 'mockOrgId'),
       },
       config: config,
-      once: jest.fn((event, callback) => callback()),
+      once: jest.fn((event, callback) => callback()),    
     }) as unknown as WebexSDK;
 
     mockWebSocketManager = {
@@ -147,9 +149,15 @@ describe('webex.cc', () => {
       timeEvent: jest.fn(),
     };
 
+    mockWebexRequest = {
+      request: jest.fn(),
+      uploadLogs: jest.fn(),
+    };
+
     jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
     jest.spyOn(Services, 'getInstance').mockReturnValue(mockServicesInstance);
     jest.spyOn(TaskManager, 'getTaskManager').mockReturnValue(mockTaskManager);
+    jest.spyOn(WebexRequest, 'getInstance').mockReturnValue(mockWebexRequest);
     // Instantiate ContactCenter to ensure it's fully initialized
     webex.cc = new ContactCenter({parent: webex});
     getErrorDetailsSpy = jest.spyOn(Utils, 'getErrorDetails');

@@ -96,7 +96,7 @@ export default class AqmReqs {
             clear();
             const notifFail = c.notifFail!;
             if ('errId' in notifFail) {
-              LoggerProxy.log(`Routing request failed: ${msg}`, {
+              LoggerProxy.log(`Routing request failed: ${JSON.stringify(msg)}`, {
                 module: AQM_REQS_FILE,
                 method: 'createPromise',
               });
