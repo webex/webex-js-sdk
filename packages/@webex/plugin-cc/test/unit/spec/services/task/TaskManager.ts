@@ -1087,5 +1087,22 @@ describe('TaskManager', () => {
     // The task should still exist in the collection based on current implementation
     expect(taskManager.getTask(taskId)).toBeDefined();
   });
+
+  it('should update task data on AGENT_WRAPUP event', () => {
+    const payload = {
+        data: {
+            type: CC_EVENTS.AGENT_WRAPUP,
+            interactionId: taskId,
+            wrapUpRequired: true,
+        },
+    };
+    const task = taskManager.getTask(taskId);
+    const updateSpy = jest.spyOn(task, 'updateTaskData').mockImplementation((data) => {
+        task.data = { ...(task.data || {}), ...(data || {}) };
+        return task;
+    });
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+    expect(updateSpy).toHaveBeenCalledWith(payload.data);
+});
 });
 
