@@ -156,6 +156,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         module: CC_FILE,
         method: this.register.name,
       });
+      this.webexRequest.uploadLogs({
+        correlationId: error?.trackingId,
+      });
 
       throw error;
     }

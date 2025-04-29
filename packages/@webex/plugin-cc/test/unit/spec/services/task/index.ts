@@ -18,6 +18,7 @@ import {
   ConsultTransferPayLoad,
   TransferPayLoad,
 } from '../../../../../src/services/task/types';
+import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import MetricsManager from '../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
 
@@ -31,6 +32,7 @@ describe('Task', () => {
   let taskDataMock;
   let webCallingService;
   let getErrorDetailsSpy;
+  let mockWebexRequest;
   let webex: WebexSDK;
 
   const taskId = '0ae913a4-c857-4705-8d49-76dd3dde75e4';
@@ -76,6 +78,14 @@ describe('Task', () => {
       webex,
       config.cc.callingClientConfig as CallingClientConfig
     );
+
+    mockWebexRequest = {
+      request: jest.fn(),
+      uploadLogs: jest.fn(),
+    };
+
+    jest.spyOn(WebexRequest, 'getInstance').mockReturnValue(mockWebexRequest);
+
 
     webCallingService.loginOption = LoginOption.BROWSER;
     onSpy = jest.spyOn(webCallingService, 'on');
