@@ -563,6 +563,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async silentRelogin(): Promise<void> {
     try {
       const reLoginResponse = await this.services.agent.reload();
+      LoggerProxy.info('event=silentRelogin | Silent relogin successful', {
+        module: CC_FILE,
+        method: this.silentRelogin.name,
+      });
       const {
         agentId,
         lastStateChangeReason,
@@ -575,6 +579,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp;
       this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
       await this.handleDeviceType(deviceType as LoginOption, dn);
+
+      LoggerProxy.info('handleDeviceType completed successfully', {
+        module: CC_FILE,
+        method: this.silentRelogin.name,
+      });
 
       // To handle re-registration of event listeners on silent relogin
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
