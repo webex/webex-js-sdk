@@ -34,6 +34,7 @@ import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
 import MetricsManager from '../../../src/metrics/MetricsManager';
 import { METRIC_EVENT_NAMES } from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
+import WebexRequest from '../../../src/services/core/WebexRequest';
 
 
 jest.mock('../../../src/logger-proxy', () => ({
@@ -60,6 +61,7 @@ describe('webex.cc', () => {
   let mockMetricsManager;
   let mockWebSocketManager;
   let getErrorDetailsSpy;
+  let mockWebexRequest;
 
   beforeEach(() => {
     webex = MockWebex({
@@ -76,7 +78,7 @@ describe('webex.cc', () => {
         getOrgId: jest.fn(() => 'mockOrgId'),
       },
       config: config,
-      once: jest.fn((event, callback) => callback()),
+      once: jest.fn((event, callback) => callback()),    
     }) as unknown as WebexSDK;
 
     mockWebSocketManager = {
@@ -147,9 +149,15 @@ describe('webex.cc', () => {
       timeEvent: jest.fn(),
     };
 
+    mockWebexRequest = {
+      request: jest.fn(),
+      uploadLogs: jest.fn(),
+    };
+
     jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
     jest.spyOn(Services, 'getInstance').mockReturnValue(mockServicesInstance);
     jest.spyOn(TaskManager, 'getTaskManager').mockReturnValue(mockTaskManager);
+    jest.spyOn(WebexRequest, 'getInstance').mockReturnValue(mockWebexRequest);
     // Instantiate ContactCenter to ensure it's fully initialized
     webex.cc = new ContactCenter({parent: webex});
     getErrorDetailsSpy = jest.spyOn(Utils, 'getErrorDetails');
@@ -483,12 +491,35 @@ describe('webex.cc', () => {
           roles: [AGENT],
           trackingId: '1234',
           eventType: 'DESKTOP_MESSAGE',
+          channelsMap: {
+            chat: ["25d8ggg7-4821-7de7-b626-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            email: ["14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            social: [],
+            telephony:["14e7fff7-7de7-4821-a919-36437adec509"],
+          }
         },
-        trackingId: '1234',
+        trackingId: 'notifs_52628',
         orgId: 'orgId',
         type: 'StationLoginSuccess',
         eventType: 'STATION_LOGIN',
       };
+
+      const responseMock = {
+        loginOption: LoginOption.BROWSER,
+        agentId: 'agentId',
+        teamId: 'teamId',
+        siteId: 'siteId',
+        roles: [AGENT],
+        trackingId: '1234',
+        eventType: 'DESKTOP_MESSAGE',
+        mmProfile: {
+          chat: 2,
+          email: 3,
+          social: 0,
+          telephony: 1
+        },
+        notifsTrackingId: 'notifs_52628'
+      }
 
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
@@ -511,8 +542,9 @@ describe('webex.cc', () => {
           auxCodeId: '',
         },
       });
+
       expect(mockMetricsManager.timeEvent).toBeCalledWith([METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS, METRIC_EVENT_NAMES.STATION_LOGIN_FAILED]);
-      expect(result).toEqual(mockData);
+      expect(result).toEqual(responseMock);
 
       const onSpy = jest.spyOn(mockTaskManager, 'on');
       const emitSpy = jest.spyOn(webex.cc, 'trigger');
@@ -570,6 +602,12 @@ describe('webex.cc', () => {
           roles: [AGENT],
           trackingId: '1234',
           eventType: 'DESKTOP_MESSAGE',
+          channelsMap: {
+            chat: ["25d8ggg7-4821-7de7-b626-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            email: [],
+            social: [],
+            telephony:["14e7fff7-7de7-4821-a919-36437adec509"],
+          }
         },
         trackingId: '1234',
         orgId: 'orgId',
@@ -624,12 +662,35 @@ describe('webex.cc', () => {
           roles: [AGENT],
           trackingId: '1234',
           eventType: 'DESKTOP_MESSAGE',
+          channelsMap: {
+            chat: ["25d8ggg7-4821-7de7-b626-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            email: ["14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            social: [],
+            telephony:["14e7fff7-7de7-4821-a919-36437adec509"],
+          }
         },
-        trackingId: '1234',
+        trackingId: 'notifs_52628',
         orgId: 'orgId',
         type: 'StationLoginSuccess',
         eventType: 'STATION_LOGIN',
       };
+
+      const responseMock = {
+        loginOption: LoginOption.AGENT_DN,
+        agentId: 'agentId',
+        teamId: 'teamId',
+        siteId: 'siteId',
+        roles: [AGENT],
+        trackingId: '1234',
+        eventType: 'DESKTOP_MESSAGE',
+        mmProfile: {
+          chat: 2,
+          email: 3,
+          social: 0,
+          telephony: 1
+        },
+        notifsTrackingId: 'notifs_52628'
+      }
 
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
@@ -651,7 +712,7 @@ describe('webex.cc', () => {
           auxCodeId: '',
         },
       });
-      expect(result).toEqual(mockData);
+      expect(result).toEqual(responseMock);
     });
 
     it('should handle error during stationLogin', async () => {
@@ -1006,6 +1067,11 @@ describe('webex.cc', () => {
         webex.cc.webCallingService,
         'registerWebCallingLine'
       );
+
+      const setLoginOptionSpy = jest.spyOn(
+        webex.cc.webCallingService,
+        'setLoginOption'
+      );
       const incomingTaskListenerSpy = jest.spyOn(webex.cc, 'incomingTaskListener');
       const webSocketManagerOnSpy = jest.spyOn(webex.cc.services.webSocketManager, 'on');
       await webex.cc['silentRelogin']();
@@ -1026,6 +1092,7 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toStrictEqual(12345);
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
       expect(registerWebCallingLineSpy).toHaveBeenCalled();
+      expect(setLoginOptionSpy).toHaveBeenCalledWith(LoginOption.BROWSER);
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       // expect(incomingTaskListenerSpy).toHaveBeenCalled();
       // expect(webSocketManagerOnSpy).toHaveBeenCalledWith('message', expect.any(Function));
