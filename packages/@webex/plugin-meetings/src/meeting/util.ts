@@ -577,7 +577,6 @@ const MeetingUtil = {
 
   canShareWhiteBoard: (displayHints, policies = {}) =>
     displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD) &&
-    policies &&
     !!policies[SELF_POLICY.SUPPORT_WHITEBOARD],
 
   /**
