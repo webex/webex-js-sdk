@@ -108,7 +108,7 @@ describe('WebexRequest', () => {
 
       expect(result).toEqual({...mockResponse, feedbackId: "mocked-uuid-12345"});
       expect(LoggerProxy.info).toHaveBeenCalledWith(
-        `Logs uploaded successfully`,
+        `Logs uploaded successfully with feedbackId: mocked-uuid-12345`,
         {module: WEBEX_REQUEST_FILE, method: 'uploadLogs'}
       );
       expect(mockMetricsManager.trackEvent).toBeCalledWith(
@@ -116,11 +116,11 @@ describe('WebexRequest', () => {
         {feedbackId: "mocked-uuid-12345", trackingId: '1234'}, 
         ["behavioral"]
       );
-      expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith({... mockMetaData, feedbackId: "mocked-uuid-12345"});
+      expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith({... mockMetaData, feedbackId: "mocked-uuid-12345"}, undefined, {type: 'diff'});
     });
 
     it('should log and throw an error if the upload fails', async () => {
-      const mockMetaData = { key: 'value' };
+      const mockMetaData = { key: 'value' , correlationId: 'correlation-id' };
       const mockError = new Error('Upload failed');
       mockError.stack = "My stack"
       mockWebex.internal = {
@@ -136,7 +136,7 @@ describe('WebexRequest', () => {
       );
       expect(mockMetricsManager.trackEvent).toBeCalledWith(
         "Upload Logs Failed", 
-        {stack: "My stack", feedbackId: "mocked-uuid-12345"}, 
+        {stack: "My stack", feedbackId: "mocked-uuid-12345", correlationId: 'correlation-id'}, 
         ["behavioral"]
       );
     });

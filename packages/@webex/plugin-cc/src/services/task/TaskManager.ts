@@ -179,7 +179,10 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONSULT_CREATED:
             // Received when self agent initiates a consult
-            task = this.updateTaskData(task, payload.data);
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConsulted: false, // This ensures that the task consult status is always reset
+            });
             // Do not emit anything since this be received only as a result of an API invocation(handled by a promise)
             break;
           case CC_EVENTS.AGENT_OFFER_CONSULT:

@@ -80,6 +80,34 @@ export type StationLoginSuccess = Msg<{
   type: 'AgentStationLoginSuccess';
 }>;
 
+export type StationLoginSuccessResponse = {
+  eventType: 'AgentDesktopMessage';
+  agentId: string;
+  trackingId: string;
+  auxCodeId: string;
+  teamId: string;
+  agentSessionId: string;
+  orgId: string;
+  interactionIds: string[];
+  status: string;
+  subStatus: 'Available' | 'Idle';
+  siteId: string;
+  lastIdleCodeChangeTimestamp: number;
+  lastStateChangeTimestamp: number;
+  profileType: string;
+  mmProfile: {
+    chat: number;
+    email: number;
+    social: number;
+    telephony: number;
+  };
+  dialNumber?: string;
+  roles?: string[];
+  supervisorSessionId?: string;
+  type: 'AgentStationLoginSuccess';
+  notifsTrackingId: string;
+};
+
 export type Logout = {logoutReason?: 'User requested logout' | 'Inactivity Logout'};
 
 export type AgentState = 'Available' | 'Idle' | 'RONA' | string;
