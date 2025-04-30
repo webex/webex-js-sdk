@@ -2,6 +2,7 @@ import * as Err from './Err';
 import {WebexRequestPayload} from '../../types';
 import {Failure} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
+import WebexRequest from './WebexRequest';
 
 const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
   return {
@@ -17,6 +18,10 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
     LoggerProxy.error(`${methodName} failed with trackingId: ${failure?.trackingId}`, {
       module: moduleName,
       method: methodName,
+    });
+    // we can add more conditions here if not needed for specific cases eg: silentReLogin
+    WebexRequest.getInstance().uploadLogs({
+      correlationId: failure?.trackingId,
     });
   }
 

@@ -129,7 +129,6 @@ export default class TaskManager extends EventEmitter {
               ...payload.data,
               wrapUpRequired: true,
             });
-            this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
@@ -170,7 +169,6 @@ export default class TaskManager extends EventEmitter {
               ...payload.data,
               wrapUpRequired: true,
             });
-            this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
@@ -179,7 +177,10 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONSULT_CREATED:
             // Received when self agent initiates a consult
-            task = this.updateTaskData(task, payload.data);
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConsulted: false, // This ensures that the task consult status is always reset
+            });
             // Do not emit anything since this be received only as a result of an API invocation(handled by a promise)
             break;
           case CC_EVENTS.AGENT_OFFER_CONSULT:
@@ -234,10 +235,30 @@ export default class TaskManager extends EventEmitter {
   }
 
   private updateTaskData(task: ITask, taskData: TaskData): ITask {
-    const currentTask = task.updateTaskData(taskData);
-    this.taskCollection[taskData.interactionId] = currentTask;
+    if (!task) {
+      return undefined;
+    }
 
-    return currentTask;
+    if (!taskData?.interactionId) {
+      LoggerProxy.warn('Received task update with missing interactionId', {
+        module: TASK_MANAGER_FILE,
+        method: 'updateTaskData',
+      });
+    }
+
+    try {
+      const currentTask = task.updateTaskData(taskData);
+      this.taskCollection[taskData.interactionId] = currentTask;
+
+      return currentTask;
+    } catch (error) {
+      LoggerProxy.error(`Failed to update task ${taskData.interactionId}`, {
+        module: TASK_MANAGER_FILE,
+        method: 'updateTaskData',
+      });
+
+      return task;
+    }
   }
 
   private removeTaskFromCollection(task: ITask) {

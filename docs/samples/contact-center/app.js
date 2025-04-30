@@ -463,6 +463,7 @@ async function initiateConsultTransfer() {
     console.log('Consult transfer initiated successfully');
     consultTransferBtn.disabled = true; // Disable the consult transfer button after initiating consult transfer
     consultTransferBtn.style.display = 'none'; // Hide the consult transfer button after initiating consult transfer
+    endConsultBtn.style.display = 'none';
   } catch (error) {
     console.error('Failed to initiate consult transfer', error);
   }
@@ -767,7 +768,7 @@ function generateWebexConfig({credentials}) {
     appPlatform: 'testClient',
     fedramp: false,
     logger: {
-      level: 'log'
+      level: 'info'
     },
     credentials,
     // Any other sdk config we need
