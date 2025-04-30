@@ -54,7 +54,16 @@
               <legend>Decrypt files</legend>
               <div class="u-mv">
                 <div>
-                  File URL: <input id="encrypted-file-url" value="" type="string" style="margin-bottom: 0.5rem;">
+                  File URL: <input id="encrypted-file-url" required value="" type="string" style="margin-bottom: 0.5rem;">
+                </div>
+                <div>
+                  Use File Service?(leave unchecked if you are unsure): <input id="use-file-service" type="checkbox" style="margin-bottom: 0.5rem;">
+                </div>
+                <div>
+                  JWE: <input id="encrypted-file-jwe" value="" style="margin-bottom: 0.5rem;" placeholder="Optional">
+                </div>
+                <div>
+                  keyURI: <input id="encrypted-file-keyURI" value="" style="margin-bottom: 0.5rem;" placeholder="Optional">
                 </div>
                 <div>
                   File Name: <input id="decrypted-file-name" value="my-decrypted-file.jpeg" type="string" style="display: inline-block; margin-bottom: 0.5rem;">
@@ -62,13 +71,36 @@
                   File Type: <select name="mime-types" id="mime-types" style="display: inline-block;">
                     <option value="image/jpeg">image/jpeg</option>
                     <option value="image/png">image/png</option>
-                    <option value="video/mp4">video/mp4</option>
-                    <option value="audio/mpeg">audio/mpeg</option>
-                    <option value="application/pdf">application/pdf</option>
-                    <option value="text/plain">text/plain</option>
                     <option value="application/json">application/json</option>
-                    <option value="text/html">text/html</option>
+                    <option value="application/javascript">application/javascript</option>
+                    <option value="application/pdf">application/pdf</option>
                     <option value="application/xml">application/xml</option>
+                    <option value="application/zip">application/zip</option>
+                    <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+                    <option value="application/vnd.ms-excel">application/vnd.ms-excel</option>
+                    <option value="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</option>
+                    <option value="application/vnd.ms-powerpoint">application/vnd.ms-powerpoint</option>
+                    <option value="application/vnd.openxmlformats-officedocument.presentationml.presentation">application/vnd.openxmlformats-officedocument.presentationml.presentation</option>
+                    <option value="application/msword">application/msword</option>
+                    <option value="application/vnd.openxmlformats-officedocument.wordprocessingml.document">application/vnd.openxmlformats-officedocument.wordprocessingml.document</option>
+                    <option value="audio/mpeg">audio/mpeg</option>
+                    <option value="audio/ogg">audio/ogg</option>
+                    <option value="audio/wav">audio/wav</option>
+                    <option value="audio/webm">audio/webm</option>
+                    <option value="image/bmp">image/bmp</option>
+                    <option value="image/gif">image/gif</option>
+                    <option value="image/svg+xml">image/svg+xml</option>
+                    <option value="image/tiff">image/tiff</option>
+                    <option value="image/webp">image/webp</option>
+                    <option value="text/css">text/css</option>
+                    <option value="text/csv">text/csv</option>
+                    <option value="text/html">text/html</option>
+                    <option value="text/plain">text/plain</option>
+                    <option value="text/javascript">text/javascript</option>
+                    <option value="video/mp4">video/mp4</option>
+                    <option value="video/mpeg">video/mpeg</option>
+                    <option value="video/ogg">video/ogg</option>
+                    <option value="video/webm">video/webm</option>
                   </select>
                 </div>
                 <button type="button" id="decrypt-my-file-btn" onclick="decryptFile()" class="btn" style="display: block;">

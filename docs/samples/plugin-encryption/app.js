@@ -17,6 +17,9 @@ const registerBtn = document.querySelector('#register-btn');
 const deregisterBtn = document.querySelector('#deregister-btn');
 const authStatusElm = document.querySelector('#access-token-status');
 const encryptedFileUrlInput = document.querySelector('#encrypted-file-url');
+const useFileServiceCheckbox = document.querySelector('#use-file-service');
+const encryptedFileJweInput = document.querySelector('#encrypted-file-jwe');
+const encryptedFileKeyURIInput = document.querySelector('#encrypted-file-keyURI');
 const decryptedFileNameInput = document.querySelector('#decrypted-file-name');
 const decryptFileBtn = document.querySelector('#decrypt-my-file-btn');
 const decryptFileResult = document.querySelector('#decrypt-file-result');
@@ -141,7 +144,14 @@ async function decryptFile() {
 
   let objectUrl;
   try {
-    const decryptedBuf = await webex.cypher.downloadAndDecryptFile(fileUrl);
+    let decryptedBuf;
+    const options = {
+      useFileService: useFileServiceCheckbox.checked,
+      jwe: encryptedFileJweInput.value,
+      keyUri: encryptedFileKeyURIInput.value,
+    };
+
+    decryptedBuf = await webex.cypher.downloadAndDecryptFile(fileUrl, options);
     const file = new File([decryptedBuf], encryptedFileName, {type: mimeType});
     objectUrl = URL.createObjectURL(file);
     const a = document.createElement("a");
