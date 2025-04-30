@@ -575,8 +575,9 @@ const MeetingUtil = {
 
   canUserRenameOthers: (displayHints) => displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS),
 
-  canShareWhiteBoard: (displayHints, policies) =>
+  canShareWhiteBoard: (displayHints, policies = {}) =>
     displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD) &&
+    policies &&
     !!policies[SELF_POLICY.SUPPORT_WHITEBOARD],
 
   /**
