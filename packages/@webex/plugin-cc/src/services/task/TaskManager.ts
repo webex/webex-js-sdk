@@ -129,7 +129,6 @@ export default class TaskManager extends EventEmitter {
               ...payload.data,
               wrapUpRequired: true,
             });
-            this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
@@ -170,7 +169,6 @@ export default class TaskManager extends EventEmitter {
               ...payload.data,
               wrapUpRequired: true,
             });
-            this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:

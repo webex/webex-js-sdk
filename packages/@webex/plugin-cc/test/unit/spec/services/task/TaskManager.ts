@@ -1125,8 +1125,8 @@ describe('TaskManager', () => {
       },
     };
     webSocketManagerMock.emit('message', JSON.stringify(unassignedPayload));
-    expect(unregisterSpy).toHaveBeenCalledTimes(1);
-    expect(cleanUpCallSpy).toHaveBeenCalledTimes(1);
+    expect(unregisterSpy).not.toHaveBeenCalled();
+    expect(cleanUpCallSpy).not.toHaveBeenCalled();
     unregisterSpy.mockClear();
     cleanUpCallSpy.mockClear();
     const wrapupPayload = {
@@ -1141,7 +1141,7 @@ describe('TaskManager', () => {
     expect(cleanUpCallSpy).not.toHaveBeenCalled();
   });
 
-  it('should not attempt cleanup twice when AGENT_VTEAM_TRANSFERRED is followed by AGENT_WRAPUP', () => {
+  it('should not attempt cleanup when AGENT_VTEAM_TRANSFERRED is followed by AGENT_WRAPUP', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
     const task = taskManager.getTask(taskId);
     const unregisterSpy = jest.spyOn(task, 'unregisterWebCallListeners');
@@ -1161,8 +1161,8 @@ describe('TaskManager', () => {
       },
     };
     webSocketManagerMock.emit('message', JSON.stringify(transferredPayload));
-    expect(unregisterSpy).toHaveBeenCalledTimes(1);
-    expect(cleanUpCallSpy).toHaveBeenCalledTimes(1);
+    expect(unregisterSpy).not.toHaveBeenCalled();
+    expect(cleanUpCallSpy).not.toHaveBeenCalled();
     unregisterSpy.mockClear();
     cleanUpCallSpy.mockClear();
     const wrapupPayload = {
