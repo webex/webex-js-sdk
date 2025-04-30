@@ -129,7 +129,6 @@ export default class TaskManager extends EventEmitter {
               ...payload.data,
               wrapUpRequired: true,
             });
-            this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
@@ -170,7 +169,6 @@ export default class TaskManager extends EventEmitter {
               ...payload.data,
               wrapUpRequired: true,
             });
-            this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
@@ -237,10 +235,30 @@ export default class TaskManager extends EventEmitter {
   }
 
   private updateTaskData(task: ITask, taskData: TaskData): ITask {
-    const currentTask = task.updateTaskData(taskData);
-    this.taskCollection[taskData.interactionId] = currentTask;
+    if (!task) {
+      return undefined;
+    }
 
-    return currentTask;
+    if (!taskData?.interactionId) {
+      LoggerProxy.warn('Received task update with missing interactionId', {
+        module: TASK_MANAGER_FILE,
+        method: 'updateTaskData',
+      });
+    }
+
+    try {
+      const currentTask = task.updateTaskData(taskData);
+      this.taskCollection[taskData.interactionId] = currentTask;
+
+      return currentTask;
+    } catch (error) {
+      LoggerProxy.error(`Failed to update task ${taskData.interactionId}`, {
+        module: TASK_MANAGER_FILE,
+        method: 'updateTaskData',
+      });
+
+      return task;
+    }
   }
 
   private removeTaskFromCollection(task: ITask) {
