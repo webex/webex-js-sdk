@@ -588,7 +588,7 @@ describe('plugin-meetings', () => {
           assert.isTrue(results);
         });
 
-        it('should only call canUpdateAnnotation() if the scope is video', () => {
+        it('should only call canUpdateAnnotation() if the scope is annotation', () => {
           const control = {scope: 'annotation'};
 
           const results = ControlsOptionsUtil.canUpdate(control, displayHints);
@@ -604,7 +604,7 @@ describe('plugin-meetings', () => {
           assert.isTrue(results);
         });
 
-        it('should only call canUpdateRemoteDesktopControl() if the scope is video', () => {
+        it('should only call canUpdateRemoteDesktopControl() if the scope is rdc', () => {
           const control = {scope: 'rdc'};
 
           const results = ControlsOptionsUtil.canUpdate(control, displayHints);

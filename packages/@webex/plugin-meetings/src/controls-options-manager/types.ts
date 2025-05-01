@@ -54,7 +54,9 @@ export type Properties =
   | ReactionsProperties
   | ShareControlProperties
   | VideoProperties
-  | ViewTheParticipantListProperties;
+  | ViewTheParticipantListProperties
+  | AnnotationProperties
+  | RemoteDesktopControlProperties;
 
 export interface ControlConfig<Props = Properties> {
   /**
