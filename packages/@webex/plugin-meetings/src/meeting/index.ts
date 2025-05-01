@@ -4074,6 +4074,9 @@ export default class Meeting extends StatelessWebexPlugin {
             this.inMeetingActions.canSendReactions,
             this.userDisplayHints
           ),
+          canShowPostMeetingDataConsentPrompt: MeetingUtil.canShowPostMeetingDataConsentPrompt(
+            this.userDisplayHints
+          ),
           canManageBreakout: MeetingUtil.canManageBreakout(this.userDisplayHints),
           canStartBreakout: MeetingUtil.canStartBreakout(this.userDisplayHints),
           canBroadcastMessageToBreakout: MeetingUtil.canBroadcastMessageToBreakout(
@@ -9152,6 +9155,23 @@ export default class Meeting extends StatelessWebexPlugin {
       enable,
       locusUrl: this.locusUrl,
       requestingParticipantId: this.members.selfId,
+    });
+  }
+
+  /**
+   * Method to set post meeting data consent.
+   *
+   * @param  {boolean} accept - whether consent accepted or declined
+   * @returns {Promise}
+   * @public
+   * @memberof Meeting
+   */
+  public setPostMeetingDataConsent(accept: boolean) {
+    return this.meetingRequest.setPostMeetingDataConsent({
+      postMeetingDataConsent: accept,
+      locusUrl: this.locusUrl,
+      deviceUrl: this.deviceUrl,
+      selfId: this.members.selfId,
     });
   }
 

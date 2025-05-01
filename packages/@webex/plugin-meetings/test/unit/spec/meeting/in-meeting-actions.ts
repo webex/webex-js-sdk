@@ -90,10 +90,11 @@ describe('plugin-meetings', () => {
         canShowStageView: null,
         canEnableStageView: null,
         canDisableStageView: null,
-        isPracticeSessionOn : null,
-        isPracticeSessionOff : null,
+        isPracticeSessionOn: null,
+        isPracticeSessionOff: null,
         canStartPracticeSession: null,
         canStopPracticeSession: null,
+        canShowPostMeetingDataConsentPrompt: null,
 
         ...expected,
       };
@@ -194,8 +195,8 @@ describe('plugin-meetings', () => {
       'isPracticeSessionOff',
       'canStartPracticeSession',
       'canStopPracticeSession',
-
-  ].forEach((key) => {
+      'canShowPostMeetingDataConsentPrompt',
+    ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();
 

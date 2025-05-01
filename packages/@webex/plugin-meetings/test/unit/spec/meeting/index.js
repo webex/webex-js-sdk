@@ -10686,6 +10686,7 @@ describe('plugin-meetings', () => {
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
         let canSendReactionsSpy;
+        let canShowPostMeetingDataConsentPromptSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
         let canShareWhiteBoardSpy;
@@ -10713,6 +10714,10 @@ describe('plugin-meetings', () => {
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
+          canShowPostMeetingDataConsentPromptSpy = sinon.spy(
+            MeetingUtil,
+            'canShowPostMeetingDataConsentPrompt'
+          );
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
           canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
         });
@@ -11253,6 +11258,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(waitingForOthersToJoinSpy, userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, userDisplayHints);
+          assert.calledWith(canShowPostMeetingDataConsentPromptSpy, userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
           assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
 
@@ -13065,6 +13071,36 @@ describe('plugin-meetings', () => {
         it('stopKeepAlive handles missing keepAliveTimerId', async () => {
           assert.isNull(meeting.keepAliveTimerId);
           meeting.stopKeepAlive();
+        });
+      });
+
+      describe('#setPostMeetingDataConsent', () => {
+        it('should have #setPostMeetingDataConsent', () => {
+          assert.exists(meeting.setPostMeetingDataConsent);
+        });
+
+        beforeEach(() => {
+          meeting.meetingRequest.setPostMeetingDataConsent = sinon
+            .stub()
+            .returns(Promise.resolve());
+        });
+
+        [true, false].forEach((accept) => {
+          it(`should send consent with ${accept}`, async () => {
+            meeting.locusUrl = 'locusUrl';
+            meeting.deviceUrl = 'deviceUrl';
+
+            const consentPromise = meeting.setPostMeetingDataConsent(accept);
+
+            assert.exists(consentPromise.then);
+            await consentPromise;
+            assert.calledOnceWithExactly(meeting.meetingRequest.setPostMeetingDataConsent, {
+              locusUrl: 'locusUrl',
+              postMeetingDataConsent: accept,
+              selfId: meeting.members.selfId,
+              deviceUrl: 'deviceUrl',
+            });
+          });
         });
       });
 

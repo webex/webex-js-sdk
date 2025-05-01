@@ -630,6 +630,34 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#setPostMeetingDataConsent', () => {
+      [true, false].forEach((consent) => {
+        it(`sends request to set post meeting data consent with ${consent}`, async () => {
+          const locusUrl = 'locusUrl';
+          const selfId = 'selfId';
+          const deviceUrl = 'deviceUrl';
+
+          await meetingsRequest.setPostMeetingDataConsent({
+            postMeetingDataConsent: consent,
+            locusUrl,
+            selfId,
+            deviceUrl,
+          });
+
+          checkRequest({
+            method: 'PATCH',
+            uri: `${locusUrl}/participant/${selfId}/controls`,
+            body: {
+              consent: {
+                postMeetingDataConsent: consent,
+                deviceUrl,
+              },
+            },
+          });
+        });
+      });
+    });
+
     describe('#prepareLeaveMeetingRequestOptions', () => {
       it('returns expected result', async () => {
         const result = meetingsRequest.prepareLeaveMeetingRequestOptions({

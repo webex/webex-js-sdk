@@ -744,6 +744,18 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('canShowPostMeetingDataConsentPrompt', () => {
+      it('works as expected', () => {
+        assert.deepEqual(
+          MeetingUtil.canShowPostMeetingDataConsentPrompt([
+            'SHOW_POST_MEETING_DATA_CONSENT_PROMPT',
+          ]),
+          true
+        );
+        assert.deepEqual(MeetingUtil.canShowPostMeetingDataConsentPrompt([]), false);
+      });
+    });
+
     describe('canUserRenameOthers', () => {
       it('works as expected', () => {
         assert.deepEqual(MeetingUtil.canUserRenameOthers(['CAN_RENAME_OTHERS']), true);
