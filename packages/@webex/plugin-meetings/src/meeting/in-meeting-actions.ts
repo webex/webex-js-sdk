@@ -99,12 +99,20 @@ interface IInMeetingActions {
   isPracticeSessionOff?: boolean;
   canStartPracticeSession?: boolean;
   canStopPracticeSession?: boolean;
+  canEnableAnnotation: boolean;
+  canDisableAnnotation: boolean;
+  canEnableRemoteDesktopControl: boolean;
+  canDisableRemoteDesktopControl: boolean;
 }
 
 /**
  * @class InMeetingActions
  */
 export default class InMeetingActions implements IInMeetingActions {
+  canEnableAnnotation: boolean;
+  canDisableAnnotation: boolean;
+  canEnableRemoteDesktopControl: boolean;
+  canDisableRemoteDesktopControl: boolean;
   namespace = MEETINGS;
 
   canInviteNewParticipants = null;
@@ -379,6 +387,10 @@ export default class InMeetingActions implements IInMeetingActions {
     isPracticeSessionOff: this.isPracticeSessionOff,
     canStartPracticeSession: this.canStartPracticeSession,
     canStopPracticeSession: this.canStopPracticeSession,
+    canEnableAnnotation: this.canEnableAnnotation,
+    canDisableAnnotation: this.canDisableAnnotation,
+    canEnableRemoteDesktopControl: this.canEnableRemoteDesktopControl,
+    canDisableRemoteDesktopControl: this.canDisableRemoteDesktopControl,
   });
 
   /**

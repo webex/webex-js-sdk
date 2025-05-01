@@ -11384,6 +11384,22 @@ describe('plugin-meetings', () => {
             requiredPolicies: [SELF_POLICY.SUPPORT_VOIP],
             policies: selfUserPolicies,
           });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_RDC_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
 
           assert.calledWith(
             TriggerProxy.trigger,

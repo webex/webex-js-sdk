@@ -4287,6 +4287,22 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             policies: this.selfUserPolicies,
           }),
+          canEnableAnnotation: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableAnnotation: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableRemoteDesktopControl: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_RDC_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableRemoteDesktopControl: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
         }) || changed;
     }
     if (changed) {
