@@ -109,10 +109,6 @@ interface IInMeetingActions {
  * @class InMeetingActions
  */
 export default class InMeetingActions implements IInMeetingActions {
-  canEnableAnnotation: boolean;
-  canDisableAnnotation: boolean;
-  canEnableRemoteDesktopControl: boolean;
-  canDisableRemoteDesktopControl: boolean;
   namespace = MEETINGS;
 
   canInviteNewParticipants = null;
@@ -292,6 +288,14 @@ export default class InMeetingActions implements IInMeetingActions {
   canStartPracticeSession = null;
 
   canStopPracticeSession = null;
+
+  canEnableAnnotation = null;
+
+  canDisableAnnotation = null;
+
+  canEnableRemoteDesktopControl = null;
+
+  canDisableRemoteDesktopControl = null;
 
   /**
    * Returns all meeting action options
