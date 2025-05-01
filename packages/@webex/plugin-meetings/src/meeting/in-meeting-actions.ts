@@ -99,10 +99,10 @@ interface IInMeetingActions {
   isPracticeSessionOff?: boolean;
   canStartPracticeSession?: boolean;
   canStopPracticeSession?: boolean;
-  canEnableAnnotation: boolean;
-  canDisableAnnotation: boolean;
-  canEnableRemoteDesktopControl: boolean;
-  canDisableRemoteDesktopControl: boolean;
+  canEnableAnnotation?: boolean;
+  canDisableAnnotation?: boolean;
+  canEnableRemoteDesktopControl?: boolean;
+  canDisableRemoteDesktopControl?: boolean;
 }
 
 /**
