@@ -111,6 +111,8 @@ describe('plugin-meetings', () => {
           },
           webcastControl: {streaming: false},
           practiceSession: {enabled: true},
+          annotationControl: {enabled: true},
+          rdcControl: {enabled: true},
         };
       });
 
@@ -276,6 +278,32 @@ describe('plugin-meetings', () => {
           // check that no calls in emitScoped are for CONTROLS_RECORDING_UPDATED
           assert.notEqual(x.args[1], LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED);
         });
+      });
+
+      it('should trigger the CONTROLS_ANNOTATION_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_ANNOTATION_CHANGED,
+          {state: newControls.annotationControl}
+        );
+      });
+
+      it('should trigger the CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED,
+          {state: newControls.rdcControl}
+        );
       });
 
       it('should keep the recording state to `IDLE`', () => {

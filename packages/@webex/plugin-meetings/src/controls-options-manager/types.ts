@@ -40,13 +40,23 @@ export interface ViewTheParticipantListProperties {
   attendeeCount?: boolean;
 }
 
+export interface AnnotationProperties {
+  enabled?: boolean;
+}
+
+export interface RemoteDesktopControlProperties {
+  enabled?: boolean;
+}
+
 export type Properties =
   | AudioProperties
   | RaiseHandProperties
   | ReactionsProperties
   | ShareControlProperties
   | VideoProperties
-  | ViewTheParticipantListProperties;
+  | ViewTheParticipantListProperties
+  | AnnotationProperties
+  | RemoteDesktopControlProperties;
 
 export interface ControlConfig<Props = Properties> {
   /**

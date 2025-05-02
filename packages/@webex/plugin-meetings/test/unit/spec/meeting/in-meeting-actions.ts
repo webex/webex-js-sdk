@@ -95,6 +95,10 @@ describe('plugin-meetings', () => {
         canStartPracticeSession: null,
         canStopPracticeSession: null,
         requiresPostMeetingDataConsentPrompt: null,
+        canEnableAnnotation: null,
+        canDisableAnnotation: null,
+        canEnableRemoteDesktopControl: null,
+        canDisableRemoteDesktopControl: null,
 
         ...expected,
       };
@@ -196,6 +200,10 @@ describe('plugin-meetings', () => {
       'canStartPracticeSession',
       'canStopPracticeSession',
       'requiresPostMeetingDataConsentPrompt',
+      'canEnableAnnotation',
+      'canDisableAnnotation',
+      'canEnableRemoteDesktopControl',
+      'canDisableRemoteDesktopControl',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

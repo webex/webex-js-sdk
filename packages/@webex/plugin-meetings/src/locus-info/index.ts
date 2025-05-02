@@ -817,6 +817,8 @@ export default class LocusInfo extends EventsScope {
           hasMeetingFullChanged,
           hasPracticeSessionEnabledChanged,
           hasStageViewChanged,
+          hasAnnotationControlChanged,
+          hasRemoteDesktopControlChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
@@ -1049,6 +1051,22 @@ export default class LocusInfo extends EventsScope {
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_STAGE_VIEW_UPDATED,
           {state: current.videoLayout}
+        );
+      }
+
+      if (hasAnnotationControlChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_ANNOTATION_CHANGED,
+          {state: current.annotationControl}
+        );
+      }
+
+      if (hasRemoteDesktopControlChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED,
+          {state: current.rdcControl}
         );
       }
 
