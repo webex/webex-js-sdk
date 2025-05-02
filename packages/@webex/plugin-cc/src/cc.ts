@@ -88,7 +88,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webex: this.$webex,
         connectionConfig: this.getConnectionConfig(),
       });
-      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
@@ -158,73 +157,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
       this.webexRequest.uploadLogs({
         correlationId: error?.trackingId,
-      });
-
-      throw error;
-    }
-  }
-
-  /**
-   * This is used to unregister the CC SDK and clean up all resources.
-   * @returns Promise<void>
-   * @throws Error
-   */
-  public async unregister(): Promise<void> {
-    try {
-      this.metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_SUCCESS,
-        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_FAILED,
-      ]);
-
-      this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-      this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
-
-      this.services.webSocketManager.off('message', this.handleWebSocketMessage);
-      this.services.connectionService.off('connectionLost', this.handleConnectionLost);
-
-      if (this.webCallingService) {
-        await this.webCallingService.deregisterWebCallingLine();
-      }
-
-      if (!this.services.webSocketManager.isSocketClosed) {
-        this.services.webSocketManager.close(false, 'Unregistering the SDK');
-      }
-
-      // Clear any cached agent configuration
-      this.agentConfig = null;
-
-      if (this.$webex.internal.mercury.connected) {
-        this.$webex.internal.mercury.off('online');
-        this.$webex.internal.mercury.off('offline');
-        await this.$webex.internal.mercury.disconnect();
-        // @ts-ignore
-        await this.$webex.internal.device.unregister();
-        LoggerProxy.log('Mercury disconnected successfully', {
-          module: CC_FILE,
-          method: 'unregister',
-        });
-      }
-
-      LoggerProxy.log('CC SDK unregistered successfully', {
-        module: CC_FILE,
-        method: 'unregister',
-      });
-
-      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_SUCCESS, {}, [
-        'operational',
-      ]);
-    } catch (error) {
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_FAILED,
-        {
-          error: error.message || 'Unknown error',
-        },
-        ['operational']
-      );
-
-      LoggerProxy.error(`Error during unregister: ${error}`, {
-        module: CC_FILE,
-        method: 'unregister',
       });
 
       throw error;

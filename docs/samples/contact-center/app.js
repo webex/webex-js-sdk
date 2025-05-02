@@ -853,11 +853,13 @@ function startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp) 
   }, 1000);
 }
 
-function updateUnregisterButtonState() {
-  const hasActiveTasks = webex?.cc?.taskManager?.getAllTasks && Object.keys(webex.cc.taskManager.getAllTasks() || {}).length > 0;
+function updateUnregisterButtonState() {  
+  const isLoggedIn = webex?.cc?.agentProfile?.isAgentLoggedIn || 
+    !logoutAgentElm.classList.contains('hidden');
   
-  const isAgentLoggedIn = webex?.cc?.agentProfile?.isAgentLoggedIn || false;
-  unregisterBtn.disabled = hasActiveTasks || isAgentLoggedIn;
+  unregisterBtn.disabled = isLoggedIn;
+  
+  console.log('Update unregister button state: isLoggedIn =', isLoggedIn, 'hasActiveTasks =', hasActiveTasks);
 }
 
 function register() {
@@ -866,6 +868,7 @@ function register() {
         // Update button states upon successful registration
         registerBtn.disabled = true;
         unregisterBtn.disabled = false;
+        uploadLogsButton.disabled = false;
         updateUnregisterButtonState();
         console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
@@ -900,6 +903,7 @@ function register() {
         if (agentProfile.isAgentLoggedIn) {
           loginAgentElm.disabled = true;
           logoutAgentElm.classList.remove('hidden');
+          updateUnregisterButtonState();
         }
 
         const idleCodesList = agentProfile.idleCodes;
@@ -959,6 +963,7 @@ function doUnregister() {
         // Reset button states after unregister
         registerBtn.disabled = false;
         unregisterBtn.disabled = true;
+        uploadLogsButton.disabled = true;
         
         // Clear all dropdowns that are populated during registration
         teamsDropdown.innerHTML = '';
@@ -1001,7 +1006,7 @@ function handleTaskHydrate(task) {
   }
 
   handleTaskSelect(currentTask);
-  updateUnregisterButtonState(); // Add this line
+  updateUnregisterButtonState();
 }
 
 function populateWrapupCodesDropdown() {
@@ -1035,7 +1040,7 @@ function doAgentLogin() {
     console.log('Agent Logged in successfully', response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
-    updateUnregisterButtonState(); // Update unregister button state after login
+    updateUnregisterButtonState();
     
     // Read auxCode and lastStateChangeTimestamp from login response
     const DEFAULT_CODE = '0'; // Default code when no aux code is present
@@ -1085,7 +1090,7 @@ function logoutAgent() {
       logoutAgentElm.classList.add('hidden');
       agentLogin.selectedIndex = 0;
       timerElm.innerHTML = '00:00:00';
-      updateUnregisterButtonState(); // Update unregister button state after logout
+      updateUnregisterButtonState();
     }, 1000);
     
     // Add an immediate call to update button state
@@ -1179,7 +1184,7 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   updateTaskList();
   handleTaskSelect(currentTask);
   incomingDetailsElm.innerText = 'Task Accepted';
-  updateUnregisterButtonState(); // Add this line
+  updateUnregisterButtonState();
 }
 
 function decline() {
@@ -1188,7 +1193,7 @@ function decline() {
   currentTask.decline(taskId);
   incomingDetailsElm.innerText = 'No incoming Tasks';
   updateTaskList();
-  updateUnregisterButtonState(); // Add this line
+  updateUnregisterButtonState();
 }
 
 const allCollapsibleElements = document.querySelectorAll('.collapsible');
@@ -1317,7 +1322,7 @@ function endCall() {
     console.log('task ended successfully by agent');
     updateButtonsPostEndCall();
     updateTaskList();
-    updateUnregisterButtonState(); // Add this line
+    updateUnregisterButtonState();
   }).catch((error) => {
     console.error('Failed to end the call', error);
     endElm.disabled = false;
@@ -1335,7 +1340,7 @@ function wrapupCall() {
     endElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
     updateTaskList();
-    updateUnregisterButtonState(); // Add this line
+    updateUnregisterButtonState();
   }).catch((error) => {
     console.error('Failed to wrap up the call', error);
     wrapupElm.disabled = false;
@@ -1377,7 +1382,7 @@ document.addEventListener(
 function updateTaskList() {
   const taskList = webex.cc.taskManager.getAllTasks(); // Update the global task list
   renderTaskList(taskList); // Render the updated task list
-  updateUnregisterButtonState(); // Update unregister button state when task list changes
+  updateUnregisterButtonState();
 }
 
 function renderTaskList(taskList) {

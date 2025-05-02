@@ -35,6 +35,7 @@ import MetricsManager from '../../../src/metrics/MetricsManager';
 import { METRIC_EVENT_NAMES } from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebexRequest from '../../../src/services/core/WebexRequest';
+import { on } from 'events';
 
 
 jest.mock('../../../src/logger-proxy', () => ({
@@ -119,6 +120,7 @@ describe('webex.cc', () => {
       webSocketManager: mockWebSocketManager,
       connectionService: {
         on: jest.fn(),
+        off: jest.fn(),
       },
       contact: mockContact,
 
@@ -1354,6 +1356,106 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc.webexRequest, 'uploadLogs').mockRejectedValue(error);
 
       await expect(webex.cc.uploadLogs('12345')).rejects.toThrow(error);
+    });
+  });
+
+  describe('unregister', () => {
+    let mockWebSocketManager;
+    let mercuryDisconnectSpy;
+    let deviceUnregisterSpy;
+    let deregisterWebCallingLineSpy;
+    
+    beforeEach(() => {
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+      };
+
+      mockWebSocketManager = {
+        isSocketClosed: false,
+        close: jest.fn(),
+        off: jest.fn(),
+        on: jest.fn(),
+      };
+
+      webex.cc.services.webSocketManager = mockWebSocketManager;
+      
+      webex.internal = webex.internal || {};
+      webex.internal.mercury = {
+        connected: true,
+        disconnect: jest.fn().mockResolvedValue(),
+        off: jest.fn(),
+      };
+      webex.internal.device = {
+        unregister: jest.fn().mockResolvedValue(),
+      };
+      
+      mercuryDisconnectSpy = jest.spyOn(webex.internal.mercury, 'disconnect');
+      deviceUnregisterSpy = jest.spyOn(webex.internal.device, 'unregister');
+      deregisterWebCallingLineSpy = jest.spyOn(
+        webex.cc.webCallingService,
+        'deregisterWebCallingLine'
+      ).mockResolvedValue();
+    });
+
+    it('should unregister successfully and clean up all resources', async () => {
+      await webex.cc.unregister();
+
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, expect.any(Function));
+      expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
+      expect(webex.cc.services.connectionService.off).toHaveBeenCalledWith('connectionLost', expect.any(Function));
+
+      expect(deregisterWebCallingLineSpy).toHaveBeenCalled();
+      expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
+      expect(webex.cc.agentConfig).toBeNull();
+
+      expect(webex.internal.mercury.off).toHaveBeenCalledWith('online');
+      expect(webex.internal.mercury.off).toHaveBeenCalledWith('offline');
+      expect(mercuryDisconnectSpy).toHaveBeenCalled();
+      expect(deviceUnregisterSpy).toHaveBeenCalled();
+      
+      expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
+        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_SUCCESS,
+        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_FAILED
+      ]);
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_SUCCESS, 
+        {}, 
+        ['operational']
+      );
+
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Mercury disconnected successfully', {
+        module: CC_FILE,
+        method: 'unregister',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('CC SDK unregistered successfully', {
+        module: CC_FILE,
+        method: 'unregister',
+      });
+    });
+
+    it('should handle errors during unregister and track metrics', async () => {
+      const mockError = new Error('Failed to unregister device');
+      webex.internal.device.unregister.mockRejectedValue(mockError);
+
+      await expect(webex.cc.unregister()).rejects.toThrow('Failed to unregister device');
+
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, expect.any(Function));
+      expect(deregisterWebCallingLineSpy).toHaveBeenCalled();
+
+      expect(LoggerProxy.error).toHaveBeenCalledWith(`Error during unregister: ${mockError}`, {
+        module: CC_FILE,
+        method: 'unregister',
+      });
+      
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_FAILED, 
+        {
+          error: 'Failed to unregister device',
+        }, 
+        ['operational']
+      );
     });
   });
 });
