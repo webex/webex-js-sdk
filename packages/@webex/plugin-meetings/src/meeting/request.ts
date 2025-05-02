@@ -31,7 +31,7 @@ import {
   SendReactionOptions,
   BrbOptions,
   ToggleReactionsOptions,
-  ConsentOptions,
+  PostMeetingDataConsentOptions,
 } from './request.type';
 import MeetingUtil from './util';
 import {AnnotationInfo} from '../annotation/annotation.types';
@@ -950,7 +950,12 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {string} options.selfId - The ID of the participant.
    * @returns {Promise}
    */
-  setPostMeetingDataConsent({postMeetingDataConsent, locusUrl, deviceUrl, selfId}: ConsentOptions) {
+  setPostMeetingDataConsent({
+    postMeetingDataConsent,
+    locusUrl,
+    deviceUrl,
+    selfId,
+  }: PostMeetingDataConsentOptions) {
     const uri = `${locusUrl}/${PARTICIPANT}/${selfId}/${CONTROLS}`;
 
     return this.locusDeltaRequest({

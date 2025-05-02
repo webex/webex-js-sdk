@@ -1,6 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
+import {v4 as uuidv4} from 'uuid';
 import 'jsdom-global/register';
 import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
@@ -13139,18 +13140,20 @@ describe('plugin-meetings', () => {
 
         [true, false].forEach((accept) => {
           it(`should send consent with ${accept}`, async () => {
-            meeting.locusUrl = 'locusUrl';
-            meeting.deviceUrl = 'deviceUrl';
+            const id = uuidv4();
+            meeting.locusUrl = `https://locus-test.wbx2.com/locus/api/v1/loci/${accept}`;
+            meeting.deviceUrl = `https://wdm-test.wbx2.com/wdm/api/v1/devices/${accept}`;
+            meeting.members.selfId = id;
 
             const consentPromise = meeting.setPostMeetingDataConsent(accept);
 
             assert.exists(consentPromise.then);
             await consentPromise;
             assert.calledOnceWithExactly(meeting.meetingRequest.setPostMeetingDataConsent, {
-              locusUrl: 'locusUrl',
+              locusUrl: `https://locus-test.wbx2.com/locus/api/v1/loci/${accept}`,
               postMeetingDataConsent: accept,
-              selfId: meeting.members.selfId,
-              deviceUrl: 'deviceUrl',
+              selfId: id,
+              deviceUrl: `https://wdm-test.wbx2.com/wdm/api/v1/devices/${accept}`,
             });
           });
         });

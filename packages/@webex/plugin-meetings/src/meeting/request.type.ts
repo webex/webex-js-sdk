@@ -19,7 +19,7 @@ export type BrbOptions = {
   selfId: string;
 };
 
-export type ConsentOptions = {
+export type PostMeetingDataConsentOptions = {
   postMeetingDataConsent: boolean;
   locusUrl: string;
   deviceUrl: string;
