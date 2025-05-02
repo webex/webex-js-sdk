@@ -25,7 +25,7 @@ const authStatusElm = document.querySelector('#access-token-status');
 const oauthFormElm = document.querySelector('#oauth');
 const oauthStatusElm = document.querySelector('#oauth-status');
 const registerBtn = document.querySelector('#webexcc-register');
-const unregisterBtn = document.querySelector('#webexcc-unregister');
+const deregisterBtn = document.querySelector('#webexcc-deregister');
 const teamsDropdown = document.querySelector('#teamsDropdown');
 const agentLogin = document.querySelector('#AgentLogin');
 const loginAgentElm = document.querySelector('#loginAgent');
@@ -70,7 +70,7 @@ let isBundleLoaded = false; // this is just to check before loading/using engage
 const uploadLogsButton = document.getElementById('upload-logs');
 const uploadLogsResultElm = document.getElementById('upload-logs-result');
 
-unregisterBtn.style.backgroundColor = 'red';
+deregisterBtn.style.backgroundColor = 'red';
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -857,7 +857,7 @@ function updateUnregisterButtonState() {
   const isLoggedIn = webex?.cc?.agentProfile?.isAgentLoggedIn || 
     !logoutAgentElm.classList.contains('hidden');
   
-  unregisterBtn.disabled = isLoggedIn;  
+  deregisterBtn.disabled = isLoggedIn;  
 }
 
 function register() {
@@ -865,7 +865,7 @@ function register() {
         registerStatus.innerHTML = 'Subscribed';
         // Update button states upon successful registration
         registerBtn.disabled = true;
-        unregisterBtn.disabled = false;
+        deregisterBtn.disabled = false;
         uploadLogsButton.disabled = false;
         updateUnregisterButtonState();
         console.log('Event subscription successful: ', agentProfile);
@@ -954,13 +954,13 @@ function register() {
 }
 
 // New function to handle unregistration
-function doUnregister() {
-    webex.cc.unregister().then(() => {
-        console.log('Unregistered successfully');
+function doDeRegister() {
+    webex.cc.deregister().then(() => {
+        console.log('Deregistered successfully');
         registerStatus.innerHTML = 'Unregistered';
         // Reset button states after unregister
         registerBtn.disabled = false;
-        unregisterBtn.disabled = true;
+        deregisterBtn.disabled = true;
         uploadLogsButton.disabled = true;
         
         // Clear all dropdowns that are populated during registration
@@ -990,8 +990,7 @@ function doUnregister() {
     });
 }
 
-// Add event listener for new unregister button
-unregisterBtn.addEventListener('click', doUnregister);
+deregisterBtn.addEventListener('click', doDeRegister);
 
 function handleTaskHydrate(task) {
   currentTask = task;
