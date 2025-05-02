@@ -156,6 +156,76 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         module: CC_FILE,
         method: this.register.name,
       });
+      this.webexRequest.uploadLogs({
+        correlationId: error?.trackingId,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * This is used to unregister the CC SDK and clean up all resources.
+   * @returns Promise<void>
+   * @throws Error
+   */
+  public async unregister(): Promise<void> {
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_SUCCESS,
+        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_FAILED,
+      ]);
+
+      this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+      this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+
+      this.services.webSocketManager.off('message', this.handleWebSocketMessage);
+      this.services.connectionService.off('connectionLost', this.handleConnectionLost);
+
+      if (this.webCallingService) {
+        await this.webCallingService.deregisterWebCallingLine();
+      }
+
+      if (!this.services.webSocketManager.isSocketClosed) {
+        this.services.webSocketManager.close(false, 'Unregistering the SDK');
+      }
+
+      // Clear any cached agent configuration
+      this.agentConfig = null;
+
+      if (this.$webex.internal.mercury.connected) {
+        this.$webex.internal.mercury.off('online');
+        this.$webex.internal.mercury.off('offline');
+        await this.$webex.internal.mercury.disconnect();
+        // @ts-ignore
+        await this.$webex.internal.device.unregister();
+        LoggerProxy.log('Mercury disconnected successfully', {
+          module: CC_FILE,
+          method: 'unregister',
+        });
+      }
+
+      LoggerProxy.log('CC SDK unregistered successfully', {
+        module: CC_FILE,
+        method: 'unregister',
+      });
+
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_SUCCESS, {}, [
+        'operational',
+      ]);
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WEBSOCKET_UNREGISTER_FAILED,
+        {
+          error: error.message || 'Unknown error',
+        },
+        ['operational']
+      );
+
+      LoggerProxy.error(`Error during unregister: ${error}`, {
+        module: CC_FILE,
+        method: 'unregister',
+      });
 
       throw error;
     }
@@ -365,10 +435,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       if (this.agentConfig.webRtcEnabled && data.loginOption === LoginOption.BROWSER) {
         await this.webCallingService.registerWebCallingLine();
-        this.webCallingService.setLoginOption(data.loginOption);
       }
 
       const resp = await loginResponse;
+      const {channelsMap, ...loginData} = resp.data;
+      const response = {
+        ...loginData,
+        mmProfile: {
+          chat: channelsMap.chat?.length,
+          email: channelsMap.email?.length,
+          social: channelsMap.social?.length,
+          telephony: channelsMap.telephony?.length,
+        },
+        notifsTrackingId: resp.trackingId,
+      };
+
       this.webCallingService.setLoginOption(data.loginOption);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
@@ -382,7 +463,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      return resp;
+      return response;
     } catch (error) {
       const failure = error.details as Failure;
       this.metricsManager.trackEvent(
@@ -706,6 +787,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   public async startOutdial(destination: string): Promise<TaskResponse> {
     try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_OUTDIAL_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_OUTDIAL_FAILED,
+      ]);
+
       // Construct the outdial payload.
       const outDialPayload: DialerPayload = {
         destination,
@@ -718,8 +804,28 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       const result = await this.services.dialer.startOutdial({data: outDialPayload});
 
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_OUTDIAL_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+          destination,
+          mediaType: OUTDIAL_MEDIA_TYPE,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
       return result;
     } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_OUTDIAL_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          destination,
+          mediaType: OUTDIAL_MEDIA_TYPE,
+        },
+        ['behavioral', 'business', 'operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'startOutdial', CC_FILE);
       throw detailedError;
     }

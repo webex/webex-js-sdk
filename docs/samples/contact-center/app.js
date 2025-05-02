@@ -466,6 +466,7 @@ async function initiateConsultTransfer() {
     console.log('Consult transfer initiated successfully');
     consultTransferBtn.disabled = true; // Disable the consult transfer button after initiating consult transfer
     consultTransferBtn.style.display = 'none'; // Hide the consult transfer button after initiating consult transfer
+    endConsultBtn.style.display = 'none';
   } catch (error) {
     console.error('Failed to initiate consult transfer', error);
   }
@@ -770,7 +771,7 @@ function generateWebexConfig({credentials}) {
     appPlatform: 'testClient',
     fedramp: false,
     logger: {
-      level: 'log'
+      level: 'info'
     },
     credentials,
     // Any other sdk config we need
@@ -1073,9 +1074,17 @@ function logoutAgent() {
     console.log('Agent logged out successfully', response);
     loginAgentElm.disabled = false;
 
+     // Clear the timer when the agent logs out.
+     if (stateTimer) {
+      clearInterval(stateTimer);
+      stateTimer = null;
+    }
+
+    // Reset UI elements.
     setTimeout(() => {
       logoutAgentElm.classList.add('hidden');
       agentLogin.selectedIndex = 0;
+      timerElm.innerHTML = '00:00:00';
       updateUnregisterButtonState(); // Update unregister button state after logout
     }, 1000);
     

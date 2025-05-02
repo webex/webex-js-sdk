@@ -394,6 +394,44 @@ describe('TurnDiscovery', () => {
             'failure: TURN_DISCOVERY_RESPONSE in http response has unexpected messageType: {"seq":"0","messageType":"ERROR"}'
           );
         });
+
+        it('resets turnInfo each time TURN discovery is done', async () => {
+          const runCheck = async (td, turnUrl, expectedResult) => {
+            mockRoapRequest.sendRoap = sinon.fake.resolves({
+              mediaConnections: [
+                {
+                  mediaId: '464ff97f-4bda-466a-ad06-3a22184a2274',
+                  remoteSdp: `{"roapMessage": {"messageType":"TURN_DISCOVERY_RESPONSE","seq":"0","headers": ["x-cisco-turn-url=${turnUrl}","x-cisco-turn-username=${FAKE_TURN_USERNAME}","x-cisco-turn-password=${FAKE_TURN_PASSWORD}", "noOkInTransaction"]}}`,
+                },
+              ],
+            });
+
+            const result = td.doTurnDiscovery(testMeeting, false);
+
+            // check that TURN_DISCOVERY_REQUEST was sent
+            await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
+
+            // @ts-ignore
+            mockRoapRequest.sendRoap.resetHistory();
+
+            await checkResult(result, undefined, expectedResult);
+          };
+
+          const td = new TurnDiscovery(mockRoapRequest);
+
+          await runCheck(td, FAKE_TURN_URL1, {
+            urls: [FAKE_TURN_URL1],
+            username: FAKE_TURN_USERNAME,
+            password: FAKE_TURN_PASSWORD,
+          });
+
+          // call it again with different turn url, the result should not have the previous url
+          await runCheck(td, FAKE_TURN_URL2, {
+            urls: [FAKE_TURN_URL2],
+            username: FAKE_TURN_USERNAME,
+            password: FAKE_TURN_PASSWORD,
+          });
+        });
       });
     });
 

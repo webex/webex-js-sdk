@@ -9,6 +9,8 @@ import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
 import {LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import Task from '.';
+import MetricsManager from '../../metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -16,6 +18,7 @@ export default class TaskManager extends EventEmitter {
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
+  private metricsManager: MetricsManager;
   private static taskManager;
 
   /**
@@ -33,6 +36,7 @@ export default class TaskManager extends EventEmitter {
     this.taskCollection = {};
     this.webCallingService = webCallingService;
     this.webSocketManager = webSocketManager;
+    this.metricsManager = MetricsManager.getInstance();
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
   }
@@ -125,11 +129,19 @@ export default class TaskManager extends EventEmitter {
               ...payload.data,
               wrapUpRequired: true,
             });
-            this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
             task = this.updateTaskData(task, payload.data);
+            this.metricsManager.trackEvent(
+              METRIC_EVENT_NAMES.AGENT_RONA,
+              {
+                ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
+                taskId: payload.data.interactionId,
+                reason: payload.data.reason,
+              },
+              ['behavioral', 'operational']
+            );
             this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
@@ -157,7 +169,6 @@ export default class TaskManager extends EventEmitter {
               ...payload.data,
               wrapUpRequired: true,
             });
-            this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
@@ -166,7 +177,10 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONSULT_CREATED:
             // Received when self agent initiates a consult
-            task = this.updateTaskData(task, payload.data);
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConsulted: false, // This ensures that the task consult status is always reset
+            });
             // Do not emit anything since this be received only as a result of an API invocation(handled by a promise)
             break;
           case CC_EVENTS.AGENT_OFFER_CONSULT:
@@ -221,10 +235,30 @@ export default class TaskManager extends EventEmitter {
   }
 
   private updateTaskData(task: ITask, taskData: TaskData): ITask {
-    const currentTask = task.updateTaskData(taskData);
-    this.taskCollection[taskData.interactionId] = currentTask;
+    if (!task) {
+      return undefined;
+    }
 
-    return currentTask;
+    if (!taskData?.interactionId) {
+      LoggerProxy.warn('Received task update with missing interactionId', {
+        module: TASK_MANAGER_FILE,
+        method: 'updateTaskData',
+      });
+    }
+
+    try {
+      const currentTask = task.updateTaskData(taskData);
+      this.taskCollection[taskData.interactionId] = currentTask;
+
+      return currentTask;
+    } catch (error) {
+      LoggerProxy.error(`Failed to update task ${taskData.interactionId}`, {
+        module: TASK_MANAGER_FILE,
+        method: 'updateTaskData',
+      });
+
+      return task;
+    }
   }
 
   private removeTaskFromCollection(task: ITask) {
