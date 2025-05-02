@@ -777,6 +777,10 @@ describe('plugin-meetings', () => {
           }),
           false
         );
+        assert.deepEqual(
+          MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD'], undefined),
+          false
+        );
       });
     });
 

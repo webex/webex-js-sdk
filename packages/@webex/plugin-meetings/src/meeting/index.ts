@@ -2871,6 +2871,24 @@ export default class Meeting extends StatelessWebexPlugin {
         {state}
       );
     });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_ANNOTATION_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_ANNOTATION_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_REMOTE_DESKTOP_CONTROL_UPDATED,
+        {state}
+      );
+    });
   }
 
   /**
@@ -4268,6 +4286,22 @@ export default class Meeting extends StatelessWebexPlugin {
           canAnnotate: ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             policies: this.selfUserPolicies,
+          }),
+          canEnableAnnotation: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableAnnotation: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableRemoteDesktopControl: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_RDC_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableRemoteDesktopControl: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
           }),
         }) || changed;
     }

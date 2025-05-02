@@ -575,7 +575,8 @@ const MeetingUtil = {
 
   canUserRenameOthers: (displayHints) => displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS),
 
-  canShareWhiteBoard: (displayHints, policies) =>
+  // Default empty value for policies if we get an undefined value (ie permissionToken is not available)
+  canShareWhiteBoard: (displayHints, policies = {}) =>
     displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD) &&
     !!policies[SELF_POLICY.SUPPORT_WHITEBOARD],
 
