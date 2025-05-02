@@ -857,9 +857,7 @@ function updateUnregisterButtonState() {
   const isLoggedIn = webex?.cc?.agentProfile?.isAgentLoggedIn || 
     !logoutAgentElm.classList.contains('hidden');
   
-  unregisterBtn.disabled = isLoggedIn;
-  
-  console.log('Update unregister button state: isLoggedIn =', isLoggedIn, 'hasActiveTasks =', hasActiveTasks);
+  unregisterBtn.disabled = isLoggedIn;  
 }
 
 function register() {
