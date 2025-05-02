@@ -99,7 +99,7 @@ interface IInMeetingActions {
   isPracticeSessionOff?: boolean;
   canStartPracticeSession?: boolean;
   canStopPracticeSession?: boolean;
-  canShowPostMeetingDataConsentPrompt?: boolean;
+  requiresPostMeetingDataConsentPrompt?: boolean;
 }
 
 /**
@@ -286,7 +286,7 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canStopPracticeSession = null;
 
-  canShowPostMeetingDataConsentPrompt = null;
+  requiresPostMeetingDataConsentPrompt = null;
 
   /**
    * Returns all meeting action options
@@ -382,7 +382,7 @@ export default class InMeetingActions implements IInMeetingActions {
     isPracticeSessionOff: this.isPracticeSessionOff,
     canStartPracticeSession: this.canStartPracticeSession,
     canStopPracticeSession: this.canStopPracticeSession,
-    canShowPostMeetingDataConsentPrompt: this.canShowPostMeetingDataConsentPrompt,
+    requiresPostMeetingDataConsentPrompt: this.requiresPostMeetingDataConsentPrompt,
   });
 
   /**

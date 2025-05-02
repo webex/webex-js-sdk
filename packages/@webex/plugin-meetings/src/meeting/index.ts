@@ -4074,7 +4074,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this.inMeetingActions.canSendReactions,
             this.userDisplayHints
           ),
-          canShowPostMeetingDataConsentPrompt: MeetingUtil.canShowPostMeetingDataConsentPrompt(
+          requiresPostMeetingDataConsentPrompt: MeetingUtil.requiresPostMeetingDataConsentPrompt(
             this.userDisplayHints
           ),
           canManageBreakout: MeetingUtil.canManageBreakout(this.userDisplayHints),

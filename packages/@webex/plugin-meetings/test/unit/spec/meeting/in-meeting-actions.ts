@@ -94,7 +94,7 @@ describe('plugin-meetings', () => {
         isPracticeSessionOff: null,
         canStartPracticeSession: null,
         canStopPracticeSession: null,
-        canShowPostMeetingDataConsentPrompt: null,
+        requiresPostMeetingDataConsentPrompt: null,
 
         ...expected,
       };
@@ -195,7 +195,7 @@ describe('plugin-meetings', () => {
       'isPracticeSessionOff',
       'canStartPracticeSession',
       'canStopPracticeSession',
-      'canShowPostMeetingDataConsentPrompt',
+      'requiresPostMeetingDataConsentPrompt',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

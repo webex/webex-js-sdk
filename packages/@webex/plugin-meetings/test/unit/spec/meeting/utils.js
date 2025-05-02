@@ -744,15 +744,15 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('canShowPostMeetingDataConsentPrompt', () => {
+    describe('requiresPostMeetingDataConsentPrompt', () => {
       it('works as expected', () => {
         assert.deepEqual(
-          MeetingUtil.canShowPostMeetingDataConsentPrompt([
+          MeetingUtil.requiresPostMeetingDataConsentPrompt([
             'SHOW_POST_MEETING_DATA_CONSENT_PROMPT',
           ]),
           true
         );
-        assert.deepEqual(MeetingUtil.canShowPostMeetingDataConsentPrompt([]), false);
+        assert.deepEqual(MeetingUtil.requiresPostMeetingDataConsentPrompt([]), false);
       });
     });
 

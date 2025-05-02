@@ -10686,7 +10686,7 @@ describe('plugin-meetings', () => {
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
         let canSendReactionsSpy;
-        let canShowPostMeetingDataConsentPromptSpy;
+        let requiresPostMeetingDataConsentPromptSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
         let canShareWhiteBoardSpy;
@@ -10714,9 +10714,9 @@ describe('plugin-meetings', () => {
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
-          canShowPostMeetingDataConsentPromptSpy = sinon.spy(
+          requiresPostMeetingDataConsentPromptSpy = sinon.spy(
             MeetingUtil,
-            'canShowPostMeetingDataConsentPrompt'
+            'requiresPostMeetingDataConsentPrompt'
           );
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
           canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
@@ -11258,7 +11258,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(waitingForOthersToJoinSpy, userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, userDisplayHints);
-          assert.calledWith(canShowPostMeetingDataConsentPromptSpy, userDisplayHints);
+          assert.calledWith(requiresPostMeetingDataConsentPromptSpy, userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
           assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
 
