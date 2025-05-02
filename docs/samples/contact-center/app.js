@@ -25,7 +25,7 @@ const authStatusElm = document.querySelector('#access-token-status');
 const oauthFormElm = document.querySelector('#oauth');
 const oauthStatusElm = document.querySelector('#oauth-status');
 const registerBtn = document.querySelector('#webexcc-register');
-const unregisterBtn = document.querySelector('#webexcc-unregister'); // New unregister button
+const unregisterBtn = document.querySelector('#webexcc-unregister');
 const teamsDropdown = document.querySelector('#teamsDropdown');
 const agentLogin = document.querySelector('#AgentLogin');
 const loginAgentElm = document.querySelector('#loginAgent');
@@ -1182,7 +1182,6 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   updateTaskList();
   handleTaskSelect(currentTask);
   incomingDetailsElm.innerText = 'Task Accepted';
-  updateUnregisterButtonState();
 }
 
 function decline() {
@@ -1191,7 +1190,6 @@ function decline() {
   currentTask.decline(taskId);
   incomingDetailsElm.innerText = 'No incoming Tasks';
   updateTaskList();
-  updateUnregisterButtonState();
 }
 
 const allCollapsibleElements = document.querySelectorAll('.collapsible');
@@ -1338,7 +1336,6 @@ function wrapupCall() {
     endElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
     updateTaskList();
-    updateUnregisterButtonState();
   }).catch((error) => {
     console.error('Failed to wrap up the call', error);
     wrapupElm.disabled = false;
@@ -1380,7 +1377,6 @@ document.addEventListener(
 function updateTaskList() {
   const taskList = webex.cc.taskManager.getAllTasks(); // Update the global task list
   renderTaskList(taskList); // Render the updated task list
-  updateUnregisterButtonState();
 }
 
 function renderTaskList(taskList) {
