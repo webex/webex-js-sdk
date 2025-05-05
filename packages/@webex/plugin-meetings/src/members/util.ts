@@ -351,6 +351,22 @@ const MembersUtil = {
 
     return requestParams;
   },
+
+  getMoveMemberToLobbyRequestOptions: (memberId: string) => ({
+    moveToLobby: {
+      participantIds: [memberId],
+    },
+  }),
+
+  getMoveMemberToLobbyRequestParams: (options: {memberId: string; locusUrl: string}, body) => {
+    const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
+
+    return {
+      method: HTTP_VERBS.PATCH,
+      uri,
+      body,
+    };
+  },
 };
 
 export default MembersUtil;

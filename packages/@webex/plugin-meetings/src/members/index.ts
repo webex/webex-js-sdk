@@ -1088,4 +1088,30 @@ export default class Members extends StatelessWebexPlugin {
 
     return this.membersRequest.editDisplayNameMember(options);
   }
+
+  /**
+   * Moves a meeting member into the lobby.
+   *
+   * @param  {string} memberId               - The ID of the member to move.
+   * @returns {Promise<object>}              - Resolves with the lobby‐move response.
+   * @public
+   * @memberof Members
+   */
+  public moveToLobby(memberId: string) {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
+    }
+    if (!memberId) {
+      return Promise.reject(
+        new ParameterError('The member id must be defined to move the member to the lobby.')
+      );
+    }
+    const options = MembersUtil.getMoveMemberToLobbyRequestOptions(memberId);
+
+    return this.membersRequest.moveToLobbyMember({locusUrl: this.locusUrl, memberId}, options);
+  }
 }
