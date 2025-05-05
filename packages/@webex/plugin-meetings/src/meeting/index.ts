@@ -722,6 +722,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private rtcMetrics?: RtcMetrics;
   private uploadLogsTimer?: ReturnType<typeof setTimeout>;
   private logUploadIntervalIndex: number;
+  private mediaServerIp: string;
 
   /**
    * @param {Object} attrs
@@ -1598,6 +1599,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.#isoLocalClientMeetingJoinTime = undefined;
+
+    /**
+     * IP Address of remote media server
+     * @instance
+     * @type {number}
+     * @private
+     * @memberof Meeting
+     */
+    this.mediaServerIp = null;
   }
 
   /**
@@ -6329,6 +6339,11 @@ export default class Meeting extends StatelessWebexPlugin {
         ? MeetingsUtil.getMediaServer(roapMessage.sdp)
         : undefined;
 
+    const mediaServerIp =
+      roapMessage.messageType === 'ANSWER'
+        ? MeetingsUtil.getMediaServerIp(roapMessage.sdp)
+        : undefined;
+
     if (this.isMultistream && mediaServer && mediaServer !== 'homer') {
       throw new MultistreamNotSupportedError(
         `Client asked for multistream backend (Homer), but got ${mediaServer} instead`
@@ -6338,6 +6353,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (mediaServer) {
       this.mediaProperties.webrtcMediaConnection.mediaServer = mediaServer;
+    }
+
+    if (this.isMultistream && mediaServerIp) {
+      this.mediaServerIp = mediaServerIp;
     }
   };
 
@@ -7741,6 +7760,11 @@ export default class Meeting extends StatelessWebexPlugin {
       const reachabilityStats = await this.webex.meetings.reachability.getReachabilityMetrics();
       const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
 
+      const isSubnetReachable = this.getWebexObject().meetings.reachability.isSubnetReachable(
+        this.mediaConnections[0]?.mediaAgentCluster,
+        this.mediaServerIp
+      );
+
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
         correlation_id: this.correlationId,
         locus_id: this.locusUrl.split('/').pop(),
@@ -7750,6 +7774,7 @@ export default class Meeting extends StatelessWebexPlugin {
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
+        isSubnetReachable,
         ...reachabilityStats,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
@@ -7778,6 +7803,11 @@ export default class Meeting extends StatelessWebexPlugin {
         await this.mediaProperties.getCurrentConnectionInfo();
 
       const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
+
+      const isSubnetReachable = this.getWebexObject().meetings.reachability.isSubnetReachable(
+        this.mediaConnections[0]?.mediaAgentCluster,
+        this.mediaServerIp
+      );
 
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
         correlation_id: this.correlationId,
@@ -7808,6 +7838,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
           'unknown',
         ...reachabilityMetrics,
+        isSubnetReachable,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
       });

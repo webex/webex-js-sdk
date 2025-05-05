@@ -139,6 +139,26 @@ export default class Reachability extends EventsScope {
   }
 
   /**
+   * Checks if the given subnet is reachable
+   * @param {string} selectedCluster - cluster to check
+   * @param {string} mediaServerIp - media server ip
+   * @returns {boolean} true if reachable, false otherwise
+   * @public
+   * @memberof Reachability
+   */
+  public isSubnetReachable(selectedCluster: string, mediaServerIp: string): boolean {
+    const cluster = Object.values(this.clusterReachability).find((c) =>
+      c.name.startsWith(selectedCluster)
+    );
+
+    if (!cluster) {
+      return false;
+    }
+
+    return cluster.isMediaServerReachable(mediaServerIp);
+  }
+
+  /**
    * Gets a list of media clusters from the backend and performs reachability checks on all the clusters
    * @param {string} trigger - explains the reason for starting reachability
    * @returns {Promise<ReachabilityResults>} reachability results

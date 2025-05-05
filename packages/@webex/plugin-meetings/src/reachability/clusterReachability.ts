@@ -49,6 +49,7 @@ export class ClusterReachability extends EventsScope {
   private srflxIceCandidates: RTCIceCandidate[] = [];
   public readonly isVideoMesh: boolean;
   public readonly name;
+  private reachedSubnets: Set<string> = new Set();
 
   /**
    * Constructor for ClusterReachability
@@ -264,9 +265,15 @@ export class ClusterReachability extends EventsScope {
    * @param {string} protocol
    * @param {number} latency
    * @param {string|null} [publicIp]
+   * @param {string|null} [serverIp]
    * @returns {void}
    */
-  private saveResult(protocol: 'udp' | 'tcp' | 'xtls', latency: number, publicIp?: string | null) {
+  private saveResult(
+    protocol: 'udp' | 'tcp' | 'xtls',
+    latency: number,
+    publicIp?: string | null,
+    serverIp?: string | null
+  ) {
     const result = this.result[protocol];
 
     if (result.latencyInMilliseconds === undefined) {
@@ -293,6 +300,10 @@ export class ClusterReachability extends EventsScope {
       );
     } else {
       this.addPublicIP(protocol, publicIp);
+    }
+
+    if (serverIp) {
+      this.reachedSubnets.add(serverIp);
     }
   }
 
@@ -351,16 +362,25 @@ export class ClusterReachability extends EventsScope {
 
       if (e.candidate) {
         if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          this.saveResult('udp', latencyInMilliseconds, e.candidate.address);
+          let serverIp = null;
+          if ('url' in e.candidate) {
+            const regex = /stun:([\d.]+):\d+/;
+
+            const match = (e.candidate as any).url.match(regex);
+            if (match) {
+              // eslint-disable-next-line prefer-destructuring
+              serverIp = match[1];
+            }
+          }
+
+          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp);
 
           this.determineNatType(e.candidate);
         }
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
           const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
-          this.saveResult(protocol, latencyInMilliseconds);
-          // we don't add public IP for TCP, because in the case of relay candidates
-          // e.candidate.address is the TURN server address, not the client's public IP
+          this.saveResult(protocol, latencyInMilliseconds, null, e.candidate.address);
         }
 
         if (this.haveWeGotAllResults()) {
@@ -428,5 +448,29 @@ export class ClusterReachability extends EventsScope {
     this.registerIceCandidateListener();
 
     return this.defer.promise;
+  }
+
+  /**
+   * Checks if the media server is reachable
+   * @param {boolean} mediaServerIp - media server ip
+   * @returns {boolean} true if reachable, false otherwise
+   */
+  public isMediaServerReachable(mediaServerIp: string): boolean {
+    const subnetFirstOctet = mediaServerIp.split('.')[0];
+
+    const foundSubnet = Array.from(this.reachedSubnets).find((reachedSubnet) =>
+      reachedSubnet.startsWith(subnetFirstOctet)
+    );
+
+    if (!foundSubnet) {
+      let errorMessage = `Reachability:ClusterReachability#isSubnetReachable --> Subnet ${subnetFirstOctet} in ${this.name} is not reachable, reached subnets: \n`;
+      this.reachedSubnets.forEach((s) => {
+        errorMessage += `\t${s}\n`;
+      });
+
+      LoggerProxy.logger.error(errorMessage);
+    }
+
+    return !!foundSubnet;
   }
 }
