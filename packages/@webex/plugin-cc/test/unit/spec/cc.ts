@@ -843,6 +843,15 @@ describe('webex.cc', () => {
 
       expect(triggerSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, task);
     });
+
+    it(`should trigger TASK_WRAPPEDUP event with the taskid`, () => {
+      const task = {id: 'task1'};
+      const triggerSpy = jest.spyOn(webex.cc, 'trigger');
+
+      webex.cc['handleTaskWrappedUp'](task.id);
+
+      expect(triggerSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WRAPPEDUP, task.id);
+    });
   });
 
   describe('setAgentStatus', () => {

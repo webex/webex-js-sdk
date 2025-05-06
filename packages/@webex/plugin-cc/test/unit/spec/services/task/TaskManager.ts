@@ -747,11 +747,17 @@ describe('TaskManager', () => {
       },
     };
 
-    taskManager.taskCollection[taskId] = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(taskManager, 'emit');
 
+    const task = taskManager.taskCollection[taskId] = taskManager.getTask(taskId);
+    
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
     expect(taskManager.getTask(taskId)).toBeUndefined();
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_WRAPPEDUP,
+      taskId
+    );
   });
 
   // case default

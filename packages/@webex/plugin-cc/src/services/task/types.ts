@@ -54,6 +54,7 @@ export const TASK_EVENTS = {
   TASK_WRAPUP: 'task:wrapup',
   TASK_REJECT: 'task:rejected',
   TASK_HYDRATE: 'task:hydrate',
+  TASK_WRAPPEDUP: 'task:wrappedUp',
 } as const;
 
 export type TASK_EVENTS = Enum<typeof TASK_EVENTS>;

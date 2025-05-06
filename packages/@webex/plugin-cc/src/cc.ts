@@ -114,12 +114,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.trigger(TASK_EVENTS.TASK_HYDRATE, task);
   };
 
+  private handleTaskWrappedUp = (taskId: string) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_WRAPPEDUP, taskId);
+  };
+
   /**
    * An Incoming Call listener.
    */
   private incomingTaskListener() {
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+    this.taskManager.on(TASK_EVENTS.TASK_WRAPPEDUP, this.handleTaskWrappedUp);
   }
 
   /**
