@@ -177,11 +177,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+      this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebSocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
-      if (this.agentConfig.webRtcEnabled) {
+      if (
+        this.agentConfig.webRtcEnabled &&
+        this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
+      ) {
         this.taskManager.unregisterIncomingCallEvent();
 
         if (this.$webex.internal.mercury.connected) {

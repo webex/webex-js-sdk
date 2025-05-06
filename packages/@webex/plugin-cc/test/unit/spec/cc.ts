@@ -1366,7 +1366,8 @@ describe('webex.cc', () => {
     beforeEach(() => {
       webex.cc.agentConfig = {
         agentId: 'agentId',
-        webRtcEnabled: true, // set to true by default for testing
+        webRtcEnabled: true,
+        loginVoiceOptions: [LoginOption.BROWSER],
       };
 
       mockWebSocketManager = {
@@ -1452,6 +1453,24 @@ describe('webex.cc', () => {
       expect(webex.internal.mercury.off).not.toHaveBeenCalled();
       expect(mercuryDisconnectSpy).not.toHaveBeenCalled();
       expect(deviceUnregisterSpy).not.toHaveBeenCalled();
+    });
+
+    it('should skip internal mercury cleanup when loginVoiceOptions does not include BROWSER', async () => {
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: true,
+        loginVoiceOptions: ['EXTENSION'],
+      };
+
+      await webex.cc.deregister();
+
+      // mercury listeners & disconnect should not run
+      expect(webex.internal.mercury.off).not.toHaveBeenCalled();
+      expect(mercuryDisconnectSpy).not.toHaveBeenCalled();
+      expect(deviceUnregisterSpy).not.toHaveBeenCalled();
+
+      expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
+      expect(webex.cc.agentConfig).toBeNull();
     });
 
     it('should handle errors during unregister and track metrics', async () => {
