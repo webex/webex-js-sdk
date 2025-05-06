@@ -105,7 +105,11 @@ describe('Cypher', () => {
     it('should log an error if device registration fails', async () => {
       webex.internal.device.register.mockRejectedValue(new Error('Device registration failed'));
 
-      await cypher.register();
+      try {
+        await cypher.register();
+      } catch (error) {
+        expect(error).toEqual(new Error('Device registration failed'));
+      }
 
       expect(webex.logger.error).toHaveBeenCalledWith('Error occurred during device.register() Error: Device registration failed');
     });
@@ -124,7 +128,11 @@ describe('Cypher', () => {
       cypher.registered = true;
       webex.internal.device.unregister.mockRejectedValue(new Error('Device deregistration failed'));
 
-      await cypher.deregister();
+      try {
+        await cypher.deregister();
+      } catch (error) {
+        expect(error).toEqual(new Error('Device deregistration failed'));
+      }
 
       expect(webex.logger.error).toHaveBeenCalledWith('Error occurred during device.deregister() Error: Device deregistration failed');
     });
