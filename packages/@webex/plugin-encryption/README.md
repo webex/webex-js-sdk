@@ -2,11 +2,11 @@
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 
-> Encryption plugin for the Cisco Webex JS SDK.
+# Encryption plugin for the Cisco Webex JS SDK
 
 - [Install](#install)
 - [Usage](#usage)
-- [Development](#development)
+- [API Docs and Sample App](#api-docs-and-sample-app)
 - [Sample Code](#sample-code)
 - [Contribute](#contribute)
 - [Maintainers](#maintainers)
@@ -15,12 +15,27 @@
 ## Install
 
 ```bash
-npm install --save @webex/plugin-encryption
+npm install --save webex
+```
+
+In addition to the module consumption via NPMJS, this module can also be consumed via our CDN. See the below examples of how to consume this via CDN:
+
+```html
+<html>
+  <head>
+    <!-- via unpkg -->
+    <script crossorigin src="https://unpkg.com/webex@latest/umd/encryption.min.js"></script>
+
+    <!-- via jsdelivr -->
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/webex/umd/encryption.min.js"></script>
+  </head>
+  <!-- ...application html... -->
+</html>
 ```
 
 ## Usage
 
-This is a plugin for the Cisco Webex JS SDK . Please see our [developer portal](https://developer.webex.com/) and the [API reference](https://webex.github.io/webex-js-sdk/plugin-encryption/) for full details.
+This is a plugin for the Cisco Webex JS SDK. Please see our [developer portal](https://developer.webex.com/) and the [API reference](https://webex.github.io/webex-js-sdk/plugin-encryption/) for full details.
 
 ## API Docs and Sample App
 
@@ -40,7 +55,7 @@ const webex = Webex.init({
 });
 
 webex.once('ready', () => {
-  webex.cypher.register().then(() => {
+  webex.cypher.register().then( async () => {
     try {
       const attachmentURL = 'https:/myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
       const options = {
@@ -63,7 +78,7 @@ webex.cypher.deregister().then(() => {
 });
 ```
 
-#### Development
+## Development
 
 To use `webpack-dev-server` to load this package, run `yarn run samples:serve`.
 
