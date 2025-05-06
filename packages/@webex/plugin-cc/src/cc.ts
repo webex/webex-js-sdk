@@ -186,8 +186,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.agentConfig.webRtcEnabled &&
         this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
       ) {
-        this.taskManager.unregisterIncomingCallEvent();
-
         if (this.$webex.internal.mercury.connected) {
           this.$webex.internal.mercury.off('online');
           this.$webex.internal.mercury.off('offline');
