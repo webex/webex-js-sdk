@@ -112,10 +112,18 @@ class Cypher extends WebexPlugin implements IEncryption {
     // step 3: use the keyUri to decrypt the JWE to get the SCR
     // step 4: download the file from the fileUri and decrypt it using the SCR
 
-    // Parse the fileUri & JWE to get the keyUri using urlSearchParams
-    const url = new URL(fileUri);
-    let keyUri = url.searchParams.get('keyUri');
-    let JWE = url.searchParams.get('JWE');
+    let keyUri: string | undefined;
+    let JWE: string | undefined;
+    try {
+      const url = new URL(fileUri);
+      keyUri = url.searchParams.get('keyUri') ?? undefined;
+      JWE = url.searchParams.get('JWE') ?? undefined;
+    } catch (error) {
+      this.$webex.logger.error(`Cypher: Invalid fileUri: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to decrypt the JWE: ${(error as Error).message}\nStack: ${(error as Error).stack}`
+      );
+    }
 
     // Check if the keyUri and JWE are present, else take it from options
     if (!keyUri || !JWE) {
@@ -137,9 +145,13 @@ class Cypher extends WebexPlugin implements IEncryption {
       // Start the download and decryption process, returning a promise
       return this.$webex.internal.encryption.download(fileUri, scr, {useFileService});
     } catch (error) {
-      throw new Error(
-        `Failed to decrypt the JWE: ${(error as Error).message}\nStack: ${(error as Error).stack}`
+      const enhancedError = new Error(
+        `Failed to decrypt or download the file: ${(error as Error).message}\nStack: ${
+          (error as Error).stack
+        }`
       );
+      enhancedError.cause = error;
+      throw enhancedError;
     }
   }
 }
