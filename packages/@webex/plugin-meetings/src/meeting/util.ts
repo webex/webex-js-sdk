@@ -573,6 +573,9 @@ const MeetingUtil = {
   canUserRenameSelfAndObserved: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.CAN_RENAME_SELF_AND_OBSERVED),
 
+  requiresPostMeetingDataConsentPrompt: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.SHOW_POST_MEETING_DATA_CONSENT_PROMPT),
+
   canUserRenameOthers: (displayHints) => displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS),
 
   // Default empty value for policies if we get an undefined value (ie permissionToken is not available)
