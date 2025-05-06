@@ -28,7 +28,6 @@ require('@webex/plugin-teams');
 require('@webex/plugin-team-memberships');
 require('@webex/plugin-webhooks');
 require('@webex/plugin-encryption');
-require('@webex/plugin-cc');
 
 const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;

@@ -19,7 +19,7 @@ This project demonstrates how to interact with the Webex encryption service usin
 
 #### Authentication
 
-1. Navigate to <https://localhost:8000/samples/plugin-encryption>
+1. Navigate to [https://localhost:8000/samples/plugin-encryption](https://localhost:8000/samples/plugin-encryption)
 2. Get an access token from either the developer portal or from the agent desktop
 3. Make sure to select the environment to be integration or production
 4. Enter your access token in the "Access Token" field.
@@ -54,9 +54,9 @@ function initializeWebex(accessToken) {
 To decrypt a file, provide the encrypted file URL, the desired file name, and the MIME type.
 
 ```typescript
-async function decryptFile(webex, encryptedFileUrl, decryptedFileName, mimeType) {
+async function decryptFile(webex, encryptedFileUrl, options, decryptedFileName, mimeType) {
   try {
-    const decryptedFileBuf = await webex.cypher.downloadAndDecryptFile(encryptedFileUrl);
+    const decryptedFileBuf = await webex.cypher.downloadAndDecryptFile(encryptedFileUrl, options);
     const file = new File([decryptedFileBuf], decryptedFileName, { type: mimeType });
     const url = window.URL.createObjectURL(file);
     const a = document.createElement('a');
@@ -71,6 +71,15 @@ async function decryptFile(webex, encryptedFileUrl, decryptedFileName, mimeType)
     console.error('Error decrypting file:', error);
   }
 }
+
+const attachmentURL = 'https:/myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
+const options = {
+  useFileService: false,
+  jwe: somejwe, // Provide the JWE here if not already present in the attachmentURL
+  keyUri: someKeyUri // Provide the keyURI here if not already present in the attachmentURL
+};
+
+await decryptFile(webex, attachmentURL, options, 'MyFile.png', 'image/png');
 ```
 
 ### Example Usage

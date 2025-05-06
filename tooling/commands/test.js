@@ -168,7 +168,7 @@ module.exports = {
 
         /** Each package is run through testPackage util */
         for (const packageName of argv.packages) {
-          const onMocha = packageName === '@webex/plugin-encryption' || packageName === '@webex/plugin-meetings' || packageName === 'webex';
+          const onMocha = packageName === '@webex/plugin-meetings' || packageName === 'webex';
 
           await testPackage(argv, packageName, onMocha);
         }

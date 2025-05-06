@@ -47,6 +47,8 @@ class Cypher extends WebexPlugin implements IEncryption {
       })
       .catch((error) => {
         this.$webex.logger.error(`Error occurred during device.register() ${error}`);
+
+        throw error;
       });
   }
 
@@ -69,6 +71,8 @@ class Cypher extends WebexPlugin implements IEncryption {
       })
       .catch((error) => {
         this.$webex.logger.error(`Error occurred during device.deregister() ${error}`);
+
+        throw error;
       });
   }
 

@@ -44,7 +44,13 @@ const webex = new Webex({
 webex.once('ready', () => {
   webex.cypher.register().then(() => {
     try {
-      const decryptedFileBuf = await webex.cypher.downloadAndDecryptFile(attachmentURL);
+      const attachmentURL = 'https:/myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
+      const options = {
+        useFileService: false,
+        jwe: somejwe, // Provide the JWE here if not already present in the attachmentURL
+        keyUri: someKeyUri, // Provide the keyURI here if not already present in the attachmentURL
+      };
+      const decryptedFileBuf = await webex.cypher.downloadAndDecryptFile(attachmentURL, options);
       // Do something with the decrypted file buffer
     } catch (error) {
       // Handle error
@@ -55,7 +61,7 @@ webex.once('ready', () => {
 });
 ```
 
-#### Development
+## Development
 
 To use `webpack-dev-server` to load this package, run `yarn run samples:serve`.
 
