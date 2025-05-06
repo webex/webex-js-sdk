@@ -72,14 +72,14 @@ const Encryption = WebexPlugin.extend({
    * @param {Object} options - optional parameters to download a file
    * @returns {promise}
    */
-  download(fileUrl, scr, options) {
+  async download(fileUrl, scr, options) {
     /* istanbul ignore if */
     if (!fileUrl || !scr) {
       return Promise.reject(new Error('`scr` and `fileUrl` are required'));
     }
 
     const shunt = new EventEmitter();
-    const promise = this._fetchDownloadUrl(fileUrl, options)
+    const promise = this._fetchDownloadUrl(fileUrl, {useFileService: true, ...options})
       .then((uri) => {
         // eslint-disable-next-line no-shadow
         const options = {
@@ -114,6 +114,16 @@ const Encryption = WebexPlugin.extend({
       this.logger.info(
         'encryption: bypassing webex files because this looks to be a test file on localhost'
       );
+
+      return Promise.resolve(fileUrl);
+    }
+
+    if (options && options.useFileService === false) {
+      if (!fileUrl.startsWith('https://')) {
+        this.logger.error('encryption: direct file URLs must use HTTPS');
+
+        return Promise.reject(new Error('Direct file URLs must use HTTPS'));
+      }
 
       return Promise.resolve(fileUrl);
     }
@@ -188,7 +198,22 @@ const Encryption = WebexPlugin.extend({
       return Promise.reject(new Error('Cannot encrypt `scr` without first setting `loc`'));
     }
 
-    return this.getKey(key, options).then((k) => scr.toJWE(k.jwk));
+    // first we get the scr json, then we create an SCR instance using the key json and then we create a JWE using the key jwk
+    return this.getKey(key, options).then((k) => {
+      if (!k?.jwk) {
+        this.logger.error('encryption: Invalid key or JWK');
+        throw new Error('Invalid key or JWK');
+      }
+
+      return SCR.fromJSON(scr).then((encScr) => {
+        if (!encScr) {
+          this.logger.error('encryption: Failed to create SCR instance');
+          throw new Error('Failed to create SCR instance');
+        }
+
+        return encScr.toJWE(k.jwk);
+      });
+    });
   },
 
   /**
