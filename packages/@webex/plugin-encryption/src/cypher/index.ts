@@ -24,8 +24,7 @@ class Cypher extends WebexPlugin implements IEncryption {
    */
   constructor(...args: any[]) {
     super(...args);
-    // @ts-ignore
-    this.$webex = this.webex;
+    this.$webex = (this as WebexPlugin).webex as WebexSDK;
   }
 
   /**
@@ -86,7 +85,13 @@ class Cypher extends WebexPlugin implements IEncryption {
    *
    * @example
    * ```typescript
-   * const decryptedBuf = await webex.cypher.downloadAndDecryptFile('https://example.com/encrypted-file?JWE=eyJhbGci&keyUri=kms://example.com/keys/1234', {useFileService: false});
+   * const attachmentURL = 'https:/myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
+   * const options: FileDownloadOptions = {
+   *   useFileService: false,
+   *   jwe: somejwe, // Provide the JWE here if not already present in the attachmentURL
+   *   keyUri: someKeyUri, // Provide the keyURI here if not already present in the attachmentURL
+   * };
+   * const decryptedBuf = await webex.cypher.downloadAndDecryptFile(attachmentURL, options);
    * const file = new File([decryptedBuf], "myFileName.jpeg", {type: 'image/jpeg'});
    * ```
    */

@@ -22,20 +22,20 @@ npm install --save @webex/plugin-encryption
 
 ## Usage
 
-This is a plugin for the Cisco Webex JS SDK . Please see our [developer portal](https://developer.webex.com/) and the [API docs](https://webex.github.io/webex-js-sdk/api/) for full details.
+This is a plugin for the Cisco Webex JS SDK . Please see our [developer portal](https://developer.webex.com/) and the [API reference](https://webex.github.io/webex-js-sdk/plugin-encryption/) for full details.
 
 ## API Docs and Sample App
 
-API Docs: [https://webex.github.io/webex-js-sdk/api/](https://webex.github.io/webex-js-sdk/api/)
-Hosted Sample App: [https://webex.github.io/webex-js-sdk/samples/plugin-encryption/](https://webex.github.io/webex-js-sdk/samples/plugin-encryption/)
-See [https://github.com/webex/webex-js-sdk/tree/next/docs/samples/plugin-encryption](https://github.com/webex/webex-js-sdk/tree/next/docs/samples/plugin-encryption) for the sample app code vs the readme
+- API Reference: [https://webex.github.io/webex-js-sdk/plugin-encryption/](https://webex.github.io/webex-js-sdk/plugin-encryption/)
+- Hosted Sample App: [https://webex.github.io/webex-js-sdk/samples/plugin-encryption/](https://webex.github.io/webex-js-sdk/samples/plugin-encryption/)
+- See [https://github.com/webex/webex-js-sdk/tree/next/docs/samples/plugin-encryption](https://github.com/webex/webex-js-sdk/tree/next/docs/samples/plugin-encryption) for a reference implementation
 
 ## Sample Code
 
 ```typescript
-import { Webex } from '@webex/core';
+import Webex from 'webex/plugin-encryption';
 
-const webex = new Webex({
+const webex = Webex.init({
   credentials: {
     access_token
   }
@@ -59,15 +59,19 @@ webex.once('ready', () => {
     // Handle error
   });
 });
+
+webex.cypher.deregister().then(() => {
+// Do deregistration at your App's teardown
+});
 ```
 
-## Development
+#### Development
 
 To use `webpack-dev-server` to load this package, run `yarn run samples:serve`.
 
 Files placed in the `docs/samples/plugin-encryption` folder will be served statically.
 
-Files in the `src` folder will be compiled, bundled, and served as a static asset at `bundle.js` inside that directory.
+Files in the `src/@webex/plugin-encryption` folder will be compiled, bundled, and served as a static asset at `encryption.js` inside that directory.
 
 ## Maintainers
 

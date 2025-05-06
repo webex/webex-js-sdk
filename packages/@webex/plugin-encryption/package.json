@@ -14,6 +14,7 @@
   "types": "dist/types/index.d.ts",
   "scripts": {
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build:docs": "typedoc --out ../../../docs/plugin-encrption",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
     "deploy:npm": "yarn npm publish",
     "test:browser": "webex-legacy-tools test --integration --runner karma",
@@ -45,6 +46,7 @@
     "jsdom-global": "3.0.2",
     "prettier": "^2.7.1",
     "typed-emitter": "^2.1.0",
+    "typedoc": "0.23.26",
     "typescript": "^4.9.5"
   },
   "engines": {
