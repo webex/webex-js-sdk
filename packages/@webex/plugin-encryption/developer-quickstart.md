@@ -101,4 +101,4 @@ For more information on the Webex JS SDK, please visit the [developer portal](ht
 
 ### License
 
-This project is licensed under the Cisco General Terms - see the [LICENSE]([https://www.cisco.com/c/en/us/products/end-user-license-agreement.html](https://www.cisco.com/c/dam/en_us/about/doing_business/legal/Cisco_General_Terms.pdf)) for details.
+This project is licensed under the Cisco General Terms - see the [LICENSE](https://github.com/webex/webex-js-sdk/blob/next/LICENSE.md) for details.
