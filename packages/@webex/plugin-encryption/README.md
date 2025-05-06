@@ -12,8 +12,6 @@
 - [Maintainers](#maintainers)
 - [License](#license)
 
-# WARNING: This plugin is currently under active development
-
 ## Install
 
 ```bash
