@@ -13,7 +13,12 @@ import {
 import {LoginOption, WebexSDK} from '../types';
 import {TIMEOUT_DURATION, WEB_CALLING_SERVICE_FILE} from '../constants';
 import LoggerProxy from '../logger-proxy';
-import {DEFAULT_RTMS_DOMAIN, POST_AUTH, WCC_CALLING_RTMS_DOMAIN} from './constants';
+import {
+  DEFAULT_RTMS_DOMAIN,
+  POST_AUTH,
+  WCC_CALLING_RTMS_DOMAIN,
+  DEREGISTER_WEBCALLING_LINE_MSG,
+} from './constants';
 
 export default class WebCallingService extends EventEmitter {
   private callingClient: ICallingClient;
@@ -130,7 +135,7 @@ export default class WebCallingService extends EventEmitter {
   }
 
   public async deregisterWebCallingLine() {
-    LoggerProxy.log('Deregistering WebCalling line and cleaning up resources', {
+    LoggerProxy.log(DEREGISTER_WEBCALLING_LINE_MSG, {
       module: WEB_CALLING_SERVICE_FILE,
       method: 'deregisterWebCallingLine',
     });

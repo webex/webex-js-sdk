@@ -25,6 +25,8 @@ import {
   ATTRIBUTES,
   OUTDIAL_MEDIA_TYPE,
   OUTBOUND_TYPE,
+  UNKNOWN_ERROR,
+  MERCURY_DISCONNECTED_SUCCESS,
 } from './constants';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
@@ -192,7 +194,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           await this.$webex.internal.mercury.disconnect();
           // @ts-ignore
           await this.$webex.internal.device.unregister();
-          LoggerProxy.log('Mercury disconnected successfully', {
+          LoggerProxy.log(MERCURY_DISCONNECTED_SUCCESS, {
             module: CC_FILE,
             method: 'deregister',
           });
@@ -218,7 +220,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
         {
-          error: error.message || 'Unknown error',
+          error: error.message || UNKNOWN_ERROR,
         },
         ['operational']
       );
