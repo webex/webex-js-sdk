@@ -1428,17 +1428,34 @@ describe('webex.cc', () => {
         method: 'deregister',
       });
 
-      const taskIncomingOff = mockTaskManager.off.mock.calls.find(([evt]) => evt === TASK_EVENTS.TASK_INCOMING);
-      expect(taskIncomingOff[1]).toBe(webex.cc['handleIncomingTask']);
+      // verify listeners removed with correct callbacks
+      const incomingCalls = mockTaskManager.off.mock.calls.filter(
+        ([evt]) => evt === TASK_EVENTS.TASK_INCOMING
+      );
+      expect(incomingCalls).toHaveLength(1);
+      const [, incomingCallback] = incomingCalls[0];
+      expect(incomingCallback).toBe(webex.cc['handleIncomingTask']);
 
-      const taskHydrateOff = mockTaskManager.off.mock.calls.find(([evt]) => evt === TASK_EVENTS.TASK_HYDRATE);
-      expect(taskHydrateOff[1]).toBe(webex.cc['handleTaskHydrate']);
+      const hydrateCalls = mockTaskManager.off.mock.calls.filter(
+        ([evt]) => evt === TASK_EVENTS.TASK_HYDRATE
+      );
+      expect(hydrateCalls).toHaveLength(1);
+      const [, hydrateCallback] = hydrateCalls[0];
+      expect(hydrateCallback).toBe(webex.cc['handleTaskHydrate']);
 
-      const wsMessageOff = mockWebSocketManager.off.mock.calls.find(([evt]) => evt === 'message');
-      expect(wsMessageOff[1]).toBe(webex.cc['handleWebSocketMessage']);
+      const messageCalls = mockWebSocketManager.off.mock.calls.filter(
+        ([evt]) => evt === 'message'
+      );
+      expect(messageCalls).toHaveLength(1);
+      const [, messageCallback] = messageCalls[0];
+      expect(messageCallback).toBe(webex.cc['handleWebSocketMessage']);
 
-      const connLostOff = webex.cc.services.connectionService.off.mock.calls.find(([evt]) => evt === 'connectionLost');
-      expect(connLostOff[1]).toBe(webex.cc['handleConnectionLost']);
+      const connectionCalls = webex.cc.services.connectionService.off.mock.calls.filter(
+        ([evt]) => evt === 'connectionLost'
+      );
+      expect(connectionCalls).toHaveLength(1);
+      const [, connectionCallback] = connectionCalls[0];
+      expect(connectionCallback).toBe(webex.cc['handleConnectionLost']);
     });
 
     it('should skip webCallingService and internal cleanup when webrtc is disabled', async () => {
