@@ -79,6 +79,6 @@ Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/web
 
 ## License
 
-This project is licensed under the Cisco General Terms - see the [LICENSE]([https://www.cisco.com/c/en/us/products/end-user-license-agreement.html](https://www.cisco.com/c/dam/en_us/about/doing_business/legal/Cisco_General_Terms.pdf)) for details.
+This project is licensed under the Cisco General Terms - see the [LICENSE](https://www.cisco.com/c/dam/en_us/about/doing_business/legal/Cisco_General_Terms.pdf) for details.
 
 © 2016-2025 Cisco and/or its affiliates. All Rights Reserved.
