@@ -27,7 +27,12 @@ import {
   _SLIDES_,
   ANNOTATION,
 } from '../constants';
-import {SendReactionOptions, BrbOptions, ToggleReactionsOptions} from './request.type';
+import {
+  SendReactionOptions,
+  BrbOptions,
+  ToggleReactionsOptions,
+  PostMeetingDataConsentOptions,
+} from './request.type';
 import MeetingUtil from './util';
 import {AnnotationInfo} from '../annotation/annotation.types';
 import {ClientMediaPreferences} from '../reachability/reachability.types';
@@ -929,6 +934,36 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       body: {
         brb: {
           enabled,
+          deviceUrl,
+        },
+      },
+    });
+  }
+
+  /**
+   * Sends a request to set post meeting data consent.
+   *
+   * @param {Object} options - The options for post meeting data consent request.
+   * @param {boolean} options.consent - Whether accepted or declined.
+   * @param {string} options.locusUrl - The URL of the locus.
+   * @param {string} options.deviceUrl - The URL of the device.
+   * @param {string} options.selfId - The ID of the participant.
+   * @returns {Promise}
+   */
+  setPostMeetingDataConsent({
+    postMeetingDataConsent,
+    locusUrl,
+    deviceUrl,
+    selfId,
+  }: PostMeetingDataConsentOptions) {
+    const uri = `${locusUrl}/${PARTICIPANT}/${selfId}/${CONTROLS}`;
+
+    return this.locusDeltaRequest({
+      method: HTTP_VERBS.PATCH,
+      uri,
+      body: {
+        consent: {
+          postMeetingDataConsent,
           deviceUrl,
         },
       },

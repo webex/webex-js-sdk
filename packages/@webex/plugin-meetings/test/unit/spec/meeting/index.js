@@ -1,6 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
+import {v4 as uuidv4} from 'uuid';
 import 'jsdom-global/register';
 import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
@@ -10722,6 +10723,7 @@ describe('plugin-meetings', () => {
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
         let canSendReactionsSpy;
+        let requiresPostMeetingDataConsentPromptSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
         let canShareWhiteBoardSpy;
@@ -10749,6 +10751,10 @@ describe('plugin-meetings', () => {
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
+          requiresPostMeetingDataConsentPromptSpy = sinon.spy(
+            MeetingUtil,
+            'requiresPostMeetingDataConsentPrompt'
+          );
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
           canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
         });
@@ -11289,6 +11295,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(waitingForOthersToJoinSpy, userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, userDisplayHints);
+          assert.calledWith(requiresPostMeetingDataConsentPromptSpy, userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
           assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
 
@@ -13117,6 +13124,38 @@ describe('plugin-meetings', () => {
         it('stopKeepAlive handles missing keepAliveTimerId', async () => {
           assert.isNull(meeting.keepAliveTimerId);
           meeting.stopKeepAlive();
+        });
+      });
+
+      describe('#setPostMeetingDataConsent', () => {
+        it('should have #setPostMeetingDataConsent', () => {
+          assert.exists(meeting.setPostMeetingDataConsent);
+        });
+
+        beforeEach(() => {
+          meeting.meetingRequest.setPostMeetingDataConsent = sinon
+            .stub()
+            .returns(Promise.resolve());
+        });
+
+        [true, false].forEach((accept) => {
+          it(`should send consent with ${accept}`, async () => {
+            const id = uuidv4();
+            meeting.locusUrl = `https://locus-test.wbx2.com/locus/api/v1/loci/${accept}`;
+            meeting.deviceUrl = `https://wdm-test.wbx2.com/wdm/api/v1/devices/${accept}`;
+            meeting.members.selfId = id;
+
+            const consentPromise = meeting.setPostMeetingDataConsent(accept);
+
+            assert.exists(consentPromise.then);
+            await consentPromise;
+            assert.calledOnceWithExactly(meeting.meetingRequest.setPostMeetingDataConsent, {
+              locusUrl: `https://locus-test.wbx2.com/locus/api/v1/loci/${accept}`,
+              postMeetingDataConsent: accept,
+              selfId: id,
+              deviceUrl: `https://wdm-test.wbx2.com/wdm/api/v1/devices/${accept}`,
+            });
+          });
         });
       });
 
