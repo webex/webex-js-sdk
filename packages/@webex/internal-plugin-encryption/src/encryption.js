@@ -72,7 +72,7 @@ const Encryption = WebexPlugin.extend({
    * @param {Object} options - optional parameters to download a file
    * @returns {promise}
    */
-  async download(fileUrl, scr, options) {
+  download(fileUrl, scr, options) {
     /* istanbul ignore if */
     if (!fileUrl || !scr) {
       return Promise.reject(new Error('`scr` and `fileUrl` are required'));
@@ -140,12 +140,13 @@ const Encryption = WebexPlugin.extend({
     return this.request({
       method: 'POST',
       uri: url.format(endpointUrl),
-      body: options
-        ? {
-            ...inputBody,
-            allow: options.params.allow,
-          }
-        : inputBody,
+      body:
+        options?.params?.allow != null
+          ? {
+              ...inputBody,
+              allow: options.params.allow,
+            }
+          : inputBody,
     })
       .then((res) => {
         // eslint-disable-next-line no-shadow
