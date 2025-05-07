@@ -1809,6 +1809,7 @@ describe('plugin-meetings', () => {
                 await meeting.join();
                 joinSucceeded = true;
               } catch (e) {
+                assert.isTrue(e.handledBySdk)
                 assert.instanceOf(e, IntentToJoinError);
               }
               assert.isFalse(joinSucceeded);
@@ -1861,7 +1862,20 @@ describe('plugin-meetings', () => {
             });
           });
           it('should try to join the meeting and return promise reject', async () => {
-            await meeting.join().catch(() => {
+            await meeting.join().catch((e) => {
+              assert.isTrue(e.handledBySdk);
+              assert.calledOnce(MeetingUtil.joinMeeting);
+            });
+          });
+
+          it('should try to join the meeting and return deferred promise reject', async () => {
+
+            // call first
+            meeting.join();
+
+            // call 2nd time will get the deferred promise
+            await meeting.join().catch((e) => {
+              assert.isTrue(e.handledBySdk);
               assert.calledOnce(MeetingUtil.joinMeeting);
             });
           });

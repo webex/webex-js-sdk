@@ -48,6 +48,8 @@ export const METRIC_EVENT_NAMES = {
 
   UPLOAD_LOGS_SUCCESS: 'Upload Logs Success',
   UPLOAD_LOGS_FAILED: 'Upload Logs Failed',
+  WEBSOCKET_DEREGISTER_SUCCESS: 'Websocket Deregister Success',
+  WEBSOCKET_DEREGISTER_FAIL: 'Websocket Deregister Failed',
 } as const;
 
 // Derive the type using the utility type

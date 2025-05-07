@@ -25,6 +25,7 @@ const authStatusElm = document.querySelector('#access-token-status');
 const oauthFormElm = document.querySelector('#oauth');
 const oauthStatusElm = document.querySelector('#oauth-status');
 const registerBtn = document.querySelector('#webexcc-register');
+const deregisterBtn = document.querySelector('#webexcc-deregister');
 const teamsDropdown = document.querySelector('#teamsDropdown');
 const agentLogin = document.querySelector('#AgentLogin');
 const loginAgentElm = document.querySelector('#loginAgent');
@@ -68,6 +69,8 @@ const engageElm = document.querySelector('#engageWidget');
 let isBundleLoaded = false; // this is just to check before loading/using engage widgets
 const uploadLogsButton = document.getElementById('upload-logs');
 const uploadLogsResultElm = document.getElementById('upload-logs-result');
+
+deregisterBtn.style.backgroundColor = 'red';
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -850,10 +853,21 @@ function startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp) 
   }, 1000);
 }
 
+function updateUnregisterButtonState() {  
+  const isLoggedIn = webex?.cc?.agentProfile?.isAgentLoggedIn || 
+    !logoutAgentElm.classList.contains('hidden');
+  
+  deregisterBtn.disabled = isLoggedIn;  
+}
 
 function register() {
     webex.cc.register().then((agentProfile) => {
         registerStatus.innerHTML = 'Subscribed';
+        // Update button states upon successful registration
+        registerBtn.disabled = true;
+        deregisterBtn.disabled = false;
+        uploadLogsButton.disabled = false;
+        updateUnregisterButtonState();
         console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teams;
@@ -887,6 +901,7 @@ function register() {
         if (agentProfile.isAgentLoggedIn) {
           loginAgentElm.disabled = true;
           logoutAgentElm.classList.remove('hidden');
+          updateUnregisterButtonState();
         }
 
         const idleCodesList = agentProfile.idleCodes;
@@ -938,6 +953,45 @@ function register() {
     
 }
 
+// New function to handle unregistration
+function doDeRegister() {
+    webex.cc.deregister().then(() => {
+        console.log('Deregistered successfully');
+        registerStatus.innerHTML = 'Unregistered';
+        // Reset button states after unregister
+        registerBtn.disabled = false;
+        deregisterBtn.disabled = true;
+        uploadLogsButton.disabled = true;
+        
+        // Clear all dropdowns that are populated during registration
+        teamsDropdown.innerHTML = '';
+        idleCodesDropdown.innerHTML = '';
+        agentLogin.innerHTML = '<option value="" selected>Choose Agent Login ...</option>';
+        
+        // Clear timer display
+        if (stateTimer) {
+            clearInterval(stateTimer);
+            stateTimer = null;
+        }
+        if (timerElm) {
+            timerElm.innerHTML = '';
+        }
+        
+        // Reset other elements
+        dialNumber.value = '';
+        dialNumber.disabled = true;
+        loginAgentElm.disabled = true;
+        setAgentStatusButton.disabled = true;
+        
+        // Hide logout button if visible
+        logoutAgentElm.classList.add('hidden');
+    }).catch((error) => {
+        console.error('Unregister failed', error);
+    });
+}
+
+deregisterBtn.addEventListener('click', doDeRegister);
+
 function handleTaskHydrate(task) {
   currentTask = task;
 
@@ -948,9 +1002,8 @@ function handleTaskHydrate(task) {
     return;
   }
 
-
   handleTaskSelect(currentTask);
-  
+  updateUnregisterButtonState();
 }
 
 function populateWrapupCodesDropdown() {
@@ -984,6 +1037,7 @@ function doAgentLogin() {
     console.log('Agent Logged in successfully', response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
+    updateUnregisterButtonState();
     
     // Read auxCode and lastStateChangeTimestamp from login response
     const DEFAULT_CODE = '0'; // Default code when no aux code is present
@@ -1033,7 +1087,11 @@ function logoutAgent() {
       logoutAgentElm.classList.add('hidden');
       agentLogin.selectedIndex = 0;
       timerElm.innerHTML = '00:00:00';
+      updateUnregisterButtonState();
     }, 1000);
+    
+    // Add an immediate call to update button state
+    updateUnregisterButtonState();
   }
   ).catch((error) => {
     console.log('Agent logout failed', error);
@@ -1259,6 +1317,7 @@ function endCall() {
     console.log('task ended successfully by agent');
     updateButtonsPostEndCall();
     updateTaskList();
+    updateUnregisterButtonState();
   }).catch((error) => {
     console.error('Failed to end the call', error);
     endElm.disabled = false;

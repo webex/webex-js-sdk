@@ -5856,11 +5856,22 @@ export default class Meeting extends StatelessWebexPlugin {
           this
         );
 
-        joinFailed(error);
+        const proxyError = new Proxy(error, {
+          // eslint-disable-next-line require-jsdoc
+          get(target, prop) {
+            if (prop === 'handledBySdk') {
+              return true;
+            }
+
+            return Reflect.get(target, prop);
+          },
+        });
+
+        joinFailed(proxyError);
 
         this.deferJoin = undefined;
 
-        return Promise.reject(error);
+        return Promise.reject(proxyError);
       })
       .then((join) => {
         // @ts-ignore - config coming from registerPlugin
