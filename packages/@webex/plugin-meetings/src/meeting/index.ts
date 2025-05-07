@@ -5227,7 +5227,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @public
    * @memberof Meeting
    */
-  public reconnect(options?: object) {
+  public async reconnect(options?: object) {
     LoggerProxy.logger.log(
       `Meeting:index#reconnect --> attempting to reconnect meeting ${this.id}`
     );
@@ -5245,7 +5245,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     }
 
-    this.cleanUpBeforeReconnection();
+    await this.cleanUpBeforeReconnection();
 
     return this.reconnectionManager
       .reconnect(options, async () => {
@@ -7445,6 +7445,11 @@ export default class Meeting extends StatelessWebexPlugin {
     }
   }
 
+  /**
+   * Cleans up stats analyzer and media connection before we can reconnect
+   *
+   * @returns {Promise<void>}
+   */
   private async cleanUpBeforeReconnection(): Promise<void> {
     try {
       // when media fails, we want to upload a webrtc dump to see whats going on
@@ -7453,6 +7458,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
       if (this.statsAnalyzer) {
         await this.statsAnalyzer.stopAnalyzer();
+      }
+
+      if (this.mediaProperties.webrtcMediaConnection) {
+        this.mediaProperties.webrtcMediaConnection.closeMediaConnection();
       }
     } catch (error) {
       LoggerProxy.logger.error(
