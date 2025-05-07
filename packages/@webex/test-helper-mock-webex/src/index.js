@@ -16,7 +16,6 @@ const nonInternalPlugins = [
   'authorization',
   'cc',
   'credentials',
-  'cypher',
   'memberships',
   'messages',
   'logger',
