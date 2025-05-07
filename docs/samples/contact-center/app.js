@@ -575,6 +575,27 @@ function refreshUIPostConsult() {
   hideEndConsultButton();
 }
 
+// New: apply TaskManager button flags to DOM
+function applyTaskButtonsVisibility(task) {
+  const vis = task.data.buttonsVisibility || {};
+  answerElm.style.display           = vis.acceptButtonVisible    ? 'inline-block' : 'none';
+  declineElm.style.display          = vis.declineButtonVisible   ? 'inline-block' : 'none';
+  holdResumeElm.style.display       = vis.holdResumeButtonVisible? 'inline-block' : 'none';
+  pauseResumeRecordingElm.style.display = vis.recordingButtonVisible? 'inline-block' : 'none';
+  endElm.style.display              = vis.endButtonVisible       ? 'inline-block' : 'none';
+  wrapupElm.style.display           = vis.wrapupRequired         ? 'inline-block' : 'none';
+  wrapupCodesDropdownElm.style.display = vis.wrapupRequired      ? 'inline-block' : 'none';
+  transferElm.style.display         = vis.blindTransferButtonVisible ? 'inline-block' : 'none';
+  consultTabBtn.style.display       = vis.consultButtonVisible   ? 'inline-block' : 'none';
+  endConsultBtn.style.display       = vis.consultEndButtonVisible ? 'inline-block' : 'none';
+  consultTransferBtn.style.display  = vis.consultTransferButtonVisible ? 'inline-block' : 'none';
+  consultTransferBtn.disabled       = !vis.consultTransferEnabled;
+  // ensure correct pause/resume label
+  if (vis.pauseRecordingState !== undefined) {
+    pauseResumeRecordingElm.innerText = vis.pauseRecordingState ? 'Resume Recording' : 'Pause Recording';
+  }
+}
+
 // Register task listeners
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
@@ -617,17 +638,14 @@ function registerTaskListeners(task) {
   task.on('task:consultAccepted', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
       // When we accept an incoming consult
-      hideConsultButton();
-      showEndConsultButton();
-      consultTransferBtn.disabled = true; // Disable the consult transfer button since we are not yet owner of the call
+      applyTaskButtonsVisibility(task);
     }
   });
 
   task.on('task:consulting', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
       // When we are consulting with the other agent
-      consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
-      consultTransferBtn.disabled = false; // Enable the consult transfer button
+      applyTaskButtonsVisibility(task);
     }
   });
 
@@ -635,33 +653,21 @@ function registerTaskListeners(task) {
     // When trying to consult queue fails
     if (currentTask.data.interactionId === task.data.interactionId) {
       console.error(`Received task:consultQueueFailed for task: ${task.data.interactionId}`);
-      hideEndConsultButton();
-      showConsultButton();
+      applyTaskButtonsVisibility(task);
     }
   });
 
   task.on('task:consultQueueCancelled', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
-      // When we manually cancel consult to queue before it is accepted by other agent
-      console.log(`Received task:consultQueueCancelled for task: ${currentTask.data.interactionId}`);
       currentConsultQueueId = null;
-      hideEndConsultButton();
-      showConsultButton();
-      enableTransferControls();
-      enableCallControlPostConsult();
+      // restore both visibility and enabled/disabled per SDK flags
+      updateCallControlUI(task);
     }
   });
 
   task.on('task:consultEnd', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
-      hideEndConsultButton();
-      showConsultButton();
-      enableTransferControls();
-      enableCallControlPostConsult();
-      consultTransferBtn.style.display = 'none';
-      consultTransferBtn.disabled = true;
-      answerElm.disabled = true;
-      declineElm.disabled = true;
+      applyTaskButtonsVisibility(task);
       currentConsultQueueId = null;
       if(task.data.isConsulted) {
         updateButtonsPostEndCall();
@@ -703,27 +709,20 @@ function disableAllCallControls() {
 
 function updateCallControlUI(task) {
   const { data } = task;
-  const { interaction, mediaResourceId } = data;
-  const {
-    isTerminated,
-    media,
-    participants,
-    callProcessingDetails
-  } = interaction;
-  
 
-  if (task.data.wrapUpRequired) {
+  if (data.wrapUpRequired) {
     updateButtonsPostEndCall();
+    applyTaskButtonsVisibility(task);    // <— ensure display flags are updated
     return;
   }
   wrapupElm.disabled = true;
   wrapupCodesDropdownElm.disabled = true;
-  const hasParticipants = Object.keys(participants).length > 1;
-  const isNew = task.data.interaction.state === 'new';
+  const hasParticipants = Object.keys(data.interaction.participants).length > 1;
+  const isNew = data.interaction.state === 'new';
 
   if (isNew) {
     disableAllCallControls();
-  } else if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'email') {
+  } else if (data.interaction.mediaType === 'chat' || data.interaction.mediaType === 'email') {
     holdResumeElm.disabled = true;
     muteElm.disabled = true;
     pauseResumeRecordingElm.disabled = true;
@@ -732,10 +731,10 @@ function updateCallControlUI(task) {
     transferElm.disabled = false;
     endElm.disabled = !hasParticipants;
     pauseResumeRecordingElm.disabled = true;
-  } else if (task?.data?.interaction?.mediaType === 'telephony') {
+  } else if (data.interaction.mediaType === 'telephony') {
     // hold/resume call
-    const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
-    holdResumeElm.disabled = isTerminated;
+    const isHold = data.interaction.media && data.interaction.media[data.interaction.mediaResourceId] && data.interaction.media[data.interaction.mediaResourceId].isHold;
+    holdResumeElm.disabled = data.interaction.isTerminated;
     holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
     transferElm.disabled = false;
     muteElm.disabled = false;
@@ -743,25 +742,16 @@ function updateCallControlUI(task) {
     consultTabBtn.disabled = false;
     pauseResumeRecordingElm.disabled = false;
     pauseResumeRecordingElm.innerText = 'Pause Recording';
-    if (callProcessingDetails) {
-      const { pauseResumeEnabled, isPaused } = callProcessingDetails;
+    if (data.interaction.callProcessingDetails) {
+      const { pauseResumeEnabled, isPaused } = data.interaction.callProcessingDetails;
 
       // pause/resume recording
       // pauseResumeRecordingElm.disabled = !pauseResumeEnabled; // TODO: recheck after rajesh PR(https://github.com/webex/widgets/pull/427/files) and why it is undefined
       pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
     }
     
-    // end consult, consult transfer buttons
-    const { consultMediaResourceId, destAgentId, destinationType } = data;
-    if (consultMediaResourceId && destAgentId && destinationType) {
-      const destination = participants[destAgentId];
-      destinationTypeDropdown.value = destinationType;
-      consultDestinationInput.value = destination.dn; 
-
-      consultTabBtn.style.display = 'none';
-      endConsultBtn.style.display = 'inline-block';
-      consultTransferBtn.style.display = 'inline-block';
-    }
+    // apply central visibility flags
+    applyTaskButtonsVisibility(task);
   }
 }
 
@@ -1380,20 +1370,25 @@ function updateTaskList() {
 
 function renderTaskList(taskList) {
   const taskListContainer = document.getElementById('taskList');
-  taskListContainer.innerHTML = ''; // Clear existing tasks
 
   if (!taskList || Object.keys(taskList).length === 0) {
     disableAnswerDeclineButtons();
     incomingDetailsElm.innerText = '';
     disableAllCallControls();
+    // hide wrap-up when there are no tasks
     wrapupElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
+    wrapupElm.style.display            = 'none';
+    wrapupCodesDropdownElm.style.display = 'none';
+
     taskListContainer.innerHTML = '<p>No tasks available</p>';
     engageElm.innerHTML = ``;
     currentTask = undefined;
     return;
   }
-  
+
+  taskListContainer.innerHTML = ''; // Clear existing tasks
+
   // Keep track of last task for potential default selection
   let lastTask = null;
   let lastTaskId = null;

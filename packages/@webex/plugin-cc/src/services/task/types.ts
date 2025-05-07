@@ -195,6 +195,54 @@ export type TaskData = {
   isWebCallMute?: boolean;
   reservationInteractionId?: string;
   wrapUpRequired?: boolean;
+  buttonsVisibility?: TaskButtonsVisibility;
+  taskType: TaskType;
+  consultData?: TaskConsultInformation;
+};
+
+export enum TaskType {
+  REGULAR = 'regular',
+  OUTBOUND = 'outbound',
+  CONSULT = 'consult',
+}
+
+export type TaskButtonsVisibility = {
+  acceptButtonVisible: boolean;
+  declineButtonVisible: boolean;
+  holdResumeButtonVisible: boolean;
+  recordingButtonVisible: boolean;
+  pauseRecordingState: boolean;
+  endButtonVisible: boolean;
+  wrapupRequired: boolean;
+  blindTransferButtonVisible: boolean;
+  consultButtonVisible: boolean;
+  consultEndButtonVisible: boolean;
+  consultTransferButtonVisible: boolean;
+  consultTransferEnabled: boolean;
+};
+
+/**
+ * Consult task details
+ */
+export enum TaskConsultCurrentAgentRole {
+  SENDER = 'sender',
+  RECEIVER = 'receiver',
+}
+
+export enum TaskConsultType {
+  AGENT = 'agent',
+  QUEUE = 'queue',
+}
+
+export enum TaskConsultActiveStatus {
+  CONSULT_REQUESTED = 'consultRequested',
+  CONSULT_ACCEPTED = 'consultAccepted',
+}
+
+export type TaskConsultInformation = {
+  role: TaskConsultCurrentAgentRole;
+  type: TaskConsultType;
+  currentStatus: TaskConsultActiveStatus;
 };
 
 export type AgentContact = Msg<{

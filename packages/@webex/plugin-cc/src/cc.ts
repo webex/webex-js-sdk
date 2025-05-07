@@ -297,6 +297,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const agentId = data.agentId;
           const orgId = this.$webex.credentials.getOrgId();
           this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
+          // wire up end-button flags
+          this.taskManager.setProfileOptions({
+            isEndCallEnabled: this.agentConfig.isEndCallEnabled,
+            isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
+          });
           LoggerProxy.log(`Agent config is fetched successfully`, {
             module: CC_FILE,
             method: this.connectWebsocket.name,

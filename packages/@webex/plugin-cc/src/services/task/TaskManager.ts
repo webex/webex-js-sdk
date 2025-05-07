@@ -3,7 +3,19 @@ import {ICall, LINE_EVENTS} from '@webex/calling';
 import {WebSocketManager} from '../core/websocket/WebSocketManager';
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
-import {ITask, MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
+import {
+  ITask,
+  MEDIA_CHANNEL,
+  TASK_EVENTS,
+  TaskData,
+  TaskId,
+  TaskButtonsVisibility,
+  TaskType,
+  TaskConsultCurrentAgentRole,
+  TaskConsultType,
+  TaskConsultActiveStatus,
+  DESTINATION_TYPE,
+} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
 import {LoginOption} from '../../types';
@@ -20,6 +32,8 @@ export default class TaskManager extends EventEmitter {
   private webSocketManager: WebSocketManager;
   private metricsManager: MetricsManager;
   private static taskManager;
+  private isEndCallEnabled = true;
+  private isEndConsultEnabled = true;
 
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
@@ -39,6 +53,11 @@ export default class TaskManager extends EventEmitter {
     this.metricsManager = MetricsManager.getInstance();
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
+  }
+
+  public setProfileOptions(options: {isEndCallEnabled: boolean; isEndConsultEnabled: boolean}) {
+    this.isEndCallEnabled = options.isEndCallEnabled;
+    this.isEndConsultEnabled = options.isEndConsultEnabled;
   }
 
   private handleIncomingWebCall = (call: ICall) => {
@@ -76,7 +95,7 @@ export default class TaskManager extends EventEmitter {
         }
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
-            task = new Task(this.contact, this.webCallingService, {
+            task = this.createTask({
               ...payload.data,
               wrapUpRequired:
                 payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp || false,
@@ -85,10 +104,10 @@ export default class TaskManager extends EventEmitter {
             this.emit(TASK_EVENTS.TASK_HYDRATE, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            task = new Task(this.contact, this.webCallingService, {
+            task = this.createTask({
               ...payload.data,
               isConsulted: false,
-            }); // Ensure isConsulted prop exists
+            });
             this.taskCollection[payload.data.interactionId] = task;
             if (
               this.webCallingService.loginOption !== LoginOption.BROWSER ||
@@ -248,6 +267,7 @@ export default class TaskManager extends EventEmitter {
 
     try {
       const currentTask = task.updateTaskData(taskData);
+      this.setButtonsVisibility(currentTask);
       this.taskCollection[taskData.interactionId] = currentTask;
 
       return currentTask;
@@ -259,6 +279,126 @@ export default class TaskManager extends EventEmitter {
 
       return task;
     }
+  }
+
+  private createTask(data: TaskData): ITask {
+    const task = new Task(this.contact, this.webCallingService, data);
+    this.setButtonsVisibility(task);
+
+    return task;
+  }
+
+  private setButtonsVisibility(task: ITask): void {
+    const ev = task.data.type;
+    task.data.taskType = TaskType.REGULAR;
+    const visibility: TaskButtonsVisibility = {
+      acceptButtonVisible: false,
+      declineButtonVisible: false,
+      holdResumeButtonVisible: false,
+      recordingButtonVisible: false,
+      pauseRecordingState: false,
+      endButtonVisible: false,
+      wrapupRequired: task.data.wrapUpRequired || false,
+      blindTransferButtonVisible: false,
+      consultButtonVisible: false,
+      consultEndButtonVisible: false,
+      consultTransferButtonVisible: false,
+      consultTransferEnabled: false,
+    };
+
+    switch (ev) {
+      case CC_EVENTS.AGENT_CONTACT:
+      case CC_EVENTS.AGENT_OFFER_CONTACT:
+        visibility.acceptButtonVisible = true;
+        visibility.declineButtonVisible = true;
+        break;
+
+      case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
+        visibility.holdResumeButtonVisible = true;
+        visibility.recordingButtonVisible = true;
+        visibility.blindTransferButtonVisible = true;
+        visibility.consultButtonVisible = true;
+        visibility.endButtonVisible = true;
+        break;
+
+      case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
+      case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
+        // all buttons false
+        break;
+
+      case CC_EVENTS.AGENT_CONSULT_CREATED:
+        task.data.taskType = TaskType.CONSULT;
+        task.data.consultData = {
+          role: TaskConsultCurrentAgentRole.SENDER,
+          type:
+            task.data.destinationType === DESTINATION_TYPE.QUEUE
+              ? TaskConsultType.QUEUE
+              : TaskConsultType.AGENT,
+          currentStatus: TaskConsultActiveStatus.CONSULT_REQUESTED,
+        };
+        visibility.consultEndButtonVisible = true;
+        visibility.consultTransferButtonVisible = true;
+        break;
+
+      case CC_EVENTS.AGENT_OFFER_CONSULT:
+        task.data.taskType = TaskType.CONSULT;
+        task.data.consultData = {
+          role: TaskConsultCurrentAgentRole.RECEIVER,
+          type: task.data.consultData?.type,
+          currentStatus: TaskConsultActiveStatus.CONSULT_ACCEPTED,
+        };
+        visibility.consultEndButtonVisible = true;
+        visibility.consultTransferButtonVisible = true;
+        break;
+
+      case CC_EVENTS.AGENT_CONSULTING:
+        task.data.taskType = TaskType.CONSULT;
+        task.data.consultData = {
+          role: task.data.consultData?.role,
+          type: task.data.consultData?.type,
+          currentStatus: TaskConsultActiveStatus.CONSULT_ACCEPTED,
+        };
+        visibility.consultEndButtonVisible = true;
+        visibility.consultTransferButtonVisible = true;
+        visibility.consultTransferEnabled = true;
+        break;
+
+      case CC_EVENTS.AGENT_CONSULT_FAILED:
+      case CC_EVENTS.AGENT_CTQ_CANCELLED:
+        delete task.data.consultData;
+        visibility.holdResumeButtonVisible = true;
+        visibility.recordingButtonVisible = true;
+        visibility.blindTransferButtonVisible = true;
+        visibility.consultButtonVisible = true;
+        visibility.endButtonVisible = true;
+        break;
+
+      case CC_EVENTS.AGENT_CONSULT_ENDED:
+        delete task.data.consultData;
+        visibility.holdResumeButtonVisible = true;
+        visibility.recordingButtonVisible = true;
+        visibility.blindTransferButtonVisible = true;
+        visibility.consultButtonVisible = true;
+        visibility.endButtonVisible = true;
+        break;
+
+      case CC_EVENTS.AGENT_WRAPPEDUP:
+        task.data.buttonsVisibility = undefined;
+
+        return;
+
+      default:
+        break;
+    }
+
+    if (!this.isEndCallEnabled) {
+      visibility.endButtonVisible = false;
+    }
+    if (!this.isEndConsultEnabled) {
+      visibility.consultEndButtonVisible = false;
+    }
+
+    task.data.buttonsVisibility = visibility;
   }
 
   private removeTaskFromCollection(task: ITask) {
