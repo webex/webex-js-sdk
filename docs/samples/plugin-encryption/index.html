@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Encryption Kitchen Sink</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <main class="container">
+    <div style="display: flex; justify-content: center;">
+      <article id="docs-content" class="docs">
+
+        <!-- ############################## ############################## ############################## -->
+        <section>
+          <h2>Webex - encryption</h2>
+          <p>Use this kitchen sink to interact with the Webex encryption service</p>
+        </section>
+
+        <!-- ############################## ############################## ############################## -->
+        <!-- authentication -->
+        <section id="authentication">
+          <h2 class="collapsible">Authentication</h2>
+          <div class="section-content">
+            <p class="note"><strong>Note:</strong> Get an access token from our developer portal: <a
+                href="https://developer.webex.com/docs/api/getting-started"
+                target="_blank">https://developer.webex.com/docs/api/getting-started</a>.</p>
+            <p class="note"><strong>Note:</strong> Webex JS SDK must be initialized using a valid token.</p>
+
+            <!-- authentication-credentials -->
+            <form id="credentials">
+                <fieldset>
+                  <legend>Credentials</legend>
+                  <div class="u-mv">
+                    <p class="note">Initializes webex object and registers Webex JS SDK as a device.</p>
+                    <button id="enableProduction" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
+                    <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" style="margin: 1rem 0 0.5rem 0;" required>
+                  </div>
+
+                  <button id="access-token-save" class="btn-code" type="submit">Initialize Webex</button>
+                  <pre id="access-token-status">Not initialized</pre>
+                  <button id="register-btn" class="btn-code" disabled onclick="register()">Register</button>
+                  <button id="deregister-btn" class="btn-code" disabled onclick="deregister()">Deregister</button>
+                </fieldset>
+              </form>
+          </div>
+        </section>
+
+        <section id="encryptionActions">
+          <h2 class="collapsible">Encryption Actions</h2>
+          <div class="section-content">
+            <fieldset>
+              <legend>Decrypt files</legend>
+              <div class="u-mv">
+                <div>
+                  File URL: <input id="encrypted-file-url" required value="" type="string" style="margin-bottom: 0.5rem;">
+                </div>
+                <div>
+                  Use File Service?(leave unchecked if you are unsure): <input id="use-file-service" type="checkbox" style="margin-bottom: 0.5rem;">
+                </div>
+                <div>
+                  JWE: <input id="encrypted-file-jwe" value="" style="margin-bottom: 0.5rem;" placeholder="Optional">
+                </div>
+                <div>
+                  keyURI: <input id="encrypted-file-keyURI" value="" style="margin-bottom: 0.5rem;" placeholder="Optional">
+                </div>
+                <div>
+                  File Name: <input id="decrypted-file-name" value="my-decrypted-file.jpeg" type="string" style="display: inline-block; margin-bottom: 0.5rem;">
+                  <!-- A dropdown with common MIME types -->
+                  File Type: <select name="mime-types" id="mime-types" style="display: inline-block;">
+                    <option value="image/jpeg">image/jpeg</option>
+                    <option value="image/png">image/png</option>
+                    <option value="application/json">application/json</option>
+                    <option value="application/javascript">application/javascript</option>
+                    <option value="application/pdf">application/pdf</option>
+                    <option value="application/xml">application/xml</option>
+                    <option value="application/zip">application/zip</option>
+                    <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+                    <option value="application/vnd.ms-excel">application/vnd.ms-excel</option>
+                    <option value="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</option>
+                    <option value="application/vnd.ms-powerpoint">application/vnd.ms-powerpoint</option>
+                    <option value="application/vnd.openxmlformats-officedocument.presentationml.presentation">application/vnd.openxmlformats-officedocument.presentationml.presentation</option>
+                    <option value="application/msword">application/msword</option>
+                    <option value="application/vnd.openxmlformats-officedocument.wordprocessingml.document">application/vnd.openxmlformats-officedocument.wordprocessingml.document</option>
+                    <option value="audio/mpeg">audio/mpeg</option>
+                    <option value="audio/ogg">audio/ogg</option>
+                    <option value="audio/wav">audio/wav</option>
+                    <option value="audio/webm">audio/webm</option>
+                    <option value="image/bmp">image/bmp</option>
+                    <option value="image/gif">image/gif</option>
+                    <option value="image/svg+xml">image/svg+xml</option>
+                    <option value="image/tiff">image/tiff</option>
+                    <option value="image/webp">image/webp</option>
+                    <option value="text/css">text/css</option>
+                    <option value="text/csv">text/csv</option>
+                    <option value="text/html">text/html</option>
+                    <option value="text/plain">text/plain</option>
+                    <option value="text/javascript">text/javascript</option>
+                    <option value="video/mp4">video/mp4</option>
+                    <option value="video/mpeg">video/mpeg</option>
+                    <option value="video/ogg">video/ogg</option>
+                    <option value="video/webm">video/webm</option>
+                  </select>
+                </div>
+                <button type="button" id="decrypt-my-file-btn" onclick="decryptFile()" class="btn" style="display: block;">
+                  <div>Download and decrypt my file<span id="decrypt-file-result"></span> </div>
+                </button>
+            </fieldset>
+          </div>
+        </section>
+
+      </article>
+    </div>
+  </main>
+  <script src="../encryption.min.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>

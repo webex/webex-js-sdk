@@ -20,3 +20,7 @@ export const OUTDIAL_DIRECTION = 'OUTBOUND';
 export const ATTRIBUTES = {};
 export const OUTDIAL_MEDIA_TYPE = 'telephony';
 export const OUTBOUND_TYPE = 'OUTDIAL';
+
+// add these:
+export const UNKNOWN_ERROR = 'Unknown error';
+export const MERCURY_DISCONNECTED_SUCCESS = 'Mercury disconnected successfully';

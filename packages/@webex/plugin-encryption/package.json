@@ -1,0 +1,56 @@
+{
+  "name": "@webex/plugin-encryption",
+  "description": "Encryption plugin for the Cisco Webex JS SDK",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/plugin-encryption"
+  },
+  "license": "https://github.com/webex/webex-js-sdk/blob/next/LICENSE.md",
+  "contributors": [
+    "Bharath Balan <bhabalan@cisco.com>"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/types/index.d.ts",
+  "scripts": {
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build:docs": "typedoc --out ../../../docs/plugin-encrption",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
+    "deploy:npm": "yarn npm publish",
+    "test:browser": "webex-legacy-tools test --integration --runner karma",
+    "test:style": "eslint ./src/**/*.*",
+    "test:unit": "webex-legacy-tools test --unit --runner jest"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "dependencies": {
+    "@webex/internal-plugin-encryption": "workspace:*",
+    "@webex/webex-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@babel/preset-typescript": "7.22.11",
+    "@types/jsdom": "^21",
+    "@webex/babel-config-legacy": "workspace:*",
+    "@webex/eslint-config-legacy": "workspace:*",
+    "@webex/jest-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
+    "@webex/test-helper-mock-webex": "workspace:*",
+    "eslint": "^8.24.0",
+    "jest-html-reporters": "3.0.11",
+    "jest-junit": "13.0.0",
+    "jsdom": "19.0.0",
+    "jsdom-global": "3.0.2",
+    "prettier": "^2.7.1",
+    "typed-emitter": "^2.1.0",
+    "typedoc": "0.23.26",
+    "typescript": "^4.9.5"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "devMain": "src/index.js"
+}

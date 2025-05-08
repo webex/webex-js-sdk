@@ -73,9 +73,6 @@ export default class TaskManager extends EventEmitter {
       if (payload.data?.type) {
         if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
           task = this.taskCollection[payload.data.interactionId];
-          if (task) {
-            task.emit(payload.data.type, payload.data);
-          }
         }
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
@@ -229,6 +226,9 @@ export default class TaskManager extends EventEmitter {
             break;
           default:
             break;
+        }
+        if (task) {
+          task.emit(payload.data.type, payload.data);
         }
       }
     });
