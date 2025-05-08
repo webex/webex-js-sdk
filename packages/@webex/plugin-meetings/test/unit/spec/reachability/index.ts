@@ -2686,3 +2686,34 @@ describe('sendMetric', () => {
     });
   });
 });
+
+describe('isSubnetReachable', () => {
+  let webex;
+  let reachability;
+
+  beforeEach(() => {
+    webex = new MockWebex();
+    reachability = new TestReachability(webex);
+
+    reachability.setFakeClusterReachability({
+      cluster1: {
+        reachedSubnets: new Set(['1.2.3.4', '2.3.4.5']),
+      },
+      cluster2: {
+        reachedSubnets: new Set(['3.4.5.6', '4.5.6.7']),
+      },
+    });
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it('returns true if the subnet is reachable', () => {
+    assert(reachability.isSubnetReachable('1.2.3.4'));
+  });
+
+  it('returns false if the subnet is not reachable', () => {
+    assert(!reachability.isSubnetReachable('11.2.3.4'));
+  });
+});

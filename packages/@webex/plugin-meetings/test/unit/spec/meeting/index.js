@@ -253,6 +253,7 @@ describe('plugin-meetings', () => {
       getReachabilityResults: sinon.stub().resolves(undefined),
       getReachabilityMetrics: sinon.stub().resolves({}),
       stopReachability: sinon.stub(),
+      isSubnetReachable: sinon.stub().returns(true),
     };
     webex.internal.llm.on = sinon.stub();
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
@@ -2108,6 +2109,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
             }),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
           };
 
           const forceRtcMetricsSend = sinon.stub().resolves();
@@ -2163,6 +2165,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
+              isSubnetReachable: true,
               numTransports: 1,
               iceCandidatesCount: 0,
             }
@@ -2209,6 +2212,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
+              isSubnetReachable: true,
             })
           );
 
@@ -2223,6 +2227,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }),
+            isSubnetReachable: sinon.stub().returns(true),
           };
 
           meeting.waitForRemoteSDPAnswer = sinon.stub().rejects();
@@ -2273,6 +2278,7 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
+              isSubnetReachable: true,
             }
           );
         });
@@ -2330,6 +2336,7 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
+              isSubnetReachable: true,
             })
           );
 
@@ -2387,6 +2394,7 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
+              isSubnetReachable: true,
             })
           );
 
@@ -2724,6 +2732,7 @@ describe('plugin-meetings', () => {
             isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
             getReachabilityMetrics: sinon.stub().resolves(),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
           };
           const MOCK_CLIENT_ERROR_CODE = 2004;
           const generateClientErrorCodeForIceFailureStub = sinon
@@ -2903,6 +2912,7 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
+              isSubnetReachable: true,
             },
           ]);
 
@@ -2933,6 +2943,7 @@ describe('plugin-meetings', () => {
               .resolves(false),
             getReachabilityMetrics: sinon.stub().resolves({}),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
           };
           const getErrorPayloadForClientErrorCodeStub =
             (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
@@ -3100,6 +3111,7 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: true,
               isJoinWithMediaRetry: false,
               iceCandidatesCount: 0,
+              isSubnetReachable: true,
             },
           ]);
           meeting.roap.doTurnDiscovery;
@@ -3228,6 +3240,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
             }),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
           };
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
@@ -3255,6 +3268,7 @@ describe('plugin-meetings', () => {
               iceCandidatesCount: 3,
               '701_error': 3,
               '701_turn_host_lookup_received_error': 1,
+              isSubnetReachable: true,
             }
           );
 
@@ -3317,6 +3331,7 @@ describe('plugin-meetings', () => {
               iceConnectionState: 'unknown',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
+              isSubnetReachable: true,
               iceCandidatesCount: 0,
             }
           );
@@ -3378,6 +3393,7 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               '701_error': 2,
               '701_turn_host_lookup_received_error': 1,
+              isSubnetReachable: true,
               iceCandidatesCount: 0,
             }
           );

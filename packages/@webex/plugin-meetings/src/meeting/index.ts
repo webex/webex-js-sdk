@@ -7760,7 +7760,8 @@ export default class Meeting extends StatelessWebexPlugin {
       const reachabilityStats = await this.webex.meetings.reachability.getReachabilityMetrics();
       const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
 
-      const isSubnetReachable = this.getWebexObject().meetings.reachability.isSubnetReachable(
+      // @ts-ignore
+      const isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(
         this.mediaServerIp
       );
 
@@ -7803,7 +7804,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
 
-      const isSubnetReachable = this.getWebexObject().meetings.reachability.isSubnetReachable(
+      // @ts-ignore
+      const isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(
         this.mediaServerIp
       );
 

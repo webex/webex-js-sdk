@@ -164,7 +164,7 @@ export default class Reachability extends EventsScope {
           acc.add(cluster.name);
         }
 
-        logMessage += `${reachedSubnetFirstOctet}.X.X.X`;
+        logMessage += `${subnet}`;
         if (i < reachedSubnetsArray.length - 1) {
           logMessage += ',';
         }
