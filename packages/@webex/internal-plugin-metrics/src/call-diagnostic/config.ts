@@ -133,6 +133,7 @@ export const ERROR_DESCRIPTIONS = {
   SDP_OFFER_CREATION_ERROR: 'SdpOfferCreationError',
   SDP_OFFER_CREATION_ERROR_MISSING_CODEC: 'SdpOfferCreationErrorMissingCodec',
   WDM_RESTRICTED_REGION: 'WdmRestrictedRegion',
+  USER_NOT_ALLOWED_JOIN_WEBINAR: 'UserNotAllowedJoinWebinar',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
