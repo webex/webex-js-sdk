@@ -400,12 +400,15 @@ describe('ClusterReachability', () => {
     });
 
     it('should gather correctly reached subnets', async () => {
-      clusterReachability.start();
+      const promise = clusterReachability.start();
 
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', url: 'stun:1.2.3.4:5004'}});
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', url: 'stun:4.3.2.1:5004'}});
       fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp'}});
+
+      clusterReachability.abort();
+      await promise;
 
       assert.deepEqual(Array.from(clusterReachability.reachedSubnets), [
         '1.2.3.4',
@@ -415,12 +418,15 @@ describe('ClusterReachability', () => {
     });
 
     it('should store only unique subnet address', async () => {
-      clusterReachability.start();
+      const promise = clusterReachability.start();
 
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', url: 'stun:1.2.3.4:5004'}});
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', url: 'stun:1.2.3.4:9000'}});
       fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: '1.2.3.4'}});
+
+      clusterReachability.abort();
+      await promise;
 
       assert.deepEqual(Array.from(clusterReachability.reachedSubnets), ['1.2.3.4']);
     });
@@ -430,12 +436,7 @@ describe('ClusterReachability', () => {
 
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp1'}});
-
-      // generate more candidates
-      await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp2'}});
-
-      await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp3'}});
 
       clusterReachability.abort();
