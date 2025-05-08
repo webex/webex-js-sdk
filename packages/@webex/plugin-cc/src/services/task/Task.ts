@@ -67,7 +67,7 @@ export default abstract class Task extends EventEmitter {
     throw new Error('Method not implemented.');
   }
 
-  updateTaskData(newData: TaskData): ITask {
+  updateTaskData(): ITask {
     throw new Error('Method not implemented.');
   }
 

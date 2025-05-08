@@ -2,7 +2,7 @@ import {CC_FILE} from '../../constants';
 import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
 import {ConsultPayload, ResumeRecordingPayload, TaskData, TaskResponse} from './types';
-import Task from './Task';
+import Task, {TaskUIControls} from './Task';
 import LoggerProxy from '../../logger-proxy';
 
 export default class Voice extends Task {
