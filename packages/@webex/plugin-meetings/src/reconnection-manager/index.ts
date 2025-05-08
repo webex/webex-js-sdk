@@ -4,6 +4,7 @@
 
 /* eslint-disable no-warning-comments */
 
+import {BrowserInfo} from '@webex/web-capabilities';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
 import {
@@ -592,8 +593,21 @@ export default class ReconnectionManager {
     const iceServers = [];
 
     if (turnServerResult.turnServerInfo?.urls.length > 0) {
+      const turnTcpIceServers = [];
+
+      if (!BrowserInfo.isFirefox()) {
+        turnServerResult.turnServerInfo.urls.forEach((url) => {
+          let bareTurnServer = String(url);
+
+          bareTurnServer = bareTurnServer.replace('turns:', 'turn:');
+          bareTurnServer = bareTurnServer.replace('443', '5004');
+
+          turnTcpIceServers.push(bareTurnServer);
+        });
+      }
+
       iceServers.push({
-        urls: turnServerResult.turnServerInfo.urls,
+        urls: [...turnServerResult.turnServerInfo.urls, ...turnTcpIceServers],
         username: turnServerResult.turnServerInfo.username || '',
         credential: turnServerResult.turnServerInfo.password || '',
       });

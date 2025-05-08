@@ -160,8 +160,9 @@ Media.createMediaConnection = (
 
   // we might not have any TURN server if TURN discovery failed or wasn't done or we land on a video mesh node
   if (turnServerInfo?.urls.length > 0) {
+    const turnTcpIceServers = [];
+
     if (!BrowserInfo.isFirefox()) {
-      const turnTcpIceServers = [];
       turnServerInfo.urls.forEach((url) => {
         let bareTurnServer = String(url);
 
@@ -170,12 +171,11 @@ Media.createMediaConnection = (
 
         turnTcpIceServers.push(bareTurnServer);
       });
-      turnServerInfo.urls.push(...turnTcpIceServers);
     }
 
     // TURN-TLS/TURN-TCP server
     iceServers.push({
-      urls: turnServerInfo.urls,
+      urls: [...turnServerInfo.urls, ...turnTcpIceServers],
       username: turnServerInfo.username || '',
       credential: turnServerInfo.password || '',
     });

@@ -60,7 +60,7 @@ describe('plugin-meetings', () => {
         roap: {
           doTurnDiscovery: sinon.stub().resolves({
             turnServerInfo: {
-              urls: ['fake_turn_url1', 'fake_turn_url2'],
+              urls: ['turns:fake_turn_url1?443', 'turns:fake_turn_url2?443'],
               username: 'fake_turn_username',
               password: 'fake_turn_password',
             },
@@ -137,7 +137,12 @@ describe('plugin-meetings', () => {
       assert.calledOnce(fakeMediaConnection.reconnect);
       assert.calledWith(fakeMediaConnection.reconnect, [
         {
-          urls: ['fake_turn_url1', 'fake_turn_url2'],
+          urls: [
+            'turns:fake_turn_url1?443',
+            'turns:fake_turn_url2?443',
+            'turn:fake_turn_url1?5004',
+            'turn:fake_turn_url2?5004'
+          ],
           username: 'fake_turn_username',
           credential: 'fake_turn_password',
         },
