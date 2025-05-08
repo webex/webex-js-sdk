@@ -49,7 +49,7 @@ export class ClusterReachability extends EventsScope {
   private srflxIceCandidates: RTCIceCandidate[] = [];
   public readonly isVideoMesh: boolean;
   public readonly name;
-  private reachedSubnets: Set<string> = new Set();
+  public readonly reachedSubnets: Set<string> = new Set();
 
   /**
    * Constructor for ClusterReachability
@@ -448,29 +448,5 @@ export class ClusterReachability extends EventsScope {
     this.registerIceCandidateListener();
 
     return this.defer.promise;
-  }
-
-  /**
-   * Checks if the media server is reachable
-   * @param {boolean} mediaServerIp - media server ip
-   * @returns {boolean} true if reachable, false otherwise
-   */
-  public isMediaServerReachable(mediaServerIp: string): boolean {
-    const subnetFirstOctet = mediaServerIp.split('.')[0];
-
-    const foundSubnet = Array.from(this.reachedSubnets).find((reachedSubnet) =>
-      reachedSubnet.startsWith(subnetFirstOctet)
-    );
-
-    if (!foundSubnet) {
-      let errorMessage = `Reachability:ClusterReachability#isSubnetReachable --> Subnet ${subnetFirstOctet} in ${this.name} is not reachable, reached subnets: \n`;
-      this.reachedSubnets.forEach((s) => {
-        errorMessage += `\t${s}\n`;
-      });
-
-      LoggerProxy.logger.error(errorMessage);
-    }
-
-    return !!foundSubnet;
   }
 }
