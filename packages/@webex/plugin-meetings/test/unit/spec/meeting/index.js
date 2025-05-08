@@ -1809,7 +1809,7 @@ describe('plugin-meetings', () => {
                 await meeting.join();
                 joinSucceeded = true;
               } catch (e) {
-                assert.isTrue(e.handledBySdk)
+                assert.isTrue(e.handledBySdk);
                 assert.instanceOf(e, IntentToJoinError);
               }
               assert.isFalse(joinSucceeded);
@@ -1869,7 +1869,6 @@ describe('plugin-meetings', () => {
           });
 
           it('should try to join the meeting and return deferred promise reject', async () => {
-
             // call first
             meeting.join();
 
@@ -4124,6 +4123,8 @@ describe('plugin-meetings', () => {
                   urls: [
                     'turns:turn-server-url1:443?transport=tcp',
                     'turns:turn-server-url2:443?transport=tcp',
+                    'turn:turn-server-url-1:5004?transport=tcp',
+                    'turn:turn-server-url-2:5004?transport=tcp',
                   ],
                   username: 'turn user',
                   credential: 'turn password',
@@ -5397,6 +5398,8 @@ describe('plugin-meetings', () => {
                     urls: [
                       'turns:turn-server-url1:443?transport=tcp',
                       'turns:turn-server-url2:443?transport=tcp',
+                      'turn:turn-server-url-1:5004?transport=tcp',
+                      'turn:turn-server-url-2:5004?transport=tcp',
                     ],
                     username: 'turn user',
                     password: 'turn password',
@@ -5414,6 +5417,8 @@ describe('plugin-meetings', () => {
                     urls: [
                       'turns:turn-server-url1:443?transport=tcp',
                       'turns:turn-server-url2:443?transport=tcp',
+                      'turn:turn-server-url-1:5004?transport=tcp',
+                      'turn:turn-server-url-2:5004?transport=tcp',
                     ],
                     username: 'turn user',
                     password: 'turn password',

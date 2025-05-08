@@ -79,7 +79,10 @@ describe('createMediaConnection', () => {
       enableRtx: ENABLE_RTX,
       enableExtmap: ENABLE_EXTMAP,
       turnServerInfo: {
-        urls: ['turns:turn-server-url-1:443?transport=tcp', 'turns:turn-server-url-2:443?transport=tcp'],
+        urls: [
+          'turns:turn-server-url-1:443?transport=tcp',
+          'turns:turn-server-url-2:443?transport=tcp',
+        ],
         username: 'turn username',
         password: 'turn password',
       },
@@ -91,7 +94,12 @@ describe('createMediaConnection', () => {
       {
         iceServers: [
           {
-            urls: ['turns:turn-server-url-1:443?transport=tcp', 'turns:turn-server-url-2:443?transport=tcp'],
+            urls: [
+              'turns:turn-server-url-1:443?transport=tcp',
+              'turns:turn-server-url-2:443?transport=tcp',
+              'turn:turn-server-url-1:5004?transport=tcp',
+              'turn:turn-server-url-2:5004?transport=tcp',
+            ],
             username: 'turn username',
             credential: 'turn password',
           },
@@ -154,7 +162,10 @@ describe('createMediaConnection', () => {
       },
       rtcMetrics,
       turnServerInfo: {
-        urls: ['turns:turn-server-url-1:443?transport=tcp', 'turns:turn-server-url-2:443?transport=tcp'],
+        urls: [
+          'turns:turn-server-url-1:443?transport=tcp',
+          'turns:turn-server-url-2:443?transport=tcp',
+        ],
         username: 'turn username',
         password: 'turn password',
       },
@@ -166,7 +177,12 @@ describe('createMediaConnection', () => {
       {
         iceServers: [
           {
-            urls: ['turns:turn-server-url-1:443?transport=tcp', 'turns:turn-server-url-2:443?transport=tcp'],
+            urls: [
+              'turns:turn-server-url-1:443?transport=tcp',
+              'turns:turn-server-url-2:443?transport=tcp',
+              'turn:turn-server-url-1:5004?transport=tcp',
+              'turn:turn-server-url-2:5004?transport=tcp',
+            ],
             username: 'turn username',
             credential: 'turn password',
           },
@@ -178,8 +194,10 @@ describe('createMediaConnection', () => {
 
     // check if rtcMetrics callbacks are configured correctly
     const addMetricsCallback = multistreamRoapMediaConnectionConstructorStub.getCalls()[0].args[2];
-    const closeMetricsCallback = multistreamRoapMediaConnectionConstructorStub.getCalls()[0].args[3];
-    const sendMetricsInQueueCallback = multistreamRoapMediaConnectionConstructorStub.getCalls()[0].args[4];
+    const closeMetricsCallback =
+      multistreamRoapMediaConnectionConstructorStub.getCalls()[0].args[3];
+    const sendMetricsInQueueCallback =
+      multistreamRoapMediaConnectionConstructorStub.getCalls()[0].args[4];
 
     assert.isFunction(addMetricsCallback);
     assert.isFunction(closeMetricsCallback);
@@ -195,7 +213,6 @@ describe('createMediaConnection', () => {
 
     sendMetricsInQueueCallback();
     assert.calledOnce(rtcMetrics.sendMetricsInQueue);
-
   });
 
   [

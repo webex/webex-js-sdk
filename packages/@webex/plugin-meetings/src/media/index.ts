@@ -16,6 +16,7 @@ import {
   LocalMicrophoneStream,
 } from '@webex/media-helpers';
 import {RtcMetrics} from '@webex/internal-plugin-metrics';
+import {BrowserInfo} from '@webex/web-capabilities';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
@@ -159,7 +160,20 @@ Media.createMediaConnection = (
 
   // we might not have any TURN server if TURN discovery failed or wasn't done or we land on a video mesh node
   if (turnServerInfo?.urls.length > 0) {
-    // TURN-TLS server
+    if (!BrowserInfo.isFirefox()) {
+      const turnTcpIceServers = [];
+      turnServerInfo.urls.forEach((url) => {
+        let bareTurnServer = String(url);
+
+        bareTurnServer = bareTurnServer.replace('turns:', 'turn:');
+        bareTurnServer = bareTurnServer.replace('443', '5004');
+
+        turnTcpIceServers.push(bareTurnServer);
+      });
+      turnServerInfo.urls.push(...turnTcpIceServers);
+    }
+
+    // TURN-TLS/TURN-TCP server
     iceServers.push({
       urls: turnServerInfo.urls,
       username: turnServerInfo.username || '',
