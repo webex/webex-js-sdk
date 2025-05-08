@@ -935,6 +935,21 @@ export default class Meetings extends WebexPlugin {
         .disconnect()
         // @ts-ignore
         .then(() => this.webex.internal.device.unregister())
+        .catch((error) => {
+          // If error status code is 404, continue the chain
+          if (error.statusCode === 404) {
+            LoggerProxy.logger.info(
+              'Meetings:index#unregister --> 404 error during device unregister, proceeding normally'
+            );
+
+            return; // returning undefined allows the chain to continue
+          }
+          // For any other status code, break the chain by rethrowing
+          LoggerProxy.logger.error(
+            `Meetings:index#unregister --> Failed to unregister device: ${error.message}`
+          );
+          throw error; // rethrow to break the promise chain
+        })
         .then(() => {
           Trigger.trigger(
             this,

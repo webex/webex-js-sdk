@@ -583,6 +583,24 @@ describe('plugin-meetings', () => {
           await assert.isRejected(webex.meetings.unregister());
         });
 
+        it('does not reject when device.unregister fails with statusCode 404', (done) => {
+          webex.meetings.registered = true;
+          webex.internal.device.unregister = sinon.stub().rejects({statusCode: 404});
+          webex.meetings.unregister().then(() => {
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meetings),
+              {
+                file: 'meetings',
+                function: 'unregister',
+              },
+              'meetings:unregistered'
+            );
+            assert.isFalse(webex.meetings.registered);
+            done();
+          });
+        });
+
         it('rejects when mercury.disconnect fails', async () => {
           webex.meetings.registered = true;
           webex.internal.mercury.disconnect = sinon.stub().returns(Promise.reject());
