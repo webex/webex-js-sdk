@@ -2871,6 +2871,24 @@ export default class Meeting extends StatelessWebexPlugin {
         {state}
       );
     });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_ANNOTATION_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_ANNOTATION_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_REMOTE_DESKTOP_CONTROL_UPDATED,
+        {state}
+      );
+    });
   }
 
   /**
@@ -4074,6 +4092,9 @@ export default class Meeting extends StatelessWebexPlugin {
             this.inMeetingActions.canSendReactions,
             this.userDisplayHints
           ),
+          requiresPostMeetingDataConsentPrompt: MeetingUtil.requiresPostMeetingDataConsentPrompt(
+            this.userDisplayHints
+          ),
           canManageBreakout: MeetingUtil.canManageBreakout(this.userDisplayHints),
           canStartBreakout: MeetingUtil.canStartBreakout(this.userDisplayHints),
           canBroadcastMessageToBreakout: MeetingUtil.canBroadcastMessageToBreakout(
@@ -4268,6 +4289,22 @@ export default class Meeting extends StatelessWebexPlugin {
           canAnnotate: ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             policies: this.selfUserPolicies,
+          }),
+          canEnableAnnotation: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableAnnotation: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableRemoteDesktopControl: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_RDC_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableRemoteDesktopControl: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
           }),
         }) || changed;
     }
@@ -5819,11 +5856,22 @@ export default class Meeting extends StatelessWebexPlugin {
           this
         );
 
-        joinFailed(error);
+        const proxyError = new Proxy(error, {
+          // eslint-disable-next-line require-jsdoc
+          get(target, prop) {
+            if (prop === 'handledBySdk') {
+              return true;
+            }
+
+            return Reflect.get(target, prop);
+          },
+        });
+
+        joinFailed(proxyError);
 
         this.deferJoin = undefined;
 
-        return Promise.reject(error);
+        return Promise.reject(proxyError);
       })
       .then((join) => {
         // @ts-ignore - config coming from registerPlugin
@@ -9152,6 +9200,23 @@ export default class Meeting extends StatelessWebexPlugin {
       enable,
       locusUrl: this.locusUrl,
       requestingParticipantId: this.members.selfId,
+    });
+  }
+
+  /**
+   * Method to set post meeting data consent.
+   *
+   * @param  {boolean} accept - whether consent accepted or declined
+   * @returns {Promise}
+   * @public
+   * @memberof Meeting
+   */
+  public setPostMeetingDataConsent(accept: boolean) {
+    return this.meetingRequest.setPostMeetingDataConsent({
+      postMeetingDataConsent: accept,
+      locusUrl: this.locusUrl,
+      deviceUrl: this.deviceUrl,
+      selfId: this.members.selfId,
     });
   }
 

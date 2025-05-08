@@ -31,6 +31,17 @@ export default class TurnDiscovery {
 
   private responseTimer?: ReturnType<typeof setTimeout>;
 
+  /** Resets the turnInfo structure to the defaults
+   * @returns {void}
+   */
+  private resetTurnInfo() {
+    this.turnInfo = {
+      urls: [],
+      username: '',
+      password: '',
+    };
+  }
+
   /**
    * Constructor
    *
@@ -38,11 +49,7 @@ export default class TurnDiscovery {
    */
   constructor(roapRequest: RoapRequest) {
     this.roapRequest = roapRequest;
-    this.turnInfo = {
-      urls: [],
-      username: '',
-      password: '',
-    };
+    this.resetTurnInfo();
   }
 
   /**
@@ -118,6 +125,8 @@ export default class TurnDiscovery {
     ];
 
     const foundHeaders = {};
+
+    this.resetTurnInfo();
 
     headers?.forEach((receivedHeader) => {
       // check if it matches any of our expected headers

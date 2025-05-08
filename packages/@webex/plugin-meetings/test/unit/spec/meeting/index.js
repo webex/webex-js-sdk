@@ -1,6 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
+import {v4 as uuidv4} from 'uuid';
 import 'jsdom-global/register';
 import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
@@ -1808,6 +1809,7 @@ describe('plugin-meetings', () => {
                 await meeting.join();
                 joinSucceeded = true;
               } catch (e) {
+                assert.isTrue(e.handledBySdk)
                 assert.instanceOf(e, IntentToJoinError);
               }
               assert.isFalse(joinSucceeded);
@@ -1860,7 +1862,20 @@ describe('plugin-meetings', () => {
             });
           });
           it('should try to join the meeting and return promise reject', async () => {
-            await meeting.join().catch(() => {
+            await meeting.join().catch((e) => {
+              assert.isTrue(e.handledBySdk);
+              assert.calledOnce(MeetingUtil.joinMeeting);
+            });
+          });
+
+          it('should try to join the meeting and return deferred promise reject', async () => {
+
+            // call first
+            meeting.join();
+
+            // call 2nd time will get the deferred promise
+            await meeting.join().catch((e) => {
+              assert.isTrue(e.handledBySdk);
               assert.calledOnce(MeetingUtil.joinMeeting);
             });
           });
@@ -9791,6 +9806,42 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to CONTROLS_ANNOTATION_CHANGED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_ANNOTATION_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_ANNOTATION_UPDATED,
+            {state}
+          );
+        });
+
+        it('listens to CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_REMOTE_DESKTOP_CONTROL_UPDATED,
+            {state}
+          );
+        });
+
         it('listens to the locus interpretation update event', () => {
           const interpretation = {
             siLanguages: [{languageCode: 20, languageName: 'en'}],
@@ -10686,6 +10737,7 @@ describe('plugin-meetings', () => {
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
         let canSendReactionsSpy;
+        let requiresPostMeetingDataConsentPromptSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
         let canShareWhiteBoardSpy;
@@ -10713,6 +10765,10 @@ describe('plugin-meetings', () => {
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
+          requiresPostMeetingDataConsentPromptSpy = sinon.spy(
+            MeetingUtil,
+            'requiresPostMeetingDataConsentPrompt'
+          );
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
           canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
         });
@@ -11253,6 +11309,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(waitingForOthersToJoinSpy, userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, userDisplayHints);
+          assert.calledWith(requiresPostMeetingDataConsentPromptSpy, userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
           assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
 
@@ -11347,6 +11404,22 @@ describe('plugin-meetings', () => {
           assert.calledWith(ControlsOptionsUtil.hasPolicies, {
             requiredPolicies: [SELF_POLICY.SUPPORT_VOIP],
             policies: selfUserPolicies,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_RDC_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: userDisplayHints,
           });
 
           assert.calledWith(
@@ -13065,6 +13138,38 @@ describe('plugin-meetings', () => {
         it('stopKeepAlive handles missing keepAliveTimerId', async () => {
           assert.isNull(meeting.keepAliveTimerId);
           meeting.stopKeepAlive();
+        });
+      });
+
+      describe('#setPostMeetingDataConsent', () => {
+        it('should have #setPostMeetingDataConsent', () => {
+          assert.exists(meeting.setPostMeetingDataConsent);
+        });
+
+        beforeEach(() => {
+          meeting.meetingRequest.setPostMeetingDataConsent = sinon
+            .stub()
+            .returns(Promise.resolve());
+        });
+
+        [true, false].forEach((accept) => {
+          it(`should send consent with ${accept}`, async () => {
+            const id = uuidv4();
+            meeting.locusUrl = `https://locus-test.wbx2.com/locus/api/v1/loci/${accept}`;
+            meeting.deviceUrl = `https://wdm-test.wbx2.com/wdm/api/v1/devices/${accept}`;
+            meeting.members.selfId = id;
+
+            const consentPromise = meeting.setPostMeetingDataConsent(accept);
+
+            assert.exists(consentPromise.then);
+            await consentPromise;
+            assert.calledOnceWithExactly(meeting.meetingRequest.setPostMeetingDataConsent, {
+              locusUrl: `https://locus-test.wbx2.com/locus/api/v1/loci/${accept}`,
+              postMeetingDataConsent: accept,
+              selfId: id,
+              deviceUrl: `https://wdm-test.wbx2.com/wdm/api/v1/devices/${accept}`,
+            });
+          });
         });
       });
 

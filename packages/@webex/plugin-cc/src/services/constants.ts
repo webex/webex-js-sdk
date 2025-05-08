@@ -11,3 +11,6 @@ export const SUBSCRIBE_API = 'v1/notification/subscribe';
 export const LOGIN_API = 'v1/agents/login';
 export const WEB_RTC_PREFIX = 'webrtc-';
 export const STATE_CHANGE_API = 'v1/agents/session/state';
+
+export const DEREGISTER_WEBCALLING_LINE_MSG =
+  'Deregistering WebCalling line and cleaning up resources';

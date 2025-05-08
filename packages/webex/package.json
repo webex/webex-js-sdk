@@ -17,6 +17,7 @@
   "exports": {
     "./calling": "./dist/calling.js",
     ".": "./dist/index.js",
+    "./encryption": "./dist/encryption.js",
     "./meetings": "./dist/meetings.js",
     "./contact-center": "./dist/contact-center.js",
     "./package": "./package.json"
@@ -80,6 +81,7 @@
     "@webex/plugin-authorization": "workspace:*",
     "@webex/plugin-cc": "workspace:*",
     "@webex/plugin-device-manager": "workspace:*",
+    "@webex/plugin-encryption": "workspace:*",
     "@webex/plugin-logger": "workspace:*",
     "@webex/plugin-meetings": "workspace:*",
     "@webex/plugin-memberships": "workspace:*",

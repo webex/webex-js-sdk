@@ -90,7 +90,6 @@ export enum LOGGING_LEVEL {
 }
 
 export type LogsMetaData = {
-  trackingid?: string;
   feedbackId?: string;
   correlationId?: string;
 };
@@ -100,12 +99,14 @@ export type UploadLogsResponse = {
   url?: string;
   userId?: string;
   feedbackId?: string;
+  correlationId?: string;
 };
 interface IWebexInternal {
   mercury: {
     on: Listener;
     off: ListenerOff;
     connect: () => Promise<void>;
+    disconnect: () => Promise<void>;
     connected: boolean;
     connecting: boolean;
   };
@@ -139,7 +140,13 @@ interface IWebexInternal {
     submitBusinessEvent: SubmitBusinessEvent;
   };
   support: {
-    submitLogs: (metaData: LogsMetaData) => Promise<UploadLogsResponse>;
+    submitLogs: (
+      metaData: LogsMetaData,
+      logs: string,
+      options: {
+        type: 'diff' | 'full';
+      }
+    ) => Promise<UploadLogsResponse>;
   };
 }
 export interface WebexSDK {
