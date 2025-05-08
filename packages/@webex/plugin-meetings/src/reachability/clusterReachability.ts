@@ -235,25 +235,11 @@ export class ClusterReachability extends EventsScope {
    */
   private registerIceGatheringStateChangeListener() {
     this.pc.onicegatheringstatechange = () => {
-      const {COMPLETE} = ICE_GATHERING_STATE;
-
-      if (this.pc.iceConnectionState === COMPLETE) {
+      if (this.pc.iceGatheringState === ICE_GATHERING_STATE.COMPLETE) {
         this.closePeerConnection();
         this.finishReachabilityCheck();
       }
     };
-  }
-
-  /**
-   * Checks if we have the results for all the protocols (UDP and TCP)
-   *
-   * @returns {boolean} true if we have all results, false otherwise
-   */
-  private haveWeGotAllResults(): boolean {
-    return ['udp', 'tcp', 'xtls'].every(
-      (protocol) =>
-        this.result[protocol].result === 'reachable' || this.result[protocol].result === 'untested'
-    );
   }
 
   /**
@@ -381,11 +367,6 @@ export class ClusterReachability extends EventsScope {
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
           const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
           this.saveResult(protocol, latencyInMilliseconds, null, e.candidate.address);
-        }
-
-        if (this.haveWeGotAllResults()) {
-          this.closePeerConnection();
-          this.finishReachabilityCheck();
         }
       }
     };
