@@ -887,6 +887,31 @@ export default class Members extends StatelessWebexPlugin {
   }
 
   /**
+   * @param {String} memberId
+   * @param {boolean} [raise] - to raise hand (=true) or lower (=false), default: true
+   * @returns {Promise}
+   * @public
+   * @memberof Members
+   */
+  public moveToLobby(memberId: string) {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
+    }
+    if (!memberId) {
+      return Promise.reject(
+        new ParameterError('The member id must be defined to raise/lower the hand of the member.')
+      );
+    }
+    const options = MembersUtil.getMoveMemberToLobbyRequestOptions(memberId);
+
+    return this.membersRequest.moveToLobbyMember({locusUrl: this.locusUrl, memberId}, options);
+  }
+
+  /**
    * Raise or lower the hand of a member in a meeting
    * @param {String} memberId
    * @param {boolean} [raise] - to raise hand (=true) or lower (=false), default: true

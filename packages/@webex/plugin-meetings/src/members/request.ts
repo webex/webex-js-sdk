@@ -129,6 +129,22 @@ export default class MembersRequest extends StatelessWebexPlugin {
     return this.locusDeltaRequest(requestParams);
   }
 
+  // eslint-disable-next-line require-jsdoc
+  moveToLobbyMember(
+    options: {locusUrl: string; memberId: string},
+    body: {moveToLobby: {participantIds: string[]}}
+  ) {
+    if (!options || !options.locusUrl || !options.memberId) {
+      throw new ParameterError(
+        'memberId must be defined, and the associated locus url for this meeting object must be defined.'
+      );
+    }
+
+    const requestParams = MembersUtil.getMoveMemberToLobbyRequestParams(options, body);
+
+    return this.locusDeltaRequest(requestParams);
+  }
+
   /**
    * Sends a request to raise or lower a member's hand
    * @param {Object} options

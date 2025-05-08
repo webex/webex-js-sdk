@@ -104,6 +104,22 @@ MemberUtil.extractControlRoles = (participant: ParticipantWithRoles): IExternalR
   return roles;
 };
 
+MemberUtil.canBeMovedToLobby = (participant): boolean => {
+  if (!participant) {
+    throw new ParameterError('Move to lobby could not be processed, participant is undefined.');
+  }
+
+  return !MemberUtil.hasCohost(participant) && !MemberUtil.hasModerator(participant);
+};
+
+MemberUtil.canMoveToLobby = (participant): boolean => {
+  if (!participant) {
+    throw new ParameterError('Move to lobby could not be processed, participant is undefined.');
+  }
+
+  return MemberUtil.hasCohost(participant) || MemberUtil.hasModerator(participant);
+};
+
 /**
  * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
