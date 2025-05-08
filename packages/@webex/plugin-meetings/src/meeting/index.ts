@@ -1603,11 +1603,11 @@ export default class Meeting extends StatelessWebexPlugin {
     /**
      * IP Address of remote media server
      * @instance
-     * @type {number}
+     * @type {string}
      * @private
      * @memberof Meeting
      */
-    this.mediaServerIp = null;
+    this.mediaServerIp = undefined;
   }
 
   /**
