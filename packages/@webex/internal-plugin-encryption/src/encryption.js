@@ -118,7 +118,7 @@ const Encryption = WebexPlugin.extend({
       return Promise.resolve(fileUrl);
     }
 
-    if (options && options.useFileService === false) {
+    if (options?.useFileService === false) {
       if (!fileUrl.startsWith('https://')) {
         this.logger.error('encryption: direct file URLs must use HTTPS');
 
@@ -141,7 +141,7 @@ const Encryption = WebexPlugin.extend({
       method: 'POST',
       uri: url.format(endpointUrl),
       body:
-        options?.params?.allow != null
+        options?.params && Object.keys(options.params).indexOf('allow') > -1
           ? {
               ...inputBody,
               allow: options.params.allow,
@@ -188,7 +188,7 @@ const Encryption = WebexPlugin.extend({
    * Encrypt a SCR (Secure Content Resource) using the supplied key uri.
    *
    * @param {string} key - The uri of a key stored in KMS
-   * @param {Object} scr - Plaintext
+   * @param {Object} scr - SCRObject
    * @param {Object} options
    * @param {string} options.onBehalfOf - Fetch the KMS key on behalf of another user (using the user's UUID), active user requires the 'spark.kms_orgagent' role
    * @returns {string} Encrypted SCR
@@ -199,22 +199,7 @@ const Encryption = WebexPlugin.extend({
       return Promise.reject(new Error('Cannot encrypt `scr` without first setting `loc`'));
     }
 
-    // first we get the scr json, then we create an SCR instance using the key json and then we create a JWE using the key jwk
-    return this.getKey(key, options).then((k) => {
-      if (!k?.jwk) {
-        this.logger.error('encryption: Invalid key or JWK');
-        throw new Error('Invalid key or JWK');
-      }
-
-      return SCR.fromJSON(scr).then((encScr) => {
-        if (!encScr) {
-          this.logger.error('encryption: Failed to create SCR instance');
-          throw new Error('Failed to create SCR instance');
-        }
-
-        return encScr.toJWE(k.jwk);
-      });
-    });
+    return this.getKey(key, options).then((k) => scr.toJWE(k.jwk));
   },
 
   /**
