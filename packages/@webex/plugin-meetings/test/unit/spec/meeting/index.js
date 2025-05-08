@@ -4123,8 +4123,8 @@ describe('plugin-meetings', () => {
                   urls: [
                     'turns:turn-server-url1:443?transport=tcp',
                     'turns:turn-server-url2:443?transport=tcp',
-                    'turn:turn-server-url-1:5004?transport=tcp',
-                    'turn:turn-server-url-2:5004?transport=tcp',
+                    'turn:turn-server-url1:5004?transport=tcp',
+                    'turn:turn-server-url2:5004?transport=tcp',
                   ],
                   username: 'turn user',
                   credential: 'turn password',
@@ -5398,8 +5398,8 @@ describe('plugin-meetings', () => {
                     urls: [
                       'turns:turn-server-url1:443?transport=tcp',
                       'turns:turn-server-url2:443?transport=tcp',
-                      'turn:turn-server-url-1:5004?transport=tcp',
-                      'turn:turn-server-url-2:5004?transport=tcp',
+                      'turn:turn-server-url1:5004?transport=tcp',
+                      'turn:turn-server-url2:5004?transport=tcp',
                     ],
                     username: 'turn user',
                     password: 'turn password',
@@ -5417,8 +5417,8 @@ describe('plugin-meetings', () => {
                     urls: [
                       'turns:turn-server-url1:443?transport=tcp',
                       'turns:turn-server-url2:443?transport=tcp',
-                      'turn:turn-server-url-1:5004?transport=tcp',
-                      'turn:turn-server-url-2:5004?transport=tcp',
+                      'turn:turn-server-url1:5004?transport=tcp',
+                      'turn:turn-server-url2:5004?transport=tcp',
                     ],
                     username: 'turn user',
                     password: 'turn password',
