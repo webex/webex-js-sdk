@@ -8,7 +8,7 @@ import {TASK_MANAGER_FILE} from '../../constants';
 import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
 import {LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
-import Task from '.';
+import Task from './Task';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
@@ -69,7 +69,7 @@ export default class TaskManager extends EventEmitter {
     this.webSocketManager.on('message', (event) => {
       const payload = JSON.parse(event);
       // Re-emit the task events to the task object
-      let task: ITask;
+      let task;
       if (payload.data?.type) {
         if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
           task = this.taskCollection[payload.data.interactionId];
@@ -79,16 +79,16 @@ export default class TaskManager extends EventEmitter {
         }
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
-            task = new Task(this.contact, this.webCallingService, {
-              ...payload.data,
-              wrapUpRequired:
-                payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp || false,
-            });
+            // task = new Task(this.contact, this.webCallingService, {
+            //   ...payload.data,
+            //   wrapUpRequired:
+            //     payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp || false,
+            // });
             this.taskCollection[payload.data.interactionId] = task;
             this.emit(TASK_EVENTS.TASK_HYDRATE, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            task = new Task(this.contact, this.webCallingService, {
+            task = Task.createTaskInstance(this.contact, this.webCallingService, {
               ...payload.data,
               isConsulted: false,
             }); // Ensure isConsulted prop exists
