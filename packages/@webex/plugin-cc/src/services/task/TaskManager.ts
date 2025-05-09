@@ -231,7 +231,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.CONTACT_RECORDING_PAUSE_FAILED:
             task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED, payload.data);
+            task.emit(TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED, task);
             break;
           case CC_EVENTS.CONTACT_RECORDING_RESUMED:
             task = this.updateTaskData(task, payload.data);
@@ -239,7 +239,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.CONTACT_RECORDING_RESUME_FAILED:
             task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, payload.data);
+            task.emit(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, task);
             break;
           default:
             break;
