@@ -559,7 +559,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private handleWebSocketMessage = (event: string) => {
     const eventData = JSON.parse(event);
     // Re-emit all the events related to agent except keep-alives
-    if (!eventData.keepalive) {
+    if (!eventData.keepalive && eventData.data && eventData.data.type) {
       // @ts-ignore
       this.emit(eventData.data.type, eventData.data);
     }
