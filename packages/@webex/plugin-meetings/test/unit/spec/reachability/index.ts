@@ -2713,9 +2713,11 @@ describe('isSubnetReachable', () => {
     assert(reachability.isSubnetReachable('1.2.3.4'));
   });
 
-  ['11.2.3.4', undefined].forEach((subnet) => {
-    it(`returns false if the subnet is not reachable (${subnet})`, () => {
-      assert(!reachability.isSubnetReachable(subnet));
-    });
+  it(`returns false if the subnet is unreachable`, () => {
+    assert(!reachability.isSubnetReachable('11.2.3.4'));
+  });
+
+  it('returns null if the subnet is not provided', () => {
+    assert.isNull(reachability.isSubnetReachable(undefined));
   });
 });

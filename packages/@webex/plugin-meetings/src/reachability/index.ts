@@ -145,11 +145,11 @@ export default class Reachability extends EventsScope {
    * @public
    * @memberof Reachability
    */
-  public isSubnetReachable(mediaServerIp?: string): boolean {
+  public isSubnetReachable(mediaServerIp?: string): boolean | null {
     if (!mediaServerIp) {
       LoggerProxy.logger.error(`Reachability:index#isSubnetReachable --> mediaServerIp is null`);
 
-      return false;
+      return null;
     }
 
     const subnetFirstOctet = mediaServerIp.split('.')[0];
