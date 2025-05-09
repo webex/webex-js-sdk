@@ -133,6 +133,7 @@ export const ERROR_DESCRIPTIONS = {
   SDP_OFFER_CREATION_ERROR: 'SdpOfferCreationError',
   SDP_OFFER_CREATION_ERROR_MISSING_CODEC: 'SdpOfferCreationErrorMissingCodec',
   WDM_RESTRICTED_REGION: 'WdmRestrictedRegion',
+  USER_NOT_ALLOWED_JOIN_WEBINAR: 'UserNotAllowedJoinWebinar',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -202,6 +203,22 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   423013: 4005,
   // Too many requests access
   429005: 4100,
+  // Webinar: Meeting registration is required
+  403021: 4104,
+  // Webinar: Meeting registration is still pending
+  403022: 4104,
+  // Webinar: Meeting registration have been rejected
+  403024: 4104,
+  // Webinar: Registration ID verified failure
+  403137: 4104,
+  // Webinar: Registration ID input too many time,please input captcha code
+  423007: 4104,
+  // Webinar: Need to join meeting via webcast
+  403026: 4104,
+  // Webinar: Meeting join required registration ID
+  403037: 4104,
+  // Not reach JBH, can't join meeting
+  403003: 4101,
 
   // ---- Locus ------
   // FREE_USER_MAX_PARTICIPANTS_EXCEEDED
@@ -663,6 +680,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   4103: {
     errorDescription: ERROR_DESCRIPTIONS.SIGN_UP_INVALID_EMAIL,
+    category: 'expected',
+    fatal: true,
+  },
+  4104: {
+    errorDescription: ERROR_DESCRIPTIONS.USER_NOT_ALLOWED_JOIN_WEBINAR,
     category: 'expected',
     fatal: true,
   },
