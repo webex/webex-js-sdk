@@ -1011,13 +1011,19 @@ describe('plugin-meetings', () => {
             .stub()
             .returns(fakeClientError);
 
-          // call joinWithMedia() - it should fail
-          await assert.isRejected(
-            meeting.joinWithMedia({
+          const promise = meeting.joinWithMedia({
               joinOptions,
               mediaOptions,
             })
-          );
+
+          // call joinWithMedia() - it should fail
+          await assert.isRejected(promise);
+
+          const rejectedError = await promise.catch((error) => error);
+
+          // Since the SDK has sent the CA events, we need to mark this error as handled
+          // so the client doesn't try and send CA events again
+          assert.isTrue(rejectedError.handledBySdk);
 
           // check the right CA events have been sent:
           // calls at index 0 and 2 to submitClientEvent are for "client.media.capabilities" which we don't care about in this test

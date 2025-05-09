@@ -7114,7 +7114,28 @@ export default class Meeting extends StatelessWebexPlugin {
     } catch (error) {
       const {iceConnected} = error;
 
+      let handledBySdk = false;
+
       if (!this.hasMediaConnectionConnectedAtLeastOnce) {
+        const caError =
+          // @ts-ignore
+          this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode({
+            clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
+              signalingState:
+                this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                  ?.signalingState ||
+                this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.signalingState ||
+                'unknown',
+              iceConnected,
+              turnServerUsed: this.turnServerUsed,
+              unreachable:
+                // @ts-ignore
+                await this.webex.meetings.reachability
+                  .isWebexMediaBackendUnreachable()
+                  .catch(() => false),
+            }),
+          });
+
         // Only send CA event for join flow if we haven't successfully connected media yet
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
@@ -7122,37 +7143,32 @@ export default class Meeting extends StatelessWebexPlugin {
           payload: {
             canProceed: !this.turnServerUsed, // If we haven't done turn tls retry yet we will proceed with join attempt
             icePhase: this.addMediaData.icePhaseCallback(),
-            errors: [
-              // @ts-ignore
-              this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
-                {
-                  clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
-                    signalingState:
-                      this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-                        ?.signalingState ||
-                      this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
-                        ?.signalingState ||
-                      'unknown',
-                    iceConnected,
-                    turnServerUsed: this.turnServerUsed,
-                    unreachable:
-                      // @ts-ignore
-                      await this.webex.meetings.reachability
-                        .isWebexMediaBackendUnreachable()
-                        .catch(() => false),
-                  }),
-                }
-              ),
-            ],
+            errors: [caError],
           },
           options: {
             meetingId: this.id,
           },
         });
+
+        handledBySdk = true;
       }
-      throw new Error(
+
+      const timedOutError = new Error(
         `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
       );
+
+      const timeOutErrorProxy = new Proxy(timedOutError, {
+        // eslint-disable-next-line require-jsdoc
+        get(target, prop) {
+          if (prop === 'handledBySdk') {
+            return handledBySdk;
+          }
+
+          return Reflect.get(target, prop);
+        },
+      });
+
+      throw timeOutErrorProxy;
     }
   }
 
@@ -7333,7 +7349,21 @@ export default class Meeting extends StatelessWebexPlugin {
         error
       );
 
-      throw new AddMediaFailed();
+      const addMediaFailedError = new AddMediaFailed();
+
+      const addMediaFailedErrorProxy = new Proxy(addMediaFailedError, {
+        // eslint-disable-next-line require-jsdoc
+        get(target, prop) {
+          if (prop === 'handledBySdk') {
+            // @ts-ignore - handledBySdk is added by a proxy
+            return error.handledBySdk;
+          }
+
+          return Reflect.get(target, prop);
+        },
+      });
+
+      throw addMediaFailedErrorProxy;
     }
   }
 
