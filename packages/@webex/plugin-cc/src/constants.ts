@@ -15,6 +15,11 @@ export const WEBEX_REQUEST_FILE = 'WebexRequest';
 export const TASK_MANAGER_FILE = 'TaskManager';
 export const AGENT_STATE_CHANGE = 'agent:stateChange';
 export const AGENT_MULTI_LOGIN = 'agent:multiLogin';
+export const AGENT_STATION_LOGIN_SUCCESS = 'agent:stationLoginSuccess';
+export const AGENT_STATION_LOGIN_FAILED = 'agent:stationLoginFailed';
+export const AGENT_LOGOUT_SUCCESS = 'agent:logoutSuccess';
+export const AGENT_LOGOUT_FAILED = 'agent:logoutFailed';
+export const AGENT_DN_REGISTERED = 'agent:dnRegistered';
 // AGENT OUTDIAL CONSTANTS
 export const OUTDIAL_DIRECTION = 'OUTBOUND';
 export const ATTRIBUTES = {};

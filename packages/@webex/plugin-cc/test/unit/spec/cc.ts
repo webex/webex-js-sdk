@@ -20,6 +20,11 @@ import {
   CC_FILE,
   AGENT_STATE_CHANGE,
   AGENT_MULTI_LOGIN,
+  AGENT_STATION_LOGIN_SUCCESS,
+  AGENT_STATION_LOGIN_FAILED,
+  AGENT_LOGOUT_SUCCESS,
+  AGENT_LOGOUT_FAILED,
+  AGENT_DN_REGISTERED,
   OUTDIAL_DIRECTION,
   OUTBOUND_TYPE,
   ATTRIBUTES,
@@ -1511,6 +1516,32 @@ describe('webex.cc', () => {
         }, 
         ['operational']
       );
+    });
+  });
+
+  describe('handleWebSocketMessage events', () => {
+    let messageCallback;
+    let emitSpy;
+
+    beforeEach(() => {
+      emitSpy = jest.spyOn(webex.cc, 'emit');
+      messageCallback = mockWebSocketManager.on.mock.calls.find((c) => c[0] === 'message')[1];
+    });
+
+    [
+      { ccEvent: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS, constant: AGENT_STATION_LOGIN_SUCCESS },
+      { ccEvent: CC_EVENTS.AGENT_STATION_LOGIN_FAILED, constant: AGENT_STATION_LOGIN_FAILED },
+      { ccEvent: CC_EVENTS.AGENT_LOGOUT_SUCCESS, constant: AGENT_LOGOUT_SUCCESS },
+      { ccEvent: CC_EVENTS.AGENT_LOGOUT_FAILED, constant: AGENT_LOGOUT_FAILED },
+      { ccEvent: CC_EVENTS.AGENT_DN_REGISTERED, constant: AGENT_DN_REGISTERED },
+      { ccEvent: CC_EVENTS.AGENT_MULTI_LOGIN, constant: AGENT_MULTI_LOGIN },
+      { ccEvent: CC_EVENTS.AGENT_STATE_CHANGE, constant: AGENT_STATE_CHANGE },
+    ].forEach(({ ccEvent, constant }) => {
+      it(`should emit ${constant} on ${ccEvent}`, () => {
+        const sample = { foo: 'bar' };
+        messageCallback(JSON.stringify({type: ccEvent, data: sample}));
+        expect(emitSpy).toHaveBeenCalledWith(constant, sample);
+      });
     });
   });
 });

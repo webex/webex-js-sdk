@@ -610,8 +610,12 @@ function registerTaskListeners(task) {
   });
 
   // Consult flows
-  task.on('task:consultOfferCreated', (task) => {
-    console.log('Consult offer created');
+  task.on('task:consultCreated', (task) => {
+    console.info('Consult created');
+  });
+
+  task.on('task:offerConsult', (task) => {
+    console.info('Received consult offer from another agent');
   });
 
   task.on('task:consultAccepted', (task) => {
@@ -667,19 +671,6 @@ function registerTaskListeners(task) {
         updateButtonsPostEndCall();
         incomingDetailsElm.innerText = '';
         task = undefined;
-      }
-    }
-  });
-  
-  task.on('task:rejected', (reason) => {
-    console.info('Task is rejected with reason:', reason);
-    if (reason === 'RONA_TIMER_EXPIRED') {
-      answerElm.disabled = true;
-      declineElm.disabled = true;
-      if(task.data.isConsulted) {
-        updateButtonsPostEndCall();
-        incomingDetailsElm.innerText = '';
-        currentTask = undefined;
       }
     }
   });
