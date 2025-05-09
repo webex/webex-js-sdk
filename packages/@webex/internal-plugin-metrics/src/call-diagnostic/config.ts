@@ -155,7 +155,7 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   // meeting is not allow to access since require panelist password
   403025: 4005,
   // wrong password. Meeting is not allow to access since panelist password error
-  403125: 4001,
+  403125: 4005,
   // Wrong or expired permission. Meeting is not allow to access since permissionToken error or expire
   403032: 4005,
   // Meeting is required login for current user
