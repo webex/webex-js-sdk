@@ -1188,19 +1188,20 @@ describe('TaskManager', () => {
     expect(cleanUpCallSpy).not.toHaveBeenCalled();
   });
 
-  // Tests for recording pause/resume events
-  ['PAUSED', 'PAUSE_FAILED', 'RESUMED', 'RESUME_FAILED'].forEach((suffix) => {
-    const ccEvent = CC_EVENTS[`CONTACT_RECORDING_${suffix}`];
-    const taskEvent = TASK_EVENTS[`TASK_RECORDING_${suffix}`];
-    it(`should emit ${taskEvent} on ${ccEvent} event`, () => {
-      const payload = {data: {...initalPayload.data, type: ccEvent}};
-      webSocketManagerMock.emit('message', JSON.stringify(initalPayload)); // setup
-      const task = taskManager.getTask(taskId);
-      const spy = jest.spyOn(task, 'emit');
+  describe('should emit appropriate task events for recording events', () => {
+    ['PAUSED', 'PAUSE_FAILED', 'RESUMED', 'RESUME_FAILED'].forEach((suffix) => {
+      const ccEvent = CC_EVENTS[`CONTACT_RECORDING_${suffix}`];
+      const taskEvent = TASK_EVENTS[`TASK_RECORDING_${suffix}`];
+      it(`should emit ${taskEvent} on ${ccEvent} event`, () => {
+        const payload = {data: {...initalPayload.data, type: ccEvent}};
+        webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+        const task = taskManager.getTask(taskId);
+        const spy = jest.spyOn(task, 'emit');
 
-      webSocketManagerMock.emit('message', JSON.stringify(payload));
-      expect(spy).toHaveBeenCalledWith(taskEvent, suffix.includes('FAILED') ? payload.data : task);
+        webSocketManagerMock.emit('message', JSON.stringify(payload));
+        expect(spy).toHaveBeenCalledWith(taskEvent, task);
+      });
     });
-  });
+  });  
 });
 
