@@ -3,6 +3,10 @@
   "description": "This package provides a set of APIs to perform various operations for the Agent flow within Webex Contact Center",
   "main": "dist/index.js",
   "devMain": "src/index.ts",
+  "exports": {
+    "./webex": "./dist/webex.js",
+    "./package": "./package.json"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",
@@ -27,9 +31,12 @@
     "@webex/calling": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/internal-plugin-metrics": "workspace:*",
+    "@webex/internal-plugin-support": "workspace:*",
+    "@webex/plugin-authorization": "workspace:*",
+    "@webex/plugin-logger": "workspace:*",
     "@webex/webex-core": "workspace:*",
-    "buffer": "6.0.3",
-    "jest-html-reporters": "3.0.11"
+    "jest-html-reporters": "3.0.11",
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "@babel/preset-typescript": "7.22.11",
