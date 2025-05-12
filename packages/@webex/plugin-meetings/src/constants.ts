@@ -911,6 +911,7 @@ export enum SELF_POLICY {
   SUPPORT_NETWORK_BASED_RECORD = 'supportNetworkBasedRecord',
   SUPPORT_PREMISE_RECORD = 'supportPremiseRecord',
   SUPPORT_REALTIME_CLOSE_CAPTION = 'supportRealtimeCloseCaption',
+  SUPPORT_REALTIME_CLOSE_CAPTION_MANUAL = 'supportRealtimeCloseCaptionManual',
   SUPPORT_CHAT = 'supportChat',
   SUPPORT_DESKTOP_SHARE_REMOTE = 'supportDesktopShareRemote',
   SUPPORT_DESKTOP_SHARE = 'supportDesktopShare',

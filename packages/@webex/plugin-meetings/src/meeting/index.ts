@@ -4244,6 +4244,14 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
             policies: this.selfUserPolicies,
           }),
+          canRealtimeCloseCaption: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION],
+            policies: this.selfUserPolicies,
+          }),
+          canRealtimeCloseCaptionManual: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION_MANUAL],
+            policies: this.selfUserPolicies,
+          }),
           canChat: ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
             policies: this.selfUserPolicies,
