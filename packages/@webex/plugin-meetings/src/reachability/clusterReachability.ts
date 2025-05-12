@@ -350,9 +350,9 @@ export class ClusterReachability extends EventsScope {
         if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
           let serverIp = null;
           if ('url' in e.candidate) {
-            const regex = /stun:([\d.]+):\d+/;
+            const stunServerUrlRegex = /stun:([\d.]+):\d+/;
 
-            const match = (e.candidate as any).url.match(regex);
+            const match = (e.candidate as any).url.match(stunServerUrlRegex);
             if (match) {
               // eslint-disable-next-line prefer-destructuring
               serverIp = match[1];

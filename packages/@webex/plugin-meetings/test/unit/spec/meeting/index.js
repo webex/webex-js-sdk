@@ -2129,7 +2129,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
             }),
             stopReachability: sinon.stub(),
-            isSubnetReachable: sinon.stub().returns(true),
+            isSubnetReachable: sinon.stub().returns(false),
           };
 
           const forceRtcMetricsSend = sinon.stub().resolves();
@@ -2185,7 +2185,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
-              isSubnetReachable: true,
+              isSubnetReachable: false,
               numTransports: 1,
               iceCandidatesCount: 0,
             }
