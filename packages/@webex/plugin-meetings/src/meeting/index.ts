@@ -1601,7 +1601,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.#isoLocalClientMeetingJoinTime = undefined;
 
     /**
-     * IP Address of remote media server
+     * IP Address of the remote media server
      * @instance
      * @type {string}
      * @private
