@@ -1012,13 +1012,19 @@ describe('plugin-meetings', () => {
             .stub()
             .returns(fakeClientError);
 
-          // call joinWithMedia() - it should fail
-          await assert.isRejected(
-            meeting.joinWithMedia({
+          const promise = meeting.joinWithMedia({
               joinOptions,
               mediaOptions,
             })
-          );
+
+          // call joinWithMedia() - it should fail
+          await assert.isRejected(promise);
+
+          const rejectedError = await promise.catch((error) => error);
+
+          // Since the SDK has sent the CA events, we need to mark this error as handled
+          // so the client doesn't try and send CA events again
+          assert.isTrue(rejectedError.handledBySdk);
 
           // check the right CA events have been sent:
           // calls at index 0 and 2 to submitClientEvent are for "client.media.capabilities" which we don't care about in this test
@@ -8826,14 +8832,21 @@ describe('plugin-meetings', () => {
             clock.restore();
           });
 
-          const checkMetricSent = (event, error) => {
+          const checkMetricSent = (event, error, expectedErrorCode) => {
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0], {
               name: event,
               payload: {
                 canProceed: false,
               },
-              options: {rawError: error, meetingId: meeting.id},
+              options: {
+                rawError: {
+                  ...(error.cause ? {cause: {name: error.cause.name}} : {cause: undefined}),
+                  code: expectedErrorCode,
+                  name: error.name,
+                },
+                meetingId: meeting.id,
+              },
             });
           };
 
@@ -8867,7 +8880,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError, 30005);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpOfferCreationError,
@@ -8884,7 +8897,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.remote-sdp-received', fakeError);
+            checkMetricSent('client.media-engine.remote-sdp-received', fakeError, 30006);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpOfferHandlingError,
@@ -8908,7 +8921,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.remote-sdp-received', fakeError);
+            checkMetricSent('client.media-engine.remote-sdp-received', fakeError, 30004);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpAnswerHandlingError,
@@ -8916,6 +8929,7 @@ describe('plugin-meetings', () => {
               fakeRootCauseName
             );
             assert.calledOnce(meeting.deferSDPAnswer.reject);
+            assert.isTrue(meeting.deferSDPAnswer.reject.getCall(0).args[0].handledBySdk);
             assert.calledOnce(clearTimeoutSpy);
           });
 
@@ -8925,7 +8939,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError, 30002);
             // expectedMetadataType is the error name in this case
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
@@ -8943,7 +8957,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError, 30003);
             // expectedMetadataType is the error name in this case
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
@@ -9137,7 +9151,7 @@ describe('plugin-meetings', () => {
             assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {
               clientErrorCode: expectedErrorCode,
             });
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0], {
               name: 'client.media-engine.remote-sdp-received',
               payload: {
                 canProceed,
@@ -9145,9 +9159,18 @@ describe('plugin-meetings', () => {
               },
               options: {
                 meetingId: meeting.id,
-                rawError: fakeError,
+                rawError: fakeError instanceof MultistreamNotSupportedError ? {
+                  code: fakeError.code,
+                  name: fakeError.name,
+                  sdkMessage: fakeError.sdkMessage,
+                  error: fakeError.error,
+                } : {},
               },
             });
+            const actualError = webex.internal.newMetrics.submitClientEvent.getCall(0).args[0].options.rawError;
+
+            assert.isTrue(actualError.handledBySdk);
+            assert.equal(actualError.message, fakeError.message);
           };
 
           it('handles OFFER message correctly when request fails', async () => {
