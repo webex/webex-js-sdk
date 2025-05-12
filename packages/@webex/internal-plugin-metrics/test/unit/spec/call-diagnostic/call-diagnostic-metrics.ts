@@ -2562,6 +2562,35 @@ describe('internal-plugin-metrics', () => {
         rawErrorMessage: 'bad times',
       };
 
+      it('should be cached if called twice with the same payload', () => {
+        const error = new Error('bad times');
+        const expectedPayload = {
+          category: 'other',
+          errorCode: 9999,
+          errorData: {errorName: 'Error'},
+          serviceErrorCode: 9999,
+          fatal: true,
+          shownToUser: false,
+          name: 'other',
+          rawErrorMessage: 'bad times',
+          errorDescription: 'UnknownError',
+        }
+
+        const [res, cached] = cd.generateClientEventErrorPayload(error);
+        assert.isFalse(cached);
+        assert.deepEqual(res, expectedPayload);
+
+        const [res2, cached2] = cd.generateClientEventErrorPayload(error);
+        assert.isTrue(cached2);
+        assert.deepEqual(res2, expectedPayload);
+
+        // after clearing the cache, it should be false again
+        cd.clearErrorCache();
+        const [res3, cached3] = cd.generateClientEventErrorPayload(error);
+        assert.isFalse(cached3);
+        assert.deepEqual(res3, expectedPayload);
+      });
+
       const checkNameError = (payload: any, isExpectedToBeCalled: boolean) => {
         const [res, cached] = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {
