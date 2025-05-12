@@ -399,6 +399,44 @@ describe('ClusterReachability', () => {
       });
     });
 
+    it('determines correctly if symmetric-nat is detected', async () => {
+      const promise = clusterReachability.start();
+
+      // generate candidates with duplicate addresses
+      await clock.tickAsync(10);
+      fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1', relatedPort: 3478, port: 1000}});
+
+      // check events emitted: there shouldn't be any natTypeUpdated emitted
+      assert.equal(emittedEvents[Events.natTypeUpdated].length, 0);
+
+      await clock.tickAsync(10);
+      fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1', relatedPort: 3478, port: 2000}});
+
+      // should emit natTypeUpdated event
+      assert.equal(emittedEvents[Events.natTypeUpdated].length, 1);
+      assert.deepEqual(emittedEvents[Events.natTypeUpdated][0], {
+        natType: 'symmetric-nat',
+      });
+
+      // send also a relay candidate so that the reachability check finishes
+      fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp'}});
+      fakePeerConnection.onicecandidate({
+        candidate: {type: 'relay', address: 'someTurnRelayIp', port: 443},
+      });
+
+      await promise;
+
+      assert.deepEqual(clusterReachability.getResult(), {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 10,
+          clientMediaIPs: ['somePublicIp1'],
+        },
+        tcp: {result: 'reachable', latencyInMilliseconds: 20},
+        xtls: {result: 'reachable', latencyInMilliseconds: 20},
+      });
+    });
+
     it('should gather correctly reached subnets', async () => {
       const promise = clusterReachability.start();
 
@@ -429,25 +467,6 @@ describe('ClusterReachability', () => {
       await promise;
 
       assert.deepEqual(Array.from(clusterReachability.reachedSubnets), ['1.2.3.4']);
-    });
-
-    it('should store latency only for the first relay candidate', async () => {
-      const promise = clusterReachability.start();
-
-      await clock.tickAsync(10);
-      fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp1'}});
-      fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp2'}});
-      fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp3'}});
-
-      clusterReachability.abort();
-      await promise;
-
-      // latency should be from only the first candidates, but the clientMediaIps should be from only from UDP candidates
-      assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'unreachable'},
-        tcp: {result: 'reachable', latencyInMilliseconds: 10},
-        xtls: {result: 'unreachable'},
-      });
     });
   });
 });

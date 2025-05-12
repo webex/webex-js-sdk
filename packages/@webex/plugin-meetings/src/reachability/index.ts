@@ -141,7 +141,7 @@ export default class Reachability extends EventsScope {
   /**
    * Checks if the given subnet is reachable
    * @param {string} mediaServerIp - media server ip
-   * @returns {boolean} true if reachable, false otherwise
+   * @returns {boolean | null} true if reachable, false if not reachable, null if mediaServerIp is not provided
    * @public
    * @memberof Reachability
    */
@@ -158,35 +158,38 @@ export default class Reachability extends EventsScope {
       `Reachability:index#isSubnetReachable --> Looking for subnet: ${subnetFirstOctet}.X.X.X`
     );
 
-    const reachedClusters = Object.values(this.clusterReachability).reduce((acc, cluster) => {
-      const reachedSubnetsArray = Array.from(cluster.reachedSubnets);
+    const matchingReachedClusters = Object.values(this.clusterReachability).reduce(
+      (acc, cluster) => {
+        const reachedSubnetsArray = Array.from(cluster.reachedSubnets);
 
-      let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
-      for (let i = 0; i < reachedSubnetsArray.length; i += 1) {
-        const subnet = reachedSubnetsArray[i];
-        const reachedSubnetFirstOctet = subnet.split('.')[0];
+        let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
+        for (let i = 0; i < reachedSubnetsArray.length; i += 1) {
+          const subnet = reachedSubnetsArray[i];
+          const reachedSubnetFirstOctet = subnet.split('.')[0];
 
-        if (subnetFirstOctet === reachedSubnetFirstOctet) {
-          acc.add(cluster.name);
+          if (subnetFirstOctet === reachedSubnetFirstOctet) {
+            acc.add(cluster.name);
+          }
+
+          logMessage += `${subnet}`;
+          if (i < reachedSubnetsArray.length - 1) {
+            logMessage += ',';
+          }
         }
+        logMessage += `]`;
 
-        logMessage += `${subnet}`;
-        if (i < reachedSubnetsArray.length - 1) {
-          logMessage += ',';
-        }
-      }
-      logMessage += `]`;
+        LoggerProxy.logger.info(logMessage);
 
-      LoggerProxy.logger.info(logMessage);
-
-      return acc;
-    }, new Set<string>());
-
-    LoggerProxy.logger.info(
-      `Reachability:index#isSubnetReachable --> Found ${reachedClusters.size} clusters that reached the subnet ${subnetFirstOctet}.X.X.X`
+        return acc;
+      },
+      new Set<string>()
     );
 
-    return reachedClusters.size > 0;
+    LoggerProxy.logger.info(
+      `Reachability:index#isSubnetReachable --> Found ${matchingReachedClusters.size} clusters that use the subnet ${subnetFirstOctet}.X.X.X`
+    );
+
+    return matchingReachedClusters.size > 0;
   }
 
   /**
