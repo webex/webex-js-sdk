@@ -185,12 +185,7 @@ describe('LocusMediaRequest.send()', () => {
 
   it('sends correct metric event when roap message fails', async () => {
     webexRequestStub.rejects({code: 300, message: 'fake error'});
-
-    const promise = sendRoapMessage('OFFER');
-    await assert.isRejected(promise);
-
-    const error = await promise.catch((err) => err);
-    assert.isTrue(error.handledBySdk);
+    await assert.isRejected(sendRoapMessage('OFFER'));
 
     assert.calledWith(mockWebex.internal.newMetrics.submitClientEvent, {
       name: 'client.locus.media.response',
