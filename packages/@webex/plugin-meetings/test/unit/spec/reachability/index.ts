@@ -1955,6 +1955,7 @@ describe('gatherReachability', () => {
         receivedEvents[event] = receivedEvents[event] + 1 || 1;
       });
     };
+    
     it('works as expected', async () => {
       setListener('reachability:stopped');
       setListener('reachability:done');
@@ -2015,6 +2016,59 @@ describe('gatherReachability', () => {
       assert.equal(receivedEvents['reachability:stopped'], undefined);
       assert.equal(receivedEvents['reachability:done'], undefined);
       assert.equal(receivedEvents['reachability:firstResultAvailable'], undefined);
+    });
+
+    it('does not fallback when no clusters were reached and min clusters were specified', async () => {
+      setListener('reachability:stopped');
+      setListener('reachability:done');
+      setListener('reachability:firstResultAvailable');
+
+      const mockGetClustersResult = {
+        discoveryOptions: {
+          ['early-call-min-clusters']: 1,
+        },
+        clusters: {
+          clusterA: {
+            udp: [],
+            tcp: [],
+            xtls: [],
+            isVideoMesh: false,
+          },
+          clusterB: {
+            udp: [],
+            tcp: [],
+            xtls: [],
+            isVideoMesh: false,
+          },
+        },
+        joinCookie: {id: 'id'},
+      };
+
+      reachability.reachabilityRequest.getClusters = sinon.stub().returns(mockGetClustersResult);
+
+      const gatherReachabilityFallbackSpy = sinon.spy(reachability, 'gatherReachabilityFallback');
+
+      const resultPromise = reachability.gatherReachability('test');
+
+      await testUtils.flushPromises();
+
+      reachability.stopReachability();
+
+      await resultPromise;
+
+      // simulate a lot of time passing to check that all timers were stopped and nothing else happens
+      clock.tick(99000);
+
+      assert.calledOnceWithExactly(mockClusterReachabilityInstances['clusterA'].abort);
+      assert.calledOnceWithExactly(mockClusterReachabilityInstances['clusterB'].abort);
+
+      assert.calledOnceWithExactly(sendMetricSpy, true);
+
+      assert.equal(receivedEvents['reachability:stopped'], 1);
+      assert.equal(receivedEvents['reachability:done'], undefined);
+      assert.equal(receivedEvents['reachability:firstResultAvailable'], undefined);
+
+      assert.notCalled(gatherReachabilityFallbackSpy);
     });
   });
 });

@@ -288,7 +288,7 @@ export default class Reachability extends EventsScope {
         {}
       );
       this.sendMetric(true);
-      this.resolveReachabilityPromise();
+      this.resolveReachabilityPromise(false);
     }
   }
 
