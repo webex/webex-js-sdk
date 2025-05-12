@@ -99,6 +99,24 @@ MeetingsUtil.getMediaServer = (sdp) => {
   return mediaServer;
 };
 
+MeetingsUtil.getMediaServerIp = (sdp) => {
+  let mediaServerIp;
+
+  // Attempt to collect the media server from the roap message.
+  try {
+    mediaServerIp = sdp
+      .split('\r\n')
+      .find((line) => line.startsWith('o='))
+      .match(/o=\S+ \d+ \d+ IN IP4 ([\d.]+)/)?.[1]
+      .toLowerCase()
+      .trim();
+  } catch {
+    mediaServerIp = undefined;
+  }
+
+  return mediaServerIp;
+};
+
 MeetingsUtil.checkForCorrelationId = (deviceUrl, locus) => {
   let devices = [];
 
