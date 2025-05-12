@@ -11,11 +11,10 @@
     "Shreyas Sharma <shreysh2@cisco.com>",
     "Sreekanth Narayanan <sreenara@cisco.com>"
   ],
-  "main": "dist/index.js",
+  "main": "dist/webex.js",
   "devMain": "src/index.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./webex": "./dist/webex.js",
+    ".": "./dist/webex.js",
     "./package": "./package.json"
   },
   "repository": {

@@ -4,7 +4,7 @@ import '@webex/plugin-authorization';
 import '@webex/internal-plugin-mercury';
 import '@webex/plugin-logger';
 import '@webex/internal-plugin-support';
-import '@webex/plugin-cc';
+import './index';
 
 import config from './webex-config';
 
