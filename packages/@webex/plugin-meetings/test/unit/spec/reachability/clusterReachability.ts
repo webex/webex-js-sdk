@@ -424,6 +424,10 @@ describe('ClusterReachability', () => {
         candidate: {type: 'relay', address: 'someTurnRelayIp', port: 443},
       });
 
+      fakePeerConnection.iceGatheringState = 'complete';
+      fakePeerConnection.onicegatheringstatechange();
+      await clock.tickAsync(10);
+
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
