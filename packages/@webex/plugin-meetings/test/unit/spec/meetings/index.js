@@ -182,6 +182,15 @@ describe('plugin-meetings', () => {
         metrics: {
           submitClientMetrics: sinon.stub().returns(Promise.resolve()),
         },
+        newMetrics: {
+          submitClientEvent: sinon.stub(),
+          callDiagnosticLatencies: {
+            measureLatency: sinon.stub().returns(Promise.resolve()),
+          },
+          callDiagnosticMetrics: {
+            clearErrorCache: sinon.stub(),
+          },
+        },
       });
       webex.emit('ready');
     });
