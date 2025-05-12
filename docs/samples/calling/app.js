@@ -194,7 +194,7 @@ async function generateGuestToken() {
     if (error.code === 401) {
       // TODO: Refresh the access token and try again with the new token
     }
-  }    
+  }
 }
 
 async function handleServiceSelect(e) {
@@ -246,7 +246,7 @@ async function initCalling(e) {
     webexConfig.config.services = {
       discovery: {
         u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
-        hydra: 'https://apialpha.ciscospark.com/v1/',
+        hydra: 'https://hydra-intb.ciscospark.com/v1/',
       },
     };
   }
@@ -653,7 +653,7 @@ function createCall(e) {
 
   localAudioStream.on('user-mute-state-change', (userMuted) => {
     muteElm.value = userMuted && muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
-  }); 
+  });
 
   call.dial(localAudioStream);
 }
@@ -746,7 +746,7 @@ async function getMediaStreams() {
 }
 
 async function toggleNoiseReductionEffect() {
-  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'} 
+  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'}
   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {

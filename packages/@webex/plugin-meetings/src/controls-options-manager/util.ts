@@ -7,6 +7,8 @@ import {
   ReactionsProperties,
   ViewTheParticipantListProperties,
   VideoProperties,
+  type RemoteDesktopControlProperties,
+  type AnnotationProperties,
 } from './types';
 
 /**
@@ -257,6 +259,52 @@ class Utils {
   }
 
   /**
+   * Validate if a annotation-scoped control is allowed to be sent to the service.
+   *
+   * @param {ControlConfig<AnnotationProperties>} control - Annotation control config to validate
+   * @param {Array<string>} displayHints - All available hints
+   * @returns {boolean} - True if all of the actions are allowed.
+   */
+  public static canUpdateAnnotation(
+    control: ControlConfig<AnnotationProperties>,
+    displayHints: Array<string>
+  ): boolean {
+    const requiredHints = [];
+
+    if (control.properties.enabled === true) {
+      requiredHints.push(DISPLAY_HINTS.ENABLE_ANNOTATION_MEETING_OPTION);
+    }
+    if (control.properties.enabled === false) {
+      requiredHints.push(DISPLAY_HINTS.DISABLE_ANNOTATION_MEETING_OPTION);
+    }
+
+    return Utils.hasHints({requiredHints, displayHints});
+  }
+
+  /**
+   * Validate if a rdc-scoped control is allowed to be sent to the service.
+   *
+   * @param {ControlConfig<RemoteDesktopControlProperties>} control - Remote Desktop Control config to validate
+   * @param {Array<string>} displayHints - All available hints
+   * @returns {boolean} - True if all of the actions are allowed.
+   */
+  public static canUpdateRemoteDesktopControl(
+    control: ControlConfig<RemoteDesktopControlProperties>,
+    displayHints: Array<string>
+  ): boolean {
+    const requiredHints = [];
+
+    if (control.properties.enabled === true) {
+      requiredHints.push(DISPLAY_HINTS.ENABLE_RDC_MEETING_OPTION);
+    }
+    if (control.properties.enabled === false) {
+      requiredHints.push(DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION);
+    }
+
+    return Utils.hasHints({requiredHints, displayHints});
+  }
+
+  /**
    * Validate that a control can be sent to the service based on the provided
    * display hints.
    *
@@ -297,6 +345,20 @@ class Utils {
       case Control.viewTheParticipantList:
         determinant = Utils.canUpdateViewTheParticipantsList(
           control as ControlConfig<ViewTheParticipantListProperties>,
+          displayHints
+        );
+        break;
+
+      case Control.annotation:
+        determinant = Utils.canUpdateAnnotation(
+          control as ControlConfig<AnnotationProperties>,
+          displayHints
+        );
+        break;
+
+      case Control.rdc:
+        determinant = Utils.canUpdateRemoteDesktopControl(
+          control as ControlConfig<RemoteDesktopControlProperties>,
           displayHints
         );
         break;

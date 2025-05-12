@@ -1,6 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
+import {v4 as uuidv4} from 'uuid';
 import 'jsdom-global/register';
 import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
@@ -1010,13 +1011,19 @@ describe('plugin-meetings', () => {
             .stub()
             .returns(fakeClientError);
 
-          // call joinWithMedia() - it should fail
-          await assert.isRejected(
-            meeting.joinWithMedia({
+          const promise = meeting.joinWithMedia({
               joinOptions,
               mediaOptions,
             })
-          );
+
+          // call joinWithMedia() - it should fail
+          await assert.isRejected(promise);
+
+          const rejectedError = await promise.catch((error) => error);
+
+          // Since the SDK has sent the CA events, we need to mark this error as handled
+          // so the client doesn't try and send CA events again
+          assert.isTrue(rejectedError.handledBySdk);
 
           // check the right CA events have been sent:
           // calls at index 0 and 2 to submitClientEvent are for "client.media.capabilities" which we don't care about in this test
@@ -1808,6 +1815,7 @@ describe('plugin-meetings', () => {
                 await meeting.join();
                 joinSucceeded = true;
               } catch (e) {
+                assert.isTrue(e.handledBySdk)
                 assert.instanceOf(e, IntentToJoinError);
               }
               assert.isFalse(joinSucceeded);
@@ -1860,7 +1868,20 @@ describe('plugin-meetings', () => {
             });
           });
           it('should try to join the meeting and return promise reject', async () => {
-            await meeting.join().catch(() => {
+            await meeting.join().catch((e) => {
+              assert.isTrue(e.handledBySdk);
+              assert.calledOnce(MeetingUtil.joinMeeting);
+            });
+          });
+
+          it('should try to join the meeting and return deferred promise reject', async () => {
+
+            // call first
+            meeting.join();
+
+            // call 2nd time will get the deferred promise
+            await meeting.join().catch((e) => {
+              assert.isTrue(e.handledBySdk);
               assert.calledOnce(MeetingUtil.joinMeeting);
             });
           });
@@ -8795,14 +8816,21 @@ describe('plugin-meetings', () => {
             clock.restore();
           });
 
-          const checkMetricSent = (event, error) => {
+          const checkMetricSent = (event, error, expectedErrorCode) => {
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0], {
               name: event,
               payload: {
                 canProceed: false,
               },
-              options: {rawError: error, meetingId: meeting.id},
+              options: {
+                rawError: {
+                  ...(error.cause ? {cause: {name: error.cause.name}} : {cause: undefined}),
+                  code: expectedErrorCode,
+                  name: error.name,
+                },
+                meetingId: meeting.id,
+              },
             });
           };
 
@@ -8836,7 +8864,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError, 30005);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpOfferCreationError,
@@ -8853,7 +8881,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.remote-sdp-received', fakeError);
+            checkMetricSent('client.media-engine.remote-sdp-received', fakeError, 30006);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpOfferHandlingError,
@@ -8877,7 +8905,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.remote-sdp-received', fakeError);
+            checkMetricSent('client.media-engine.remote-sdp-received', fakeError, 30004);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpAnswerHandlingError,
@@ -8885,6 +8913,7 @@ describe('plugin-meetings', () => {
               fakeRootCauseName
             );
             assert.calledOnce(meeting.deferSDPAnswer.reject);
+            assert.isTrue(meeting.deferSDPAnswer.reject.getCall(0).args[0].handledBySdk);
             assert.calledOnce(clearTimeoutSpy);
           });
 
@@ -8894,7 +8923,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError, 30002);
             // expectedMetadataType is the error name in this case
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
@@ -8912,7 +8941,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError, 30003);
             // expectedMetadataType is the error name in this case
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
@@ -9106,7 +9135,7 @@ describe('plugin-meetings', () => {
             assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {
               clientErrorCode: expectedErrorCode,
             });
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0], {
               name: 'client.media-engine.remote-sdp-received',
               payload: {
                 canProceed,
@@ -9114,9 +9143,18 @@ describe('plugin-meetings', () => {
               },
               options: {
                 meetingId: meeting.id,
-                rawError: fakeError,
+                rawError: fakeError instanceof MultistreamNotSupportedError ? {
+                  code: fakeError.code,
+                  name: fakeError.name,
+                  sdkMessage: fakeError.sdkMessage,
+                  error: fakeError.error,
+                } : {},
               },
             });
+            const actualError = webex.internal.newMetrics.submitClientEvent.getCall(0).args[0].options.rawError;
+
+            assert.isTrue(actualError.handledBySdk);
+            assert.equal(actualError.message, fakeError.message);
           };
 
           it('handles OFFER message correctly when request fails', async () => {
@@ -9787,6 +9825,42 @@ describe('plugin-meetings', () => {
             meeting,
             {file: 'meeting/index', function: 'setupLocusControlsListener'},
             EVENT_TRIGGERS.MEETING_CONTROLS_VIDEO_UPDATED,
+            {state}
+          );
+        });
+
+        it('listens to CONTROLS_ANNOTATION_CHANGED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_ANNOTATION_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_ANNOTATION_UPDATED,
+            {state}
+          );
+        });
+
+        it('listens to CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_REMOTE_DESKTOP_CONTROL_UPDATED,
             {state}
           );
         });
@@ -10686,6 +10760,7 @@ describe('plugin-meetings', () => {
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
         let canSendReactionsSpy;
+        let requiresPostMeetingDataConsentPromptSpy;
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
         let canShareWhiteBoardSpy;
@@ -10713,6 +10788,10 @@ describe('plugin-meetings', () => {
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
           canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
+          requiresPostMeetingDataConsentPromptSpy = sinon.spy(
+            MeetingUtil,
+            'requiresPostMeetingDataConsentPrompt'
+          );
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
           canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
         });
@@ -11253,6 +11332,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(waitingForOthersToJoinSpy, userDisplayHints);
           assert.calledWith(canSendReactionsSpy, null, userDisplayHints);
           assert.calledWith(canUserRenameSelfAndObservedSpy, userDisplayHints);
+          assert.calledWith(requiresPostMeetingDataConsentPromptSpy, userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
           assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
 
@@ -11347,6 +11427,22 @@ describe('plugin-meetings', () => {
           assert.calledWith(ControlsOptionsUtil.hasPolicies, {
             requiredPolicies: [SELF_POLICY.SUPPORT_VOIP],
             policies: selfUserPolicies,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_RDC_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: userDisplayHints,
           });
 
           assert.calledWith(
@@ -13096,6 +13192,38 @@ describe('plugin-meetings', () => {
         it('stopKeepAlive handles missing keepAliveTimerId', async () => {
           assert.isNull(meeting.keepAliveTimerId);
           meeting.stopKeepAlive();
+        });
+      });
+
+      describe('#setPostMeetingDataConsent', () => {
+        it('should have #setPostMeetingDataConsent', () => {
+          assert.exists(meeting.setPostMeetingDataConsent);
+        });
+
+        beforeEach(() => {
+          meeting.meetingRequest.setPostMeetingDataConsent = sinon
+            .stub()
+            .returns(Promise.resolve());
+        });
+
+        [true, false].forEach((accept) => {
+          it(`should send consent with ${accept}`, async () => {
+            const id = uuidv4();
+            meeting.locusUrl = `https://locus-test.wbx2.com/locus/api/v1/loci/${accept}`;
+            meeting.deviceUrl = `https://wdm-test.wbx2.com/wdm/api/v1/devices/${accept}`;
+            meeting.members.selfId = id;
+
+            const consentPromise = meeting.setPostMeetingDataConsent(accept);
+
+            assert.exists(consentPromise.then);
+            await consentPromise;
+            assert.calledOnceWithExactly(meeting.meetingRequest.setPostMeetingDataConsent, {
+              locusUrl: `https://locus-test.wbx2.com/locus/api/v1/loci/${accept}`,
+              postMeetingDataConsent: accept,
+              selfId: id,
+              deviceUrl: `https://wdm-test.wbx2.com/wdm/api/v1/devices/${accept}`,
+            });
+          });
         });
       });
 

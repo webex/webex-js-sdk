@@ -144,7 +144,25 @@ describe('plugin-meetings', () => {
         assert.equal(parsedControls.videoLayout.overrideDefault, newControls.videoLayout.overrideDefault);
         assert.equal(parsedControls.videoLayout.lockAttendeeViewOnStageOnly, newControls.videoLayout.lockAttendeeViewOnStageOnly);
         assert.equal(parsedControls.videoLayout.stageParameters, newControls.videoLayout.stageParameters);
+      });
 
+      it('should parse the annotationControl control', () => {
+        const newControls = {annotationControl: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(
+          parsedControls.annotationControl.enabled,
+          newControls.annotationControl.enabled
+        );
+      });
+
+      it('should parse the rdcControl control', () => {
+        const newControls = {rdcControl: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.rdcControl.enabled, newControls.rdcControl.enabled);
       });
 
       describe('videoEnabled', () => {
@@ -377,6 +395,22 @@ describe('plugin-meetings', () => {
         assert.equal(updates.hasManualCaptionChanged, false);
       });
 
+      it('returns hasAnnotationControlChanged = true when changed', () => {
+        const newControls = {annotationControl: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasAnnotationControlChanged, true);
+      });
+
+      it('returns hasRemoteDesktopControlChanged = true when changed', () => {
+        const newControls = {rdcControl: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasRemoteDesktopControlChanged, true);
+      });
+
       describe('videoEnabled', () => {
         const testVideoEnabled = (oldControls, newControls, updatedProperty) => {
           const result = ControlsUtils.getControls(oldControls, newControls);
@@ -464,31 +498,31 @@ describe('plugin-meetings', () => {
           self: { isCreator: true },
           controls: { breakout: { sessionType: BREAKOUTS.SESSION_TYPES.MAIN} },
         };
-    
+
         const newLocus = {
           participants: [
-            { isCreator: true, state: MEETING_STATE.STATES.JOINED }, 
+            { isCreator: true, state: MEETING_STATE.STATES.JOINED },
           ],
           controls: {
             breakout: {
-              sessionType: BREAKOUTS.SESSION_TYPES.MAIN, 
-              groups: [{ id: 'group1' }] 
+              sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
+              groups: [{ id: 'group1' }]
             },
           },
         };
-    
+
         assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
-          isReturnToMain: true, 
+          isReturnToMain: true,
           isJoinToBreakout: false
         });
       });
-    
+
       it('if needUseCache conditions are not met, return newLocus and isReturnToMain as false', () => {
         const oldLocus = {
-          self: { isCreator: false }, 
+          self: { isCreator: false },
           controls: { breakout: { sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT} },
         };
-    
+
         const newLocus = {
           participants: [
             { isCreator: true, state: MEETING_STATE.STATES.JOINED },
@@ -496,13 +530,13 @@ describe('plugin-meetings', () => {
           controls: {
             breakout: {
               sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT,
-              groups: [] 
+              groups: []
             },
           },
         };
-    
+
         assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
-          isReturnToMain: false, 
+          isReturnToMain: false,
           isJoinToBreakout: false
         });
       });

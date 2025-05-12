@@ -119,6 +119,7 @@ describe('webex.cc', () => {
       webSocketManager: mockWebSocketManager,
       connectionService: {
         on: jest.fn(),
+        off: jest.fn(),
       },
       contact: mockContact,
 
@@ -1354,6 +1355,162 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc.webexRequest, 'uploadLogs').mockRejectedValue(error);
 
       await expect(webex.cc.uploadLogs('12345')).rejects.toThrow(error);
+    });
+  });
+
+  describe('unregister', () => {
+    let mockWebSocketManager;
+    let mercuryDisconnectSpy;
+    let deviceUnregisterSpy;
+    
+    beforeEach(() => {
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: true,
+        loginVoiceOptions: [LoginOption.BROWSER],
+      };
+
+      mockWebSocketManager = {
+        isSocketClosed: false,
+        close: jest.fn(),
+        off: jest.fn(),
+        on: jest.fn(),
+      };
+
+      webex.cc.services.webSocketManager = mockWebSocketManager;
+      
+      webex.internal = webex.internal || {};
+      webex.internal.mercury = {
+        connected: true,
+        disconnect: jest.fn().mockResolvedValue(),
+        off: jest.fn(),
+      };
+      webex.internal.device = {
+        unregister: jest.fn().mockResolvedValue(),
+      };
+      
+      mercuryDisconnectSpy = jest.spyOn(webex.internal.mercury, 'disconnect');
+      deviceUnregisterSpy = jest.spyOn(webex.internal.device, 'unregister');
+    });
+
+    it('should unregister successfully and clean up all resources when webrtc is enabled', async () => {
+      await webex.cc.deregister();
+
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, expect.any(Function));
+      expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
+      expect(webex.cc.services.connectionService.off).toHaveBeenCalledWith('connectionLost', expect.any(Function));
+
+      expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
+      expect(webex.cc.agentConfig).toBeNull();
+
+      expect(webex.internal.mercury.off).toHaveBeenCalledWith('online');
+      expect(webex.internal.mercury.off).toHaveBeenCalledWith('offline');
+      expect(mercuryDisconnectSpy).toHaveBeenCalled();
+      expect(deviceUnregisterSpy).toHaveBeenCalled();
+      
+      expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
+        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
+        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL
+      ]);
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS, 
+        {}, 
+        ['operational']
+      );
+
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Mercury disconnected successfully', {
+        module: CC_FILE,
+        method: 'deregister',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Deregistered successfully', {
+        module: CC_FILE,
+        method: 'deregister',
+      });
+
+      // verify listeners removed with correct callbacks
+      const incomingCalls = mockTaskManager.off.mock.calls.filter(
+        ([evt]) => evt === TASK_EVENTS.TASK_INCOMING
+      );
+      expect(incomingCalls).toHaveLength(1);
+      const [, incomingCallback] = incomingCalls[0];
+      expect(incomingCallback).toBe(webex.cc['handleIncomingTask']);
+
+      const hydrateCalls = mockTaskManager.off.mock.calls.filter(
+        ([evt]) => evt === TASK_EVENTS.TASK_HYDRATE
+      );
+      expect(hydrateCalls).toHaveLength(1);
+      const [, hydrateCallback] = hydrateCalls[0];
+      expect(hydrateCallback).toBe(webex.cc['handleTaskHydrate']);
+
+      const messageCalls = mockWebSocketManager.off.mock.calls.filter(
+        ([evt]) => evt === 'message'
+      );
+      expect(messageCalls).toHaveLength(1);
+      const [, messageCallback] = messageCalls[0];
+      expect(messageCallback).toBe(webex.cc['handleWebSocketMessage']);
+
+      const connectionCalls = webex.cc.services.connectionService.off.mock.calls.filter(
+        ([evt]) => evt === 'connectionLost'
+      );
+      expect(connectionCalls).toHaveLength(1);
+      const [, connectionCallback] = connectionCalls[0];
+      expect(connectionCallback).toBe(webex.cc['handleConnectionLost']);
+    });
+
+    it('should skip webCallingService and internal cleanup when webrtc is disabled', async () => {
+      webex.cc.agentConfig.webRtcEnabled = false;
+      await webex.cc.deregister();
+  
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, expect.any(Function));
+      expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
+      expect(webex.cc.services.connectionService.off).toHaveBeenCalledWith('connectionLost', expect.any(Function));
+  
+      expect(webex.internal.mercury.off).not.toHaveBeenCalled();
+      expect(mercuryDisconnectSpy).not.toHaveBeenCalled();
+      expect(deviceUnregisterSpy).not.toHaveBeenCalled();
+    });
+
+    it('should skip internal mercury cleanup when loginVoiceOptions does not include BROWSER', async () => {
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        webRtcEnabled: true,
+        loginVoiceOptions: ['EXTENSION'],
+      };
+
+      await webex.cc.deregister();
+
+      // mercury listeners & disconnect should not run
+      expect(webex.internal.mercury.off).not.toHaveBeenCalled();
+      expect(mercuryDisconnectSpy).not.toHaveBeenCalled();
+      expect(deviceUnregisterSpy).not.toHaveBeenCalled();
+
+      expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
+      expect(webex.cc.agentConfig).toBeNull();
+    });
+
+    it('should handle errors during unregister and track metrics', async () => {
+      const mockError = new Error('Failed to deregister device');
+      webex.internal.device.unregister.mockRejectedValue(mockError);
+
+      await expect(webex.cc.deregister()).rejects.toThrow('Failed to deregister device');
+
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, expect.any(Function));
+
+      expect(LoggerProxy.error).toHaveBeenCalledWith(`Error during deregister: ${mockError}`, {
+        module: CC_FILE,
+        method: 'deregister',
+      });
+      
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL, 
+        {
+          error: 'Failed to deregister device',
+        }, 
+        ['operational']
+      );
     });
   });
 });

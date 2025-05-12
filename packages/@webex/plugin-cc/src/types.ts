@@ -106,6 +106,7 @@ interface IWebexInternal {
     on: Listener;
     off: ListenerOff;
     connect: () => Promise<void>;
+    disconnect: () => Promise<void>;
     connected: boolean;
     connecting: boolean;
   };

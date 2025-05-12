@@ -9083,7 +9083,6 @@ __metadata:
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/webex-core": "workspace:*"
-    buffer: 6.0.3
     eslint: ^8.24.0
     eslint-config-airbnb-base: 15.0.0
     eslint-config-prettier: 8.3.0
@@ -9125,6 +9124,31 @@ __metadata:
     lodash: ^4.17.21
     prettier: ^2.7.1
     uuid: ^3.3.2
+  languageName: unknown
+  linkType: soft
+
+"@webex/plugin-encryption@workspace:*, @webex/plugin-encryption@workspace:packages/@webex/plugin-encryption":
+  version: 0.0.0-use.local
+  resolution: "@webex/plugin-encryption@workspace:packages/@webex/plugin-encryption"
+  dependencies:
+    "@babel/preset-typescript": 7.22.11
+    "@types/jsdom": ^21
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/webex-core": "workspace:*"
+    eslint: ^8.24.0
+    jest-html-reporters: 3.0.11
+    jest-junit: 13.0.0
+    jsdom: 19.0.0
+    jsdom-global: 3.0.2
+    prettier: ^2.7.1
+    typed-emitter: ^2.1.0
+    typedoc: 0.23.26
+    typescript: ^4.9.5
   languageName: unknown
   linkType: soft
 
@@ -34255,6 +34279,7 @@ __metadata:
     "@webex/internal-plugin-calendar": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
     "@webex/internal-plugin-presence": "workspace:*"
     "@webex/internal-plugin-support": "workspace:*"
     "@webex/internal-plugin-voicea": "workspace:*"
@@ -34264,6 +34289,7 @@ __metadata:
     "@webex/plugin-authorization": "workspace:*"
     "@webex/plugin-cc": "workspace:*"
     "@webex/plugin-device-manager": "workspace:*"
+    "@webex/plugin-encryption": "workspace:*"
     "@webex/plugin-logger": "workspace:*"
     "@webex/plugin-meetings": "workspace:*"
     "@webex/plugin-memberships": "workspace:*"
@@ -34282,6 +34308,7 @@ __metadata:
     "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
+    safe-buffer: ^5.2.0
     sinon: ^9.2.4
     webex: "workspace:*"
   languageName: unknown

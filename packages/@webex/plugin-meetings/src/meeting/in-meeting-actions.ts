@@ -99,6 +99,11 @@ interface IInMeetingActions {
   isPracticeSessionOff?: boolean;
   canStartPracticeSession?: boolean;
   canStopPracticeSession?: boolean;
+  requiresPostMeetingDataConsentPrompt?: boolean;
+  canEnableAnnotation?: boolean;
+  canDisableAnnotation?: boolean;
+  canEnableRemoteDesktopControl?: boolean;
+  canDisableRemoteDesktopControl?: boolean;
 }
 
 /**
@@ -285,6 +290,16 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canStopPracticeSession = null;
 
+  requiresPostMeetingDataConsentPrompt = null;
+
+  canEnableAnnotation = null;
+
+  canDisableAnnotation = null;
+
+  canEnableRemoteDesktopControl = null;
+
+  canDisableRemoteDesktopControl = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -379,6 +394,11 @@ export default class InMeetingActions implements IInMeetingActions {
     isPracticeSessionOff: this.isPracticeSessionOff,
     canStartPracticeSession: this.canStartPracticeSession,
     canStopPracticeSession: this.canStopPracticeSession,
+    requiresPostMeetingDataConsentPrompt: this.requiresPostMeetingDataConsentPrompt,
+    canEnableAnnotation: this.canEnableAnnotation,
+    canDisableAnnotation: this.canDisableAnnotation,
+    canEnableRemoteDesktopControl: this.canEnableRemoteDesktopControl,
+    canDisableRemoteDesktopControl: this.canDisableRemoteDesktopControl,
   });
 
   /**

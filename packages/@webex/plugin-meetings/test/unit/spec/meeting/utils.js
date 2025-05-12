@@ -744,6 +744,18 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('requiresPostMeetingDataConsentPrompt', () => {
+      it('works as expected', () => {
+        assert.deepEqual(
+          MeetingUtil.requiresPostMeetingDataConsentPrompt([
+            'SHOW_POST_MEETING_DATA_CONSENT_PROMPT',
+          ]),
+          true
+        );
+        assert.deepEqual(MeetingUtil.requiresPostMeetingDataConsentPrompt([]), false);
+      });
+    });
+
     describe('canUserRenameOthers', () => {
       it('works as expected', () => {
         assert.deepEqual(MeetingUtil.canUserRenameOthers(['CAN_RENAME_OTHERS']), true);
@@ -775,6 +787,10 @@ describe('plugin-meetings', () => {
           MeetingUtil.canShareWhiteBoard([], {
             [SELF_POLICY.SUPPORT_WHITEBOARD]: false,
           }),
+          false
+        );
+        assert.deepEqual(
+          MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD'], undefined),
           false
         );
       });
@@ -1167,6 +1183,14 @@ describe('plugin-meetings', () => {
           assert.equal(MeetingUtil.getIpVersion(webex), undefined);
         });
       });
+    });
+
+    describe('markErrorAsHandledBySdk', () => {
+      it('should set the error as handled', () => {
+        const error = MeetingUtil.markErrorAsHandledBySdk(new Error('Test error'));
+
+        assert.isTrue(error.handledBySdk);
+      })
     });
 
     describe('getChangeMeetingFloorErrorPayload', () => {

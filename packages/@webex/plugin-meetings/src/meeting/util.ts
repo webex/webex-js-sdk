@@ -573,9 +573,13 @@ const MeetingUtil = {
   canUserRenameSelfAndObserved: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.CAN_RENAME_SELF_AND_OBSERVED),
 
+  requiresPostMeetingDataConsentPrompt: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.SHOW_POST_MEETING_DATA_CONSENT_PROMPT),
+
   canUserRenameOthers: (displayHints) => displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS),
 
-  canShareWhiteBoard: (displayHints, policies) =>
+  // Default empty value for policies if we get an undefined value (ie permissionToken is not available)
+  canShareWhiteBoard: (displayHints, policies = {}) =>
     displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD) &&
     !!policies[SELF_POLICY.SUPPORT_WHITEBOARD],
 
@@ -807,6 +811,24 @@ const MeetingUtil = {
         errorCode: 1100,
       },
     ];
+  },
+
+  /**
+   * Creates a proxy object to mark an error as handled by the SDK.
+   * @param {Error} error original error
+   * @returns {Proxy} proxy object with handledBySdk property
+   */
+  markErrorAsHandledBySdk: (error) => {
+    return new Proxy(error, {
+      // eslint-disable-next-line require-jsdoc
+      get(target, prop) {
+        if (prop === 'handledBySdk') {
+          return true;
+        }
+
+        return Reflect.get(target, prop);
+      },
+    });
   },
 };
 
