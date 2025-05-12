@@ -1598,6 +1598,10 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.#isoLocalClientMeetingJoinTime = undefined;
+
+    // We clear the error cache of CA events on every new meeting instance
+    // @ts-ignore - Fix type
+    this.webex.internal.newMetrics.callDiagnosticMetrics.clearErrorCache();
   }
 
   /**
