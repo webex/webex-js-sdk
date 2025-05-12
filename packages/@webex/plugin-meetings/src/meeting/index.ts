@@ -7460,7 +7460,7 @@ export default class Meeting extends StatelessWebexPlugin {
         await this.statsAnalyzer.stopAnalyzer();
       }
 
-      if (this.mediaProperties.webrtcMediaConnection) {
+      if (this.mediaProperties.webrtcMediaConnection && !this.isMultistream) {
         this.mediaProperties.webrtcMediaConnection.closeMediaConnection();
       }
     } catch (error) {
