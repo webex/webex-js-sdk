@@ -97,7 +97,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private hasLoggedBrowserSerial: boolean;
   private device: any;
   private delayedClientEvents: DelayedClientEvent[] = [];
-  private eventErrorCache: any = {};
+  private eventErrorCache: WeakMap<any, any> = new WeakMap();
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -560,7 +560,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * Clear the error cache
    */
   clearErrorCache() {
-    this.eventErrorCache = {};
+    this.eventErrorCache = new WeakMap();
   }
 
   /**
@@ -568,8 +568,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param rawError
    */
   generateClientEventErrorPayload(rawError: any) {
-    if (this.eventErrorCache[rawError]) {
-      return [this.eventErrorCache[rawError], true];
+    const cachedError = this.eventErrorCache.get(rawError);
+
+    if (cachedError) {
+      return [cachedError, true];
     }
 
     const rawErrorMessage = rawError.message;
@@ -672,7 +674,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     // cache the payload for future use
-    this.eventErrorCache[rawError] = payload;
+    this.eventErrorCache.set(rawError, payload);
 
     return [payload, false];
   }
