@@ -18,7 +18,6 @@
     ".": "./dist/index.js",
     "./encryption": "./dist/encryption.js",
     "./meetings": "./dist/meetings.js",
-    "./contact-center": "./dist/contact-center.js",
     "./package": "./package.json"
   },
   "devMain": "src/index.js",

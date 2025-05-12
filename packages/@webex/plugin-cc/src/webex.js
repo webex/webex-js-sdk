@@ -10,10 +10,11 @@ import config from './webex-config';
 
 const Webex = WebexCore.extend({
   webex: true,
+  version: PACKAGE_VERSION,
 });
 
-Webex.init = function init(attrs = {} as any) {
-  attrs.config = merge({}, config, attrs.config); // eslint-disable-line no-param-reassign
+Webex.init = function init(attrs = {}) {
+  attrs.config = merge({sdkType: 'contact-center'}, config, attrs.config);
 
   return new Webex(attrs);
 };
