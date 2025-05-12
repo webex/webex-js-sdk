@@ -106,6 +106,7 @@ export default class TaskManager extends EventEmitter {
               module: TASK_MANAGER_FILE,
               method: 'registerTaskListeners',
             });
+            this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, task);
             break;
           case CC_EVENTS.AGENT_OUTBOUND_FAILED:
             // We don't have to emit any event here since this will be result of promise.
@@ -222,8 +223,8 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
-            task.emit(TASK_EVENTS.TASK_WRAPPEDUP, task);
             this.removeTaskFromCollection(task);
+            task.emit(TASK_EVENTS.TASK_WRAPPEDUP, task);
             break;
           case CC_EVENTS.CONTACT_RECORDING_PAUSED:
             task = this.updateTaskData(task, payload.data);

@@ -164,3 +164,14 @@ export type BuddyAgentsSuccess = Msg<{
   type: 'BuddyAgents';
   agentList: Array<BuddyDetails>;
 }>;
+
+export enum AGENT_EVENTS {
+  AGENT_STATE_CHANGE = 'agent:stateChange',
+  AGENT_MULTI_LOGIN = 'agent:multiLogin',
+  AGENT_STATION_LOGIN_SUCCESS = 'agent:stationLoginSuccess',
+  AGENT_STATION_LOGIN_FAILED = 'agent:stationLoginFailed',
+  AGENT_LOGOUT_SUCCESS = 'agent:logoutSuccess',
+  AGENT_LOGOUT_FAILED = 'agent:logoutFailed',
+  AGENT_DN_REGISTERED = 'agent:dnRegistered',
+  AGENT_RELOGIN_SUCCESS = 'agent:reloginSuccess',
+}
