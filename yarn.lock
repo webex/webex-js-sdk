@@ -4792,6 +4792,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@rollup/rollup-linux-x64-gnu@npm:4.36.0":
+  version: 4.36.0
+  resolution: "@rollup/rollup-linux-x64-gnu@npm:4.36.0"
+  conditions: os=linux & cpu=x64 & libc=glibc
+  languageName: node
+  linkType: hard
+
 "@rollup/rollup-linux-x64-musl@npm:4.19.0":
   version: 4.19.0
   resolution: "@rollup/rollup-linux-x64-musl@npm:4.19.0"
@@ -8811,6 +8818,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@webex/ladon-ts@npm:^5.5.1":
+  version: 5.5.1
+  resolution: "@webex/ladon-ts@npm:5.5.1"
+  dependencies:
+    "@rollup/rollup-linux-x64-gnu": 4.36.0
+  dependenciesMeta:
+    "@rollup/rollup-linux-x64-gnu":
+      optional: true
+  checksum: 2dbe15cce061f66dc6fa79f8d64156f379f3f6b6503d2690ea4d046db8933475abb21319b55c3f6ee2c3299ece4a292355cf8ecbdc0bfc37d2a832a458508a93
+  languageName: node
+  linkType: hard
+
 "@webex/legacy-tools@workspace:*, @webex/legacy-tools@workspace:packages/legacy/tools":
   version: 0.0.0-use.local
   resolution: "@webex/legacy-tools@workspace:packages/legacy/tools"
@@ -8893,7 +8912,7 @@ __metadata:
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/ts-events": ^1.1.0
-    "@webex/web-media-effects": 2.19.0
+    "@webex/web-media-effects": 2.27.1
     eslint: ^8.24.0
     jsdom-global: 3.0.2
     sinon: ^9.2.4
@@ -9935,17 +9954,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-media-effects@npm:2.19.0":
-  version: 2.19.0
-  resolution: "@webex/web-media-effects@npm:2.19.0"
+"@webex/web-media-effects@npm:2.27.1":
+  version: 2.27.1
+  resolution: "@webex/web-media-effects@npm:2.27.1"
   dependencies:
-    "@webex/ladon-ts": ^4.3.0
+    "@webex/ladon-ts": ^5.5.1
     events: ^3.3.0
     js-logger: ^1.6.1
     typed-emitter: ^1.4.0
     uuid: ^9.0.1
     worker-timers: ^8.0.2
-  checksum: 04c100b8eb01fbe05cc5ee1b1898c54f2ef537a9e367c7693767f6fb1df1d085c00ba91ee42d7bb9e9df55baeccd43d4ea979dcd486223a4dc3a82c61769494f
+    yarn: ^1.22.22
+  checksum: e8bfb73860bfc25fa730d13b713a5cf3851d861cf6616343f4ce84d68cb085f2d2251e6788735f4671499324bee6e35b9d708fe1fdb0770695c116e2b55227e6
   languageName: node
   linkType: hard
 
@@ -35212,6 +35232,16 @@ __metadata:
     yarn-install: bin/yarn-install.js
     yarn-remove: bin/yarn-remove.js
   checksum: b9301c1db6d9025aabad1d995413a75559e3156b54e86d3cbf03313a163a793ca6f2419516ad1b2ae8677dbe39a97adb451b10123fe32bc2e2c39d3900e2b216
+  languageName: node
+  linkType: hard
+
+"yarn@npm:^1.22.22":
+  version: 1.22.22
+  resolution: "yarn@npm:1.22.22"
+  bin:
+    yarn: bin/yarn.js
+    yarnpkg: bin/yarn.js
+  checksum: 59aeef5ccfd3347287f939448e6d3594f0a42f74025b9bdc2a277641c1d4070c07a38b6e7c35e695f77410b0269a5a43c78535786564f86f39c9f781e6efa311
   languageName: node
   linkType: hard
 

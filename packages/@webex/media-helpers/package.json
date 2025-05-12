@@ -24,7 +24,7 @@
   "dependencies": {
     "@webex/internal-media-core": "2.14.7",
     "@webex/ts-events": "^1.1.0",
-    "@webex/web-media-effects": "2.19.0"
+    "@webex/web-media-effects": "2.27.1"
   },
   "browserify": {
     "transform": [
