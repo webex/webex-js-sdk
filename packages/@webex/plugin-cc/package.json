@@ -28,7 +28,6 @@
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/internal-plugin-metrics": "workspace:*",
     "@webex/webex-core": "workspace:*",
-    "buffer": "6.0.3",
     "jest-html-reporters": "3.0.11"
   },
   "devDependencies": {
