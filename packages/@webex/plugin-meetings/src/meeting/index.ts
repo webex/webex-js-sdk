@@ -7159,12 +7159,18 @@ export default class Meeting extends StatelessWebexPlugin {
           },
           options: {
             meetingId: this.id,
+            rawError: error,
           },
         });
       }
-      throw new Error(
+
+      const timedOutError = new Error(
         `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
       );
+
+      timedOutError.cause = error;
+
+      throw timedOutError;
     }
   }
 
@@ -7225,6 +7231,9 @@ export default class Meeting extends StatelessWebexPlugin {
           ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT / 1000
         } seconds`
       );
+
+      const error = new Error('Timed out waiting for REMOTE SDP ANSWER');
+
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media-engine.remote-sdp-received',
@@ -7237,10 +7246,10 @@ export default class Meeting extends StatelessWebexPlugin {
             }),
           ],
         },
-        options: {meetingId: this.id, rawError: new Error('Timeout waiting for SDP answer')},
+        options: {meetingId: this.id, rawError: error},
       });
 
-      deferSDPAnswer.reject(new Error('Timed out waiting for REMOTE SDP ANSWER'));
+      deferSDPAnswer.reject(error);
     }, ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT);
 
     LoggerProxy.logger.info(`${LOG_HEADER} waiting for REMOTE SDP ANSWER...`);
@@ -7345,7 +7354,7 @@ export default class Meeting extends StatelessWebexPlugin {
         error
       );
 
-      throw new AddMediaFailed();
+      throw new AddMediaFailed(error);
     }
   }
 

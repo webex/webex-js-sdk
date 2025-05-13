@@ -2762,7 +2762,8 @@ describe('plugin-meetings', () => {
               turnDiscoverySkippedReason: undefined,
             });
           meeting.meetingState = 'ACTIVE';
-          meeting.mediaProperties.waitForMediaConnectionConnected.rejects({iceConnected: false});
+          const error = {iceConnected: false}
+          meeting.mediaProperties.waitForMediaConnectionConnected.rejects(error);
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -2780,6 +2781,7 @@ describe('plugin-meetings', () => {
             })
             .catch((err) => {
               errorThrown = err;
+              assert.instanceOf(err.cause, Error);
               assert.instanceOf(err, AddMediaFailed);
             });
 
@@ -2836,6 +2838,7 @@ describe('plugin-meetings', () => {
             },
             options: {
               meetingId: meeting.id,
+              rawError: error,
             },
           });
           assert.calledWith(webex.internal.newMetrics.submitClientEvent.thirdCall, {
@@ -2847,6 +2850,7 @@ describe('plugin-meetings', () => {
             },
             options: {
               meetingId: meeting.id,
+              rawError: error,
             },
           });
 
@@ -2975,10 +2979,13 @@ describe('plugin-meetings', () => {
               },
               turnDiscoverySkippedReason: undefined,
             });
+
+          const mediaConnectionError = new Error('fake error');
+
           meeting.mediaProperties.waitForMediaConnectionConnected = sinon
             .stub()
             .onFirstCall()
-            .rejects()
+            .rejects(mediaConnectionError)
             .onSecondCall()
             .resolves();
 
@@ -3047,6 +3054,7 @@ describe('plugin-meetings', () => {
             },
             options: {
               meetingId: meeting.id,
+              rawError: mediaConnectionError,
             },
           });
           assert.calledWith(webex.internal.newMetrics.submitClientEvent.thirdCall, {
@@ -3957,6 +3965,9 @@ describe('plugin-meetings', () => {
                   },
                   options: {
                     meetingId: meeting.id,
+                    rawError: {
+                      iceConnected: false,
+                    }
                   },
                 },
               ]);
