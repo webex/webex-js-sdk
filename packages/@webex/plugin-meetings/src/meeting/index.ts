@@ -722,6 +722,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private rtcMetrics?: RtcMetrics;
   private uploadLogsTimer?: ReturnType<typeof setTimeout>;
   private logUploadIntervalIndex: number;
+  private mediaServerIp: string;
 
   /**
    * @param {Object} attrs
@@ -1598,6 +1599,19 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.#isoLocalClientMeetingJoinTime = undefined;
+
+    // We clear the error cache of CA events on every new meeting instance
+    // @ts-ignore - Fix type
+    this.webex.internal.newMetrics.callDiagnosticMetrics.clearErrorCache();
+
+    /**
+     * IP Address of the remote media server
+     * @instance
+     * @type {string}
+     * @private
+     * @memberof Meeting
+     */
+    this.mediaServerIp = undefined;
   }
 
   /**
@@ -5856,13 +5870,11 @@ export default class Meeting extends StatelessWebexPlugin {
           this
         );
 
-        const proxyError = MeetingUtil.markErrorAsHandledBySdk(error);
-
-        joinFailed(proxyError);
+        joinFailed(error);
 
         this.deferJoin = undefined;
 
-        return Promise.reject(proxyError);
+        return Promise.reject(error);
       })
       .then((join) => {
         // @ts-ignore - config coming from registerPlugin
@@ -6245,10 +6257,10 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Handles ROAP_FAILURE event from the webrtc media connection
    *
-   * @param {Error} roapError
+   * @param {Error} error
    * @returns {void}
    */
-  handleRoapFailure = (roapError) => {
+  handleRoapFailure = (error) => {
     // eslint-disable-next-line @typescript-eslint/no-shadow
     const sendBehavioralMetric = (metricName, error, correlationId) => {
       const data = {
@@ -6263,8 +6275,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
       Metrics.sendBehavioralMetric(metricName, data, metadata);
     };
-
-    const error = MeetingUtil.markErrorAsHandledBySdk(roapError);
 
     if (error instanceof Errors.SdpOfferCreationError) {
       sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.correlationId);
@@ -6304,7 +6314,7 @@ export default class Meeting extends StatelessWebexPlugin {
         clearTimeout(this.sdpResponseTimer);
         this.sdpResponseTimer = undefined;
 
-        this.deferSDPAnswer.reject(error);
+        this.deferSDPAnswer.reject();
       }
     } else if (error instanceof Errors.SdpError) {
       // this covers also the case of Errors.IceGatheringError which extends Errors.SdpError
@@ -6333,6 +6343,11 @@ export default class Meeting extends StatelessWebexPlugin {
         ? MeetingsUtil.getMediaServer(roapMessage.sdp)
         : undefined;
 
+    const mediaServerIp =
+      roapMessage.messageType === 'ANSWER'
+        ? MeetingsUtil.getMediaServerIp(roapMessage.sdp)
+        : undefined;
+
     if (this.isMultistream && mediaServer && mediaServer !== 'homer') {
       throw new MultistreamNotSupportedError(
         `Client asked for multistream backend (Homer), but got ${mediaServer} instead`
@@ -6342,6 +6357,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (mediaServer) {
       this.mediaProperties.webrtcMediaConnection.mediaServer = mediaServer;
+    }
+
+    if (this.isMultistream && mediaServerIp) {
+      this.mediaServerIp = mediaServerIp;
     }
   };
 
@@ -6459,9 +6478,7 @@ export default class Meeting extends StatelessWebexPlugin {
               {
                 logText: `${LOG_HEADER} Roap Offer`,
               }
-            ).catch((originalError) => {
-              const error = MeetingUtil.markErrorAsHandledBySdk(originalError);
-
+            ).catch((error) => {
               const multistreamNotSupported = error instanceof MultistreamNotSupportedError;
 
               // @ts-ignore
@@ -7109,28 +7126,7 @@ export default class Meeting extends StatelessWebexPlugin {
     } catch (error) {
       const {iceConnected} = error;
 
-      let handledBySdk = false;
-
       if (!this.hasMediaConnectionConnectedAtLeastOnce) {
-        const caError =
-          // @ts-ignore
-          this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode({
-            clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
-              signalingState:
-                this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-                  ?.signalingState ||
-                this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.signalingState ||
-                'unknown',
-              iceConnected,
-              turnServerUsed: this.turnServerUsed,
-              unreachable:
-                // @ts-ignore
-                await this.webex.meetings.reachability
-                  .isWebexMediaBackendUnreachable()
-                  .catch(() => false),
-            }),
-          });
-
         // Only send CA event for join flow if we haven't successfully connected media yet
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
@@ -7138,25 +7134,37 @@ export default class Meeting extends StatelessWebexPlugin {
           payload: {
             canProceed: !this.turnServerUsed, // If we haven't done turn tls retry yet we will proceed with join attempt
             icePhase: this.addMediaData.icePhaseCallback(),
-            errors: [caError],
+            errors: [
+              // @ts-ignore
+              this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
+                {
+                  clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
+                    signalingState:
+                      this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                        ?.signalingState ||
+                      this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
+                        ?.signalingState ||
+                      'unknown',
+                    iceConnected,
+                    turnServerUsed: this.turnServerUsed,
+                    unreachable:
+                      // @ts-ignore
+                      await this.webex.meetings.reachability
+                        .isWebexMediaBackendUnreachable()
+                        .catch(() => false),
+                  }),
+                }
+              ),
+            ],
           },
           options: {
             meetingId: this.id,
           },
         });
-
-        handledBySdk = true;
       }
-
-      let timedOutError = new Error(
+      throw new Error(
         `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
       );
-
-      if (handledBySdk) {
-        timedOutError = MeetingUtil.markErrorAsHandledBySdk(timedOutError);
-      }
-
-      throw timedOutError;
     }
   }
 
@@ -7217,11 +7225,6 @@ export default class Meeting extends StatelessWebexPlugin {
           ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT / 1000
         } seconds`
       );
-
-      const timeoutError = new Error('Timeout waiting for SDP answer');
-
-      const timeoutErrorProxy = MeetingUtil.markErrorAsHandledBySdk(timeoutError);
-
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media-engine.remote-sdp-received',
@@ -7234,7 +7237,7 @@ export default class Meeting extends StatelessWebexPlugin {
             }),
           ],
         },
-        options: {meetingId: this.id, rawError: timeoutErrorProxy},
+        options: {meetingId: this.id, rawError: new Error('Timeout waiting for SDP answer')},
       });
 
       deferSDPAnswer.reject(new Error('Timed out waiting for REMOTE SDP ANSWER'));
@@ -7342,14 +7345,7 @@ export default class Meeting extends StatelessWebexPlugin {
         error
       );
 
-      let addMediaFailedError = new AddMediaFailed();
-
-      // @ts-ignore - handledBySdk is added by a proxy
-      if (error.handledBySdk) {
-        addMediaFailedError = MeetingUtil.markErrorAsHandledBySdk(addMediaFailedError);
-      }
-
-      throw addMediaFailedError;
+      throw new AddMediaFailed();
     }
   }
 
@@ -7768,6 +7764,11 @@ export default class Meeting extends StatelessWebexPlugin {
       const reachabilityStats = await this.webex.meetings.reachability.getReachabilityMetrics();
       const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
 
+      // @ts-ignore
+      const isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(
+        this.mediaServerIp
+      );
+
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
         correlation_id: this.correlationId,
         locus_id: this.locusUrl.split('/').pop(),
@@ -7777,6 +7778,7 @@ export default class Meeting extends StatelessWebexPlugin {
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
+        isSubnetReachable,
         ...reachabilityStats,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
@@ -7805,6 +7807,11 @@ export default class Meeting extends StatelessWebexPlugin {
         await this.mediaProperties.getCurrentConnectionInfo();
 
       const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
+
+      // @ts-ignore
+      const isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(
+        this.mediaServerIp
+      );
 
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
         correlation_id: this.correlationId,
@@ -7835,6 +7842,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
           'unknown',
         ...reachabilityMetrics,
+        isSubnetReachable,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
       });

@@ -1375,7 +1375,14 @@ describe('internal-plugin-metrics', () => {
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
         const validatorSpy = sinon.spy(cd, 'validator');
-        sinon.stub(window.navigator, 'userAgent').get(() => userAgent);
+
+        Object.defineProperty(global, 'navigator', {
+          value: {
+            userAgent,
+          },
+          configurable: true,
+        });
+
         sinon.stub(bowser, 'getParser').returns(userAgent);
 
         const options = {
@@ -1948,7 +1955,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
+          `generatedError (cached: false): {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
         ]);
       });
 
@@ -2028,7 +2035,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
+          `generatedError (cached: false): {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
@@ -2101,7 +2108,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
+          `generatedError (cached: false): {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
@@ -2175,7 +2182,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
+          `generatedError (cached: false): {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
         ]);
       });
 
@@ -2555,8 +2562,37 @@ describe('internal-plugin-metrics', () => {
         rawErrorMessage: 'bad times',
       };
 
+      it('should be cached if called twice with the same payload', () => {
+        const error = new Error('bad times');
+        const expectedPayload = {
+          category: 'other',
+          errorCode: 9999,
+          errorData: {errorName: 'Error'},
+          serviceErrorCode: 9999,
+          fatal: true,
+          shownToUser: false,
+          name: 'other',
+          rawErrorMessage: 'bad times',
+          errorDescription: 'UnknownError',
+        }
+
+        const [res, cached] = cd.generateClientEventErrorPayload(error);
+        assert.isFalse(cached);
+        assert.deepEqual(res, expectedPayload);
+
+        const [res2, cached2] = cd.generateClientEventErrorPayload(error);
+        assert.isTrue(cached2);
+        assert.deepEqual(res2, expectedPayload);
+
+        // after clearing the cache, it should be false again
+        cd.clearErrorCache();
+        const [res3, cached3] = cd.generateClientEventErrorPayload(error);
+        assert.isFalse(cached3);
+        assert.deepEqual(res3, expectedPayload);
+      });
+
       const checkNameError = (payload: any, isExpectedToBeCalled: boolean) => {
-        const res = cd.generateClientEventErrorPayload(payload);
+        const [res, cached] = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {
           category: 'expected',
           errorDescription: 'CameraPermissionDenied',
@@ -2585,7 +2621,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       const checkCodeError = (payload: any, expetedRes: any) => {
-        const res = cd.generateClientEventErrorPayload(payload);
+        const [res, cached] = cd.generateClientEventErrorPayload(payload);
         assert.deepEqual(res, expetedRes);
       };
       it('should generate event error payload correctly', () => {
@@ -2611,7 +2647,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       const checkLocusError = (payload: any, isExpectedToBeCalled: boolean) => {
-        const res = cd.generateClientEventErrorPayload(payload);
+        const [res, cached] = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {
           category: 'signaling',
           errorDescription: 'NewLocusError',
@@ -2639,7 +2675,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       const checkMeetingInfoError = (payload: any, isExpectedToBeCalled: boolean) => {
-        const res = cd.generateClientEventErrorPayload(payload);
+        const [res, cached] = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {
           category: 'signaling',
           errorDescription: 'MeetingInfoLookupError',
@@ -2680,7 +2716,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should return NetworkError code for a NetworkOrCORSERror', () => {
-        const res = cd.generateClientEventErrorPayload(
+        const [res, cached] = cd.generateClientEventErrorPayload(
           new WebexHttpError.NetworkOrCORSError({
             url: 'https://example.com',
             statusCode: 0,
@@ -2724,7 +2760,7 @@ describe('internal-plugin-metrics', () => {
               message: 'No codecs present in m-line with MID 0 after filtering.',
             },
           };
-          const res = cd.generateClientEventErrorPayload(error);
+          const [res, cached] = cd.generateClientEventErrorPayload(error);
           assert.deepEqual(res, {
             category: 'expected',
             errorCode: 2051,
@@ -2750,7 +2786,7 @@ describe('internal-plugin-metrics', () => {
               message: 'empty local SDP',
             },
           };
-          const res = cd.generateClientEventErrorPayload(error);
+          const [res, cached] = cd.generateClientEventErrorPayload(error);
           assert.deepEqual(res, {
             category: 'media',
             errorCode: 2050,
@@ -2775,7 +2811,7 @@ describe('internal-plugin-metrics', () => {
           category: 'expected',
         };
 
-        const res = cd.generateClientEventErrorPayload(error);
+        const [res, cached] = cd.generateClientEventErrorPayload(error);
         assert.deepEqual(res, {
           category: 'expected',
           errorDescription: 'UnknownError',
@@ -2804,7 +2840,7 @@ describe('internal-plugin-metrics', () => {
           category: 'expected',
         };
 
-        const res = cd.generateClientEventErrorPayload(error);
+        const [res, cached] = cd.generateClientEventErrorPayload(error);
         assert.deepEqual(res, {
           category: 'expected',
           errorDescription: 'NetworkError',
@@ -2819,7 +2855,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should return AuthenticationFailed code for an Unauthorized error', () => {
-        const res = cd.generateClientEventErrorPayload(
+        const [res, cached] = cd.generateClientEventErrorPayload(
           new WebexHttpError.Unauthorized({
             url: 'https://example.com',
             statusCode: 0,
@@ -2852,7 +2888,7 @@ describe('internal-plugin-metrics', () => {
           category: 'expected',
         };
 
-        const res = cd.generateClientEventErrorPayload(error);
+        const [res, cached] = cd.generateClientEventErrorPayload(error);
         assert.deepEqual(res, {
           category: 'expected',
           errorDescription: 'AuthenticationFailed',
@@ -2867,7 +2903,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should return unknown error otherwise', () => {
-        const res = cd.generateClientEventErrorPayload({something: 'new', message: 'bad times'});
+        const [res, cached] = cd.generateClientEventErrorPayload({something: 'new', message: 'bad times'});
         assert.deepEqual(res, {
           category: 'other',
           errorDescription: 'UnknownError',
@@ -2881,7 +2917,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should generate event error payload correctly for locus error 2423012', () => {
-        const res = cd.generateClientEventErrorPayload({
+        const [res, cached] = cd.generateClientEventErrorPayload({
           body: {errorCode: 2423012},
           message: 'bad times',
         });
@@ -2897,7 +2933,7 @@ describe('internal-plugin-metrics', () => {
         });
       });
       it('should generate event error payload correctly for locus error 2409062', () => {
-        const res = cd.generateClientEventErrorPayload({
+        const [res, cached] = cd.generateClientEventErrorPayload({
           body: {errorCode: 2409062},
           message: 'bad times',
         });
@@ -2914,7 +2950,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should generate event error payload correctly for locus error 2423021', () => {
-        const res = cd.generateClientEventErrorPayload({
+        const [res, cached] = cd.generateClientEventErrorPayload({
           body: {errorCode: 2423021},
           message: 'bad times',
         });
@@ -2931,7 +2967,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should generate event error payload correctly for wdm error 4404002', () => {
-        const res = cd.generateClientEventErrorPayload({
+        const [res, cached] = cd.generateClientEventErrorPayload({
           body: {errorCode: 4404002},
           message: 'Operation denied due to region restriction',
         });
@@ -2948,7 +2984,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should generate event error payload correctly for wdm error 4404003', () => {
-        const res = cd.generateClientEventErrorPayload({
+        const [res, cached] = cd.generateClientEventErrorPayload({
           body: {errorCode: 4404003},
           message: 'Operation denied due to region restriction',
         });
@@ -2966,7 +3002,7 @@ describe('internal-plugin-metrics', () => {
 
       describe('httpStatusCode', () => {
         it('should include httpStatusCode for browser media errors', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             name: 'PermissionDeniedError',
             message: 'bad times',
             statusCode: 401,
@@ -2988,7 +3024,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for SdpOfferCreationErrors', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             name: 'SdpOfferCreationError',
             message: 'bad times',
             statusCode: 404,
@@ -3010,7 +3046,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for service error codes', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             body: {errorCode: 58400},
             message: 'bad times',
             statusCode: 400,
@@ -3029,7 +3065,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for locus service error codes', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             body: {errorCode: 2403001},
             message: 'bad times',
             statusCode: 400,
@@ -3048,7 +3084,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for meetingInfo service error codes', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             body: {data: {meetingInfo: {}}},
             message: 'bad times',
             statusCode: 400,
@@ -3071,7 +3107,7 @@ describe('internal-plugin-metrics', () => {
             statusCode: 400,
             options: {service: '', headers: {}},
           });
-          const res = cd.generateClientEventErrorPayload(error);
+          const [res, cached] = cd.generateClientEventErrorPayload(error);
           assert.deepEqual(res, {
             category: 'network',
             errorCode: 1026,
@@ -3090,7 +3126,7 @@ describe('internal-plugin-metrics', () => {
             statusCode: 401,
             options: {service: '', headers: {}},
           });
-          const res = cd.generateClientEventErrorPayload(error);
+          const [res, cached] = cd.generateClientEventErrorPayload(error);
           assert.deepEqual(res, {
             category: 'network',
             errorCode: 1010,
@@ -3105,7 +3141,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for unknown errors', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             message: 'bad times',
             statusCode: 404,
           });

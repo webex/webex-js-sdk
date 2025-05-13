@@ -174,59 +174,6 @@ describe('ClusterReachability', () => {
       assert.deepEqual(emittedEvents[Events.clientMediaIpsUpdated], []);
     });
 
-    it('resolves and has correct result as soon as it finds that all udp, tcp and tls are reachable', async () => {
-      const promise = clusterReachability.start();
-
-      await clock.tickAsync(100);
-      fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp'}});
-
-      // check the right events were emitted
-      assert.equal(emittedEvents[Events.resultReady].length, 1);
-      assert.deepEqual(emittedEvents[Events.resultReady][0], {
-        protocol: 'udp',
-        result: 'reachable',
-        latencyInMilliseconds: 100,
-        clientMediaIPs: ['somePublicIp'],
-      });
-
-      // clientMediaIpsUpdated shouldn't be emitted, because the IP is already passed in the resultReady event
-      assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
-
-      await clock.tickAsync(100);
-      fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp'}});
-
-      // check the right event was emitted
-      assert.equal(emittedEvents[Events.resultReady].length, 2);
-      assert.deepEqual(emittedEvents[Events.resultReady][1], {
-        protocol: 'tcp',
-        result: 'reachable',
-        latencyInMilliseconds: 200,
-      });
-      assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
-
-      await clock.tickAsync(100);
-      fakePeerConnection.onicecandidate({
-        candidate: {type: 'relay', address: 'someTurnRelayIp', port: 443},
-      });
-
-      // check the right event was emitted
-      assert.equal(emittedEvents[Events.resultReady].length, 3);
-      assert.deepEqual(emittedEvents[Events.resultReady][2], {
-        protocol: 'xtls',
-        result: 'reachable',
-        latencyInMilliseconds: 300,
-      });
-      assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
-
-      await promise;
-
-      assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['somePublicIp']},
-        tcp: {result: 'reachable', latencyInMilliseconds: 200},
-        xtls: {result: 'reachable', latencyInMilliseconds: 300},
-      });
-    });
-
     it('resolves and returns correct results when aborted before it gets any candidates', async () => {
       const promise = clusterReachability.start();
 
@@ -275,7 +222,7 @@ describe('ClusterReachability', () => {
 
       await testUtils.flushPromises();
 
-      fakePeerConnection.iceConnectionState = 'complete';
+      fakePeerConnection.iceGatheringState = 'complete';
       fakePeerConnection.onicegatheringstatechange();
       await promise;
 
@@ -293,7 +240,7 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(30);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1'}});
 
-      fakePeerConnection.iceConnectionState = 'complete';
+      fakePeerConnection.iceGatheringState = 'complete';
       fakePeerConnection.onicegatheringstatechange();
       await promise;
 
@@ -436,6 +383,9 @@ describe('ClusterReachability', () => {
         candidate: {type: 'relay', address: 'someTurnRelayIp', port: 443},
       });
 
+      fakePeerConnection.iceGatheringState = 'complete';
+      fakePeerConnection.onicegatheringstatechange();
+
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
@@ -474,6 +424,10 @@ describe('ClusterReachability', () => {
         candidate: {type: 'relay', address: 'someTurnRelayIp', port: 443},
       });
 
+      fakePeerConnection.iceGatheringState = 'complete';
+      fakePeerConnection.onicegatheringstatechange();
+      await clock.tickAsync(10);
+
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
@@ -485,6 +439,38 @@ describe('ClusterReachability', () => {
         tcp: {result: 'reachable', latencyInMilliseconds: 20},
         xtls: {result: 'reachable', latencyInMilliseconds: 20},
       });
+    });
+
+    it('should gather correctly reached subnets', async () => {
+      const promise = clusterReachability.start();
+
+      await clock.tickAsync(10);
+      fakePeerConnection.onicecandidate({candidate: {type: 'srflx', url: 'stun:1.2.3.4:5004'}});
+      fakePeerConnection.onicecandidate({candidate: {type: 'srflx', url: 'stun:4.3.2.1:5004'}});
+      fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp'}});
+
+      clusterReachability.abort();
+      await promise;
+
+      assert.deepEqual(Array.from(clusterReachability.reachedSubnets), [
+        '1.2.3.4',
+        '4.3.2.1',
+        'someTurnRelayIp'
+      ]);
+    });
+
+    it('should store only unique subnet address', async () => {
+      const promise = clusterReachability.start();
+
+      await clock.tickAsync(10);
+      fakePeerConnection.onicecandidate({candidate: {type: 'srflx', url: 'stun:1.2.3.4:5004'}});
+      fakePeerConnection.onicecandidate({candidate: {type: 'srflx', url: 'stun:1.2.3.4:9000'}});
+      fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: '1.2.3.4'}});
+
+      clusterReachability.abort();
+      await promise;
+
+      assert.deepEqual(Array.from(clusterReachability.reachedSubnets), ['1.2.3.4']);
     });
   });
 });

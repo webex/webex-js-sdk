@@ -6,7 +6,6 @@ import {WebexPlugin} from '@webex/webex-core';
 import {MEDIA, HTTP_VERBS, ROAP} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {ClientMediaPreferences} from '../reachability/reachability.types';
-import MeetingUtil from './util';
 
 export type MediaRequestType = 'RoapMessage' | 'LocalMute';
 export type RequestResult = any;
@@ -264,9 +263,7 @@ export class LocusMediaRequest extends WebexPlugin {
 
         return result;
       })
-      .catch((error) => {
-        let e = error;
-
+      .catch((e) => {
         if (
           isRequestAffectingConfluenceState(request) &&
           this.confluenceState === 'creation in progress'
@@ -275,8 +272,6 @@ export class LocusMediaRequest extends WebexPlugin {
         }
 
         if (request.type === 'RoapMessage') {
-          e = MeetingUtil.markErrorAsHandledBySdk(e);
-
           // @ts-ignore
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.locus.media.response',

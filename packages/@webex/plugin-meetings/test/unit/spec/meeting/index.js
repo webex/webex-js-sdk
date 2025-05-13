@@ -243,6 +243,7 @@ describe('plugin-meetings', () => {
       },
     });
 
+    webex.internal.newMetrics.callDiagnosticMetrics.clearErrorCache = sinon.stub();
     webex.internal.support.submitLogs = sinon.stub().returns(Promise.resolve());
     webex.internal.services = {get: sinon.stub().returns('locus-url')};
     webex.credentials.getOrgId = sinon.stub().returns('fake-org-id');
@@ -253,6 +254,7 @@ describe('plugin-meetings', () => {
       getReachabilityResults: sinon.stub().resolves(undefined),
       getReachabilityMetrics: sinon.stub().resolves({}),
       stopReachability: sinon.stub(),
+      isSubnetReachable: sinon.stub().returns(true),
     };
     webex.internal.llm.on = sinon.stub();
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
@@ -1011,19 +1013,13 @@ describe('plugin-meetings', () => {
             .stub()
             .returns(fakeClientError);
 
-          const promise = meeting.joinWithMedia({
+          // call joinWithMedia() - it should fail
+          await assert.isRejected(
+            meeting.joinWithMedia({
               joinOptions,
               mediaOptions,
             })
-
-          // call joinWithMedia() - it should fail
-          await assert.isRejected(promise);
-
-          const rejectedError = await promise.catch((error) => error);
-
-          // Since the SDK has sent the CA events, we need to mark this error as handled
-          // so the client doesn't try and send CA events again
-          assert.isTrue(rejectedError.handledBySdk);
+          );
 
           // check the right CA events have been sent:
           // calls at index 0 and 2 to submitClientEvent are for "client.media.capabilities" which we don't care about in this test
@@ -1815,7 +1811,6 @@ describe('plugin-meetings', () => {
                 await meeting.join();
                 joinSucceeded = true;
               } catch (e) {
-                assert.isTrue(e.handledBySdk)
                 assert.instanceOf(e, IntentToJoinError);
               }
               assert.isFalse(joinSucceeded);
@@ -1868,20 +1863,7 @@ describe('plugin-meetings', () => {
             });
           });
           it('should try to join the meeting and return promise reject', async () => {
-            await meeting.join().catch((e) => {
-              assert.isTrue(e.handledBySdk);
-              assert.calledOnce(MeetingUtil.joinMeeting);
-            });
-          });
-
-          it('should try to join the meeting and return deferred promise reject', async () => {
-
-            // call first
-            meeting.join();
-
-            // call 2nd time will get the deferred promise
-            await meeting.join().catch((e) => {
-              assert.isTrue(e.handledBySdk);
+            await meeting.join().catch(() => {
               assert.calledOnce(MeetingUtil.joinMeeting);
             });
           });
@@ -2128,6 +2110,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
             }),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(false),
           };
 
           const forceRtcMetricsSend = sinon.stub().resolves();
@@ -2183,6 +2166,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
+              isSubnetReachable: false,
               numTransports: 1,
               iceCandidatesCount: 0,
             }
@@ -2229,6 +2213,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
+              isSubnetReachable: true,
             })
           );
 
@@ -2243,6 +2228,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }),
+            isSubnetReachable: sinon.stub().returns(true),
           };
 
           meeting.waitForRemoteSDPAnswer = sinon.stub().rejects();
@@ -2293,6 +2279,7 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
+              isSubnetReachable: true,
             }
           );
         });
@@ -2350,6 +2337,7 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
+              isSubnetReachable: true,
             })
           );
 
@@ -2407,6 +2395,7 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
+              isSubnetReachable: true,
             })
           );
 
@@ -2744,6 +2733,7 @@ describe('plugin-meetings', () => {
             isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
             getReachabilityMetrics: sinon.stub().resolves(),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
           };
           const MOCK_CLIENT_ERROR_CODE = 2004;
           const generateClientErrorCodeForIceFailureStub = sinon
@@ -2923,6 +2913,7 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
+              isSubnetReachable: true,
             },
           ]);
 
@@ -2953,6 +2944,7 @@ describe('plugin-meetings', () => {
               .resolves(false),
             getReachabilityMetrics: sinon.stub().resolves({}),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
           };
           const getErrorPayloadForClientErrorCodeStub =
             (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
@@ -3120,6 +3112,7 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: true,
               isJoinWithMediaRetry: false,
               iceCandidatesCount: 0,
+              isSubnetReachable: true,
             },
           ]);
           meeting.roap.doTurnDiscovery;
@@ -3248,6 +3241,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
             }),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
           };
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
@@ -3275,6 +3269,7 @@ describe('plugin-meetings', () => {
               iceCandidatesCount: 3,
               '701_error': 3,
               '701_turn_host_lookup_received_error': 1,
+              isSubnetReachable: true,
             }
           );
 
@@ -3337,6 +3332,7 @@ describe('plugin-meetings', () => {
               iceConnectionState: 'unknown',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
+              isSubnetReachable: true,
               iceCandidatesCount: 0,
             }
           );
@@ -3398,6 +3394,7 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               '701_error': 2,
               '701_turn_host_lookup_received_error': 1,
+              isSubnetReachable: true,
               iceCandidatesCount: 0,
             }
           );
@@ -8816,21 +8813,14 @@ describe('plugin-meetings', () => {
             clock.restore();
           });
 
-          const checkMetricSent = (event, error, expectedErrorCode) => {
+          const checkMetricSent = (event, error) => {
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0], {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: event,
               payload: {
                 canProceed: false,
               },
-              options: {
-                rawError: {
-                  ...(error.cause ? {cause: {name: error.cause.name}} : {cause: undefined}),
-                  code: expectedErrorCode,
-                  name: error.name,
-                },
-                meetingId: meeting.id,
-              },
+              options: {rawError: error, meetingId: meeting.id},
             });
           };
 
@@ -8864,7 +8854,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.local-sdp-generated', fakeError, 30005);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpOfferCreationError,
@@ -8881,7 +8871,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.remote-sdp-received', fakeError, 30006);
+            checkMetricSent('client.media-engine.remote-sdp-received', fakeError);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpOfferHandlingError,
@@ -8905,7 +8895,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.remote-sdp-received', fakeError, 30004);
+            checkMetricSent('client.media-engine.remote-sdp-received', fakeError);
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE,
               Errors.ErrorCode.SdpAnswerHandlingError,
@@ -8913,7 +8903,6 @@ describe('plugin-meetings', () => {
               fakeRootCauseName
             );
             assert.calledOnce(meeting.deferSDPAnswer.reject);
-            assert.isTrue(meeting.deferSDPAnswer.reject.getCall(0).args[0].handledBySdk);
             assert.calledOnce(clearTimeoutSpy);
           });
 
@@ -8923,7 +8912,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.local-sdp-generated', fakeError, 30002);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
             // expectedMetadataType is the error name in this case
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
@@ -8941,7 +8930,7 @@ describe('plugin-meetings', () => {
 
             eventListeners[MediaConnectionEventNames.ROAP_FAILURE](fakeError);
 
-            checkMetricSent('client.media-engine.local-sdp-generated', fakeError, 30003);
+            checkMetricSent('client.media-engine.local-sdp-generated', fakeError);
             // expectedMetadataType is the error name in this case
             checkBehavioralMetricSent(
               BEHAVIORAL_METRICS.INVALID_ICE_CANDIDATE,
@@ -9135,7 +9124,7 @@ describe('plugin-meetings', () => {
             assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {
               clientErrorCode: expectedErrorCode,
             });
-            assert.deepEqual(webex.internal.newMetrics.submitClientEvent.getCall(0).args[0], {
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media-engine.remote-sdp-received',
               payload: {
                 canProceed,
@@ -9143,18 +9132,9 @@ describe('plugin-meetings', () => {
               },
               options: {
                 meetingId: meeting.id,
-                rawError: fakeError instanceof MultistreamNotSupportedError ? {
-                  code: fakeError.code,
-                  name: fakeError.name,
-                  sdkMessage: fakeError.sdkMessage,
-                  error: fakeError.error,
-                } : {},
+                rawError: fakeError,
               },
             });
-            const actualError = webex.internal.newMetrics.submitClientEvent.getCall(0).args[0].options.rawError;
-
-            assert.isTrue(actualError.handledBySdk);
-            assert.equal(actualError.message, fakeError.message);
           };
 
           it('handles OFFER message correctly when request fails', async () => {

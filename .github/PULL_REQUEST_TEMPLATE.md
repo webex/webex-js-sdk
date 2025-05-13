@@ -57,7 +57,6 @@ This is for compliance purposes with FedRAMP program.
 
 - [ ] I have read and followed [contributing guidelines](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md#submitting-a-pull-request)
 - [ ] I discussed changes with code owners prior to submitting this pull request
-
 - [ ] I have not skipped any automated checks
 - [ ] All existing and new tests passed
 - [ ] I have updated the documentation accordingly
