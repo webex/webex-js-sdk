@@ -941,6 +941,10 @@ function register() {
         agentMultiLoginAlert.style.color = 'red';``
       }
     });
+
+    webex.cc.on('agent:stationLoginSuccess', (data) => {
+      console.log('Agent station login success', data);
+    });
     
 }
 
