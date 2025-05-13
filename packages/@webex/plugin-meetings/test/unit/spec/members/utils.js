@@ -358,10 +358,10 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#getMoveMemberToLobbyRequestOptions', () => {
+    describe('#getMoveMemberToLobbyRequestBody', () => {
       it('returns the correct options', () => {
         const memberId = 'test1';
-        assert.deepEqual(MembersUtil.getMoveMemberToLobbyRequestOptions(memberId), {
+        assert.deepEqual(MembersUtil.getMoveMemberToLobbyRequestBody(memberId), {
           moveToLobby: {
             participantIds: [memberId],
           },

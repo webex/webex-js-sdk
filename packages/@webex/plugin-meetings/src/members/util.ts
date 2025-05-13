@@ -203,7 +203,7 @@ const MembersUtil = {
     };
   },
 
-  getMoveMemberToLobbyRequestOptions: (memberId: string) => ({
+  getMoveMemberToLobbyRequestBody: (memberId: string) => ({
     moveToLobby: {
       participantIds: [memberId],
     },

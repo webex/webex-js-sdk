@@ -989,9 +989,9 @@ describe('plugin-meetings', () => {
         const members = createMembers({url: locusUrl});
 
         const spies = {
-          getMoveMemberToLobbyRequestOptions: sandbox.spy(
+          getMoveMemberToLobbyRequestBody: sandbox.spy(
             MembersUtil,
-            'getMoveMemberToLobbyRequestOptions'
+            'getMoveMemberToLobbyRequestBody'
           ),
           moveToLobbyMember: sandbox.spy(members.membersRequest, 'moveToLobbyMember'),
         };
@@ -1001,13 +1001,13 @@ describe('plugin-meetings', () => {
 
       const checkInvalid = async (resultPromise, expectedMessage, spies) => {
         await assert.isRejected(resultPromise, ParameterError, expectedMessage);
-        assert.notCalled(spies.getMoveMemberToLobbyRequestOptions);
+        assert.notCalled(spies.getMoveMemberToLobbyRequestBody);
         assert.notCalled(spies.moveToLobbyMember);
       };
 
       const checkValid = async (resultPromise, spies, expectedMemberId, expectedLocusUrl) => {
         await assert.isFulfilled(resultPromise);
-        assert.calledOnceWithExactly(spies.getMoveMemberToLobbyRequestOptions, expectedMemberId);
+        assert.calledOnceWithExactly(spies.getMoveMemberToLobbyRequestBody, expectedMemberId);
         assert.calledOnceWithExactly(
           spies.moveToLobbyMember,
           {
