@@ -2762,7 +2762,7 @@ describe('plugin-meetings', () => {
               turnDiscoverySkippedReason: undefined,
             });
           meeting.meetingState = 'ACTIVE';
-          const error = {iceConnected: false}
+          const error = {iceConnected: false};
           meeting.mediaProperties.waitForMediaConnectionConnected.rejects(error);
 
           const forceRtcMetricsSend = sinon.stub().resolves();
@@ -3967,7 +3967,7 @@ describe('plugin-meetings', () => {
                     meetingId: meeting.id,
                     rawError: {
                       iceConnected: false,
-                    }
+                    },
                   },
                 },
               ]);
@@ -10755,6 +10755,7 @@ describe('plugin-meetings', () => {
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
         let canShareWhiteBoardSpy;
+        let canMoveToLobbySpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -10785,6 +10786,7 @@ describe('plugin-meetings', () => {
           );
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
           canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
+          canMoveToLobbySpy = sinon.spy(MeetingUtil, 'canMoveToLobby');
         });
 
         afterEach(() => {
@@ -11326,6 +11328,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(requiresPostMeetingDataConsentPromptSpy, userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
           assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
+          assert.calledWith(canMoveToLobbySpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],

@@ -129,7 +129,17 @@ export default class MembersRequest extends StatelessWebexPlugin {
     return this.locusDeltaRequest(requestParams);
   }
 
-  // eslint-disable-next-line require-jsdoc
+  /**
+   * Sends a request to move a meeting member into the lobby.
+   * *
+   * @param {Object} options - Request options.
+   * @param {string} options.locusUrl - The locus URL for the meeting.
+   * @param {string} options.memberId - The ID of the member to move.
+   * @param {Object} body - The request payload.
+   * @param {Object} body.moveToLobby - Container for move‐to‐lobby data.
+   * @param {string[]} body.moveToLobby.participantIds - Array of participant IDs to move.
+   * @returns {Promise<Object>} - Resolves with the locus‐delta response.
+   */
   moveToLobbyMember(
     options: {locusUrl: string; memberId: string},
     body: {moveToLobby: {participantIds: string[]}}
