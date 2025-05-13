@@ -557,7 +557,28 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.emit(eventData.data.type, eventData.data);
     }
 
+    if (!eventData.type) {
+      return;
+    }
+
     switch (eventData.type) {
+      case CC_EVENTS.AGENT_MULTI_LOGIN:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_MULTI_LOGIN, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_STATE_CHANGE:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData.data);
+        break;
+      default:
+        break;
+    }
+
+    if (!(eventData.data && eventData.data.type)) {
+      return;
+    }
+
+    switch (eventData.data.type) {
       case CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS: {
         const {channelsMap, ...loginData} = eventData.data;
         const stationLoginData = {
@@ -591,6 +612,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, stationReLoginData);
         }
         break;
+      case CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_STATE_CHANGE_FAILED:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, eventData.data);
+        break;
       case CC_EVENTS.AGENT_STATION_LOGIN_FAILED:
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_FAILED, eventData.data);
@@ -602,14 +631,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       case CC_EVENTS.AGENT_LOGOUT_FAILED:
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_LOGOUT_FAILED, eventData.data);
-        break;
-      case CC_EVENTS.AGENT_STATE_CHANGE:
-        // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData.data);
-        break;
-      case CC_EVENTS.AGENT_MULTI_LOGIN:
-        // @ts-ignore
-        this.emit(AGENT_EVENTS.AGENT_MULTI_LOGIN, eventData.data);
         break;
       case CC_EVENTS.AGENT_DN_REGISTERED:
         // @ts-ignore
