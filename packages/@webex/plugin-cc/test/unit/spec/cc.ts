@@ -1610,4 +1610,93 @@ describe('webex.cc', () => {
       });
     });
   });
+
+  describe('updateProfile', () => {
+    const data = {
+      loginOption: LoginOption.EXTENSION,
+      teamId: 'teamId',
+      dialNumber: '98765',
+    };
+
+    const mockStationLoginResponse = {
+      loginOption: data.loginOption,
+      agentId: 'agent1',
+      teamId: data.teamId,
+      siteId: 'site1',
+      roles: [AGENT],
+      trackingId: 'track123',
+      eventType: 'DESKTOP_MESSAGE',
+      mmProfile: { chat: 0, email: 0, social: 0, telephony: 0 },
+      notifsTrackingId: 'notifs123',
+    };
+
+    it('should logout then login and return station login response', async () => {
+      const logoutSpy = jest
+        .spyOn(webex.cc, 'stationLogout')
+        .mockResolvedValue({} as any);
+      const loginSpy = jest
+        .spyOn(webex.cc, 'stationLogin')
+        .mockResolvedValue(mockStationLoginResponse as any);
+      const trackSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
+      const logSpy = jest.spyOn(LoggerProxy, 'log');
+
+      const result = await webex.cc.updateProfile(data);
+
+      expect(logoutSpy).toHaveBeenCalledWith({ logoutReason: 'User requested logout' });
+      expect(loginSpy).toHaveBeenCalledWith(data);
+      expect(trackSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.PROFILE_UPDATE_SUCCESS,
+        expect.objectContaining({ loginType: data.loginOption }),
+        ['behavioral', 'business', 'operational']
+      );
+      expect(logSpy).toHaveBeenCalledWith('updateProfile | profile updated successfully', {
+        module: CC_FILE,
+        method: 'updateProfile',
+      });
+      expect(result).toEqual(mockStationLoginResponse);
+    });
+
+    it('should handle error during updateProfile and track failure', async () => {
+      const error = new Error('update error');
+      jest.spyOn(webex.cc, 'stationLogout').mockRejectedValue(error);
+      const trackSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
+      const errorSpy = jest.spyOn(LoggerProxy, 'error');
+
+      await expect(webex.cc.updateProfile(data)).rejects.toThrow(error);
+      expect(trackSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.PROFILE_UPDATE_FAILED,
+        expect.objectContaining({ loginType: data.loginOption }),
+        ['behavioral', 'business', 'operational']
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        `updateProfile | error updating profile: ${error}`,
+        { module: CC_FILE, method: 'updateProfile' }
+      );
+    });
+
+    it('should throw when requested loginOption equals current device type', async () => {
+      const data = {
+        loginOption: LoginOption.BROWSER,
+        teamId: 'teamId',
+        dialNumber: '11111',
+      };
+      // mock current device type
+      webex.cc.webCallingService.loginOption = data.loginOption;
+      const trackSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
+      const errorSpy = jest.spyOn(LoggerProxy, 'error');
+
+      await expect(webex.cc.updateProfile(data)).rejects.toThrow(
+        'Device type is same as current device type'
+      );
+      expect(trackSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.PROFILE_UPDATE_FAILED,
+        expect.objectContaining({loginType: data.loginOption}),
+        ['behavioral', 'business', 'operational']
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        `updateProfile | error updating profile: Error: Device type is same as current device type`,
+        {module: CC_FILE, method: 'updateProfile'}
+      );
+    });
+  });
 });

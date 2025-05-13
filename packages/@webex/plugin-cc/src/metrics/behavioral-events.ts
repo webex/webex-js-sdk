@@ -271,6 +271,20 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'upload_logs',
     verb: 'fail',
   },
+
+  // update profile
+  [METRIC_EVENT_NAMES.PROFILE_UPDATE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'profile_update',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.PROFILE_UPDATE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'profile_update',
+    verb: 'fail',
+  },
 };
 
 export function getEventTaxonomy(name: METRIC_EVENT_NAMES): BehavioralEventTaxonomy | undefined {

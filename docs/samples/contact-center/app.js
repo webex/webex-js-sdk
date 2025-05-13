@@ -35,6 +35,10 @@ const idleCodesDropdown = document.querySelector('#idleCodesDropdown')
 const setAgentStatusButton = document.querySelector('#setAgentStatus');
 const logoutAgentElm = document.querySelector('#logoutAgent');
 const buddyAgentsDropdownElm = document.getElementById('buddyAgentsDropdown');
+const updateProfileElm = document.querySelector('#updateProfile');
+const updateFieldsContainer = document.querySelector('#updateProfileFields');
+const updateLoginOptionElm = document.querySelector('#updateLoginOption');
+const updateDialNumberElm = document.querySelector('#updateDialNumber');
 const incomingCallListener = document.querySelector('#incomingsection');
 const incomingDetailsElm = document.querySelector('#incoming-task');
 const answerElm = document.querySelector('#answer');
@@ -873,21 +877,12 @@ function register() {
             teamsDropdown.add(option);
         });
         const loginVoiceOptions = agentProfile.loginVoiceOptions;
-        agentLogin.innerHTML = '<option value="" selected>Choose Agent Login ...</option>'; // Clear previously selected option on agentLogin.
+        populateLoginOptions(
+          loginVoiceOptions.filter((o) => agentProfile.webRtcEnabled || o !== 'BROWSER')
+        );
         dialNumber.value = agentProfile.defaultDn ? agentProfile.defaultDn : '';
         dialNumber.disabled = agentProfile.defaultDn ? false : true;
         if (loginVoiceOptions.length > 0) loginAgentElm.disabled = false;
-        loginVoiceOptions.forEach((voiceOptions)=> {
-          if (!agentProfile.webRtcEnabled && voiceOptions === 'BROWSER') {
-            // Skiping the addition of browser option for webrtc disabled case
-            return;
-          }
-          const option = document.createElement('option');
-          option.text = voiceOptions;
-          option.value = voiceOptions;
-          agentLogin.add(option);
-          option.selected = agentProfile.isAgentLoggedIn && voiceOptions === agentProfile.deviceType;
-        });
 
         if (agentProfile.isAgentLoggedIn) {
           loginAgentElm.disabled = true;
@@ -942,10 +937,48 @@ function register() {
       }
     });
 
-    webex.cc.on('agent:stationLoginSuccess', (data) => {
-      console.log('Agent station login success', data);
+    webex.cc.on('agent:reloginSuccess', (data) => {
+      console.log('Agent re-login successful', data);
+      loginAgentElm.disabled = true;
+      logoutAgentElm.classList.remove('hidden');
+      updateProfileElm.classList.remove('hidden');
+
+      agentLogin.value = data.deviceType;
+      agentDeviceType = data.deviceType;
+
+      if (data.deviceType === 'BROWSER') {
+        dialNumber.disabled = true;
+        dialNumber.value = '';
+      }
+      else {
+        dialNumber.disabled = false;
+        dialNumber.value = data.dn || '';
+      }
     });
-    
+
+    webex.cc.on('agent:stationLoginSuccess', (data) => {
+      console.log('Agent station-login success', data);
+      loginAgentElm.disabled = true;
+      logoutAgentElm.classList.remove('hidden');
+      updateProfileElm.classList.remove('hidden');
+      updateFieldsContainer.classList.add('hidden');
+
+      agentLogin.value = data.deviceType;
+      agentDeviceType = data.deviceType;
+      if (data.deviceType === 'BROWSER') {
+        dialNumber.disabled = true;
+        dialNumber.value = '';
+      }
+      else {
+        dialNumber.disabled = false;
+        dialNumber.value = data.dn || '';
+      }
+
+      const auxId  = data.auxCodeId?.trim() || '0';
+      const idx    = [...idleCodesDropdown.options].findIndex(o => o.value === auxId);
+      idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
+      startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
+    });
 }
 
 // New function to handle unregistration
@@ -1028,12 +1061,12 @@ function doAgentLogin() {
     teamId: teamsDropdown.value,
     loginOption: agentDeviceType,
     dialNumber: dialNumber.value
-  }).then((response) => {
+  })
+  .then((response) => {
     console.log('Agent Logged in successfully', response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
-    updateUnregisterButtonState();
-    
+    updateProfileElm.classList.remove('hidden');
     // Read auxCode and lastStateChangeTimestamp from login response
     const DEFAULT_CODE = '0'; // Default code when no aux code is present
     const auxCodeId = response.data.auxCodeId?.trim() !== '' ? response.data.auxCodeId : DEFAULT_CODE;
@@ -1067,9 +1100,12 @@ function setAgentStatus() {
 
 
 function logoutAgent() {
-  webex.cc.stationLogout({logoutReason: 'logout'}).then((response) => {
-    console.log('Agent logged out successfully', response);
-    loginAgentElm.disabled = false;
+  webex.cc.stationLogout({logoutReason: 'logout'})
+    .then((response) => {
+      console.log('Agent logged out successfully', response);
+      loginAgentElm.disabled = false;
+      updateProfileElm.classList.add('hidden');
+      updateFieldsContainer.classList.add('hidden');
 
      // Clear the timer when the agent logs out.
      if (stateTimer) {
@@ -1091,6 +1127,50 @@ function logoutAgent() {
   ).catch((error) => {
     console.log('Agent logout failed', error);
   });
+}
+
+async function updateProfile() {
+  const payload = {
+    teamId: teamsDropdown.value,
+    loginOption: agentDeviceType,
+    dialNumber: dialNumber.value
+  };
+  try {
+    const response = await webex.cc.updateProfile(payload);
+    console.log('Profile updated successfully', response);
+  }
+  catch (error) {
+    console.error('Profile update failed', error);
+    alert('Profile update failed');
+  }
+}
+
+function showUpdateProfileUI() {
+  updateFieldsContainer.classList.toggle('hidden');
+}
+
+async function applyUpdateProfile() {
+  const loginOption = updateLoginOptionElm.value;
+  const newDial = loginOption === 'BROWSER' ? '' : updateDialNumberElm.value;
+  const payload = {
+    teamId: teamsDropdown.value,
+    loginOption,
+    dialNumber: newDial,
+  };
+  try {
+    const resp = await webex.cc.updateProfile(payload);
+    console.log('Profile updated', resp);
+    updateFieldsContainer.classList.add('hidden');
+    // Reflect new values in main UI
+    agentLogin.value = loginOption;
+    agentDeviceType = loginOption;
+    dialNumber.value = newDial;
+    dialNumber.disabled = loginOption === 'BROWSER';
+  }
+  catch (err) {
+    console.error('Profile update failed', err);
+    alert('Profile update failed');
+  }
 }
 
 function showAgentStatePopup(reason) {
@@ -1557,3 +1637,20 @@ function loadEmailWidget(task) {
     ></imi-email-composer>
   `;
 }
+
+function populateLoginOptions(options) {
+  agentLogin.innerHTML = '<option value="" selected>Choose Agent Login …</option>';
+  updateLoginOptionElm.innerHTML = '<option value="" selected>Choose Login Option …</option>';
+  options.forEach((opt) => {
+    const opt1 = document.createElement('option');
+    opt1.value = opt1.text = opt;
+    agentLogin.add(opt1);
+    updateLoginOptionElm.add(opt1.cloneNode(true));
+  });
+}
+
+updateLoginOptionElm.addEventListener('change', (e) => {
+  updateDialNumberElm.disabled = e.target.value === 'BROWSER';
+});
+
+idleCodesDropdown.addEventListener('change', handleAgentStatus);

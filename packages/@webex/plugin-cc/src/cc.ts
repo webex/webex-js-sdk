@@ -879,4 +879,61 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public async uploadLogs(): Promise<UploadLogsResponse> {
     return this.webexRequest.uploadLogs();
   }
+
+  public async updateProfile(data: AgentLogin): Promise<StationLoginResponse> {
+    this.metricsManager.timeEvent([
+      METRIC_EVENT_NAMES.PROFILE_UPDATE_SUCCESS,
+      METRIC_EVENT_NAMES.PROFILE_UPDATE_FAILED,
+    ]);
+
+    LoggerProxy.info('updateProfile | starting profile update', {
+      module: CC_FILE,
+      method: 'updateProfile',
+    });
+
+    try {
+      // Throw an error if the loginOption is of the same type as the current device type
+      if (this.webCallingService && this.webCallingService.loginOption === data.loginOption) {
+        throw new Error('Device type is same as current device type');
+      }
+
+      await this.stationLogout({
+        logoutReason: 'User requested logout',
+      });
+
+      const resp = await this.stationLogin(data);
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.PROFILE_UPDATE_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
+          loginType: data.loginOption,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log('updateProfile | profile updated successfully', {
+        module: CC_FILE,
+        method: 'updateProfile',
+      });
+
+      return resp;
+    } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.PROFILE_UPDATE_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          loginType: data.loginOption,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.error(`updateProfile | error updating profile: ${error}`, {
+        module: CC_FILE,
+        method: 'updateProfile',
+      });
+      throw error;
+    }
+  }
 }
