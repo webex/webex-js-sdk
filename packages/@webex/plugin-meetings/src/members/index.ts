@@ -906,9 +906,9 @@ export default class Members extends StatelessWebexPlugin {
         new ParameterError('The member id must be defined to move the member to lobby.')
       );
     }
-    const options = MembersUtil.getMoveMemberToLobbyRequestOptions(memberId);
+    const body = MembersUtil.getMoveMemberToLobbyRequestOptions(memberId);
 
-    return this.membersRequest.moveToLobbyMember({locusUrl: this.locusUrl, memberId}, options);
+    return this.membersRequest.moveToLobbyMember({locusUrl: this.locusUrl, memberId}, body);
   }
 
   /**

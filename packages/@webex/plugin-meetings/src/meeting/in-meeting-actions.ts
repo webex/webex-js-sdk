@@ -300,6 +300,7 @@ export default class InMeetingActions implements IInMeetingActions {
   canEnableRemoteDesktopControl = null;
 
   canDisableRemoteDesktopControl = null;
+
   canMoveToLobby = null;
 
   /**
