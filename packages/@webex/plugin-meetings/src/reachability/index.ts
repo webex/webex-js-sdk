@@ -141,15 +141,54 @@ export default class Reachability extends EventsScope {
   /**
    * Checks if the given subnet is reachable
    * @param {string} mediaServerIp - media server ip
-   * @returns {boolean | null} true if reachable, false if not reachable, null if mediaServerIp is not provided
+   * @returns {Promise<boolean | null>} true if reachable, false if not reachable, null if mediaServerIp is not provided
    * @public
    * @memberof Reachability
    */
-  public isSubnetReachable(mediaServerIp?: string): boolean | null {
+  public async isSubnetReachable(mediaServerIp?: string): Promise<boolean | null> {
     if (!mediaServerIp) {
       LoggerProxy.logger.error(`Reachability:index#isSubnetReachable --> mediaServerIp is null`);
 
       return null;
+    }
+
+    try {
+      // @ts-ignore
+      await this.webex.boundedStorage.get(REACHABILITY.namespace, REACHABILITY.localStorageResult);
+
+      // @ts-ignore
+      const resultsJson = await this.webex.boundedStorage.get(
+        REACHABILITY.namespace,
+        REACHABILITY.localStorageResult
+      );
+
+      const results: ReachabilityResults = JSON.parse(resultsJson);
+
+      let reachedEndpointsCount = 0;
+      const calculateReachedEndpoints = (result: ClusterReachabilityResult) => {
+        ['udp', 'tcp', 'xtls'].forEach((protocol) => {
+          if (result[protocol] && result[protocol].result === 'reachable') {
+            reachedEndpointsCount += 1;
+          }
+        });
+      };
+
+      Object.values(results).forEach((result) => {
+        calculateReachedEndpoints(result);
+      });
+
+      if (reachedEndpointsCount === 0) {
+        LoggerProxy.logger.error(
+          `Reachability:index#isSubnetReachable --> No reachable endpoints found`
+        );
+
+        return null;
+      }
+    } catch (e) {
+      // empty storage, that's ok
+      LoggerProxy.logger.warn(
+        `Reachability:index#isSubnetReachable --> Error parsing reachability data: ${e}`
+      );
     }
 
     const subnetFirstOctet = mediaServerIp.split('.')[0];
