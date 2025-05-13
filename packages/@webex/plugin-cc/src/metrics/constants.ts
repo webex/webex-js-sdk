@@ -51,8 +51,8 @@ export const METRIC_EVENT_NAMES = {
   WEBSOCKET_DEREGISTER_SUCCESS: 'Websocket Deregister Success',
   WEBSOCKET_DEREGISTER_FAIL: 'Websocket Deregister Failed',
 
-  PROFILE_UPDATE_SUCCESS: 'Profile Update Success',
-  PROFILE_UPDATE_FAILED: 'Profile Update Failed',
+  AGENT_DEVICE_TYPE_UPDATE_SUCCESS: 'Profile Update Success',
+  AGENT_DEVICE_TYPE_UPDATE_FAILED: 'Profile Update Failed',
 } as const;
 
 // Derive the type using the utility type

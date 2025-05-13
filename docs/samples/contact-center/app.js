@@ -35,8 +35,8 @@ const idleCodesDropdown = document.querySelector('#idleCodesDropdown')
 const setAgentStatusButton = document.querySelector('#setAgentStatus');
 const logoutAgentElm = document.querySelector('#logoutAgent');
 const buddyAgentsDropdownElm = document.getElementById('buddyAgentsDropdown');
-const updateProfileElm = document.querySelector('#updateProfile');
-const updateFieldsContainer = document.querySelector('#updateProfileFields');
+const updateAgentDeviceTypeElm = document.querySelector('#updateAgentDeviceType');
+const updateFieldsContainer = document.querySelector('#updateAgentDeviceTypeFields');
 const updateLoginOptionElm = document.querySelector('#updateLoginOption');
 const updateDialNumberElm = document.querySelector('#updateDialNumber');
 const incomingCallListener = document.querySelector('#incomingsection');
@@ -941,7 +941,7 @@ function register() {
       console.log('Agent re-login successful', data);
       loginAgentElm.disabled = true;
       logoutAgentElm.classList.remove('hidden');
-      updateProfileElm.classList.remove('hidden');
+      updateAgentDeviceTypeElm.classList.remove('hidden');
 
       agentLogin.value = data.deviceType;
       agentDeviceType = data.deviceType;
@@ -960,7 +960,7 @@ function register() {
       console.log('Agent station-login success', data);
       loginAgentElm.disabled = true;
       logoutAgentElm.classList.remove('hidden');
-      updateProfileElm.classList.remove('hidden');
+      updateAgentDeviceTypeElm.classList.remove('hidden');
       updateFieldsContainer.classList.add('hidden');
 
       agentLogin.value = data.deviceType;
@@ -1066,7 +1066,7 @@ function doAgentLogin() {
     console.log('Agent Logged in successfully', response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
-    updateProfileElm.classList.remove('hidden');
+    updateAgentDeviceTypeElm.classList.remove('hidden');
     // Read auxCode and lastStateChangeTimestamp from login response
     const DEFAULT_CODE = '0'; // Default code when no aux code is present
     const auxCodeId = response.data.auxCodeId?.trim() !== '' ? response.data.auxCodeId : DEFAULT_CODE;
@@ -1104,7 +1104,7 @@ function logoutAgent() {
     .then((response) => {
       console.log('Agent logged out successfully', response);
       loginAgentElm.disabled = false;
-      updateProfileElm.classList.add('hidden');
+      updateAgentDeviceTypeElm.classList.add('hidden');
       updateFieldsContainer.classList.add('hidden');
 
      // Clear the timer when the agent logs out.
@@ -1129,14 +1129,13 @@ function logoutAgent() {
   });
 }
 
-async function updateProfile() {
+async function updateAgentDeviceType() {
   const payload = {
-    teamId: teamsDropdown.value,
     loginOption: agentDeviceType,
     dialNumber: dialNumber.value
   };
   try {
-    const response = await webex.cc.updateProfile(payload);
+    const response = await webex.cc.updateAgentDeviceType(payload);
     console.log('Profile updated successfully', response);
   }
   catch (error) {
@@ -1145,20 +1144,19 @@ async function updateProfile() {
   }
 }
 
-function showUpdateProfileUI() {
+function showupdateAgentDeviceTypeUI() {
   updateFieldsContainer.classList.toggle('hidden');
 }
 
-async function applyUpdateProfile() {
+async function applyupdateAgentDeviceType() {
   const loginOption = updateLoginOptionElm.value;
   const newDial = loginOption === 'BROWSER' ? '' : updateDialNumberElm.value;
   const payload = {
-    teamId: teamsDropdown.value,
     loginOption,
     dialNumber: newDial,
   };
   try {
-    const resp = await webex.cc.updateProfile(payload);
+    const resp = await webex.cc.updateAgentDeviceType(payload);
     console.log('Profile updated', resp);
     updateFieldsContainer.classList.add('hidden');
     // Reflect new values in main UI

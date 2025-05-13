@@ -108,7 +108,12 @@ export type StationLoginSuccessResponse = {
   notifsTrackingId: string;
 };
 
-export type Logout = {logoutReason?: 'User requested logout' | 'Inactivity Logout'};
+export type Logout = {
+  logoutReason?:
+    | 'User requested logout'
+    | 'Inactivity Logout'
+    | 'User requested agent device change';
+};
 
 export type AgentState = 'Available' | 'Idle' | 'RONA' | string;
 

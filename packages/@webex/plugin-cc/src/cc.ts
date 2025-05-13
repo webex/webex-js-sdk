@@ -7,6 +7,7 @@ import {
   WebexSDK,
   LoginOption,
   AgentLogin,
+  AgentDeviceUpdate,
   StationLoginResponse,
   StationLogoutResponse,
   StationReLoginResponse,
@@ -880,31 +881,38 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return this.webexRequest.uploadLogs();
   }
 
-  public async updateProfile(data: AgentLogin): Promise<StationLoginResponse> {
+  public async updateAgentDeviceType(data: AgentDeviceUpdate): Promise<StationLoginResponse> {
     this.metricsManager.timeEvent([
-      METRIC_EVENT_NAMES.PROFILE_UPDATE_SUCCESS,
-      METRIC_EVENT_NAMES.PROFILE_UPDATE_FAILED,
+      METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_SUCCESS,
+      METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
     ]);
 
-    LoggerProxy.info('updateProfile | starting profile update', {
+    LoggerProxy.info('updateAgentDeviceType | starting profile update', {
       module: CC_FILE,
-      method: 'updateProfile',
+      method: this.updateAgentDeviceType.name,
     });
 
     try {
-      // Throw an error if the loginOption is of the same type as the current device type
+      // ensure we change device type
       if (this.webCallingService && this.webCallingService.loginOption === data.loginOption) {
         throw new Error('Device type is same as current device type');
       }
 
       await this.stationLogout({
-        logoutReason: 'User requested logout',
+        logoutReason: 'User requested agent device change',
       });
 
-      const resp = await this.stationLogin(data);
+      const teamId = this.agentConfig?.teams?.[0]?.teamId ?? EMPTY_STRING;
+      const loginPayload: AgentLogin = {
+        teamId,
+        loginOption: data.loginOption,
+        dialNumber: data.dialNumber,
+      };
+
+      const resp = await this.stationLogin(loginPayload);
 
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.PROFILE_UPDATE_SUCCESS,
+        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_SUCCESS,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
           loginType: data.loginOption,
@@ -912,16 +920,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.log('updateProfile | profile updated successfully', {
+      LoggerProxy.log('updateAgentDeviceType | profile updated successfully', {
         module: CC_FILE,
-        method: 'updateProfile',
+        method: this.updateAgentDeviceType.name,
       });
 
       return resp;
     } catch (error) {
-      const failure = error.details as Failure;
+      const failure = (error as any).details as Failure;
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.PROFILE_UPDATE_FAILED,
+        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
           loginType: data.loginOption,
@@ -929,9 +937,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.error(`updateProfile | error updating profile: ${error}`, {
+      LoggerProxy.error(`updateAgentDeviceType | error updating profile: ${error}`, {
         module: CC_FILE,
-        method: 'updateProfile',
+        method: this.updateAgentDeviceType.name,
       });
       throw error;
     }

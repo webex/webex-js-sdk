@@ -246,6 +246,9 @@ export type AgentLogin = {
 
   loginOption: LoginOption;
 };
+
+export type AgentDeviceUpdate = Pick<AgentLogin, 'loginOption' | 'dialNumber'>;
+
 export type RequestBody =
   | SubscribeRequest
   | Agent.Logout

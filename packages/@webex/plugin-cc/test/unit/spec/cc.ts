@@ -1611,73 +1611,72 @@ describe('webex.cc', () => {
     });
   });
 
-  describe('updateProfile', () => {
-    const data = {
-      loginOption: LoginOption.EXTENSION,
-      teamId: 'teamId',
-      dialNumber: '98765',
-    };
-
-    const mockStationLoginResponse = {
-      loginOption: data.loginOption,
-      agentId: 'agent1',
-      teamId: data.teamId,
-      siteId: 'site1',
-      roles: [AGENT],
-      trackingId: 'track123',
-      eventType: 'DESKTOP_MESSAGE',
-      mmProfile: { chat: 0, email: 0, social: 0, telephony: 0 },
-      notifsTrackingId: 'notifs123',
-    };
+  describe('updateAgentDeviceType', () => {
+    beforeEach(() => {
+      // provide a dummy team so CC picks it up
+      webex.cc.agentConfig = {
+        ...webex.cc.agentConfig,
+        teams: [{teamId: 'teamId'}],
+      } as any;
+    });
 
     it('should logout then login and return station login response', async () => {
-      const logoutSpy = jest
-        .spyOn(webex.cc, 'stationLogout')
-        .mockResolvedValue({} as any);
-      const loginSpy = jest
-        .spyOn(webex.cc, 'stationLogin')
-        .mockResolvedValue(mockStationLoginResponse as any);
+      const data = {
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '98765',
+      };
+      const mockStationLoginResponse = { /* ... */ };
+
+      const logoutSpy = jest.spyOn(webex.cc, 'stationLogout').mockResolvedValue({} as any);
+      const loginSpy = jest.spyOn(webex.cc, 'stationLogin').mockResolvedValue(mockStationLoginResponse as any);
       const trackSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
       const logSpy = jest.spyOn(LoggerProxy, 'log');
 
-      const result = await webex.cc.updateProfile(data);
+      const result = await webex.cc.updateAgentDeviceType(data);
 
-      expect(logoutSpy).toHaveBeenCalledWith({ logoutReason: 'User requested logout' });
-      expect(loginSpy).toHaveBeenCalledWith(data);
+      expect(logoutSpy).toHaveBeenCalledWith({logoutReason: 'User requested agent device change'});
+      expect(loginSpy).toHaveBeenCalledWith({
+        teamId: 'teamId',
+        loginOption: data.loginOption,
+        dialNumber: data.dialNumber,
+      });
       expect(trackSpy).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.PROFILE_UPDATE_SUCCESS,
-        expect.objectContaining({ loginType: data.loginOption }),
+        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_SUCCESS,
+        expect.objectContaining({loginType: data.loginOption}),
         ['behavioral', 'business', 'operational']
       );
-      expect(logSpy).toHaveBeenCalledWith('updateProfile | profile updated successfully', {
+      expect(logSpy).toHaveBeenCalledWith('updateAgentDeviceType | profile updated successfully', {
         module: CC_FILE,
-        method: 'updateProfile',
+        method: 'updateAgentDeviceType',
       });
       expect(result).toEqual(mockStationLoginResponse);
     });
 
-    it('should handle error during updateProfile and track failure', async () => {
+    it('should handle error during updateAgentDeviceType and track failure', async () => {
+      const data = {
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '98765',
+      };
       const error = new Error('update error');
       jest.spyOn(webex.cc, 'stationLogout').mockRejectedValue(error);
       const trackSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
       const errorSpy = jest.spyOn(LoggerProxy, 'error');
 
-      await expect(webex.cc.updateProfile(data)).rejects.toThrow(error);
+      await expect(webex.cc.updateAgentDeviceType(data)).rejects.toThrow(error);
       expect(trackSpy).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.PROFILE_UPDATE_FAILED,
-        expect.objectContaining({ loginType: data.loginOption }),
+        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
+        expect.objectContaining({loginType: data.loginOption}),
         ['behavioral', 'business', 'operational']
       );
       expect(errorSpy).toHaveBeenCalledWith(
-        `updateProfile | error updating profile: ${error}`,
-        { module: CC_FILE, method: 'updateProfile' }
+        `updateAgentDeviceType | error updating profile: ${error}`,
+        {module: CC_FILE, method: 'updateAgentDeviceType'}
       );
     });
 
     it('should throw when requested loginOption equals current device type', async () => {
       const data = {
         loginOption: LoginOption.BROWSER,
-        teamId: 'teamId',
         dialNumber: '11111',
       };
       // mock current device type
@@ -1685,17 +1684,17 @@ describe('webex.cc', () => {
       const trackSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
       const errorSpy = jest.spyOn(LoggerProxy, 'error');
 
-      await expect(webex.cc.updateProfile(data)).rejects.toThrow(
+      await expect(webex.cc.updateAgentDeviceType(data)).rejects.toThrow(
         'Device type is same as current device type'
       );
       expect(trackSpy).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.PROFILE_UPDATE_FAILED,
+        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
         expect.objectContaining({loginType: data.loginOption}),
         ['behavioral', 'business', 'operational']
       );
       expect(errorSpy).toHaveBeenCalledWith(
-        `updateProfile | error updating profile: Error: Device type is same as current device type`,
-        {module: CC_FILE, method: 'updateProfile'}
+        `updateAgentDeviceType | error updating profile: Error: Device type is same as current device type`,
+        {module: CC_FILE, method: 'updateAgentDeviceType'}
       );
     });
   });
