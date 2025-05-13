@@ -8,7 +8,7 @@ import {
 } from '../../../src/types';
 import ContactCenter from '../../../src/cc';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {StationLoginSuccess} from '../../../src/services/agent/types';
+import {StationLoginSuccess, AGENT_EVENTS} from '../../../src/services/agent/types';
 import {SetStateResponse} from '../../../src/types';
 import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
@@ -18,8 +18,6 @@ import LoggerProxy from '../../../src/logger-proxy';
 import * as Utils from '../../../src/services/core/Utils';
 import {
   CC_FILE,
-  AGENT_STATE_CHANGE,
-  AGENT_MULTI_LOGIN,
   OUTDIAL_DIRECTION,
   OUTBOUND_TYPE,
   ATTRIBUTES,
@@ -575,12 +573,12 @@ describe('webex.cc', () => {
       // Simulate receiving a message event
       messageCallback(JSON.stringify(agentStateChangeEventData));
 
-      expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_STATE_CHANGE, agentStateChangeEventData.data);
+      expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_EVENTS.AGENT_STATE_CHANGE, agentStateChangeEventData.data);
 
       // Simulate receiving a message event
       messageCallback(JSON.stringify(agentMultiLoginEventData));
 
-      expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_MULTI_LOGIN, agentMultiLoginEventData.data);
+      expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_EVENTS.AGENT_MULTI_LOGIN, agentMultiLoginEventData.data);
     });
 
     it('should not attempt mobius registration for LoginOption.BROWSER if webrtc is disabled', async () => {
@@ -1511,6 +1509,105 @@ describe('webex.cc', () => {
         }, 
         ['operational']
       );
+    });
+  });
+
+  describe('handleWebSocketMessage events', () => {
+    let messageCallback;
+    let emitSpy;
+
+    beforeEach(() => {
+      emitSpy = jest.spyOn(webex.cc, 'emit');
+      messageCallback = mockWebSocketManager.on.mock.calls.find((c) => c[0] === 'message')[1];
+    });
+
+    it('should emit AGENT_STATION_LOGIN_SUCCESS on CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS with mapped payload', () => {
+      const channelsMap = {chat: ['c1','c2'], email: [], social: ['s1'], telephony: []};
+      const payload = {
+        trackingId: 'track-123',
+        data: {
+          agentId: 'agent-id',
+          teamId: 'team-id',
+          siteId: 'site-id',
+          roles: ['role1', 'role2'],
+          channelsMap,
+          type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+        },
+        type: CC_EVENTS.AGENT_STATION_LOGIN,
+      };
+
+      messageCallback(JSON.stringify(payload));
+
+      expect(emitSpy).toHaveBeenNthCalledWith(
+        2,
+        AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+        {
+          agentId: 'agent-id',
+          teamId: 'team-id',
+          siteId: 'site-id',
+          roles: ['role1', 'role2'],
+          mmProfile: {
+            chat: 2,
+            email: 0,
+            social: 1,
+            telephony: 0,
+          },
+          notifsTrackingId: 'track-123',
+          type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+        }
+      );
+    });
+
+    it('should emit AGENT_RELOGIN_SUCCESS on CC_EVENTS.AGENT_RELOGIN_SUCCESS with mapped payload', () => {
+      const channelsMap = {chat: ['a','b'], email: [], social: ['x'], telephony: ['y','z']};
+      const payload = {
+        trackingId: 'trk-relogin',
+        data: {
+          agentId: 'agent-re',
+          teamId: 'team-re',
+          siteId: 'site-re',
+          roles: ['r1','r2'],
+          channelsMap,
+          type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+        },
+        type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+      };
+
+      messageCallback(JSON.stringify(payload));
+
+      expect(emitSpy).toHaveBeenNthCalledWith(
+        2,
+        AGENT_EVENTS.AGENT_RELOGIN_SUCCESS,
+        {
+          agentId: 'agent-re',
+          teamId: 'team-re',
+          siteId: 'site-re',
+          roles: ['r1', 'r2'],
+          mmProfile: {
+            chat: 2,
+            email: 0,
+            social: 1,
+            telephony: 2,
+          },
+          notifsTrackingId: 'trk-relogin',
+          type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+        }
+      );
+    });
+
+    [
+      { ccEvent: CC_EVENTS.AGENT_STATION_LOGIN_FAILED, constant: AGENT_EVENTS.AGENT_STATION_LOGIN_FAILED },
+      { ccEvent: CC_EVENTS.AGENT_LOGOUT_SUCCESS, constant: AGENT_EVENTS.AGENT_LOGOUT_SUCCESS },
+      { ccEvent: CC_EVENTS.AGENT_LOGOUT_FAILED, constant: AGENT_EVENTS.AGENT_LOGOUT_FAILED },
+      { ccEvent: CC_EVENTS.AGENT_DN_REGISTERED, constant: AGENT_EVENTS.AGENT_DN_REGISTERED },
+      { ccEvent: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, constant: AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS },
+      { ccEvent: CC_EVENTS.AGENT_STATE_CHANGE_FAILED, constant: AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED },
+    ].forEach(({ ccEvent, constant }) => {
+      it(`should emit ${constant} on ${ccEvent}`, () => {
+        const sample = { foo: 'bar', type: ccEvent };
+        messageCallback(JSON.stringify({type: ccEvent, data: sample}));
+        expect(emitSpy).toHaveBeenCalledWith(constant, sample);
+      });
     });
   });
 });
