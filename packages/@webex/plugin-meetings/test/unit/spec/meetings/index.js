@@ -182,6 +182,15 @@ describe('plugin-meetings', () => {
         metrics: {
           submitClientMetrics: sinon.stub().returns(Promise.resolve()),
         },
+        newMetrics: {
+          submitClientEvent: sinon.stub(),
+          callDiagnosticLatencies: {
+            measureLatency: sinon.stub().returns(Promise.resolve()),
+          },
+          callDiagnosticMetrics: {
+            clearErrorCache: sinon.stub(),
+          },
+        },
       });
       webex.emit('ready');
     });
@@ -583,6 +592,24 @@ describe('plugin-meetings', () => {
           await assert.isRejected(webex.meetings.unregister());
         });
 
+        it('does not reject when device.unregister fails with statusCode 404', (done) => {
+          webex.meetings.registered = true;
+          webex.internal.device.unregister = sinon.stub().rejects({statusCode: 404});
+          webex.meetings.unregister().then(() => {
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meetings),
+              {
+                file: 'meetings',
+                function: 'unregister',
+              },
+              'meetings:unregistered'
+            );
+            assert.isFalse(webex.meetings.registered);
+            done();
+          });
+        });
+
         it('rejects when mercury.disconnect fails', async () => {
           webex.meetings.registered = true;
           webex.internal.mercury.disconnect = sinon.stub().returns(Promise.reject());
@@ -631,6 +658,7 @@ describe('plugin-meetings', () => {
             quality: 'LOW',
             authToken: 'fake_token',
             mirror: false,
+            canvasResolutionScaling: 1
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
@@ -646,6 +674,7 @@ describe('plugin-meetings', () => {
             quality: 'HIGH',
             blurStrength: 'STRONG',
             bgImageUrl: 'https://test.webex.com/landscape.5a535788.jpg',
+            canvasResolutionScaling: 1
           };
 
           const result = await webex.meetings.createVirtualBackgroundEffect(effectOptions);
@@ -680,7 +709,6 @@ describe('plugin-meetings', () => {
             audioContext: {},
             authToken: 'fake_token',
             mode: 'WORKLET',
-            env: 'prod',
             avoidSimd: false,
           });
           assert.exists(result.enable);

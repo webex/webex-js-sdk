@@ -19,8 +19,6 @@ import {
   READY,
   CC_FILE,
   EMPTY_STRING,
-  AGENT_STATE_CHANGE,
-  AGENT_MULTI_LOGIN,
   OUTDIAL_DIRECTION,
   ATTRIBUTES,
   OUTDIAL_MEDIA_TYPE,
@@ -32,15 +30,9 @@ import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
-import {StateChange, Logout, StateChangeSuccess} from './services/agent/types';
+import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
-import {
-  Profile,
-  WelcomeEvent,
-  CC_EVENTS,
-  CC_AGENT_EVENTS,
-  ContactServiceQueue,
-} from './services/config/types';
+import {Profile, WelcomeEvent, CC_EVENTS, ContactServiceQueue} from './services/config/types';
 import {
   AGENT_STATE_AVAILABLE,
   AGENT_STATE_AVAILABLE_ID,
@@ -559,20 +551,93 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private handleWebSocketMessage = (event: string) => {
     const eventData = JSON.parse(event);
-    // Re-emit the events related to agent
-    if (Object.values(CC_AGENT_EVENTS).includes(eventData.data?.type)) {
+    // Re-emit all the events related to agent except keep-alives
+    if (!eventData.keepalive && eventData.data && eventData.data.type) {
       // @ts-ignore
       this.emit(eventData.data.type, eventData.data);
     }
 
-    if (eventData.type === CC_EVENTS.AGENT_STATE_CHANGE) {
-      // @ts-ignore
-      this.emit(AGENT_STATE_CHANGE, eventData.data);
+    if (!eventData.type) {
+      return;
     }
 
-    if (eventData.type === CC_EVENTS.AGENT_MULTI_LOGIN) {
-      // @ts-ignore
-      this.emit(AGENT_MULTI_LOGIN, eventData.data);
+    switch (eventData.type) {
+      case CC_EVENTS.AGENT_MULTI_LOGIN:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_MULTI_LOGIN, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_STATE_CHANGE:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData.data);
+        break;
+      default:
+        break;
+    }
+
+    if (!(eventData.data && eventData.data.type)) {
+      return;
+    }
+
+    switch (eventData.data.type) {
+      case CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS: {
+        const {channelsMap, ...loginData} = eventData.data;
+        const stationLoginData = {
+          ...loginData,
+          mmProfile: {
+            chat: channelsMap.chat?.length,
+            email: channelsMap.email?.length,
+            social: channelsMap.social?.length,
+            telephony: channelsMap.telephony?.length,
+          },
+          notifsTrackingId: eventData.trackingId,
+        };
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
+        break;
+      }
+      case CC_EVENTS.AGENT_RELOGIN_SUCCESS:
+        {
+          const {channelsMap, ...loginData} = eventData.data;
+          const stationReLoginData = {
+            ...loginData,
+            mmProfile: {
+              chat: channelsMap.chat?.length,
+              email: channelsMap.email?.length,
+              social: channelsMap.social?.length,
+              telephony: channelsMap.telephony?.length,
+            },
+            notifsTrackingId: eventData.trackingId,
+          };
+          // @ts-ignore
+          this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, stationReLoginData);
+        }
+        break;
+      case CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_STATE_CHANGE_FAILED:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_STATION_LOGIN_FAILED:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_FAILED, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_LOGOUT_SUCCESS:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_LOGOUT_FAILED:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_LOGOUT_FAILED, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_DN_REGISTERED:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_DN_REGISTERED, eventData.data);
+        break;
+      default:
+        break;
     }
   };
 
