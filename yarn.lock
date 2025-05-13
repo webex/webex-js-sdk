@@ -8027,17 +8027,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/event-dictionary-ts@npm:^1.0.1688":
-  version: 1.0.1688
-  resolution: "@webex/event-dictionary-ts@npm:1.0.1688"
+"@webex/event-dictionary-ts@npm:^1.0.1753":
+  version: 1.0.1753
+  resolution: "@webex/event-dictionary-ts@npm:1.0.1753"
   dependencies:
     amf-client-js: ^5.2.6
     json-schema-to-typescript: ^12.0.0
     minimist: ^1.2.8
-    ramldt2jsonschema: ^1.2.3
     shelljs: ^0.8.5
     webapi-parser: ^0.5.0
-  checksum: efc5ee43367595c8943416997bfb6b63b2718163c9432f55974bb79af664daa1281453e270437def85fabd2c44cfea4dca349f894b006c8038c51126206cbff2
+  checksum: f0a6daf8ed4b3ba9509c69b4bb79fe5c4d8bdf78ef25755cc7a9ce9a753f72f179576c19a5062ba247b8cf68948bf35420f8405fc5c9935c4df876f544d0490d
   languageName: node
   linkType: hard
 
@@ -8536,7 +8535,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.1688
+    "@webex/event-dictionary-ts": ^1.0.1753
     "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
@@ -9202,7 +9201,7 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.1688
+    "@webex/event-dictionary-ts": ^1.0.1753
     "@webex/internal-media-core": 2.14.7
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
@@ -10463,18 +10462,6 @@ __metadata:
     json-schema-traverse: "npm:^0.4.1"
     uri-js: "npm:^4.2.1"
   checksum: ac8590895952e6387f923cf7e130e2b4fac13e175caa2934c7792e8a54f2a619e805f769d6f1b5d26d75401fccbe69e5b1fe31ebae39f300c5660a78597ee2fb
-  languageName: node
-  linkType: hard
-
-"ajv@npm:^5.0.0":
-  version: 5.5.2
-  resolution: "ajv@npm:5.5.2"
-  dependencies:
-    co: "npm:^4.6.0"
-    fast-deep-equal: "npm:^1.0.0"
-    fast-json-stable-stringify: "npm:^2.0.0"
-    json-schema-traverse: "npm:^0.3.0"
-  checksum: a69645c843e1676b0ae1c5192786e546427f808f386d26127c6585479378066c64341ceec0b127b6789d79628e71d2a732d402f575b98f9262db230d7b715a94
   languageName: node
   linkType: hard
 
@@ -13565,13 +13552,6 @@ __metadata:
   version: 4.1.1
   resolution: "commander@npm:4.1.1"
   checksum: d7b9913ff92cae20cb577a4ac6fcc121bd6223319e54a40f51a14740a681ad5c574fd29a57da478a5f234a6fa6c52cbf0b7c641353e03c648b1ae85ba670b977
-  languageName: node
-  linkType: hard
-
-"commander@npm:^5.0.0":
-  version: 5.1.0
-  resolution: "commander@npm:5.1.0"
-  checksum: 0b7fec1712fbcc6230fcb161d8d73b4730fa91a21dc089515489402ad78810547683f058e2a9835929c212fead1d6a6ade70db28bbb03edbc2829a9ab7d69447
   languageName: node
   linkType: hard
 
@@ -17788,13 +17768,6 @@ __metadata:
   version: 1.4.1
   resolution: "extsprintf@npm:1.4.1"
   checksum: a2f29b241914a8d2bad64363de684821b6b1609d06ae68d5b539e4de6b28659715b5bea94a7265201603713b7027d35399d10b0548f09071c5513e65e8323d33
-  languageName: node
-  linkType: hard
-
-"fast-deep-equal@npm:^1.0.0":
-  version: 1.1.0
-  resolution: "fast-deep-equal@npm:1.1.0"
-  checksum: 69b4c9534d9805f13a341aa72f69641d0b9ae3cc8beb25c64e68a257241c7bb34370266db27ae4fc3c4da0518448c01a5f587a096a211471c86a38facd9a1486
   languageName: node
   linkType: hard
 
@@ -22736,7 +22709,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"js-yaml@npm:3.x, js-yaml@npm:^3.13.1, js-yaml@npm:^3.14.0":
+"js-yaml@npm:3.x, js-yaml@npm:^3.13.1":
   version: 3.14.1
   resolution: "js-yaml@npm:3.14.1"
   dependencies:
@@ -22996,15 +22969,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"json-schema-migrate@npm:^0.2.0":
-  version: 0.2.0
-  resolution: "json-schema-migrate@npm:0.2.0"
-  dependencies:
-    ajv: "npm:^5.0.0"
-  checksum: fc5b3ed2cfc5d02059836120653b63f846a18037ec554b47267f9c104750f8fa3f3acb38d0129f116fd2db017c69cc90456cfae66930aa1d328fe12a422c0125
-  languageName: node
-  linkType: hard
-
 "json-schema-to-typescript@npm:^12.0.0":
   version: 12.0.0
   resolution: "json-schema-to-typescript@npm:12.0.0"
@@ -23026,13 +22990,6 @@ __metadata:
   bin:
     json2ts: dist/src/cli.js
   checksum: 4d662dd433b08f7a727fc6d464145e273bc347790537305c776f53321994f83d64242d0fe5b3a68d0cf81d866738df78ed4f8300a51d4c79a24657cac8f5e915
-  languageName: node
-  linkType: hard
-
-"json-schema-traverse@npm:^0.3.0":
-  version: 0.3.1
-  resolution: "json-schema-traverse@npm:0.3.1"
-  checksum: a685c36222023471c25c86cddcff506306ecb8f8941922fd356008419889c41c38e1c16d661d5499d0a561b34f417693e9bb9212ba2b2b2f8f8a345a49e4ec1a
   languageName: node
   linkType: hard
 
@@ -28460,21 +28417,6 @@ __metadata:
   version: 7.5.0
   resolution: "rambda@npm:7.5.0"
   checksum: ad608a9a4160d0b6b0921047cea1329276bf239ff58d439135288712dcdbbf0df47c76591843ad249d89e7c5a9109ce86fe099aa54aef0dc0aa92a9b4dd1b8eb
-  languageName: node
-  linkType: hard
-
-"ramldt2jsonschema@npm:^1.2.3":
-  version: 1.2.3
-  resolution: "ramldt2jsonschema@npm:1.2.3"
-  dependencies:
-    commander: "npm:^5.0.0"
-    js-yaml: "npm:^3.14.0"
-    json-schema-migrate: "npm:^0.2.0"
-    webapi-parser: "npm:^0.5.0"
-  bin:
-    dt2js: bin/dt2js.js
-    js2dt: bin/js2dt.js
-  checksum: db6b89f4c088184290ea27448cfd64985e253543209e0b80bfb12b0b9640253b59418b671164af9055143018ef4be010c5f52ca853386636267269208f2f3512
   languageName: node
   linkType: hard
 
