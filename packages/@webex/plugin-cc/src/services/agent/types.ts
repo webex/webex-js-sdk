@@ -174,4 +174,6 @@ export enum AGENT_EVENTS {
   AGENT_LOGOUT_FAILED = 'agent:logoutFailed',
   AGENT_DN_REGISTERED = 'agent:dnRegistered',
   AGENT_RELOGIN_SUCCESS = 'agent:reloginSuccess',
+  AGENT_STATE_CHANGE_SUCCESS = 'agent:stateChangeSuccess',
+  AGENT_STATE_CHANGE_FAILED = 'agent:stateChangeFailed',
 }
