@@ -711,10 +711,11 @@ function updateCallControlUI(task) {
   wrapupCodesDropdownElm.disabled = true;
   const hasParticipants = Object.keys(participants).length > 1;
   const isNew = task.data.interaction.state === 'new';
+  const digitalChannels = ['chat', 'email', 'social'];
 
   if (isNew) {
     disableAllCallControls();
-  } else if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'email') {
+  } else if (digitalChannels.includes(task.data.interaction.mediaType)) {
     holdResumeElm.disabled = true;
     muteElm.disabled = true;
     pauseResumeRecordingElm.disabled = true;
@@ -1492,6 +1493,7 @@ function renderTaskList(taskList) {
 function enableAnswerDeclineButtons(task) {
   const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani;
   const isNew = task.data.interaction.state === 'new'
+  const chatAndSocial = ['chat', 'social'];
   if (task.data.interaction.mediaType === 'telephony') {
     if (webex.cc.taskManager.webCallingService.loginOption === 'BROWSER') {
       answerElm.disabled = !isNew;
@@ -1501,7 +1503,7 @@ function enableAnswerDeclineButtons(task) {
     } else {
       incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
     }
-  } else if (task.data.interaction.mediaType === 'chat') {
+  } else if (chatAndSocial.includes(task.data.interaction.mediaType)) {
     answerElm.disabled = !isNew;
     declineElm.disabled = true;
     incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
@@ -1523,8 +1525,9 @@ function handleTaskSelect(task) {
   enableAnswerDeclineButtons(task);
   engageElm.innerHTML = ``;
   engageElm.style.height = "100px"
+  const chatAndSocial = ['chat', 'social'];
   currentTask = task
- if (task.data.interaction.mediaType === 'chat' && isBundleLoaded && !task.data.wrapUpRequired) {
+ if (chatAndSocial.includes(task.data.interaction.mediaType) && isBundleLoaded && !task.data.wrapUpRequired) {
     loadChatWidget(task);
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {
     loadEmailWidget(task);
