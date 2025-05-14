@@ -308,6 +308,55 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
+   * Request Language translation
+   * @param {string} text
+   * @param {number} timeStamp
+   * @param {number[]} csis
+   * @param {boolean} isFinal
+   * @returns {void}
+   */
+  public sendManualClosedCaption = (
+    text: string,
+    timeStamp: number,
+    csis: number[],
+    isFinal: boolean
+  ): void => {
+    // @ts-ignore
+    if (!this.webex.internal.llm.isConnected()) return;
+
+    // @ts-ignore
+    this.webex.internal.llm.socket.send({
+      id: `${this.seqNum}`,
+      type: 'publishRequest',
+      recipients: {
+        // @ts-ignore
+        route: this.webex.internal.llm.getBinding(),
+      },
+      headers: {},
+      data: {
+        eventType: 'relay.event',
+        relayType: AIBRIDGE_RELAY_TYPES.MANUAL.CAPIONER,
+        transcriptPayload: {
+          type: isFinal
+            ? TRANSCRIPTION_TYPE.MANUAL_CAPTION_FINAL_RESULT
+            : TRANSCRIPTION_TYPE.MANUAL_CAPTION_INTERIM_RESULT,
+          id: uuid.v4(),
+          transcripts: [
+            {
+              text,
+              start_millis: timeStamp,
+              end_millis: timeStamp,
+              csis,
+            },
+          ],
+        },
+      },
+      trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
+    });
+    this.seqNum += 1;
+  };
+
+  /**
    * request turn on Captions
    * @param {string} [languageCode] - Optional Parameter for spoken language code. Defaults to English
    * @returns {Promise}
