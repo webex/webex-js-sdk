@@ -2763,11 +2763,11 @@ describe('isSubnetReachable', () => {
     sinon.restore();
   });
 
-  it('returns true if the subnet is reachable and reachability successed', () => {
+  it('returns true if the subnet is reachable', () => {
     assert(reachability.isSubnetReachable('1.2.3.4'));
   });
 
-  it(`returns false if the subnet is unreachable and reachability successed`, () => {
+  it(`returns false if the subnet is unreachable`, () => {
     assert(!reachability.isSubnetReachable('11.2.3.4'));
   });
 
