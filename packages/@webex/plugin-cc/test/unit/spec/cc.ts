@@ -1615,12 +1615,12 @@ describe('webex.cc', () => {
     beforeEach(() => {
       webex.cc.agentConfig = {
         ...webex.cc.agentConfig,
-        teams: [{teamId: 'teamId'}],
+        currentTeamId: 'teamId',
       } as any;
     });
 
     it('should logout then login and return AgentDeviceTypeUpdateSuccess type', async () => {
-      const data = {loginOption: LoginOption.EXTENSION, dialNumber: '98765', teamId: 'teamId'};
+      const data = {loginOption: LoginOption.EXTENSION, dialNumber: '98765'};
       const mockResp = {
         eventType: 'AgentDesktopMessage',
         agentId: 'agentId',

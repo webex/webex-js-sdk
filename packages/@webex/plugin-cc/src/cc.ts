@@ -370,6 +370,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       const resp = await loginResponse;
       const {channelsMap, ...loginData} = resp.data;
+      this.agentConfig.currentTeamId = resp.data.teamId;
       const response = {
         ...loginData,
         mmProfile: {
@@ -702,6 +703,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       let {auxCodeId} = reLoginResponse.data;
       this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp;
       this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
+      this.agentConfig.currentTeamId = reLoginResponse.data.teamId;
       await this.handleDeviceType(deviceType as LoginOption, dn);
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
@@ -936,7 +938,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
 
       const loginPayload: AgentLogin = {
-        teamId: data.teamId,
+        teamId: this.agentConfig.currentTeamId ?? EMPTY_STRING,
         loginOption: data.loginOption,
         dialNumber: data.dialNumber,
       };
