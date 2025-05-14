@@ -1,5 +1,6 @@
 import {WebexPlugin} from '@webex/webex-core';
 import EventEmitter from 'events';
+import {v4 as uuidv4} from 'uuid';
 import {
   SetStateResponse,
   CCPluginConfig,
@@ -886,7 +887,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Updates the agent device type.
    * This method allows the agent to change their device type (e.g., from BROWSER to EXTENSION or anything else).
    * It will also throw an error if the new device type is the same as the current one.
-   * @param data - The data required to update the agent device type, including the new login option and dial number.
+   * @param data type is AgentDeviceUpdate - The data required to update the agent device type, including the new login option and dial number.
    * @returns Promise<UpdateDeviceTypeResponse>
    * @throws Error
    * @example
@@ -913,7 +914,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // ensure we change device type
       if (this.webCallingService?.loginOption === data.loginOption) {
         const message = 'New Device type is same as current device type';
-        const trackingId = `WXCCSDK_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+        const trackingId = `WX_CC_SDK_${uuidv4()}`;
         const err: any = new Error(message);
         err.details = {
           type: 'Identical Device Change Failure',
@@ -934,9 +935,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         logoutReason: 'User requested agent device change',
       });
 
-      const teamId = this.agentConfig?.teams?.[0]?.teamId ?? EMPTY_STRING;
       const loginPayload: AgentLogin = {
-        teamId,
+        teamId: data.teamId,
         loginOption: data.loginOption,
         dialNumber: data.dialNumber,
       };

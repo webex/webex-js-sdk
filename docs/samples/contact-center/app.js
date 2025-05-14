@@ -1132,6 +1132,7 @@ function logoutAgent() {
 
 async function updateAgentDeviceType() {
   const payload = {
+    teamId: teamsDropdown.value,
     loginOption: agentDeviceType,
     dialNumber: dialNumber.value
   };
@@ -1153,6 +1154,7 @@ async function applyupdateAgentDeviceType() {
   const loginOption = updateLoginOptionElm.value;
   const newDial = loginOption === 'BROWSER' ? '' : updateDialNumberElm.value;
   const payload = {
+    teamId: teamsDropdown.value,
     loginOption,
     dialNumber: newDial,
   };

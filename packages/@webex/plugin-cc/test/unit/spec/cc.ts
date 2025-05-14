@@ -34,7 +34,6 @@ import { METRIC_EVENT_NAMES } from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebexRequest from '../../../src/services/core/WebexRequest';
 
-
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
   default: {
@@ -49,6 +48,7 @@ jest.mock('../../../src/services/config');
 jest.mock('../../../src/services/core/websocket/WebSocketManager');
 jest.mock('../../../src/services/core/websocket/connection-service');
 jest.mock('../../../src/services/WebCallingService');
+jest.mock('uuid', () => ({v4: () => 'mock-tracking-uuid'}));
 
 global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 
@@ -1620,7 +1620,7 @@ describe('webex.cc', () => {
     });
 
     it('should logout then login and return AgentDeviceTypeUpdateSuccess type', async () => {
-      const data = {loginOption: LoginOption.EXTENSION, dialNumber: '98765'};
+      const data = {loginOption: LoginOption.EXTENSION, dialNumber: '98765', teamId: 'teamId'};
       const mockResp = {
         eventType: 'AgentDesktopMessage',
         agentId: 'agentId',
@@ -1700,9 +1700,6 @@ describe('webex.cc', () => {
     });
 
     it('should throw with detailed error when loginOption equals current device type', async () => {
-      jest.spyOn(Date, 'now').mockReturnValue(1000);
-      jest.spyOn(Math, 'random').mockReturnValue(0.5);
-
       const data = {loginOption: LoginOption.BROWSER, dialNumber: '11111'};
       webex.cc.webCallingService.loginOption = data.loginOption;
 
@@ -1710,10 +1707,11 @@ describe('webex.cc', () => {
         message: 'New Device type is same as current device type',
         details: expect.objectContaining({
           type: 'Identical Device Change Failure',
-          trackingId: 'WXCCSDK_1000_500000',
+          trackingId: 'WX_CC_SDK_mock-tracking-uuid',
           data: expect.objectContaining({
             agentId: webex.cc.agentConfig.agentId,
             reason: 'New Device type is same as current device type',
+            trackingId: 'WX_CC_SDK_mock-tracking-uuid',
           }),
         }),
       });
