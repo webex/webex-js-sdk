@@ -2731,7 +2731,7 @@ describe('plugin-meetings', () => {
               sinon.stub().returns(FAKE_ERROR));
           webex.meetings.reachability = {
             isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
-            getReachabilityMetrics: sinon.stub().resolves(),
+            getReachabilityMetrics: sinon.stub().resolves({}),
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(true),
           };
