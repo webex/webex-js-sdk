@@ -141,11 +141,11 @@ export default class Reachability extends EventsScope {
   /**
    * Checks if the given subnet is reachable
    * @param {string} mediaServerIp - media server ip
-   * @returns {Promise<boolean | null>} true if reachable, false if not reachable, null if mediaServerIp is not provided
+   * @returns {boolean | null} true if reachable, false if not reachable, null if mediaServerIp is not provided
    * @public
    * @memberof Reachability
    */
-  public async isSubnetReachable(mediaServerIp?: string): Promise<boolean | null> {
+  public isSubnetReachable(mediaServerIp?: string): boolean | null {
     if (!mediaServerIp) {
       LoggerProxy.logger.error(`Reachability:index#isSubnetReachable --> mediaServerIp is null`);
 
