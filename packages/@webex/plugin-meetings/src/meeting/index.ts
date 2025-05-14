@@ -9623,13 +9623,19 @@ export default class Meeting extends StatelessWebexPlugin {
   private async getMediaReachabilityMetricFields(): Promise<MediaReachabilityMetrics> {
     // @ts-ignore
     const reachabilityMetrics = await this.webex.meetings.reachability.getReachabilityMetrics();
-    const reachedSubnetsCount = ['udp', 'tcp', 'xtls'].reduce((acc, type) => {
-      const propertyName = `reachability_public_${type}_success`;
+    const totalSuccessCases = ['public', 'vmn'].reduce((total, type) => {
+      return (
+        total +
+        ['udp', 'tcp', 'xtls'].reduce((protocolTotal, protocol) => {
+          const propertyName = `reachability_${type}_${protocol}_success`;
 
-      return acc + (reachabilityMetrics[propertyName] || 0);
+          return protocolTotal + (reachabilityMetrics[propertyName] || 0); // Safely access the property
+        }, 0)
+      );
     }, 0);
+
     let isSubnetReachable = null;
-    if (reachedSubnetsCount > 0) {
+    if (totalSuccessCases > 0) {
       // @ts-ignore
       isSubnetReachable = await this.webex.meetings.reachability.isSubnetReachable(
         this.mediaServerIp
