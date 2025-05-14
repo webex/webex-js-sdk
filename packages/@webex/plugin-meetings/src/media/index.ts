@@ -16,6 +16,7 @@ import {
   LocalMicrophoneStream,
 } from '@webex/media-helpers';
 import {RtcMetrics} from '@webex/internal-plugin-metrics';
+import {BrowserInfo} from '@webex/web-capabilities';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
@@ -143,6 +144,7 @@ Media.createMediaConnection = (
     bundlePolicy?: BundlePolicy;
     iceCandidatesTimeout?: number;
     disableAudioMainDtx?: boolean;
+    stopIceGatheringAfterFirstRelayCandidate?: boolean;
   }
 ) => {
   const {
@@ -155,6 +157,7 @@ Media.createMediaConnection = (
     bundlePolicy,
     iceCandidatesTimeout,
     disableAudioMainDtx,
+    stopIceGatheringAfterFirstRelayCandidate,
   } = options;
 
   const iceServers = [];
@@ -172,6 +175,9 @@ Media.createMediaConnection = (
   if (isMultistream) {
     const config: MultistreamConnectionConfig = {
       iceServers,
+      doFullIce: BrowserInfo.isFirefox(),
+      stopIceGatheringAfterFirstRelayCandidate:
+        BrowserInfo.isFirefox() && stopIceGatheringAfterFirstRelayCandidate,
     };
 
     if (bundlePolicy) {

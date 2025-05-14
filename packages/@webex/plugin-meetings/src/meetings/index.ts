@@ -807,6 +807,18 @@ export default class Meetings extends WebexPlugin {
     }
   }
 
+  private _toggleStopIceGatheringAfterFirstRelayCandidate(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+
+    // @ts-ignore
+    if (this.config.stopIceGatheringAfterFirstRelayCandidate !== newValue) {
+      // @ts-ignore
+      this.config.stopIceGatheringAfterFirstRelayCandidate = newValue;
+    }
+  }
+
   /**
    * API to toggle usage of audio main DTX, needs to be called before webex.meetings.register()
    *
