@@ -714,7 +714,7 @@ function updateCallControlUI(task) {
 
   if (isNew) {
     disableAllCallControls();
-  } else if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'email') {
+  } else if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'email' || task.data.interaction.mediaType == 'social') {
     holdResumeElm.disabled = true;
     muteElm.disabled = true;
     pauseResumeRecordingElm.disabled = true;
@@ -1501,7 +1501,7 @@ function enableAnswerDeclineButtons(task) {
     } else {
       incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
     }
-  } else if (task.data.interaction.mediaType === 'chat') {
+  } else if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'social') {
     answerElm.disabled = !isNew;
     declineElm.disabled = true;
     incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
@@ -1524,7 +1524,7 @@ function handleTaskSelect(task) {
   engageElm.innerHTML = ``;
   engageElm.style.height = "100px"
   currentTask = task
- if (task.data.interaction.mediaType === 'chat' && isBundleLoaded && !task.data.wrapUpRequired) {
+ if ((task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType == 'social') && isBundleLoaded && !task.data.wrapUpRequired) {
     loadChatWidget(task);
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {
     loadEmailWidget(task);
