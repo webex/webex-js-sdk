@@ -874,13 +874,29 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * messages, and client-side events, then securely submits them to Webex's diagnostics
    * service. The returned tracking ID, feedbackID can be provided to Webex support for faster
    * issue resolution.
-   * @returns Promise<SubmitLogsResponse>
+   * @returns Promise<UploadLogsResponse>
    * @throws Error
    */
   public async uploadLogs(): Promise<UploadLogsResponse> {
     return this.webexRequest.uploadLogs();
   }
 
+  /**
+   * Updates the agent device type.
+   * This method allows the agent to change their device type (e.g., from BROWSER to EXTENSION or anything else).
+   * It will also throw an error if the new device type is the same as the current one.
+   * @param data - The data required to update the agent device type, including the new login option and dial number.
+   * @returns Promise<StationLoginResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * const data = {
+   *   loginOption: 'EXTENSION',
+   *   dialNumber: '1234567890',
+   * };
+   * const result = await webex.cc.updateAgentDeviceType(data);
+   * ```
+   */
   public async updateAgentDeviceType(data: AgentDeviceUpdate): Promise<StationLoginResponse> {
     this.metricsManager.timeEvent([
       METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_SUCCESS,
@@ -895,12 +911,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       // ensure we change device type
       if (this.webCallingService?.loginOption === data.loginOption) {
-        const message = 'Device type is same as current device type';
+        const message = 'New Device type is same as current device type';
+        const trackingId = `WXCCSDK_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
         const err: any = new Error(message);
         err.details = {
+          type: 'Identical Device Change Failure',
+          orgId: this.$webex.credentials.getOrgId(),
+          trackingId,
           data: {
+            agentId: this.agentConfig.agentId,
+            trackingId,
+            reasonCode: 'R002',
+            orgId: this.$webex.credentials.getOrgId(),
             reason: message,
-            status: 400,
           },
         };
         throw err;

@@ -1675,27 +1675,35 @@ describe('webex.cc', () => {
     });
 
     it('should throw when requested loginOption equals current device type', async () => {
+      jest.spyOn(Date, 'now').mockReturnValue(1000);
+      jest.spyOn(Math, 'random').mockReturnValue(0.5);
       const data = {
         loginOption: LoginOption.BROWSER,
         dialNumber: '11111',
       };
       // mock current device type
       webex.cc.webCallingService.loginOption = data.loginOption;
-      const trackSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
-      const errorSpy = jest.spyOn(LoggerProxy, 'error');
 
-      await expect(webex.cc.updateAgentDeviceType(data)).rejects.toThrow(
-        'Device type is same as current device type'
-      );
-      expect(trackSpy).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
-        expect.objectContaining({loginType: data.loginOption}),
-        ['behavioral', 'business', 'operational']
-      );
-      expect(errorSpy).toHaveBeenCalledWith(
-        `updateAgentDeviceType | error updating profile: Error: Device type is same as current device type`,
-        {module: CC_FILE, method: 'updateAgentDeviceType'}
-      );
+      try {
+        await webex.cc.updateAgentDeviceType(data);
+        fail('Expected error to be thrown');
+      }
+      catch (error: any) {
+        const expectedTrackingId = 'WXCCSDK_1000_500000';
+        expect(error.message).toBe('New Device type is same as current device type');
+        expect(error.details).toEqual({
+          type: 'Identical Device Change Failure',
+          orgId: 'mockOrgId',
+          trackingId: expectedTrackingId,
+          data: {
+            agentId: webex.cc.agentConfig.agentId,
+            trackingId: expectedTrackingId,
+            reasonCode: 'R002',
+            orgId: 'mockOrgId',
+            reason: 'New Device type is same as current device type',
+          },
+        });
+      }
     });
   });
 });
