@@ -1673,7 +1673,7 @@ describe('webex.cc', () => {
         ['behavioral','business','operational']
       );
       expect(logSpy).toHaveBeenCalledWith(
-        `updateAgentDeviceType | error updating profile: ${err}`,
+        `[WX_CC_SDK_mock-tracking-uuid] updateAgentDeviceType | error updating profile: ${err}`,
         {module: CC_FILE, method: 'updateAgentDeviceType'}
       );
     });
@@ -1694,7 +1694,7 @@ describe('webex.cc', () => {
         ['behavioral','business','operational']
       );
       expect(logSpy).toHaveBeenCalledWith(
-        `updateAgentDeviceType | error updating profile: ${loginErr}`,
+        `[WX_CC_SDK_mock-tracking-uuid] updateAgentDeviceType | error updating profile: ${loginErr}`,
         {module: CC_FILE, method: 'updateAgentDeviceType'}
       );
     });
@@ -1704,14 +1704,13 @@ describe('webex.cc', () => {
       webex.cc.webCallingService.loginOption = data.loginOption;
 
       await expect(webex.cc.updateAgentDeviceType(data)).rejects.toMatchObject({
-        message: 'New Device type is same as current device type',
+        message: 'Will not proceed with device update as new Device type is same as current device type',
         details: expect.objectContaining({
           type: 'Identical Device Change Failure',
           trackingId: 'WX_CC_SDK_mock-tracking-uuid',
           data: expect.objectContaining({
             agentId: webex.cc.agentConfig.agentId,
-            reason: 'New Device type is same as current device type',
-            trackingId: 'WX_CC_SDK_mock-tracking-uuid',
+            reason: 'Will not proceed with device update as new Device type is same as current device type',
           }),
         }),
       });

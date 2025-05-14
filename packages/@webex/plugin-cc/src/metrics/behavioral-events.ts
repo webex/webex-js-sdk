@@ -276,13 +276,13 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
   [METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_SUCCESS]: {
     product,
     agent: 'user',
-    target: 'profile_update',
+    target: 'agent_device_type_update',
     verb: 'complete',
   },
   [METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED]: {
     product,
     agent: 'user',
-    target: 'profile_update',
+    target: 'agent_device_type_update',
     verb: 'fail',
   },
 };

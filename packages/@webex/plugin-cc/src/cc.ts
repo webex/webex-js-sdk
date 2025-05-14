@@ -907,7 +907,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
     ]);
 
-    LoggerProxy.info('updateAgentDeviceType | starting profile update', {
+    const trackingId = `WX_CC_SDK_${uuidv4()}`;
+
+    LoggerProxy.info(`[${trackingId}] updateAgentDeviceType | starting profile update`, {
       module: CC_FILE,
       method: this.updateAgentDeviceType.name,
     });
@@ -915,8 +917,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       // ensure we change device type
       if (this.webCallingService?.loginOption === data.loginOption) {
-        const message = 'New Device type is same as current device type';
-        const trackingId = `WX_CC_SDK_${uuidv4()}`;
+        const message =
+          'Will not proceed with device update as new Device type is same as current device type';
         const err: any = new Error(message);
         err.details = {
           type: 'Identical Device Change Failure',
@@ -924,7 +926,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           trackingId,
           data: {
             agentId: this.agentConfig.agentId,
-            trackingId,
             reasonCode: 'R002',
             orgId: this.$webex.credentials.getOrgId(),
             reason: message,
@@ -954,7 +955,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.log('updateAgentDeviceType | profile updated successfully', {
+      LoggerProxy.log(`[${trackingId}] updateAgentDeviceType | profile updated successfully`, {
         module: CC_FILE,
         method: this.updateAgentDeviceType.name,
       });
@@ -976,10 +977,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.error(`updateAgentDeviceType | error updating profile: ${error}`, {
-        module: CC_FILE,
-        method: this.updateAgentDeviceType.name,
-      });
+      LoggerProxy.error(
+        `[${trackingId}] updateAgentDeviceType | error updating profile: ${error}`,
+        {
+          module: CC_FILE,
+          method: this.updateAgentDeviceType.name,
+        }
+      );
       throw error;
     }
   }
