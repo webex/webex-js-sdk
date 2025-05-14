@@ -2166,7 +2166,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
-              isSubnetReachable: false,
+              isSubnetReachable: null,
               numTransports: 1,
               iceCandidatesCount: 0,
             }
@@ -2213,7 +2213,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
-              isSubnetReachable: true,
+              isSubnetReachable: null,
             })
           );
 
@@ -2279,7 +2279,7 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
-              isSubnetReachable: true,
+              isSubnetReachable: null,
             }
           );
         });
@@ -2337,7 +2337,7 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
-              isSubnetReachable: true,
+              isSubnetReachable: null,
             })
           );
 
@@ -2395,7 +2395,7 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
-              isSubnetReachable: true,
+              isSubnetReachable: null,
             })
           );
 
@@ -2917,7 +2917,7 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
-              isSubnetReachable: true,
+              isSubnetReachable: null,
             },
           ]);
 
@@ -3120,7 +3120,7 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: true,
               isJoinWithMediaRetry: false,
               iceCandidatesCount: 0,
-              isSubnetReachable: true,
+              isSubnetReachable: null,
             },
           ]);
           meeting.roap.doTurnDiscovery;
@@ -3277,7 +3277,7 @@ describe('plugin-meetings', () => {
               iceCandidatesCount: 3,
               '701_error': 3,
               '701_turn_host_lookup_received_error': 1,
-              isSubnetReachable: true,
+              isSubnetReachable: null,
             }
           );
 
@@ -3340,7 +3340,7 @@ describe('plugin-meetings', () => {
               iceConnectionState: 'unknown',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
-              isSubnetReachable: true,
+              isSubnetReachable: null,
               iceCandidatesCount: 0,
             }
           );
@@ -3402,7 +3402,7 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               '701_error': 2,
               '701_turn_host_lookup_received_error': 1,
-              isSubnetReachable: true,
+              isSubnetReachable: null,
               iceCandidatesCount: 0,
             }
           );

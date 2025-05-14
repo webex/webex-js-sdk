@@ -2749,24 +2749,6 @@ describe('isSubnetReachable', () => {
     webex = new MockWebex();
     reachability = new TestReachability(webex);
 
-    await webex.boundedStorage.put(
-      'Reachability',
-      'reachability.result',
-      JSON.stringify({
-        cluster1: {
-          udp: {result: 'reachable', latencyInMilliseconds: 100},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'untested'},
-        },
-        cluster2: {
-          udp: {result: 'reachable', latencyInMilliseconds: 200},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'untested'},
-          isVideoMesh: true,
-        },
-      })
-    );
-
     reachability.setFakeClusterReachability({
       cluster1: {
         reachedSubnets: new Set(['1.2.3.4', '2.3.4.5']),
@@ -2791,36 +2773,5 @@ describe('isSubnetReachable', () => {
 
   it('returns null if the subnet is not provided', async () => {
     assert.isNull(await reachability.isSubnetReachable(undefined));
-  });
-
-  it('returns null if no clusters was reached', async () => {
-    await webex.boundedStorage.put(
-      'Reachability',
-      'reachability.result',
-      JSON.stringify({
-        cluster1: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
-        },
-        cluster2: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
-          isVideoMesh: true,
-        },
-      })
-    );
-
-    reachability.setFakeClusterReachability({
-      cluster1: {
-        reachedSubnets: new Set(),
-      },
-      cluster2: {
-        reachedSubnets: new Set(),
-      },
-    });
-
-    assert.isNull(await reachability.isSubnetReachable('X.X.X.X'));
   });
 });
