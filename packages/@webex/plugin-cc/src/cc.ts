@@ -894,8 +894,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     try {
       // ensure we change device type
-      if (this.webCallingService && this.webCallingService.loginOption === data.loginOption) {
-        throw new Error('Device type is same as current device type');
+      if (this.webCallingService?.loginOption === data.loginOption) {
+        const message = 'Device type is same as current device type';
+        const err: any = new Error(message);
+        err.details = {
+          data: {
+            reason: message,
+            status: 400,
+          },
+        };
+        throw err;
       }
 
       await this.stationLogout({
