@@ -108,6 +108,10 @@ export type StationLoginSuccessResponse = {
   notifsTrackingId: string;
 };
 
+export type DeviceTypeUpdateSuccess = Omit<StationLoginSuccessResponse, 'type'> & {
+  type: 'AgentDeviceTypeUpdateSuccess';
+};
+
 export type Logout = {
   logoutReason?:
     | 'User requested logout'
