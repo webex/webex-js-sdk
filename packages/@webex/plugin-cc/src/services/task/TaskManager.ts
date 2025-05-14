@@ -144,6 +144,7 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
           case CC_EVENTS.CONTACT_ENDED:
+          case CC_EVENTS.AGENT_INVITE_FAILED:
             task = this.updateTaskData(task, {
               ...payload.data,
               wrapUpRequired: payload.data.interaction.state !== 'new',
