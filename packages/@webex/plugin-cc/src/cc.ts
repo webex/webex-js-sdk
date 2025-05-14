@@ -17,6 +17,7 @@ import {
   SubscribeRequest,
   UploadLogsResponse,
   UpdateDeviceTypeResponse,
+  GenericError,
 } from './types';
 import {
   READY,
@@ -919,7 +920,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (this.webCallingService?.loginOption === data.loginOption) {
         const message =
           'Will not proceed with device update as new Device type is same as current device type';
-        const err: any = new Error(message);
+        const err = new Error(message) as GenericError;
         err.details = {
           type: 'Identical Device Change Failure',
           orgId: this.$webex.credentials.getOrgId(),

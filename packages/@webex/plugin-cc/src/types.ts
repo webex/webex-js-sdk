@@ -282,6 +282,19 @@ export type BuddyAgents = {
   state?: 'Available' | 'Idle';
 };
 
+/**
+ * Generic CC SDK error containing structured details.
+ * details.data can be any structured object.
+ */
+export interface GenericError extends Error {
+  details: {
+    type: string;
+    orgId: string;
+    trackingId: string;
+    data: Record<string, any>;
+  };
+}
+
 export type StationLoginResponse = Agent.StationLoginSuccessResponse | Error;
 export type StationLogoutResponse = Agent.LogoutSuccess | Error;
 export type StationReLoginResponse = Agent.ReloginSuccess | Error;
