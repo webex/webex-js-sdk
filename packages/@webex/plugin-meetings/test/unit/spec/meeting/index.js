@@ -3410,7 +3410,7 @@ describe('plugin-meetings', () => {
           assert.isOk(errorThrown);
         });
 
-        it.only('should send valid isSubnetReachability if media connection success', async () => {
+        it('should send valid isSubnetReachability if media connection success', async () => {
           meeting.roap.doTurnDiscovery = sinon.stub().returns({
             turnServerInfo: undefined,
             turnDiscoverySkippedReason: undefined,

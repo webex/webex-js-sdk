@@ -164,6 +164,7 @@ import Member from '../member';
 import {BrbState, createBrbState} from './brbState';
 import MultistreamNotSupportedError from '../common/errors/multistream-not-supported-error';
 import JoinForbiddenError from '../common/errors/join-forbidden-error';
+import {ReachabilityMetrics} from '../reachability/reachability.types';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -261,6 +262,8 @@ type FetchMeetingInfoParams = {
   extraParams?: Record<string, any>;
   sendCAevents?: boolean;
 };
+
+type MediaReachabilityMetrics = ReachabilityMetrics & {isSubnetReachable: boolean};
 
 /**
  * MediaDirection
@@ -9613,10 +9616,11 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Gets the media reachability metrics
    *
-   * @returns {Promise<any>}
+   * @returns {Promise<MediaReachabilityMetrics>}
    */
-  private async getMediaReachabilityMetricFields() {
+  private async getMediaReachabilityMetricFields(): Promise<MediaReachabilityMetrics> {
     // @ts-ignore
     const reachabilityMetrics = await this.webex.meetings.reachability.getReachabilityMetrics();
     const reachedSubnetsCount = ['udp', 'tcp', 'xtls'].reduce((acc, type) => {
