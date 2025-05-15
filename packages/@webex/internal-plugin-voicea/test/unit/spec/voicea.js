@@ -115,7 +115,7 @@ describe('plugin-voicea', () => {
             headers: {},
             data: {
               eventType: 'relay.event',
-              relayType: 'client.captioner',
+              relayType: 'client.manual_transcription',
               transcriptPayload: {
                 type: 'manual_caption_interim_result',
                 id: sinon.match.string,
@@ -153,7 +153,7 @@ describe('plugin-voicea', () => {
             headers: {},
             data: {
               eventType: 'relay.event',
-              relayType: 'client.captioner',
+              relayType: 'client.manual_transcription',
               transcriptPayload: {
                 type: 'manual_caption_final_result',
                 id: sinon.match.string,
