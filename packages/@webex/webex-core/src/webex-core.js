@@ -34,10 +34,10 @@ import DefaultOptionsInterceptor from './interceptors/default-options';
 import HostMapInterceptor from './lib/services/interceptors/hostmap';
 import config from './config';
 import {makeWebexStore} from './lib/storage';
-import mixinWebexCorePlugins from './lib/webex-core-plugin-mixin';
+import mixinWebexCorePlugins from './li./register-internal-plugins';
 import mixinWebexInternalCorePlugins from './lib/webex-internal-core-plugin-mixin';
 import WebexInternalCore from './webex-internal-core';
-import {registerInternalPlugins} from './registerInternalPlugins';
+import {registerInternalPlugins} from './register-internal-plugins';
 
 // TODO replace the Interceptor.create with Reflect.construct (
 // Interceptor.create exists because new was really hard to call on an array of

@@ -1,5 +1,5 @@
-// import {avatarPlugin} from '@webex/internal-plugin-avatar';
-// import WebexInternalCore from './webex-internal-core';
+import {avatarPlugin} from '@webex/internal-plugin-avatar';
+import WebexInternalCore from './webex-internal-core';
 
 /**
  * Registers plugins used by internal products that do not talk to public APIs.
@@ -12,5 +12,5 @@
  * @returns {null}
  */
 export function registerInternalPlugins() {
-  // WebexInternalCore.registerPlugin(...avatarPlugin);
+  WebexInternalCore.registerPlugin(...avatarPlugin);
 }
