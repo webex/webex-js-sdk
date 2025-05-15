@@ -9635,7 +9635,12 @@ export default class Meeting extends StatelessWebexPlugin {
     ];
 
     const totalSuccessCases = successKeys.reduce((total, key) => {
-      return total + (typeof reachabilityMetrics[key] === 'number' ? reachabilityMetrics[key] : 0);
+      const value = reachabilityMetrics[key];
+      if (typeof value === 'number') {
+        return total + value;
+      }
+
+      return total;
     }, 0);
 
     let isSubnetReachable = null;
