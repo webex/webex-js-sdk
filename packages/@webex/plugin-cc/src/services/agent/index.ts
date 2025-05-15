@@ -6,14 +6,18 @@ import {HTTP_METHODS} from '../../types';
 import {WCC_API_GATEWAY} from '../constants';
 import {CC_EVENTS} from '../config/types';
 
-/*
- * routingAgent
- * @param reqs
- * @category Routing Service
+/**
+ * Agent Service provides methods to manage agent states and operations
+ * @param routing - AqmReqs instance for making API requests
+ * @category Services
+ * @public
  */
-
 export default function routingAgent(routing: AqmReqs) {
   return {
+    /**
+     * Reloads the agent session
+     * @public
+     */
     reload: routing.reqEmpty(() => ({
       host: WCC_API_GATEWAY,
       url: '/v1/agents/reload',
@@ -34,6 +38,11 @@ export default function routingAgent(routing: AqmReqs) {
         errId: 'Service.aqm.agent.reload',
       },
     })),
+    /**
+     * Logs out the agent
+     * @param p.data - Logout parameters
+     * @public
+     */
     logout: routing.req((p: {data: Agent.Logout}) => ({
       url: '/v1/agents/logout',
       host: WCC_API_GATEWAY,
@@ -54,6 +63,11 @@ export default function routingAgent(routing: AqmReqs) {
         errId: 'Service.aqm.agent.logout',
       },
     })),
+    /**
+     * Logs in the agent to a station
+     * @param p.data - Station login parameters
+     * @public
+     */
     stationLogin: routing.req((p: {data: Agent.UserStationLogin}) => ({
       url: '/v1/agents/login',
       host: WCC_API_GATEWAY,
@@ -80,6 +94,11 @@ export default function routingAgent(routing: AqmReqs) {
         errId: 'Service.aqm.agent.stationLoginFailed',
       },
     })),
+    /**
+     * Changes the agent's state
+     * @param p.data - State change parameters
+     * @public
+     */
     stateChange: routing.req((p: {data: Agent.StateChange}) => ({
       url: '/v1/agents/session/state',
       host: WCC_API_GATEWAY,
@@ -101,6 +120,11 @@ export default function routingAgent(routing: AqmReqs) {
         errId: 'Service.aqm.agent.stateChange',
       },
     })),
+    /**
+     * Retrieves list of buddy agents
+     * @param p.data - Buddy agent query parameters
+     * @public
+     */
     buddyAgents: routing.req((p: {data: Agent.BuddyAgents}) => ({
       url: `/v1/agents/buddyList`,
       host: WCC_API_GATEWAY,
