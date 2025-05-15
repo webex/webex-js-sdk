@@ -51,6 +51,7 @@
     "@webex/common": "workspace:*",
     "@webex/common-timers": "workspace:*",
     "@webex/http-core": "workspace:*",
+    "@webex/internal-plugin-avatar": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/plugin-logger": "workspace:*",
     "@webex/storage-adapter-spec": "workspace:*",
