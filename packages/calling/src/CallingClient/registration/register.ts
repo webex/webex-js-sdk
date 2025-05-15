@@ -679,9 +679,13 @@ export class Registration implements IRegistration {
         } else if (caller === this.executeFailback.name) {
           const error = body.statusCode;
 
-          if (error === ERROR_CODE.TOO_MANY_REQUESTS) {
+          if (error === ERROR_CODE.TOO_MANY_REQUESTS && body.headers) {
+            const retryAfter = Number(body.headers['retry-after']);
+            console.log('Retry-After:', retryAfter, typeof retryAfter);
             // eslint-disable-next-line no-await-in-loop
-            await this.scheduleFailback429Retry();
+            setTimeout(async () => {
+              await this.scheduleFailback429Retry();
+            }, retryAfter * 1000);
             abort = true;
             break;
           }

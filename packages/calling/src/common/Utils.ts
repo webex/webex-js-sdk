@@ -305,6 +305,21 @@ export async function handleRegistrationErrors(
   let finalError = false;
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
   switch (errorCode) {
+    case ERROR_CODE.BAD_REQUEST: {
+      finalError = true;
+      log.warn(`400 Bad Request`, loggerContext);
+
+      updateLineErrorContext(
+        loggerContext,
+        ERROR_TYPE.SERVER_ERROR,
+        'Invalid input. Please verify the required parameters,  sign out and then sign back in with the valid data',
+        RegistrationStatus.INACTIVE,
+        lineError
+      );
+      emitterCb(lineError, finalError);
+      break;
+    }
+
     case ERROR_CODE.UNAUTHORIZED: {
       // Return it to the Caller
       finalError = true;
