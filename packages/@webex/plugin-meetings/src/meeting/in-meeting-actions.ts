@@ -104,6 +104,8 @@ interface IInMeetingActions {
   canDisableAnnotation?: boolean;
   canEnableRemoteDesktopControl?: boolean;
   canDisableRemoteDesktopControl?: boolean;
+  canEnablePollingQA?: boolean;
+  canDisablePollingQA?: boolean;
 }
 
 /**
@@ -300,6 +302,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canDisableRemoteDesktopControl = null;
 
+  canEnablePollingQA = null;
+
+  canDisablePollingQA = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -399,6 +405,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canDisableAnnotation: this.canDisableAnnotation,
     canEnableRemoteDesktopControl: this.canEnableRemoteDesktopControl,
     canDisableRemoteDesktopControl: this.canDisableRemoteDesktopControl,
+    canEnablePollingQA: this.canEnablePollingQA,
+    canDisablePollingQA: this.canDisablePollingQA,
   });
 
   /**

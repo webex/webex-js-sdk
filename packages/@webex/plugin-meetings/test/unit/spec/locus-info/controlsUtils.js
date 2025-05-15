@@ -165,6 +165,14 @@ describe('plugin-meetings', () => {
         assert.equal(parsedControls.rdcControl.enabled, newControls.rdcControl.enabled);
       });
 
+      it('should parse the pollingQAControl control', () => {
+        const newControls = {pollingQAControl: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.pollingQAControl.enabled, newControls.pollingQAControl.enabled);
+      });
+
       describe('videoEnabled', () => {
         it('returns expected', () => {
           const result = ControlsUtils.parse({video: {enabled: true}});
@@ -409,6 +417,14 @@ describe('plugin-meetings', () => {
         const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
         assert.equal(updates.hasRemoteDesktopControlChanged, true);
+      });
+
+      it('returns hasPollingQAControlChanged = true when changed', () => {
+        const newControls = {pollingQAControl: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasPollingQAControlChanged, true);
       });
 
       describe('videoEnabled', () => {

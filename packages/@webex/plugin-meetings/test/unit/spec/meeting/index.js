@@ -9970,6 +9970,24 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to CONTROLS_POLLING_QA_CHANGED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_POLLING_QA_UPDATED,
+            {state}
+          );
+        });
+
         it('listens to the locus interpretation update event', () => {
           const interpretation = {
             siLanguages: [{languageCode: 20, languageName: 'en'}],
