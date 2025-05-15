@@ -928,7 +928,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           data: {
             agentId: this.agentConfig.agentId,
             reasonCode: 'R002',
-            orgId: this.$webex.credentials.getOrgId(),
             reason: message,
           },
         };
@@ -968,7 +967,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return deviceTypeUpdateResponse;
     } catch (error) {
-      const failure = (error as any).details as Failure;
+      const failure = (error as GenericError).details as Failure;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
         {
