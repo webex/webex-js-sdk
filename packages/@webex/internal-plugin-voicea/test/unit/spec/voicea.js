@@ -91,6 +91,103 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe('#sendManualClosedCaption', () => {
+      beforeEach(async () => {
+        const mockWebSocket = new MockWebSocket();
+        voiceaService.webex.internal.llm.socket = mockWebSocket;
+        voiceaService.seqNum = 1;
+      });
+
+      it('sends interim manual closed caption when connected', () => {
+        const text = 'Test interim caption';
+        const timeStamp = 1234567890;
+        const csis = [123456];
+        const isFinal = false;
+
+        voiceaService.sendManualClosedCaption(text, timeStamp, csis, isFinal);
+
+        assert.calledOnceWithExactly(
+          voiceaService.webex.internal.llm.socket.send,
+          {
+            id: '1',
+            type: 'publishRequest',
+            recipients: {route: undefined},
+            headers: {},
+            data: {
+              eventType: 'relay.event',
+              relayType: 'client.captioner',
+              transcriptPayload: {
+                type: 'manual_caption_interim_result',
+                id: sinon.match.string,
+                transcripts: [
+                  {
+                    text: 'Test interim caption',
+                    start_millis: 1234567890,
+                    end_millis: 1234567890,
+                    csis: [123456],
+                  },
+                ],
+              },
+            },
+            trackingId: sinon.match.string,
+          }
+        );
+        // seqNum should increment
+        assert.equal(voiceaService.seqNum, 2);
+      });
+
+      it('sends final manual closed caption when connected', () => {
+        const text = 'Test final caption';
+        const timeStamp = 9876543210;
+        const csis = [654321];
+        const isFinal = true;
+
+        voiceaService.sendManualClosedCaption(text, timeStamp, csis, isFinal);
+
+        assert.calledOnceWithExactly(
+          voiceaService.webex.internal.llm.socket.send,
+          {
+            id: '1',
+            type: 'publishRequest',
+            recipients: {route: undefined},
+            headers: {},
+            data: {
+              eventType: 'relay.event',
+              relayType: 'client.captioner',
+              transcriptPayload: {
+                type: 'manual_caption_final_result',
+                id: sinon.match.string,
+                transcripts: [
+                  {
+                    text: 'Test final caption',
+                    start_millis: 9876543210,
+                    end_millis: 9876543210,
+                    csis: [654321],
+                  },
+                ],
+              },
+            },
+            trackingId: sinon.match.string,
+          }
+        );
+        // seqNum should increment
+        assert.equal(voiceaService.seqNum, 2);
+      });
+
+      it('does not send if not connected', () => {
+        voiceaService.webex.internal.llm.isConnected.returns(false);
+
+        const text = 'Should not send';
+        const timeStamp = 111;
+        const csis = [1];
+        const isFinal = true;
+
+        voiceaService.sendManualClosedCaption(text, timeStamp, csis, isFinal);
+
+        assert.notCalled(voiceaService.webex.internal.llm.socket.send);
+      });
+    });
+
     describe('#deregisterEvents', () => {
       beforeEach(async () => {
         const mockWebSocket = new MockWebSocket();
@@ -931,3 +1028,4 @@ describe('plugin-voicea', () => {
     });
   });
 });
+

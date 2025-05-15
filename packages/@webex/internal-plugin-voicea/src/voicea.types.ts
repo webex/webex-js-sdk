@@ -84,6 +84,7 @@ interface IVoiceaChannel {
   turnOnCaptions: () => undefined | Promise<void>;
   toggleTranscribing: (activate: boolean, spokenLanguage: string) => undefined | Promise<void>;
   deregisterEvents: () => void;
+  toggleManualCaption: (enable: boolean) => undefined | Promise<void>;
   sendManualClosedCaption: (
     text: string,
     timeStamp: number,
