@@ -28,6 +28,10 @@ import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import {Failure} from '../core/GlobalTypes';
 
+/**
+ * Task class that implements the {@link ITask} interface
+ * @implements {ITask}
+ */
 export default class Task extends EventEmitter implements ITask {
   private contact: ReturnType<typeof routingContact>;
   private localAudioStream: LocalMicrophoneStream;

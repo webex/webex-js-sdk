@@ -1,3 +1,8 @@
+/**
+ * @packageDocumentation
+ * @module AgentConfigService
+ */
+
 import {HTTP_METHODS} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import {
@@ -29,9 +34,10 @@ import {
   METHODS,
 } from './constants';
 
-/*
-The AgentConfigService class provides methods to fetch agent configuration data.
-*/
+/**
+ * The AgentConfigService class provides methods to fetch agent configuration data.
+ * @public
+ */
 export default class AgentConfigService {
   private webexReq: WebexRequest;
   constructor() {
@@ -42,7 +48,7 @@ export default class AgentConfigService {
    * Fetches the agent configuration data for the given orgId and agentId.
    * @param {string} orgId
    * @param {string} agentId
-   *  @returns {Promise<Profile>}
+   * @returns {Promise<Profile>}
    */
   public async getAgentConfig(orgId: string, agentId: string): Promise<Profile> {
     try {
@@ -120,7 +126,6 @@ export default class AgentConfigService {
         multimediaProfileId,
       });
 
-      // replace CONFIG_FILE_NAME with CONFIG_FILE_NAME
       LoggerProxy.info('Parsing completed for agent-config', {
         module: CONFIG_FILE_NAME,
         method: METHODS.GET_AGENT_CONFIG,
@@ -266,7 +271,7 @@ export default class AgentConfigService {
   /**
    * fetches the list of teams for the given orgId.
    * @param {string} orgId
-   *  @param {number} page
+   * @param {number} page
    * @param {number} pageSize
    * @param {string[]} filter
    * @param {string[]} attributes
@@ -346,7 +351,7 @@ export default class AgentConfigService {
   }
 
   /**
-   *   fetches the list of aux codes for the given orgId.
+   *  fetches the list of aux codes for the given orgId.
    * @param {string} orgId
    * @param {number} page
    * @param {number} pageSize

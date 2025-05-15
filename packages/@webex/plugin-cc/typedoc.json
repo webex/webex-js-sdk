@@ -1,0 +1,30 @@
+{
+    "name": "Contact Center Plugin",
+    "entryPoints": [
+        "src/services.ts"
+    ],
+    "entryPointStrategy": "resolve",
+    "out": "docs",
+    "excludePrivate": true,
+    "excludeExternals": true,
+    "hideGenerator": true,
+    "plugin": "none",
+    "cleanOutputDir": true,
+    "skipErrorChecking": true,
+    "includeVersion": false,
+    "disableSources": true,
+    "validation": {
+        "notExported": false,
+        "invalidLink": true,
+        "notDocumented": false
+    },
+    "sort": [
+        "source-order"
+    ],
+    "navigationLinks": {
+        "Services": "modules/Services.html"
+    },
+    "sidebarLinks": {
+        "Classes": "classes.html"
+    }
+}

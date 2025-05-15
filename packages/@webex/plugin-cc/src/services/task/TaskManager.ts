@@ -16,6 +16,11 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 export default class TaskManager extends EventEmitter {
   private call: ICall;
   private contact: ReturnType<typeof routingContact>;
+  /**
+   * Collection of tasks indexed by TaskId
+   * @type {Record<TaskId, ITask>}
+   * @private
+   */
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
