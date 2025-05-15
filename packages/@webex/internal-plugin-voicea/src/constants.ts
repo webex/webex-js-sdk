@@ -22,7 +22,7 @@ export const AIBRIDGE_RELAY_TYPES = {
   },
   MANUAL: {
     TRANSCRIPTION: 'aibridge.manual_transcription',
-    CAPIONER: 'client.manual_transcription',
+    CAPTIONER: 'client.manual_transcription',
   },
 };
 

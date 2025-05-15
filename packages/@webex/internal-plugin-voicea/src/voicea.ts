@@ -58,7 +58,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         this.processTranscription(e.data.voiceaPayload);
         break;
       case AIBRIDGE_RELAY_TYPES.MANUAL.TRANSCRIPTION:
-      case AIBRIDGE_RELAY_TYPES.MANUAL.CAPIONER:
+      case AIBRIDGE_RELAY_TYPES.MANUAL.CAPTIONER:
         this.processManualTranscription({
           ...e.data.transcriptPayload,
           sender: e.headers?.from,
@@ -335,7 +335,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       headers: {},
       data: {
         eventType: 'relay.event',
-        relayType: AIBRIDGE_RELAY_TYPES.MANUAL.CAPIONER,
+        relayType: AIBRIDGE_RELAY_TYPES.MANUAL.CAPTIONER,
         transcriptPayload: {
           type: isFinal
             ? TRANSCRIPTION_TYPE.MANUAL_CAPTION_FINAL_RESULT
