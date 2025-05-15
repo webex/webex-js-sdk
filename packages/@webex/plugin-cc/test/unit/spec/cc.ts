@@ -34,7 +34,6 @@ import { METRIC_EVENT_NAMES } from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebexRequest from '../../../src/services/core/WebexRequest';
 
-
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
   default: {
@@ -49,6 +48,7 @@ jest.mock('../../../src/services/config');
 jest.mock('../../../src/services/core/websocket/WebSocketManager');
 jest.mock('../../../src/services/core/websocket/connection-service');
 jest.mock('../../../src/services/WebCallingService');
+jest.mock('uuid', () => ({v4: () => 'mock-tracking-uuid'}));
 
 global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 
@@ -1607,6 +1607,112 @@ describe('webex.cc', () => {
         const sample = { foo: 'bar', type: ccEvent };
         messageCallback(JSON.stringify({type: ccEvent, data: sample}));
         expect(emitSpy).toHaveBeenCalledWith(constant, sample);
+      });
+    });
+  });
+
+  describe('updateAgentDeviceType', () => {
+    beforeEach(() => {
+      webex.cc.agentConfig = {
+        ...webex.cc.agentConfig,
+        currentTeamId: 'teamId',
+      } as any;
+    });
+
+    it('should logout then login and return AgentDeviceTypeUpdateSuccess type', async () => {
+      const data = {loginOption: LoginOption.EXTENSION, dialNumber: '98765'};
+      const mockResp = {
+        eventType: 'AgentDesktopMessage',
+        agentId: 'agentId',
+        trackingId: 'track-1',
+        auxCodeId: 'aux-1',
+        teamId: 'teamId',
+        agentSessionId: 'sessId',
+        orgId: 'org-1',
+        interactionIds: ['i1'],
+        status: 'LoggedIn',
+        subStatus: 'Available',
+        siteId: 'site-1',
+        lastIdleCodeChangeTimestamp: 1,
+        lastStateChangeTimestamp: 2,
+        profileType: 'type',
+        mmProfile: {chat: 0, email: 0, social: 0, telephony: 0},
+        dialNumber: '98765',
+        roles: ['role'],
+        supervisorSessionId: undefined,
+        notifsTrackingId: 'notif-1',
+        type: 'AgentDeviceTypeUpdateSuccess',
+      };
+
+      jest.spyOn(webex.cc, 'stationLogout').mockResolvedValue({});
+      jest.spyOn(webex.cc, 'stationLogin').mockResolvedValue(mockResp as any);
+
+      const result = await webex.cc.updateAgentDeviceType(data);
+
+      expect(webex.cc.stationLogout).toHaveBeenCalledWith({logoutReason: 'User requested agent device change'});
+      expect(webex.cc.stationLogin).toHaveBeenCalledWith({
+        teamId: 'teamId',
+        loginOption: data.loginOption,
+        dialNumber: data.dialNumber,
+      });
+      expect(result).toEqual(mockResp);
+    });
+
+    it('should track failure and throw when stationLogout fails', async () => {
+      const data = {loginOption: LoginOption.EXTENSION, dialNumber: '98765'};
+      const err = new Error('logout failure');
+      jest.spyOn(webex.cc, 'stationLogout').mockRejectedValue(err);
+      const metricSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
+      const logSpy = jest.spyOn(LoggerProxy, 'error');
+
+      await expect(webex.cc.updateAgentDeviceType(data)).rejects.toThrow(err);
+
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
+        expect.objectContaining({loginType: data.loginOption}),
+        ['behavioral','business','operational']
+      );
+      expect(logSpy).toHaveBeenCalledWith(
+        `[WX_CC_SDK_mock-tracking-uuid] updateAgentDeviceType | error updating profile: ${err}`,
+        {module: CC_FILE, method: 'updateAgentDeviceType'}
+      );
+    });
+
+    it('should track failure and throw when stationLogin fails', async () => {
+      const data = {loginOption: LoginOption.EXTENSION, dialNumber: '98765'};
+      jest.spyOn(webex.cc, 'stationLogout').mockResolvedValue({});
+      const loginErr = new Error('login failure');
+      jest.spyOn(webex.cc, 'stationLogin').mockRejectedValue(loginErr);
+      const metricSpy = jest.spyOn(mockMetricsManager, 'trackEvent');
+      const logSpy = jest.spyOn(LoggerProxy, 'error');
+
+      await expect(webex.cc.updateAgentDeviceType(data)).rejects.toThrow(loginErr);
+
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
+        expect.objectContaining({loginType: data.loginOption}),
+        ['behavioral','business','operational']
+      );
+      expect(logSpy).toHaveBeenCalledWith(
+        `[WX_CC_SDK_mock-tracking-uuid] updateAgentDeviceType | error updating profile: ${loginErr}`,
+        {module: CC_FILE, method: 'updateAgentDeviceType'}
+      );
+    });
+
+    it('should throw with detailed error when loginOption equals current device type', async () => {
+      const data = {loginOption: LoginOption.BROWSER, dialNumber: '11111'};
+      webex.cc.webCallingService.loginOption = data.loginOption;
+
+      await expect(webex.cc.updateAgentDeviceType(data)).rejects.toMatchObject({
+        message: 'Will not proceed with device update as new Device type is same as current device type',
+        details: expect.objectContaining({
+          type: 'Identical Device Change Failure',
+          trackingId: 'WX_CC_SDK_mock-tracking-uuid',
+          data: expect.objectContaining({
+            agentId: webex.cc.agentConfig.agentId,
+            reason: 'Will not proceed with device update as new Device type is same as current device type',
+          }),
+        }),
       });
     });
   });
