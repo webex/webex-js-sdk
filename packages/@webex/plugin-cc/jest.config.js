@@ -5,7 +5,7 @@ const jestConfig = {
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   testResultsProcessor: 'jest-junit',
   transformIgnorePatterns: [
-    '../../calling/node_modules/(?!(uuid)/)', // Transform `uuid` using Babel
+    '/node_modules/(?!(uuid)/)', // Transform `uuid` using Babel
   ],
   // Clear mocks in between tests by default
   clearMocks: true,
