@@ -9621,8 +9621,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<MediaReachabilityMetrics>}
    */
   private async getMediaReachabilityMetricFields(): Promise<MediaReachabilityMetrics> {
-    // @ts-ignore
     const reachabilityMetrics: ReachabilityMetrics =
+      // @ts-ignore
       await this.webex.meetings.reachability.getReachabilityMetrics();
 
     const successKeys: Array<keyof ReachabilityMetrics> = [
@@ -9641,9 +9641,7 @@ export default class Meeting extends StatelessWebexPlugin {
     let isSubnetReachable = null;
     if (totalSuccessCases > 0) {
       // @ts-ignore
-      isSubnetReachable = await this.webex.meetings.reachability.isSubnetReachable(
-        this.mediaServerIp
-      );
+      isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(this.mediaServerIp);
     }
 
     return {
