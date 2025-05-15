@@ -9227,6 +9227,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
+    "@webex/ts-sdp": ^1.8.1
     "@webex/web-capabilities": ^1.4.0
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
@@ -9904,7 +9905,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/ts-sdp@npm:1.8.1":
+"@webex/ts-sdp@npm:1.8.1, @webex/ts-sdp@npm:^1.8.1":
   version: 1.8.1
   resolution: "@webex/ts-sdp@npm:1.8.1"
   checksum: de9d23826c27b31f35907fa8066ff4d762fe72e6fb19e43d74dc28261d3bd126b181e057a341d4ab41c64f267c7341608be25ed186e2cc7d444a6efc940625d7
