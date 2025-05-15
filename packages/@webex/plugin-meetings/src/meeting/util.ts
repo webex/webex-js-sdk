@@ -812,24 +812,6 @@ const MeetingUtil = {
       },
     ];
   },
-
-  /**
-   * Creates a proxy object to mark an error as handled by the SDK.
-   * @param {Error} error original error
-   * @returns {Proxy} proxy object with handledBySdk property
-   */
-  markErrorAsHandledBySdk: (error) => {
-    return new Proxy(error, {
-      // eslint-disable-next-line require-jsdoc
-      get(target, prop) {
-        if (prop === 'handledBySdk') {
-          return true;
-        }
-
-        return Reflect.get(target, prop);
-      },
-    });
-  },
 };
 
 export default MeetingUtil;
