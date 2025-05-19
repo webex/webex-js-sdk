@@ -400,6 +400,19 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_toggleDisableAudioMainDtx', () => {
+      it('should have _toggleDisableAudioMainDtx', () => {
+        assert.equal(typeof webex.meetings._toggleDisableAudioMainDtx, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings to disable audio main dtx', () => {
+          webex.meetings._toggleDisableAudioMainDtx(true);
+          assert.equal(webex.meetings.config.experimental.disableAudioMainDtx, true);
+        });
+      });
+    });
+
     describe('Public API Contracts', () => {
       describe('#register', () => {
         it('emits an event and resolves when register succeeds', async () => {
@@ -658,7 +671,7 @@ describe('plugin-meetings', () => {
             quality: 'LOW',
             authToken: 'fake_token',
             mirror: false,
-            canvasResolutionScaling: 1
+            canvasResolutionScaling: 1,
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
@@ -674,7 +687,7 @@ describe('plugin-meetings', () => {
             quality: 'HIGH',
             blurStrength: 'STRONG',
             bgImageUrl: 'https://test.webex.com/landscape.5a535788.jpg',
-            canvasResolutionScaling: 1
+            canvasResolutionScaling: 1,
           };
 
           const result = await webex.meetings.createVirtualBackgroundEffect(effectOptions);
