@@ -172,11 +172,14 @@ Media.createMediaConnection = (
   if (isMultistream) {
     const config: MultistreamConnectionConfig = {
       iceServers,
-      disableAudioMainDtx,
     };
 
     if (bundlePolicy) {
       config.bundlePolicy = bundlePolicy;
+    }
+
+    if (disableAudioMainDtx !== undefined) {
+      config.disableAudioMainDtx = disableAudioMainDtx;
     }
 
     return new MultistreamRoapMediaConnection(
