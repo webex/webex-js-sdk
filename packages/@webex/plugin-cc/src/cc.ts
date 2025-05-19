@@ -1,3 +1,11 @@
+/**
+ * @module CCPlugin
+ * @packageDocumentation
+ * Contact Center Plugin module that provides functionality for managing contact center agents,
+ * handling tasks, and interacting with contact center services. This module enables integration
+ * with Webex Contact Center features through the WebexSDK.
+ */
+
 import {WebexPlugin} from '@webex/webex-core';
 import EventEmitter from 'events';
 import {v4 as uuidv4} from 'uuid';
@@ -31,7 +39,7 @@ import {
   MERCURY_DISCONNECTED_SUCCESS,
 } from './constants';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
-import Services from './services';
+import Services from './services/index';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
@@ -51,19 +59,73 @@ import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
 
+/**
+ * Contact Center Plugin main class which provides functionality for agent management
+ * in Webex Contact Center. This includes capabilities for:
+ * - Agent login/logout and state management
+ * - Task handling and routing
+ * - Real-time event processing
+ * - Device and configuration management
+ * - Queue management
+ * - Metrics tracking and logging
+ *
+ * @category Core
+ * @example
+ * ```typescript
+ * // Initialize the Contact Center plugin
+ * const cc = new ContactCenter();
+ *
+ * // Register and login
+ * await cc.register();
+ * await cc.stationLogin({
+ *   teamId: "team123",
+ *   loginOption: LoginOption.BROWSER
+ * });
+ *
+ * // Set agent state
+ * await cc.setAgentState({
+ *   state: "Available"
+ * });
+ * ```
+ */
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
+  /** Plugin namespace identifier */
   namespace = 'cc';
+
+  /** Plugin configuration */
   private $config: CCPluginConfig;
+
+  /** Reference to the Webex SDK instance */
   private $webex: WebexSDK;
+
+  /** Event emitter for handling plugin events */
   private eventEmitter: EventEmitter;
+
+  /** Agent configuration and profile information */
   private agentConfig: Profile;
+
+  /** Service for handling web-based calling functionality */
   private webCallingService: WebCallingService;
+
+  /** Core services for Contact Center operations */
   private services: Services;
+
+  /** Service for handling Webex API requests */
   private webexRequest: WebexRequest;
+
+  /** Manager for handling contact center tasks */
   private taskManager: TaskManager;
+
+  /** Manager for handling metrics and analytics */
   private metricsManager: MetricsManager;
+
+  /** Logger for the Contact Center plugin */
   public LoggerProxy = LoggerProxy;
 
+  /**
+   * Creates an instance of ContactCenter plugin
+   * @param {any[]} args Arguments passed to plugin constructor
+   */
   constructor(...args) {
     super(...args);
 
@@ -101,18 +163,30 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
   }
 
+  /**
+   * Handles incoming task events and triggers appropriate notifications
+   * @private
+   * @param {ITask} task The incoming task object containing task details
+   */
   private handleIncomingTask = (task: ITask) => {
     // @ts-ignore
     this.trigger(TASK_EVENTS.TASK_INCOMING, task);
   };
 
+  /**
+   * Handles task hydration events for updating task data
+   * @private
+   * @param {ITask} task The task object to be hydrated with additional data
+   */
   private handleTaskHydrate = (task: ITask) => {
     // @ts-ignore
     this.trigger(TASK_EVENTS.TASK_HYDRATE, task);
   };
 
   /**
-   * An Incoming Call listener.
+   * Sets up event listeners for incoming tasks and task hydration
+   * Subscribes to task events from the task manager
+   * @private
    */
   private incomingTaskListener() {
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
@@ -120,7 +194,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * This is used for making the CC SDK ready by setting up the cc mercury connection.
+   * Initializes the Contact Center SDK by setting up mercury connection
+   * @returns {Promise<Profile>} Agent profile information after successful registration
+   * @throws {Error} If registration fails
+   * @public
    */
   public async register(): Promise<Profile> {
     try {
@@ -162,9 +239,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * This is used to unregister the CC SDK and clean up all resources.
-   * @returns Promise<void>
-   * @throws Error
+   * Unregisters the Contact Center SDK and cleans up all resources
+   * @returns {Promise<void>} Resolves when deregistration is complete
+   * @throws {Error} If deregistration fails
+   * @public
    */
   public async deregister(): Promise<void> {
     try {
@@ -232,11 +310,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * Returns the list of buddy agents in the given state and media according to agent profile settings
-   *
-   * @param {BuddyAgents} data - The data required to fetch buddy agents, including additional agent profile information.
-   * @returns {Promise<BuddyAgentsResponse>} A promise that resolves to the response containing buddy agents information.
-   * @throws Error
+   * @param {BuddyAgents} data The data required to fetch buddy agents
+   * @returns {Promise<BuddyAgentsResponse>} A promise resolving to the buddy agents information
+   * @throws {Error} If fetching buddy agents fails
    * @example getBuddyAgents({state: 'Available', mediaType: 'telephony'})
+   * @public
    */
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
     try {
@@ -278,9 +356,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * This is used for connecting the websocket and fetching the agent profile.
-   * @returns Promise<Profile>
-   * @throws Error
+   * Connects to the websocket and fetches the agent profile
+   * @returns {Promise<Profile>} Agent profile information
+   * @throws {Error} If connection fails or profile cannot be fetched
    * @private
    */
   private async connectWebsocket() {
@@ -337,10 +415,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * This is used for agent login.
-   * @param data
-   * @returns Promise<StationLoginResponse>
-   * @throws Error
+   * Performs agent login with specified credentials and device type
+   * @param {AgentLogin} data Login parameters including teamId, loginOption and dialNumber
+   * @returns {Promise<StationLoginResponse>} Response containing login status and profile
+   * @throws {Error} If login fails
+   * @public
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     try {
@@ -357,7 +436,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           isExtension: data.loginOption === LoginOption.EXTENSION,
           deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
           roles: [AGENT],
-          // TODO: The public API should not have the following properties so filling them with empty values for now. If needed, we can add them in the future.
           teamName: EMPTY_STRING,
           siteId: EMPTY_STRING,
           usesOtherDN: false,
@@ -389,8 +467,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
           loginType: data.loginOption,
-          status: resp.data.status, // 'LoggedIn'
-          type: resp.data.type, // 'AgentStationLoginSuccess'
+          status: resp.data.status,
+          type: resp.data.type,
           roles: resp.data.roles?.join(',') || EMPTY_STRING,
         },
         ['behavioral', 'business', 'operational']
@@ -412,10 +490,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  /** This is used for agent logout.
-   * @param data
-   * @returns Promise<StationLogoutResponse>
-   * @throws Error
+  /**
+   * Logs out the currently logged in agent
+   * @param {Logout} data Logout parameters
+   * @returns {Promise<StationLogoutResponse>} Response indicating logout status
+   * @throws {Error} If logout fails
+   * @public
    */
   public async stationLogout(data: Logout): Promise<StationLogoutResponse> {
     try {
@@ -458,9 +538,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  /* This is used for agent relogin.
-   * @returns Promise<StationReLoginResponse>
-   * @throws Error
+  /**
+   * Re-authenticates an agent's login session
+   * @returns {Promise<StationReLoginResponse>} Response indicating relogin status
+   * @throws {Error} If relogin fails
+   * @public
    */
   public async stationReLogin(): Promise<StationReLoginResponse> {
     try {
@@ -492,6 +574,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
+  /**
+   * Gets the device ID based on login option and dial number
+   * @param {string} loginOption The login option (BROWSER, EXTENSION, etc)
+   * @param {string} dialNumber The dial number if applicable
+   * @returns {string} The device ID
+   * @private
+   */
   private getDeviceId(loginOption: string, dialNumber: string): string {
     if (loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN) {
       return dialNumber;
@@ -501,12 +590,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * This is used for setting agent state.
-   * @param options
-   * @returns Promise<SetStateResponse>
-   * @throws Error
+   * Sets the agent state like Available, Idle, etc.
+   * @param {StateChange} data State change parameters including the new state
+   * @returns {Promise<SetStateResponse>} Response with updated state information
+   * @throws {Error} If state change fails
+   * @public
    */
-
   public async setAgentState(data: StateChange): Promise<SetStateResponse> {
     try {
       this.metricsManager.timeEvent([
@@ -554,6 +643,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
+  /**
+   * Processes incoming websocket messages and emits corresponding events
+   * Handles various event types including agent state changes, login events,
+   * and other agent-related notifications
+   * @private
+   * @param {string} event The raw websocket event message
+   */
   private handleWebSocketMessage = (event: string) => {
     const eventData = JSON.parse(event);
     // Re-emit all the events related to agent except keep-alives
@@ -647,14 +743,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   /**
-   * For setting up the Event Emitter listeners and handlers
+   * Initializes event listeners for the Contact Center service
+   * Sets up handlers for connection state changes and other core events
+   * @private
    */
   private setupEventListeners() {
     this.services.connectionService.on('connectionLost', this.handleConnectionLost.bind(this));
   }
 
   /**
-   * This method returns the connection configuration.
+   * Returns the connection configuration
+   * @returns {SubscribeRequest} Connection configuration
+   * @private
    */
   private getConnectionConfig(): SubscribeRequest {
     return {
@@ -666,7 +766,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Called when the reconnection has been completed
+   * Handles connection lost events and reconnection attempts
+   * @param {ConnectionLostDetails} msg Connection lost details
+   * @private
    */
   private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
     if (msg.isConnectionLost) {
@@ -688,7 +790,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Called when we finish registration to silently handle the errors
+   * Handles silent relogin after registration completion
+   * @private
    */
   private async silentRelogin(): Promise<void> {
     try {
@@ -754,7 +857,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Handles the device type specific logic
+   * Handles device type specific configuration and setup
+   * Configures services and settings based on the login device type
+   * @param {LoginOption} deviceType The type of device being used for login
+   * @param {string} dn The dial number associated with the device
+   * @returns {Promise<void>}
+   * @private
    */
   private async handleDeviceType(deviceType: LoginOption, dn: string): Promise<void> {
     this.webCallingService.setLoginOption(deviceType);

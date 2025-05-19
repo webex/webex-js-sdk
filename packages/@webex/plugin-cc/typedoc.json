@@ -1,30 +1,62 @@
 {
     "name": "Contact Center Plugin",
     "entryPoints": [
-        "src/services.ts"
+        "src/index.ts"
     ],
-    "entryPointStrategy": "resolve",
-    "out": "docs",
-    "excludePrivate": true,
-    "excludeExternals": true,
+    "entryPointStrategy": "expand",
+    "tsconfig": "tsconfig.json",
+    "out": "../../../docs/wxcc",
+    "excludePrivate": false,
+    "excludeExternals": false,
     "hideGenerator": true,
-    "plugin": "none",
+    "plugin": [
+        "typedoc-plugin-markdown"
+    ],
+    "theme": "default",
     "cleanOutputDir": true,
-    "skipErrorChecking": true,
-    "includeVersion": false,
-    "disableSources": true,
+    "includeVersion": true,
+    "readme": "README.md",
+    "disableSources": false,
+    "sourceLinkTemplate": "https://github.com/webex/webex-js-sdk/blob/master/{path}#L{line}",
     "validation": {
-        "notExported": false,
+        "notExported": true,
         "invalidLink": true,
-        "notDocumented": false
+        "notDocumented": true
     },
     "sort": [
-        "source-order"
+        "kind",
+        "visibility",
+        "alphabetical"
+    ],
+    "categorizeByGroup": true,
+    "categoryOrder": [
+        "Core",
+        "Services",
+        "Classes",
+        "Interfaces",
+        "Enums",
+        "Types",
+        "*"
     ],
     "navigationLinks": {
-        "Services": "modules/Services.html"
+        "Classes": "classes/index.html",
+        "Interfaces": "interfaces/index.html",
+        "Enums": "enums/index.html",
+        "Types": "types/index.html",
+        "API Reference": "modules.html",
+        "GitHub": "https://github.com/webex/webex-js-sdk"
     },
     "sidebarLinks": {
-        "Classes": "classes.html"
+        "Classes": "classes/index.html",
+        "Interfaces": "interfaces/index.html",
+        "Types": "types/index.html",
+        "Enums": "enums/index.html"
+    },
+    "searchInComments": true,
+    "visibilityFilters": {
+        "protected": true,
+        "private": false,
+        "inherited": true,
+        "external": true
     }
 }
