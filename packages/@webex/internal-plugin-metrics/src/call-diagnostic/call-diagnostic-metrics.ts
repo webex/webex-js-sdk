@@ -41,6 +41,7 @@ import {
   ClientSubServiceType,
   BrowserLaunchMethodType,
   DelayedClientEvent,
+  DelayedClientEventOverrides,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
@@ -942,7 +943,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   /**
    * Submit Delayed Client Event CA events. Clears delayedClientEvents array after submission.
    */
-  public submitDelayedClientEvents(overrides?: Record<string, any>) {
+  public submitDelayedClientEvents(overrides?: DelayedClientEventOverrides) {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @submitDelayedClientEvents. Submitting delayed client events.'
