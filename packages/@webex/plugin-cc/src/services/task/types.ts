@@ -1,35 +1,51 @@
+/**
+ * @fileoverview This module defines the core types and interfaces for managing tasks in the Contact Center SDK.
+ * It includes definitions for task operations, events, media channels, and interaction data structures.
+ * These types are essential for handling customer interactions across various communication channels.
+ */
+
 import {CallId} from '@webex/calling/dist/types/common/types';
 import EventEmitter from 'events';
 import {Msg} from '../core/GlobalTypes';
 
 /**
- * Unique identifier for a task
+ * Unique identifier for a task in the contact center system
  * @public
  */
 export type TaskId = string;
 
+/**
+ * Helper type for creating enum-like objects with type safety
+ * @internal
+ */
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 /**
- * Types of destinations for task routing
+ * Defines the valid destination types for routing tasks within the contact center
+ * Used to specify where a task should be directed
  * @public
  */
 export const DESTINATION_TYPE = {
-  /** Route to a queue */
+  /** Route task to a specific queue */
   QUEUE: 'queue',
-  /** Route to a dial number */
+  /** Route task to a specific dial number */
   DIALNUMBER: 'dialNumber',
-  /** Route to a specific agent */
+  /** Route task to a specific agent */
   AGENT: 'agent',
-  /** Route to an entry point (only supported for consult operations) */
+  /** Route task to an entry point (supported only for consult operations) */
   ENTRYPOINT: 'entryPoint',
 };
 
-/** Type representing valid destination types for task routing */
+/**
+ * Type representing valid destination types for task routing
+ * Derived from the DESTINATION_TYPE constant
+ * @public
+ */
 export type DestinationType = Enum<typeof DESTINATION_TYPE>;
 
 /**
- * Types of destinations for consult transfer operations
+ * Defines the valid destination types for consult transfer operations
+ * Used when transferring a task after consultation
  * @public
  */
 export const CONSULT_TRANSFER_DESTINATION_TYPE = {
@@ -43,92 +59,103 @@ export const CONSULT_TRANSFER_DESTINATION_TYPE = {
   QUEUE: 'queue',
 };
 
-/** Type representing valid destination types for consult transfers */
+/**
+ * Type representing valid destination types for consult transfers
+ * Derived from the CONSULT_TRANSFER_DESTINATION_TYPE constant
+ * @public
+ */
 export type ConsultTransferDestinationType = Enum<typeof CONSULT_TRANSFER_DESTINATION_TYPE>;
 
 /**
- * Supported media channel types for interactions
+ * Defines all supported media channel types for customer interactions
+ * These represent the different ways customers can communicate with agents
  * @public
  */
 export const MEDIA_CHANNEL = {
-  /** Email communication channel */
+  /** Email-based communication channel */
   EMAIL: 'email',
-  /** Chat communication channel */
+  /** Web-based chat communication channel */
   CHAT: 'chat',
-  /** Voice communication channel */
+  /** Voice/phone communication channel */
   TELEPHONY: 'telephony',
-  /** Social media communication channel */
+  /** Social media platform communication channel */
   SOCIAL: 'social',
-  /** SMS text messaging channel */
+  /** SMS text messaging communication channel */
   SMS: 'sms',
-  /** Facebook messenger channel */
+  /** Facebook Messenger communication channel */
   FACEBOOK: 'facebook',
-  /** WhatsApp messaging channel */
+  /** WhatsApp messaging communication channel */
   WHATSAPP: 'whatsapp',
 } as const;
 
-/** Type representing valid media channels */
+/**
+ * Type representing valid media channels
+ * Derived from the MEDIA_CHANNEL constant
+ * @public
+ */
 export type MEDIA_CHANNEL = Enum<typeof MEDIA_CHANNEL>;
 
 /**
  * Enumeration of all task-related events that can occur in the contact center system
+ * These events represent different states and actions in the task lifecycle
  * @public
  */
 export enum TASK_EVENTS {
-  /** New task has arrived */
+  /** Triggered when a new task is received by the system */
   TASK_INCOMING = 'task:incoming',
-  /** Task has been assigned to an agent */
+  /** Triggered when a task is successfully assigned to an agent */
   TASK_ASSIGNED = 'task:assigned',
-  /** Task media state has changed */
+  /** Triggered when the media state of a task changes */
   TASK_MEDIA = 'task:media',
-  /** Task has been unassigned from an agent */
+  /** Triggered when a task is removed from an agent */
   TASK_UNASSIGNED = 'task:unassigned',
-  /** Task has been put on hold */
+  /** Triggered when a task is placed on hold */
   TASK_HOLD = 'task:hold',
-  /** Task has been taken off hold */
+  /** Triggered when a task is resumed from hold */
   TASK_UNHOLD = 'task:unhold',
-  /** Consultation has ended */
+  /** Triggered when a consultation session ends */
   TASK_CONSULT_END = 'task:consultEnd',
-  /** Queue consultation has been cancelled */
+  /** Triggered when a queue consultation is cancelled */
   TASK_CONSULT_QUEUE_CANCELLED = 'task:consultQueueCancelled',
-  /** Queue consultation has failed */
+  /** Triggered when a queue consultation fails */
   TASK_CONSULT_QUEUE_FAILED = 'task:consultQueueFailed',
-  /** Consultation request has been accepted */
+  /** Triggered when a consultation request is accepted */
   TASK_CONSULT_ACCEPTED = 'task:consultAccepted',
-  /** Consultation is in progress */
+  /** Triggered when consultation is in progress */
   TASK_CONSULTING = 'task:consulting',
-  /** New consultation has been created */
+  /** Triggered when a new consultation is created */
   TASK_CONSULT_CREATED = 'task:consultCreated',
-  /** Consultation has been offered */
+  /** Triggered when a consultation is offered */
   TASK_OFFER_CONSULT = 'task:offerConsult',
-  /** Task has been paused */
+  /** Triggered when a task is paused */
   TASK_PAUSE = 'task:pause',
-  /** Task has been resumed */
+  /** Triggered when a paused task is resumed */
   TASK_RESUME = 'task:resume',
-  /** Task has ended */
+  /** Triggered when a task is completed/terminated */
   TASK_END = 'task:end',
-  /** Task has entered wrap-up state */
+  /** Triggered when a task enters wrap-up state */
   TASK_WRAPUP = 'task:wrapup',
-  /** Task wrap-up has completed */
+  /** Triggered when task wrap-up is completed */
   TASK_WRAPPEDUP = 'task:wrappedup',
-  /** Recording has been paused */
+  /** Triggered when recording is paused */
   TASK_RECORDING_PAUSED = 'task:recordingPaused',
-  /** Recording pause attempt failed */
+  /** Triggered when recording pause attempt fails */
   TASK_RECORDING_PAUSE_FAILED = 'task:recordingPauseFailed',
-  /** Recording has been resumed */
+  /** Triggered when recording is resumed */
   TASK_RECORDING_RESUMED = 'task:recordingResumed',
-  /** Recording resume attempt failed */
+  /** Triggered when recording resume attempt fails */
   TASK_RECORDING_RESUME_FAILED = 'task:recordingResumeFailed',
-  /** Task has been rejected */
+  /** Triggered when a task is rejected */
   TASK_REJECT = 'task:rejected',
-  /** Task has been hydrated with data */
+  /** Triggered when a task is populated with data */
   TASK_HYDRATE = 'task:hydrate',
-  /** New contact has been offered */
+  /** Triggered when a new contact is offered */
   TASK_OFFER_CONTACT = 'task:offerContact',
 }
 
 /**
- * Represents a customer interaction within the contact center
+ * Represents a customer interaction within the contact center system
+ * Contains comprehensive details about an ongoing customer interaction
  * @public
  */
 export type Interaction = {
@@ -145,7 +172,7 @@ export type Interaction = {
   /** Current virtual team handling the interaction */
   currentVTeam: string;
   /** List of participants in the interaction */
-  participants: any; // todo
+  participants: any; // TODO: Define specific participant type
   /** Unique identifier for the interaction */
   interactionId: string;
   /** Organization identifier */
@@ -154,96 +181,174 @@ export type Interaction = {
   createdTimestamp?: number;
   /** Indicates if wrap-up assistance is enabled */
   isWrapUpAssist?: boolean;
+  /** Detailed call processing information and metadata */
   callProcessingDetails: {
+    /** Name of the Queue Manager handling this interaction */
     QMgrName: string;
+    /** Indicates if the task should be self-serviced */
     taskToBeSelfServiced: string;
+    /** Automatic Number Identification (caller's number) */
     ani: string;
+    /** Display version of the ANI */
     displayAni: string;
+    /** Dialed Number Identification Service number */
     dnis: string;
+    /** Tenant identifier */
     tenantId: string;
+    /** Queue identifier */
     QueueId: string;
+    /** Virtual team identifier */
     vteamId: string;
+    /** Indicates if pause/resume functionality is enabled */
     pauseResumeEnabled?: string;
+    /** Duration of pause in seconds */
     pauseDuration?: string;
+    /** Indicates if the interaction is currently paused */
     isPaused?: string;
+    /** Indicates if recording is in progress */
     recordInProgress?: string;
+    /** Indicates if recording has started */
     recordingStarted?: string;
+    /** Indicates if Consult to Queue is in progress */
     ctqInProgress?: string;
+    /** Indicates if outdial transfer to queue is enabled */
     outdialTransferToQueueEnabled?: string;
+    /** IVR conversation transcript */
     convIvrTranscript?: string;
+    /** Customer's name */
     customerName: string;
+    /** Name of the virtual team */
     virtualTeamName: string;
+    /** RONA (Redirection on No Answer) timeout in seconds */
     ronaTimeout: string;
+    /** Category of the interaction */
     category: string;
+    /** Reason for the interaction */
     reason: string;
+    /** Source number for the interaction */
     sourceNumber: string;
+    /** Source page that initiated the interaction */
     sourcePage: string;
+    /** Application user identifier */
     appUser: string;
+    /** Customer's contact number */
     customerNumber: string;
+    /** Code indicating the reason for interaction */
     reasonCode: string;
+    /** Path taken through the IVR system */
     IvrPath: string;
+    /** Identifier for the IVR path */
     pathId: string;
+    /** Email address or contact point that initiated the interaction */
     fromAddress: string;
+    /** Identifier of the parent interaction for related interactions */
     parentInteractionId?: string;
+    /** Identifier of the child interaction for related interactions */
     childInteractionId?: string;
+    /** Type of relationship between parent and child interactions */
     relationshipType?: string;
+    /** ANI of the parent interaction */
     parent_ANI?: string;
+    /** DNIS of the parent interaction */
     parent_DNIS?: string;
+    /** Indicates if the consulted destination agent has joined */
     consultDestinationAgentJoined?: boolean | string;
+    /** Name of the destination agent for consultation */
     consultDestinationAgentName?: string;
+    /** DN of the parent interaction's agent */
     parent_Agent_DN?: string;
+    /** Name of the parent interaction's agent */
     parent_Agent_Name?: string;
+    /** Team name of the parent interaction's agent */
     parent_Agent_TeamName?: string;
+    /** Indicates if the interaction is in conference mode */
     isConferencing?: string;
+    /** Type of monitoring being performed */
     monitorType?: string;
+    /** Name of the workflow being executed */
     workflowName?: string;
+    /** Identifier of the workflow */
     workflowId?: string;
+    /** Indicates if monitoring is in invisible mode */
     monitoringInvisibleMode?: string;
+    /** Identifier for the monitoring request */
     monitoringRequestId?: string;
+    /** Timeout for participant invitation */
     participantInviteTimeout?: string;
+    /** Filename for music on hold */
     mohFileName?: string;
+    /** Flag for continuing recording during transfer */
     CONTINUE_RECORDING_ON_TRANSFER?: string;
+    /** Entry point identifier */
     EP_ID?: string;
+    /** Type of routing being used */
     ROUTING_TYPE?: string;
+    /** Events registered with Flow Control Engine */
     fceRegisteredEvents?: string;
+    /** Indicates if the interaction is parked */
     isParked?: string;
+    /** Priority level of the interaction */
     priority?: string;
+    /** Identifier for the routing strategy */
     routingStrategyId?: string;
+    /** Current state of monitoring */
     monitoringState?: string;
+    /** Indicates if blind transfer is in progress */
     BLIND_TRANSFER_IN_PROGRESS?: boolean;
+    /** Desktop view configuration for Flow Control */
     fcDesktopView?: string;
   };
+  /** Main interaction identifier for related interactions */
   mainInteractionId?: string;
+  /** Media-specific information for the interaction */
   media: Record<
     string,
     {
+      /** Unique identifier for the media resource */
       mediaResourceId: string;
+      /** Type of media channel */
       mediaType: MEDIA_CHANNEL;
+      /** Media manager handling this media */
       mediaMgr: string;
+      /** List of participant identifiers */
       participants: string[];
+      /** Type of media */
       mType: string;
+      /** Indicates if media is on hold */
       isHold: boolean;
+      /** Timestamp when media was put on hold */
       holdTimestamp: number | null;
     }
   >;
+  /** Owner of the interaction */
   owner: string;
+  /** Primary media channel for the interaction */
   mediaChannel: MEDIA_CHANNEL;
+  /** Direction information for the contact */
   contactDirection: {type: string};
+  /** Type of outbound interaction */
   outboundType?: string;
+  /** Parameters passed through the call flow */
   callFlowParams: Record<
     string,
     {
+      /** Name of the parameter */
       name: string;
+      /** Qualifier for the parameter */
       qualifier: string;
+      /** Description of the parameter */
       description: string;
+      /** Data type of the parameter value */
       valueDataType: string;
+      /** Value of the parameter */
       value: string;
     }
   >;
 };
 
 /**
- * Task payload type containing detailed information about a contact center task
+ * Task payload containing detailed information about a contact center task
+ * This structure encapsulates all relevant data for task management
  * @public
  */
 export type TaskData = {
@@ -316,8 +421,8 @@ export type TaskData = {
 };
 
 /**
- * Type representing an agent contact message
- * Contains interaction and task related details for agent operations
+ * Type representing an agent contact message within the contact center system
+ * Contains comprehensive interaction and task related details for agent operations
  * @public
  */
 export type AgentContact = Msg<{
@@ -403,7 +508,7 @@ export type AgentContact = Msg<{
 }>;
 
 /**
- * Information about a virtual team
+ * Information about a virtual team in the contact center
  * @public
  */
 export type VTeam = {
@@ -420,7 +525,7 @@ export type VTeam = {
 };
 
 /**
- * Detailed information about a virtual team
+ * Detailed information about a virtual team configuration
  * @public
  */
 export type VteamDetails = {
@@ -438,9 +543,11 @@ export type VteamDetails = {
 
 /**
  * Response type for successful virtual team operations
+ * Contains details about virtual teams and their capabilities
  * @public
  */
 export type VTeamSuccess = Msg<{
+  /** Response data containing team information */
   data: {
     /** List of virtual team details */
     vteamList: Array<VteamDetails>;
@@ -456,11 +563,11 @@ export type VTeamSuccess = Msg<{
 }>;
 
 /**
- * Parameters for putting a task on hold
+ * Parameters for putting a task on hold or resuming from hold
  * @public
  */
 export type HoldResumePayload = {
-  /** Unique identifier for the media resource to hold */
+  /** Unique identifier for the media resource to hold/resume */
   mediaResourceId: string;
 };
 
@@ -593,33 +700,17 @@ export type WrapupPayLoad = {
  * @public
  */
 export type DialerPayload = {
-  /**
-   * An entryPointId for respective task.
-   */
+  /** An entryPointId for respective task */
   entryPointId: string;
-  /**
-   * A valid customer DN, on which the response is expected, maximum length 36 characters.
-   */
+  /** A valid customer DN, on which the response is expected, maximum length 36 characters */
   destination: string;
-
-  /**
-   * The direction of the call.
-   */
+  /** The direction of the call */
   direction: 'OUTBOUND';
-
-  /**
-   * This is a schema free data tuple to pass-on specific data, depending on the outboundType. Supports a maximum of 30 tuples.
-   */
+  /** Schema-free data tuples to pass specific data based on outboundType (max 30 tuples) */
   attributes: {[key: string]: string};
-
-  /**
-   * The media type for the request.
-   */
+  /** The media type for the request */
   mediaType: 'telephony' | 'chat' | 'social' | 'email';
-
-  /**
-   * The outbound type for the task.
-   */
+  /** The outbound type for the task */
   outboundType: 'OUTDIAL' | 'CALLBACK' | 'EXECUTE_FLOW';
 };
 
@@ -658,101 +749,122 @@ export type ContactCleanupData = {
 };
 
 /**
- * Response type for the task public methods
+ * Response type for task public methods
+ * Can be an AgentContact object, Error, or void
  */
 export type TaskResponse = AgentContact | Error | void;
 
 /**
- * Represents an interface for managing task related operations.
+ * Interface for managing task-related operations in the contact center
+ * Extends EventEmitter to support event-driven task updates
  */
 export interface ITask extends EventEmitter {
   /**
-   * Event data received in the CC events
+   * Event data received in the Contact Center events
    */
   data: TaskData;
+
   /**
-   * Map of task with call
+   * Map associating tasks with their corresponding call identifiers
    */
   webCallMap: Record<TaskId, CallId>;
+
   /**
-   * Switch off the call listeners
+   * Deregisters all web call event listeners
+   * Used when cleaning up task resources
    */
   unregisterWebCallListeners(): void;
+
   /**
-   * Used to update the task when the data received on each event
+   * Updates the task data with new information
+   * @param newData - Updated task data to apply
+   * @returns Updated task instance
    */
   updateTaskData(newData: TaskData): ITask;
+
   /**
-   * Answers/accepts the incoming task
-   *
+   * Answers or accepts an incoming task
+   * @returns Promise resolving to a TaskResponse
    * @example
-   * ```
+   * ```typescript
    * task.accept();
    * ```
    */
   accept(): Promise<TaskResponse>;
+
   /**
-   * Decline the incoming task for Browser Login
-   *
+   * Declines an incoming task for Browser Login
+   * @returns Promise resolving to a TaskResponse
    * @example
-   * ```
+   * ```typescript
    * task.decline();
    * ```
    */
   decline(): Promise<TaskResponse>;
+
   /**
-   * This is used to hold the task.
-   * @returns Promise<TaskResponse>
+   * Places the current task on hold
+   * @returns Promise resolving to a TaskResponse
    * @example
-   * ```
+   * ```typescript
    * task.hold();
    * ```
    */
   hold(): Promise<TaskResponse>;
+
   /**
-   * This is used to resume the task.
-   * @returns Promise<TaskResponse>
+   * Resumes a task that was previously on hold
+   * @returns Promise resolving to a TaskResponse
    * @example
-   * ```
+   * ```typescript
    * task.resume();
    * ```
    */
   resume(): Promise<TaskResponse>;
+
   /**
-   * This is used to end the task.
-   * @returns Promise<TaskResponse>
+   * Ends/terminates the current task
+   * @returns Promise resolving to a TaskResponse
    * @example
-   * ```
+   * ```typescript
    * task.end();
    * ```
    */
   end(): Promise<TaskResponse>;
+
   /**
-   * This is used to wrap up the task.
-   * @param wrapupPayload
-   * @returns Promise<TaskResponse>
+   * Initiates wrap-up process for the task with specified details
+   * @param wrapupPayload - Wrap-up details including reason and auxiliary code
+   * @returns Promise resolving to a TaskResponse
    * @example
-   * ```
-   * task.wrapup(data);
+   * ```typescript
+   * task.wrapup({
+   *   wrapUpReason: "Customer issue resolved",
+   *   auxCodeId: "RESOLVED"
+   * });
    * ```
    */
   wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse>;
+
   /**
-   * This is used to pause the call recording.
-   * @returns Promise<TaskResponse>
+   * Pauses the current task's recording
+   * @returns Promise resolving to a TaskResponse
    * @example
-   * ```
-   * task.wrapup();
+   * ```typescript
+   * task.pauseRecording();
    * ```
    */
   pauseRecording(): Promise<TaskResponse>;
+
   /**
-   * This is used to resume the call recording.
-   * @param resumeRecordingPayload
-   * @returns Promise<TaskResponse>
+   * Resumes a previously paused recording
+   * @param resumeRecordingPayload - Parameters for resuming the recording
+   * @returns Promise resolving to a TaskResponse
    * @example
-   * ```
-   * task.resumeRecording();
+   * ```typescript
+   * task.resumeRecording({
+   *   autoResumed: false
+   * });
    * ```
    */
   resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse>;

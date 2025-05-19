@@ -408,14 +408,33 @@ export type BuddyAgentsSuccess = Msg<{
  * login status, and other important agent-related activities.
  */
 export enum AGENT_EVENTS {
+  /** Emitted when an agent's state changes (e.g., Available to Idle) */
   AGENT_STATE_CHANGE = 'agent:stateChange',
+
+  /** Emitted when multiple logins are detected for the same agent */
   AGENT_MULTI_LOGIN = 'agent:multiLogin',
+
+  /** Emitted when an agent successfully logs into their station */
   AGENT_STATION_LOGIN_SUCCESS = 'agent:stationLoginSuccess',
+
+  /** Emitted when station login attempt fails */
   AGENT_STATION_LOGIN_FAILED = 'agent:stationLoginFailed',
+
+  /** Emitted when an agent successfully logs out */
   AGENT_LOGOUT_SUCCESS = 'agent:logoutSuccess',
+
+  /** Emitted when logout attempt fails */
   AGENT_LOGOUT_FAILED = 'agent:logoutFailed',
+
+  /** Emitted when an agent's directory number is successfully registered */
   AGENT_DN_REGISTERED = 'agent:dnRegistered',
+
+  /** Emitted when an agent successfully re-authenticates */
   AGENT_RELOGIN_SUCCESS = 'agent:reloginSuccess',
+
+  /** Emitted when agent state change is successful */
   AGENT_STATE_CHANGE_SUCCESS = 'agent:stateChangeSuccess',
+
+  /** Emitted when agent state change attempt fails */
   AGENT_STATE_CHANGE_FAILED = 'agent:stateChangeFailed',
 }
