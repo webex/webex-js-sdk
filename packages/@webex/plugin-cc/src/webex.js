@@ -20,7 +20,7 @@ const Webex = WebexCore.extend({
 });
 
 Webex.init = function init(attrs = {}) {
-  attrs.config = merge({sdkType: 'contact-center'}, config, attrs.config);
+  attrs.config = merge({}, config, attrs.config);
 
   return new Webex(attrs);
 };
