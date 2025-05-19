@@ -249,7 +249,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       return responseDetails;
     } catch (err: unknown) {
       const extendedError = new Error(
-        `Failed to set DoNotDisturb setting: ${err}`
+        `Failed to get Call Forward setting: ${err}`
       ) as ExtendedError;
       log.error(extendedError, loggerContext);
       await uploadLogsSilently();
