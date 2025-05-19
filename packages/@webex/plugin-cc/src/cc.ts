@@ -1,5 +1,6 @@
 import {WebexPlugin} from '@webex/webex-core';
 import EventEmitter from 'events';
+import {v4 as uuidv4} from 'uuid';
 import {
   SetStateResponse,
   CCPluginConfig,
@@ -7,6 +8,7 @@ import {
   WebexSDK,
   LoginOption,
   AgentLogin,
+  AgentDeviceUpdate,
   StationLoginResponse,
   StationLogoutResponse,
   StationReLoginResponse,
@@ -14,13 +16,13 @@ import {
   BuddyAgents,
   SubscribeRequest,
   UploadLogsResponse,
+  UpdateDeviceTypeResponse,
+  GenericError,
 } from './types';
 import {
   READY,
   CC_FILE,
   EMPTY_STRING,
-  AGENT_STATE_CHANGE,
-  AGENT_MULTI_LOGIN,
   OUTDIAL_DIRECTION,
   ATTRIBUTES,
   OUTDIAL_MEDIA_TYPE,
@@ -32,15 +34,9 @@ import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
-import {StateChange, Logout, StateChangeSuccess} from './services/agent/types';
+import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
-import {
-  Profile,
-  WelcomeEvent,
-  CC_EVENTS,
-  CC_AGENT_EVENTS,
-  ContactServiceQueue,
-} from './services/config/types';
+import {Profile, WelcomeEvent, CC_EVENTS, ContactServiceQueue} from './services/config/types';
 import {
   AGENT_STATE_AVAILABLE,
   AGENT_STATE_AVAILABLE_ID,
@@ -375,6 +371,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       const resp = await loginResponse;
       const {channelsMap, ...loginData} = resp.data;
+      this.agentConfig.currentTeamId = resp.data.teamId;
       const response = {
         ...loginData,
         mmProfile: {
@@ -559,20 +556,93 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private handleWebSocketMessage = (event: string) => {
     const eventData = JSON.parse(event);
-    // Re-emit the events related to agent
-    if (Object.values(CC_AGENT_EVENTS).includes(eventData.data?.type)) {
+    // Re-emit all the events related to agent except keep-alives
+    if (!eventData.keepalive && eventData.data && eventData.data.type) {
       // @ts-ignore
       this.emit(eventData.data.type, eventData.data);
     }
 
-    if (eventData.type === CC_EVENTS.AGENT_STATE_CHANGE) {
-      // @ts-ignore
-      this.emit(AGENT_STATE_CHANGE, eventData.data);
+    if (!eventData.type) {
+      return;
     }
 
-    if (eventData.type === CC_EVENTS.AGENT_MULTI_LOGIN) {
-      // @ts-ignore
-      this.emit(AGENT_MULTI_LOGIN, eventData.data);
+    switch (eventData.type) {
+      case CC_EVENTS.AGENT_MULTI_LOGIN:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_MULTI_LOGIN, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_STATE_CHANGE:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData.data);
+        break;
+      default:
+        break;
+    }
+
+    if (!(eventData.data && eventData.data.type)) {
+      return;
+    }
+
+    switch (eventData.data.type) {
+      case CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS: {
+        const {channelsMap, ...loginData} = eventData.data;
+        const stationLoginData = {
+          ...loginData,
+          mmProfile: {
+            chat: channelsMap.chat?.length,
+            email: channelsMap.email?.length,
+            social: channelsMap.social?.length,
+            telephony: channelsMap.telephony?.length,
+          },
+          notifsTrackingId: eventData.trackingId,
+        };
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
+        break;
+      }
+      case CC_EVENTS.AGENT_RELOGIN_SUCCESS:
+        {
+          const {channelsMap, ...loginData} = eventData.data;
+          const stationReLoginData = {
+            ...loginData,
+            mmProfile: {
+              chat: channelsMap.chat?.length,
+              email: channelsMap.email?.length,
+              social: channelsMap.social?.length,
+              telephony: channelsMap.telephony?.length,
+            },
+            notifsTrackingId: eventData.trackingId,
+          };
+          // @ts-ignore
+          this.emit(AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, stationReLoginData);
+        }
+        break;
+      case CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_STATE_CHANGE_FAILED:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_STATION_LOGIN_FAILED:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_FAILED, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_LOGOUT_SUCCESS:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_LOGOUT_FAILED:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_LOGOUT_FAILED, eventData.data);
+        break;
+      case CC_EVENTS.AGENT_DN_REGISTERED:
+        // @ts-ignore
+        this.emit(AGENT_EVENTS.AGENT_DN_REGISTERED, eventData.data);
+        break;
+      default:
+        break;
     }
   };
 
@@ -634,6 +704,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       let {auxCodeId} = reLoginResponse.data;
       this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp;
       this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
+      this.agentConfig.currentTeamId = reLoginResponse.data.teamId;
       await this.handleDeviceType(deviceType as LoginOption, dn);
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
@@ -808,10 +879,112 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * messages, and client-side events, then securely submits them to Webex's diagnostics
    * service. The returned tracking ID, feedbackID can be provided to Webex support for faster
    * issue resolution.
-   * @returns Promise<SubmitLogsResponse>
+   * @returns Promise<UploadLogsResponse>
    * @throws Error
    */
   public async uploadLogs(): Promise<UploadLogsResponse> {
     return this.webexRequest.uploadLogs();
+  }
+
+  /**
+   * Updates the agent device type.
+   * This method allows the agent to change their device type (e.g., from BROWSER to EXTENSION or anything else).
+   * It will also throw an error if the new device type is the same as the current one.
+   * @param data type is AgentDeviceUpdate - The data required to update the agent device type, including the new login option and dial number.
+   * @returns Promise<UpdateDeviceTypeResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * const data = {
+   *   loginOption: 'EXTENSION',
+   *   dialNumber: '1234567890',
+   * };
+   * const result = await webex.cc.updateAgentDeviceType(data);
+   * ```
+   */
+  public async updateAgentDeviceType(data: AgentDeviceUpdate): Promise<UpdateDeviceTypeResponse> {
+    this.metricsManager.timeEvent([
+      METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_SUCCESS,
+      METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
+    ]);
+
+    const trackingId = `WX_CC_SDK_${uuidv4()}`;
+
+    LoggerProxy.info(`[${trackingId}] updateAgentDeviceType | starting profile update`, {
+      module: CC_FILE,
+      method: this.updateAgentDeviceType.name,
+    });
+
+    try {
+      // ensure we change device type
+      if (this.webCallingService?.loginOption === data.loginOption) {
+        const message =
+          'Will not proceed with device update as new Device type is same as current device type';
+        const err = new Error(message) as GenericError;
+        err.details = {
+          type: 'Identical Device Change Failure',
+          orgId: this.$webex.credentials.getOrgId(),
+          trackingId,
+          data: {
+            agentId: this.agentConfig.agentId,
+            reasonCode: 'R002',
+            reason: message,
+          },
+        };
+        throw err;
+      }
+
+      await this.stationLogout({
+        logoutReason: 'User requested agent device change',
+      });
+
+      const loginPayload: AgentLogin = {
+        teamId: this.agentConfig.currentTeamId ?? EMPTY_STRING,
+        loginOption: data.loginOption,
+        dialNumber: data.dialNumber,
+      };
+
+      const resp = await this.stationLogin(loginPayload);
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
+          loginType: data.loginOption,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log(`[${trackingId}] updateAgentDeviceType | profile updated successfully`, {
+        module: CC_FILE,
+        method: this.updateAgentDeviceType.name,
+      });
+
+      const deviceTypeUpdateResponse: UpdateDeviceTypeResponse = {
+        ...resp,
+        type: 'AgentDeviceTypeUpdateSuccess',
+      };
+
+      return deviceTypeUpdateResponse;
+    } catch (error) {
+      const failure = (error as GenericError).details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          loginType: data.loginOption,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.error(
+        `[${trackingId}] updateAgentDeviceType | error updating profile: ${error}`,
+        {
+          module: CC_FILE,
+          method: this.updateAgentDeviceType.name,
+        }
+      );
+      throw error;
+    }
   }
 }
