@@ -25,6 +25,7 @@ const authStatusElm = document.querySelector('#access-token-status');
 const oauthFormElm = document.querySelector('#oauth');
 const oauthStatusElm = document.querySelector('#oauth-status');
 const registerBtn = document.querySelector('#webexcc-register');
+const deregisterBtn = document.querySelector('#webexcc-deregister');
 const teamsDropdown = document.querySelector('#teamsDropdown');
 const agentLogin = document.querySelector('#AgentLogin');
 const loginAgentElm = document.querySelector('#loginAgent');
@@ -34,6 +35,10 @@ const idleCodesDropdown = document.querySelector('#idleCodesDropdown')
 const setAgentStatusButton = document.querySelector('#setAgentStatus');
 const logoutAgentElm = document.querySelector('#logoutAgent');
 const buddyAgentsDropdownElm = document.getElementById('buddyAgentsDropdown');
+const updateAgentDeviceTypeElm = document.querySelector('#updateAgentDeviceType');
+const updateFieldsContainer = document.querySelector('#updateAgentDeviceTypeFields');
+const updateLoginOptionElm = document.querySelector('#updateLoginOption');
+const updateDialNumberElm = document.querySelector('#updateDialNumber');
 const incomingCallListener = document.querySelector('#incomingsection');
 const incomingDetailsElm = document.querySelector('#incoming-task');
 const answerElm = document.querySelector('#answer');
@@ -68,6 +73,8 @@ const engageElm = document.querySelector('#engageWidget');
 let isBundleLoaded = false; // this is just to check before loading/using engage widgets
 const uploadLogsButton = document.getElementById('upload-logs');
 const uploadLogsResultElm = document.getElementById('upload-logs-result');
+
+deregisterBtn.style.backgroundColor = 'red';
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -463,6 +470,7 @@ async function initiateConsultTransfer() {
     console.log('Consult transfer initiated successfully');
     consultTransferBtn.disabled = true; // Disable the consult transfer button after initiating consult transfer
     consultTransferBtn.style.display = 'none'; // Hide the consult transfer button after initiating consult transfer
+    endConsultBtn.style.display = 'none';
   } catch (error) {
     console.error('Failed to initiate consult transfer', error);
   }
@@ -606,8 +614,12 @@ function registerTaskListeners(task) {
   });
 
   // Consult flows
-  task.on('task:consultOfferCreated', (task) => {
-    console.log('Consult offer created');
+  task.on('task:consultCreated', (task) => {
+    console.info('Consult created');
+  });
+
+  task.on('task:offerConsult', (task) => {
+    console.info('Received consult offer from another agent');
   });
 
   task.on('task:consultAccepted', (task) => {
@@ -669,19 +681,6 @@ function registerTaskListeners(task) {
   
   task.on('task:rejected', (reason) => {
     console.info('Task is rejected with reason:', reason);
-    if (reason === 'RONA_TIMER_EXPIRED') {
-      answerElm.disabled = true;
-      declineElm.disabled = true;
-      if(task.data.isConsulted) {
-        updateButtonsPostEndCall();
-        incomingDetailsElm.innerText = '';
-        currentTask = undefined;
-      }
-    }
-  });
-  
-  task.on('task:rejected', (reason) => {
-    console.info('Task is rejected with reason:', reason);
     showAgentStatePopup(reason);
   });
 }
@@ -716,10 +715,11 @@ function updateCallControlUI(task) {
   wrapupCodesDropdownElm.disabled = true;
   const hasParticipants = Object.keys(participants).length > 1;
   const isNew = task.data.interaction.state === 'new';
+  const digitalChannels = ['chat', 'email', 'social'];
 
   if (isNew) {
     disableAllCallControls();
-  } else if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'email') {
+  } else if (digitalChannels.includes(task.data.interaction.mediaType)) {
     holdResumeElm.disabled = true;
     muteElm.disabled = true;
     pauseResumeRecordingElm.disabled = true;
@@ -767,7 +767,7 @@ function generateWebexConfig({credentials}) {
     appPlatform: 'testClient',
     fedramp: false,
     logger: {
-      level: 'log'
+      level: 'info'
     },
     credentials,
     // Any other sdk config we need
@@ -849,10 +849,21 @@ function startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp) 
   }, 1000);
 }
 
+function updateUnregisterButtonState() {  
+  const isLoggedIn = webex?.cc?.agentProfile?.isAgentLoggedIn || 
+    !logoutAgentElm.classList.contains('hidden');
+  
+  deregisterBtn.disabled = isLoggedIn;  
+}
 
 function register() {
     webex.cc.register().then((agentProfile) => {
         registerStatus.innerHTML = 'Subscribed';
+        // Update button states upon successful registration
+        registerBtn.disabled = true;
+        deregisterBtn.disabled = false;
+        uploadLogsButton.disabled = false;
+        updateUnregisterButtonState();
         console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teams;
@@ -867,25 +878,17 @@ function register() {
             teamsDropdown.add(option);
         });
         const loginVoiceOptions = agentProfile.loginVoiceOptions;
-        agentLogin.innerHTML = '<option value="" selected>Choose Agent Login ...</option>'; // Clear previously selected option on agentLogin.
+        populateLoginOptions(
+          loginVoiceOptions.filter((o) => agentProfile.webRtcEnabled || o !== 'BROWSER')
+        );
         dialNumber.value = agentProfile.defaultDn ? agentProfile.defaultDn : '';
         dialNumber.disabled = agentProfile.defaultDn ? false : true;
         if (loginVoiceOptions.length > 0) loginAgentElm.disabled = false;
-        loginVoiceOptions.forEach((voiceOptions)=> {
-          if (!agentProfile.webRtcEnabled && voiceOptions === 'BROWSER') {
-            // Skiping the addition of browser option for webrtc disabled case
-            return;
-          }
-          const option = document.createElement('option');
-          option.text = voiceOptions;
-          option.value = voiceOptions;
-          agentLogin.add(option);
-          option.selected = agentProfile.isAgentLoggedIn && voiceOptions === agentProfile.deviceType;
-        });
 
         if (agentProfile.isAgentLoggedIn) {
           loginAgentElm.disabled = true;
           logoutAgentElm.classList.remove('hidden');
+          updateUnregisterButtonState();
         }
 
         const idleCodesList = agentProfile.idleCodes;
@@ -934,8 +937,89 @@ function register() {
         agentMultiLoginAlert.style.color = 'red';``
       }
     });
-    
+
+    webex.cc.on('agent:reloginSuccess', (data) => {
+      console.log('Agent re-login successful', data);
+      loginAgentElm.disabled = true;
+      logoutAgentElm.classList.remove('hidden');
+      updateAgentDeviceTypeElm.classList.remove('hidden');
+
+      agentLogin.value = data.deviceType;
+      agentDeviceType = data.deviceType;
+
+      if (data.deviceType === 'BROWSER') {
+        dialNumber.disabled = true;
+        dialNumber.value = '';
+      }
+      else {
+        dialNumber.disabled = false;
+        dialNumber.value = data.dn || '';
+      }
+    });
+
+    webex.cc.on('agent:stationLoginSuccess', (data) => {
+      console.log('Agent station-login success', data);
+      loginAgentElm.disabled = true;
+      logoutAgentElm.classList.remove('hidden');
+      updateAgentDeviceTypeElm.classList.remove('hidden');
+      updateFieldsContainer.classList.add('hidden');
+
+      agentLogin.value = data.deviceType;
+      agentDeviceType = data.deviceType;
+      if (data.deviceType === 'BROWSER') {
+        dialNumber.disabled = true;
+        dialNumber.value = '';
+      }
+      else {
+        dialNumber.disabled = false;
+        dialNumber.value = data.dn || '';
+      }
+
+      const auxId  = data.auxCodeId?.trim() || '0';
+      const idx    = [...idleCodesDropdown.options].findIndex(o => o.value === auxId);
+      idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
+      startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
+    });
 }
+
+// New function to handle unregistration
+function doDeRegister() {
+    webex.cc.deregister().then(() => {
+        console.log('Deregistered successfully');
+        registerStatus.innerHTML = 'Unregistered';
+        // Reset button states after unregister
+        registerBtn.disabled = false;
+        deregisterBtn.disabled = true;
+        uploadLogsButton.disabled = true;
+        
+        // Clear all dropdowns that are populated during registration
+        teamsDropdown.innerHTML = '';
+        idleCodesDropdown.innerHTML = '';
+        agentLogin.innerHTML = '<option value="" selected>Choose Agent Login ...</option>';
+        
+        // Clear timer display
+        if (stateTimer) {
+            clearInterval(stateTimer);
+            stateTimer = null;
+        }
+        if (timerElm) {
+            timerElm.innerHTML = '';
+        }
+        
+        // Reset other elements
+        dialNumber.value = '';
+        dialNumber.disabled = true;
+        loginAgentElm.disabled = true;
+        setAgentStatusButton.disabled = true;
+        
+        // Hide logout button if visible
+        logoutAgentElm.classList.add('hidden');
+    }).catch((error) => {
+        console.error('Unregister failed', error);
+    });
+}
+
+deregisterBtn.addEventListener('click', doDeRegister);
 
 function handleTaskHydrate(task) {
   currentTask = task;
@@ -947,9 +1031,8 @@ function handleTaskHydrate(task) {
     return;
   }
 
-
   handleTaskSelect(currentTask);
-  
+  updateUnregisterButtonState();
 }
 
 function populateWrapupCodesDropdown() {
@@ -979,11 +1062,12 @@ function doAgentLogin() {
     teamId: teamsDropdown.value,
     loginOption: agentDeviceType,
     dialNumber: dialNumber.value
-  }).then((response) => {
+  })
+  .then((response) => {
     console.log('Agent Logged in successfully', response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
-    
+    updateAgentDeviceTypeElm.classList.remove('hidden');
     // Read auxCode and lastStateChangeTimestamp from login response
     const DEFAULT_CODE = '0'; // Default code when no aux code is present
     const auxCodeId = response.data.auxCodeId?.trim() !== '' ? response.data.auxCodeId : DEFAULT_CODE;
@@ -1017,9 +1101,12 @@ function setAgentStatus() {
 
 
 function logoutAgent() {
-  webex.cc.stationLogout({logoutReason: 'logout'}).then((response) => {
-    console.log('Agent logged out successfully', response);
-    loginAgentElm.disabled = false;
+  webex.cc.stationLogout({logoutReason: 'logout'})
+    .then((response) => {
+      console.log('Agent logged out successfully', response);
+      loginAgentElm.disabled = false;
+      updateAgentDeviceTypeElm.classList.add('hidden');
+      updateFieldsContainer.classList.add('hidden');
 
      // Clear the timer when the agent logs out.
      if (stateTimer) {
@@ -1032,11 +1119,57 @@ function logoutAgent() {
       logoutAgentElm.classList.add('hidden');
       agentLogin.selectedIndex = 0;
       timerElm.innerHTML = '00:00:00';
+      updateUnregisterButtonState();
     }, 1000);
+    
+    // Add an immediate call to update button state
+    updateUnregisterButtonState();
   }
   ).catch((error) => {
     console.log('Agent logout failed', error);
   });
+}
+
+async function updateAgentDeviceType() {
+  const payload = {
+    loginOption: agentDeviceType,
+    dialNumber: dialNumber.value
+  };
+  try {
+    const response = await webex.cc.updateAgentDeviceType(payload);
+    console.log('Profile updated successfully', response);
+  }
+  catch (error) {
+    console.error('Profile update failed', error);
+    alert('Profile update failed');
+  }
+}
+
+function showupdateAgentDeviceTypeUI() {
+  updateFieldsContainer.classList.toggle('hidden');
+}
+
+async function applyupdateAgentDeviceType() {
+  const loginOption = updateLoginOptionElm.value;
+  const newDial = loginOption === 'BROWSER' ? '' : updateDialNumberElm.value;
+  const payload = {
+    loginOption,
+    dialNumber: newDial,
+  };
+  try {
+    const resp = await webex.cc.updateAgentDeviceType(payload);
+    console.log('Profile updated', resp);
+    updateFieldsContainer.classList.add('hidden');
+    // Reflect new values in main UI
+    agentLogin.value = loginOption;
+    agentDeviceType = loginOption;
+    dialNumber.value = newDial;
+    dialNumber.disabled = loginOption === 'BROWSER';
+  }
+  catch (err) {
+    console.error('Profile update failed', err);
+    alert('Profile update failed');
+  }
 }
 
 function showAgentStatePopup(reason) {
@@ -1258,6 +1391,7 @@ function endCall() {
     console.log('task ended successfully by agent');
     updateButtonsPostEndCall();
     updateTaskList();
+    updateUnregisterButtonState();
   }).catch((error) => {
     console.error('Failed to end the call', error);
     endElm.disabled = false;
@@ -1437,6 +1571,7 @@ function renderTaskList(taskList) {
 function enableAnswerDeclineButtons(task) {
   const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani;
   const isNew = task.data.interaction.state === 'new'
+  const chatAndSocial = ['chat', 'social'];
   if (task.data.interaction.mediaType === 'telephony') {
     if (webex.cc.taskManager.webCallingService.loginOption === 'BROWSER') {
       answerElm.disabled = !isNew;
@@ -1446,7 +1581,7 @@ function enableAnswerDeclineButtons(task) {
     } else {
       incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
     }
-  } else if (task.data.interaction.mediaType === 'chat') {
+  } else if (chatAndSocial.includes(task.data.interaction.mediaType)) {
     answerElm.disabled = !isNew;
     declineElm.disabled = true;
     incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
@@ -1468,8 +1603,9 @@ function handleTaskSelect(task) {
   enableAnswerDeclineButtons(task);
   engageElm.innerHTML = ``;
   engageElm.style.height = "100px"
+  const chatAndSocial = ['chat', 'social'];
   currentTask = task
- if (task.data.interaction.mediaType === 'chat' && isBundleLoaded && !task.data.wrapUpRequired) {
+ if (chatAndSocial.includes(task.data.interaction.mediaType) && isBundleLoaded && !task.data.wrapUpRequired) {
     loadChatWidget(task);
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {
     loadEmailWidget(task);
@@ -1502,3 +1638,20 @@ function loadEmailWidget(task) {
     ></imi-email-composer>
   `;
 }
+
+function populateLoginOptions(options) {
+  agentLogin.innerHTML = '<option value="" selected>Choose Agent Login …</option>';
+  updateLoginOptionElm.innerHTML = '<option value="" selected>Choose Login Option …</option>';
+  options.forEach((opt) => {
+    const opt1 = document.createElement('option');
+    opt1.value = opt1.text = opt;
+    agentLogin.add(opt1);
+    updateLoginOptionElm.add(opt1.cloneNode(true));
+  });
+}
+
+updateLoginOptionElm.addEventListener('change', (e) => {
+  updateDialNumberElm.disabled = e.target.value === 'BROWSER';
+});
+
+idleCodesDropdown.addEventListener('change', handleAgentStatus);

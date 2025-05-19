@@ -66,7 +66,7 @@ describe('plugin-meetings', () => {
 
     describe('#cleanup', () => {
       it('do clean up on meeting object with LLM enabled', async () => {
-        meeting.config = {enableAutomaticLLM : true};
+        meeting.config = {enableAutomaticLLM: true};
         await MeetingUtil.cleanUp(meeting);
         assert.calledOnce(meeting.cleanupLocalStreams);
         assert.calledOnce(meeting.closeRemoteStreams);
@@ -84,7 +84,7 @@ describe('plugin-meetings', () => {
       });
 
       it('do clean up on meeting object with LLM disabled', async () => {
-        meeting.config = {enableAutomaticLLM : false};
+        meeting.config = {enableAutomaticLLM: false};
         await MeetingUtil.cleanUp(meeting);
         assert.calledOnce(meeting.cleanupLocalStreams);
         assert.calledOnce(meeting.closeRemoteStreams);
@@ -392,8 +392,7 @@ describe('plugin-meetings', () => {
           meetingJoinUrl: 'meetingJoinUrl',
           locusUrl: 'locusUrl',
           meetingRequest: {
-            joinMeeting: sinon.stub().returns(
-              Promise.resolve(joinMeetingResponse)),
+            joinMeeting: sinon.stub().returns(Promise.resolve(joinMeetingResponse)),
           },
           getWebexObject: sinon.stub().returns(webex),
           setLocus: sinon.stub(),
@@ -410,23 +409,29 @@ describe('plugin-meetings', () => {
           id: 'fake client media preferences',
         };
 
-        webex.meetings.reachability.getReachabilityReportToAttachToRoap.resolves(FAKE_REACHABILITY_REPORT);
-        webex.meetings.reachability.getClientMediaPreferences.resolves(FAKE_CLIENT_MEDIA_PREFERENCES);
+        webex.meetings.reachability.getReachabilityReportToAttachToRoap.resolves(
+          FAKE_REACHABILITY_REPORT
+        );
+        webex.meetings.reachability.getClientMediaPreferences.resolves(
+          FAKE_CLIENT_MEDIA_PREFERENCES
+        );
 
-        sinon
-          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
-          .get(() => true);
-        sinon
-          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
-          .get(() => true);
+        sinon.stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4').get(() => true);
+        sinon.stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6').get(() => true);
 
         await MeetingUtil.joinMeeting(meeting, {
           reachability: 'reachability',
           roapMessage: 'roapMessage',
         });
 
-        assert.calledOnceWithExactly(webex.meetings.reachability.getReachabilityReportToAttachToRoap);
-        assert.calledOnceWithExactly(webex.meetings.reachability.getClientMediaPreferences, meeting.isMultistream, IP_VERSION.ipv4_and_ipv6);
+        assert.calledOnceWithExactly(
+          webex.meetings.reachability.getReachabilityReportToAttachToRoap
+        );
+        assert.calledOnceWithExactly(
+          webex.meetings.reachability.getClientMediaPreferences,
+          meeting.isMultistream,
+          IP_VERSION.ipv4_and_ipv6
+        );
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
@@ -436,9 +441,9 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.clientMediaPreferences, FAKE_CLIENT_MEDIA_PREFERENCES);
         assert.equal(parameter.roapMessage, 'roapMessage');
 
-        assert.calledOnce(meeting.setLocus)
+        assert.calledOnce(meeting.setLocus);
         const setLocusParameter = meeting.setLocus.getCall(0).args[0];
-        assert.deepEqual(setLocusParameter, MeetingUtil.parseLocusJoin(joinMeetingResponse))
+        assert.deepEqual(setLocusParameter, MeetingUtil.parseLocusJoin(joinMeetingResponse));
 
         assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
           name: 'client.locus.join.request',
@@ -460,7 +465,6 @@ describe('plugin-meetings', () => {
         });
       });
 
-
       it('#Should call `meetingRequest.joinMeeting and handle a date header in the response : isoLocalClientMeetingJoinedTime', async () => {
         meeting.isMultistream = true;
 
@@ -471,30 +475,30 @@ describe('plugin-meetings', () => {
           id: 'fake client media preferences',
         };
 
-        webex.meetings.reachability.getReachabilityReportToAttachToRoap.resolves(FAKE_REACHABILITY_REPORT);
-        webex.meetings.reachability.getClientMediaPreferences.resolves(FAKE_CLIENT_MEDIA_PREFERENCES);
+        webex.meetings.reachability.getReachabilityReportToAttachToRoap.resolves(
+          FAKE_REACHABILITY_REPORT
+        );
+        webex.meetings.reachability.getClientMediaPreferences.resolves(
+          FAKE_CLIENT_MEDIA_PREFERENCES
+        );
 
-        sinon
-          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
-          .get(() => true);
-        sinon
-          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
-          .get(() => true);
+        sinon.stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4').get(() => true);
+        sinon.stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6').get(() => true);
 
         meeting.meetingRequest.joinMeeting.resolves({
           headers: {
-            date: 'test'
+            date: 'test',
           },
           body: {
             mediaConnections: [{mediaId: 'test'}],
             locus: {
               url: 'test',
               self: {
-                id: 'test'
-              }
-            }
-          }
-        })
+                id: 'test',
+              },
+            },
+          },
+        });
 
         await MeetingUtil.joinMeeting(meeting, {
           reachability: 'reachability',
@@ -740,6 +744,18 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('requiresPostMeetingDataConsentPrompt', () => {
+      it('works as expected', () => {
+        assert.deepEqual(
+          MeetingUtil.requiresPostMeetingDataConsentPrompt([
+            'SHOW_POST_MEETING_DATA_CONSENT_PROMPT',
+          ]),
+          true
+        );
+        assert.deepEqual(MeetingUtil.requiresPostMeetingDataConsentPrompt([]), false);
+      });
+    });
+
     describe('canUserRenameOthers', () => {
       it('works as expected', () => {
         assert.deepEqual(MeetingUtil.canUserRenameOthers(['CAN_RENAME_OTHERS']), true);
@@ -749,8 +765,34 @@ describe('plugin-meetings', () => {
 
     describe('canShareWhiteBoard', () => {
       it('works as expected', () => {
-        assert.deepEqual(MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD']), true);
-        assert.deepEqual(MeetingUtil.canShareWhiteBoard([]), false);
+        assert.deepEqual(
+          MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD'], {
+            [SELF_POLICY.SUPPORT_WHITEBOARD]: true,
+          }),
+          true
+        );
+        assert.deepEqual(
+          MeetingUtil.canShareWhiteBoard([], {
+            [SELF_POLICY.SUPPORT_WHITEBOARD]: true,
+          }),
+          false
+        );
+        assert.deepEqual(
+          MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD'], {
+            [SELF_POLICY.SUPPORT_WHITEBOARD]: false,
+          }),
+          false
+        );
+        assert.deepEqual(
+          MeetingUtil.canShareWhiteBoard([], {
+            [SELF_POLICY.SUPPORT_WHITEBOARD]: false,
+          }),
+          false
+        );
+        assert.deepEqual(
+          MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD'], undefined),
+          false
+        );
       });
     });
 

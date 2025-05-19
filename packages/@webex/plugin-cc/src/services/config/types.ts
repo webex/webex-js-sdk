@@ -42,6 +42,7 @@ export const CC_TASK_EVENTS = {
   AGENT_OFFER_CONTACT: 'AgentOfferContact',
   AGENT_CONTACT_ASSIGNED: 'AgentContactAssigned',
   AGENT_CONTACT_UNASSIGNED: 'AgentContactUnassigned',
+  AGENT_INVITE_FAILED: 'AgentInviteFailed',
 } as const;
 
 // Define the CC_AGENT_EVENTS object
@@ -130,6 +131,11 @@ export type AgentResponse = {
    * Team IDs assigned to the agent.
    */
   teamIds: string[];
+
+  /**
+   * Multimedia profile ID associated with the agent.
+   */
+  multimediaProfileId: string;
 
   /**
    * Skill profile ID of the agent.
@@ -295,6 +301,24 @@ export type DesktopProfileResponse = {
   stateSynchronizationWebex: boolean;
 };
 
+export type MultimediaProfileResponse = {
+  organizationId: string;
+  id: string;
+  version: number;
+  name: string;
+  description: string;
+  chat: number;
+  email: number;
+  telephony: number;
+  social: number;
+  active: boolean;
+  blendingModeEnabled: boolean;
+  blendingMode: string;
+  systemDefault: boolean;
+  createdTime: number;
+  lastUpdatedTime: number;
+};
+
 export type SubscribeResponse = {
   statusCode: number;
   body: {
@@ -354,8 +378,15 @@ export type ListAuxCodesResponse = {
 export type TeamList = {
   id: string;
   name: string;
+  teamType: string;
+  teamStatus: string;
   active: boolean;
+  siteId: string;
+  siteName: string;
+  multiMediaProfileId?: string;
   userIds: string[];
+  rankQueuesForTeam: boolean;
+  queueRankings: string[];
   dbId?: string;
   desktopLayoutId?: string;
 };
@@ -379,6 +410,14 @@ export type OrgSettings = {
   webRtcEnabled: boolean;
   maskSensitiveData: boolean;
   campaignManagerEnabled: boolean;
+};
+
+export type SiteInfo = {
+  id: string;
+  name: string;
+  active: boolean;
+  multimediaProfileId: string;
+  systemDefault: boolean;
 };
 
 export type TenantData = {
@@ -530,6 +569,7 @@ export type Profile = {
   agentMailId: string;
   agentProfileID: string;
   dialPlan: DialPlan;
+  multimediaProfileId: string;
   skillProfileId: string;
   siteId: string;
   enterpriseId: string;
@@ -575,6 +615,7 @@ export type Profile = {
   tenantTimezone?: string;
   loginVoiceOptions?: LoginOption[];
   deviceType?: LoginOption;
+  currentTeamId?: string;
   webRtcEnabled: boolean;
   organizationIdleCodes?: Entity[];
   isRecordingManagementEnabled?: boolean;

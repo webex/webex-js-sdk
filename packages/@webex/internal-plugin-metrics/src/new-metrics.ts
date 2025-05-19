@@ -74,6 +74,7 @@ class Metrics extends WebexPlugin {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
       this.isReady = true;
+      this.setDelaySubmitClientEvents(this.delaySubmitClientEvents);
     });
   }
 
@@ -409,7 +410,7 @@ class Metrics extends WebexPlugin {
   public setDelaySubmitClientEvents(shouldDelay: boolean) {
     this.delaySubmitClientEvents = shouldDelay;
 
-    if (!shouldDelay) {
+    if (this.isReady && !shouldDelay) {
       return this.callDiagnosticMetrics.submitDelayedClientEvents();
     }
 

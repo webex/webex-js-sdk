@@ -111,6 +111,18 @@ ControlsUtils.parse = (controls: any) => {
     };
   }
 
+  if (controls?.annotationControl) {
+    parsedControls.annotationControl = {
+      enabled: controls.annotationControl.enabled,
+    };
+  }
+
+  if (controls?.rdcControl) {
+    parsedControls.rdcControl = {
+      enabled: controls.rdcControl.enabled,
+    };
+  }
+
   return parsedControls;
 };
 
@@ -211,6 +223,12 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
       ),
 
       hasStageViewChanged: !isEqual(previous?.videoLayout, current?.videoLayout),
+
+      hasAnnotationControlChanged:
+        current?.annotationControl?.enabled !== previous?.annotationControl?.enabled,
+
+      hasRemoteDesktopControlChanged:
+        current?.rdcControl?.enabled !== previous?.rdcControl?.enabled,
     },
   };
 };

@@ -79,7 +79,7 @@ const Encryption = WebexPlugin.extend({
     }
 
     const shunt = new EventEmitter();
-    const promise = this._fetchDownloadUrl(fileUrl, options)
+    const promise = this._fetchDownloadUrl(fileUrl, {useFileService: true, ...options})
       .then((uri) => {
         // eslint-disable-next-line no-shadow
         const options = {
@@ -118,6 +118,16 @@ const Encryption = WebexPlugin.extend({
       return Promise.resolve(fileUrl);
     }
 
+    if (options?.useFileService === false) {
+      if (!fileUrl.startsWith('https://')) {
+        this.logger.error('encryption: direct file URLs must use HTTPS');
+
+        return Promise.reject(new Error('Direct file URLs must use HTTPS'));
+      }
+
+      return Promise.resolve(fileUrl);
+    }
+
     const inputBody = {
       endpoints: [fileUrl],
     };
@@ -130,12 +140,13 @@ const Encryption = WebexPlugin.extend({
     return this.request({
       method: 'POST',
       uri: url.format(endpointUrl),
-      body: options
-        ? {
-            ...inputBody,
-            allow: options.params.allow,
-          }
-        : inputBody,
+      body:
+        options?.params && Object.keys(options.params).indexOf('allow') > -1
+          ? {
+              ...inputBody,
+              allow: options.params.allow,
+            }
+          : inputBody,
     })
       .then((res) => {
         // eslint-disable-next-line no-shadow
@@ -177,7 +188,7 @@ const Encryption = WebexPlugin.extend({
    * Encrypt a SCR (Secure Content Resource) using the supplied key uri.
    *
    * @param {string} key - The uri of a key stored in KMS
-   * @param {Object} scr - Plaintext
+   * @param {Object} scr - SCRObject
    * @param {Object} options
    * @param {string} options.onBehalfOf - Fetch the KMS key on behalf of another user (using the user's UUID), active user requires the 'spark.kms_orgagent' role
    * @returns {string} Encrypted SCR

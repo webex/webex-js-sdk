@@ -1,0 +1,18 @@
+{
+  "extends": "../../../tsconfig.json",
+  "include": ["src"],
+  "typedocOptions": {
+    "entryPoints": [
+      "./src/index.ts"
+    ],
+    "sort": [
+      "source-order"
+    ],
+    "name": "Encryption (@webex/plugin-encryption)",
+    "disableSources": "true",
+    "entryPointStrategy": "expand",
+    "excludeExternals": "true",
+    "excludePrivate": "true",
+    "hideGenerator": "true",
+  },
+}
