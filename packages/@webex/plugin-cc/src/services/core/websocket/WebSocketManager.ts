@@ -59,7 +59,7 @@ export class WebSocketManager extends EventEmitter {
       this.shouldReconnect = shouldReconnect;
       this.websocket.close();
       this.keepaliveWorker.postMessage({type: 'terminate'});
-      LoggerProxy.error(
+      LoggerProxy.log(
         `[WebSocketStatus] | event=webSocketClose | WebSocket connection closed manually REASON: ${reason}`,
         {module: WEB_SOCKET_MANAGER_FILE, method: this.close.name}
       );

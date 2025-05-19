@@ -106,6 +106,7 @@ interface IWebexInternal {
     on: Listener;
     off: ListenerOff;
     connect: () => Promise<void>;
+    disconnect: () => Promise<void>;
     connected: boolean;
     connecting: boolean;
   };
@@ -245,6 +246,9 @@ export type AgentLogin = {
 
   loginOption: LoginOption;
 };
+
+export type AgentDeviceUpdate = Pick<AgentLogin, 'loginOption' | 'dialNumber'>;
+
 export type RequestBody =
   | SubscribeRequest
   | Agent.Logout
@@ -278,8 +282,22 @@ export type BuddyAgents = {
   state?: 'Available' | 'Idle';
 };
 
+/**
+ * Generic CC SDK error containing structured details.
+ * details.data can be any structured object.
+ */
+export interface GenericError extends Error {
+  details: {
+    type: string;
+    orgId: string;
+    trackingId: string;
+    data: Record<string, any>;
+  };
+}
+
 export type StationLoginResponse = Agent.StationLoginSuccessResponse | Error;
 export type StationLogoutResponse = Agent.LogoutSuccess | Error;
 export type StationReLoginResponse = Agent.ReloginSuccess | Error;
 export type SetStateResponse = Agent.StateChangeSuccess | Error;
 export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
+export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;

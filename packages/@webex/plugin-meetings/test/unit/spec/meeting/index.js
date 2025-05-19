@@ -243,6 +243,7 @@ describe('plugin-meetings', () => {
       },
     });
 
+    webex.internal.newMetrics.callDiagnosticMetrics.clearErrorCache = sinon.stub();
     webex.internal.support.submitLogs = sinon.stub().returns(Promise.resolve());
     webex.internal.services = {get: sinon.stub().returns('locus-url')};
     webex.credentials.getOrgId = sinon.stub().returns('fake-org-id');
@@ -253,6 +254,7 @@ describe('plugin-meetings', () => {
       getReachabilityResults: sinon.stub().resolves(undefined),
       getReachabilityMetrics: sinon.stub().resolves({}),
       stopReachability: sinon.stub(),
+      isSubnetReachable: sinon.stub().returns(true),
     };
     webex.internal.llm.on = sinon.stub();
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
@@ -2108,6 +2110,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
             }),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(false),
           };
 
           const forceRtcMetricsSend = sinon.stub().resolves();
@@ -2163,6 +2166,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
+              isSubnetReachable: null,
               numTransports: 1,
               iceCandidatesCount: 0,
             }
@@ -2209,6 +2213,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
+              isSubnetReachable: null,
             })
           );
 
@@ -2223,6 +2228,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }),
+            isSubnetReachable: sinon.stub().returns(true),
           };
 
           meeting.waitForRemoteSDPAnswer = sinon.stub().rejects();
@@ -2273,6 +2279,7 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
+              isSubnetReachable: null,
             }
           );
         });
@@ -2330,6 +2337,7 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
+              isSubnetReachable: null,
             })
           );
 
@@ -2387,6 +2395,7 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
+              isSubnetReachable: null,
             })
           );
 
@@ -2722,8 +2731,9 @@ describe('plugin-meetings', () => {
               sinon.stub().returns(FAKE_ERROR));
           webex.meetings.reachability = {
             isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
-            getReachabilityMetrics: sinon.stub().resolves(),
+            getReachabilityMetrics: sinon.stub().resolves({}),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
           };
           const MOCK_CLIENT_ERROR_CODE = 2004;
           const generateClientErrorCodeForIceFailureStub = sinon
@@ -2752,7 +2762,8 @@ describe('plugin-meetings', () => {
               turnDiscoverySkippedReason: undefined,
             });
           meeting.meetingState = 'ACTIVE';
-          meeting.mediaProperties.waitForMediaConnectionConnected.rejects({iceConnected: false});
+          const error = {iceConnected: false}
+          meeting.mediaProperties.waitForMediaConnectionConnected.rejects(error);
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -2770,6 +2781,7 @@ describe('plugin-meetings', () => {
             })
             .catch((err) => {
               errorThrown = err;
+              assert.instanceOf(err.cause, Error);
               assert.instanceOf(err, AddMediaFailed);
             });
 
@@ -2826,6 +2838,7 @@ describe('plugin-meetings', () => {
             },
             options: {
               meetingId: meeting.id,
+              rawError: error,
             },
           });
           assert.calledWith(webex.internal.newMetrics.submitClientEvent.thirdCall, {
@@ -2837,6 +2850,7 @@ describe('plugin-meetings', () => {
             },
             options: {
               meetingId: meeting.id,
+              rawError: error,
             },
           });
 
@@ -2903,6 +2917,7 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
+              isSubnetReachable: null,
             },
           ]);
 
@@ -2933,6 +2948,7 @@ describe('plugin-meetings', () => {
               .resolves(false),
             getReachabilityMetrics: sinon.stub().resolves({}),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
           };
           const getErrorPayloadForClientErrorCodeStub =
             (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
@@ -2963,10 +2979,13 @@ describe('plugin-meetings', () => {
               },
               turnDiscoverySkippedReason: undefined,
             });
+
+          const mediaConnectionError = new Error('fake error');
+
           meeting.mediaProperties.waitForMediaConnectionConnected = sinon
             .stub()
             .onFirstCall()
-            .rejects()
+            .rejects(mediaConnectionError)
             .onSecondCall()
             .resolves();
 
@@ -3035,6 +3054,7 @@ describe('plugin-meetings', () => {
             },
             options: {
               meetingId: meeting.id,
+              rawError: mediaConnectionError,
             },
           });
           assert.calledWith(webex.internal.newMetrics.submitClientEvent.thirdCall, {
@@ -3100,6 +3120,7 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: true,
               isJoinWithMediaRetry: false,
               iceCandidatesCount: 0,
+              isSubnetReachable: null,
             },
           ]);
           meeting.roap.doTurnDiscovery;
@@ -3228,6 +3249,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
             }),
             stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
           };
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
@@ -3255,6 +3277,7 @@ describe('plugin-meetings', () => {
               iceCandidatesCount: 3,
               '701_error': 3,
               '701_turn_host_lookup_received_error': 1,
+              isSubnetReachable: null,
             }
           );
 
@@ -3317,6 +3340,7 @@ describe('plugin-meetings', () => {
               iceConnectionState: 'unknown',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
+              isSubnetReachable: null,
               iceCandidatesCount: 0,
             }
           );
@@ -3378,6 +3402,121 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               '701_error': 2,
               '701_turn_host_lookup_received_error': 1,
+              isSubnetReachable: null,
+              iceCandidatesCount: 0,
+            }
+          );
+
+          assert.isOk(errorThrown);
+        });
+
+        it('should send valid isSubnetReachability if media connection success', async () => {
+          meeting.roap.doTurnDiscovery = sinon.stub().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: undefined,
+          });
+          meeting.meetingState = 'ACTIVE';
+          meeting.mediaProperties.waitForMediaConnectionConnected.resolves();
+          meeting.webex.meetings.reachability = {
+            getReachabilityMetrics: sinon.stub().resolves({
+              reachability_public_udp_success: 5,
+            }),
+            stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(false),
+          };
+
+          const forceRtcMetricsSend = sinon.stub().resolves();
+          const closeMediaConnectionStub = sinon.stub();
+          Media.createMediaConnection = sinon.stub().returns({
+            close: closeMediaConnectionStub,
+            forceRtcMetricsSend,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
+
+          await meeting
+            .addMedia({
+              mediaSettings: {},
+            });
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              connectionType: 'udp',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
+              isMultistream: false,
+              retriedWithTurnServer: false,
+              isJoinWithMediaRetry: false,
+              iceCandidatesCount: 0,
+              reachability_public_udp_success: 5,
+              isSubnetReachable: false,
+            }
+          );
+        });
+
+        it('should send valid isSubnetReachability if media connection fails', async () => {
+          let errorThrown = undefined;
+
+          meeting.roap.doTurnDiscovery = sinon.stub().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: undefined,
+          });
+          meeting.meetingState = 'ACTIVE';
+          meeting.mediaProperties.waitForMediaConnectionConnected.rejects({iceConnected: false});
+          meeting.webex.meetings.reachability = {
+            getReachabilityMetrics: sinon.stub().resolves({
+              reachability_public_udp_success: 5,
+            }),
+            stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
+          };
+
+          const forceRtcMetricsSend = sinon.stub().resolves();
+          const closeMediaConnectionStub = sinon.stub();
+          Media.createMediaConnection = sinon.stub().returns({
+            close: closeMediaConnectionStub,
+            forceRtcMetricsSend,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
+
+          await meeting
+            .addMedia({
+              mediaSettings: {},
+            })
+            .catch((err) => {
+              errorThrown = err;
+              assert.instanceOf(err, AddMediaFailed);
+            });
+
+          // Check that the only metric sent is ADD_MEDIA_FAILURE
+          assert.calledOnceWithExactly(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: errorThrown.message,
+              stack: errorThrown.stack,
+              code: errorThrown.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              retriedWithTurnServer: false,
+              isMultistream: false,
+              isJoinWithMediaRetry: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
+              reachability_public_udp_success: 5,
+              isSubnetReachable: true,
               iceCandidatesCount: 0,
             }
           );
@@ -3940,6 +4079,9 @@ describe('plugin-meetings', () => {
                   },
                   options: {
                     meetingId: meeting.id,
+                    rawError: {
+                      iceConnected: false,
+                    }
                   },
                 },
               ]);
