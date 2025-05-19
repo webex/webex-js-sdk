@@ -142,6 +142,7 @@ Media.createMediaConnection = (
     turnServerInfo?: TurnServerInfo;
     bundlePolicy?: BundlePolicy;
     iceCandidatesTimeout?: number;
+    disableAudioMainDtx?: boolean;
   }
 ) => {
   const {
@@ -153,6 +154,7 @@ Media.createMediaConnection = (
     turnServerInfo,
     bundlePolicy,
     iceCandidatesTimeout,
+    disableAudioMainDtx,
   } = options;
 
   const iceServers = [];
@@ -170,6 +172,7 @@ Media.createMediaConnection = (
   if (isMultistream) {
     const config: MultistreamConnectionConfig = {
       iceServers,
+      disableAudioMainDtx,
     };
 
     if (bundlePolicy) {
