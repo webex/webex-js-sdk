@@ -131,7 +131,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       this.loggerContext
     );
 
-    // replace log.log with log.info for URL
     log.info(`Janus API URL: ${this.janusUrl}`, this.loggerContext);
     log.info(`Call history from date : ${this.fromDate}`, this.loggerContext);
     log.info(`Call history sort type : ${sortParam}`, this.loggerContext);
@@ -300,7 +299,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const orgId = this.webex.internal.device.orgId;
     const linesURIForUCM = `${vgEndpoint}/${VERSION_1}/${UNIFIED_COMMUNICATIONS}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
 
-    // add URL log
     log.info(`Fetching UCM lines from URL: ${linesURIForUCM}`, loggerContext);
     try {
       const response = <WebexRequestPayload>await this.webex.request({
@@ -375,7 +373,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       deleteSessionIds: santizedSessionIds,
     };
 
-    // add start log
     log.info(
       `deleteCallHistoryRecords called for sessions: ${JSON.stringify(santizedSessionIds)}`,
       loggerContext
