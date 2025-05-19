@@ -2035,22 +2035,16 @@ __metadata:
   linkType: hard
 
 "@babel/runtime-corejs2@npm:^7.25.0":
-  version: 7.27.1
-  resolution: "@babel/runtime-corejs2@npm:7.27.1"
+  version: 7.25.6
+  resolution: "@babel/runtime-corejs2@npm:7.25.6"
   dependencies:
     core-js: ^2.6.12
-  checksum: 5abd0c90d3d7c5eae681b1f57decf8bb0d772e696f6841789d4ac55d887b14f4c6e29a209facd81b24fbbfee662bce5cb1f9c6811de869a74b0cd7f77dad026f
+    regenerator-runtime: ^0.14.0
+  checksum: afd5406391d7e41ac291ae40c549dc8da734ec8d160b560081b4153b4063409b7402e5c469bcebd0789aaeaca740d3fe088cbe45be3a4c7341e3a2b3f48fdd98
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.18.9":
-  version: 7.27.1
-  resolution: "@babel/runtime@npm:7.27.1"
-  checksum: 11339838a54783e5b14e04d94d7a4d032e9965c5823f3f687e41556fa40344ae7aeb57c535720b7a74ab3e8217def7834a6f1a665ee55bbb3befede141419913
-  languageName: node
-  linkType: hard
-
-"@babel/runtime@npm:^7.25.6":
+"@babel/runtime@npm:^7.18.9, @babel/runtime@npm:^7.25.6":
   version: 7.25.6
   resolution: "@babel/runtime@npm:7.25.6"
   dependencies:
@@ -6122,12 +6116,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^22.5.5":
-  version: 22.15.19
-  resolution: "@types/node@npm:22.15.19"
+"@types/node@npm:^20.14.1":
+  version: 20.16.5
+  resolution: "@types/node@npm:20.16.5"
   dependencies:
-    undici-types: ~6.21.0
-  checksum: 5aa45bf93c62bba1193bf07a56dddd84b74f89a554a08e1bd7772610f529d8dc6f828d464bc28c10001bd0092b6b3d11736544b52e154f25f5ca0ed93f04c32b
+    undici-types: ~6.19.2
+  checksum: f38b7bd8c4993dcf38943afa2ffdd7dfd18fc94f8f3f28d0c1045a10d39871a6cc1b8f8d3bf0c7ed848457d0e1d283482f6ca125579c13fed1b7575d23e8e8f5
   languageName: node
   linkType: hard
 
@@ -8809,9 +8803,9 @@ __metadata:
   linkType: soft
 
 "@webex/json-multistream@npm:^2.2.1":
-  version: 2.3.0
-  resolution: "@webex/json-multistream@npm:2.3.0"
-  checksum: 74d97e9f300bf4e7ddab19394f7ed1cb13b13ad87f22843feaa60d4c9a0cd8ba242c6b5332a76f794d74f54fa11bb8e34cd5ac0a3dfe4365b1ae1e90946d6a96
+  version: 2.2.1
+  resolution: "@webex/json-multistream@npm:2.2.1"
+  checksum: 494c295b9a7a6142d872c560486cf8995c7a6ae8952d69f23a109f5e67af05ea23b879e28a8b805c2f1027c9ce6cce20820ed708b2505c690c7bc1c07322dee9
   languageName: node
   linkType: hard
 
@@ -9506,12 +9500,12 @@ __metadata:
   linkType: soft
 
 "@webex/rtcstats@npm:^1.5.0":
-  version: 1.5.2
-  resolution: "@webex/rtcstats@npm:1.5.2"
+  version: 1.5.0
+  resolution: "@webex/rtcstats@npm:1.5.0"
   dependencies:
-    "@types/node": ^22.5.5
+    "@types/node": ^20.14.1
     uuid: ^8.3.2
-  checksum: 833a5119b9b2eb563399cd65189e6deed2f936e9af4fea7abdbd81798166dca10a997fb7476bd2ac0b05c337f8d9dc8ea8a6ade66d9df9abf302fe38c51d1273
+  checksum: d7af2b4be63a146de7eca11bbfa6478e3b4504c2d9df971315ca9ac07026c83813742ef9dcd019cbb38a9a74aebcd569a03436e1c1c35e087efcf9e682ddf8ff
   languageName: node
   linkType: hard
 
@@ -9893,17 +9887,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/ts-events@npm:^1.0.1":
-  version: 1.2.0
-  resolution: "@webex/ts-events@npm:1.2.0"
-  dependencies:
-    events: ^3.3.0
-    typed-emitter: ^2.1.0
-  checksum: ad807621eaf070d0e50caef105606b0e20eec701267233797e5c2c03d64d31ede51aecacd19ebeb768c146226fe54443684ca6be2c18432f3eaed95c9b733f1d
-  languageName: node
-  linkType: hard
-
-"@webex/ts-events@npm:^1.1.0":
+"@webex/ts-events@npm:^1.0.1, @webex/ts-events@npm:^1.1.0":
   version: 1.1.0
   resolution: "@webex/ts-events@npm:1.1.0"
   dependencies:
@@ -9933,16 +9917,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/web-capabilities@npm:^1.1.0, @webex/web-capabilities@npm:^1.4.1":
-  version: 1.5.0
-  resolution: "@webex/web-capabilities@npm:1.5.0"
-  dependencies:
-    bowser: ^2.11.0
-  checksum: c7b4ae1414301011038377fabe5b3f6ae32caa82325ef93040ff35828c4c47837a2e20158b97317ba54381e4fe04bf5f4bf7993b7fb0005cd7d628c7e1d40e00
-  languageName: node
-  linkType: hard
-
-"@webex/web-capabilities@npm:^1.4.0":
+"@webex/web-capabilities@npm:^1.1.0, @webex/web-capabilities@npm:^1.4.0, @webex/web-capabilities@npm:^1.4.1":
   version: 1.4.1
   resolution: "@webex/web-capabilities@npm:1.4.1"
   dependencies:
@@ -32989,13 +32964,6 @@ __metadata:
   version: 6.19.8
   resolution: "undici-types@npm:6.19.8"
   checksum: de51f1b447d22571cf155dfe14ff6d12c5bdaec237c765085b439c38ca8518fc360e88c70f99469162bf2e14188a7b0bcb06e1ed2dc031042b984b0bb9544017
-  languageName: node
-  linkType: hard
-
-"undici-types@npm:~6.21.0":
-  version: 6.21.0
-  resolution: "undici-types@npm:6.21.0"
-  checksum: 46331c7d6016bf85b3e8f20c159d62f5ae471aba1eb3dc52fff35a0259d58dcc7d592d4cc4f00c5f9243fa738a11cfa48bd20203040d4a9e6bc25e807fab7ab3
   languageName: node
   linkType: hard
 
