@@ -55,7 +55,7 @@ const webex = Webex.init({
 });
 
 webex.once('ready', () => {
-  webex.cypher.register().then( async () => {
+  webex.cypher.register().then(async () => {
     try {
       const attachmentURL = 'https:/myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
       const options = {

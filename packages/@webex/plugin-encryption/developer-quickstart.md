@@ -71,22 +71,13 @@ async function decryptFile(webex, encryptedFileUrl, options, decryptedFileName, 
     console.error('Error decrypting file:', error);
   }
 }
-
-const attachmentURL = 'https:/myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
-const options = {
-  useFileService: false,
-  jwe: somejwe, // Provide the JWE here if not already present in the attachmentURL
-  keyUri: someKeyUri // Provide the keyURI here if not already present in the attachmentURL
-};
-
-await decryptFile(webex, attachmentURL, options, 'MyFile.png', 'image/png');
 ```
 
 ### Example Usage
 
-``` typescript
+```typescript
 const accessToken = 'YOUR_ACCESS_TOKEN';
-const attachmentURL = 'https:/myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
+const attachmentURL = 'https://myfileurl.xyz/zzz/fileid?keyUri=somekeyuri&JWE=somejwe';
 const decryptedFileName = 'my-decrypted-file.jpeg';
 const mimeType = 'image/jpeg';
 const options = {
