@@ -40,7 +40,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
       },
     },
     encryption: {
-      import: `${path.resolve(__dirname)}/packages/webex/src/encryption.js`,
+      import: `${path.resolve(__dirname)}/packages/@webex/plugin-encryption/src/webex.js`,
       library: {
         name: 'Webex',
         type: 'umd',

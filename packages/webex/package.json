@@ -17,7 +17,6 @@
   "exports": {
     "./calling": "./dist/calling.js",
     ".": "./dist/index.js",
-    "./encryption": "./dist/encryption.js",
     "./meetings": "./dist/meetings.js",
     "./contact-center": "./dist/contact-center.js",
     "./package": "./package.json"

@@ -15,7 +15,7 @@
 ## Install
 
 ```bash
-npm install --save webex
+npm install --save @webex/plugin-encryption
 ```
 
 In addition to the module consumption via NPMJS, this module can also be consumed via our CDN. See the below examples of how to consume this via CDN:
@@ -46,7 +46,7 @@ This is a plugin for the Cisco Webex JS SDK. Please see our [developer portal](h
 ## Sample Code
 
 ```typescript
-import Webex from 'webex/plugin-encryption';
+import Webex from '@webex/plugin-encryption';
 
 const webex = Webex.init({
   credentials: {
