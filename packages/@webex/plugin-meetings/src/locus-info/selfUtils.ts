@@ -247,7 +247,7 @@ const SelfUtils = {
    * @returns {String}
    */
   getSelfIdentity: (self: any) => {
-    if (!self && !self.person) {
+    if (!self || !self.person) {
       return null;
     }
 
