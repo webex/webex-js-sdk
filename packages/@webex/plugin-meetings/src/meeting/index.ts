@@ -100,7 +100,6 @@ import {
   MEETING_STATE_MACHINE,
   MEETING_STATE,
   MEETINGS,
-  MQA_STATS,
   NETWORK_STATUS,
   ONLINE,
   OFFLINE,
@@ -6822,20 +6821,20 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meetings
    */
   setupStatsAnalyzerEventHandlers = () => {
-    this.statsAnalyzer.on(StatsAnalyzerEventNames.MEDIA_QUALITY, (options) => {
-      // TODO:  might have to send the same event to the developer
-      // Add ip address info if geo hint is present
-      // @ts-ignore fix type
-      options.data.intervalMetadata.peerReflexiveIP =
-        // @ts-ignore
-        this.webex.meetings.geoHintInfo?.clientAddress ||
-        options.data.intervalMetadata.peerReflexiveIP ||
-        MQA_STATS.DEFAULT_IP;
+    this.statsAnalyzer.on(StatsAnalyzerEventNames.MEDIA_QUALITY, (event) => {
+      // Add IP address from geoHintInfo if missing.
+      if (event.data.intervalMetadata.maskedPeerReflexiveIP === '0.0.0.0') {
+        // @ts-ignore fix type
+        const clientAddressFromGeoHint = this.webex.meetings.geoHintInfo?.clientAddress;
+        if (clientAddressFromGeoHint) {
+          event.data.intervalMetadata.maskedPeerReflexiveIP =
+            CallDiagnosticUtils.anonymizeIPAddress(clientAddressFromGeoHint);
+        }
+      }
 
+      // Count members that are in the meeting.
       const {members} = this.getMembers().membersCollection;
-
-      // Count members that are in the meeting
-      options.data.intervalMetadata.meetingUserCount = Object.values(members).filter(
+      event.data.intervalMetadata.meetingUserCount = Object.values(members).filter(
         (member: Member) => member.isInMeeting
       ).length;
 
@@ -6844,10 +6843,10 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.mediaquality.event',
         options: {
           meetingId: this.id,
-          networkType: options.data.networkType,
+          networkType: this.statsAnalyzer.getNetworkType(),
         },
         payload: {
-          intervals: [options.data],
+          intervals: [event.data],
         },
       });
     });
