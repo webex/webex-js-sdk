@@ -9,9 +9,6 @@
     "excludePrivate": false,
     "excludeExternals": false,
     "hideGenerator": true,
-    "plugin": [
-        "typedoc-plugin-markdown"
-    ],
     "theme": "default",
     "cleanOutputDir": true,
     "includeVersion": true,
