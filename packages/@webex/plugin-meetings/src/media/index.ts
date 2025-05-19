@@ -175,9 +175,6 @@ Media.createMediaConnection = (
   if (isMultistream) {
     const config: MultistreamConnectionConfig = {
       iceServers,
-      doFullIce: BrowserInfo.isFirefox(),
-      stopIceGatheringAfterFirstRelayCandidate:
-        BrowserInfo.isFirefox() && stopIceGatheringAfterFirstRelayCandidate,
     };
 
     if (bundlePolicy) {
@@ -186,6 +183,12 @@ Media.createMediaConnection = (
 
     if (disableAudioMainDtx !== undefined) {
       config.disableAudioMainDtx = disableAudioMainDtx;
+    }
+
+    if (BrowserInfo.isFirefox()) {
+      config.doFullIce = true;
+
+      config.stopIceGatheringAfterFirstRelayCandidate = stopIceGatheringAfterFirstRelayCandidate;
     }
 
     return new MultistreamRoapMediaConnection(
