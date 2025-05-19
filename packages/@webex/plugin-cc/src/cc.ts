@@ -39,7 +39,7 @@ import {
   MERCURY_DISCONNECTED_SUCCESS,
 } from './constants';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
-import Services from './services/index';
+import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
