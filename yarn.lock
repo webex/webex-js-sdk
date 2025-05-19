@@ -9097,8 +9097,11 @@ __metadata:
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/internal-plugin-mercury": "workspace:*"
     "@webex/internal-plugin-metrics": "workspace:*"
+    "@webex/internal-plugin-support": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-authorization": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
@@ -9112,6 +9115,7 @@ __metadata:
     jest: 27.5.1
     jest-html-reporters: 3.0.11
     jest-junit: 13.0.0
+    lodash: ^4.17.21
     prettier: 2.5.1
     typedoc: 0.23.26
     typescript: 4.9.5

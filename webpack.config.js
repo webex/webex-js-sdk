@@ -55,7 +55,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
       },
     },
     'contact-center': {
-      import: `${path.resolve(__dirname)}/packages/webex/src/contact-center.js`,
+      import: `${path.resolve(__dirname)}/packages/@webex/plugin-cc/src/webex.js`,
       library: {
         name: 'Webex',
         type: 'umd',
