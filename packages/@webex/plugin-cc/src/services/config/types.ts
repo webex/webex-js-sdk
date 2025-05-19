@@ -615,6 +615,7 @@ export type Profile = {
   tenantTimezone?: string;
   loginVoiceOptions?: LoginOption[];
   deviceType?: LoginOption;
+  currentTeamId?: string;
   webRtcEnabled: boolean;
   organizationIdleCodes?: Entity[];
   isRecordingManagementEnabled?: boolean;
