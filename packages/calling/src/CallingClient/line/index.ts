@@ -252,9 +252,15 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
           this.lineId,
           formattedDest
         );
-        log.log(`New call created, callId: ${call.getCallId()}`, {});
+        log.info(`New call created, callId: ${call?.getCallId()}`, {
+          file: LINE_FILE,
+          method: 'makeCall',
+        });
       } else {
-        log.warn('Invalid phone number detected', {});
+        log.warn('Invalid phone number detected', {
+          file: LINE_FILE,
+          method: 'makeCall',
+        });
 
         const err = new LineError(
           'An invalid phone number was detected. Check the number and try again.',
@@ -274,7 +280,10 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
         this.registration.getDeviceInfo().device?.deviceId as string,
         this.lineId
       );
-      log.log(`New guest call created, callId: ${call.getCallId()}`, {});
+      log.info(`New guest call created, callId: ${call?.getCallId()}`, {
+        file: LINE_FILE,
+        method: 'makeCall',
+      });
 
       return call;
     }
@@ -290,7 +299,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       file: LINE_FILE,
       method: this.incomingCallListener.name,
     };
-    log.log('Listening for incoming calls... ', logContext);
+    log.info('Listening for incoming calls... ', logContext);
     this.callManager.on(LINE_EVENT_KEYS.INCOMING_CALL, (callObj: ICall) => {
       this.emit(LINE_EVENTS.INCOMING_CALL, callObj);
     });

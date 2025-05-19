@@ -1072,6 +1072,7 @@ describe('State Machine handler tests', () => {
 
   it('state changes during unsuccessful incoming call due error in call connect', async () => {
     const warnSpy = jest.spyOn(log, 'warn');
+    const errorSpy = jest.spyOn(log, 'error');
     const stateMachineSpy = jest.spyOn(call, 'sendCallStateMachineEvt');
     const statusPayload = <WebexRequestPayload>(<unknown>{
       statusCode: 200,
@@ -1095,7 +1096,8 @@ describe('State Machine handler tests', () => {
     await call['handleOutgoingCallConnect']({type: 'E_SEND_CALL_CONNECT'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_UNKNOWN');
     expect(stateMachineSpy).toBeCalledTimes(3);
-    expect(warnSpy).toBeCalledTimes(4);
+    expect(warnSpy).toBeCalledTimes(3);
+    expect(errorSpy).toBeCalledTimes(2);
   });
 
   it('state changes during successful outgoing call', async () => {
@@ -2835,7 +2837,7 @@ describe('Supplementary Services tests', () => {
 
     /* A spy on handleCallErrors to check whether it is being invoked or not depending on tests */
     const handleErrorSpy = jest.spyOn(Utils, 'handleCallErrors');
-    const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogs');
+    const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogsSilently');
     const transferLoggingContext = {
       file: 'call',
       method: 'completeTransfer',

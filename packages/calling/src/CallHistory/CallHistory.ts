@@ -1,5 +1,6 @@
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
+import ExtendedError from '../Errors/catalog/ExtendedError';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
@@ -19,7 +20,12 @@ import {
   DeleteCallHistoryRecordsResponse,
 } from './types';
 import log from '../Logger';
-import {serviceErrorCodeHandler, getVgActionEndpoint, getCallingBackEnd} from '../common/Utils';
+import {
+  serviceErrorCodeHandler,
+  getVgActionEndpoint,
+  getCallingBackEnd,
+  uploadLogsSilently,
+} from '../common/Utils';
 import {
   APPLICATION_JSON,
   CALL_HISTORY_FILE,
@@ -119,7 +125,14 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const sortByParam = Object.values(SORT_BY).includes(sortBy) ? sortBy : SORT_BY.DEFAULT;
     const sortParam = Object.values(SORT).includes(sort) ? sort : SORT.DEFAULT;
 
-    log.log(`Janus API URL ${this.janusUrl}`, this.loggerContext);
+    // add start log
+    log.info(
+      `getCallHistoryData called with days=${days}, limit=${limit}, sort=${sortParam}, sortBy=${sortByParam}`,
+      this.loggerContext
+    );
+
+    // replace log.log with log.info for URL
+    log.info(`Janus API URL: ${this.janusUrl}`, this.loggerContext);
     log.info(`Call history from date : ${this.fromDate}`, this.loggerContext);
     log.info(`Call history sort type : ${sortParam}`, this.loggerContext);
     log.info(`Call history sortby type : ${sortByParam}`, this.loggerContext);
@@ -195,6 +208,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(`Failed to get call history: ${err}`) as ExtendedError;
+      log.error(extendedError, {file: CALL_HISTORY_FILE, method: this.getCallHistoryData.name});
+      await uploadLogsSilently();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, this.loggerContext);
 
@@ -222,6 +239,12 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const requestBody = {
       endTimeSessionIds: santizedSessionIds,
     };
+
+    // add start log
+    log.info(
+      `updateMissedCalls called for sessions: ${JSON.stringify(santizedSessionIds)}`,
+      loggerContext
+    );
     try {
       const updateMissedCallContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${UPDATE_MISSED_CALLS_ENDPOINT}`;
       // Make a POST request to update missed calls
@@ -249,6 +272,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(`Failed to update missed calls: ${err}`) as ExtendedError;
+      log.error(extendedError, {file: CALL_HISTORY_FILE, method: this.updateMissedCalls.name});
+      await uploadLogsSilently();
+
       // Catch the 401 error from try block, return the error object to user
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',
@@ -273,6 +300,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const orgId = this.webex.internal.device.orgId;
     const linesURIForUCM = `${vgEndpoint}/${VERSION_1}/${UNIFIED_COMMUNICATIONS}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
 
+    // add URL log
+    log.info(`Fetching UCM lines from URL: ${linesURIForUCM}`, loggerContext);
     try {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${linesURIForUCM}`,
@@ -291,6 +320,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
       return ucmLineDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(`Failed to fetch UCM lines data: ${err}`) as ExtendedError;
+      log.error(extendedError, {file: CALL_HISTORY_FILE, method: this.fetchUCMLinesData.name});
+      await uploadLogsSilently();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -341,6 +374,12 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const deleteRequestBody = {
       deleteSessionIds: santizedSessionIds,
     };
+
+    // add start log
+    log.info(
+      `deleteCallHistoryRecords called for sessions: ${JSON.stringify(santizedSessionIds)}`,
+      loggerContext
+    );
     try {
       const deleteCallHistoryRecordContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${DELETE_CALL_HISTORY_RECORDS_ENDPOINT}`;
       // Make a POST request to delete call history records
@@ -368,6 +407,15 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to delete call history records: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, {
+        file: CALL_HISTORY_FILE,
+        method: this.deleteCallHistoryRecords.name,
+      });
+      await uploadLogsSilently();
+
       // Catch the 401 error from try block, return the error object to user
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',

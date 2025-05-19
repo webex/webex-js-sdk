@@ -15,7 +15,7 @@ import {
   modifySdpForIPv4,
   parseMediaQualityStatistics,
   serviceErrorCodeHandler,
-  uploadLogs,
+  uploadLogsSilently,
 } from '../../common/Utils';
 import {
   ALLOWED_SERVICES,
@@ -981,7 +981,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
       this.setCallId(response.body.callId);
     } catch (e) {
-      log.warn('Failed to setup the call', {
+      const extendedError = new Error(`Failed to setup the call: ${e}`) as ExtendedError;
+      log.error(extendedError, {
         file: CALL_FILE,
         method: this.handleOutgoingCallSetup.name,
       });
@@ -1002,7 +1003,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogsSilently({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1055,7 +1056,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
     } catch (e) {
-      log.warn('Failed to put the call on hold', {
+      const extendedError = new Error(`Failed to put the call on hold: ${e}`) as ExtendedError;
+      log.error(extendedError, {
         file: CALL_FILE,
         method: this.handleCallHold.name,
       });
@@ -1076,7 +1078,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogsSilently({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1129,7 +1131,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
     } catch (e) {
-      log.warn('Failed to resume the call', {
+      const extendedError = new Error(`Failed to resume the call: ${e}`) as ExtendedError;
+      log.error(extendedError, {
         file: CALL_FILE,
         method: this.handleCallResume.name,
       });
@@ -1150,7 +1153,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogsSilently({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1252,7 +1255,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleOutgoingCallAlerting.name,
       });
     } catch (err) {
-      log.warn('Failed to signal call progression', {
+      const extendedError = new Error(`Failed to signal call progression: ${err}`) as ExtendedError;
+      log.error(extendedError, {
         file: CALL_FILE,
         method: this.handleOutgoingCallAlerting.name,
       });
@@ -1273,7 +1277,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogsSilently({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1336,7 +1340,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleOutgoingCallConnect.name,
       });
     } catch (err) {
-      log.warn('Failed to connect the call', {
+      const extendedError = new Error(`Failed to connect the call: ${err}`) as ExtendedError;
+      log.error(extendedError, {
         file: CALL_FILE,
         method: this.handleOutgoingCallConnect.name,
       });
@@ -1357,7 +1362,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogsSilently({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1528,7 +1533,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs({
+        await uploadLogsSilently({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -1712,7 +1717,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs({
+        await uploadLogsSilently({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -1792,7 +1797,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs({
+        await uploadLogsSilently({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -1868,7 +1873,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogsSilently({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1921,7 +1926,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogsSilently({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -2018,6 +2023,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       ) as ExtendedError;
 
       log.error(errorLog, loggerContext);
+
+      await uploadLogsSilently({
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   };
 
@@ -2414,7 +2424,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs({
+        await uploadLogsSilently({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -2464,7 +2474,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs({
+        await uploadLogsSilently({
           correlationId: this.correlationId,
           callId: this.callId,
         });

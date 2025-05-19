@@ -1,12 +1,13 @@
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable valid-jsdoc */
+import ExtendedError from 'Errors/catalog/ExtendedError';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {IVoicemail, VoicemailResponseEvent, LoggerInterface, CallingPartyInfo} from './types';
 import {CALLING_BACKEND, DisplayInformation, SORT} from '../common/types';
 import log from '../Logger';
-import {getCallingBackEnd} from '../common/Utils';
+import {getCallingBackEnd, uploadLogsSilently} from '../common/Utils';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import {BroadworksBackendConnector} from './BroadworksBackendConnector';
 import {VoicemailEventTypes} from '../Events/types';
@@ -57,10 +58,22 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * Voicemail connector initialization.
    *
    */
-  public init() {
-    const response = this.backendConnector.init();
+  public async init() {
+    try {
+      const response = this.backendConnector.init();
 
-    return response;
+      return response;
+    } catch (err: unknown) {
+      const extendedError = new Error(`Failed to initialize voicemail: ${err}`) as ExtendedError;
+      log.error(extendedError, {
+        file: VOICEMAIL_FILE,
+        method: 'init',
+      });
+
+      await uploadLogsSilently();
+
+      throw err;
+    }
   }
 
   /**
@@ -133,16 +146,28 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
     sort: SORT,
     refresh?: boolean
   ): Promise<VoicemailResponseEvent> {
-    const response = await this.backendConnector.getVoicemailList(
-      offset,
-      offsetLimit,
-      sort,
-      refresh
-    );
+    try {
+      const response = await this.backendConnector.getVoicemailList(
+        offset,
+        offsetLimit,
+        sort,
+        refresh
+      );
 
-    this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAILS);
+      this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAILS);
 
-    return response;
+      return response;
+    } catch (err: unknown) {
+      const extendedError = new Error(`Failed to get voicemail list: ${err}`) as ExtendedError;
+      log.error(extendedError, {
+        file: VOICEMAIL_FILE,
+        method: 'getVoicemailList',
+      });
+
+      await uploadLogsSilently();
+
+      throw err;
+    }
   }
 
   /**

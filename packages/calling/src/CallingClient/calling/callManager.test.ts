@@ -9,6 +9,7 @@ import {Call} from './call';
 import log from '../../Logger';
 import {ILine} from '../line/types';
 import {LINE_EVENT_KEYS} from '../../Events/types';
+import * as utils from '../../common/Utils';
 
 const webex = getTestUtilsWebex();
 const defaultServiceIndicator = ServiceIndicator.CALLING;
@@ -267,7 +268,8 @@ describe('Call Manager Tests with respect to calls', () => {
     dummyResponse.statusCode = 503;
     patchMock.mockRejectedValue(dummyResponse);
 
-    const warnSpy = jest.spyOn(log, 'warn');
+    const errorSpy = jest.spyOn(log, 'error');
+    const uploadLogsSpy = jest.spyOn(utils, 'uploadLogsSilently').mockResolvedValue();
 
     await callManager['dequeueWsEvents'](mediaEvent);
     await waitForMsecs(50);
@@ -275,10 +277,14 @@ describe('Call Manager Tests with respect to calls', () => {
     await waitForMsecs(50);
 
     expect(patchMock).toHaveBeenCalledWith(MobiusCallState.ALERTING);
-    expect(warnSpy).toHaveBeenCalledWith('Failed to signal call progression', {
-      file: 'call',
-      method: 'handleOutgoingCallAlerting',
-    });
+    expect(errorSpy).toHaveBeenCalledWith(
+      Error(`Failed to signal call progression: ${dummyResponse}`),
+      {
+        file: 'call',
+        method: 'handleOutgoingCallAlerting',
+      }
+    );
+    expect(uploadLogsSpy).toHaveBeenCalled();
     /* No calls should have been added as call progress failed */
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(0);
   });

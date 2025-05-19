@@ -64,6 +64,7 @@ describe('ContactClient Tests', () => {
   // eslint-disable-next-line no-underscore-dangle
   const contactServiceGroupUrl = `${webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}`;
   const serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
+  const uploadLogsSpy = jest.spyOn(utils, 'uploadLogsSilently').mockResolvedValue();
   const failureResponsePayload = <WebexRequestPayload>{
     statusCode: 503,
     body: {},
@@ -393,6 +394,8 @@ describe('ContactClient Tests', () => {
     webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
     webex.internal.encryption.encryptText.mockResolvedValueOnce('Encrypted group name');
     const warnSpy = jest.spyOn(log, 'warn');
+    const errorSpy = jest.spyOn(log, 'error');
+
     const contactsResponse = await contactClient.createContactGroup('New group');
 
     expect(contactsResponse.statusCode).toBe(503);
@@ -406,11 +409,15 @@ describe('ContactClient Tests', () => {
         schemas: 'urn:cisco:codev:identity:contact:core:1.0',
       },
     });
-    expect(warnSpy).toBeCalledTimes(2);
-    expect(warnSpy).toHaveBeenNthCalledWith(1, 'Unable to create contact group.', loggerContext);
+    expect(warnSpy).toBeCalledTimes(1);
     expect(warnSpy).toHaveBeenNthCalledWith(
-      2,
+      1,
       '503 Unable to establish a connection with the server',
+      loggerContext
+    );
+    expect(errorSpy).toHaveBeenNthCalledWith(
+      1,
+      Error(`Unable to create contact group: ${failureResponsePayload}`),
       loggerContext
     );
 
@@ -429,6 +436,7 @@ describe('ContactClient Tests', () => {
     webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
     webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
     const warnSpy = jest.spyOn(log, 'warn');
+    const errorSpy = jest.spyOn(log, 'error');
     const contactsResponse = await contactClient.deleteContactGroup(mockGroupResponse.groupId);
 
     expect(contactsResponse.statusCode).toBe(503);
@@ -436,14 +444,18 @@ describe('ContactClient Tests', () => {
       method: HTTP_METHODS.DELETE,
       uri: `${contactServiceGroupUrl}/${mockGroupResponse.groupId}`,
     });
-    expect(warnSpy).toBeCalledTimes(2);
-    expect(warnSpy).toHaveBeenNthCalledWith(
+    expect(warnSpy).toBeCalledTimes(1);
+    expect(errorSpy).toBeCalledTimes(1);
+    expect(uploadLogsSpy).toBeCalledTimes(1);
+    expect(errorSpy).toHaveBeenNthCalledWith(
       1,
-      `Unable to delete contact group ${mockGroupResponse.groupId}`,
+      Error(
+        `Unable to delete contact group ${mockGroupResponse.groupId}: ${failureResponsePayload}`
+      ),
       loggerContext
     );
     expect(warnSpy).toHaveBeenNthCalledWith(
-      2,
+      1,
       '503 Unable to establish a connection with the server',
       loggerContext
     );

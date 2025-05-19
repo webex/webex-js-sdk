@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
-import {v4 as uuid} from 'uuid';
+import ExtendedError from 'Errors/catalog/ExtendedError';
 import {
   filterMobiusUris,
   handleCallingClientErrors,
@@ -30,6 +30,7 @@ import {
   MobiusServers,
   WebexRequestPayload,
   RegistrationStatus,
+  UploadLogsResponse,
 } from '../common/types';
 import {ICallingClient, CallingClientConfig} from './types';
 import {ICall, ICallManager} from './calling/types';
@@ -255,6 +256,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         regionInfo.countryCode = clientRegionInfo?.countryCode ? clientRegionInfo.countryCode : '';
         break;
       } catch (err: unknown) {
+        const extendedError = new Error(
+          `Failed to get client region info: ${err}`
+        ) as ExtendedError;
+        log.error(extendedError, {
+          method: this.getClientRegionInfo.name,
+          file: CALLING_CLIENT_FILE,
+        });
+
         handleCallingClientErrors(
           err as WebexRequestPayload,
           (clientError) => {
@@ -315,7 +324,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     if (clientRegion && countryCode) {
-      log.log(
+      log.info(
         `Found Region: ${clientRegion} and country: ${countryCode}, going to fetch Mobius server`,
         '' as LogContext
       );
@@ -332,7 +341,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           service: ALLOWED_SERVICES.MOBIUS,
         });
 
-        log.log('Mobius Server found for the region', '' as LogContext);
+        log.info('Mobius Server found for the region', '' as LogContext);
         const mobiusServers = temp.body as MobiusServers;
 
         /* update arrays of Mobius Uris. */
@@ -344,6 +353,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           '' as LogContext
         );
       } catch (err: unknown) {
+        const extendedError = new Error(`Failed to get Mobius servers: ${err}`) as ExtendedError;
+        log.error(extendedError, {
+          method: this.getMobiusServers.name,
+          file: CALLING_CLIENT_FILE,
+        });
+
         handleCallingClientErrors(
           err as WebexRequestPayload,
           (clientError) => {
@@ -390,7 +405,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       method: this.registerCallsClearedListener.name,
     };
 
-    log.log('Registering listener for all calls cleared event', logContext);
+    log.info('Registering listener for all calls cleared event', logContext);
     this.callManager.on(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED, this.callsClearedHandler);
   }
 
@@ -409,7 +424,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     if (!registration.isDeviceRegistered()) {
       await this.mutex.runExclusive(async () => {
         if (registration.isReconnectPending()) {
-          log.log('All calls cleared, reconnecting', {
+          log.info('All calls cleared, reconnecting', {
             file: CALLING_CLIENT_FILE,
             method: CALLS_CLEARED_HANDLER_UTIL,
           });
@@ -520,16 +535,17 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   /**
-   * uploads logs to backend for trouble shooting
-   * @param data
+   * Uploads logs to help troubleshoot SDK issues.
+   *
+   * This method collects the current SDK logs including network requests, WebSocket
+   * messages, and client-side events, then securely submits them to Webex's diagnostics
+   * service. The returned tracking ID, feedbackID can be provided to Webex support for faster
+   * issue resolution.
+   * @returns Promise<UploadLogsResponse>
+   * @throws Error
    */
-  public async uploadLogs(data: {feedbackId?: string} = {}) {
-    if (!data.feedbackId) {
-      // spread the data object to avoid mutation
-      data = {...data, feedbackId: uuid()};
-    }
-
-    return uploadLogs(data);
+  public async uploadLogs(): Promise<UploadLogsResponse> {
+    return uploadLogs();
   }
 }
 

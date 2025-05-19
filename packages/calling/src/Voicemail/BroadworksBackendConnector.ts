@@ -1,5 +1,6 @@
 /* eslint-disable valid-jsdoc */
 /* eslint-disable no-underscore-dangle */
+import ExtendedError from '../Errors/catalog/ExtendedError';
 import {ERROR_CODE} from '../Errors/types';
 import SDKConnector from '../SDKConnector';
 import {
@@ -20,6 +21,7 @@ import {
   getSortedVoicemailList,
   storeVoicemailList,
   fetchVoicemailList,
+  uploadLogsSilently,
 } from '../common/Utils';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
@@ -144,6 +146,10 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
 
+      const extendedError = new Error(`Failed to get userId: ${err}`) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       return serviceErrorCodeHandler(errorInfo, loggerContext);
     }
   }
@@ -162,7 +168,12 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
 
       this.bwtoken = response[TOKEN][BEARER];
     } catch (err: unknown) {
-      log.info(`Broadworks token exception ${err}`, {});
+      const extendedError = new Error(`Broadworks token exception: ${err}`) as ExtendedError;
+      log.error(extendedError, {
+        file: BROADWORKS_VOICEMAIL_FILE,
+        method: 'getBwToken',
+      });
+      await uploadLogsSilently();
     }
   }
 
@@ -260,6 +271,11 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         const errorInfo = {
           statusCode: err instanceof Error ? Number(err.message) : '',
         } as WebexRequestPayload;
+
+        const extendedError = new Error(`Failed to get voicemail list: ${err}`) as ExtendedError;
+        log.error(extendedError, loggerContext);
+        await uploadLogsSilently();
+
         const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
         return errorStatus;
@@ -335,6 +351,11 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
+
+      const extendedError = new Error(`Failed to get voicemail content: ${err}`) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;
@@ -388,6 +409,11 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
+
+      const extendedError = new Error(`Failed to mark voicemail as read: ${err}`) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;
@@ -433,6 +459,13 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
+
+      const extendedError = new Error(
+        `Failed to mark voicemail as unread: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;
@@ -477,6 +510,11 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
+
+      const extendedError = new Error(`Failed to delete voicemail: ${err}`) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;

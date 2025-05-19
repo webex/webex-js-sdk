@@ -1,3 +1,4 @@
+import ExtendedError from 'Errors/catalog/ExtendedError';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
@@ -29,7 +30,12 @@ import {
   VM_ENDPOINT,
   XSI_VERSION,
 } from './constants';
-import {getXsiActionEndpoint, inferIdFromUuid, serviceErrorCodeHandler} from '../common/Utils';
+import {
+  getXsiActionEndpoint,
+  inferIdFromUuid,
+  serviceErrorCodeHandler,
+  uploadLogsSilently,
+} from '../common/Utils';
 
 /**
  * This Connector class will implement child interface of ICallSettings and
@@ -120,6 +126,12 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to get call waiting setting: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
@@ -154,6 +166,12 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to get DoNotDisturb setting: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -192,6 +210,12 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to set DoNotDisturb setting: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -224,6 +248,12 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to set DoNotDisturb setting: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -259,6 +289,12 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to set Call Forward setting: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -291,6 +327,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(`Failed to get Voicemail setting: ${err}`) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -326,6 +366,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(`Failed to set Voicemail setting: ${err}`) as ExtendedError;
+
+      log.error(extendedError, loggerContext);
+      await uploadLogsSilently();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 

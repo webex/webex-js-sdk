@@ -1,7 +1,9 @@
 import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
+import ExtendedError from '../../Errors/catalog/ExtendedError';
 import {ERROR_CODE} from '../../Errors/types';
 import {emitFinalFailure, handleRegistrationErrors} from '../../common';
+import {uploadLogsSilently} from '../../common/Utils';
 
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
@@ -161,7 +163,12 @@ export class Registration implements IRegistration {
         },
       });
     } catch (error) {
-      log.warn(`Delete failed with Mobius`, {});
+      const extendedError = new Error(`Delete failed with Mobius: ${error}`) as ExtendedError;
+      log.error(extendedError, {
+        file: REGISTRATION_FILE,
+        method: 'deleteRegistration',
+      });
+      await uploadLogsSilently();
     }
 
     this.setStatus(RegistrationStatus.INACTIVE);
@@ -219,7 +226,7 @@ export class Registration implements IRegistration {
     }
     this.clearFailbackTimer();
     this.failback429RetryAttempts += 1;
-    log.log(`Received 429 while rehoming, 429 retry count : ${this.failback429RetryAttempts}`, {
+    log.info(`Received 429 while rehoming, 429 retry count : ${this.failback429RetryAttempts}`, {
       file: REGISTRATION_FILE,
       method: FAILBACK_429_RETRY_UTIL,
     });
@@ -291,12 +298,12 @@ export class Registration implements IRegistration {
           }
         });
       }, interval * SEC_TO_MSEC_MFACTOR);
-      log.log(
+      log.info(
         `Scheduled retry with primary in ${interval} seconds, number of attempts : ${attempt}`,
         loggerContext
       );
     } else if (this.backupMobiusUris.length) {
-      log.log('Failing over to backup servers.', loggerContext);
+      log.info('Failing over to backup servers.', loggerContext);
       this.failoverImmediately = false;
       abort = await this.attemptRegistrationWithServers(
         this.startFailoverTimer.name,
@@ -317,7 +324,7 @@ export class Registration implements IRegistration {
             }
           });
         }, interval * SEC_TO_MSEC_MFACTOR);
-        log.log(`Scheduled retry with backup servers in ${interval} seconds.`, loggerContext);
+        log.info(`Scheduled retry with backup servers in ${interval} seconds.`, loggerContext);
       }
     } else {
       emitFinalFailure((clientError: LineError) => {
@@ -381,7 +388,7 @@ export class Registration implements IRegistration {
       async () => this.executeFailback(),
       intervalInSeconds * SEC_TO_MSEC_MFACTOR
     );
-    log.log(`Failback scheduled after ${intervalInSeconds} seconds.`, {
+    log.info(`Failback scheduled after ${intervalInSeconds} seconds.`, {
       file: REGISTRATION_FILE,
       method: this.startFailbackTimer.name,
     });
@@ -605,7 +612,7 @@ export class Registration implements IRegistration {
     }
 
     if (this.isDeviceRegistered()) {
-      log.log(`[${caller}] : Device already registered with : ${this.activeMobiusUrl}`, {
+      log.info(`[${caller}] : Device already registered with : ${this.activeMobiusUrl}`, {
         file: REGISTRATION_FILE,
         method: this.attemptRegistrationWithServers.name,
       });
@@ -617,7 +624,7 @@ export class Registration implements IRegistration {
         abort = false;
         this.registrationStatus = RegistrationStatus.INACTIVE;
         this.lineEmitter(LINE_EVENTS.CONNECTING);
-        log.log(`[${caller}] : Mobius url to contact: ${url}`, {
+        log.info(`[${caller}] : Mobius url to contact: ${url}`, {
           file: REGISTRATION_FILE,
           method: this.attemptRegistrationWithServers.name,
         });
@@ -782,7 +789,12 @@ export class Registration implements IRegistration {
         this.deviceInfo.device?.clientDeviceUri as string
       );
     } catch (err) {
-      log.warn(`Delete failed with Mobius`, {});
+      const extendedError = new Error(`Delete failed with Mobius: ${err}`) as ExtendedError;
+      log.error(extendedError, {
+        file: REGISTRATION_FILE,
+        method: 'deregister',
+      });
+      await uploadLogsSilently();
     }
 
     this.clearKeepaliveTimer();
