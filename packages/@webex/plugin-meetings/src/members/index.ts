@@ -889,7 +889,7 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Moves a meeting member into the lobby.
    * @param {String} memberId -- The ID of the member to move.
-   * @returns {Promise<object>} -- Resolves with the lobby‐move response.
+   * @returns {Promise} -- Resolves with the lobby‐move response.
    * @public
    * @memberof Members
    */

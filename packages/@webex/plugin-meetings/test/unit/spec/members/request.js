@@ -422,8 +422,6 @@ describe('plugin-meetings', () => {
 
         const getRequestParamsSpy = sandbox.spy(membersUtil, 'getMoveMemberToLobbyRequestParams');
 
-        // await membersRequest.lowerAllHandsMember(options);
-
         await membersRequest.moveToLobbyMember(options, body);
 
         assert.calledOnceWithExactly(getRequestParamsSpy, options, body);

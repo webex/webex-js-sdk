@@ -138,7 +138,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @param {Object} body - The request payload.
    * @param {Object} body.moveToLobby - Container for move‐to‐lobby data.
    * @param {string[]} body.moveToLobby.participantIds - Array of participant IDs to move.
-   * @returns {Promise<Object>} - Resolves with the locus‐delta response.
+   * @returns {Promise} - Resolves with the locus‐delta response.
    */
   moveToLobbyMember(
     options: {locusUrl: string; memberId: string},
