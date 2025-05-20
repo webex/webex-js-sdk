@@ -2762,7 +2762,7 @@ describe('plugin-meetings', () => {
               turnDiscoverySkippedReason: undefined,
             });
           meeting.meetingState = 'ACTIVE';
-          const error = {iceConnected: false}
+          const error = {iceConnected: false};
           meeting.mediaProperties.waitForMediaConnectionConnected.rejects(error);
 
           const forceRtcMetricsSend = sinon.stub().resolves();
@@ -3435,28 +3435,23 @@ describe('plugin-meetings', () => {
             on: sinon.stub(),
           });
 
-          await meeting
-            .addMedia({
-              mediaSettings: {},
-            });
+          await meeting.addMedia({
+            mediaSettings: {},
+          });
 
-          assert.calledWith(
-            Metrics.sendBehavioralMetric,
-            BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
-            {
-              correlation_id: meeting.correlationId,
-              locus_id: meeting.locusUrl.split('/').pop(),
-              connectionType: 'udp',
-              selectedCandidatePairChanges: 2,
-              numTransports: 1,
-              isMultistream: false,
-              retriedWithTurnServer: false,
-              isJoinWithMediaRetry: false,
-              iceCandidatesCount: 0,
-              reachability_public_udp_success: 5,
-              isSubnetReachable: false,
-            }
-          );
+          assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
+            correlation_id: meeting.correlationId,
+            locus_id: meeting.locusUrl.split('/').pop(),
+            connectionType: 'udp',
+            selectedCandidatePairChanges: 2,
+            numTransports: 1,
+            isMultistream: false,
+            retriedWithTurnServer: false,
+            isJoinWithMediaRetry: false,
+            iceCandidatesCount: 0,
+            reachability_public_udp_success: 5,
+            isSubnetReachable: false,
+          });
         });
 
         it('should send valid isSubnetReachability if media connection fails', async () => {
@@ -3536,6 +3531,8 @@ describe('plugin-meetings', () => {
             meeting.config.stats.enableStatsAnalyzer = true;
 
             statsAnalyzerStub = new EventsScope();
+            statsAnalyzerStub.getNetworkType = sinon.stub().returns('wifi');
+
             // mock the StatsAnalyzer constructor
             sinon.stub(InternalMediaCoreModule, 'StatsAnalyzer').returns(statsAnalyzerStub);
 
@@ -3830,7 +3827,7 @@ describe('plugin-meetings', () => {
               },
             };
             sinon.stub(meeting, 'getMembers').returns({membersCollection: fakeMembersCollection});
-            const fakeData = {intervalMetadata: {}, networkType: 'wifi'};
+            const fakeData = {intervalMetadata: {}};
 
             statsAnalyzerStub.emit(
               {file: 'test', function: 'test'},
@@ -3871,7 +3868,7 @@ describe('plugin-meetings', () => {
           });
 
           it('calls submitMQE correctly', async () => {
-            const fakeData = {intervalMetadata: {bla: 'bla'}, networkType: 'wifi'};
+            const fakeData = {intervalMetadata: {bla: 'bla'}};
 
             statsAnalyzerStub.emit(
               {file: 'test', function: 'test'},
@@ -4081,7 +4078,7 @@ describe('plugin-meetings', () => {
                     meetingId: meeting.id,
                     rawError: {
                       iceConnected: false,
-                    }
+                    },
                   },
                 },
               ]);
