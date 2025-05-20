@@ -1,0 +1,56 @@
+body {
+    font-family: sans-serif;
+    padding: 1rem;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+section {
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 1rem;
+}
+
+button,
+select,
+input {
+    margin: 0.3em 0;
+    padding: 0.5em;
+}
+
+h1 {
+    background: #00bceb;
+    color: white;
+    padding: 0.5em;
+}
+
+h2 {
+    margin-top: 1.5em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.3em;
+}
+
+pre {
+    background: #f6f8fa;
+    padding: 1em;
+    overflow: auto;
+    border-radius: 3px;
+}
+
+code {
+    font-family: monospace;
+}
+
+#controls button {
+    min-width: 150px;
+}
+
+#log {
+    background: #111;
+    color: #0f0;
+    height: 200px;
+    overflow: auto;
+    padding: 0.5em;
+    white-space: pre-wrap;
+    font-family: monospace;
+}

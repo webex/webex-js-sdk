@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Contact Center SDK Lab</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- load the public "next" SDK bundle -->
+    <script src="https://unpkg.com/webex@3.8.0-next.88/umd/webex.min.js"></script>
+</head>
+
+<body>
+
+    <h1>Webex Contact Center SDK Lab</h1>
+
+    <p>This interactive lab demonstrates how to use the Webex Contact Center SDK. Follow the steps sequentially to build
+        a complete agent experience.</p>
+
+    <section id="auth">
+        <h2>Step 1: Authentication</h2>
+        <p>The first step is authenticating with Webex. Click the button below to initiate the OAuth flow.</p>
+
+        <pre><code>// Authentication Code is now in auth.js</code></pre>
+
+        <button id="btn-oauth">Login via OAuth</button>
+    </section>
+
+    <section id="register">
+        <h2>Step 2: Agent Registration</h2>
+        <p>After authentication, register the agent to receive tasks and calls.</p>
+
+        <pre><code>// Registration Code
+async function register(webex) {
+    try {
+        const response = await webex.cc.register();
+        console.log('Registration successful:', response);
+        return response;
+    } catch (error) {
+        console.error('Registration failed:', error);
+        throw error;
+    }
+}
+
+async function deregister(webex) {
+    try {
+        await webex.cc.deregister();
+        console.log('Deregistration successful');
+    } catch (error) {
+        console.error('Deregistration failed:', error);
+        throw error;
+    }
+}</code></pre>
+
+        <button id="btn-register" disabled>Register Agent</button>
+        <button id="btn-deregister" disabled>Deregister Agent</button>
+    </section>
+
+    <section id="tasks">
+        <h2>Step 3: Task Management</h2>
+        <p>Listen for incoming tasks and handle accept/decline operations.</p>
+
+        <pre><code>// Task Management Code
+function handleIncomingTask(webex, callback) {
+    webex.cc.on('task:new', (task) => {
+        console.log('New task received:', task);
+        callback(task);
+    });
+}
+
+async function acceptTask(task) {
+    try {
+        await task.accept();
+        console.log('Task accepted successfully');
+    } catch (error) {
+        console.error('Task accept failed:', error);
+        throw error;
+    }
+}
+
+async function declineTask(task) {
+    try {
+        await task.decline();
+        console.log('Task declined successfully');
+    } catch (error) {
+        console.error('Task decline failed:', error);
+        throw error;
+    }
+}</code></pre>
+
+        <button id="btn-listen-tasks" disabled>Start Listening for Tasks</button>
+        <button id="btn-accept" disabled>Accept Current Task</button>
+        <button id="btn-decline" disabled>Decline Current Task</button>
+    </section>
+
+    <section id="digital">
+        <h2>Step 4: Digital Channels (Chat / Email)</h2>
+        <p>Initialize and load the IMI Engage widget for handling digital channel interactions.</p>
+
+        <pre><code>// Digital Channels Code
+function initializeEngageWidget(accessToken) {
+    if (window.imiLoaded) return;
+    
+    const script = document.createElement('script');
+    script.src = 'https://wc.imiengage.io/v0.9.11/momentum/js/momentum.js';
+    script.onload = () => {
+        console.log('IMI Engage script loaded');
+        MomentumUI.load({ accessToken });
+    };
+    document.head.appendChild(script);
+    window.imiLoaded = true;
+}
+
+function handleDigitalChannelTask(task, agentInfo) {
+    const mediaType = task.data.interaction.mediaType;
+    if (['chat', 'social', 'email'].includes(mediaType)) {
+        console.log(`Handling ${mediaType} task`);
+        document.getElementById('btn-load-digital').disabled = false;
+        // Additional widget initialization would happen here
+    }
+}</code></pre>
+
+        <button id="btn-init-digital" disabled>Initialize IMI Engage</button>
+        <button id="btn-load-digital" disabled>Load Chat/Email Widget</button>
+        <div id="engageWidget" style="border:1px solid #888; height:200px; margin-top:0.5em;"></div>
+    </section>
+
+    <section id="controls">
+        <h2>Step 5: Call Controls</h2>
+        <p>Manage voice calls with hold/resume and mute/unmute functionality.</p>
+
+        <pre><code>// Call Controls Code
+let isHold = false;
+let isMuted = false;
+
+async function toggleHold(task) {
+    try {
+        if (!isHold) {
+            await task.hold();
+            isHold = true;
+            console.log('Call held successfully');
+        } else {
+            await task.resume();
+            isHold = false;
+            console.log('Call resumed successfully');
+        }
+    } catch (error) {
+        console.error('Hold/Resume operation failed:', error);
+        throw error;
+    }
+}
+
+function toggleMute(task) {
+    try {
+        task.toggleMute();
+        isMuted = !isMuted;
+        console.log('Mute toggled successfully, state:', isMuted ? 'muted' : 'unmuted');
+    } catch (error) {
+        console.error('Mute operation failed:', error);
+        throw error;
+    }
+}</code></pre>
+
+        <button id="btn-hold" disabled>Toggle Hold/Resume</button>
+        <button id="btn-mute" disabled>Toggle Mute</button>
+    </section>
+
+    <section id="state">
+        <h2>Step 6: Agent State Management</h2>
+        <p>Change the agent's state between Available, Idle, and other states.</p>
+
+        <pre><code>// Agent State Code
+async function setAgentState(webex, { state, auxCodeId }) {
+    try {
+        const response = await webex.cc.setAgentState({
+            state,
+            auxCodeId
+        });
+        console.log('Agent state set successfully:', state);
+        return response;
+    } catch (error) {
+        console.error('Agent state set failed:', error);
+        throw error;
+    }
+}</code></pre>
+
+        <select id="sel-state" disabled>
+            <option>Available</option>
+            <option>Idle</option>
+        </select>
+        <button id="btn-set-state" disabled>Set State</button>
+    </section>
+
+    <section id="log-section">
+        <h2>Console Log</h2>
+        <div id="log"></div>
+    </section>
+
+    <script type="module">
+        import { initOauth, initWithAccessToken } from './auth.js';
+        window.initOauth = initOauth;
+        window.initWithAccessToken = initWithAccessToken;
+
+        // Check URL hash for access token and initialize
+        async function init() {
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const accessToken = hashParams.get('access_token');
+            if (accessToken) {
+                try {
+                    window.webex = await window.initWithAccessToken(accessToken);
+                    window.webex.once('ready', () => {
+                        console.log('✅ Authenticated successfully with token');
+                        // enable next steps
+                        ['btn-register', 'btn-listen-tasks', 'btn-init-digital', 'sel-state', 'btn-set-state'].forEach(id => {
+                            document.getElementById(id).disabled = false;
+                        });
+                    });
+                } catch (e) {
+                    console.error('Failed to initialize with access token:', e);
+                }
+            }
+        }
+
+        // Run initialization
+        init().catch(console.error);
+
+        // wire console to on-page log
+        ;['log', 'warn', 'error', 'info'].forEach(level => {
+            const orig = console[level]
+            console[level] = (...args) => {
+                orig(...args)
+                document.getElementById('log').innerText += args.join(' ') + '\n'
+            }
+        })
+
+        // Implementation code
+        let webex, currentTask;
+
+        // Implementation for auth.js has been moved to auth.js
+
+        // Implementation for registration.js
+        async function register(webex) {
+            try {
+                const response = await webex.cc.register();
+                console.log('Registration successful:', response);
+                return response;
+            } catch (error) {
+                console.error('Registration failed:', error);
+                throw error;
+            }
+        }
+
+        async function deregister(webex) {
+            try {
+                await webex.cc.deregister();
+                console.log('Deregistration successful');
+            } catch (error) {
+                console.error('Deregistration failed:', error);
+                throw error;
+            }
+        }
+
+        async function agentLogin(webex, loginParams) {
+            try {
+                const response = await webex.cc.login(loginParams);
+                console.log('Agent login successful');
+                return response;
+            } catch (error) {
+                console.error('Agent login failed:', error);
+                throw error;
+            }
+        }
+
+        async function agentLogout(webex) {
+            try {
+                await webex.cc.logout();
+                console.log('Agent logout successful');
+            } catch (error) {
+                console.error('Agent logout failed:', error);
+                throw error;
+            }
+        }
+
+        async function updateAgentDeviceType(webex, params) {
+            try {
+                await webex.cc.updateDeviceType(params);
+                console.log('Device type updated successfully');
+            } catch (error) {
+                console.error('Device type update failed:', error);
+                throw error;
+            }
+        }
+
+        // Implementation for task-manager.js
+        function handleIncomingTask(webex, callback) {
+            webex.cc.on('task:new', (task) => {
+                console.log('New task received:', task);
+                callback(task);
+            });
+        }
+
+        async function acceptTask(task) {
+            try {
+                await task.accept();
+                console.log('Task accepted successfully');
+            } catch (error) {
+                console.error('Task accept failed:', error);
+                throw error;
+            }
+        }
+
+        async function declineTask(task) {
+            try {
+                await task.decline();
+                console.log('Task declined successfully');
+            } catch (error) {
+                console.error('Task decline failed:', error);
+                throw error;
+            }
+        }
+
+        // Implementation for digital-channels.js
+        function initializeEngageWidget(accessToken) {
+            if (window.imiLoaded) return;
+
+            const script = document.createElement('script');
+            script.src = 'https://wc.imiengage.io/v0.9.11/momentum/js/momentum.js';
+            script.onload = () => {
+                console.log('IMI Engage script loaded');
+                MomentumUI.load({ accessToken });
+            };
+            document.head.appendChild(script);
+            window.imiLoaded = true;
+        }
+
+        function handleDigitalChannelTask(task, agentInfo) {
+            const mediaType = task.data?.interaction?.mediaType;
+            if (['chat', 'social', 'email'].includes(mediaType)) {
+                console.log(`Handling ${mediaType} task`);
+                document.getElementById('btn-load-digital').disabled = false;
+                // Additional widget initialization would happen here
+            }
+        }
+
+        // Implementation for call-controls.js
+        let isHold = false;
+        let isMuted = false;
+
+        async function toggleHold(task) {
+            try {
+                if (!isHold) {
+                    await task.hold();
+                    isHold = true;
+                    console.log('Call held successfully');
+                } else {
+                    await task.resume();
+                    isHold = false;
+                    console.log('Call resumed successfully');
+                }
+            } catch (error) {
+                console.error('Hold/Resume operation failed:', error);
+                throw error;
+            }
+        }
+
+        function toggleMute(task) {
+            try {
+                task.toggleMute();
+                isMuted = !isMuted;
+                console.log('Mute toggled successfully, state:', isMuted ? 'muted' : 'unmuted');
+            } catch (error) {
+                console.error('Mute operation failed:', error);
+                throw error;
+            }
+        }
+
+        // Implementation for agent-state.js
+        async function setAgentState(webex, { state, auxCodeId }) {
+            try {
+                const response = await webex.cc.setAgentState({
+                    state,
+                    auxCodeId
+                });
+                console.log('Agent state set successfully:', state);
+                return response;
+            } catch (error) {
+                console.error('Agent state set failed:', error);
+                throw error;
+            }
+        }
+
+        // Auth button
+        document.getElementById('btn-oauth').onclick = async () => {
+            try {
+                window.webex = await window.initOauth();
+                window.webex.once('ready', () => {
+                    console.log('✅ Authenticated successfully');
+                    // enable next steps
+                    ['btn-register', 'btn-listen-tasks', 'btn-init-digital', 'sel-state', 'btn-set-state'].forEach(id => {
+                        document.getElementById(id).disabled = false;
+                    });
+                });
+            } catch (e) {
+                console.error('Authentication failed:', e);
+            }
+        };
+
+        // Register / Deregister
+        document.getElementById('btn-register').onclick = async () => {
+            try {
+                await register(window.webex);
+                console.log('✅ Agent registered successfully');
+                document.getElementById('btn-deregister').disabled = false;
+                document.getElementById('btn-accept').disabled = false;
+                document.getElementById('btn-decline').disabled = false;
+                document.getElementById('btn-hold').disabled = false;
+                document.getElementById('btn-mute').disabled = false;
+                document.getElementById('btn-load-digital').disabled = false;
+            } catch (e) {
+                console.error('Registration failed:', e);
+            }
+        };
+
+        document.getElementById('btn-deregister').onclick = async () => {
+            try {
+                await deregister(window.webex);
+                console.log('✅ Agent deregistered successfully');
+                document.getElementById('btn-deregister').disabled = true;
+                document.getElementById('btn-accept').disabled = true;
+                document.getElementById('btn-decline').disabled = true;
+                document.getElementById('btn-hold').disabled = true;
+                document.getElementById('btn-mute').disabled = true;
+            } catch (e) {
+                console.error('Deregistration failed:', e);
+            }
+        };
+
+        // Task events
+        document.getElementById('btn-listen-tasks').onclick = () => {
+            handleIncomingTask(window.webex, task => {
+                currentTask = task;
+                console.log('🔔 New task received:', task.data?.interaction?.mediaType, task.id);
+
+                // if digital, auto-load widget
+                if (task.data?.interaction?.mediaType &&
+                    ['chat', 'social', 'email'].includes(task.data.interaction.mediaType)) {
+                    handleDigitalChannelTask(task, {});
+                }
+            });
+            console.log('👂 Listening for task events');
+        };
+
+        document.getElementById('btn-accept').onclick = async () => {
+            if (!currentTask) {
+                alert('No task available to accept');
+                return;
+            }
+            try {
+                await acceptTask(currentTask);
+                console.log('✅ Task accepted');
+            } catch (e) {
+                console.error('Failed to accept task:', e);
+            }
+        };
+
+        document.getElementById('btn-decline').onclick = async () => {
+            if (!currentTask) {
+                alert('No task available to decline');
+                return;
+            }
+            try {
+                await declineTask(currentTask);
+                console.log('✅ Task declined');
+                currentTask = null;
+            } catch (e) {
+                console.error('Failed to decline task:', e);
+            }
+        };
+
+        // Digital channels
+        document.getElementById('btn-init-digital').onclick = async () => {
+            try {
+                const token = await window.webex.credentials.getUserToken();
+                initializeEngageWidget(token);
+                console.log('✅ IMI Engage widget initialized');
+            } catch (e) {
+                console.error('Failed to initialize digital channels:', e);
+            }
+        };
+
+        document.getElementById('btn-load-digital').onclick = () => {
+            if (!currentTask) {
+                alert('No digital task available');
+                return;
+            }
+            try {
+                handleDigitalChannelTask(currentTask, {
+                    agentId: window.webex.internal.device.userId,
+                    agentName: 'Contact Center Agent'
+                });
+                console.log('✅ Digital channel loaded');
+            } catch (e) {
+                console.error('Failed to load digital channel:', e);
+            }
+        };
+
+        // Call controls
+        document.getElementById('btn-hold').onclick = async () => {
+            if (!currentTask) {
+                alert('No active call to hold/resume');
+                return;
+            }
+            try {
+                await toggleHold(currentTask);
+                document.getElementById('btn-hold').textContent = isHold ? 'Resume Call' : 'Hold Call';
+            } catch (e) {
+                console.error('Hold/resume operation failed:', e);
+            }
+        };
+
+        document.getElementById('btn-mute').onclick = async () => {
+            if (!currentTask) {
+                alert('No active call to mute/unmute');
+                return;
+            }
+            try {
+                toggleMute(currentTask);
+                document.getElementById('btn-mute').textContent = isMuted ? 'Unmute Call' : 'Mute Call';
+            } catch (e) {
+                console.error('Mute/unmute operation failed:', e);
+            }
+        };
+
+        // Agent state
+        document.getElementById('btn-set-state').onclick = async () => {
+            const newState = document.getElementById('sel-state').value;
+            try {
+                await setAgentState(window.webex, { state: newState });
+                console.log('✅ Agent state changed to:', newState);
+            } catch (e) {
+                console.error('Agent state change failed:', e);
+            }
+        };
+    </script>
+
+</body>
+
+</html>
