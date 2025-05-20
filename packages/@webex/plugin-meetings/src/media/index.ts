@@ -142,6 +142,7 @@ Media.createMediaConnection = (
     turnServerInfo?: TurnServerInfo;
     bundlePolicy?: BundlePolicy;
     iceCandidatesTimeout?: number;
+    disableAudioMainDtx?: boolean;
   }
 ) => {
   const {
@@ -153,6 +154,7 @@ Media.createMediaConnection = (
     turnServerInfo,
     bundlePolicy,
     iceCandidatesTimeout,
+    disableAudioMainDtx,
   } = options;
 
   const iceServers = [];
@@ -174,6 +176,10 @@ Media.createMediaConnection = (
 
     if (bundlePolicy) {
       config.bundlePolicy = bundlePolicy;
+    }
+
+    if (disableAudioMainDtx !== undefined) {
+      config.disableAudioMainDtx = disableAudioMainDtx;
     }
 
     return new MultistreamRoapMediaConnection(

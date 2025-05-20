@@ -1185,14 +1185,6 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('markErrorAsHandledBySdk', () => {
-      it('should set the error as handled', () => {
-        const error = MeetingUtil.markErrorAsHandledBySdk(new Error('Test error'));
-
-        assert.isTrue(error.handledBySdk);
-      })
-    });
-
     describe('getChangeMeetingFloorErrorPayload', () => {
       [
         {

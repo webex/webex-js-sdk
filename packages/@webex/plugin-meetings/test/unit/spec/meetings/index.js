@@ -182,6 +182,15 @@ describe('plugin-meetings', () => {
         metrics: {
           submitClientMetrics: sinon.stub().returns(Promise.resolve()),
         },
+        newMetrics: {
+          submitClientEvent: sinon.stub(),
+          callDiagnosticLatencies: {
+            measureLatency: sinon.stub().returns(Promise.resolve()),
+          },
+          callDiagnosticMetrics: {
+            clearErrorCache: sinon.stub(),
+          },
+        },
       });
       webex.emit('ready');
     });
@@ -387,6 +396,19 @@ describe('plugin-meetings', () => {
 
           webex.meetings._toggleIpv6BackendNativeSupport(false);
           assert.equal(webex.meetings.config.backendIpv6NativeSupport, false);
+        });
+      });
+    });
+
+    describe('#_toggleDisableAudioMainDtx', () => {
+      it('should have _toggleDisableAudioMainDtx', () => {
+        assert.equal(typeof webex.meetings._toggleDisableAudioMainDtx, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings to disable audio main dtx', () => {
+          webex.meetings._toggleDisableAudioMainDtx(true);
+          assert.equal(webex.meetings.config.experimental.disableAudioMainDtx, true);
         });
       });
     });
@@ -649,6 +671,7 @@ describe('plugin-meetings', () => {
             quality: 'LOW',
             authToken: 'fake_token',
             mirror: false,
+            canvasResolutionScaling: 1,
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
@@ -664,6 +687,7 @@ describe('plugin-meetings', () => {
             quality: 'HIGH',
             blurStrength: 'STRONG',
             bgImageUrl: 'https://test.webex.com/landscape.5a535788.jpg',
+            canvasResolutionScaling: 1,
           };
 
           const result = await webex.meetings.createVirtualBackgroundEffect(effectOptions);
@@ -698,7 +722,6 @@ describe('plugin-meetings', () => {
             audioContext: {},
             authToken: 'fake_token',
             mode: 'WORKLET',
-            env: 'prod',
             avoidSimd: false,
           });
           assert.exists(result.enable);

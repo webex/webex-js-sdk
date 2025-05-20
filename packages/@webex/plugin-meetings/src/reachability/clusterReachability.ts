@@ -49,6 +49,7 @@ export class ClusterReachability extends EventsScope {
   private srflxIceCandidates: RTCIceCandidate[] = [];
   public readonly isVideoMesh: boolean;
   public readonly name;
+  public readonly reachedSubnets: Set<string> = new Set();
 
   /**
    * Constructor for ClusterReachability
@@ -234,25 +235,11 @@ export class ClusterReachability extends EventsScope {
    */
   private registerIceGatheringStateChangeListener() {
     this.pc.onicegatheringstatechange = () => {
-      const {COMPLETE} = ICE_GATHERING_STATE;
-
-      if (this.pc.iceConnectionState === COMPLETE) {
+      if (this.pc.iceGatheringState === ICE_GATHERING_STATE.COMPLETE) {
         this.closePeerConnection();
         this.finishReachabilityCheck();
       }
     };
-  }
-
-  /**
-   * Checks if we have the results for all the protocols (UDP and TCP)
-   *
-   * @returns {boolean} true if we have all results, false otherwise
-   */
-  private haveWeGotAllResults(): boolean {
-    return ['udp', 'tcp', 'xtls'].every(
-      (protocol) =>
-        this.result[protocol].result === 'reachable' || this.result[protocol].result === 'untested'
-    );
   }
 
   /**
@@ -264,9 +251,15 @@ export class ClusterReachability extends EventsScope {
    * @param {string} protocol
    * @param {number} latency
    * @param {string|null} [publicIp]
+   * @param {string|null} [serverIp]
    * @returns {void}
    */
-  private saveResult(protocol: 'udp' | 'tcp' | 'xtls', latency: number, publicIp?: string | null) {
+  private saveResult(
+    protocol: 'udp' | 'tcp' | 'xtls',
+    latency: number,
+    publicIp?: string | null,
+    serverIp?: string | null
+  ) {
     const result = this.result[protocol];
 
     if (result.latencyInMilliseconds === undefined) {
@@ -293,6 +286,10 @@ export class ClusterReachability extends EventsScope {
       );
     } else {
       this.addPublicIP(protocol, publicIp);
+    }
+
+    if (serverIp) {
+      this.reachedSubnets.add(serverIp);
     }
   }
 
@@ -351,21 +348,25 @@ export class ClusterReachability extends EventsScope {
 
       if (e.candidate) {
         if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          this.saveResult('udp', latencyInMilliseconds, e.candidate.address);
+          let serverIp = null;
+          if ('url' in e.candidate) {
+            const stunServerUrlRegex = /stun:([\d.]+):\d+/;
+
+            const match = (e.candidate as any).url.match(stunServerUrlRegex);
+            if (match) {
+              // eslint-disable-next-line prefer-destructuring
+              serverIp = match[1];
+            }
+          }
+
+          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp);
 
           this.determineNatType(e.candidate);
         }
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
           const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
-          this.saveResult(protocol, latencyInMilliseconds);
-          // we don't add public IP for TCP, because in the case of relay candidates
-          // e.candidate.address is the TURN server address, not the client's public IP
-        }
-
-        if (this.haveWeGotAllResults()) {
-          this.closePeerConnection();
-          this.finishReachabilityCheck();
+          this.saveResult(protocol, latencyInMilliseconds, null, e.candidate.address);
         }
       }
     };
