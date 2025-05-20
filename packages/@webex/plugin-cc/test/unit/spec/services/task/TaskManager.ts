@@ -9,7 +9,6 @@ import Task from '../../../../../src/services/task';
 import {TASK_EVENTS} from '../../../../../src/services/task/types';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import config from '../../../../../src/config';
-import {wrap} from 'module';
 import {CC_TASK_EVENTS} from '../../../../../src/services/config/types';
 
 describe('TaskManager', () => {
@@ -380,6 +379,39 @@ describe('TaskManager', () => {
       TASK_EVENTS.TASK_END, 
       taskManager.getTask(taskId)
     );
+  });
+
+  it('should emit TASK_END event on AGENT_INVITE_FAILED event', () => {
+    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+
+      const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
+      const payload = {
+        data: {
+          type: CC_EVENTS.AGENT_INVITE_FAILED,
+          agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+          eventTime: 1733211616959,
+          eventType: 'RoutingMessage',
+          interaction: {state: 'connected'},
+          interactionId: taskId,
+          orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
+          trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
+          mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+          destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+          owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+          queueMgr: 'aqm',
+        },
+      };
+
+      taskManager.getTask(taskId).updateTaskData(payload.data);
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+      expect(taskEmitSpy).toHaveBeenCalledWith(
+        CC_EVENTS.AGENT_INVITE_FAILED, 
+        { ...payload.data}
+      );
+      expect(taskEmitSpy).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_END, 
+        taskManager.getTask(taskId)
+      );
   });
 
   it('should emit TASK_HYDRATE event on AGENT_CONTACT event', () => {

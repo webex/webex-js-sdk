@@ -100,7 +100,6 @@ import {
   MEETING_STATE_MACHINE,
   MEETING_STATE,
   MEETINGS,
-  MQA_STATS,
   NETWORK_STATUS,
   ONLINE,
   OFFLINE,
@@ -164,6 +163,7 @@ import Member from '../member';
 import {BrbState, createBrbState} from './brbState';
 import MultistreamNotSupportedError from '../common/errors/multistream-not-supported-error';
 import JoinForbiddenError from '../common/errors/join-forbidden-error';
+import {ReachabilityMetrics} from '../reachability/reachability.types';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -261,6 +261,8 @@ type FetchMeetingInfoParams = {
   extraParams?: Record<string, any>;
   sendCAevents?: boolean;
 };
+
+type MediaReachabilityMetrics = ReachabilityMetrics & {isSubnetReachable: boolean};
 
 /**
  * MediaDirection
@@ -6819,20 +6821,20 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meetings
    */
   setupStatsAnalyzerEventHandlers = () => {
-    this.statsAnalyzer.on(StatsAnalyzerEventNames.MEDIA_QUALITY, (options) => {
-      // TODO:  might have to send the same event to the developer
-      // Add ip address info if geo hint is present
-      // @ts-ignore fix type
-      options.data.intervalMetadata.peerReflexiveIP =
-        // @ts-ignore
-        this.webex.meetings.geoHintInfo?.clientAddress ||
-        options.data.intervalMetadata.peerReflexiveIP ||
-        MQA_STATS.DEFAULT_IP;
+    this.statsAnalyzer.on(StatsAnalyzerEventNames.MEDIA_QUALITY, (event) => {
+      // Add IP address from geoHintInfo if missing.
+      if (event.data.intervalMetadata.maskedPeerReflexiveIP === '0.0.0.0') {
+        // @ts-ignore fix type
+        const clientAddressFromGeoHint = this.webex.meetings.geoHintInfo?.clientAddress;
+        if (clientAddressFromGeoHint) {
+          event.data.intervalMetadata.maskedPeerReflexiveIP =
+            CallDiagnosticUtils.anonymizeIPAddress(clientAddressFromGeoHint);
+        }
+      }
 
+      // Count members that are in the meeting.
       const {members} = this.getMembers().membersCollection;
-
-      // Count members that are in the meeting
-      options.data.intervalMetadata.meetingUserCount = Object.values(members).filter(
+      event.data.intervalMetadata.meetingUserCount = Object.values(members).filter(
         (member: Member) => member.isInMeeting
       ).length;
 
@@ -6841,10 +6843,10 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.mediaquality.event',
         options: {
           meetingId: this.id,
-          networkType: options.data.networkType,
+          networkType: this.statsAnalyzer.getNetworkType(),
         },
         payload: {
-          intervals: [options.data],
+          intervals: [event.data],
         },
       });
     });
@@ -7009,6 +7011,8 @@ export default class Meeting extends StatelessWebexPlugin {
         bundlePolicy,
         // @ts-ignore - config coming from registerPlugin
         iceCandidatesTimeout: this.config.iceCandidatesGatheringTimeout,
+        // @ts-ignore - config coming from registerPlugin
+        disableAudioMainDtx: this.config.experimental.disableAudioMainDtx,
       }
     );
 
@@ -7159,12 +7163,18 @@ export default class Meeting extends StatelessWebexPlugin {
           },
           options: {
             meetingId: this.id,
+            rawError: error,
           },
         });
       }
-      throw new Error(
+
+      const timedOutError = new Error(
         `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
       );
+
+      timedOutError.cause = error;
+
+      throw timedOutError;
     }
   }
 
@@ -7225,6 +7235,9 @@ export default class Meeting extends StatelessWebexPlugin {
           ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT / 1000
         } seconds`
       );
+
+      const error = new Error('Timed out waiting for REMOTE SDP ANSWER');
+
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media-engine.remote-sdp-received',
@@ -7237,10 +7250,10 @@ export default class Meeting extends StatelessWebexPlugin {
             }),
           ],
         },
-        options: {meetingId: this.id, rawError: new Error('Timeout waiting for SDP answer')},
+        options: {meetingId: this.id, rawError: error},
       });
 
-      deferSDPAnswer.reject(new Error('Timed out waiting for REMOTE SDP ANSWER'));
+      deferSDPAnswer.reject(error);
     }, ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT);
 
     LoggerProxy.logger.info(`${LOG_HEADER} waiting for REMOTE SDP ANSWER...`);
@@ -7345,7 +7358,7 @@ export default class Meeting extends StatelessWebexPlugin {
         error
       );
 
-      throw new AddMediaFailed();
+      throw new AddMediaFailed(error);
     }
   }
 
@@ -7760,14 +7773,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const {connectionType, selectedCandidatePairChanges, numTransports} =
         await this.mediaProperties.getCurrentConnectionInfo();
-      // @ts-ignore
-      const reachabilityStats = await this.webex.meetings.reachability.getReachabilityMetrics();
+
       const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
 
-      // @ts-ignore
-      const isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(
-        this.mediaServerIp
-      );
+      const reachabilityMetrics = await this.getMediaReachabilityMetricFields();
 
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
         correlation_id: this.correlationId,
@@ -7778,8 +7787,7 @@ export default class Meeting extends StatelessWebexPlugin {
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
-        isSubnetReachable,
-        ...reachabilityStats,
+        ...reachabilityMetrics,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
       });
@@ -7801,17 +7809,12 @@ export default class Meeting extends StatelessWebexPlugin {
       LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
 
       // @ts-ignore
-      const reachabilityMetrics = await this.webex.meetings.reachability.getReachabilityMetrics();
+      const reachabilityMetrics = await this.getMediaReachabilityMetricFields();
 
       const {selectedCandidatePairChanges, numTransports} =
         await this.mediaProperties.getCurrentConnectionInfo();
 
       const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
-
-      // @ts-ignore
-      const isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(
-        this.mediaServerIp
-      );
 
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
         correlation_id: this.correlationId,
@@ -7842,7 +7845,6 @@ export default class Meeting extends StatelessWebexPlugin {
           this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
           'unknown',
         ...reachabilityMetrics,
-        isSubnetReachable,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
       });
@@ -9612,5 +9614,45 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     return Promise.resolve();
+  }
+
+  /**
+   * Gets the media reachability metrics
+   *
+   * @returns {Promise<MediaReachabilityMetrics>}
+   */
+  private async getMediaReachabilityMetricFields(): Promise<MediaReachabilityMetrics> {
+    const reachabilityMetrics: ReachabilityMetrics =
+      // @ts-ignore
+      await this.webex.meetings.reachability.getReachabilityMetrics();
+
+    const successKeys: Array<keyof ReachabilityMetrics> = [
+      'reachability_public_udp_success',
+      'reachability_public_tcp_success',
+      'reachability_public_xtls_success',
+      'reachability_vmn_udp_success',
+      'reachability_vmn_tcp_success',
+      'reachability_vmn_xtls_success',
+    ];
+
+    const totalSuccessCases = successKeys.reduce((total, key) => {
+      const value = reachabilityMetrics[key];
+      if (typeof value === 'number') {
+        return total + value;
+      }
+
+      return total;
+    }, 0);
+
+    let isSubnetReachable = null;
+    if (totalSuccessCases > 0) {
+      // @ts-ignore
+      isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(this.mediaServerIp);
+    }
+
+    return {
+      ...reachabilityMetrics,
+      isSubnetReachable,
+    };
   }
 }
