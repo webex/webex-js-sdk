@@ -5,15 +5,13 @@
 import '@webex/internal-plugin-user';
 import '@webex/internal-plugin-device';
 
+import {registerInternalPlugin} from '@webex/webex-core';
+
 import Avatar from './avatar';
 import config from './config';
 
-export const avatarPlugin = [
-  'avatar',
-  Avatar,
-  {
-    config,
-  },
-];
+registerInternalPlugin('avatar', Avatar, {
+  config,
+});
 
 export {default} from './avatar';
