@@ -1144,10 +1144,18 @@ describe('webex.cc', () => {
       const webSocketManagerOnSpy = jest.spyOn(webex.cc.services.webSocketManager, 'on');
       await webex.cc['silentRelogin']();
 
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent re-login process', {
+        module: CC_FILE,
+        method: 'silentRelogin',
+      });
       expect(LoggerProxy.info).toHaveBeenCalledWith(
         'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
         {module: CC_FILE, method: 'silentRelogin'}
       );
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Silent re-login process completed successfully', {
+        module: CC_FILE,
+        method: 'silentRelogin',
+      });
       expect(setAgentStateSpy).toHaveBeenCalledWith({
         state: 'Available',
         auxCodeId: '0', // even if get auxcodeId from relogin response, it should be 0 for available state
@@ -1182,6 +1190,10 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
       await webex.cc['silentRelogin']();
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent re-login process', {
+        module: CC_FILE,
+        method: 'silentRelogin',
+      });
       expect(LoggerProxy.log).toHaveBeenCalledWith(
         'Agent not found during re-login, handling silently',
         {module: CC_FILE, method: 'silentRelogin'}
@@ -1193,6 +1205,10 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
 
       await expect(webex.cc['silentRelogin']()).rejects.toThrow(error);
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent re-login process', {
+        module: CC_FILE,
+        method: 'silentRelogin',
+      });
     });
 
     it('should update agentConfig with deviceType during silent relogin for EXTENSION', async () => {
@@ -1222,6 +1238,14 @@ describe('webex.cc', () => {
 
       await webex.cc['silentRelogin']();
 
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent re-login process', {
+        module: CC_FILE,
+        method: 'silentRelogin',
+      });
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Silent re-login process completed successfully', {
+        module: CC_FILE,
+        method: 'silentRelogin',
+      });
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.EXTENSION);
       expect(webex.cc.agentConfig.defaultDn).toBe('12345');
       expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('auxCodeId');

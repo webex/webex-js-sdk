@@ -740,6 +740,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Called when we finish registration to silently handle the errors
    */
   private async silentRelogin(): Promise<void> {
+    LoggerProxy.info('Starting silent re-login process', {
+      module: CC_FILE,
+      method: this.silentRelogin.name,
+    });
+
     try {
       const reLoginResponse = await this.services.agent.reload();
       const {
@@ -788,6 +793,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig.isAgentLoggedIn = true;
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
+
+      LoggerProxy.info('Silent re-login process completed successfully', {
+        module: CC_FILE,
+        method: this.silentRelogin.name,
+      });
     } catch (error) {
       const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin', CC_FILE);
       if (reason === 'AGENT_NOT_FOUND') {
