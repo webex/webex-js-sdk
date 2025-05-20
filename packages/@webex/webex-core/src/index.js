@@ -23,6 +23,7 @@ export {
   ServiceInterceptor,
   ServerErrorInterceptor,
   Services,
+  ServicesV2,
   ServiceHost,
   ServiceUrl,
   HostMapInterceptor,
