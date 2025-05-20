@@ -84,6 +84,9 @@ describe('Registration Tests', () => {
   const failurePayload429 = <WebexRequestPayload>(<unknown>{
     statusCode: 429,
     body: mockPostResponse,
+    headers: {
+      'retry-after': 10,
+    },
   });
 
   const successPayload = <WebexRequestPayload>(<unknown>{
@@ -349,6 +352,9 @@ describe('Registration Tests', () => {
         file: REGISTRATION_FILE,
       });
 
+      jest.advanceTimersByTime(10000);
+      await flushPromises();
+
       expect(failbackRetry429Spy).toBeCalledOnceWith();
       expect(reg.failback429RetryAttempts).toBe(0);
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
@@ -374,6 +380,7 @@ describe('Registration Tests', () => {
       });
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(restoreSpy).toBeCalledOnceWith(FAILBACK_UTIL);
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(restartSpy).toBeCalledOnceWith(FAILBACK_UTIL);
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
       expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
