@@ -961,7 +961,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Call Events.
    */
   private async handleOutgoingCallSetup(event: CallEvent) {
-    log.info(`handleOutgoingCallSetup: ${this.getCorrelationId()}  `, {
+    log.log(`handleOutgoingCallSetup: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
       method: this.handleOutgoingCallSetup.name,
     });
@@ -970,16 +970,20 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     try {
       const response = await this.post(message);
-      log.log(`handleOutgoingCallSetup: Response: ${JSON.stringify(response)}`, {
+      log.info(`handleOutgoingCallSetup: Response: ${JSON.stringify(response)}`, {
         file: CALL_FILE,
         method: this.handleOutgoingCallSetup.name,
       });
 
-      log.log(`handleOutgoingCallSetup: Response code: ${response.statusCode}`, {
+      log.info(`handleOutgoingCallSetup: Response code: ${response.statusCode}`, {
         file: CALL_FILE,
         method: this.handleOutgoingCallSetup.name,
       });
       this.setCallId(response.body.callId);
+      log.log(`Call setup successful for callId: ${response.body.callId}`, {
+        file: CALL_FILE,
+        method: this.handleOutgoingCallSetup.name,
+      });
     } catch (e) {
       const extendedError = new Error(`Failed to setup the call: ${e}`) as ExtendedError;
       log.error(extendedError, {
@@ -1432,6 +1436,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       const response = await this.delete();
 
       log.log(`handleOutgoingCallDisconnect: Response code: ${response.statusCode}`, {
+        file: CALL_FILE,
+        method: this.handleOutgoingCallDisconnect.name,
+      });
+
+      log.log(`Call disconnected successfully: ${this.correlationId}`, {
         file: CALL_FILE,
         method: this.handleOutgoingCallDisconnect.name,
       });
@@ -1940,7 +1949,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private handleIncomingRoapOffer(context: MediaContext, event: RoapEvent) {
-    log.info(`handleIncomingRoapOffer: ${this.getCorrelationId()}`, {
+    log.log(`handleIncomingRoapOffer: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: this.handleIncomingRoapOffer.name,
     });
