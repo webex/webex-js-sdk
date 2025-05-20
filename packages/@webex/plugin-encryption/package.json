@@ -8,13 +8,25 @@
   },
   "license": "https://github.com/webex/webex-js-sdk/blob/next/LICENSE.md",
   "contributors": [
-    "Bharath Balan <bhabalan@cisco.com>"
+    "Adhwaith Menon <adhmenon@cisco.com>",
+    "Bharath Balan <bhabalan@cisco.com>",
+    "Kesava Krishnan Madavan <kmadavan@cisco.com>",
+    "Priya Kesari <pkesari@cisco.com>",
+    "Rajesh Kumar <rarajes2@cisco.com>",
+    "Ravi Chandra Sekhar Sarika <rsarika@cisco.com>",
+    "Shreyas Sharma <shreysh2@cisco.com>",
+    "Sreekanth Narayanan <sreenara@cisco.com>"
   ],
-  "main": "dist/index.js",
+  "main": "dist/webex.js",
+  "devMain": "src/index.ts",
+  "exports": {
+    ".": "./dist/webex.js",
+    "./package": "./package.json"
+  },
   "types": "dist/types/index.d.ts",
   "scripts": {
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
-    "build:docs": "typedoc --out ../../../docs/plugin-encrption",
+    "build:docs": "typedoc --out ../../../docs/plugin-encryption",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
     "deploy:npm": "yarn npm publish",
     "test:browser": "webex-legacy-tools test --integration --runner karma",
@@ -51,6 +63,5 @@
   },
   "engines": {
     "node": ">=16"
-  },
-  "devMain": "src/index.js"
+  }
 }
