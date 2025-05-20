@@ -205,6 +205,13 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(
+        `Successfully retrieved call history data with ${
+          this.userSessions[USER_SESSIONS]?.length || 0
+        } records`,
+        this.loggerContext
+      );
+
       return responseDetails;
     } catch (err: unknown) {
       const extendedError = new Error(`Failed to get call history: ${err}`) as ExtendedError;
@@ -260,7 +267,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       }
 
       const data: UpdateMissedCallsResponse = await response.json();
-      log.info(`Missed calls are succesfully read by the user`, loggerContext);
+      log.log(`Missed calls are successfully read by the user`, loggerContext);
       const responseDetails: UpdateMissedCallsResponse = {
         statusCode: data.statusCode as number,
         data: {
@@ -268,6 +275,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         },
         message: SUCCESS_MESSAGE,
       };
+
+      log.log(`Successfully updated ${santizedSessionIds?.length} missed calls`, loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {
@@ -314,7 +323,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         message: SUCCESS_MESSAGE,
       };
 
-      log.info(`Line details fetched successfully`, loggerContext);
+      log.log(`Line details fetched successfully`, loggerContext);
 
       return ucmLineDetails;
     } catch (err: unknown) {
@@ -393,7 +402,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       }
 
       const data: DeleteCallHistoryRecordsResponse = await response.json();
-      log.info(`Call history records are succesfully deleted by the user`, loggerContext);
+      log.log(`Call history records are successfully deleted by the user`, loggerContext);
       const responseDetails: DeleteCallHistoryRecordsResponse = {
         statusCode: data.statusCode as number,
         data: {
@@ -401,6 +410,11 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         },
         message: SUCCESS_MESSAGE,
       };
+
+      log.log(
+        `Successfully deleted ${santizedSessionIds?.length} call history records`,
+        loggerContext
+      );
 
       return responseDetails;
     } catch (err: unknown) {
