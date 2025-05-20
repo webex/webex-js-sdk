@@ -2,9 +2,11 @@ import config from '@webex/jest-config-legacy';
 
 const jestConfig = {
   rootDir: './',
-  transformIgnorePatterns: [],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   testResultsProcessor: 'jest-junit',
+  transformIgnorePatterns: [
+    '/node_modules/(?!(uuid)/)', // Transform `uuid` using Babel
+  ],
   // Clear mocks in between tests by default
   clearMocks: true,
   collectCoverage: true,
