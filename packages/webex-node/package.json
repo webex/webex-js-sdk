@@ -53,6 +53,7 @@
         "@webex/plugin-attachment-actions": "workspace:*",
         "@webex/plugin-authorization": "workspace:*",
         "@webex/plugin-device-manager": "workspace:*",
+        "@webex/plugin-encryption": "workspace:*",
         "@webex/plugin-logger": "workspace:*",
         "@webex/plugin-memberships": "workspace:*",
         "@webex/plugin-messages": "workspace:*",
