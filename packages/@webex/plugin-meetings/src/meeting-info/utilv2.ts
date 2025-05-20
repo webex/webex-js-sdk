@@ -296,6 +296,8 @@ export default class MeetingInfoUtil {
       body.locusId = locusId;
     }
 
+    body.disableWebRedirect = true;
+
     return body;
   }
 

@@ -238,6 +238,7 @@ describe('plugin-meetings', () => {
             supportHostKey: true,
             supportCountryList: true,
             ...extraParams,
+            disableWebRedirect: true,
           }
         );
       });
