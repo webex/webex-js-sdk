@@ -52,3 +52,8 @@ export const TURN_ON_CAPTION_STATUS = {
   ENABLED: 'enabled',
   SENDING: 'sending',
 };
+
+export const TOGGLE_MANUAL_CAPTION_STATUS = {
+  IDLE: 'idle',
+  SENDING: 'sending',
+};

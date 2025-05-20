@@ -7,7 +7,7 @@ import Mercury from '@webex/internal-plugin-mercury';
 import LLMChannel from '@webex/internal-plugin-llm';
 
 import VoiceaService from '../../../src/index';
-import {EVENT_TRIGGERS} from '../../../src/constants';
+import { EVENT_TRIGGERS, TOGGLE_MANUAL_CAPTION_STATUS } from "../../../src/constants";
 
 describe('plugin-voicea', () => {
   const locusUrl = 'locusUrl';
@@ -538,20 +538,10 @@ describe('plugin-voicea', () => {
         const mockWebSocket = new MockWebSocket();
 
         voiceaService.webex.internal.llm.socket = mockWebSocket;
+        voiceaService.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
       });
 
       it('turns on manual caption', async () => {
-        // Turn on captions
-        await voiceaService.turnOnCaptions();
-
-        // eslint-disable-next-line no-underscore-dangle
-        voiceaService.webex.internal.llm._emit('event:relay.event', {
-          headers: {from: 'ws'},
-          data: {relayType: 'voicea.annc', voiceaPayload: {}},
-        });
-
-        voiceaService.listenToEvents();
-
         await voiceaService.toggleManualCaption(true);
         sinon.assert.calledWith(
           voiceaService.request,
@@ -566,10 +556,6 @@ describe('plugin-voicea', () => {
 
 
       it('turns off manual caption', async () => {
-        await voiceaService.toggleManualCaption(true);
-
-        voiceaService.listenToEvents();
-
         await voiceaService.toggleManualCaption(false);
         sinon.assert.calledWith(
           voiceaService.request,
@@ -579,6 +565,14 @@ describe('plugin-voicea', () => {
             body: {manualCaption: {enable: false}},
           })
         );
+
+      });
+
+      it('ignore toggle manual caption', async () => {
+        voiceaService.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.SENDING;
+        await voiceaService.toggleManualCaption(true);
+
+        sinon.assert.notCalled(voiceaService.request);
 
       });
     });
