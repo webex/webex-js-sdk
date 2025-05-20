@@ -159,6 +159,7 @@ describe('createMediaConnection', () => {
         password: 'turn password',
       },
       bundlePolicy: 'max-bundle',
+      disableAudioMainDtx: false,
     });
     assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
     assert.calledWith(
@@ -172,6 +173,7 @@ describe('createMediaConnection', () => {
           },
         ],
         bundlePolicy: 'max-bundle',
+        disableAudioMainDtx: false,
       },
       'meeting id'
     );
@@ -251,6 +253,34 @@ describe('createMediaConnection', () => {
         },
       },
       bundlePolicy: undefined,
+    });
+    assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
+    assert.calledWith(
+      multistreamRoapMediaConnectionConstructorStub,
+      {
+        iceServers: [],
+      },
+      'meeting id'
+    );
+  });
+
+  it('does not pass disableAudioMainDtx to MultistreamRoapMediaConnection if disableAudioMainDtx is undefined', () => {
+    const multistreamRoapMediaConnectionConstructorStub = sinon
+      .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
+      .returns(fakeRoapMediaConnection);
+
+    Media.createMediaConnection(true, 'debug string', 'meeting id', {
+      mediaProperties: {
+        mediaDirection: {
+          sendAudio: true,
+          sendVideo: true,
+          sendShare: false,
+          receiveAudio: true,
+          receiveVideo: true,
+          receiveShare: true,
+        },
+      },
+      disableAudioMainDtx: undefined,
     });
     assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
     assert.calledWith(

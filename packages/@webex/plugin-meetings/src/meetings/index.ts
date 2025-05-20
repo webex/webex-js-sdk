@@ -808,6 +808,26 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to toggle usage of audio main DTX, needs to be called before webex.meetings.register()
+   *
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleDisableAudioMainDtx(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+
+    // @ts-ignore
+    if (this.config.experimental.disableAudioMainDtx !== newValue) {
+      // @ts-ignore
+      this.config.experimental.disableAudioMainDtx = newValue;
+    }
+  }
+
+  /**
    * Executes a registration step and updates the registration status.
    * @param {Function} step - The registration step to execute.
    * @param {string} stepName - The name of the registration step.
