@@ -273,6 +273,16 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.register();
 
+      // Verify logging calls
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting CC SDK registration', {
+        module: CC_FILE,
+        method: 'register',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('CC SDK registration completed successfully', {
+        module: CC_FILE,
+        method: 'register',
+      });
+      
       expect(mercuryConnect).toHaveBeenCalled();
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
@@ -359,10 +369,23 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.register()).rejects.toThrow('Error while performing register');
 
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting CC SDK registration', {
+        module: CC_FILE,
+        method: 'register',
+      });
       expect(LoggerProxy.error).toHaveBeenCalledWith(`Error during register: ${mockError}`, {
         module: CC_FILE,
         method: 'register',
       });
+      
+      // Verify metrics tracking
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
+        {
+          orgId: undefined,
+        },
+        ['operational']
+      );
     });
 
     it('should log error if mercury connect fails but cc.register() should not fail', async () => {
@@ -697,6 +720,16 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.stationLogin(options);
 
+      // Verify logging calls
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station login', {
+        module: CC_FILE,
+        method: 'stationLogin',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent station login completed successfully', {
+        module: CC_FILE,
+        method: 'stationLogin',
+      });
+      
       expect(stationLoginMock).toHaveBeenCalledWith({
         data: {
           dialNumber: '1234567890',
@@ -755,6 +788,16 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.stationLogout(data);
 
+      // Verify logging calls
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station logout', {
+        module: CC_FILE,
+        method: 'stationLogout',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent station logout completed successfully', {
+        module: CC_FILE,
+        method: 'stationLogout',
+      });
+
       expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       // expect(mockTaskManager.unregisterIncomingCallEvent).toHaveBeenCalledWith();
@@ -805,6 +848,16 @@ describe('webex.cc', () => {
         .mockResolvedValue({} as StationLoginSuccess);
 
       const result = await webex.cc.stationReLogin();
+
+      // Verify logging calls
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station relogin', {
+        module: CC_FILE,
+        method: 'stationReLogin',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent station relogin completed successfully', {
+        module: CC_FILE,
+        method: 'stationReLogin',
+      });
 
       expect(stationLoginMock).toHaveBeenCalled();
       expect(result).toEqual(response);
@@ -859,12 +912,18 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.setAgentState(expectedPayload);
 
-      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload});
-      expect(result).toEqual(expectedPayload);
+      // Verify logging calls
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Setting agent state', {
+        module: CC_FILE,
+        method: 'setAgentState',
+      });
       expect(LoggerProxy.log).toHaveBeenCalledWith('SET AGENT STATUS API SUCCESS', {
         module: CC_FILE,
         method: 'setAgentState',
       });
+
+      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload});
+      expect(result).toEqual(expectedPayload);
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED
@@ -988,6 +1047,16 @@ describe('webex.cc', () => {
         .mockResolvedValue(buddyAgentsResponse);
 
       const result = await webex.cc.getBuddyAgents(data);
+
+      // Verify logging calls
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching buddy agents', {
+        module: CC_FILE,
+        method: 'getBuddyAgents',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Successfully retrieved buddy agents', {
+        module: CC_FILE,
+        method: 'getBuddyAgents',
+      });
 
       expect(buddyAgentsSpy).toHaveBeenCalledWith({
         data: {agentProfileId: 'test-agent-profile-id', ...data},
@@ -1231,8 +1300,17 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.startOutdial(destination);
 
-      expect(startOutdialMock).toHaveBeenCalledWith({data: newPayload});
+      // Verify logging calls
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting outbound dial', {
+        module: CC_FILE,
+        method: 'startOutdial',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Outbound dial completed successfully', {
+        module: CC_FILE,
+        method: 'startOutdial',
+      });
 
+      expect(startOutdialMock).toHaveBeenCalledWith({data: newPayload});
       expect(result).toEqual(mockResponse);
     });
 
@@ -1284,6 +1362,16 @@ describe('webex.cc', () => {
       webex.cc.services.config.getQueues = jest.fn().mockResolvedValue(mockQueuesResponse);
 
       const result = await webex.cc.getQueues();
+
+      // Verify logging calls
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
+        module: CC_FILE,
+        method: 'getQueues',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Successfully retrieved queues', {
+        module: CC_FILE,
+        method: 'getQueues',
+      });
 
       expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
         'mockOrgId',
@@ -1648,6 +1736,22 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc, 'stationLogin').mockResolvedValue(mockResp as any);
 
       const result = await webex.cc.updateAgentDeviceType(data);
+
+      // Verify logging calls
+      expect(LoggerProxy.info).toHaveBeenCalledWith(
+        `[WX_CC_SDK_mock-tracking-uuid] updateAgentDeviceType | starting profile update`,
+        {
+          module: CC_FILE,
+          method: 'updateAgentDeviceType',
+        }
+      );
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        `[WX_CC_SDK_mock-tracking-uuid] updateAgentDeviceType | profile updated successfully`,
+        {
+          module: CC_FILE,
+          method: 'updateAgentDeviceType',
+        }
+      );
 
       expect(webex.cc.stationLogout).toHaveBeenCalledWith({logoutReason: 'User requested agent device change'});
       expect(webex.cc.stationLogin).toHaveBeenCalledWith({

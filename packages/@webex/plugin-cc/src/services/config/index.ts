@@ -143,6 +143,11 @@ export default class AgentConfigService {
    * @returns {Promise<AgentResponse>}
    */
   public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentResponse> {
+    LoggerProxy.info('Fetching user data using CI', {
+      module: CONFIG_FILE_NAME,
+      method: 'getUserUsingCI',
+    });
+
     try {
       const resource = endPointMap.userByCI(orgId, agentId);
       const response = await this.webexReq.request({
@@ -180,6 +185,11 @@ export default class AgentConfigService {
     orgId: string,
     desktopProfileId: string
   ): Promise<DesktopProfileResponse> {
+    LoggerProxy.info('Fetching desktop profile', {
+      module: CONFIG_FILE_NAME,
+      method: 'getDesktopProfileById',
+    });
+
     try {
       const resource = endPointMap.desktopProfile(orgId, desktopProfileId);
       const response = await this.webexReq.request({
@@ -217,6 +227,11 @@ export default class AgentConfigService {
     orgId: string,
     multimediaProfileId: string
   ): Promise<MultimediaProfileResponse> {
+    LoggerProxy.info('Fetching multimedia profile', {
+      module: CONFIG_FILE_NAME,
+      method: 'getMultimediaProfileById',
+    });
+
     try {
       const resource = endPointMap.multimediaProfile(orgId, multimediaProfileId);
       const response = await this.webexReq.request({
@@ -259,6 +274,11 @@ export default class AgentConfigService {
     pageSize: number,
     filter: string[]
   ): Promise<ListTeamsResponse> {
+    LoggerProxy.info('Fetching list of teams', {
+      module: CONFIG_FILE_NAME,
+      method: 'getListOfTeams',
+    });
+
     try {
       const resource = endPointMap.listTeams(orgId, page, pageSize, filter);
       const response = await this.webexReq.request({
@@ -337,6 +357,11 @@ export default class AgentConfigService {
     filter: string[],
     attributes: string[]
   ): Promise<ListAuxCodesResponse> {
+    LoggerProxy.info('Fetching list of aux codes', {
+      module: CONFIG_FILE_NAME,
+      method: 'getListOfAuxCodes',
+    });
+
     try {
       const resource = endPointMap.listAuxCodes(orgId, page, pageSize, filter, attributes);
       const response = await this.webexReq.request({
@@ -414,6 +439,10 @@ export default class AgentConfigService {
    * @returns {Promise<SiteInfo>}
    */
   public async getSiteInfo(orgId: string, siteId: string): Promise<SiteInfo> {
+    LoggerProxy.info('Fetching site information', {
+      module: CONFIG_FILE_NAME,
+      method: 'getSiteInfo',
+    });
     try {
       const resource = endPointMap.siteInfo(orgId, siteId);
       const response = await this.webexReq.request({
@@ -619,6 +648,11 @@ export default class AgentConfigService {
     search?: string,
     filter?: string
   ): Promise<ContactServiceQueue[]> {
+    LoggerProxy.info('Fetching queue list', {
+      module: CONFIG_FILE_NAME,
+      method: 'getQueues',
+    });
+
     try {
       let queryParams = `page=${page}&pageSize=${pageSize}&desktopProfileFilter=true`;
       if (search) queryParams += `&search=${search}`;

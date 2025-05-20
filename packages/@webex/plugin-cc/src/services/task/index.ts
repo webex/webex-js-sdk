@@ -5,6 +5,7 @@ import {getErrorDetails} from '../core/Utils';
 import {LoginOption} from '../../types';
 import {CC_FILE} from '../../constants';
 import routingContact from './contact';
+import LoggerProxy from '../../logger-proxy';
 import {
   ITask,
   TaskResponse,
@@ -90,13 +91,24 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async accept(): Promise<TaskResponse> {
     try {
+      LoggerProxy.info(`Accepting task ${this.data?.interactionId}`, {
+        module: CC_FILE,
+        method: 'accept',
+      });
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
         METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
       ]);
 
-      if (this.data.interaction.mediaType !== MEDIA_CHANNEL.TELEPHONY) {
-        return this.contact.accept({interactionId: this.data.interactionId});
+      if (this.data?.interaction.mediaType !== MEDIA_CHANNEL.TELEPHONY) {
+        const response = await this.contact.accept({interactionId: this.data?.interactionId});
+
+        LoggerProxy.log(`Task ${this.data?.interactionId} accepted successfully`, {
+          module: CC_FILE,
+          method: 'accept',
+        });
+
+        return response;
       }
 
       if (this.webCallingService.loginOption === LoginOption.BROWSER) {
@@ -105,29 +117,42 @@ export default class Task extends EventEmitter implements ITask {
         const localStream = await navigator.mediaDevices.getUserMedia(constraints);
         const audioTrack = localStream.getAudioTracks()[0];
         this.localAudioStream = new LocalMicrophoneStream(new MediaStream([audioTrack]));
-        this.webCallingService.answerCall(this.localAudioStream, this.data.interactionId);
+        this.webCallingService.answerCall(this.localAudioStream, this.data?.interactionId);
         this.metricsManager.trackEvent(
           METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
           {
-            taskId: this.data.interactionId,
+            taskId: this.data?.interactionId,
             ...MetricsManager.getCommonTrackingFieldForAQMResponse(this.data),
           },
           ['operational', 'behavioral', 'business']
+        );
+
+        LoggerProxy.log(
+          `Task ${this.data?.interactionId} accepted successfully with browser calling`,
+          {
+            module: CC_FILE,
+            method: 'accept',
+          }
         );
 
         return Promise.resolve(); // TODO: Update this with sending the task object received in AgentContactAssigned
       }
 
       // TODO: Invoke the accept API from services layer. This is going to be used in Outbound Dialer scenario
-      const response = await this.contact.accept({interactionId: this.data.interactionId});
+      const response = await this.contact.accept({interactionId: this.data?.interactionId});
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-          taskId: this.data.interactionId,
+          taskId: this.data?.interactionId,
         },
         ['operational', 'behavioral', 'business']
       );
+
+      LoggerProxy.log(`Task ${this.data?.interactionId} accepted successfully`, {
+        module: CC_FILE,
+        method: 'accept',
+      });
 
       return response;
     } catch (error) {
@@ -135,7 +160,7 @@ export default class Task extends EventEmitter implements ITask {
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
         {
-          taskId: this.data.interactionId,
+          taskId: this.data?.interactionId,
           error: error.toString(),
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details as Failure),
         },
@@ -156,7 +181,17 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async toggleMute() {
     try {
+      LoggerProxy.info(`Toggling mute state for task ${this.data?.interactionId}`, {
+        module: CC_FILE,
+        method: 'toggleMute',
+      });
+
       this.webCallingService.muteUnmuteCall(this.localAudioStream);
+
+      LoggerProxy.log(`Mute state toggled successfully for task ${this.data?.interactionId}`, {
+        module: CC_FILE,
+        method: 'toggleMute',
+      });
 
       return Promise.resolve();
     } catch (error) {
@@ -177,6 +212,10 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async decline(): Promise<TaskResponse> {
     try {
+      LoggerProxy.info(`Declining task ${this.data?.interactionId}`, {
+        module: CC_FILE,
+        method: 'decline',
+      });
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
@@ -190,6 +229,11 @@ export default class Task extends EventEmitter implements ITask {
         {taskId: this.data.interactionId},
         ['operational', 'behavioral']
       );
+
+      LoggerProxy.log(`Task ${this.data?.interactionId} declined successfully`, {
+        module: CC_FILE,
+        method: 'decline',
+      });
 
       return Promise.resolve();
     } catch (error) {
@@ -218,6 +262,11 @@ export default class Task extends EventEmitter implements ITask {
    * */
   public async hold(): Promise<TaskResponse> {
     try {
+      LoggerProxy.info(`Holding task ${this.data?.interactionId}`, {
+        module: CC_FILE,
+        method: 'hold',
+      });
+
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS,
         METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
@@ -237,6 +286,11 @@ export default class Task extends EventEmitter implements ITask {
         },
         ['operational', 'behavioral']
       );
+
+      LoggerProxy.log(`Task ${this.data?.interactionId} placed on hold successfully`, {
+        module: CC_FILE,
+        method: 'hold',
+      });
 
       return response;
     } catch (error) {
@@ -268,6 +322,12 @@ export default class Task extends EventEmitter implements ITask {
     try {
       const {mainInteractionId} = this.data.interaction;
       const {mediaResourceId} = this.data.interaction.media[mainInteractionId];
+
+      LoggerProxy.info(`Resuming task ${this.data?.interactionId}`, {
+        module: CC_FILE,
+        method: 'resume',
+      });
+
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS,
         METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
@@ -288,6 +348,11 @@ export default class Task extends EventEmitter implements ITask {
         },
         ['operational', 'behavioral']
       );
+
+      LoggerProxy.log(`Task ${this.data?.interactionId} resumed successfully`, {
+        module: CC_FILE,
+        method: 'resume',
+      });
 
       return response;
     } catch (error) {
@@ -320,12 +385,18 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async end(): Promise<TaskResponse> {
     try {
+      LoggerProxy.info(`Ending task ${this.data?.interactionId}`, {
+        module: CC_FILE,
+        method: 'end',
+      });
+
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_END_SUCCESS,
         METRIC_EVENT_NAMES.TASK_END_FAILED,
       ]);
 
       const response = await this.contact.end({interactionId: this.data.interactionId});
+
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_END_SUCCESS,
         {
@@ -334,6 +405,11 @@ export default class Task extends EventEmitter implements ITask {
         },
         ['operational', 'behavioral', 'business']
       );
+
+      LoggerProxy.log(`Task ${this.data?.interactionId} ended successfully`, {
+        module: CC_FILE,
+        method: 'end',
+      });
 
       return response;
     } catch (error) {
@@ -525,6 +601,11 @@ export default class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
       ]);
 
+      LoggerProxy.info(`Starting consult for task ${this.data?.interactionId}`, {
+        module: CC_FILE,
+        method: 'consult',
+      });
+
       const result = await this.contact.consult({
         interactionId: this.data.interactionId,
         data: consultPayload,
@@ -540,6 +621,11 @@ export default class Task extends EventEmitter implements ITask {
         },
         ['operational', 'behavioral', 'business']
       );
+
+      LoggerProxy.log(`Consult started successfully for task ${this.data?.interactionId}`, {
+        module: CC_FILE,
+        method: 'consult',
+      });
 
       return result;
     } catch (error) {
