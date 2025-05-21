@@ -10877,6 +10877,7 @@ describe('plugin-meetings', () => {
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
         let canShareWhiteBoardSpy;
+        let canMoveToLobbySpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -10907,6 +10908,7 @@ describe('plugin-meetings', () => {
           );
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
           canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
+          canMoveToLobbySpy = sinon.spy(MeetingUtil, 'canMoveToLobby');
         });
 
         afterEach(() => {
@@ -11003,6 +11005,16 @@ describe('plugin-meetings', () => {
               actionName: 'canTransferFile',
               requiredDisplayHints: [],
               requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
+            },
+            {
+              actionName: 'canRealtimeCloseCaption',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION],
+            },
+            {
+              actionName: 'canRealtimeCloseCaptionManual',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION_MANUAL],
             },
             {
               actionName: 'canChat',
@@ -11448,6 +11460,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(requiresPostMeetingDataConsentPromptSpy, userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
           assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
+          assert.calledWith(canMoveToLobbySpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],

@@ -4126,6 +4126,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this.userDisplayHints
           ),
           canUserRenameOthers: MeetingUtil.canUserRenameOthers(this.userDisplayHints),
+          canMoveToLobby: MeetingUtil.canMoveToLobby(this.userDisplayHints),
           canMuteAll: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
             displayHints: this.userDisplayHints,
@@ -4258,6 +4259,14 @@ export default class Meeting extends StatelessWebexPlugin {
             !this.arePolicyRestrictionsSupported,
           canTransferFile: ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
+            policies: this.selfUserPolicies,
+          }),
+          canRealtimeCloseCaption: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION],
+            policies: this.selfUserPolicies,
+          }),
+          canRealtimeCloseCaptionManual: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION_MANUAL],
             policies: this.selfUserPolicies,
           }),
           canChat: ControlsOptionsUtil.hasPolicies({
