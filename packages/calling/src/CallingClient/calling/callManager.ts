@@ -83,6 +83,10 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
         if (activeCalls === 0) {
           /* Notify CallingClient when all calls are cleared. */
           this.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
+          log.log('All calls have been cleared', {
+            file: CALL_MANAGER_FILE,
+            method: 'createCall',
+          });
         }
       },
       this.serviceIndicator,
@@ -108,6 +112,10 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    */
   public updateActiveMobius(url: string) {
     this.activeMobiusUrl = url;
+    log.log(`Successfully updated active Mobius URL to: ${url}`, {
+      file: CALL_MANAGER_FILE,
+      method: 'updateActiveMobius',
+    });
   }
 
   /**
@@ -116,6 +124,10 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
   private listenForWsEvents() {
     this.sdkConnector.registerListener('event:mobius', async (event) => {
       this.dequeueWsEvents(event);
+    });
+    log.log('Successfully registered listener for Mobius events', {
+      file: CALL_MANAGER_FILE,
+      method: 'listenForWsEvents',
     });
   }
 
@@ -144,7 +156,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
             if (call) {
               call.handleMidCallEvent(midCallEvent);
             } else {
-              log.log(
+              log.info(
                 `Dropping midcall event of type: ${midCallEvent.eventType} as it doesn't match with any existing call`,
                 {
                   file: CALL_MANAGER_FILE,
@@ -186,7 +198,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
           );
           newCall.setCallId(callId);
           if (mobiusEvent.data.broadworksCorrelationInfo) {
-            log.log(
+            log.info(
               `Found broadworksCorrelationInfo: ${mobiusEvent.data.broadworksCorrelationInfo}`,
               {
                 file: CALL_MANAGER_FILE,
@@ -365,7 +377,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
             }
           }
         } else {
-          log.log(`CorrelationId: ${correlationId} doesn't exist , discarding..`, {
+          log.info(`CorrelationId: ${correlationId} doesn't exist , discarding..`, {
             file: CALL_MANAGER_FILE,
             method: 'dequeueWsEvents',
           });
@@ -424,6 +436,10 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    */
   public updateLine(deviceId: string, line: ILine) {
     this.lineDict[deviceId] = line;
+    log.log(`Successfully updated line for deviceId: ${deviceId}`, {
+      file: CALL_MANAGER_FILE,
+      method: 'updateLine',
+    });
   }
 
   /**
