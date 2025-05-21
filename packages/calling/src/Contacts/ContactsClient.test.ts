@@ -380,12 +380,12 @@ describe('ContactClient Tests', () => {
     webex.request.mockResolvedValue(successResponsePayload);
 
     webex.internal.encryption.encryptText.mockResolvedValue('Encrypted Top Contacts');
-    const logInfoSpy = jest.spyOn(log, 'info');
+    const infoSpy = jest.spyOn(log, 'info');
     const contactsResponse = await contactClient.createContactGroup('Top Contacts');
 
     expect(contactsResponse.statusCode).toEqual(201);
     expect(contactsResponse.data.group?.groupId).toBe(mockGroupResponse.groupId);
-    expect(logInfoSpy).toBeCalledWith(`Creating contact group Top Contacts`, {
+    expect(infoSpy).toBeCalledWith(`Creating contact group Top Contacts`, {
       file: CONTACTS_FILE,
       method: 'createContactGroup',
     });
@@ -393,7 +393,7 @@ describe('ContactClient Tests', () => {
       file: CONTACTS_FILE,
       method: 'createContactGroup',
     });
-    expect(logInfoSpy).not.toBeCalledWith('Requesting kms for a new KRO and key', {
+    expect(infoSpy).not.toBeCalledWith('Requesting kms for a new KRO and key', {
       file: CONTACTS_FILE,
       method: 'createNewEncryptionKeyUrl',
     });
@@ -565,8 +565,8 @@ describe('ContactClient Tests', () => {
 
     webex.request.mockResolvedValue(successResponsePayload);
     webex.internal.encryption.encryptText.mockResolvedValue('Encrypted contact name');
-    const logSpy = jest.spyOn(log, 'info');
-    const logLogSpy = jest.spyOn(log, 'log');
+    const infoSpy = jest.spyOn(log, 'info');
+    const logSpy = jest.spyOn(log, 'log');
 
     contactClient['groups'] = mockContactGroupListOne;
     contactClient['encryptionKeyUrl'] = mockContactGroupListOne[0].encryptionKeyUrl;
@@ -579,14 +579,14 @@ describe('ContactClient Tests', () => {
 
     expect(res.statusCode).toEqual(201);
     expect(res.data.contact?.contactId).toBe(mockContactResponse.contactId);
-    expect(logSpy).toBeCalledWith(
+    expect(infoSpy).toBeCalledWith(
       `Request to create contact: contactType: ${contact.contactType}`,
       {
         file: CONTACTS_FILE,
         method: 'createContact',
       }
     );
-    expect(logLogSpy).toBeCalledWith(`Contact successfully created`, {
+    expect(logSpy).toBeCalledWith(`Contact successfully created`, {
       file: CONTACTS_FILE,
       method: 'createContact',
     });
@@ -599,7 +599,7 @@ describe('ContactClient Tests', () => {
       file: CONTACTS_FILE,
       method: 'createNewEncryptionKeyUrl',
     });
-    expect(logSpy).not.toBeCalledWith(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
+    expect(infoSpy).not.toBeCalledWith(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
       file: CONTACTS_FILE,
       method: 'fetchEncryptionKeyUrl',
     });

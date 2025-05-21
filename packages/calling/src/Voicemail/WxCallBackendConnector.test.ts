@@ -4,6 +4,7 @@ import {getSamplePeopleListResponse, getTestUtilsWebex} from '../common/testUtil
 import {HTTP_METHODS, SORT, WebexRequestPayload} from '../common/types';
 import {CallingPartyInfo, IWxCallBackendConnector} from './types';
 import {NO_VOICEMAIL_MSG, NO_VOICEMAIL_STATUS_CODE} from './constants';
+import log from '../Logger';
 import {
   braodworksUserMessageInfo,
   broadworksUserMessageId,
@@ -29,6 +30,9 @@ describe('Voicemail webex call Backend Connector Test case', () => {
   let getSortedVoicemailListSpy: jest.SpyInstance;
   let storeVoicemailListSpy: jest.SpyInstance;
   let fetchVoicemailListSpy: jest.SpyInstance;
+  let infoSpy: jest.SpyInstance;
+  let errorSpy: jest.SpyInstance;
+  let logSpy: jest.SpyInstance;
   const {messageId} = mockVoicemailBody.body.items[0];
 
   beforeAll(() => {
@@ -42,6 +46,9 @@ describe('Voicemail webex call Backend Connector Test case', () => {
     getSortedVoicemailListSpy = jest.spyOn(utils, 'getSortedVoicemailList');
     storeVoicemailListSpy = jest.spyOn(utils, 'storeVoicemailList');
     fetchVoicemailListSpy = jest.spyOn(utils, 'fetchVoicemailList');
+    infoSpy = jest.spyOn(log, 'info');
+    errorSpy = jest.spyOn(log, 'error');
+    logSpy = jest.spyOn(log, 'log');
   });
 
   describe('Voicemail failure tests for webex call', () => {
@@ -61,9 +68,9 @@ describe('Voicemail webex call Backend Connector Test case', () => {
     });
 
     afterEach(() => {
-      expect(getSortedVoicemailListSpy).not.toBeCalled();
-      expect(storeVoicemailListSpy).not.toBeCalled();
-      expect(fetchVoicemailListSpy).not.toBeCalled();
+      expect(getSortedVoicemailListSpy).not.toHaveBeenCalled();
+      expect(storeVoicemailListSpy).not.toHaveBeenCalled();
+      expect(fetchVoicemailListSpy).not.toHaveBeenCalled();
     });
 
     it('verify failure voicemail listing when bad request occur', async () => {
@@ -79,10 +86,9 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         data: {error: '400 Bad request'},
         message: FAILURE,
       };
-
-      expect(response).toStrictEqual(responseDetails);
+      expect(response).toEqual(responseDetails);
       expect(response.message).toBe(FAILURE);
-      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
         {
           statusCode: 400,
         },
@@ -90,6 +96,20 @@ describe('Voicemail webex call Backend Connector Test case', () => {
           file: 'WxCallBackendConnector',
           method: 'getVoicemailList',
         }
+      );
+      expect(infoSpy).toHaveBeenCalledWith(
+        'Offset: 0 Offset limit: 20 Sort type:DESC',
+        expect.objectContaining({
+          file: 'WxCallBackendConnector',
+          method: 'getVoicemailList',
+        })
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          file: 'WxCallBackendConnector',
+          method: 'getVoicemailList',
+        })
       );
     });
 
@@ -113,6 +133,23 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         {
           statusCode: 400,
         },
+        {
+          file: 'WxCallBackendConnector',
+          method: 'voicemailMarkAsRead',
+        }
+      );
+      expect(infoSpy).toHaveBeenCalledWith(
+        `Marking voicemail as read for messageId: ${messageId.$}`,
+        {
+          file: 'WxCallBackendConnector',
+          method: 'voicemailMarkAsRead',
+        }
+      );
+      expect(errorSpy).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          message: expect.stringContaining('Failed to mark voicemail as read'),
+        }),
         {
           file: 'WxCallBackendConnector',
           method: 'voicemailMarkAsRead',
@@ -145,6 +182,23 @@ describe('Voicemail webex call Backend Connector Test case', () => {
           method: 'voicemailMarkAsUnread',
         }
       );
+      expect(infoSpy).toHaveBeenCalledWith(
+        `Marking voicemail as unread for messageId: ${messageId.$}`,
+        {
+          file: 'WxCallBackendConnector',
+          method: 'voicemailMarkAsUnread',
+        }
+      );
+      expect(errorSpy).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          message: expect.stringContaining('Failed to mark voicemail as unread'),
+        }),
+        {
+          file: 'WxCallBackendConnector',
+          method: 'voicemailMarkAsUnread',
+        }
+      );
     });
 
     it('verify failure delete Voicemail when bad request occur', async () => {
@@ -168,6 +222,19 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         {
           statusCode: 400,
         },
+        {
+          file: 'WxCallBackendConnector',
+          method: 'deleteVoicemail',
+        }
+      );
+      expect(infoSpy).toHaveBeenCalledWith(`Deleting voicemail for messageId: ${messageId.$}`, {
+        file: 'WxCallBackendConnector',
+        method: 'deleteVoicemail',
+      });
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Failed to delete voicemail'),
+        }),
         {
           file: 'WxCallBackendConnector',
           method: 'deleteVoicemail',
@@ -354,14 +421,14 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         message: FAILURE,
       };
 
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: voicemailSummaryUrl,
         headers: {},
       });
 
-      expect(response).toStrictEqual(responseDetails);
-      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+      expect(response).toEqual(responseDetails);
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
         {
           statusCode: 400,
         },
@@ -369,6 +436,17 @@ describe('Voicemail webex call Backend Connector Test case', () => {
           file: 'WxCallBackendConnector',
           method: 'getVoicemailSummary',
         }
+      );
+      expect(infoSpy).toHaveBeenCalledWith('Fetching voicemail summary', {
+        file: 'WxCallBackendConnector',
+        method: 'getVoicemailSummary',
+      });
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.any(Error),
+        expect.objectContaining({
+          file: 'WxCallBackendConnector',
+          method: 'getVoicemailSummary',
+        })
       );
     });
 
@@ -433,12 +511,20 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         statusCode: 200,
       };
 
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: voicemailSummaryUrl,
         headers: {},
       });
-      expect(response).toStrictEqual(responseDetails);
+      expect(response).toEqual(responseDetails);
+      expect(infoSpy).toHaveBeenCalledWith('Fetching voicemail summary', {
+        file: 'WxCallBackendConnector',
+        method: 'getVoicemailSummary',
+      });
+      expect(logSpy).toHaveBeenCalledWith('Successfully fetched voicemail summary', {
+        file: 'WxCallBackendConnector',
+        method: 'getVoicemailSummary',
+      });
     });
 
     it('verify successfully fetching voicemail summary with oldMessages and oldUrgentMessage', async () => {

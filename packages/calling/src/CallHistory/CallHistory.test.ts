@@ -40,9 +40,9 @@ const webex = getTestUtilsWebex();
 let serviceErrorCodeHandlerSpy: jest.SpyInstance;
 describe('Call history tests', () => {
   let callHistory: ICallHistory;
-  const logInfoSpy = jest.spyOn(log, 'info').mockImplementation();
-  const logLogSpy = jest.spyOn(log, 'log').mockImplementation();
-  const logErrorSpy = jest.spyOn(log, 'error').mockImplementation();
+  const infoSpy = jest.spyOn(log, 'info').mockImplementation();
+  const logSpy = jest.spyOn(log, 'log').mockImplementation();
+  const errorSpy = jest.spyOn(log, 'error').mockImplementation();
 
   beforeAll(() => {
     callHistory = new CallHistory(webex, {level: LOGGER.INFO});
@@ -58,20 +58,20 @@ describe('Call history tests', () => {
     expect(response.message).toBe('SUCCESS');
 
     // Verify logging behavior
-    expect(logInfoSpy).toHaveBeenCalled();
-    expect(logLogSpy).toHaveBeenCalled();
-    expect(logErrorSpy).not.toHaveBeenCalled();
+    expect(infoSpy).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
 
     // Verify logs were called with correct information
-    expect(logInfoSpy).toHaveBeenCalledWith(
+    expect(infoSpy).toHaveBeenCalledWith(
       expect.stringContaining('getCallHistoryData called with days=7, limit=10'),
       expect.objectContaining({file: CALL_HISTORY_FILE})
     );
-    expect(logLogSpy).toHaveBeenCalledWith(
+    expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining('Successfully retrieved call history data'),
       expect.objectContaining({file: CALL_HISTORY_FILE})
     );
-    expect(logErrorSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
   it('verify bad request failed call history case', async () => {
@@ -87,8 +87,8 @@ describe('Call history tests', () => {
     expect(response.message).toBe('FAILURE');
 
     // Verify logs were called with correct information
-    expect(logInfoSpy).toHaveBeenCalled();
-    expect(logErrorSpy).toHaveBeenCalled();
+    expect(infoSpy).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalled();
   });
 
   it('verify device not found call history case', async () => {
@@ -104,11 +104,11 @@ describe('Call history tests', () => {
     expect(response.message).toBe('FAILURE');
 
     // Verify logs were called with correct information
-    expect(logInfoSpy).toHaveBeenCalledWith(
+    expect(infoSpy).toHaveBeenCalledWith(
       'getCallHistoryData called with days=0, limit=0, sort=ASC, sortBy=startTime',
       {file: CALL_HISTORY_FILE, method: 'getCallHistoryData'}
     );
-    expect(logErrorSpy).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalled();
   });
 
   describe('sorting  user session response data by sortby', () => {
@@ -241,15 +241,15 @@ describe('Call history tests', () => {
       });
 
       // Verify logs were called with correct information
-      expect(logInfoSpy).toHaveBeenCalledWith(expect.any(String), {
+      expect(infoSpy).toHaveBeenCalledWith(expect.any(String), {
         file: CALL_HISTORY_FILE,
         method: 'updateMissedCalls',
       });
-      expect(logLogSpy).toHaveBeenCalledWith('Missed calls are successfully read by the user', {
+      expect(logSpy).toHaveBeenCalledWith('Missed calls are successfully read by the user', {
         file: CALL_HISTORY_FILE,
         method: 'updateMissedCalls',
       });
-      expect(logErrorSpy).not.toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
     });
 
     it('Error: updateMissedCalls throw 400 error', async () => {
@@ -327,12 +327,12 @@ describe('Call history tests', () => {
       expect(response.message).toBe('SUCCESS');
 
       // Verify logs were called with correct information
-      expect(logInfoSpy).toHaveBeenCalled();
-      expect(logLogSpy).toHaveBeenCalledWith('Line details fetched successfully', {
+      expect(infoSpy).toHaveBeenCalled();
+      expect(logSpy).toHaveBeenCalledWith('Line details fetched successfully', {
         file: CALL_HISTORY_FILE,
         method: 'fetchLinesData',
       });
-      expect(logErrorSpy).not.toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
     });
 
     it('verify bad request failed UCM lines API case', async () => {
@@ -354,8 +354,8 @@ describe('Call history tests', () => {
       );
 
       // Verify logs were called with correct information
-      expect(logInfoSpy).toHaveBeenCalled();
-      expect(logErrorSpy).toHaveBeenCalled();
+      expect(infoSpy).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalled();
     });
 
     it('should call fetchUCMLinesData when calling backend is UCM and userSessions contain valid cucmDN', async () => {
