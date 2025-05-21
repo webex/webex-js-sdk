@@ -54,6 +54,15 @@ await webex.internal.voicea.toggleTranscribing(true);
 await webex.internal.voicea.toggleTranscribing(false);
 ```
 
+Toggle Manual Captions
+
+- Enable/Disable Manual Captioning in a meeting
+
+```js
+await webex.internal.voicea.toggleManualCaption(true);
+await webex.internal.voicea.toggleManualCaption(false);
+```
+
 Set Spoken Language
 
 - Host can set the spoken language of the meeting
@@ -69,6 +78,14 @@ Set Caption Language
 
 ```js
 webex.internal.voicea.requestLanguage('en');
+```
+
+Send Manual Closed Caption Messages
+
+- Only captioner can send manual closed captions messages
+
+```js
+webex.internal.voicea.sendManualClosedCaption('Hello World', 9876543210, [654321, 123456, 789034, 893628], true);
 ```
 
 Other Triggers:
