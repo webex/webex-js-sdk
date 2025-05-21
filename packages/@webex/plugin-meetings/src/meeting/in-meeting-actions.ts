@@ -81,6 +81,8 @@ interface IInMeetingActions {
   canShareDesktop?: boolean;
   canShareContent?: boolean;
   canTransferFile?: boolean;
+  canRealtimeCloseCaption?: boolean;
+  canRealtimeCloseCaptionManual?: boolean;
   canChat?: boolean;
   canDoVideo?: boolean;
   canAnnotate?: boolean;
@@ -255,6 +257,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canTransferFile = null;
 
+  canRealtimeCloseCaption = null;
+
+  canRealtimeCloseCaptionManual = null;
+
   canChat = null;
 
   canDoVideo = null;
@@ -379,6 +385,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canShareDesktop: this.canShareDesktop,
     canShareContent: this.canShareContent,
     canTransferFile: this.canTransferFile,
+    canRealtimeCloseCaption: this.canRealtimeCloseCaption,
+    canRealtimeCloseCaptionManual: this.canRealtimeCloseCaptionManual,
     canChat: this.canChat,
     canDoVideo: this.canDoVideo,
     canAnnotate: this.canAnnotate,

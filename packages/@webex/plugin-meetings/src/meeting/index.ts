@@ -4261,6 +4261,14 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
             policies: this.selfUserPolicies,
           }),
+          canRealtimeCloseCaption: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION],
+            policies: this.selfUserPolicies,
+          }),
+          canRealtimeCloseCaptionManual: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION_MANUAL],
+            policies: this.selfUserPolicies,
+          }),
           canChat: ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
             policies: this.selfUserPolicies,
@@ -7772,7 +7780,7 @@ export default class Meeting extends StatelessWebexPlugin {
         await this.enqueueScreenShareFloorRequest();
       }
 
-      const {connectionType, selectedCandidatePairChanges, numTransports} =
+      const {connectionType, ipVersion, selectedCandidatePairChanges, numTransports} =
         await this.mediaProperties.getCurrentConnectionInfo();
 
       const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
@@ -7783,6 +7791,7 @@ export default class Meeting extends StatelessWebexPlugin {
         correlation_id: this.correlationId,
         locus_id: this.locusUrl.split('/').pop(),
         connectionType,
+        ipVersion,
         selectedCandidatePairChanges,
         numTransports,
         isMultistream: this.isMultistream,
@@ -7795,6 +7804,9 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media-engine.ready',
+        payload: {
+          ipVersion,
+        },
         options: {
           meetingId: this.id,
         },
