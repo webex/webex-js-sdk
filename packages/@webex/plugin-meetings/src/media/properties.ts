@@ -7,6 +7,8 @@ import {
   RemoteStream,
 } from '@webex/media-helpers';
 
+import {parse} from '@webex/ts-sdp';
+import {ClientEvent} from '@webex/internal-plugin-metrics';
 import {MEETINGS, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 import MediaConnectionAwaiter from './MediaConnectionAwaiter';
@@ -19,6 +21,8 @@ export type MediaDirection = {
   receiveVideo: boolean;
   receiveShare: boolean;
 };
+
+export type IPVersion = ClientEvent['payload']['ipVersion'];
 
 /**
  * @class MediaProperties
@@ -213,6 +217,91 @@ export default class MediaProperties {
   }
 
   /**
+   * Checks if the given IP address is IPv6
+   * @param {string} ip address to check
+   * @returns {boolean} true if the address is IPv6, false otherwise
+   */
+  private isIPv6(ip: string): boolean {
+    return ip.includes(':');
+  }
+
+  /** Finds out if we connected using IPv4 or IPv6
+   * @param {RTCPeerConnection} webrtcMediaConnection
+   * @param {Array<any>} allStatsReports array of RTC stats reports
+   * @returns {string} IPVersion
+   */
+  private getConnectionIpVersion(
+    webrtcMediaConnection: RTCPeerConnection,
+    allStatsReports: any[]
+  ): IPVersion | undefined {
+    const transports = allStatsReports.filter((report) => report.type === 'transport');
+
+    let selectedCandidatePair;
+
+    if (transports.length > 0 && transports[0].selectedCandidatePairId) {
+      selectedCandidatePair = allStatsReports.find(
+        (report) =>
+          report.type === 'candidate-pair' && report.id === transports[0].selectedCandidatePairId
+      );
+    } else {
+      // Firefox doesn't have selectedCandidatePairId, but has selected property on the candidate pair
+      selectedCandidatePair = allStatsReports.find(
+        (report) => report.type === 'candidate-pair' && report.selected
+      );
+    }
+
+    if (selectedCandidatePair) {
+      const localCandidate = allStatsReports.find(
+        (report) =>
+          report.type === 'local-candidate' && report.id === selectedCandidatePair.localCandidateId
+      );
+
+      if (localCandidate) {
+        if (localCandidate.address) {
+          return this.isIPv6(localCandidate.address) ? 'IPv6' : 'IPv4';
+        }
+
+        try {
+          // safari doesn't have address field on the candidate, so we have to use the port to look up the candidate in the SDP
+          const localSdp = webrtcMediaConnection.localDescription.sdp;
+
+          const parsedSdp = parse(localSdp);
+
+          for (const mediaLine of parsedSdp.avMedia) {
+            const matchingCandidate = mediaLine.iceInfo.candidates.find(
+              (candidate) => candidate.port === localCandidate.port
+            );
+            if (matchingCandidate) {
+              return this.isIPv6(matchingCandidate.connectionAddress) ? 'IPv6' : 'IPv4';
+            }
+          }
+
+          LoggerProxy.logger.warn(
+            `Media:properties#getConnectionIpVersion --> failed to find local candidate in the SDP for port ${localCandidate.port}`
+          );
+        } catch (error) {
+          LoggerProxy.logger.warn(
+            `Media:properties#getConnectionIpVersion --> error while trying to find candidate in local SDP:`,
+            error
+          );
+
+          return undefined;
+        }
+      } else {
+        LoggerProxy.logger.warn(
+          `Media:properties#getConnectionIpVersion --> failed to find local candidate "${selectedCandidatePair.localCandidateId}" in getStats() results`
+        );
+      }
+    } else {
+      LoggerProxy.logger.warn(
+        `Media:properties#getConnectionIpVersion --> failed to find selected candidate pair in getStats() results (transports.length=${transports.length}, selectedCandidatePairId=${transports[0]?.selectedCandidatePairId})`
+      );
+    }
+
+    return undefined;
+  }
+
+  /**
    * Returns the type of a connection that has been established
    * It should be 'UDP' | 'TCP' | 'TURN-TLS' | 'TURN-TCP' | 'TURN-UDP' | 'unknown'
    *
@@ -284,6 +373,7 @@ export default class MediaProperties {
    */
   async getCurrentConnectionInfo(): Promise<{
     connectionType: string;
+    ipVersion?: IPVersion;
     selectedCandidatePairChanges: number;
     numTransports: number;
   }> {
@@ -309,10 +399,15 @@ export default class MediaProperties {
       });
 
       const connectionType = this.getConnectionType(allStatsReports);
+      const rtcPeerconnection =
+        this.webrtcMediaConnection.multistreamConnection?.pc.pc ||
+        this.webrtcMediaConnection.mediaConnection?.pc;
+      const ipVersion = this.getConnectionIpVersion(rtcPeerconnection, allStatsReports);
       const {selectedCandidatePairChanges, numTransports} = this.getTransportInfo(allStatsReports);
 
       return {
         connectionType,
+        ipVersion,
         selectedCandidatePairChanges,
         numTransports,
       };
@@ -323,6 +418,7 @@ export default class MediaProperties {
 
       return {
         connectionType: 'unknown',
+        ipVersion: undefined,
         selectedCandidatePairChanges: -1,
         numTransports: 0,
       };
