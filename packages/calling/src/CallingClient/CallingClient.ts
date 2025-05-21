@@ -304,7 +304,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     let countryCode: string;
 
     if (this.sdkConfig?.discovery?.country && this.sdkConfig?.discovery?.region) {
-      log.info('Updating region and country from the SDK config', {
+      log.log('Updating region and country from the SDK config', {
         file: CALLING_CLIENT_FILE,
         method: GET_MOBIUS_SERVERS_UTIL,
       });
@@ -312,7 +312,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       countryCode = this.sdkConfig?.discovery?.country;
       this.mobiusHost = this.webex.internal.services._serviceUrls.mobius;
     } else {
-      log.info('Updating region and country through Region discovery', {
+      log.log('Updating region and country through Region discovery', {
         file: CALLING_CLIENT_FILE,
         method: GET_MOBIUS_SERVERS_UTIL,
       });
@@ -324,7 +324,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     if (clientRegion && countryCode) {
-      log.info(
+      log.log(
         `Found Region: ${clientRegion} and country: ${countryCode}, going to fetch Mobius server`,
         '' as LogContext
       );
@@ -341,7 +341,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           service: ALLOWED_SERVICES.MOBIUS,
         });
 
-        log.info('Mobius Server found for the region', '' as LogContext);
+        log.log('Mobius Server found for the region', '' as LogContext);
         const mobiusServers = temp.body as MobiusServers;
 
         /* update arrays of Mobius Uris. */
@@ -352,6 +352,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           `Final list of Mobius Servers, primary: ${mobiusUris.primary} and backup: ${mobiusUris.backup}`,
           '' as LogContext
         );
+        log.log('Successfully obtained and processed Mobius server information', {
+          file: CALLING_CLIENT_FILE,
+          method: this.getMobiusServers.name,
+        });
       } catch (err: unknown) {
         const extendedError = new Error(`Failed to get Mobius servers: ${err}`) as ExtendedError;
         log.error(extendedError, {

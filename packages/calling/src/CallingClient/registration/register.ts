@@ -120,7 +120,7 @@ export class Registration implements IRegistration {
   }
 
   public setActiveMobiusUrl(url: string) {
-    log.info(`ActiveMobiusUrl: ${url}`, {method: 'setActiveMobiusUrl', file: REGISTRATION_FILE});
+    log.log(`ActiveMobiusUrl: ${url}`, {method: 'setActiveMobiusUrl', file: REGISTRATION_FILE});
     this.activeMobiusUrl = url;
     this.callManager.updateActiveMobius(url);
   }
@@ -507,7 +507,7 @@ export class Registration implements IRegistration {
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
-        log.info('Mercury connection is up again, re-registering with Webex Calling if needed', {
+        log.log('Mercury connection is up again, re-registering with Webex Calling if needed', {
           file: REGISTRATION_FILE,
           method: this.handleConnectionRestoration.name,
         });
@@ -633,6 +633,10 @@ export class Registration implements IRegistration {
         this.deviceInfo = resp.body as IDeviceInfo;
         this.registrationStatus = RegistrationStatus.ACTIVE;
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
+        log.log('Registration successful', {
+          file: REGISTRATION_FILE,
+          method: 'attemptRegistrationWithServers',
+        });
         this.setActiveMobiusUrl(url);
         this.setIntervalValues(this.deviceInfo);
         this.metricManager.setDeviceInfo(this.deviceInfo);
@@ -717,7 +721,7 @@ export class Registration implements IRegistration {
         if (this.isDeviceRegistered() && keepAliveRetryCount < RETRY_COUNT_THRESHOLD) {
           try {
             const res = await this.postKeepAlive(url);
-            log.info(`Sent Keepalive, status: ${res.statusCode}`, logContext);
+            log.log(`Sent Keepalive, status: ${res.statusCode}`, logContext);
             if (keepAliveRetryCount > 0) {
               this.lineEmitter(LINE_EVENTS.RECONNECTED);
             }
@@ -788,6 +792,10 @@ export class Registration implements IRegistration {
         this.deviceInfo.device?.deviceId as string,
         this.deviceInfo.device?.clientDeviceUri as string
       );
+      log.log('Registration successfully deregistered', {
+        file: REGISTRATION_FILE,
+        method: 'deregister',
+      });
     } catch (err) {
       const extendedError = new Error(`Delete failed with Mobius: ${err}`) as ExtendedError;
       log.error(extendedError, {
