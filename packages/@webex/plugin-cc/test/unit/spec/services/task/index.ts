@@ -352,20 +352,16 @@ describe('Task', () => {
     expect(answerCallSpy).not.toHaveBeenCalled();
   });
 
-  it('should call accept API for Extension login option', async () => {
+  it('should throw error for accept API for Extension login option', async () => {
     webCallingService.loginOption = LoginOption.EXTENSION;
 
-    await task.accept();
+    await expect(task.accept()).rejects.toThrow('Unsupported login action for this task');
+    
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task ${task.data.interactionId}`, {
+      module: TASK_FILE,
+      method: 'accept',
+    });
 
-    expect(contactMock.accept).toHaveBeenCalledWith({interactionId: taskId});
-    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
-      1,
-      METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
-      {
-        taskId: taskDataMock.interactionId,
-      },
-      ['operational', 'behavioral', 'business']
-    );
   });
 
   it('should handle errors in accept method', async () => {

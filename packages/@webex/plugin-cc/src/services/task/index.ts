@@ -138,23 +138,7 @@ export default class Task extends EventEmitter implements ITask {
         return Promise.resolve(); // TODO: Update this with sending the task object received in AgentContactAssigned
       }
 
-      // TODO: Invoke the accept API from services layer. This is going to be used in Outbound Dialer scenario
-      const response = await this.contact.accept({interactionId: this.data.interactionId});
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-          taskId: this.data.interactionId,
-        },
-        ['operational', 'behavioral', 'business']
-      );
-
-      LoggerProxy.log(`Task ${this.data.interactionId} accepted successfully`, {
-        module: TASK_FILE,
-        method: 'accept',
-      });
-
-      return response;
+      return Promise.reject(new Error('Unsupported login action for this task'));
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'accept', TASK_FILE);
       this.metricsManager.trackEvent(
