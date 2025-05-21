@@ -313,7 +313,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
-   * Request Language translation
+   * Send manual closed captions to voicea service
    * @param {string} text
    * @param {number} timeStamp
    * @param {number[]} csis
@@ -441,7 +441,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   /**
    * Toggle transcribing for highlights
-   * @param {Boolean} activate if true transcribing is turned on
+   * @param {boolean} activate true means to turn on transcribing and false means to turn off
    * @param {string} spokenLanguage language code for spoken language
    * @returns {Promise}
    */
@@ -471,7 +471,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   /**
    * Toggle turn on manual caption
-   * @param {Boolean} enable if true manual caption is turned on
+   * @param {boolean} enable true means to turn on manual caption, false means to turn off
    * @returns {Promise}
    */
   public toggleManualCaption = (enable: boolean): undefined | Promise<void> => {

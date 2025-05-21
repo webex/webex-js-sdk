@@ -7,7 +7,7 @@ import Mercury from '@webex/internal-plugin-mercury';
 import LLMChannel from '@webex/internal-plugin-llm';
 
 import VoiceaService from '../../../src/index';
-import { EVENT_TRIGGERS, TOGGLE_MANUAL_CAPTION_STATUS } from "../../../src/constants";
+import {EVENT_TRIGGERS, TOGGLE_MANUAL_CAPTION_STATUS} from '../../../src/constants';
 
 describe('plugin-voicea', () => {
   const locusUrl = 'locusUrl';
