@@ -339,7 +339,3 @@ export interface DelayedClientEvent {
   payload?: RecursivePartial<ClientEvent['payload']>;
   options?: SubmitClientEventOptions;
 }
-
-export interface DelayedClientEventOverrides {
-  correlationId?: string;
-}

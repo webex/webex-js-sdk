@@ -41,7 +41,6 @@ import {
   ClientSubServiceType,
   BrowserLaunchMethodType,
   DelayedClientEvent,
-  DelayedClientEventOverrides,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
@@ -943,7 +942,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   /**
    * Submit Delayed Client Event CA events. Clears delayedClientEvents array after submission.
    */
-  public submitDelayedClientEvents(overrides?: DelayedClientEventOverrides) {
+  public submitDelayedClientEvents(overrides?: Partial<DelayedClientEvent['options']>) {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @submitDelayedClientEvents. Submitting delayed client events.'
@@ -955,14 +954,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     const promises = this.delayedClientEvents.map((delayedSubmitClientEventParams) => {
       const {name, payload, options} = delayedSubmitClientEventParams;
-      let optionsWithOverrides: DelayedClientEvent['options'] = {...options};
-
-      if (overrides?.correlationId) {
-        optionsWithOverrides = {
-          ...optionsWithOverrides,
-          correlationId: overrides?.correlationId,
-        };
-      }
+      const optionsWithOverrides: DelayedClientEvent['options'] = {...options, ...overrides};
 
       return this.submitClientEvent({name, payload, options: optionsWithOverrides});
     });

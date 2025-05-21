@@ -22,7 +22,7 @@ import {
   InternalEvent,
   SubmitClientEventOptions,
   Table,
-  DelayedClientEventOverrides,
+  DelayedClientEvent,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
@@ -54,7 +54,7 @@ class Metrics extends WebexPlugin {
   /**
    * Overrides for delayed client events. E.g. if you want to override the correlationId for all delayed client events, you can set this to { correlationId: 'newCorrelationId' }
    */
-  delayedClientEventsOverrides: DelayedClientEventOverrides = {};
+  delayedClientEventsOverrides: Partial<DelayedClientEvent['options']> = {};
 
   /**
    * Constructor
@@ -421,7 +421,7 @@ class Metrics extends WebexPlugin {
     overrides,
   }: {
     shouldDelay: boolean;
-    overrides?: DelayedClientEventOverrides;
+    overrides?: Partial<DelayedClientEvent['options']>;
   }) {
     this.delaySubmitClientEvents = shouldDelay;
     this.delayedClientEventsOverrides = overrides || {};
