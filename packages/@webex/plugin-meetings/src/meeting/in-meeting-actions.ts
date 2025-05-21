@@ -81,6 +81,8 @@ interface IInMeetingActions {
   canShareDesktop?: boolean;
   canShareContent?: boolean;
   canTransferFile?: boolean;
+  canRealtimeCloseCaption?: boolean;
+  canRealtimeCloseCaptionManual?: boolean;
   canChat?: boolean;
   canDoVideo?: boolean;
   canAnnotate?: boolean;
@@ -104,6 +106,7 @@ interface IInMeetingActions {
   canDisableAnnotation?: boolean;
   canEnableRemoteDesktopControl?: boolean;
   canDisableRemoteDesktopControl?: boolean;
+  canMoveToLobby?: boolean;
 }
 
 /**
@@ -254,6 +257,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canTransferFile = null;
 
+  canRealtimeCloseCaption = null;
+
+  canRealtimeCloseCaptionManual = null;
+
   canChat = null;
 
   canDoVideo = null;
@@ -299,6 +306,8 @@ export default class InMeetingActions implements IInMeetingActions {
   canEnableRemoteDesktopControl = null;
 
   canDisableRemoteDesktopControl = null;
+
+  canMoveToLobby = null;
 
   /**
    * Returns all meeting action options
@@ -376,6 +385,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canShareDesktop: this.canShareDesktop,
     canShareContent: this.canShareContent,
     canTransferFile: this.canTransferFile,
+    canRealtimeCloseCaption: this.canRealtimeCloseCaption,
+    canRealtimeCloseCaptionManual: this.canRealtimeCloseCaptionManual,
     canChat: this.canChat,
     canDoVideo: this.canDoVideo,
     canAnnotate: this.canAnnotate,
@@ -399,6 +410,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canDisableAnnotation: this.canDisableAnnotation,
     canEnableRemoteDesktopControl: this.canEnableRemoteDesktopControl,
     canDisableRemoteDesktopControl: this.canDisableRemoteDesktopControl,
+    canMoveToLobby: this.canMoveToLobby,
   });
 
   /**

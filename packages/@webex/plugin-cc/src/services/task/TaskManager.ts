@@ -97,6 +97,7 @@ export default class TaskManager extends EventEmitter {
               module: TASK_MANAGER_FILE,
               method: 'registerTaskListeners',
             });
+            this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, task);
             break;
           case CC_EVENTS.AGENT_OUTBOUND_FAILED:
             if (task?.data) {
@@ -124,6 +125,7 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
           case CC_EVENTS.CONTACT_ENDED:
+          case CC_EVENTS.AGENT_INVITE_FAILED:
             task = this.updateTaskData(task, {
               ...payload.data,
               wrapUpRequired: payload.data.interaction.state !== 'new',
@@ -159,7 +161,7 @@ export default class TaskManager extends EventEmitter {
               ...payload.data,
               isConsulted: false, // This ensures that the task consult status is always reset
             });
-            // Do not emit anything since this be received only as a result of an API invocation(handled by a promise)
+            task.emit(TASK_EVENTS.TASK_CONSULT_CREATED, task);
             break;
           case CC_EVENTS.AGENT_OFFER_CONSULT:
             // Received when other agent sends us a consult offer
@@ -167,7 +169,7 @@ export default class TaskManager extends EventEmitter {
               ...payload.data,
               isConsulted: true, // This ensures that the task is marked as us being requested for a consult
             });
-
+            task.emit(TASK_EVENTS.TASK_OFFER_CONSULT, task);
             break;
           case CC_EVENTS.AGENT_CONSULTING:
             // Received when agent is in an active consult state
@@ -204,6 +206,23 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
             this.removeTaskFromCollection(task);
+            task.emit(TASK_EVENTS.TASK_WRAPPEDUP, task);
+            break;
+          case CC_EVENTS.CONTACT_RECORDING_PAUSED:
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_RECORDING_PAUSED, task);
+            break;
+          case CC_EVENTS.CONTACT_RECORDING_PAUSE_FAILED:
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED, task);
+            break;
+          case CC_EVENTS.CONTACT_RECORDING_RESUMED:
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_RECORDING_RESUMED, task);
+            break;
+          case CC_EVENTS.CONTACT_RECORDING_RESUME_FAILED:
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, task);
             break;
           default:
             break;

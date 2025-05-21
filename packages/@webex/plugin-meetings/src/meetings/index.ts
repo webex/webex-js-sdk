@@ -808,6 +808,26 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to toggle usage of audio main DTX, needs to be called before webex.meetings.register()
+   *
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleDisableAudioMainDtx(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+
+    // @ts-ignore
+    if (this.config.experimental.disableAudioMainDtx !== newValue) {
+      // @ts-ignore
+      this.config.experimental.disableAudioMainDtx = newValue;
+    }
+  }
+
+  /**
    * Executes a registration step and updates the registration status.
    * @param {Function} step - The registration step to execute.
    * @param {string} stepName - The name of the registration step.
@@ -935,6 +955,21 @@ export default class Meetings extends WebexPlugin {
         .disconnect()
         // @ts-ignore
         .then(() => this.webex.internal.device.unregister())
+        .catch((error) => {
+          // If error status code is 404, continue the chain
+          if (error.statusCode === 404) {
+            LoggerProxy.logger.info(
+              'Meetings:index#unregister --> 404 error during device unregister, proceeding normally'
+            );
+
+            return; // returning undefined allows the chain to continue
+          }
+          // For any other status code, break the chain by rethrowing
+          LoggerProxy.logger.error(
+            `Meetings:index#unregister --> Failed to unregister device: ${error.message}`
+          );
+          throw error; // rethrow to break the promise chain
+        })
         .then(() => {
           Trigger.trigger(
             this,

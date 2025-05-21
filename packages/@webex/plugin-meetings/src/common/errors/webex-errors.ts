@@ -152,12 +152,19 @@ WebExMeetingsErrors[IceGatheringFailed.CODE] = IceGatheringFailed;
  * @extends WebexMeetingsError
  * @property {number} code - 30203
  * @property {string} message - 'Failed to add media'
+ * @property {Error} [cause] - The underlying error that caused the failure
  */
 class AddMediaFailed extends WebexMeetingsError {
   static CODE = 30203;
+  cause?: Error;
 
-  constructor() {
+  /**
+   * Creates a new AddMediaFailed error
+   * @param {Error} [cause] - The underlying error that caused the media addition to fail
+   */
+  constructor(cause?: Error) {
     super(AddMediaFailed.CODE, 'Failed to add media');
+    this.cause = cause;
   }
 }
 export {AddMediaFailed};

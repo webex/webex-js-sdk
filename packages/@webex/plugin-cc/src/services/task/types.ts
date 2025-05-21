@@ -36,27 +36,33 @@ export const MEDIA_CHANNEL = {
 
 export type MEDIA_CHANNEL = Enum<typeof MEDIA_CHANNEL>;
 
-export const TASK_EVENTS = {
-  TASK_INCOMING: 'task:incoming',
-  TASK_ASSIGNED: 'task:assigned',
-  TASK_MEDIA: 'task:media',
-  TASK_UNASSIGNED: 'task:unassigned',
-  TASK_HOLD: 'task:hold',
-  TASK_UNHOLD: 'task:unhold',
-  TASK_CONSULT_END: 'task:consultEnd',
-  TASK_CONSULT_QUEUE_CANCELLED: 'task:consultQueueCancelled',
-  TASK_CONSULT_QUEUE_FAILED: 'task:consultQueueFailed',
-  TASK_CONSULT_ACCEPTED: 'task:consultAccepted',
-  TASK_CONSULTING: 'task:consulting',
-  TASK_PAUSE: 'task:pause',
-  TASK_RESUME: 'task:resume',
-  TASK_END: 'task:end',
-  TASK_WRAPUP: 'task:wrapup',
-  TASK_REJECT: 'task:rejected',
-  TASK_HYDRATE: 'task:hydrate',
-} as const;
-
-export type TASK_EVENTS = Enum<typeof TASK_EVENTS>;
+export enum TASK_EVENTS {
+  TASK_INCOMING = 'task:incoming',
+  TASK_ASSIGNED = 'task:assigned',
+  TASK_MEDIA = 'task:media',
+  TASK_UNASSIGNED = 'task:unassigned',
+  TASK_HOLD = 'task:hold',
+  TASK_UNHOLD = 'task:unhold',
+  TASK_CONSULT_END = 'task:consultEnd',
+  TASK_CONSULT_QUEUE_CANCELLED = 'task:consultQueueCancelled',
+  TASK_CONSULT_QUEUE_FAILED = 'task:consultQueueFailed',
+  TASK_CONSULT_ACCEPTED = 'task:consultAccepted',
+  TASK_CONSULTING = 'task:consulting',
+  TASK_CONSULT_CREATED = 'task:consultCreated',
+  TASK_OFFER_CONSULT = 'task:offerConsult',
+  TASK_PAUSE = 'task:pause',
+  TASK_RESUME = 'task:resume',
+  TASK_END = 'task:end',
+  TASK_WRAPUP = 'task:wrapup',
+  TASK_WRAPPEDUP = 'task:wrappedup',
+  TASK_RECORDING_PAUSED = 'task:recordingPaused',
+  TASK_RECORDING_PAUSE_FAILED = 'task:recordingPauseFailed',
+  TASK_RECORDING_RESUMED = 'task:recordingResumed',
+  TASK_RECORDING_RESUME_FAILED = 'task:recordingResumeFailed',
+  TASK_REJECT = 'task:rejected',
+  TASK_HYDRATE = 'task:hydrate',
+  TASK_OFFER_CONTACT = 'task:offerContact',
+}
 
 export type Interaction = {
   isFcManaged: boolean;

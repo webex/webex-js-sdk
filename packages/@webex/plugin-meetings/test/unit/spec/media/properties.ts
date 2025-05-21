@@ -2,6 +2,7 @@ import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {ConnectionState} from '@webex/internal-media-core';
+import * as tsSdpModule from '@webex/ts-sdp';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import {Defer} from '@webex/common';
 import MediaConnectionAwaiter from '../../../../src/media/MediaConnectionAwaiter';
@@ -10,15 +11,21 @@ describe('MediaProperties', () => {
   let mediaProperties;
   let mockMC;
   let clock;
+  let rtcPeerConnection;
 
   beforeEach(() => {
     clock = sinon.useFakeTimers();
+
+    rtcPeerConnection = {
+      localDescription: {sdp: ''},
+    };
 
     mockMC = {
       getStats: sinon.stub().resolves([]),
       on: sinon.stub(),
       off: sinon.stub(),
       getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+      multistreamConnection: {pc: {pc: rtcPeerConnection}},
     };
 
     mediaProperties = new MediaProperties();
@@ -79,6 +86,129 @@ describe('MediaProperties', () => {
       assert.equal(connectionType, 'unknown');
       assert.equal(selectedCandidatePairChanges, -1);
       assert.equal(numTransports, 0);
+    });
+
+    describe('ipVersion', () => {
+      it('returns ipVersion=undefined if getStats() returns no candidate pairs', async () => {
+        mockMC.getStats.resolves([{type: 'something', id: '1234'}]);
+        const info = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(info.ipVersion, undefined);
+      });
+
+      it('returns ipVersion=undefined if getStats() returns no selected candidate pair', async () => {
+        mockMC.getStats.resolves([{type: 'candidate-pair', id: '1234', selected: false}]);
+        const info = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(info.ipVersion, undefined);
+      });
+
+      it('returns ipVersion="IPv4" if transport has selectedCandidatePairId and local candidate has IPv4 address', async () => {
+        mockMC.getStats.resolves([
+          {type: 'transport', id: 't1', selectedCandidatePairId: 'cp1'},
+          {type: 'candidate-pair', id: 'cp1', localCandidateId: 'lc1'},
+          {type: 'local-candidate', id: 'lc1', address: '192.168.1.1'},
+        ]);
+        const info = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(info.ipVersion, 'IPv4');
+      });
+
+      it('returns ipVersion="IPv6" if transport has selectedCandidatePairId and local candidate has IPv6 address', async () => {
+        mockMC.getStats.resolves([
+          {type: 'transport', id: 't1', selectedCandidatePairId: 'cp1'},
+          {type: 'candidate-pair', id: 'cp1', localCandidateId: 'lc1'},
+          {type: 'local-candidate', id: 'lc1', address: 'fd8f:12e6:5e53:784f:a0ba:f8d5:b906:1acc'},
+        ]);
+        const info = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(info.ipVersion, 'IPv6');
+      });
+
+      it('returns ipVersion="IPv4" if transport has no selectedCandidatePairId but finds selected candidate pair and local candidate has IPv4 address', async () => {
+        mockMC.getStats.resolves([
+          {type: 'transport', id: 't1'},
+          {type: 'candidate-pair', id: 'cp2', localCandidateId: 'lc2', selected: true},
+          {type: 'local-candidate', id: 'lc2', address: '10.0.0.1'},
+        ]);
+        const info = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(info.ipVersion, 'IPv4');
+      });
+
+      it('returns ipVersion="IPv6" if transport has no selectedCandidatePairId but finds selected candidate pair and local candidate has IPv6 address', async () => {
+        mockMC.getStats.resolves([
+          {type: 'transport', id: 't1'},
+          {type: 'candidate-pair', id: 'cp2', localCandidateId: 'lc2', selected: true},
+          {type: 'local-candidate', id: 'lc2', address: 'fe80::1ff:fe23:4567:890a'},
+        ]);
+        const info = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(info.ipVersion, 'IPv6');
+      });
+
+      describe('local candidate without address', () => {
+        it('return="IPv4" if candidate from SDP with matching port number has IPv4 address', async () => {
+          sinon.stub(tsSdpModule, 'parse').returns({
+            avMedia: [
+              {
+                iceInfo: {
+                  candidates: [
+                    {
+                      port: 1234,
+                      connectionAddress: '192.168.0.1',
+                    },
+                  ],
+                },
+              },
+            ],
+          });
+
+          mockMC.getStats.resolves([
+            {type: 'transport', id: 't1'},
+            {type: 'candidate-pair', id: 'cp2', localCandidateId: 'lc2', selected: true},
+            {type: 'local-candidate', id: 'lc2', port: 1234},
+          ]);
+          const info = await mediaProperties.getCurrentConnectionInfo();
+          assert.equal(info.ipVersion, 'IPv4');
+
+          assert.calledWith(tsSdpModule.parse, rtcPeerConnection.localDescription.sdp);
+        });
+
+        it('returns ipVersion="IPv6" if candidate from SDP with matching port number has IPv6 address', async () => {
+          sinon.stub(tsSdpModule, 'parse').returns({
+            avMedia: [
+              {
+                iceInfo: {
+                  candidates: [
+                    {
+                      port: 5000,
+                      connectionAddress: 'fe80::1ff:fe23:4567:890a',
+                    },
+                  ],
+                },
+              },
+            ],
+          });
+
+          mockMC.getStats.resolves([
+            {type: 'transport', id: 't1'},
+            {type: 'candidate-pair', id: 'cp2', localCandidateId: 'lc2', selected: true},
+            {type: 'local-candidate', id: 'lc2', port: 5000},
+          ]);
+          const info = await mediaProperties.getCurrentConnectionInfo();
+          assert.equal(info.ipVersion, 'IPv6');
+
+          assert.calledWith(tsSdpModule.parse, rtcPeerConnection.localDescription.sdp);
+        });
+
+        it('returns ipVersion=undefined if parsing of the SDP fails', async () => {
+          sinon.stub(tsSdpModule, 'parse').throws(new Error('fake error'));
+
+          mockMC.getStats.resolves([
+            {type: 'candidate-pair', id: 'cp2', localCandidateId: 'lc2', selected: true},
+            {type: 'local-candidate', id: 'lc2', port: 5000},
+          ]);
+          const info = await mediaProperties.getCurrentConnectionInfo();
+          assert.equal(info.ipVersion, undefined);
+
+          assert.calledWith(tsSdpModule.parse, rtcPeerConnection.localDescription.sdp);
+        });
+      });
     });
 
     describe('selectedCandidatePairChanges and numTransports', () => {
