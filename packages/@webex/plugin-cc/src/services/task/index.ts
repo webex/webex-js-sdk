@@ -107,6 +107,14 @@ export default class Task extends EventEmitter implements ITask {
           module: TASK_FILE,
           method: 'accept',
         });
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+          {
+            taskId: this.data.interactionId,
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(this.data),
+          },
+          ['operational', 'behavioral', 'business']
+        );
 
         return response;
       }
@@ -137,6 +145,15 @@ export default class Task extends EventEmitter implements ITask {
 
         return Promise.resolve(); // TODO: Update this with sending the task object received in AgentContactAssigned
       }
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: 'Unsupported login action for this task',
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(this.data),
+        },
+        ['operational', 'behavioral', 'business']
+      );
 
       return Promise.reject(new Error('Unsupported login action for this task'));
     } catch (error) {

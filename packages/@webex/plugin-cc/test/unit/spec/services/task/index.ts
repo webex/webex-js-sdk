@@ -333,23 +333,77 @@ describe('Task', () => {
   it('should accept a task when mediaType chat', async () => {
     task.data.interaction.mediaType = 'chat';
     const answerCallSpy = jest.spyOn(webCallingService, 'answerCall');
+    const response = {};
+    contactMock.accept.mockResolvedValue(response);
 
     await task.accept();
+    
     expect(contactMock.accept).toHaveBeenCalledWith({
       interactionId: taskId,
     });
     expect(answerCallSpy).not.toHaveBeenCalled();
+    expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+      METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+    ]);
+    const expectedMetrics = {
+      taskId: task.data.interactionId,
+      agentId: task.data.agentId,
+      eventType: task.data.type,
+      notifTrackingId: task.data.trackingId,
+      orgId: task.data.orgId,
+    };
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+      expectedMetrics,
+      ['operational', 'behavioral', 'business']
+    );
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task ${task.data.interactionId}`, {
+      module: TASK_FILE,
+      method: 'accept',
+    });
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Task ${task.data.interactionId} accepted successfully`, {
+      module: TASK_FILE,
+      method: 'accept',
+    });
   });
 
   it('should accept a task when mediaType email', async () => {
     task.data.interaction.mediaType = 'email';
     const answerCallSpy = jest.spyOn(webCallingService, 'answerCall');
+    const response = {};
+    contactMock.accept.mockResolvedValue(response);
 
     await task.accept();
+    
     expect(contactMock.accept).toHaveBeenCalledWith({
       interactionId: taskId,
     });
     expect(answerCallSpy).not.toHaveBeenCalled();
+    expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
+      METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+      METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+    ]);
+    const expectedMetrics = {
+      taskId: task.data.interactionId,
+      agentId: task.data.agentId,
+      eventType: task.data.type,
+      notifTrackingId: task.data.trackingId,
+      orgId: task.data.orgId,
+    };
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+      expectedMetrics,
+      ['operational', 'behavioral', 'business']
+    );
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task ${task.data.interactionId}`, {
+      module: TASK_FILE,
+      method: 'accept',
+    });
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Task ${task.data.interactionId} accepted successfully`, {
+      module: TASK_FILE,
+      method: 'accept',
+    });
   });
 
   it('should throw error for accept API for Extension login option', async () => {
