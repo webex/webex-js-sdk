@@ -106,6 +106,7 @@ interface IInMeetingActions {
   canDisableAnnotation?: boolean;
   canEnableRemoteDesktopControl?: boolean;
   canDisableRemoteDesktopControl?: boolean;
+  canMoveToLobby?: boolean;
 }
 
 /**
@@ -306,6 +307,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canDisableRemoteDesktopControl = null;
 
+  canMoveToLobby = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -407,6 +410,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canDisableAnnotation: this.canDisableAnnotation,
     canEnableRemoteDesktopControl: this.canEnableRemoteDesktopControl,
     canDisableRemoteDesktopControl: this.canDisableRemoteDesktopControl,
+    canMoveToLobby: this.canMoveToLobby,
   });
 
   /**

@@ -4126,6 +4126,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this.userDisplayHints
           ),
           canUserRenameOthers: MeetingUtil.canUserRenameOthers(this.userDisplayHints),
+          canMoveToLobby: MeetingUtil.canMoveToLobby(this.userDisplayHints),
           canMuteAll: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
             displayHints: this.userDisplayHints,
