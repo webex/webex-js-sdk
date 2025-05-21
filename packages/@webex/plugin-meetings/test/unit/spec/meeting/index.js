@@ -10996,6 +10996,16 @@ describe('plugin-meetings', () => {
               requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
             },
             {
+              actionName: 'canRealtimeCloseCaption',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION],
+            },
+            {
+              actionName: 'canRealtimeCloseCaptionManual',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION_MANUAL],
+            },
+            {
               actionName: 'canChat',
               requiredDisplayHints: [],
               requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
