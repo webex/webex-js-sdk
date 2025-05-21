@@ -252,7 +252,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
           this.lineId,
           formattedDest
         );
-        log.info(`New call created, callId: ${call?.getCallId()}`, {
+        log.log(`New call created, callId: ${call?.getCallId()}`, {
           file: LINE_FILE,
           method: 'makeCall',
         });

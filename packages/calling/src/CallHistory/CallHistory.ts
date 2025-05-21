@@ -125,7 +125,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const sortByParam = Object.values(SORT_BY).includes(sortBy) ? sortBy : SORT_BY.DEFAULT;
     const sortParam = Object.values(SORT).includes(sort) ? sort : SORT.DEFAULT;
 
-    // add start log
     log.info(
       `getCallHistoryData called with days=${days}, limit=${limit}, sort=${sortParam}, sortBy=${sortByParam}`,
       this.loggerContext
@@ -133,8 +132,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
     log.info(`Janus API URL: ${this.janusUrl}`, this.loggerContext);
     log.info(`Call history from date : ${this.fromDate}`, this.loggerContext);
-    log.info(`Call history sort type : ${sortParam}`, this.loggerContext);
-    log.info(`Call history sortby type : ${sortByParam}`, this.loggerContext);
     const url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}`;
 
     try {
@@ -206,9 +203,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       };
 
       log.log(
-        `Successfully retrieved call history data with ${
-          this.userSessions[USER_SESSIONS]?.length || 0
-        } records`,
+        `Successfully retrieved call history data with ${this.userSessions[USER_SESSIONS].length} records`,
         this.loggerContext
       );
 
@@ -246,7 +241,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       endTimeSessionIds: santizedSessionIds,
     };
 
-    // add start log
     log.info(
       `updateMissedCalls called for sessions: ${JSON.stringify(santizedSessionIds)}`,
       loggerContext

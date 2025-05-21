@@ -163,12 +163,10 @@ export class Registration implements IRegistration {
         },
       });
     } catch (error) {
-      const extendedError = new Error(`Delete failed with Mobius: ${error}`) as ExtendedError;
-      log.error(extendedError, {
+      log.warn(`Delete failed with Mobius ${error}`, {
         file: REGISTRATION_FILE,
         method: 'deleteRegistration',
       });
-      await uploadLogsSilently();
     }
 
     this.setStatus(RegistrationStatus.INACTIVE);
