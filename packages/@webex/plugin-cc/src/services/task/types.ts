@@ -505,3 +505,43 @@ export interface ITask extends EventEmitter {
    */
   resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse>;
 }
+
+export class TaskButtonControl {
+  public visible: boolean;
+  public enabled: boolean;
+  constructor(visible = false, enabled = true) {
+    this.visible = visible;
+    this.enabled = enabled;
+  }
+
+  show() {
+    this.visible = true;
+  }
+
+  hide() {
+    this.visible = false;
+  }
+
+  enable() {
+    this.enabled = true;
+  }
+
+  disable() {
+    this.enabled = false;
+  }
+}
+
+export interface TaskUIControls {
+  accept: TaskButtonControl;
+  decline: TaskButtonControl;
+  hold: TaskButtonControl;
+  mute: TaskButtonControl;
+  transfer: TaskButtonControl;
+  consult: TaskButtonControl;
+  consultTransfer: TaskButtonControl;
+  recording: TaskButtonControl;
+  end: TaskButtonControl;
+  conference: TaskButtonControl;
+  endConsult: TaskButtonControl;
+  wrapup: TaskButtonControl;
+}

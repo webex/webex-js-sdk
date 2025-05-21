@@ -1,14 +1,12 @@
-import {LocalMicrophoneStream} from '@webex/calling';
-import {CC_FILE} from '../../constants';
-import {getErrorDetails} from '../core/Utils';
-import routingContact from './contact';
-import {TaskData, TaskResponse} from './types';
+import {LocalMicrophoneStream, CALL_EVENT_KEYS} from '@webex/calling';
+import {CC_FILE} from '../../../constants';
+import {getErrorDetails} from '../../core/Utils';
+import routingContact from '../contact';
+import {TaskData, TaskResponse, TASK_EVENTS} from '../types';
 import Voice from './Voice';
-import WebCallingService from '../WebCallingService';
-import {TaskUIControls} from './Task';
+import WebCallingService from '../../WebCallingService';
 
 export default class WebRTC extends Voice {
-  protected contact: ReturnType<typeof routingContact>;
   private localAudioStream: LocalMicrophoneStream;
   private webCallingService: WebCallingService;
 
@@ -18,30 +16,27 @@ export default class WebRTC extends Voice {
     data: TaskData
   ) {
     super(contact, data);
-    this.contact = contact;
-    this.data = data;
     this.webCallingService = webCallingService;
   }
 
-  public getUIControls(): TaskUIControls {
-    // Default UI controls for other media types
-    return {
-      showAcceptButton: true,
-      showDeclineButton: true,
-      showMuteButton: true,
-    };
+  private registerWebCallListeners() {
+    this.webCallingService.on(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleRemoteMedia);
   }
 
-  public isAcceptSupported(): boolean {
-    return true;
-  }
+  private handleRemoteMedia = (track: MediaStreamTrack) => {
+    this.emit(TASK_EVENTS.TASK_MEDIA, track);
+  };
 
-  public isDeclineSupported(): boolean {
-    return true;
-  }
-
-  public isMuteSupported(): boolean {
-    return true;
+  /**
+   * This method is used to unregister the web call listeners.
+   * @returns void
+   * @example
+   * ```typescript
+   * task.unregisterWebCallListeners();
+   * ```
+   */
+  public unregisterWebCallListeners() {
+    this.webCallingService.off(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleRemoteMedia);
   }
 
   /**

@@ -1,54 +1,10 @@
-import {CC_FILE} from '../../constants';
-import {getErrorDetails} from '../core/Utils';
-import routingContact from './contact';
-import {ConsultPayload, ResumeRecordingPayload, TaskData, TaskResponse} from './types';
-import Task, {TaskUIControls} from './Task';
-import LoggerProxy from '../../logger-proxy';
+import {CC_FILE} from '../../../constants';
+import {getErrorDetails} from '../../core/Utils';
+import {ConsultPayload, ResumeRecordingPayload, TaskResponse} from '../types';
+import Task from '../Task';
+import LoggerProxy from '../../../logger-proxy';
 
 export default class Voice extends Task {
-  protected contact: ReturnType<typeof routingContact>;
-
-  constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
-    super();
-    this.contact = contact;
-    this.data = data;
-  }
-
-  public getUIControls(): TaskUIControls {
-    // Default UI controls for other media types
-    return {
-      showHoldButton: false,
-      showConsultButton: true,
-      showRecordingButton: true,
-      showEndButton: cc.agentConfig.isEndCallEnabled,
-      showEndConsultButton: cc.agentConfig.isEndConsultEnabled,
-    };
-  }
-
-  public isHoldResumeSupported(): boolean {
-    return true;
-  }
-
-  public isRecordingSupported(): boolean {
-    return true; // Feature flag an be checked too here
-  }
-
-  public isConsultSupported(): boolean {
-    return true;
-  }
-
-  public isConsultToQueueSupported(): boolean {
-    return cc.agentConfig.allowConsultToQueue;
-  }
-
-  public isEndTaskSupported(): boolean {
-    return cc.agentConfig.isEndCallEnabled;
-  }
-
-  public isEndConsultSupported(): boolean {
-    return cc.agentConfig.isEndConsultEnabled;
-  }
-
   /**
    * This method is used to accept the task.
    * It is expected to be overridden by child classes.

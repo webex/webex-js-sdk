@@ -1,119 +1,89 @@
 import {EventEmitter} from 'events';
 import {CallId} from '@webex/calling/dist/types/common/types';
 import {
-  ITask,
   TaskData,
   TaskResponse,
   WrapupPayLoad,
   TaskId,
   TransferPayLoad,
+  TaskButtonControl,
+  TaskUIControls,
   DESTINATION_TYPE,
-  MEDIA_CHANNEL,
 } from './types';
 import {CC_FILE} from '../../constants';
 import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
-import WebCallingService from '../WebCallingService';
-import Voice from './Voice';
-import Digital from './Digital';
-import WebRTC from './WebRTC';
-
-export interface TaskUIControls {
-  showAcceptButton: boolean;
-  showDeclineButton: boolean;
-  showHoldButton: boolean;
-  showMuteButton: boolean;
-  showTransferButton: boolean;
-  showConsultButton: boolean;
-  showRecordingButton: boolean;
-  showEndButton: boolean;
-  showConferenceButton: boolean;
-  showEndConsultButton: boolean;
-  showWrapupButton: boolean;
-  //   showMonitoringButton: boolean;
-  //   showBargeButton: boolean;
-}
+import MetricsManager from '../../metrics/MetricsManager';
 
 export default abstract class Task extends EventEmitter {
   protected contact: ReturnType<typeof routingContact>;
+  protected taskUiControls: TaskUIControls;
+  protected metricsManager: MetricsManager;
   public data: TaskData;
   public webCallMap: Record<TaskId, CallId>;
 
-  constructor() {
+  constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
     super();
+    this.contact = contact;
+    this.data = data;
+    this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
   }
 
+  private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
+    Object.keys(newData).forEach((key) => {
+      if (newData[key] && typeof newData[key] === 'object' && !Array.isArray(newData[key])) {
+        oldData[key] = this.reconcileData({...oldData[key]}, newData[key]);
+      } else {
+        oldData[key] = newData[key];
+      }
+    });
+
+    return oldData;
+  }
+
+  /**
+   * This method is used to get the task data.
+   * @returns TaskData
+   * @example
+   * ```typescript
+   * const controls = task.getUIControls();
+   * ```
+   */
   public getUIControls(): TaskUIControls {
     // Default UI controls for other media types
+    // Shape is a tuple (visibility: boolean, state: boolean (can be enabled/disabled))
     return {
-      showAcceptButton: false,
-      showDeclineButton: false,
-      showHoldButton: false,
-      showMuteButton: false,
-      showTransferButton: true,
-      showConsultButton: false,
-      showRecordingButton: false,
-      showEndButton: false,
-      showConferenceButton: false,
-      showEndConsultButton: false,
-      showWrapupButton: true,
-      //   showMonitoringButton: false,
-      //   showBargeButton: false,
+      accept: new TaskButtonControl(true, true),
+      decline: new TaskButtonControl(true, true),
+      hold: new TaskButtonControl(false, false),
+      mute: new TaskButtonControl(false, false),
+      end: new TaskButtonControl(true, true),
+      transfer: new TaskButtonControl(false, false),
+      consult: new TaskButtonControl(false, false),
+      consultTransfer: new TaskButtonControl(false, false),
+      endConsult: new TaskButtonControl(false, false),
+      recording: new TaskButtonControl(false, false),
+      conference: new TaskButtonControl(false, false),
+      wrapup: new TaskButtonControl(false, false),
     };
   }
 
-  unregisterWebCallListeners(): void {
-    throw new Error('Method not implemented.');
-  }
+  /**
+   * This method is used to update the task data.
+   * @param updatedData - TaskData
+   * @param shouldOverwrite - boolean
+   * @returns Task
+   * @example
+   * ```typescript
+   * task.updateTaskData(updatedData, true);
+   * ```
+   */
+  public updateTaskData(updatedData: TaskData, shouldOverwrite = false): Task {
+    this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
 
-  updateTaskData(): ITask {
-    throw new Error('Method not implemented.');
+    return this;
   }
-
-  public isMuteSupported(): boolean {
-    return false;
-  }
-
-  public isAcceptSupported(): boolean {
-    return false;
-  }
-
-  public isDeclineSupported(): boolean {
-    return false;
-  }
-
-  public isHoldResumeSupported(): boolean {
-    return false;
-  }
-
-  public isRecordingSupported(): boolean {
-    return false;
-  }
-
-  public isConsultSupported(): boolean {
-    return false;
-  }
-
-  public isConsultToQueueSupported(): boolean {
-    return false;
-  }
-
-  public isEndTaskSupported(): boolean {
-    return true;
-  }
-
-  public isEndConsultSupported(): boolean {
-    return false;
-  }
-
-  public isConferenceSupported(): boolean {
-    return true;
-  }
-
-  //   public isMonitoringSupported(): boolean {
-  //     return userRole === 'Supervisor';
-  //   }
 
   public abstract accept(): Promise<TaskResponse>;
 
@@ -207,27 +177,6 @@ export default abstract class Task extends EventEmitter {
       const {error: detailedError} = getErrorDetails(error, 'wrapup', CC_FILE);
 
       throw detailedError;
-    }
-  }
-
-  static createTaskInstance(
-    contact: ReturnType<typeof routingContact>,
-    webCallingService: WebCallingService,
-    data: TaskData
-  ): Task {
-    switch (data.interaction.mediaType) {
-      case MEDIA_CHANNEL.TELEPHONY:
-        if (webCallingService.loginOption === 'BROWSER') {
-          return new WebRTC(contact, webCallingService, data);
-        }
-
-        return new Voice(contact, data);
-      case MEDIA_CHANNEL.CHAT:
-      case MEDIA_CHANNEL.EMAIL:
-      case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(contact, data);
-      default:
-        throw new Error(`Unknown media type: ${data.interaction.mediaType}`);
     }
   }
 }

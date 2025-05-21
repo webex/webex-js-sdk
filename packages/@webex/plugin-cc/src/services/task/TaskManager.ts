@@ -3,29 +3,23 @@ import {ICall, LINE_EVENTS} from '@webex/calling';
 import {WebSocketManager} from '../core/websocket/WebSocketManager';
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
-import {ITask, MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
+import Task from './Task';
+import {MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
 import {LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
-import Task from './Task';
-import MetricsManager from '../../metrics/MetricsManager';
-import {METRIC_EVENT_NAMES} from '../../metrics/constants';
+import TaskFactory from './TaskFactory';
+import WebRTC from './voice/WebRTC';
 
 export default class TaskManager extends EventEmitter {
   private call: ICall;
   private contact: ReturnType<typeof routingContact>;
-  private taskCollection: Record<TaskId, ITask>;
+  private taskCollection: Record<TaskId, Task>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
-  private metricsManager: MetricsManager;
-  private static taskManager;
+  private static taskManager: TaskManager;
 
-  /**
-   * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
-   * @param webCallingService - Webrtc Service Layer
-   * @param webSocketManager - Websocket Manager to maintain websocket connection and keepalives
-   */
   constructor(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
@@ -33,17 +27,17 @@ export default class TaskManager extends EventEmitter {
   ) {
     super();
     this.contact = contact;
-    this.taskCollection = {};
     this.webCallingService = webCallingService;
     this.webSocketManager = webSocketManager;
-    this.metricsManager = MetricsManager.getInstance();
+    this.taskCollection = {};
+
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
   }
 
   private handleIncomingWebCall = (call: ICall) => {
     const currentTask = Object.values(this.taskCollection).find(
-      (task) => task.data.interaction.mediaType === 'telephony'
+      (t) => t.data.interaction.mediaType === MEDIA_CHANNEL.TELEPHONY
     );
 
     if (currentTask) {
@@ -66,36 +60,33 @@ export default class TaskManager extends EventEmitter {
   }
 
   private registerTaskListeners() {
-    this.webSocketManager.on('message', (event) => {
+    this.webSocketManager.on('message', (event: string) => {
       const payload = JSON.parse(event);
-      // Re-emit the task events to the task object
-      let task;
+      let task: Task | undefined;
+
       if (payload.data?.type) {
+        // for events emitted on existing tasks
         if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
           task = this.taskCollection[payload.data.interactionId];
         }
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
-            // task = new Task(this.contact, this.webCallingService, {
-            //   ...payload.data,
-            //   wrapUpRequired:
-            //     payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp || false,
-            // });
-            this.taskCollection[payload.data.interactionId] = task;
+            this.taskCollection[payload.data.interactionId] = task!;
             this.emit(TASK_EVENTS.TASK_HYDRATE, task);
             break;
+
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            task = Task.createTaskInstance(this.contact, this.webCallingService, {
+            task = TaskFactory.create(this.contact, this.webCallingService, {
               ...payload.data,
               isConsulted: false,
-            }); // Ensure isConsulted prop exists
+            });
             this.taskCollection[payload.data.interactionId] = task;
+            // for telephony in-browser we wait for incoming call, else fire immediately
             if (
               this.webCallingService.loginOption !== LoginOption.BROWSER ||
-              task.data.interaction.mediaType !== MEDIA_CHANNEL.TELEPHONY // for digital channels
+              task.data.interaction.mediaType !== MEDIA_CHANNEL.TELEPHONY ||
+              this.call
             ) {
-              this.emit(TASK_EVENTS.TASK_INCOMING, task);
-            } else if (this.call) {
               this.emit(TASK_EVENTS.TASK_INCOMING, task);
             }
             break;
@@ -108,8 +99,7 @@ export default class TaskManager extends EventEmitter {
             });
             break;
           case CC_EVENTS.AGENT_OUTBOUND_FAILED:
-            // We don't have to emit any event here since this will be result of promise.
-            if (task.data) {
+            if (task?.data) {
               this.removeTaskFromCollection(task);
             }
             LoggerProxy.log('Agent outbound failed', {
@@ -130,15 +120,6 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
             task = this.updateTaskData(task, payload.data);
-            this.metricsManager.trackEvent(
-              METRIC_EVENT_NAMES.AGENT_RONA,
-              {
-                ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
-                taskId: payload.data.interactionId,
-                reason: payload.data.reason,
-              },
-              ['behavioral', 'operational']
-            );
             this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
@@ -234,49 +215,32 @@ export default class TaskManager extends EventEmitter {
     });
   }
 
-  private updateTaskData(task: ITask, taskData: TaskData): ITask {
+  private updateTaskData(task: Task | undefined, taskData: TaskData): Task {
     if (!task) {
-      return undefined;
+      throw new Error('Task not found for update');
     }
 
-    if (!taskData?.interactionId) {
-      LoggerProxy.warn('Received task update with missing interactionId', {
-        module: TASK_MANAGER_FILE,
-        method: 'updateTaskData',
-      });
-    }
-
-    try {
-      const currentTask = task.updateTaskData(taskData);
-      this.taskCollection[taskData.interactionId] = currentTask;
-
-      return currentTask;
-    } catch (error) {
-      LoggerProxy.error(`Failed to update task ${taskData.interactionId}`, {
-        module: TASK_MANAGER_FILE,
-        method: 'updateTaskData',
-      });
-
-      return task;
-    }
+    return task.updateTaskData(taskData);
   }
 
-  private removeTaskFromCollection(task: ITask) {
-    if (task?.data?.interactionId) {
-      delete this.taskCollection[task.data.interactionId];
-      LoggerProxy.info(`Task removed from collection: ${task.data.interactionId}`, {
+  private removeTaskFromCollection(task: Task) {
+    const id = task.data.interactionId;
+    if (id && this.taskCollection[id]) {
+      delete this.taskCollection[id];
+      LoggerProxy.info(`Task removed: ${id}`, {
         module: TASK_MANAGER_FILE,
         method: 'removeTaskFromCollection',
       });
     }
   }
 
-  private handleTaskCleanup(task: ITask) {
+  private handleTaskCleanup(task: Task) {
     if (
       this.webCallingService.loginOption === LoginOption.BROWSER &&
-      task.data.interaction.mediaType === 'telephony'
+      task.data.interaction.mediaType === MEDIA_CHANNEL.TELEPHONY &&
+      task instanceof WebRTC
     ) {
-      task.unregisterWebCallListeners();
+      (task as WebRTC).unregisterWebCallListeners();
       this.webCallingService.cleanUpCall();
     }
     if (task.data.interaction.state === 'new') {
@@ -286,34 +250,23 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
-  /**
-   * @param taskId - Unique identifier for each task
-   */
-  public getTask = (taskId: string) => {
+  public getTask(taskId: TaskId): Task | undefined {
     return this.taskCollection[taskId];
-  };
+  }
 
-  /**
-   * @param taskId - Unique identifier for each task
-   */
-  public getAllTasks = (): Record<TaskId, ITask> => {
-    return this.taskCollection;
-  };
+  public getAllTasks(): Record<TaskId, Task> {
+    return {...this.taskCollection};
+  }
 
-  /**
-   * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
-   * @param webCallingService - Webrtc Service Layer
-   * @param webSocketManager - Websocket Manager to maintain websocket connection and keepalives
-   */
-  public static getTaskManager = (
+  public static getTaskManager(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     webSocketManager: WebSocketManager
-  ): TaskManager => {
-    if (!this.taskManager) {
-      this.taskManager = new TaskManager(contact, webCallingService, webSocketManager);
+  ): TaskManager {
+    if (!TaskManager.taskManager) {
+      TaskManager.taskManager = new TaskManager(contact, webCallingService, webSocketManager);
     }
 
-    return this.taskManager;
-  };
+    return TaskManager.taskManager;
+  }
 }
