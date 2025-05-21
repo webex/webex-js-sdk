@@ -76,6 +76,8 @@ describe('plugin-meetings', () => {
         canShareDesktop: null,
         canShareContent: null,
         canTransferFile: null,
+        canRealtimeCloseCaption: null,
+        canRealtimeCloseCaptionManual: null,
         canChat: null,
         canDoVideo: null,
         canAnnotate: null,
@@ -99,6 +101,7 @@ describe('plugin-meetings', () => {
         canDisableAnnotation: null,
         canEnableRemoteDesktopControl: null,
         canDisableRemoteDesktopControl: null,
+        canMoveToLobby: null,
 
         ...expected,
       };
@@ -181,6 +184,8 @@ describe('plugin-meetings', () => {
       'canShareDesktop',
       'canShareContent',
       'canTransferFile',
+      'canRealtimeCloseCaption',
+      'canRealtimeCloseCaptionManual',
       'canChat',
       'canDoVideo',
       'canAnnotate',
@@ -204,6 +209,7 @@ describe('plugin-meetings', () => {
       'canDisableAnnotation',
       'canEnableRemoteDesktopControl',
       'canDisableRemoteDesktopControl',
+      'canMoveToLobby',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

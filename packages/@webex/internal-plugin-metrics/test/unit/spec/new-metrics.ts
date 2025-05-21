@@ -278,6 +278,27 @@ describe('internal-plugin-metrics', () => {
 
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
       });
+
+      it('should not fail when called before webex is ready', () => {
+
+        // Create mock
+        webex = mockWebex()
+
+        webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
+        webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps = sinon.stub();
+        webex.setTimingsAndFetch = sinon.stub();
+
+        sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
+
+        // Call the method before webex is ready, will not throw error
+        webex.internal.newMetrics.setDelaySubmitClientEvents(false);
+        webex.internal.newMetrics.setDelaySubmitClientEvents(true);
+
+        webex.internal.newMetrics.setDelaySubmitClientEvents(false);
+        // Webex is ready
+        webex.emit('ready');
+
+      });
     });
   });
 });

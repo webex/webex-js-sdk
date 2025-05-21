@@ -97,6 +97,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private hasLoggedBrowserSerial: boolean;
   private device: any;
   private delayedClientEvents: DelayedClientEvent[] = [];
+  private eventErrorCache: WeakMap<any, any> = new WeakMap();
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -556,15 +557,30 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Clear the error cache
+   */
+  clearErrorCache() {
+    this.eventErrorCache = new WeakMap();
+  }
+
+  /**
    * Generate error payload for Client Event
    * @param rawError
    */
   generateClientEventErrorPayload(rawError: any) {
+    const cachedError = this.eventErrorCache.get(rawError);
+
+    if (cachedError) {
+      return [cachedError, true];
+    }
+
     const rawErrorMessage = rawError.message;
     const httpStatusCode = rawError.statusCode;
+    let payload;
+
     if (rawError.name) {
       if (isBrowserMediaErrorName(rawError.name)) {
-        return this.getErrorPayloadForClientErrorCode({
+        payload = this.getErrorPayloadForClientErrorCode({
           serviceErrorCode: undefined,
           clientErrorCode: BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name],
           serviceErrorName: rawError.name,
@@ -574,11 +590,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       }
     }
 
-    if (isSdpOfferCreationError(rawError)) {
+    if (isSdpOfferCreationError(rawError) && !payload) {
       // error code is 30005, but that's not specific enough. we also need to check error.cause.type
       const causeType = rawError.cause?.type;
 
-      return this.getErrorPayloadForClientErrorCode({
+      payload = this.getErrorPayloadForClientErrorCode({
         serviceErrorCode: undefined,
         clientErrorCode:
           SDP_OFFER_CREATION_ERROR_MAP[causeType] || SDP_OFFER_CREATION_ERROR_MAP.GENERAL,
@@ -596,8 +612,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     if (serviceErrorCode) {
       const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[serviceErrorCode];
-      if (clientErrorCode) {
-        return this.getErrorPayloadForClientErrorCode({
+      if (clientErrorCode && !payload) {
+        payload = this.getErrorPayloadForClientErrorCode({
           clientErrorCode,
           serviceErrorCode,
           rawErrorMessage,
@@ -606,8 +622,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       }
 
       // by default, if it is locus error, return new locus err
-      if (isLocusServiceErrorCode(serviceErrorCode)) {
-        return this.getErrorPayloadForClientErrorCode({
+      if (isLocusServiceErrorCode(serviceErrorCode) && !payload) {
+        payload = this.getErrorPayloadForClientErrorCode({
           clientErrorCode: NEW_LOCUS_ERROR_CLIENT_CODE,
           serviceErrorCode,
           rawErrorMessage,
@@ -616,8 +632,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       }
     }
 
-    if (isMeetingInfoServiceError(rawError)) {
-      return this.getErrorPayloadForClientErrorCode({
+    if (isMeetingInfoServiceError(rawError) && !payload) {
+      payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
         serviceErrorCode,
         rawErrorMessage,
@@ -625,8 +641,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
-    if (isNetworkError(rawError)) {
-      return this.getErrorPayloadForClientErrorCode({
+    if (isNetworkError(rawError) && !payload) {
+      payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: NETWORK_ERROR,
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
@@ -635,8 +651,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
-    if (isUnauthorizedError(rawError)) {
-      return this.getErrorPayloadForClientErrorCode({
+    if (isUnauthorizedError(rawError) && !payload) {
+      payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: AUTHENTICATION_FAILED_CODE,
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
@@ -645,15 +661,22 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
-    // otherwise return unkown error but passing serviceErrorCode and serviceErrorName so that we know the issue
-    return this.getErrorPayloadForClientErrorCode({
-      clientErrorCode: UNKNOWN_ERROR,
-      serviceErrorCode: serviceErrorCode || UNKNOWN_ERROR,
-      serviceErrorName: rawError?.name,
-      payloadOverrides: rawError.payloadOverrides,
-      rawErrorMessage,
-      httpStatusCode,
-    });
+    if (!payload) {
+      // otherwise return unkown error but passing serviceErrorCode and serviceErrorName so that we know the issue
+      payload = this.getErrorPayloadForClientErrorCode({
+        clientErrorCode: UNKNOWN_ERROR,
+        serviceErrorCode: serviceErrorCode || UNKNOWN_ERROR,
+        serviceErrorName: rawError?.name,
+        payloadOverrides: rawError.payloadOverrides,
+        rawErrorMessage,
+        httpStatusCode,
+      });
+    }
+
+    // cache the payload for future use
+    this.eventErrorCache.set(rawError, payload);
+
+    return [payload, false];
   }
 
   /**
@@ -834,14 +857,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const errors: ClientEventPayloadError = [];
 
     if (rawError) {
-      const generatedError = this.generateClientEventErrorPayload(rawError);
+      const [generatedError, cached] = this.generateClientEventErrorPayload(rawError);
       if (generatedError) {
         errors.push(generatedError);
       }
       this.logger.log(
         CALL_DIAGNOSTIC_LOG_IDENTIFIER,
         'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-        `generatedError: ${JSON.stringify(generatedError)}`
+        `generatedError (cached: ${cached}): ${JSON.stringify(generatedError)}`
       );
     }
 

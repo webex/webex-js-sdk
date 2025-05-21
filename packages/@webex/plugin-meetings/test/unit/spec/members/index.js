@@ -120,9 +120,9 @@ describe('plugin-meetings', () => {
       meeting = {
         request: sinon.mock().returns(Promise.resolve()),
         locusInfo: {
-          sequence: {}
-        }
-      }
+          sequence: {},
+        },
+      };
 
       createMembers = (options) => new Members({locusUrl: options.url, meeting}, {parent: webex});
     });
@@ -349,7 +349,7 @@ describe('plugin-meetings', () => {
         {type: 'COHOST', hasRole: true},
       ];
 
-      const resolvedValue = "it worked";
+      const resolvedValue = 'it worked';
 
       const genericMessage = 'Generic error from the API';
 
@@ -364,9 +364,13 @@ describe('plugin-meetings', () => {
         };
 
         if (errorCode) {
-          spies.assignRolesMember = sandbox.stub(members.membersRequest, 'assignRolesMember').rejects({body: {errorCode}, message: genericMessage});
+          spies.assignRolesMember = sandbox
+            .stub(members.membersRequest, 'assignRolesMember')
+            .rejects({body: {errorCode}, message: genericMessage});
         } else {
-          spies.assignRolesMember = sandbox.stub(members.membersRequest, 'assignRolesMember').resolves(resolvedValue);
+          spies.assignRolesMember = sandbox
+            .stub(members.membersRequest, 'assignRolesMember')
+            .resolves(resolvedValue);
         }
 
         return {members, spies};
@@ -378,7 +382,15 @@ describe('plugin-meetings', () => {
         assert.notCalled(spies.assignRolesMember);
       };
 
-      const checkError = async (error, expectedMemberId, expectedRoles, expectedLocusUrl, resultPromise, expectedMessage, spies) => {
+      const checkError = async (
+        error,
+        expectedMemberId,
+        expectedRoles,
+        expectedLocusUrl,
+        resultPromise,
+        expectedMessage,
+        spies
+      ) => {
         await assert.isRejected(resultPromise, error, expectedMessage);
         assert.calledOnceWithExactly(
           spies.generateRoleAssignmentMemberOptions,
@@ -423,7 +435,7 @@ describe('plugin-meetings', () => {
         await checkInvalid(
           resultPromise,
           'The member id must be defined to assign the roles to a member.',
-          spies,
+          spies
         );
       });
 
@@ -435,7 +447,7 @@ describe('plugin-meetings', () => {
         await checkInvalid(
           resultPromise,
           'The associated locus url for this meetings members object must be defined.',
-          spies,
+          spies
         );
       });
 
@@ -452,7 +464,7 @@ describe('plugin-meetings', () => {
           url1,
           resultPromise,
           'Non converged meetings, PSTN or SIP users in converged meetings are not supported currently.',
-          spies,
+          spies
         );
       });
 
@@ -469,7 +481,7 @@ describe('plugin-meetings', () => {
           url1,
           resultPromise,
           'Reclaim Host Role Not Allowed For Other Participants. Participants cannot claim host role in PMR meeting, space instant meeting or escalated instant meeting. However, the original host still can reclaim host role when it manually makes another participant to be the host.',
-          spies,
+          spies
         );
       });
 
@@ -486,7 +498,7 @@ describe('plugin-meetings', () => {
           url1,
           resultPromise,
           'Host Key Not Specified Or Matched. The original host can reclaim the host role without entering the host key. However, any other person who claims the host role must enter the host key to get it.',
-          spies,
+          spies
         );
       });
 
@@ -503,7 +515,7 @@ describe('plugin-meetings', () => {
           url1,
           resultPromise,
           'Participant Having Host Role Already. Participant who sends request to reclaim host role has already a host role.',
-          spies,
+          spies
         );
       });
 
@@ -520,7 +532,7 @@ describe('plugin-meetings', () => {
           url1,
           resultPromise,
           genericMessage,
-          spies,
+          spies
         );
       });
 
@@ -530,13 +542,7 @@ describe('plugin-meetings', () => {
 
         const resultPromise = members.assignRoles(memberId, fakeRoles);
 
-        await checkValid(
-          resultPromise,
-          spies,
-          memberId,
-          fakeRoles,
-          url1,
-        );
+        await checkValid(resultPromise, spies, memberId, fakeRoles, url1);
       });
     });
 
@@ -661,19 +667,19 @@ describe('plugin-meetings', () => {
         spies,
         expectedRequestingMemberId,
         expectedLocusUrl,
-        expectedRoles,
+        expectedRoles
       ) => {
         await assert.isFulfilled(resultPromise);
         assert.calledOnceWithExactly(
           spies.generateLowerAllHandsMemberOptions,
           expectedRequestingMemberId,
           expectedLocusUrl,
-          expectedRoles,
+          expectedRoles
         );
         assert.calledOnceWithExactly(spies.lowerAllHandsMember, {
           requestingParticipantId: expectedRequestingMemberId,
           locusUrl: expectedLocusUrl,
-          ...(expectedRoles !== undefined && { roles: expectedRoles })
+          ...(expectedRoles !== undefined && {roles: expectedRoles}),
         });
         assert.strictEqual(resultPromise, spies.lowerAllHandsMember.getCall(0).returnValue);
       };
@@ -714,7 +720,7 @@ describe('plugin-meetings', () => {
       it('should make the correct request when called with valid requestingMemberId and roles', async () => {
         const requestingMemberId = 'test-member-id';
         const roles = ['panelist', 'attendee'];
-        const { members, spies } = setup('test-locus-url');
+        const {members, spies} = setup('test-locus-url');
 
         const resultPromise = members.lowerAllHands(requestingMemberId, roles);
 
@@ -724,7 +730,7 @@ describe('plugin-meetings', () => {
       it('should handle an empty roles array correctly', async () => {
         const requestingMemberId = 'test-member-id';
         const roles = [];
-        const { members, spies } = setup('test-locus-url');
+        const {members, spies} = setup('test-locus-url');
 
         const resultPromise = members.lowerAllHands(requestingMemberId, roles);
 
@@ -975,6 +981,77 @@ describe('plugin-meetings', () => {
           members.getCsisForMember('oneWithSomeCsis', 'video', 'main'),
           [1001, 2001]
         );
+      });
+    });
+
+    describe('#moveToLobby', () => {
+      const setup = (locusUrl) => {
+        const members = createMembers({url: locusUrl});
+
+        const spies = {
+          getMoveMemberToLobbyRequestBody: sandbox.spy(
+            MembersUtil,
+            'getMoveMemberToLobbyRequestBody'
+          ),
+          moveToLobbyMember: sandbox.spy(members.membersRequest, 'moveToLobbyMember'),
+        };
+
+        return {members, spies};
+      };
+
+      const checkInvalid = async (resultPromise, expectedMessage, spies) => {
+        await assert.isRejected(resultPromise, ParameterError, expectedMessage);
+        assert.notCalled(spies.getMoveMemberToLobbyRequestBody);
+        assert.notCalled(spies.moveToLobbyMember);
+      };
+
+      const checkValid = async (resultPromise, spies, expectedMemberId, expectedLocusUrl) => {
+        await assert.isFulfilled(resultPromise);
+        assert.calledOnceWithExactly(spies.getMoveMemberToLobbyRequestBody, expectedMemberId);
+        assert.calledOnceWithExactly(
+          spies.moveToLobbyMember,
+          {
+            locusUrl: expectedLocusUrl,
+            memberId: expectedMemberId,
+          },
+          {
+            moveToLobby: {participantIds: [expectedMemberId]},
+          }
+        );
+        assert.strictEqual(resultPromise, spies.moveToLobbyMember.getCall(0).returnValue);
+      };
+
+      it('should not make a request if there is no member id', async () => {
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.moveToLobby();
+
+        await checkInvalid(
+          resultPromise,
+          'The member id must be defined to move the member to lobby.',
+          spies
+        );
+      });
+
+      it('should not make a request if there is no locus url', async () => {
+        const {members, spies} = setup();
+
+        const resultPromise = members.moveToLobby(uuid.v4());
+
+        await checkInvalid(
+          resultPromise,
+          'The associated locus url for this meetings members object must be defined.',
+          spies
+        );
+      });
+
+      it('should make the correct request when called with valid memberId and locusUrl', async () => {
+        const memberId = uuid.v4();
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.moveToLobby(memberId);
+
+        await checkValid(resultPromise, spies, memberId, url1);
       });
     });
   });
