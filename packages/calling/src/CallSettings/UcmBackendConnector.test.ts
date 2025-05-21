@@ -1,4 +1,5 @@
 import {LOGGER} from '../Logger/types';
+import log from '../Logger';
 import * as utils from '../common/Utils';
 import {
   FAILURE_MESSAGE,
@@ -62,6 +63,12 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       });
 
       webex.request.mockResolvedValue(responsePayload);
+
+      // Setup log spies
+      jest.spyOn(log, 'log').mockImplementation(() => {});
+      jest.spyOn(log, 'info').mockImplementation(() => {});
+      jest.spyOn(log, 'warn').mockImplementation(() => {});
+      jest.spyOn(log, 'error').mockImplementation(() => {});
     });
 
     it('Success: Get Call Forward Always setting when set to destination', async () => {
@@ -73,10 +80,14 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(true);
       expect(callForwardSetting.destination).toEqual('8004');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
+
+      expect(log.info).toHaveBeenCalled();
+      expect(log.log).toHaveBeenCalled();
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Success: Get Call Forward Always setting when set to voicemail', async () => {
@@ -88,10 +99,14 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(true);
       expect(callForwardSetting.destination).toEqual('VOICEMAIL');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
+
+      expect(log.info).toHaveBeenCalled();
+      expect(log.log).toHaveBeenCalled();
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Success: Get Call Forward Always setting when not set', async () => {
@@ -103,10 +118,14 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(false);
       expect(callForwardSetting.destination).toBeFalsy();
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
+
+      expect(log.info).toHaveBeenCalled();
+      expect(log.log).toHaveBeenCalled();
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Success: Get Call Forward Always setting when directory num matching with e16number and set to destination', async () => {
@@ -118,10 +137,14 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(true);
       expect(callForwardSetting.destination).toEqual('8007');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
+
+      expect(log.info).toHaveBeenCalled();
+      expect(log.log).toHaveBeenCalled();
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Failure: Get Call Forward Always setting fails', async () => {
@@ -137,14 +160,18 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.statusCode).toEqual(503);
       expect(response.message).toEqual(FAILURE_MESSAGE);
       expect(response.data.error).toEqual('Unable to establish a connection with the server');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
-      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(responsePayload, {
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(responsePayload, {
         file: UCM_CONNECTOR_FILE,
         method: callSettingsClient.getCallForwardAlwaysSetting.name,
       });
+
+      expect(log.info).toHaveBeenCalled();
+      expect(log.error).toHaveBeenCalled();
+      expect(log.log).not.toHaveBeenCalled();
     });
 
     it('Failure: Get Call Forward Always setting fails - wrong directoryNumber', async () => {
@@ -153,10 +180,13 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.statusCode).toEqual(404);
       expect(response.message).toEqual(FAILURE_MESSAGE);
       expect(response.data.error).toEqual('Directory Number is not assigned to the user');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
+
+      expect(log.info).toHaveBeenCalled();
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Failure: Get Call Forward Always setting fails when no directoryNumberProvided', async () => {
@@ -165,11 +195,14 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.statusCode).toEqual(400);
       expect(response.message).toEqual(FAILURE_MESSAGE);
       expect(response.data.error).toEqual('Directory Number is mandatory for UCM backend');
-      expect(webex.request).not.toBeCalled();
+      expect(webex.request).not.toHaveBeenCalled();
+
+      expect(log.info).toHaveBeenCalled();
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     describe('Unsupported methods return failure', () => {
-      const unsupportedMethods: string[] = [
+      const unsupportedMethods = [
         'getCallWaitingSetting',
         'getDoNotDisturbSetting',
         'setDoNotDisturbSetting',
@@ -185,7 +218,7 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         expect(response.statusCode).toEqual(501);
         expect(response.message).toEqual(FAILURE_MESSAGE);
         expect(response.data.error).toEqual('Method is not implemented at the backend');
-        expect(webex.request).not.toBeCalled();
+        expect(webex.request).not.toHaveBeenCalled();
       });
     });
   });

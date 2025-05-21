@@ -84,6 +84,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: 'getCallWaitingSetting',
     };
 
+    log.info('Getting Call Waiting settings', loggerContext);
+
     try {
       if (!this.xsiEndpoint) {
         this.xsiEndpoint = await getXsiActionEndpoint(
@@ -124,6 +126,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log('Successfully got Call Waiting settings', loggerContext);
+
       return responseDetails;
     } catch (err: unknown) {
       const extendedError = new Error(
@@ -150,6 +154,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: 'getDoNotDisturbSetting',
     };
 
+    log.info('Getting Do Not Disturb settings', loggerContext);
+
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
         uri: `${this.hydraEndpoint}/${PEOPLE_ENDPOINT}/${this.personId}/${DND_ENDPOINT}?${ORG_ENDPOINT}=${this.orgId}`,
@@ -163,6 +169,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         },
         message: SUCCESS_MESSAGE,
       };
+
+      log.log('Successfully got Do Not Disturb settings', loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {
@@ -188,6 +196,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: 'setDoNotDisturbSetting',
     };
 
+    log.info('Setting Do Not Disturb settings', loggerContext);
+
     try {
       const dndRequestBody: ToggleSetting = {
         enabled,
@@ -207,6 +217,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         },
         message: SUCCESS_MESSAGE,
       };
+
+      log.log('Successfully set Do Not Disturb settings', loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {
@@ -232,6 +244,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: 'getCallForwardingSetting',
     };
 
+    log.info('Getting Call Forward settings', loggerContext);
+
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
         uri: `${this.hydraEndpoint}/${PEOPLE_ENDPOINT}/${this.personId}/${CF_ENDPOINT}?${ORG_ENDPOINT}=${this.orgId}`,
@@ -245,6 +259,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         },
         message: SUCCESS_MESSAGE,
       };
+
+      log.log('Successfully got Call Forward settings', loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {
@@ -272,6 +288,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: 'setCallForwardingSetting',
     };
 
+    log.info('Setting Call Forward settings', loggerContext);
+
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
         uri: `${this.hydraEndpoint}/${PEOPLE_ENDPOINT}/${this.personId}/${CF_ENDPOINT}?${ORG_ENDPOINT}=${this.orgId}`,
@@ -286,6 +304,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         },
         message: SUCCESS_MESSAGE,
       };
+
+      log.log('Successfully set Call Forward settings', loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {
@@ -311,6 +331,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: 'getVoicemailSetting',
     };
 
+    log.info('Getting Voicemail settings', loggerContext);
+
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
         uri: `${this.hydraEndpoint}/${PEOPLE_ENDPOINT}/${this.personId}/${VM_ENDPOINT}?${ORG_ENDPOINT}=${this.orgId}`,
@@ -324,6 +346,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         },
         message: SUCCESS_MESSAGE,
       };
+
+      log.log('Successfully got Voicemail settings', loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {
@@ -348,6 +372,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       file: CALL_SETTINGS_FILE,
       method: 'setVoicemailSetting',
     };
+
+    log.info('Setting Voicemail settings', loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({

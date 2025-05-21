@@ -129,6 +129,11 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: this.getCallForwardAlwaysSetting.name,
     };
 
+    log.info(
+      `Starting to get call forward always setting for directory number: ${directoryNumber}`,
+      loggerContext
+    );
+
     const webexApisUrl = this.useProdWebexApis
       ? WEBEX_API_CONFIG_PROD_URL
       : WEBEX_API_CONFIG_INT_URL;
@@ -158,6 +163,11 @@ export class UcmBackendConnector implements IUcmBackendConnector {
               } as CallForwardAlwaysSetting,
             },
           };
+
+          log.log(
+            `Successfully retrieved call forward always setting for directory number: ${directoryNumber}`,
+            loggerContext
+          );
 
           return response;
         }

@@ -35,6 +35,9 @@ import {callForwardPayload, xsiEndpointUrlResponse, voicemailPayload} from './te
 
 describe('Call Settings Client Tests for WxCallBackendConnector', () => {
   const warnSpy = jest.spyOn(Logger, 'warn');
+  const logSpy = jest.spyOn(Logger, 'log');
+  const infoSpy = jest.spyOn(Logger, 'info');
+  const errorSpy = jest.spyOn(Logger, 'error');
 
   const webex = getTestUtilsWebex();
   let serviceErrorCodeHandlerSpy: jest.SpyInstance;
@@ -56,6 +59,9 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
   beforeEach(() => {
     serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
     warnSpy.mockClear();
+    logSpy.mockClear();
+    infoSpy.mockClear();
+    errorSpy.mockClear();
   });
 
   describe('Call Waiting Test', () => {
@@ -96,16 +102,26 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
       const response = await callSettingsClient.getCallWaitingSetting();
       const toggleSetting = response.data.callSetting as ToggleSetting;
 
-      expect(webex.request).not.toBeCalled();
+      expect(webex.request).not.toHaveBeenCalled();
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe(SUCCESS_MESSAGE);
-      expect(toggleSetting.enabled).toStrictEqual(true);
-      expect(global.fetch).toBeCalledOnceWith(callWaitingUrl, {
+      expect(toggleSetting.enabled).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(callWaitingUrl, {
         method: HTTP_METHODS.GET,
         headers: {
           Authorization: await webex.credentials.getUserToken(),
         },
       });
+
+      expect(infoSpy).toHaveBeenCalledWith('Getting Call Waiting settings', {
+        file: CALL_SETTINGS_FILE,
+        method: 'getCallWaitingSetting',
+      });
+      expect(logSpy).toHaveBeenCalledWith('Successfully got Call Waiting settings', {
+        file: CALL_SETTINGS_FILE,
+        method: 'getCallWaitingSetting',
+      });
+      expect(errorSpy).not.toHaveBeenCalled();
     });
 
     it('Success: Get Call Waiting setting disabled', async () => {
@@ -144,13 +160,13 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
 
       expect(response.statusCode).toBe(403);
       expect(response.message).toBe(FAILURE_MESSAGE);
-      expect(global.fetch).toBeCalledOnceWith(callWaitingUrl, {
+      expect(global.fetch).toHaveBeenCalledWith(callWaitingUrl, {
         method: HTTP_METHODS.GET,
         headers: {
           Authorization: await webex.credentials.getUserToken(),
         },
       });
-      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
         {
           statusCode: 403,
         },
@@ -159,6 +175,13 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
           method: 'getCallWaitingSetting',
         }
       );
+
+      expect(infoSpy).toHaveBeenCalledWith('Getting Call Waiting settings', {
+        file: CALL_SETTINGS_FILE,
+        method: 'getCallWaitingSetting',
+      });
+      expect(errorSpy).toHaveBeenCalled();
+      expect(logSpy).not.toHaveBeenCalled();
     });
 
     it('Error: Get Call Waiting settings throw URI error', async () => {
@@ -229,10 +252,20 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe(SUCCESS_MESSAGE);
       expect(toggleSetting.enabled).toBe(true);
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri,
       });
+
+      expect(infoSpy).toHaveBeenCalledWith('Getting Do Not Disturb settings', {
+        file: CALL_SETTINGS_FILE,
+        method: 'getDoNotDisturbSetting',
+      });
+      expect(logSpy).toHaveBeenCalledWith('Successfully got Do Not Disturb settings', {
+        file: CALL_SETTINGS_FILE,
+        method: 'getDoNotDisturbSetting',
+      });
+      expect(errorSpy).not.toHaveBeenCalled();
     });
 
     it('Error: Set DND setting', async () => {
@@ -268,11 +301,11 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
 
       expect(response.statusCode).toBe(403);
       expect(response.message).toBe(FAILURE_MESSAGE);
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri,
       });
-      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
         {
           statusCode: 403,
         },
@@ -281,6 +314,13 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
           method: 'getDoNotDisturbSetting',
         }
       );
+
+      expect(infoSpy).toHaveBeenCalledWith('Getting Do Not Disturb settings', {
+        file: CALL_SETTINGS_FILE,
+        method: 'getDoNotDisturbSetting',
+      });
+      expect(errorSpy).toHaveBeenCalled();
+      expect(logSpy).not.toHaveBeenCalled();
     });
   });
 
