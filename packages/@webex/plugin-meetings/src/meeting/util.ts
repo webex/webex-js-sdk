@@ -583,6 +583,8 @@ const MeetingUtil = {
     displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD) &&
     !!policies[SELF_POLICY.SUPPORT_WHITEBOARD],
 
+  canMoveToLobby: (displayHints) => displayHints.includes(DISPLAY_HINTS.MOVE_TO_LOBBY),
+
   /**
    * Adds the current locus sequence information to a request body
    * @param {Object} meeting The meeting object
