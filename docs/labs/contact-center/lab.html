@@ -55,8 +55,68 @@ async function deregister(webex) {
         <button id="btn-deregister" disabled>Deregister Agent</button>
     </section>
 
+    <section id="station">
+        <h2>Step 3: Station Login</h2>
+        <p>Select your team and login type to handle calls.</p>
+
+        <pre><code>// Station Login Code
+async function stationLogin(webex, params) {
+    try {
+        const response = await webex.cc.stationLogin(params);
+        console.log('Station login successful:', response);
+        return response;
+    } catch (error) {
+        console.error('Station login failed:', error);
+        throw error;
+    }
+}</code></pre>
+
+        <div style="display: flex; gap: 1rem;">
+            <fieldset style="flex: 0.7;">
+                <legend>Select Team</legend>
+                <select id="teamsDropdown" disabled>
+                    <option value="" selected>Choose Team...</option>
+                </select>
+            </fieldset>
+            <fieldset>
+                <legend>Agent Login</legend>
+                <select id="AgentLogin" onchange="handleAgentLogin(event)" disabled>
+                    <option value="" selected>Choose Agent Login...</option>
+                </select>
+                <input id="dialNumber" placeholder="Dial Number" type="text" disabled>
+                <button id="loginStation" onclick="handleStationLogin()" disabled>Login</button>
+                <button id="logoutStation" onclick="handleStationLogout()" class="hidden">Logout</button>
+            </fieldset>
+        </div>
+    </section>
+
+    <section id="state">
+        <h2>Step 4: Agent State Management</h2>
+        <p>Change the agent's state between Available, Idle, and other states.</p>
+
+        <pre><code>// Agent State Code
+async function setAgentState(webex, { state, auxCodeId }) {
+    try {
+        const response = await webex.cc.setAgentState({
+            state,
+            auxCodeId
+        });
+        console.log('Agent state set successfully:', state);
+        return response;
+    } catch (error) {
+        console.error('Agent state set failed:', error);
+        throw error;
+    }
+}</code></pre>
+
+        <select id="sel-state" disabled>
+            <option value="">Choose State...</option>
+        </select>
+        <button id="btn-set-state" disabled>Set State</button>
+    </section>
+
     <section id="tasks">
-        <h2>Step 3: Task Management</h2>
+        <h2>Step 5: Task Management</h2>
         <p>Listen for incoming tasks and handle accept/decline operations.</p>
 
         <pre><code>// Task Management Code
@@ -92,8 +152,57 @@ async function declineTask(task) {
         <button id="btn-decline" disabled>Decline Current Task</button>
     </section>
 
+    <section id="controls">
+        <h2>Step 6: Call Controls</h2>
+        <p>Manage voice calls with hold/resume and mute/unmute functionality. Call controls are available after
+            accepting a voice task.</p>
+
+        <pre><code>// Call Controls Code
+async function toggleHold(task) {
+    try {
+        if (!task.isVoice()) {
+            console.warn('Hold/Resume only available for voice tasks');
+            return;
+        }
+        
+        if (!isHold) {
+            await task.hold();
+            isHold = true;
+            console.log('Call held successfully');
+        } else {
+            await task.resume();
+            isHold = false;
+            console.log('Call resumed successfully');
+        }
+    } catch (error) {
+        console.error('Hold/Resume operation failed:', error);
+        throw error;
+    }
+}
+
+function toggleMute(task) {
+    try {
+        if (!task.isVoice()) {
+            console.warn('Mute only available for voice tasks');
+            return;
+        }
+        task.toggleMute();
+        isMuted = !isMuted;
+        console.log('Mute toggled successfully, state:', isMuted ? 'muted' : 'unmuted');
+    } catch (error) {
+        console.error('Mute operation failed:', error);
+        throw error;
+    }
+}</code></pre>
+
+        <div class="call-controls">
+            <button id="btn-hold" onclick="handleHold()" disabled>Hold Call</button>
+            <button id="btn-mute" onclick="handleMute()" disabled>Mute Call</button>
+        </div>
+    </section>
+
     <section id="digital">
-        <h2>Step 4: Digital Channels (Chat / Email)</h2>
+        <h2>Step 7: Digital Channels (Chat / Email)</h2>
         <p>Initialize and load the IMI Engage widget for handling digital channel interactions.</p>
 
         <pre><code>// Digital Channels Code
@@ -124,71 +233,6 @@ function handleDigitalChannelTask(task, agentInfo) {
         <div id="engageWidget" style="border:1px solid #888; height:200px; margin-top:0.5em;"></div>
     </section>
 
-    <section id="controls">
-        <h2>Step 5: Call Controls</h2>
-        <p>Manage voice calls with hold/resume and mute/unmute functionality.</p>
-
-        <pre><code>// Call Controls Code
-let isHold = false;
-let isMuted = false;
-
-async function toggleHold(task) {
-    try {
-        if (!isHold) {
-            await task.hold();
-            isHold = true;
-            console.log('Call held successfully');
-        } else {
-            await task.resume();
-            isHold = false;
-            console.log('Call resumed successfully');
-        }
-    } catch (error) {
-        console.error('Hold/Resume operation failed:', error);
-        throw error;
-    }
-}
-
-function toggleMute(task) {
-    try {
-        task.toggleMute();
-        isMuted = !isMuted;
-        console.log('Mute toggled successfully, state:', isMuted ? 'muted' : 'unmuted');
-    } catch (error) {
-        console.error('Mute operation failed:', error);
-        throw error;
-    }
-}</code></pre>
-
-        <button id="btn-hold" disabled>Toggle Hold/Resume</button>
-        <button id="btn-mute" disabled>Toggle Mute</button>
-    </section>
-
-    <section id="state">
-        <h2>Step 6: Agent State Management</h2>
-        <p>Change the agent's state between Available, Idle, and other states.</p>
-
-        <pre><code>// Agent State Code
-async function setAgentState(webex, { state, auxCodeId }) {
-    try {
-        const response = await webex.cc.setAgentState({
-            state,
-            auxCodeId
-        });
-        console.log('Agent state set successfully:', state);
-        return response;
-    } catch (error) {
-        console.error('Agent state set failed:', error);
-        throw error;
-    }
-}</code></pre>
-
-        <select id="sel-state" disabled>
-            <option>Available</option>
-            <option>Idle</option>
-        </select>
-        <button id="btn-set-state" disabled>Set State</button>
-    </section>
 
     <section id="log-section">
         <h2>Console Log</h2>
@@ -200,6 +244,75 @@ async function setAgentState(webex, { state, auxCodeId }) {
         window.initOauth = initOauth;
         window.initWithAccessToken = initWithAccessToken;
 
+        // Make functions globally accessible
+        window.handleAgentLogin = handleAgentLogin;
+        window.handleStationLogin = handleStationLogin;
+        window.handleStationLogout = handleStationLogout;
+
+        // Handle registration response to populate teams and login options
+        function handleRegistrationResponse(response) {
+            const teamsDropdown = document.getElementById('teamsDropdown');
+            const agentLoginDropdown = document.getElementById('AgentLogin');
+
+            // Populate teams dropdown
+            response.teams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team.id;
+                option.text = team.name;
+                teamsDropdown.add(option);
+            });
+
+            // Populate login options
+            const loginOptions = response.loginVoiceOptions.filter(
+                opt => response.webRtcEnabled || opt !== 'BROWSER'
+            );
+            loginOptions.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.text = opt;
+                agentLoginDropdown.add(option);
+            });
+
+            // Clear existing options
+            const stateSelect = document.getElementById('sel-state');
+            stateSelect.innerHTML = '<option value="">Choose State...</option>';
+
+            // Add regular states first
+            const states = [{
+                id: 'AVAILABLE',
+                label: 'Available'
+            }, {
+                id: 'IDLE',
+                label: 'Idle'
+            }, {
+                id: 'BUSY',
+                label: 'Busy'
+            }];
+
+            states.forEach(state => {
+                const option = document.createElement('option');
+                option.value = state.id;
+                option.text = state.label;
+                stateSelect.add(option);
+            });
+
+            // Add aux codes from response
+            if (Array.isArray(response.auxCodes)) {
+                const auxGroup = document.createElement('optgroup');
+                auxGroup.label = 'Aux States';
+
+                response.auxCodes.forEach(code => {
+                    const option = document.createElement('option');
+                    option.value = code.id;
+                    option.text = code.label || code.name;
+                    option.dataset.isAux = 'true';
+                    auxGroup.appendChild(option);
+                });
+
+                stateSelect.appendChild(auxGroup);
+            }
+        }
+
         // Check URL hash for access token and initialize
         async function init() {
             const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -207,13 +320,10 @@ async function setAgentState(webex, { state, auxCodeId }) {
             if (accessToken) {
                 try {
                     window.webex = await window.initWithAccessToken(accessToken);
-                    window.webex.once('ready', () => {
-                        console.log('✅ Authenticated successfully with token');
-                        // enable next steps
-                        ['btn-register', 'btn-listen-tasks', 'btn-init-digital', 'sel-state', 'btn-set-state'].forEach(id => {
-                            document.getElementById(id).disabled = false;
-                        });
-                    });
+
+                    // Enable registration first
+                    document.getElementById('btn-register').disabled = false;
+
                 } catch (e) {
                     console.error('Failed to initialize with access token:', e);
                 }
@@ -233,9 +343,220 @@ async function setAgentState(webex, { state, auxCodeId }) {
         })
 
         // Implementation code
-        let webex, currentTask;
+        let webex, currentTask, agentDeviceType, deviceId;
+
+        // Station login and agent state event listeners
+        window.webex?.cc?.on('agent:stationLoginSuccess', (data) => {
+            console.log('Station login success:', data);
+            deviceId = data.deviceId;
+            agentDeviceType = data.deviceType;
+
+            // Handle initial state from login
+            const auxCodeId = data.auxCodeId?.trim() || '0';
+            const state = data.state || 'Idle';
+            const stateSelect = document.getElementById('sel-state');
+
+            // Find exact match for aux code or state
+            const stateOption = Array.from(stateSelect.options).find(opt =>
+                (opt.dataset.isAux && opt.value === auxCodeId) ||
+                (!opt.dataset.isAux && opt.text.toLowerCase() === state.toLowerCase())
+            );
+            if (stateOption) {
+                stateSelect.value = stateOption.value;
+            }
+            console.log('Initial agent state:', state, 'with aux code:', auxCodeId);
+
+            // Show update profile button after login
+            const updateProfileBtn = document.createElement('button');
+            updateProfileBtn.id = 'btn-update-profile';
+            updateProfileBtn.textContent = 'Update Profile';
+            updateProfileBtn.onclick = showUpdateProfileUI;
+            document.querySelector('#station fieldset:last-child').appendChild(updateProfileBtn);
+        });
+
+        window.webex?.cc?.on('agent:multiLogin', (data) => {
+            if (data?.type === 'AgentMultiLoginCloseSession') {
+                console.warn('Multiple agent login sessions detected!');
+                alert('Multiple agent login sessions detected - this session will be closed');
+            }
+        });
+
+        window.webex?.cc?.on('agent:stateChange', (data) => {
+            if (data?.type === 'AgentStateChangeSuccess') {
+                const stateSelect = document.getElementById('sel-state');
+                // Find matching option by value (aux code) or text (state) 
+                const option = Array.from(stateSelect.options).find(opt =>
+                    (opt.dataset.isAux && opt.value === data.auxCodeId) ||
+                    (!opt.dataset.isAux && opt.text.toLowerCase() === data.state?.toLowerCase())
+                );
+                if (option) {
+                    stateSelect.value = option.value;
+                }
+                console.log('Agent state changed to:', data.state, 'aux code:', data.auxCodeId);
+            }
+        });
+
+        window.webex?.cc?.on('agent:reloginSuccess', (data) => {
+            console.log('Agent re-login successful:', data);
+            agentDeviceType = data.deviceType;
+            if (data.deviceType === 'BROWSER') {
+                dialNumber.disabled = true;
+                dialNumber.value = '';
+            }
+        });
+
+        // Make functions globally accessible 
+        window.showUpdateProfileUI = showUpdateProfileUI;
+        window.applyProfileUpdate = applyProfileUpdate;
+        window.handleHold = async () => {
+            if (!currentTask) return;
+            await toggleHold(currentTask);
+            document.getElementById('btn-hold').textContent = isHold ? 'Resume Call' : 'Hold Call';
+        };
+        window.handleMute = async () => {
+            if (!currentTask) return;
+            await toggleMute(currentTask);
+            document.getElementById('btn-mute').textContent = isMuted ? 'Unmute Call' : 'Mute Call';
+        };
+
+        // Profile update functionality
+        function showUpdateProfileUI() {
+            const updateFields = document.createElement('div');
+            updateFields.id = 'update-profile-fields';
+            updateFields.innerHTML = `
+                <select id="update-login-type">
+                    <option value="" selected>Choose Login Option...</option>
+                    <option value="BROWSER">Browser</option>
+                    <option value="AGENT_DN">Agent DN</option>
+                    <option value="EXTENSION">Extension</option>
+                </select>
+                <input type="text" id="update-dial-number" placeholder="New Dial Number" disabled>
+                <button onclick="applyProfileUpdate()">Save</button>
+            `;
+            document.querySelector('#station fieldset:last-child').appendChild(updateFields);
+
+            const updateLoginTypeSelect = document.getElementById('update-login-type');
+            const updateDialInput = document.getElementById('update-dial-number');
+
+            updateLoginTypeSelect.onchange = (e) => {
+                updateDialInput.disabled = e.target.value === 'BROWSER';
+            };
+        }
+
+        async function applyProfileUpdate() {
+            const loginType = document.getElementById('update-login-type').value;
+            const dialNumber = document.getElementById('update-dial-number').value;
+
+            if (!loginType) {
+                alert('Please select a login type');
+                return;
+            }
+
+            if ((loginType === 'AGENT_DN' || loginType === 'EXTENSION') && !dialNumber) {
+                alert('Dial number is required for selected login type');
+                return;
+            }
+
+            try {
+                await window.webex.cc.updateDeviceType({
+                    loginOption: loginType,
+                    dialNumber: loginType === 'BROWSER' ? '' : dialNumber
+                });
+
+                console.log('✅ Profile updated successfully');
+                document.getElementById('update-profile-fields').remove();
+            } catch (error) {
+                console.error('❌ Profile update failed:', error);
+                alert('Failed to update profile');
+            }
+        }
 
         // Implementation for auth.js has been moved to auth.js
+
+        // Handle agent login type selection
+        function handleAgentLogin(event) {
+            agentDeviceType = event.target.value;
+            const dialNumberInput = document.getElementById('dialNumber');
+            dialNumberInput.disabled = !(agentDeviceType === 'AGENT_DN' || agentDeviceType === 'EXTENSION');
+        }
+
+        // Station login implementation
+        function handleStationLogin() {
+            const teamId = document.getElementById('teamsDropdown').value;
+            const dialNumber = document.getElementById('dialNumber').value;
+
+            if (!teamId) {
+                alert('Please select a team');
+                return;
+            }
+
+            if (!agentDeviceType) {
+                alert('Please select agent login type');
+                return;
+            }
+
+            if ((agentDeviceType === 'AGENT_DN' || agentDeviceType === 'EXTENSION') && !dialNumber) {
+                alert('Dial number is required for selected login type');
+                return;
+            }
+
+            window.webex.cc.stationLogin({
+                teamId,
+                loginOption: agentDeviceType,
+                dialNumber
+            })
+                .then((response) => {
+                    console.log('✅ Station login successful:', response);
+                    deviceId = response.deviceId;
+
+                    // Disable registration fields
+                    document.getElementById('teamsDropdown').disabled = true;
+                    document.getElementById('AgentLogin').disabled = true;
+
+                    // Update station login/logout UI
+                    document.getElementById('loginStation').disabled = true;
+                    document.getElementById('logoutStation').classList.remove('hidden');
+
+                    if (agentDeviceType === 'BROWSER') {
+                        document.getElementById('dialNumber').disabled = true;
+                        document.getElementById('dialNumber').value = '';
+                    }
+
+                    // Enable controls after successful login
+                    document.getElementById('sel-state').disabled = false;
+                    document.getElementById('btn-set-state').disabled = false;
+
+                    // Enable additional controls
+                    document.getElementById('btn-accept').disabled = false;
+                    document.getElementById('btn-decline').disabled = false;
+                    document.getElementById('btn-hold').disabled = false;
+                    document.getElementById('btn-mute').disabled = false;
+                })
+                .catch((error) => {
+                    console.error('❌ Station login failed:', error);
+                    alert('Station login failed');
+                });
+        }
+
+        function handleStationLogout() {
+            window.webex.cc.stationLogout({ logoutReason: 'logout' })
+                .then(() => {
+                    console.log('✅ Station logout successful');
+                    // Update UI
+                    document.getElementById('loginStation').disabled = false;
+                    document.getElementById('logoutStation').classList.add('hidden');
+                    document.getElementById('dialNumber').value = '';
+                    document.getElementById('dialNumber').disabled = true;
+                    document.getElementById('AgentLogin').value = '';
+                    // Disable state management after logout
+                    document.getElementById('sel-state').disabled = true;
+                    document.getElementById('btn-set-state').disabled = true;
+                })
+                .catch((error) => {
+                    console.error('❌ Station logout failed:', error);
+                    alert('Station logout failed');
+                });
+        }
 
         // Implementation for registration.js
         async function register(webex) {
@@ -342,9 +663,6 @@ async function setAgentState(webex, { state, auxCodeId }) {
         }
 
         // Implementation for call-controls.js
-        let isHold = false;
-        let isMuted = false;
-
         async function toggleHold(task) {
             try {
                 if (!isHold) {
@@ -407,8 +725,18 @@ async function setAgentState(webex, { state, auxCodeId }) {
         // Register / Deregister
         document.getElementById('btn-register').onclick = async () => {
             try {
-                await register(window.webex);
+                const response = await register(window.webex);
                 console.log('✅ Agent registered successfully');
+
+                // Handle registration response
+                handleRegistrationResponse(response);
+
+                // Enable station login controls
+                document.getElementById('teamsDropdown').disabled = false;
+                document.getElementById('AgentLogin').disabled = false;
+                document.getElementById('loginStation').disabled = false;
+
+                // Enable other basic controls
                 document.getElementById('btn-deregister').disabled = false;
                 document.getElementById('btn-accept').disabled = false;
                 document.getElementById('btn-decline').disabled = false;
@@ -424,6 +752,10 @@ async function setAgentState(webex, { state, auxCodeId }) {
             try {
                 await deregister(window.webex);
                 console.log('✅ Agent deregistered successfully');
+                // Disable state management first
+                document.getElementById('sel-state').disabled = true;
+                document.getElementById('btn-set-state').disabled = true;
+                // Then disable other controls
                 document.getElementById('btn-deregister').disabled = true;
                 document.getElementById('btn-accept').disabled = true;
                 document.getElementById('btn-decline').disabled = true;
@@ -433,6 +765,21 @@ async function setAgentState(webex, { state, auxCodeId }) {
                 console.error('Deregistration failed:', e);
             }
         };
+
+        // Call control state
+        let isHold = false;
+        let isMuted = false;
+
+        function enableCallControls(task) {
+            if (!task || !task.isVoice()) {
+                document.getElementById('btn-hold').disabled = true;
+                document.getElementById('btn-mute').disabled = true;
+                return;
+            }
+
+            document.getElementById('btn-hold').disabled = false;
+            document.getElementById('btn-mute').disabled = false;
+        }
 
         // Task events
         document.getElementById('btn-listen-tasks').onclick = () => {
@@ -457,6 +804,9 @@ async function setAgentState(webex, { state, auxCodeId }) {
             try {
                 await acceptTask(currentTask);
                 console.log('✅ Task accepted');
+
+                // Enable call controls for voice tasks
+                enableCallControls(currentTask);
             } catch (e) {
                 console.error('Failed to accept task:', e);
             }
@@ -470,6 +820,9 @@ async function setAgentState(webex, { state, auxCodeId }) {
             try {
                 await declineTask(currentTask);
                 console.log('✅ Task declined');
+
+                // Disable call controls
+                enableCallControls(null);
                 currentTask = null;
             } catch (e) {
                 console.error('Failed to decline task:', e);
@@ -504,42 +857,75 @@ async function setAgentState(webex, { state, auxCodeId }) {
         };
 
         // Call controls
-        document.getElementById('btn-hold').onclick = async () => {
-            if (!currentTask) {
-                alert('No active call to hold/resume');
-                return;
-            }
-            try {
-                await toggleHold(currentTask);
-                document.getElementById('btn-hold').textContent = isHold ? 'Resume Call' : 'Hold Call';
-            } catch (e) {
-                console.error('Hold/resume operation failed:', e);
-            }
-        };
+        document.getElementById('btn-hold').onclick = handleHold;
+        document.getElementById('btn-mute').onclick = handleMute;
 
-        document.getElementById('btn-mute').onclick = async () => {
-            if (!currentTask) {
-                alert('No active call to mute/unmute');
-                return;
-            }
-            try {
-                toggleMute(currentTask);
-                document.getElementById('btn-mute').textContent = isMuted ? 'Unmute Call' : 'Mute Call';
-            } catch (e) {
-                console.error('Mute/unmute operation failed:', e);
-            }
-        };
-
-        // Agent state
+        // Agent state 
         document.getElementById('btn-set-state').onclick = async () => {
-            const newState = document.getElementById('sel-state').value;
+            const stateSelect = document.getElementById('sel-state');
+            const selectedOption = stateSelect.options[stateSelect.selectedIndex];
+            if (!selectedOption.value) {
+                alert('Please select a state');
+                return;
+            }
+
             try {
-                await setAgentState(window.webex, { state: newState });
-                console.log('✅ Agent state changed to:', newState);
+                const params = {
+                    state: selectedOption.text,
+                    // If it's an aux code, include the auxCodeId
+                    ...(selectedOption.dataset.isAux && { auxCodeId: selectedOption.value })
+                };
+
+                await setAgentState(window.webex, params);
+                console.log('✅ Agent state changed to:', params.state);
             } catch (e) {
                 console.error('Agent state change failed:', e);
             }
         };
+
+        // Update state handler to handle aux codes
+        window.webex?.cc?.on('agent:stateChange', (data) => {
+            if (data?.type === 'AgentStateChangeSuccess') {
+                const stateSelect = document.getElementById('sel-state');
+                // Clear selection first
+                stateSelect.value = '';
+                // Find exact match - either aux code or state
+                const option = Array.from(stateSelect.options).find(opt =>
+                    (opt.dataset.isAux && opt.value === data.auxCodeId) ||
+                    (!opt.dataset.isAux && opt.text.toLowerCase() === data.state?.toLowerCase())
+                );
+                if (option) {
+                    stateSelect.value = option.value;
+                }
+                console.log('Agent state changed to:', data.state, 'aux code:', data.auxCodeId);
+            }
+        });
+
+        // Cleanup before page unload
+        window.addEventListener('beforeunload', async (event) => {
+            if (!window.webex?.cc) return;
+
+            // Show confirmation dialog
+            event.preventDefault();
+            event.returnValue = '';
+
+            try {
+                // Attempt station logout if logged in
+                if (deviceId) {
+                    await window.webex.cc.stationLogout({
+                        logoutReason: 'pageUnload',
+                        deviceId
+                    });
+                    console.log('Station logged out during cleanup');
+                }
+
+                // Always attempt deregistration
+                await window.webex.cc.deregister();
+                console.log('Agent deregistered during cleanup');
+            } catch (error) {
+                console.error('Cleanup failed:', error);
+            }
+        });
     </script>
 
 </body>

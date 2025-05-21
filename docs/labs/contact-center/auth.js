@@ -74,7 +74,7 @@ export function initWithAccessToken(accessToken) {
 
   return new Promise((resolve, reject) => {
     webex.once('ready', () => {
-      console.log('Authentication#initWebex() :: Webex Ready');
+      console.log('✅ Authenticated successfully with token');
       resolve(webex);
     });
 
