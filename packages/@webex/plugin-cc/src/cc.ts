@@ -580,7 +580,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.log('SET AGENT STATUS API SUCCESS', {
+      LoggerProxy.log('Agent state changed successfully', {
         module: CC_FILE,
         method: 'setAgentState',
       });
@@ -794,12 +794,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
 
-      LoggerProxy.info('Silent re-login process completed successfully', {
+      LoggerProxy.log('Silent re-login process completed successfully', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
     } catch (error) {
-      const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin', CC_FILE);
+      const {reason, error: detailedError} = getErrorDetails(error, 'silentRelogin', CC_FILE);
       if (reason === 'AGENT_NOT_FOUND') {
         LoggerProxy.log('Agent not found during re-login, handling silently', {
           module: CC_FILE,

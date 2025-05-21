@@ -309,7 +309,7 @@ describe('webex.cc', () => {
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
         module: CC_FILE,
-        method: 'mockConstructor',
+        method: 'connectWebsocket',
       });
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
@@ -352,7 +352,7 @@ describe('webex.cc', () => {
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
         module: CC_FILE,
-        method: 'mockConstructor',
+        method: 'connectWebsocket',
       });
       expect(reloadSpy).not.toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
@@ -413,7 +413,7 @@ describe('webex.cc', () => {
 
       expect(LoggerProxy.error).toHaveBeenCalledWith(`Error occurred during mercury.connect() ${mockError}`, {
         module: CC_FILE,
-        method: 'mockConstructor',
+        method: 'connectWebsocket',
       });
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
@@ -440,7 +440,7 @@ describe('webex.cc', () => {
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
         module: CC_FILE,
-        method: 'mockConstructor',
+        method: 'connectWebsocket',
       });
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
@@ -770,6 +770,10 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.stationLogin(options)).rejects.toThrow(error.details.data.reason);
 
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station login', {
+        module: CC_FILE,
+        method: 'stationLogin',
+      });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `stationLogin failed with trackingId: ${error.details.trackingId}`,
         {module: CC_FILE, method: 'stationLogin'}
@@ -832,6 +836,10 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.stationLogout(data)).rejects.toThrow(error.details.data.reason);
 
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station logout', {
+        module: CC_FILE,
+        method: 'stationLogout',
+      });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `stationLogout failed with trackingId: ${error.details.trackingId}`,
         {module: CC_FILE, method: 'stationLogout'}
@@ -881,6 +889,10 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.stationReLogin()).rejects.toThrow(error.details.data.reason);
 
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station relogin', {
+        module: CC_FILE,
+        method: 'stationReLogin',
+      });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `stationReLogin failed with trackingId: ${error.details.trackingId}`,
         {module: CC_FILE, method: 'stationReLogin'}
@@ -917,7 +929,7 @@ describe('webex.cc', () => {
         module: CC_FILE,
         method: 'setAgentState',
       });
-      expect(LoggerProxy.log).toHaveBeenCalledWith('SET AGENT STATUS API SUCCESS', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent state changed successfully', {
         module: CC_FILE,
         method: 'setAgentState',
       });
@@ -946,10 +958,16 @@ describe('webex.cc', () => {
 
       expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload});
       expect(result).toEqual(expectedPayload);
-      expect(LoggerProxy.log).toHaveBeenCalledWith('SET AGENT STATUS API SUCCESS', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent state changed successfully', {
         module: CC_FILE,
         method: 'setAgentState',
       });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent state changed successfully', {
+        module: CC_FILE,
+        method: 'setAgentState',
+      });
+      expect(setAgentStatusMock).toHaveBeenCalledWith({data: expectedPayload});
+      expect(result).toEqual(expectedPayload);
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED
@@ -977,6 +995,11 @@ describe('webex.cc', () => {
       await expect(webex.cc.setAgentState(expectedPayload)).rejects.toThrow(
         error.details.data.reason
       );
+      
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Setting agent state', {
+        module: CC_FILE,
+        method: 'setAgentState',
+      });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `setAgentState failed with trackingId: ${error.details.trackingId}`,
         {module: CC_FILE, method: 'setAgentState'}
@@ -1097,6 +1120,10 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc.services.agent, 'buddyAgents').mockRejectedValue(error);
 
       await expect(webex.cc.getBuddyAgents(data)).rejects.toThrow(error.details.data.reason);
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching buddy agents', {
+        module: CC_FILE,
+        method: 'getBuddyAgents',
+      });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `getBuddyAgents failed with trackingId: ${error.details.trackingId}`,
         {module: CC_FILE, method: 'getBuddyAgents'}
@@ -1152,7 +1179,7 @@ describe('webex.cc', () => {
         'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
         {module: CC_FILE, method: 'silentRelogin'}
       );
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Silent re-login process completed successfully', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Silent re-login process completed successfully', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
@@ -1201,11 +1228,15 @@ describe('webex.cc', () => {
     });
 
     it('should handle errors during silent relogin', async () => {
-      const error = new Error('Error while performing silentReLogin');
+      const error = new Error('Error while performing silentRelogin');
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
 
       await expect(webex.cc['silentRelogin']()).rejects.toThrow(error);
       expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent re-login process', {
+        module: CC_FILE,
+        method: 'silentRelogin',
+      });
+      expect(LoggerProxy.error).toHaveBeenCalledWith(`silentRelogin failed with trackingId: undefined`, {
         module: CC_FILE,
         method: 'silentRelogin',
       });
@@ -1242,7 +1273,7 @@ describe('webex.cc', () => {
         module: CC_FILE,
         method: 'silentRelogin',
       });
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Silent re-login process completed successfully', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Silent re-login process completed successfully', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
@@ -1362,6 +1393,10 @@ describe('webex.cc', () => {
         error.details.data.reason
       );
 
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting outbound dial', {
+        module: CC_FILE,
+        method: 'startOutdial',
+      });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `startOutdial failed with trackingId: ${error.details.trackingId}`,
         {module: CC_FILE, method: 'startOutdial'}

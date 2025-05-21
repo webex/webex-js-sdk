@@ -13,6 +13,7 @@ export const WEB_SOCKET_MANAGER_FILE = 'WebSocketManager';
 export const AQM_REQS_FILE = 'aqm-reqs';
 export const WEBEX_REQUEST_FILE = 'WebexRequest';
 export const TASK_MANAGER_FILE = 'TaskManager';
+export const TASK_FILE = 'Task';
 // AGENT OUTDIAL CONSTANTS
 export const OUTDIAL_DIRECTION = 'OUTBOUND';
 export const ATTRIBUTES = {};
