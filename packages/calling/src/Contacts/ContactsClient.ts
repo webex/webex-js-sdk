@@ -336,6 +336,8 @@ export class ContactsClient implements IContacts {
       method: 'getContacts',
     };
 
+    log.info('Fetching contacts and groups', loggerContext);
+
     const contactList: Contact[] = [];
     const cloudContactsMap: ContactIdContactInfo = {};
 
@@ -419,6 +421,8 @@ export class ContactsClient implements IContacts {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log('Successfully fetched contacts and groups', loggerContext);
+
       return contactResponse;
     } catch (err: unknown) {
       const errorInfo = err as WebexRequestPayload;
@@ -473,7 +477,7 @@ export class ContactsClient implements IContacts {
     }
 
     this.encryptionKeyUrl = await this.createNewEncryptionKeyUrl();
-    log.info(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
+    log.log(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
       file: CONTACTS_FILE,
       method: this.fetchEncryptionKeyUrl.name,
     });
@@ -484,6 +488,10 @@ export class ContactsClient implements IContacts {
 
     if (response.data.group?.groupId) {
       this.defaultGroupId = response.data.group?.groupId;
+      log.log(`Successfully created default group with ID: ${this.defaultGroupId}`, {
+        file: CONTACTS_FILE,
+        method: this.fetchEncryptionKeyUrl.name,
+      });
     }
 
     return this.encryptionKeyUrl;
@@ -496,6 +504,11 @@ export class ContactsClient implements IContacts {
    */
   private async fetchDefaultGroup(): Promise<string> {
     if (this.defaultGroupId) {
+      log.log(`Using existing default group with ID: ${this.defaultGroupId}`, {
+        file: CONTACTS_FILE,
+        method: this.fetchDefaultGroup.name,
+      });
+
       return this.defaultGroupId;
     }
 
@@ -504,13 +517,17 @@ export class ContactsClient implements IContacts {
       for (let i = 0; i < this.groups.length; i += 1) {
         if (this.groups[i].displayName === DEFAULT_GROUP_NAME) {
           this.defaultGroupId = this.groups[i].groupId;
+          log.log(`Found default group with ID: ${this.defaultGroupId}`, {
+            file: CONTACTS_FILE,
+            method: this.fetchDefaultGroup.name,
+          });
 
           return this.defaultGroupId;
         }
       }
     }
 
-    log.info('No default group found.', {
+    log.log('No default group found.', {
       file: CONTACTS_FILE,
       method: this.fetchDefaultGroup.name,
     });
@@ -520,7 +537,13 @@ export class ContactsClient implements IContacts {
     const {group} = response.data;
 
     if (group) {
-      return group.groupId;
+      const groupId = group.groupId;
+      log.log(`Successfully created new default group with ID: ${groupId}`, {
+        file: CONTACTS_FILE,
+        method: this.fetchDefaultGroup.name,
+      });
+
+      return groupId;
     }
 
     return '';
@@ -599,6 +622,7 @@ export class ContactsClient implements IContacts {
       };
 
       this.groups?.push(group);
+      log.log(`Contact group ${displayName} successfully created`, loggerContext);
 
       return contactResponse;
     } catch (err: unknown) {
@@ -644,6 +668,8 @@ export class ContactsClient implements IContacts {
       if (!this.groups?.length) {
         this.defaultGroupId = '';
       }
+
+      log.log(`Contact group ${groupId} successfully deleted`, loggerContext);
 
       return contactResponse;
     } catch (err: unknown) {
@@ -752,6 +778,7 @@ export class ContactsClient implements IContacts {
       } else {
         this.contacts?.push(contact);
       }
+      log.log(`Contact successfully created`, loggerContext);
 
       return contactResponse;
     } catch (err: unknown) {
@@ -796,6 +823,8 @@ export class ContactsClient implements IContacts {
       if (contactToDelete !== undefined && contactToDelete !== -1) {
         this.contacts?.splice(contactToDelete, 1);
       }
+
+      log.log(`Contact ${contactId} successfully deleted`, loggerContext);
 
       return contactResponse;
     } catch (err: unknown) {
