@@ -21,7 +21,7 @@
     "directory": "packages/calling"
   },
   "engines": {
-    "node": ">=14.x"
+    "node": ">=22"
   },
   "scripts": {
     "prebuild": "rimraf dist",

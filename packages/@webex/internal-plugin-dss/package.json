@@ -11,7 +11,7 @@
     "directory": "packages/@webex/internal-plugin-dss"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=22"
   },
   "browserify": {
     "transform": [

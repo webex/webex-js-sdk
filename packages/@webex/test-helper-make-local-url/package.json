@@ -9,7 +9,7 @@
     "directory": "packages/@webex/test-helper-make-local-url"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=22"
   },
   "browserify": {
     "transform": [

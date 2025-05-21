@@ -13,7 +13,7 @@
     "directory": "packages/@webex/plugin-device-manager"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=22"
   },
   "browserify": {
     "transform": [

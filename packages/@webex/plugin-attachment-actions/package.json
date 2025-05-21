@@ -13,7 +13,7 @@
     "directory": "packages/@webex/plugin-attachment-actions"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=22"
   },
   "browserify": {
     "transform": [

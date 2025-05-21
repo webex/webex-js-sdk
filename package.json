@@ -20,8 +20,8 @@
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "author": "devsupport@webex.com",
   "engines": {
-    "node": "16.x",
-    "npm": ">=6.x"
+    "node": "22.x",
+    "npm": ">=9.x"
   },
   "main": "src/index.js",
   "repository": {
@@ -79,7 +79,7 @@
   },
   "devDependencies": {
     "@babel/cli": "^7.17.10",
-    "@babel/core": "^7.17.10",
+    "@babel/core": "^7.27.1",
     "@babel/eslint-parser": "^7.17.0",
     "@babel/generator": "^7.24.7",
     "@babel/node": "^7.14.9",

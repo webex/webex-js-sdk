@@ -10,7 +10,7 @@
     "directory": "packages/@webex/plugin-teams"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=22"
   },
   "browserify": {
     "transform": [
