@@ -2047,7 +2047,12 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
           meeting.mediaProperties.getCurrentConnectionInfo = sinon
             .stub()
-            .resolves({connectionType: 'udp', selectedCandidatePairChanges: 2, numTransports: 1});
+            .resolves({
+              connectionType: 'udp',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
+              ipVersion: 'IPv6',
+            });
           meeting.audio = muteStateStub;
           meeting.video = muteStateStub;
           sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
@@ -2762,7 +2767,7 @@ describe('plugin-meetings', () => {
               turnDiscoverySkippedReason: undefined,
             });
           meeting.meetingState = 'ACTIVE';
-          const error = {iceConnected: false}
+          const error = {iceConnected: false};
           meeting.mediaProperties.waitForMediaConnectionConnected.rejects(error);
 
           const forceRtcMetricsSend = sinon.stub().resolves();
@@ -3059,6 +3064,9 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(webex.internal.newMetrics.submitClientEvent.thirdCall, {
             name: 'client.media-engine.ready',
+            payload: {
+              ipVersion: 'IPv6',
+            },
             options: {
               meetingId: meeting.id,
             },
@@ -3115,6 +3123,7 @@ describe('plugin-meetings', () => {
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
               selectedCandidatePairChanges: 2,
+              ipVersion: 'IPv6',
               numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: true,
@@ -3268,6 +3277,7 @@ describe('plugin-meetings', () => {
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
               selectedCandidatePairChanges: 2,
+              ipVersion: 'IPv6',
               numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: false,
@@ -3435,28 +3445,24 @@ describe('plugin-meetings', () => {
             on: sinon.stub(),
           });
 
-          await meeting
-            .addMedia({
-              mediaSettings: {},
-            });
+          await meeting.addMedia({
+            mediaSettings: {},
+          });
 
-          assert.calledWith(
-            Metrics.sendBehavioralMetric,
-            BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
-            {
-              correlation_id: meeting.correlationId,
-              locus_id: meeting.locusUrl.split('/').pop(),
-              connectionType: 'udp',
-              selectedCandidatePairChanges: 2,
-              numTransports: 1,
-              isMultistream: false,
-              retriedWithTurnServer: false,
-              isJoinWithMediaRetry: false,
-              iceCandidatesCount: 0,
-              reachability_public_udp_success: 5,
-              isSubnetReachable: false,
-            }
-          );
+          assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
+            correlation_id: meeting.correlationId,
+            locus_id: meeting.locusUrl.split('/').pop(),
+            connectionType: 'udp',
+            ipVersion: 'IPv6',
+            selectedCandidatePairChanges: 2,
+            numTransports: 1,
+            isMultistream: false,
+            retriedWithTurnServer: false,
+            isJoinWithMediaRetry: false,
+            iceCandidatesCount: 0,
+            reachability_public_udp_success: 5,
+            isSubnetReachable: false,
+          });
         });
 
         it('should send valid isSubnetReachability if media connection fails', async () => {
@@ -3536,6 +3542,8 @@ describe('plugin-meetings', () => {
             meeting.config.stats.enableStatsAnalyzer = true;
 
             statsAnalyzerStub = new EventsScope();
+            statsAnalyzerStub.getNetworkType = sinon.stub().returns('wifi');
+
             // mock the StatsAnalyzer constructor
             sinon.stub(InternalMediaCoreModule, 'StatsAnalyzer').returns(statsAnalyzerStub);
 
@@ -3830,7 +3838,7 @@ describe('plugin-meetings', () => {
               },
             };
             sinon.stub(meeting, 'getMembers').returns({membersCollection: fakeMembersCollection});
-            const fakeData = {intervalMetadata: {}, networkType: 'wifi'};
+            const fakeData = {intervalMetadata: {}};
 
             statsAnalyzerStub.emit(
               {file: 'test', function: 'test'},
@@ -3871,7 +3879,7 @@ describe('plugin-meetings', () => {
           });
 
           it('calls submitMQE correctly', async () => {
-            const fakeData = {intervalMetadata: {bla: 'bla'}, networkType: 'wifi'};
+            const fakeData = {intervalMetadata: {bla: 'bla'}};
 
             statsAnalyzerStub.emit(
               {file: 'test', function: 'test'},
@@ -4081,7 +4089,7 @@ describe('plugin-meetings', () => {
                     meetingId: meeting.id,
                     rawError: {
                       iceConnected: false,
-                    }
+                    },
                   },
                 },
               ]);
@@ -10869,6 +10877,7 @@ describe('plugin-meetings', () => {
         let canUserRenameSelfAndObservedSpy;
         let canUserRenameOthersSpy;
         let canShareWhiteBoardSpy;
+        let canMoveToLobbySpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -10899,6 +10908,7 @@ describe('plugin-meetings', () => {
           );
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
           canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
+          canMoveToLobbySpy = sinon.spy(MeetingUtil, 'canMoveToLobby');
         });
 
         afterEach(() => {
@@ -10995,6 +11005,16 @@ describe('plugin-meetings', () => {
               actionName: 'canTransferFile',
               requiredDisplayHints: [],
               requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
+            },
+            {
+              actionName: 'canRealtimeCloseCaption',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION],
+            },
+            {
+              actionName: 'canRealtimeCloseCaptionManual',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_REALTIME_CLOSE_CAPTION_MANUAL],
             },
             {
               actionName: 'canChat',
@@ -11440,6 +11460,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(requiresPostMeetingDataConsentPromptSpy, userDisplayHints);
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
           assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
+          assert.calledWith(canMoveToLobbySpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
