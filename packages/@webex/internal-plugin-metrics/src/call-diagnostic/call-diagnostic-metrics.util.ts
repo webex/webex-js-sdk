@@ -230,32 +230,34 @@ export const getBuildType = (
  * @param {Object} item
  * @returns {Object} prepared item
  */
-export const prepareDiagnosticMetricItem = async (webex: any, item: any) => {
+export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
   const buildType = getBuildType(
     webex,
     item.eventPayload?.event?.eventData?.webClientDomain,
     item.eventPayload?.event?.eventData?.markAsTestEvent
   );
 
+  let pairedDevice;
+
   // Set upgradeChannel to 'gold' if buildType is 'prod', otherwise to the buildType value
   const upgradeChannel = buildType === 'prod' ? 'gold' : buildType;
-
-  const pairedDevice = await webex.devicemanager.getPairedDevice();
-
-  if (pairedDevice.id) {
-    const devicePayload = {
-      deviceId: pairedDevice.deviceInfo.id,
-      // deviceJoinType:
-      devicePairingType: 'Manual',
-      // deviceType?: string # such as Cloud, Cloud Aware, On-Prem
-      deviceURL: pairedDevice.url,
-      isPersonalDevice: pairedDevice.mode === 'personal',
-      // modelNumber?: string # such as DX80, DX3000, DX70, Webex Board, Desk Pro
-      productName: pairedDevice.devices[0].productName,
-      // tempSipUri?: string  # deskphone or onPrem device use this sip uri to join locus
-    };
-    item.eventPayload.event.pairingState = 'paired';
-    item.eventPayload.event.pairedDevice = devicePayload;
+  if (webex.devicemanager) {
+    pairedDevice = webex.devicemanager.getPairedDevice();
+    if (pairedDevice.id) {
+      const devicePayload = {
+        deviceId: pairedDevice.deviceInfo.id,
+        // deviceJoinType:
+        devicePairingType: 'Manual',
+        // deviceType?: string # such as Cloud, Cloud Aware, On-Prem
+        deviceURL: pairedDevice.url,
+        isPersonalDevice: pairedDevice.mode === 'personal',
+        // modelNumber?: string # such as DX80, DX3000, DX70, Webex Board, Desk Pro
+        productName: pairedDevice.devices[0].productName,
+        // tempSipUri?: string  # deskphone or onPrem device use this sip uri to join locus
+      };
+      item.eventPayload.event.pairingState = 'paired';
+      item.eventPayload.event.pairedDevice = devicePayload;
+    }
   }
 
   const origin: Partial<Event['origin']> = {
