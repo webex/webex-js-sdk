@@ -1,6 +1,7 @@
 import sha256 from 'crypto-js/sha256';
 
 import {union, forEach} from 'lodash';
+import {serviceHostmapV2} from 'packages/@webex/webex-core/test/fixtures/host-catalog-v2';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from './metrics';
@@ -690,85 +691,13 @@ const Services = WebexPlugin.extend({
    * @private
    * Organize a received hostmap from a service
    * catalog endpoint.
-   * @param {object} serviceHostmap
    * @returns {object}
    */
-  _formatReceivedHostmap(serviceHostmap) {
-    this._updateHostCatalog(serviceHostmap.hostCatalog);
+  _formatReceivedHostmap() {
+    const serviceHostmap = serviceHostmapV2;
 
-    const extractId = (entry) => entry.id.split(':')[3];
-
-    const formattedHostmap = [];
-
-    // for each of the services in the serviceLinks, find the matching host in the catalog
-    Object.keys(serviceHostmap.serviceLinks).forEach((serviceName) => {
-      const serviceUrl = serviceHostmap.serviceLinks[serviceName];
-
-      let host;
-      try {
-        host = new URL(serviceUrl).host;
-      } catch (e) {
-        return;
-      }
-
-      const matchingCatalogEntry = serviceHostmap.hostCatalog[host];
-
-      const formattedHost = {
-        name: serviceName,
-        defaultUrl: serviceUrl,
-        defaultHost: host,
-        hosts: [],
-      };
-
-      formattedHostmap.push(formattedHost);
-
-      // If the catalog does not have any hosts we will be unable to find the service ID
-      // so can't search for other hosts
-      if (!matchingCatalogEntry || !matchingCatalogEntry[0]) {
-        return;
-      }
-
-      const serviceId = extractId(matchingCatalogEntry[0]);
-
-      forEach(matchingCatalogEntry, (entry) => {
-        // The ids for all hosts within a hostCatalog entry should be the same
-        // but for safety, only add host entries that have the same id as the first one
-        if (extractId(entry) === serviceId) {
-          formattedHost.hosts.push({
-            ...entry,
-            homeCluster: true,
-          });
-        }
-      });
-
-      const otherHosts = [];
-
-      // find the services in the host catalog that have the same id
-      // and add them to the otherHosts
-      forEach(serviceHostmap.hostCatalog, (entry) => {
-        // exclude the matching catalog entry as we have already added that
-        if (entry === matchingCatalogEntry) {
-          return;
-        }
-
-        forEach(entry, (entryHost) => {
-          // only add hosts that have the correct id
-          if (extractId(entryHost) === serviceId) {
-            otherHosts.push({
-              ...entryHost,
-              homeCluster: false,
-            });
-          }
-        });
-      });
-
-      formattedHost.hosts.push(...otherHosts);
-    });
-
-    // update all the service urls in the host catalog
-
-    this._updateServiceUrls(serviceHostmap.serviceLinks);
-    this._updateHostCatalog(serviceHostmap.hostCatalog);
+    this._updateServiceUrls(serviceHostmap.activeServices);
+    this._updateHostCatalog(serviceHostmap.services);
 
     return formattedHostmap;
   },

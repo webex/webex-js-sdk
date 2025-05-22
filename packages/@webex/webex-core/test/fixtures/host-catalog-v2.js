@@ -1,6 +1,9 @@
-const hostCatalogV2 = {
+export const serviceHostmapV2 = {
   activeServices: {
     conversation: 'urn:TEAM:us-east-2_a:conversation',
+    idbroker: 'urn:TEAM:us-east-2_a:idbroker',
+    locus: 'urn:TEAM:us-east-2_a:locus',
+    mercury: 'urn:TEAM:us-east-2_a:mercury',
   },
   services: [
     {
@@ -27,6 +30,86 @@ const hostCatalogV2 = {
         },
         {
           baseUrl: 'https://conv-d.wbx2.com/conversation/api/v1',
+          priority: 2,
+        },
+      ],
+    },
+    {
+      id: 'urn:TEAM:us-east-2_a:idbroker',
+      serviceName: 'idbroker',
+      serviceUrls: [
+        {
+          baseUrl: 'https://prod-adxb-message.svc.webex.com/idbroker/api/v1',
+          priority: 1,
+        },
+        {
+          baseUrl: 'https://idbroker.webex.com/idb/api/v1',
+          priority: 2,
+        },
+      ],
+    },
+    {
+      id: 'urn:TEAM:me-central-1_d:idbroker',
+      serviceName: 'idbroker',
+      serviceUrls: [
+        {
+          baseUrl: 'https://prod-adxb-message.svc.webex.com/idbroker/api/v1',
+          priority: 1,
+        },
+        {
+          baseUrl: 'https://conv-d.wbx2.com/idbroker/api/v1',
+          priority: 2,
+        },
+      ],
+    },
+    {
+      id: 'urn:TEAM:us-east-2_a:locus',
+      serviceName: 'locus',
+      serviceUrls: [
+        {
+          baseUrl: 'https://prod-adxb-message.svc.webex.com/locus/api/v1',
+          priority: 1,
+        },
+        {
+          baseUrl: 'https://locus-a.wbx2.com/locus/api/v1',
+          priority: 2,
+        },
+      ],
+    },
+    {
+      id: 'urn:TEAM:me-central-1_d:locus',
+      serviceName: 'locus',
+      serviceUrls: [
+        {
+          baseUrl: 'https://prod-adxb-message.svc.webex.com/locus/api/v1',
+          priority: 1,
+        },
+        {
+          baseUrl: 'https://conv-d.wbx2.com/locus/api/v1',
+          priority: 2,
+        },
+      ],
+    },
+    {
+      id: 'urn:TEAM:us-east-2_a:mercury',
+      serviceName: 'mercury',
+      serviceUrls: [
+        {
+          baseUrl: 'https://mercury-a.wbx2.com/mercury/api/v1',
+          priority: 1,
+        },
+      ],
+    },
+    {
+      id: 'urn:TEAM:me-central-1_d:mercury',
+      serviceName: 'mercury',
+      serviceUrls: [
+        {
+          baseUrl: 'https://prod-adxb-message.svc.webex.com/mercury/api/v1',
+          priority: 1,
+        },
+        {
+          baseUrl: 'https://conv-d.wbx2.com/mercury/api/v1',
           priority: 2,
         },
       ],
