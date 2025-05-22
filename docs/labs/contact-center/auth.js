@@ -1,86 +1,138 @@
 /**
- * Authentication module for Contact Center
+ * Authentication functionality for Contact Center SDK
+ * Shows both simple window.webex usage and robust implementation
  */
 
-export function generateWebexConfig({credentials}) {
-  return {
-    appName: 'sdk-samples',
-    appPlatform: 'testClient',
-    fedramp: false,
-    logger: {
-      level: 'info'
-    },
-    credentials,
-  };
-}
+// Required Contact Center scopes
+const ccMandatoryScopes = [
+    "cjp:config_read",   // Read configuration
+    "cjp:config_write",  // Modify configuration  
+    "cjp:config",        // General configuration access
+    "cjp:user"          // User operations
+];
 
-export async function initOauth() {
-  let redirectUri = `${window.location.protocol}//${window.location.host}`;
+const webRTCCallingScopes = [
+    "spark:webrtc_calling", // Browser calling
+    "spark:calls_read",     // Read call data
+    "spark:calls_write",    // Modify call state
+    "spark:xsi"            // Extended services
+];
 
-  if (window.location.pathname) {
-    redirectUri += window.location.pathname;
-  }
+const additionalScopes = [
+    "spark:kms"  // Required for encryption 
+];
 
-  // Reference: https://developer.webex-cx.com/documentation/integrations
-  const ccMandatoryScopes = [
-    "cjp:config_read",
-    "cjp:config_write",
-    "cjp:config",
-    "cjp:user",
-  ];
+// Combine all required scopes
+const requestedScopes = Array.from(
+    new Set(ccMandatoryScopes
+        .concat(webRTCCallingScopes)
+        .concat(additionalScopes))
+).join(' ');
 
-  const webRTCCallingScopes = [
-    "spark:webrtc_calling",
-    "spark:calls_read",
-    "spark:calls_write",
-    "spark:xsi"
-  ];
-
-  const additionalScopes = [
-    "spark:kms", // to avoid token downscope to only spark:kms error on SDK init
-  ];
-
-  const requestedScopes = Array.from(
-    new Set(
-      ccMandatoryScopes
-      .concat(webRTCCallingScopes)
-      .concat(additionalScopes))
-  ).join(' ');
-
-  const webex = window.webex = Webex.init({
-    config: generateWebexConfig({
-      credentials: {
-        client_id: 'C07d7fa2815fc2bc925c687d202b83cc35ffa868399347eda2effceeb4418fc12', // Replace with your client ID
-        redirect_uri: redirectUri,
-        scope: requestedScopes,
-      }
-    })
-  });
-
- await webex.authorization.initiateLogin();
-
-  return webex;
-}
-
-export function initWithAccessToken(accessToken) {
-  const webexConfig = generateWebexConfig({});
-
-  const webex = window.webex = Webex.init({
-    config: webexConfig,
-    credentials: {
-      access_token: accessToken
-    }
-  });
-
-  return new Promise((resolve, reject) => {
-    webex.once('ready', () => {
-      console.log('✅ Authenticated successfully with token');
-      resolve(webex);
+/**
+ * Initialize SDK with access token
+ * Simple usage from lab.html:
+ * window.webex = Webex.init({
+ *     credentials: {
+ *         access_token: 'your_token'
+ *     }
+ * });
+ */
+export async function initWithAccessToken(accessToken) {
+    const webex = Webex.init({
+        credentials: {
+            access_token: accessToken
+        }
     });
 
-    // Add a timeout for initialization
-    setTimeout(() => {
-      reject(new Error('Webex initialization timed out'));
-    }, 10000);
-  });
+    // Return promise that resolves when auth is complete
+    return new Promise((resolve, reject) => {
+        const onReady = () => {
+            webex.off('ready', onReady);
+            webex.off('ready.authorization', onReady);
+            resolve(webex);
+        };
+
+        webex.on('ready', onReady);
+        webex.on('ready.authorization', onReady);
+
+        // Add timeout
+        const timeout = setTimeout(() => {
+            reject(new Error('Initialization timed out'));
+        }, 10000);
+    });
+}
+
+/**
+ * Initialize SDK with OAuth
+ * Simple usage from lab.html:
+ * window.webex = Webex.init({
+ *     credentials: {
+ *         client_id: 'your_client_id',
+ *         redirect_uri: 'your_app_url',
+ *         scope: 'spark:all spark:kms'
+ *     }
+ * });
+ * await window.webex.authorization.initiateLogin();
+ */
+export async function initOauth(config = {}) {
+    const defaultConfig = {
+        client_id: 'C07d7fa2815fc2bc925c687d202b83cc35ffa868399347eda2effceeb4418fc12', // Replace with your client ID
+        redirect_uri: window.location.origin + window.location.pathname,
+        scope: requestedScopes
+    };
+
+    const webex = Webex.init({
+        config: {
+            credentials: {
+                ...defaultConfig,
+                ...config
+            }
+        }
+    });
+
+    // Start OAuth flow
+    await webex.authorization.initiateLogin({
+        state: {} // Optional state data
+    });
+
+    return webex;
+}
+
+/**
+ * Listen for auth-related events
+ * @param {Object} webex - The Webex SDK instance
+ */
+export function setupAuthListeners(webex) {
+    webex.on('auth:error', (error) => {
+        switch(error.name) {
+            case 'UnauthorizedError':
+                console.error('Invalid or expired token');
+                break;
+            case 'AuthorizationError': 
+                console.error('OAuth flow failed:', error.message);
+                break;
+            default:
+                console.error('Authentication error:', error);
+        }
+    });
+}
+
+/**
+ * Generate Webex config
+ * @param {Object} options - Configuration options
+ * @returns {Object} Webex configuration object
+ */
+export function generateWebexConfig(options = {}) {
+    return {
+        credentials: {
+            ...options.credentials
+        },
+        // Add any additional configuration options
+        meetings: {
+            reconnection: {
+                enabled: true
+            }
+        }
+    };
 }

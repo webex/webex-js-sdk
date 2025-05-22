@@ -1,134 +1,142 @@
 /**
- * Registration module for Contact Center
- * Handles agent registration and WebSocket connection setup
+ * Registration functionality for Contact Center SDK
+ * Shows both simple window.webex usage and robust implementation
  */
 
 /**
- * Register the agent and set up WebSocket event listeners
- * @param {Object} webex - The initialized Webex instance
- * @returns {Promise} Resolves with the agent profile
+ * Register agent with Contact Center
+ * Simple usage from lab.html:
+ * const response = await window.webex.cc.register();
+ * 
+ * @param {Object} webex - Webex SDK instance
+ * @returns {Promise<Object>} Registration response
  */
 export async function register(webex) {
-  try {
-    const agentProfile = await webex.cc.register();
-    console.log('Event subscription successful:', agentProfile);
-    
-    // Set up WebSocket event listeners
-    setupWebSocketListeners(webex);
-    
-    return agentProfile;
-  } catch (error) {
-    console.error('Event subscription failed:', error);
-    throw error;
-  }
+    try {
+        const response = await webex.cc.register();
+        /*
+        Response includes:
+        {
+            teams: [{ id: '123', name: 'Support' }],
+            loginVoiceOptions: ['BROWSER', 'AGENT_DN', 'EXTENSION'],
+            webRtcEnabled: true,
+            idleCodes: [{
+                id: '07f1c9af-b86c-4a9b-a59a-347545303014',
+                name: 'WellbeingBreak',
+                isSystem: true,
+                isDefault: false
+            }],
+            capabilities: {
+                voice: true,
+                chat: true,
+                email: false
+            },
+            deviceType: 'BROWSER'
+        }
+        */
+        console.log('Registration successful:', response);
+        
+        // Store key registration data for reuse
+        window.agentRegistration = {
+            teams: response.teams,
+            deviceType: response.deviceType,
+            capabilities: response.capabilities,
+            idleCodes: response.idleCodes
+        };
+
+        return response;
+    } catch (error) {
+        console.error('Registration failed:', error);
+        throw error;
+    }
 }
 
 /**
- * Deregister the agent
- * @param {Object} webex - The initialized Webex instance
- * @returns {Promise} Resolves when deregistration is complete
+ * Deregister agent from Contact Center
+ * Simple usage from lab.html:
+ * await window.webex.cc.deregister();
+ * 
+ * @param {Object} webex - Webex SDK instance 
  */
 export async function deregister(webex) {
-  try {
-    await webex.cc.deregister();
-    console.log('Deregistered successfully');
-  } catch (error) {
-    console.error('Deregister failed:', error);
-    throw error;
-  }
-}
-
-/**
- * Log in the agent with specific team and device settings
- * @param {Object} webex - The initialized Webex instance
- * @param {Object} params - Login parameters
- * @returns {Promise} Resolves with the login response
- */
-export async function agentLogin(webex, { teamId, loginOption, dialNumber }) {
-  try {
-    const response = await webex.cc.stationLogin({
-      teamId,
-      loginOption,
-      dialNumber
-    });
-    console.log('Agent logged in successfully:', response);
-    return response;
-  } catch (error) {
-    console.error('Agent login failed:', error);
-    throw error;
-  }
-}
-
-/**
- * Log out the agent
- * @param {Object} webex - The initialized Webex instance
- * @returns {Promise} Resolves when logout is complete
- */
-export async function agentLogout(webex) {
-  try {
-    await webex.cc.stationLogout({ logoutReason: 'logout' });
-    console.log('Agent logged out successfully');
-  } catch (error) {
-    console.error('Agent logout failed:', error);
-    throw error;
-  }
-}
-
-/**
- * Update agent's device type settings
- * @param {Object} webex - The initialized Webex instance
- * @param {Object} params - Device type parameters
- * @returns {Promise} Resolves when update is complete
- */
-export async function updateAgentDeviceType(webex, { loginOption, dialNumber }) {
-  try {
-    const response = await webex.cc.updateAgentDeviceType({
-      loginOption,
-      dialNumber
-    });
-    console.log('Profile updated successfully:', response);
-    return response;
-  } catch (error) {
-    console.error('Profile update failed:', error);
-    throw error;
-  }
-}
-
-/**
- * Set up WebSocket event listeners for various agent events
- * @param {Object} webex - The initialized Webex instance
- */
-function setupWebSocketListeners(webex) {
-  // Agent state change events
-  webex.cc.on('agent:stateChange', (data) => {
-    if (data?.type === 'AgentStateChangeSuccess') {
-      console.log('Agent state changed:', data);
+    try {
+        await webex.cc.deregister();
+        // Clean up stored registration data
+        window.agentRegistration = null;
+        console.log('Deregistration successful');
+    } catch (error) {
+        console.error('Deregistration failed:', error);
+        throw error;
     }
-  });
+}
 
-  // Multiple login detection
-  webex.cc.on('agent:multiLogin', (data) => {
-    if (data?.type === 'AgentMultiLoginCloseSession') {
-      console.warn('Multiple Agent Login Session Detected!');
-    }
-  });
+/**
+ * Handle registration response to set up UI elements
+ * @param {Object} response - Registration response from server
+ */
+export function handleRegistrationResponse(response) {
+    populateTeamsDropdown(response.teams);
+    populateLoginOptions(response.loginVoiceOptions, response.webRtcEnabled);
+    populateStateOptions(response.idleCodes);
+}
 
-  // Agent re-login events
-  webex.cc.on('agent:reloginSuccess', (data) => {
-    console.log('Agent re-login successful:', data);
-  });
+// Private helper functions
+function populateTeamsDropdown(teams) {
+    const teamsDropdown = document.getElementById('teamsDropdown');
+    teamsDropdown.innerHTML = '<option value="" selected>Choose Team...</option>';
 
-  // Station login events
-  webex.cc.on('agent:stationLoginSuccess', (data) => {
-    console.log('Agent station-login success:', data);
-  });
+    teams.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team.id;
+        option.text = team.name;
+        teamsDropdown.add(option);
+    });
+}
 
-  // Task events
-  webex.cc.on('task:incoming', (task) => {
-    console.log('Incoming task:', task);
-  });
+function populateLoginOptions(loginOptions, webRtcEnabled) {
+    const agentLoginDropdown = document.getElementById('AgentLogin');
+    agentLoginDropdown.innerHTML = '<option value="" selected>Choose Agent Login...</option>';
 
-  webex.cc.on('task:hydrate', (task) => {
-    console.log('Task hydrated:', task);
-  });
+    // Filter options based on WebRTC availability
+    const availableOptions = loginOptions.filter(
+        opt => webRtcEnabled || opt !== 'BROWSER'
+    );
+
+    availableOptions.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.text = opt;
+        agentLoginDropdown.add(option);
+    });
+}
+
+function populateStateOptions(idleCodes) {
+    const stateSelect = document.getElementById('sel-state');
+    stateSelect.innerHTML = '<option value="">Choose State...</option>';
+
+    // Add basic states group
+    const statesGroup = document.createElement('optgroup');
+    statesGroup.label = 'States';
+
+    // Add Available state first
+    const availableOption = document.createElement('option');
+    availableOption.value = '0';
+    availableOption.text = 'Available';
+    availableOption.dataset.state = 'Available';
+    statesGroup.appendChild(availableOption);
+
+    // Add other idle codes
+    idleCodes?.forEach((code) => {
+        if (code.id !== '0') { // Skip Available since we added it first
+            const option = document.createElement('option');
+            option.value = code.id;
+            option.text = code.name;
+            option.dataset.state = code.name;
+            option.dataset.isSystem = code.isSystem;
+            option.dataset.isDefault = code.isDefault;
+            statesGroup.appendChild(option);
+        }
+    });
+
+    stateSelect.appendChild(statesGroup);
 }

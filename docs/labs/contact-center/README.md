@@ -1,284 +1,197 @@
-# Contact Center Lab
+# Contact Center SDK Lab Documentation
 
-This lab guides you through building a functional contact center agent interface using the Webex Contact Center SDK. You'll learn how to implement key features like authentication, agent registration, task handling, and call controls.
+This lab demonstrates how to use the Webex Contact Center SDK, showing both simple direct usage and robust implementation patterns.
 
-## Prerequisites
+## File Structure
 
-- Node.js installed on your machine
-- A Webex developer account
-- Access to the Webex Contact Center SDK
-- Basic knowledge of HTML, CSS, and JavaScript
+```
+docs/labs/contact-center/
+├── lab.html              # Main lab file with interactive examples
+├── index.js             # Main entry point and coordination
+├── auth.js              # Authentication functionality
+├── registration.js      # Agent registration 
+├── station-login.js     # Station login/logout
+├── state-change.js      # Agent state management
+├── task-manager.js      # Task and call handling
+└── cleanup.js           # Cleanup operations
+```
 
-## Lab Structure
+## Simple vs Robust Implementation
 
-The lab code is divided into multiple sections, each focusing on a specific aspect of the contact center functionality:
+### Authentication
 
-1. **Authentication** (`auth.js`)
-   - How to authenticate using access token or OAuth
-   - Initializing the Webex SDK
-   - Configuring the contact center plugin
-
-2. **Agent Registration** (`registration.js`)
-   - Registering the agent
-   - Setting up WebSocket connection
-   - Error handling and logging
-
-3. **Task Management** (`task-manager.js`)
-   - Handling incoming tasks (voice, chat, email)
-   - Task controls (answer, decline, wrap-up)
-   - Task event listeners
-
-4. **Call Controls** (`call-controls.js`)
-   - Hold/Resume functionality
-   - Mute/Unmute capability
-   - Transfer and consultation features
-   - Recording controls
-
-5. **Agent State** (`agent-state.js`)
-   - Managing agent availability states
-   - Handling idle codes
-   - Profile and device type updates
-
-6. **Digital Channels** (`digital-channels.js`)
-   - Chat integration
-   - Email handling
-   - Social media interactions
-
-## Step-by-Step Guide
-
-### 1. Project Setup
-
-1. Create a new directory for your project:
-\`\`\`bash
-mkdir contact-center-app
-cd contact-center-app
-\`\`\`
-
-2. Initialize a new npm project:
-\`\`\`bash
-npm init -y
-\`\`\`
-
-3. Install dependencies:
-\`\`\`bash
-npm install @webex/sdk
-\`\`\`
-
-### 2. Authentication Setup
-
-Create an authentication module that handles both access token and OAuth flows:
-
-\`\`\`javascript
-// auth.js
-function initOauth() {
-  let redirectUri = `${window.location.protocol}//${window.location.host}`;
-
-  // Reference: <https://developer.webex-cx.com/documentation/integrations>
-  const ccMandatoryScopes = [
-    "cjp:config_read",
-    "cjp:config_write",
-    "cjp:config",
-    "cjp:user",
-  ];
-
-  const webRTCCallingScopes = [
-    "spark:webrtc_calling",
-    "spark:calls_read",
-    "spark:calls_write",
-    "spark:xsi"
-  ];
-
-  const additionalScopes = [
-    "spark:kms"
-  ];
-
-  const requestedScopes = Array.from(
-    new Set(ccMandatoryScopes.concat(webRTCCallingScopes).concat(additionalScopes))
-  ).join(' ');
-
-  const webex = Webex.init({
-    config: {
-      credentials: {
-        client_id: 'YOUR_CLIENT_ID',
-        redirect_uri: redirectUri,
-        scope: requestedScopes
-      }
+```javascript
+// Simple Usage
+window.webex = Webex.init({
+    credentials: { 
+        access_token: token 
     }
-  });
+});
 
-  return webex;
-}
-\`\`\`
+// Robust Implementation (auth.js)
+const webex = await initWithAccessToken(token);
+// Includes: timeout handling, ready events, token refresh
+```
 
-### 3. Agent Registration
+### Registration
 
-Implement agent registration with WebSocket connection:
+```javascript
+// Simple Usage
+const response = await window.webex.cc.register();
 
-\`\`\`javascript
-// registration.js
-async function register(webex) {
-  try {
-    // Register the agent
-    const profile = await webex.cc.register();
-    console.log('Registration successful:', profile);
+// Robust Implementation (registration.js)
+const response = await register(webex);
+handleRegistrationResponse(response);
+// Includes: UI population, state tracking, error handling
+```
 
-    // Set up WebSocket event listeners
-    webex.cc.on('task:incoming', (task) => {
-      handleIncomingTask(task);
-    });
+### Station Login
 
-    return profile;
-  } catch (error) {
-    console.error('Registration failed:', error);
-    throw error;
-  }
-}
-\`\`\`
+```javascript
+// Simple Usage
+await window.webex.cc.stationLogin({
+    teamId: 'team_id',
+    loginOption: 'BROWSER'
+});
 
-### 4. Task Handling
+// Robust Implementation (station-login.js)
+await handleStationLogin(webex);
+setupStationEventListeners(webex);
+// Includes: validation, multi-login handling, device tracking
+```
 
-Create task management functions:
+### State Management
 
-\`\`\`javascript
-// task-manager.js
-function handleIncomingTask(task) {
-  // Enable answer/decline buttons
-  const answerBtn = document.getElementById('answer');
-  const declineBtn = document.getElementById('decline');
-  
-  answerBtn.disabled = false;
-  declineBtn.disabled = false;
+```javascript
+// Simple Usage
+await window.webex.cc.setAgentState({
+    state: 'WellbeingBreak',
+    auxCodeId: 'aux_code_id'
+});
 
-  // Display task details
-  const taskDetails = document.getElementById('task-details');
-  taskDetails.textContent = \`Incoming \${task.data.interaction.mediaType} from \${task.data.interaction.callAssociatedDetails?.ani}\`;
-}
+// Robust Implementation (state-change.js)
+await setAgentState(webex, stateParams);
+setupStateEventListeners(webex);
+// Includes: validation, event handling, UI sync
+```
 
-async function answerTask(task) {
-  try {
+### Task Management
+
+```javascript
+// Simple Usage
+webex.cc.on('task:new', (task) => {
     await task.accept();
-    console.log('Task accepted successfully');
-    setupCallControls(task);
-  } catch (error) {
-    console.error('Failed to accept task:', error);
-  }
-}
-\`\`\`
+});
 
-### 5. Call Controls
+// Robust Implementation (task-manager.js)
+handleIncomingTask(webex, async (task) => {
+    await acceptTask(task);
+    if (task.isVoice()) await setupVoiceTask(task);
+});
+// Includes: media setup, error handling, state tracking
+```
 
-Set up call control functionality:
+### Call Controls
 
-\`\`\`javascript
-// call-controls.js
-function setupCallControls(task) {
-  const holdBtn = document.getElementById('hold-resume');
-  const muteBtn = document.getElementById('mute-unmute');
-  const endBtn = document.getElementById('end');
+```javascript
+// Simple Usage
+await task.hold();
+task.toggleMute();
 
-  holdBtn.onclick = () => toggleHold(task);
-  muteBtn.onclick = () => toggleMute(task);
-  endBtn.onclick = () => endCall(task);
-}
+// Robust Implementation (task-manager.js)
+await toggleHold(task);  // Includes state validation
+await toggleMute(task);  // Includes error handling
+```
 
-async function toggleHold(task) {
-  const holdBtn = document.getElementById('hold-resume');
-  try {
-    if (holdBtn.textContent === 'Hold') {
-      await task.hold();
-      holdBtn.textContent = 'Resume';
-    } else {
-      await task.resume();
-      holdBtn.textContent = 'Hold';
-    }
-  } catch (error) {
-    console.error('Hold/Resume failed:', error);
-  }
-}
-\`\`\`
+## Key Features
 
-### 6. Agent State Management
+### Simple Implementation
 
-Implement agent state controls:
+- Direct use of `window.webex` object
+- Minimal code required
+- Quick to implement
+- Good for prototypes and testing
 
-\`\`\`javascript
-// agent-state.js
-async function setAgentState(webex, state, auxCodeId) {
-  try {
-    await webex.cc.setAgentState({
-      state,
-      auxCodeId,
-      lastStateChangeReason: state
-    });
-    console.log('Agent state updated successfully');
-  } catch (error) {
-    console.error('Failed to update agent state:', error);
-  }
-}
-\`\`\`
+### Robust Implementation
 
-## Deployment and Testing
+- Error handling
+- State management
+- Event handling
+- Input validation
+- UI synchronization
+- Resource cleanup
 
-1. Bundle your application:
-\`\`\`bash
-npm run build
-\`\`\`
+## Usage
 
-2. Test locally:
-\`\`\`bash
-npm start
-\`\`\`
+1. Choose implementation style:
 
-3. Verify functionality:
-   - Test authentication flow
-   - Check agent registration
-   - Handle incoming tasks
-   - Test call controls
-   - Verify state changes
+```javascript
+// Simple: Direct SDK usage
+window.webex = Webex.init(...);
 
-## Common Issues and Troubleshooting
+// Robust: Use our implementation
+const webex = await initWithAccessToken(token);
+```
 
-1. Authentication Issues
-   - Verify client ID and scopes
-   - Check redirect URI configuration
+2. Follow the flow:
+   - Authentication
+   - Registration
+   - Station Login
+   - State Management
+   - Task Handling
 
-2. WebSocket Connection
-   - Ensure proper registration
-   - Check network connectivity
-   - Verify WebSocket event listeners
+## Error Handling
 
-3. Task Handling
-   - Validate task event listeners
-   - Check media handling setup
-   - Verify call control operations
+The robust implementation includes:
+
+- Input validation
+- Network error handling
+- State conflict resolution
+- Resource cleanup
+- Event error handling
 
 ## Best Practices
 
-1. Error Handling
-   - Implement comprehensive error handling
-   - Provide user feedback for failures
-   - Log errors for debugging
+1. Authentication
+   - Handle token refresh
+   - Manage OAuth flow
+   - Track ready state
 
-2. State Management
-   - Maintain consistent agent states
-   - Handle state transitions properly
-   - Update UI based on state changes
+2. Registration
+   - Store registration data
+   - Handle reregistration
+   - Track capabilities
 
-3. Resource Cleanup
-   - Properly handle task completion
-   - Clean up event listeners
-   - Handle session termination
+3. Station Login
+   - Validate inputs
+   - Handle device states
+   - Manage sessions
 
-## Additional Resources
+4. State Management
+   - Validate state changes
+   - Handle state conflicts
+   - Track current state
 
-- [Webex Contact Center SDK Documentation](https://developer.webex-cx.com/documentation/guides)
-- [API Reference](https://developer.webex-cx.com/documentation/references)
-- [Sample Code Repository](https://github.com/webex/webex-contact-center-sdk)
+5. Task Management
+   - Handle all task types
+   - Manage media setup
+   - Track task lifecycle
 
-## Support
+6. Resource Cleanup
+   - Handle page unload
+   - Clean up media
+   - Clear state
 
-For issues and questions:
+## Development
 
-- Submit issues on GitHub
-- Contact Webex Developer Support
-- Visit the Developer Community Forum
+1. Clone the repository
+2. Install dependencies
+3. Open lab.html in browser
+4. Use developer token or OAuth
+5. Follow the steps in UI
+
+## Learn More
+
+- [Official SDK Documentation](https://developer.webex.com/)
+- [Contact Center API Reference](https://developer.webex.com/docs/contact-center)
+- [WebRTC Integration Guide](https://developer.webex.com/docs/contact-center-webrtc)
