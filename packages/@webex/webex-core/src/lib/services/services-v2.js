@@ -57,9 +57,9 @@ const Services = WebexPlugin.extend({
 
   _catalogs: new WeakMap(),
 
-  _serviceUrls: null,
+  _serviceUrls: {},
 
-  _hostCatalog: null,
+  _hostCatalog: {},
 
   /**
    * @private
@@ -895,7 +895,7 @@ const Services = WebexPlugin.extend({
   _fetchNewServiceHostmap({from, query, token, forceRefresh} = {}) {
     const service = 'u2c';
     const resource = from ? `/${from}/catalog` : '/catalog';
-    const qs = {...query, format: 'hostmap'};
+    const qs = {...(query || {}), format: 'hostmap'};
 
     if (forceRefresh) {
       qs.timestamp = new Date().getTime();
