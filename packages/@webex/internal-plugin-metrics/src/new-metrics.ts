@@ -22,6 +22,7 @@ import {
   InternalEvent,
   SubmitClientEventOptions,
   Table,
+  DelayedClientEvent,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
@@ -51,6 +52,11 @@ class Metrics extends WebexPlugin {
   delaySubmitClientEvents = false;
 
   /**
+   * Overrides for delayed client events. E.g. if you want to override the correlationId for all delayed client events, you can set this to { correlationId: 'newCorrelationId' }
+   */
+  delayedClientEventsOverrides: Partial<DelayedClientEvent['options']> = {};
+
+  /**
    * Constructor
    * @param args
    * @constructor
@@ -74,7 +80,10 @@ class Metrics extends WebexPlugin {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
       this.isReady = true;
-      this.setDelaySubmitClientEvents(this.delaySubmitClientEvents);
+      this.setDelaySubmitClientEvents({
+        shouldDelay: this.delaySubmitClientEvents,
+        overrides: this.delayedClientEventsOverrides,
+      });
     });
   }
 
@@ -405,13 +414,20 @@ class Metrics extends WebexPlugin {
    * Sets the value of delaySubmitClientEvents. If set to true, client events will be delayed until submitDelayedClientEvents is called. If
    * set to false, delayed client events will be submitted.
    *
-   * @param {boolean} shouldDelay - A boolean value indicating whether to delay the submission of client events.
+   * @param {object} options - {shouldDelay: A boolean value indicating whether to delay the submission of client events, overrides: An object containing overrides for the client events}
    */
-  public setDelaySubmitClientEvents(shouldDelay: boolean) {
+  public setDelaySubmitClientEvents({
+    shouldDelay,
+    overrides,
+  }: {
+    shouldDelay: boolean;
+    overrides?: Partial<DelayedClientEvent['options']>;
+  }) {
     this.delaySubmitClientEvents = shouldDelay;
+    this.delayedClientEventsOverrides = overrides || {};
 
     if (this.isReady && !shouldDelay) {
-      return this.callDiagnosticMetrics.submitDelayedClientEvents();
+      return this.callDiagnosticMetrics.submitDelayedClientEvents(overrides);
     }
 
     return Promise.resolve();
