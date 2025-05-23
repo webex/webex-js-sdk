@@ -82,7 +82,7 @@ import { setupCleanupHandlers } from './cleanup.js';
 function initializeLogging() {
     ['log', 'warn', 'error', 'info'].forEach(level => {
         const orig = console[level];
-        console[level] = (...args) => {
+        console[`ui_${level}`] = (...args) => {
             const logDiv = document.getElementById('log');
             if (logDiv) {
                 logDiv.innerHTML = `${args.join(' ')}\n${logDiv.innerHTML}`;

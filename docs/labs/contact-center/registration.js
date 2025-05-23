@@ -41,7 +41,8 @@ export async function register(webex) {
             teams: response.teams,
             deviceType: response.deviceType,
             capabilities: response.capabilities,
-            idleCodes: response.idleCodes
+            idleCodes: response.idleCodes,
+            wrapupCodes: response.wrapupCodes
         };
 
         return response;
@@ -78,6 +79,27 @@ export function handleRegistrationResponse(response) {
     populateTeamsDropdown(response.teams);
     populateLoginOptions(response.loginVoiceOptions, response.webRtcEnabled);
     populateStateOptions(response.idleCodes);
+    populateWrapupCodes(response.wrapupCodes);
+}
+
+// Helper to populate wrapup codes dropdown
+function populateWrapupCodes(wrapupCodes) {
+    if (!wrapupCodes) return;
+
+    // Store wrapup codes globally for task manager
+    window.wrapupCodes = wrapupCodes;
+
+    // Populate wrapup codes dropdown
+    const wrapupCodesDropdown = document.getElementById('wrapup-codes');
+    if (wrapupCodesDropdown) {
+        wrapupCodesDropdown.innerHTML = '<option value="" selected>Choose Wrapup Code...</option>';
+        wrapupCodes.forEach(code => {
+            const option = document.createElement('option');
+            option.value = code.id;
+            option.text = code.name;
+            wrapupCodesDropdown.appendChild(option);
+        });
+    }
 }
 
 // Private helper functions

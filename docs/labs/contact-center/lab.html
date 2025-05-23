@@ -37,21 +37,98 @@ const webex = await initWithAccessToken(token);</code></pre>
     <!-- Registration Section -->
     <section id="register">
         <h2>Step 2: Agent Registration</h2>
-        <pre><code class="example">// Simple Usage: Register agent
-const response = await window.webex.cc.register();</code></pre>
+        <pre><code class="example">// Initialize and Register with Contact Center SDK
+async function initializeContactCenter() {
+    // 1. Initialize SDK with auth token
+    const webex = window.webex = Webex.init({
+        credentials: {
+            access_token: 'your_token'
+        }
+    });
+
+    try {
+        // 2. Register agent and get profile
+        const agentProfile = await webex.cc.register();
+        console.log('Agent registered:', agentProfile);
+
+        // 3. Store important agent data
+        window.wrapupCodes = agentProfile.wrapupCodes;
+        window.teams = agentProfile.teams;
+        window.loginVoiceOptions = agentProfile.loginVoiceOptions;
+
+        // 4. Initialize task event handlers
+        initializeTaskEvents();
+        
+        // 5. Handle agent state changes
+        webex.cc.on('agent:stateChange', ({state, auxCodeId}) => {
+            console.log('Agent state changed:', state);
+            updateAgentStateUI(state, auxCodeId);
+        });
+        
+        return agentProfile;
+    } catch (error) {
+        console.error('Registration failed:', error);
+        throw error;
+    }
+}
+
+// Deregister agent
+async function deregisterAgent() {
+    try {
+        await webex.cc.deregister();
+        console.log('Agent deregistered successfully');
+    } catch (error) {
+        console.error('Deregistration failed:', error);
+        throw error;
+    }
+}</code></pre>
         <button id="btn-register" disabled>Register Agent</button>
         <button id="btn-deregister" disabled>Deregister Agent</button>
+        <p>Note: Contact Center SDK automatically handles reconnection and session management.</p>
     </section>
 
     <!-- Station Login Section -->
     <section id="station">
         <h2>Step 3: Station Login</h2>
-        <pre><code class="example">// Simple Usage: Login to station
-await window.webex.cc.stationLogin({
-    teamId: 'team_id',
-    loginOption: 'BROWSER',
-    dialNumber: ''  // Required for AGENT_DN/EXTENSION
-});</code></pre>
+        <pre><code class="example">// Station Login using Contact Center SDK
+async function initializeStationLogin(agentProfile) {
+    // 1. Get available teams from registration
+    const teams = agentProfile.teams;
+    console.log('Available teams:', teams);
+
+    // 2. Get login options
+    const loginOptions = agentProfile.loginVoiceOptions;
+    console.log('Login options:', loginOptions);
+
+    // 3. Perform station login
+    try {
+        const response = await webex.cc.stationLogin({
+            teamId: selectedTeam.id,
+            loginOption: selectedOption, // 'BROWSER', 'AGENT_DN', 'EXTENSION'
+            dialNumber: selectedOption === 'BROWSER' ? '' : dialNumber
+        });
+        console.log('Station login successful:', response);
+
+        // 4. Listen for station events
+        webex.cc.on('agent:stationLoginSuccess', handleStationLogin);
+        webex.cc.on('agent:reloginSuccess', handleStationRelogin);
+    } catch (error) {
+        console.error('Station login failed:', error);
+        handleLoginError(error);
+    }
+}
+
+// Handle station logout
+async function handleStationLogout() {
+    try {
+        await webex.cc.stationLogout({
+            logoutReason: 'User Initiated'
+        });
+        console.log('Station logout successful');
+    } catch (error) {
+        console.error('Station logout failed:', error);
+    }
+}</code></pre>
         <div class="flex">
             <fieldset>
                 <legend>Select Team</legend>
@@ -78,25 +155,200 @@ await window.webex.cc.stationLogin({
     <!-- State Management Section -->
     <section id="state">
         <h2>Step 4: Agent State Management</h2>
-        <pre><code class="example">// Simple Usage: Set agent state
-await window.webex.cc.setAgentState({
-    state: 'WellbeingBreak',
-    auxCodeId: 'aux_code_id'
-});</code></pre>
+        <pre><code class="example">// Agent State Management using Contact Center SDK
+async function initializeAgentState() {
+    // Get agent's current state
+    const agentProfile = await webex.cc.getAgentState();
+    console.log('Current state:', agentProfile.state);
+    
+    // Listen for state changes
+    webex.cc.on('agent:stateChange', ({state, auxCodeId, lastStateChangeTimestamp}) => {
+        console.log('State changed:', {state, auxCodeId, lastStateChangeTimestamp});
+        updateStateTimer(lastStateChangeTimestamp);
+    });
+}
+
+// Set agent state with reason code
+async function setAgentState(state, auxCodeId) {
+    try {
+        await webex.cc.setAgentState({
+            state,              // e.g., 'Available', 'WellbeingBreak'
+            auxCodeId,          // Optional: aux code ID for the state
+            lastStateChangeReason: 'User Initiated'
+        });
+        console.log('State set successfully');
+    } catch (error) {
+        console.error('Failed to set state:', error);
+    }
+}
+
+// Get available states and aux codes
+async function loadAgentStates() {
+    const states = await webex.cc.getAgentStates();
+    console.log('Available states:', states);
+    return states;
+}</code></pre>
         <select id="sel-state" disabled>
             <option value="">Choose State...</option>
         </select>
         <button id="btn-set-state" disabled>Set State</button>
+        <p>Note: Some states may require aux codes for additional context.</p>
     </section>
 
     <!-- Task Management Section -->
     <section id="tasks">
         <h2>Step 5: Task Management</h2>
-        <pre><code class="example">// Simple Usage: Handle tasks
-window.webex.cc.on('task:new', (task) => {
-    await task.accept();
-});</code></pre>
-        <button id="btn-listen-tasks" disabled>Start Listening for Tasks</button>
+        <pre><code class="example">// Task Event Handling using Contact Center SDK
+const initializeTaskEvents = () => {
+    // Contact Center Events
+    webex.cc.on('task:incoming', (task) => {
+        console.log('New task received:', task.data.interactionId);
+    });
+    
+    webex.cc.on('task:hydrate', (task) => {
+        console.log('Task hydrated:', task.data.interactionId);
+        handleTaskHydrate(task);
+    });
+    
+    webex.cc.on('agent:stateChange', (data) => {
+        console.log('Agent state changed:', data.state);
+        updateAgentStateUI(data);
+    });
+    
+    webex.cc.on('agent:multiLogin', (data) => {
+        if (data.type === 'AgentMultiLoginCloseSession') {
+            console.warn('Multiple Agent Login Session Detected!');
+        }
+    });
+    
+    webex.cc.on('agent:reloginSuccess', (data) => {
+        console.log('Agent re-login successful:', data);
+        updateAgentLoginUI(data);
+    });
+    
+    webex.cc.on('agent:stationLoginSuccess', (data) => {
+        console.log('Agent station-login success:', data);
+        updateStationLoginUI(data);
+    });
+
+    // Task Events
+    task.on('task:assigned', (task) => {
+        console.log('Task assigned:', task.data.interactionId);
+        handleTaskAssigned(task);
+    });
+
+    task.on('task:media', (track) => {
+        handleMediaTrack(track);
+    });
+
+    task.on('task:end', (task) => {
+        console.log('Task ended:', task.data.interactionId);
+        handleTaskEnd(task);
+    });
+
+    task.on('task:hold', (task) => {
+        console.log('Call put on hold:', task.data.interactionId);
+        updateHoldUI(task);
+    });
+
+    // Consult Events
+    // Note: Consult related events and handlers are managed in task-consult.js
+    // Available consult events: 
+    // - task:consultCreated - When a consult is created
+    // - task:offerConsult - When receiving a consult offer
+    // - task:consultAccepted - When consult is accepted
+    // - task:consulting - During active consultation
+    // - task:consultQueueFailed - When queue consult fails
+    // - task:consultQueueCancelled - When queue consult is cancelled
+    // - task:consultEnd - When consultation ends
+    // See task-consult.js for detailed implementation
+    setupConsultEventListeners(task);
+
+    task.on('task:rejected', (reason) => {
+        console.warn('Task rejected:', reason);
+        handleTaskRejected(reason);
+    });
+};
+
+// Task Actions Example
+const taskActions = {
+    accept: async (task) => {
+        await task.accept();
+        console.log('Task accepted:', task.data.interactionId);
+    },
+
+    decline: async (task) => {
+        await task.decline();
+        console.log('Task declined:', task.data.interactionId);
+    }
+};
+
+// Task List Management
+function updateTaskList(tasks) {
+    const taskList = document.getElementById('taskList');
+    taskList.innerHTML = '';
+    tasks.forEach(task => {
+        const taskItem = document.createElement('div');
+        taskItem.className = 'task-item' + (task === window.currentTask ? ' selected' : '');
+        
+        const details = document.createElement('div');
+        details.className = 'task-details';
+        details.innerHTML = `
+            <div>ID: ${task.data.interactionId}</div>
+            <div>Type: ${task.data.interaction.mediaType}</div>
+            <div>State: ${task.data.state}</div>
+        `;
+        
+        taskItem.appendChild(details);
+        taskList.appendChild(taskItem);
+        
+        // Make task selectable
+        taskItem.addEventListener('click', () => {
+            document.querySelectorAll('.task-item').forEach(item => 
+                item.classList.remove('selected'));
+            taskItem.classList.add('selected');
+            window.currentTask = task;
+            enableCallControls(task);
+        });
+    });
+}
+
+// Wrapup handling
+function updateWrapupCodes(codes) {
+    const select = document.getElementById('wrapup-codes');
+    select.innerHTML = '<option value="" selected>Choose Wrapup Code...</option>';
+    codes.forEach(code => {
+        const option = document.createElement('option');
+        option.value = code.id;
+        option.textContent = code.name;
+        select.appendChild(option);
+    });
+    select.disabled = false;
+}
+
+// Hold/Resume Handling
+async function handleHoldResume(task) {
+    const holdBtn = document.getElementById('btn-hold');
+    holdBtn.disabled = true;
+    try {
+        if (isHold) {
+            await task.resume();
+            holdBtn.textContent = 'Hold Call';
+            isHold = false;
+        } else {
+            await task.hold();
+            holdBtn.textContent = 'Resume Call';
+            isHold = true;
+        }
+    } catch (error) {
+        console.error('Hold/Resume failed:', error);
+    } finally {
+        holdBtn.disabled = false;
+    }
+}</code></pre>
+        <div class="task-notification" id="task-notification" style="display: none;">
+            <span class="blink">New Incoming Task!</span>
+        </div>
         <button id="btn-accept" disabled>Accept Current Task</button>
         <button id="btn-decline" disabled>Decline Current Task</button>
     </section>
@@ -104,15 +356,135 @@ window.webex.cc.on('task:new', (task) => {
     <!-- Call Controls Section -->
     <section id="controls">
         <h2>Step 6: Call Controls</h2>
-        <pre><code class="example">// Simple Usage: Voice controls
+        <pre><code class="example">// Call Control Examples using Contact Center SDK
+
+// Initialize voice task handling
+function initializeTaskHandling() {
+    // Listen for task state changes
+    webex.cc.on('task:end', handleTaskEnd);
+    webex.cc.on('task:hold', handleTaskHold);
+    webex.cc.on('task:wrapup', handleTaskWrapup);
+}
+
+// Task End and Wrapup Example
+async function handleTaskEnd(taskData) {
+    if (taskData.wrapUpRequired) {
+        const task = webex.cc.getTask(taskData.interactionId);
+        // Enable wrapup with codes from registration
+        const wrapUpResponse = await task.wrapup({
+            wrapUpReason: 'Resolved',
+            auxCodeId: selectedWrapupCode
+        });
+        console.log('Wrapup completed:', wrapUpResponse);
+    }
+}
+
+// Hold/Resume Example 
+async function handleCallControl(task) {
+    try {
+        // Hold call
+        await task.hold();
+        console.log('Call held successfully');
+
+        // Resume call
+        await task.resume(); 
+        console.log('Call resumed successfully');
+
+        // Toggle mute
+        await task.toggleMute();
+        console.log('Mute toggled');
+    } catch (error) {
+        console.error('Call control error:', error);
+    }
+}
+
+// Consult Transfer Example
+async function handleConsultTransfer(task) {
+    try {
+        // Start consult
+        await task.consult({
+            destinationType: 'queue',
+            to: 'queue_id',
+            mediaType: 'telephony'
+        });
+
+        // Complete transfer
+        await task.consultTransfer();
+        console.log('Consult transfer completed');
+    } catch (error) {
+        console.error('Consult transfer error:', error); 
+    }
+}
+
+// Basic Voice Controls
 await task.hold();    // Hold call
 await task.resume();  // Resume call
-task.toggleMute();    // Toggle mute</code></pre>
+task.toggleMute();    // Toggle mute
+
+// Recording Controls
+await task.pauseRecording();  // Pause recording
+await task.resumeRecording({ autoResumed: true });  // Resume with auto-resume flag
+
+// Consult and Transfer
+await task.consult({
+    destinationType: 'queue',  // or 'agent'
+    to: 'queue_id',           // queue_id or agent_id
+    mediaType: 'telephony'
+});
+
+// Wrapup Task
+await task.wrapup({
+    wrapUpReason: 'Resolved',
+    auxCodeId: 'wrapup_code_id'
+});
+
+// End Task Example
+async function handleEndCall(task) {
+    try {
+        await task.end();
+        console.log('Task ended successfully');
+
+        // If wrapup is required, it will trigger task:wrapup event
+        // Otherwise, task will be cleaned up automatically
+    } catch (error) {
+        console.error('Failed to end task:', error);
+    }
+}</code></pre>
         <div class="call-controls">
             <button id="btn-hold" disabled>Hold Call</button>
             <button id="btn-mute" disabled>Mute Call</button>
+            <button id="btn-transfer" disabled>Transfer</button>
+            <button id="btn-consult" disabled>Consult</button>
+            <button id="btn-end-consult" disabled>End Consult</button>
+            <button id="btn-consult-transfer" disabled>Complete Transfer</button>
+            <button id="pause-resume-recording" disabled>Pause Recording</button>
+            <button id="btn-end" disabled>End Call</button>
+            <div class="recording-controls">
+                <input type="checkbox" id="auto-resume-checkbox" disabled>
+                <label for="auto-resume-checkbox">Auto Resume Recording</label>
+            </div>
         </div>
     </section>
+
+    <!-- Task List Section -->
+    <section id="task-list">
+        <h2>Active Tasks</h2>
+        <div id="taskList" class="task-list"></div>
+    </section>
+
+    <!-- Wrapup Section -->
+    <section id="wrapup">
+        <h2>Call Wrapup</h2>
+        <div class="wrapup-container">
+            <select id="wrapup-codes" disabled>
+                <option value="" selected>Choose Wrapup Code...</option>
+            </select>
+            <button id="btn-wrapup" disabled>Submit Wrapup</button>
+        </div>
+    </section>
+
+    <!-- Audio Elements -->
+    <audio id="remote-audio" autoplay></audio>
 
     <!-- Console Log -->
     <section id="log-section">

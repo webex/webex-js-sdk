@@ -1,173 +1,230 @@
 /**
- * Consult functionality for Contact Center SDK
+ * Consult management functionality for Contact Center SDK
  */
 
-// Current consult state
-let currentConsultTask = null;
+// Consult events enum
+export const CONSULT_EVENTS = {
+    TASK_CONSULT_CREATED: 'task:consultCreated',
+    TASK_OFFER_CONSULT: 'task:offerConsult',
+    TASK_CONSULT_ACCEPTED: 'task:consultAccepted',
+    TASK_CONSULTING: 'task:consulting',
+    TASK_CONSULT_QUEUE_FAILED: 'task:consultQueueFailed',
+    TASK_CONSULT_QUEUE_CANCELLED: 'task:consultQueueCancelled',
+    TASK_CONSULT_END: 'task:consultEnd'
+};
+
 let currentConsultQueueId = null;
 
-// Consult events from TASK_EVENTS enum
-export const CONSULT_EVENTS = {
-    CONSULT_END: 'task:consultEnd',
-    CONSULT_QUEUE_CANCELLED: 'task:consultQueueCancelled',
-    CONSULT_QUEUE_FAILED: 'task:consultQueueFailed',
-    CONSULT_ACCEPTED: 'task:consultAccepted',
-    CONSULTING: 'task:consulting',
-    CONSULT_CREATED: 'task:consultCreated',
-    OFFER_CONSULT: 'task:offerConsult'
-};
+/**
+ * Initialize the consult UI components
+ */
+export function initializeConsultUI() {
+    const consultBtn = document.getElementById('btn-consult');
+    const endConsultBtn = document.getElementById('btn-end-consult');
+    const consultTransferBtn = document.getElementById('btn-consult-transfer');
+
+    if (consultBtn) consultBtn.style.display = 'inline-block';
+    if (endConsultBtn) endConsultBtn.style.display = 'none';
+    if (consultTransferBtn) {
+        consultTransferBtn.style.display = 'none';
+        consultTransferBtn.disabled = true;
+    }
+}
 
 /**
  * Setup consult event listeners
- * @param {Object} webex - Webex SDK instance
+ * @param {Object} task - The task object to setup listeners for
  */
-export function setupConsultEventListeners(webex) {
-    webex.cc.on(CONSULT_EVENTS.CONSULT_CREATED, handleConsultCreated);
-    webex.cc.on(CONSULT_EVENTS.OFFER_CONSULT, handleConsultOffer);
-    webex.cc.on(CONSULT_EVENTS.CONSULT_ACCEPTED, handleConsultAccepted);
-    webex.cc.on(CONSULT_EVENTS.CONSULTING, handleConsulting);
-    webex.cc.on(CONSULT_EVENTS.CONSULT_QUEUE_FAILED, handleConsultQueueFailed);
-    webex.cc.on(CONSULT_EVENTS.CONSULT_QUEUE_CANCELLED, handleConsultQueueCancelled);
-    webex.cc.on(CONSULT_EVENTS.CONSULT_END, handleConsultEnd);
-
-    console.log('✅ Consult event listeners registered');
+export function setupConsultEventListeners(task) {
+    task.on(CONSULT_EVENTS.TASK_CONSULT_CREATED, handleConsultCreated);
+    task.on(CONSULT_EVENTS.TASK_OFFER_CONSULT, handleConsultOffer);
+    task.on(CONSULT_EVENTS.TASK_CONSULT_ACCEPTED, handleConsultAccepted);
+    task.on(CONSULT_EVENTS.TASK_CONSULTING, handleConsulting);
+    task.on(CONSULT_EVENTS.TASK_CONSULT_QUEUE_FAILED, handleConsultQueueFailed);
+    task.on(CONSULT_EVENTS.TASK_CONSULT_QUEUE_CANCELLED, handleConsultQueueCancelled);
+    task.on(CONSULT_EVENTS.TASK_CONSULT_END, handleConsultEnd);
 }
 
 /**
- * Initialize consult UI components
- */
-export function initializeConsultUI() {
-    const elements = {
-        consult: document.getElementById('btn-consult'),
-        endConsult: document.getElementById('btn-end-consult'),
-        consultTransfer: document.getElementById('btn-consult-transfer')
-    };
-
-    // Initialize visibility
-    if (elements.consult) elements.consult.style.display = 'none';
-    if (elements.endConsult) elements.endConsult.style.display = 'none';
-    if (elements.consultTransfer) elements.consultTransfer.disabled = true;
-}
-
-/**
- * Initiate consult with another agent or queue
- * @param {Object} task - Current task
- * @param {Object} consultPayload - Consult parameters
+ * Initiate a consult
+ * @param {Object} task - The task to initiate consult on
+ * @param {Object} consultPayload - The consult payload
  */
 export async function initiateConsult(task, consultPayload) {
-    if (!task) {
-        console.warn('No active task for consult');
+    if (!task || !consultPayload) {
+        console.error('Invalid task or consult payload');
         return;
     }
 
     try {
         if (consultPayload.destinationType === 'queue') {
             currentConsultQueueId = consultPayload.to;
+            const endConsultBtn = document.getElementById('btn-end-consult');
+            if (endConsultBtn) endConsultBtn.innerText = 'Cancel Consult';
         }
+
         await task.consult(consultPayload);
-        console.log('✅ Consult initiated successfully');
-        currentConsultTask = task;
+        console.log('Consult initiated successfully');
+        updateConsultUI();
     } catch (error) {
-        console.error('❌ Failed to initiate consult:', error);
-        currentConsultQueueId = null;
+        console.error('Failed to initiate consult:', error);
+        if (consultPayload.destinationType === 'queue') {
+            currentConsultQueueId = null;
+            refreshConsultUI();
+        }
         throw error;
     }
 }
 
 // Event Handlers
 function handleConsultCreated(task) {
-    console.info('Consult created for task:', task.data.interactionId);
-    currentConsultTask = task;
-    enableConsultTransferControls();
+    console.log('Consult created:', task.data.interactionId);
+    hideConsultButton();
+    showEndConsultButton();
+    disableCallControlsPostConsult();
 }
 
 function handleConsultOffer(task) {
-    console.info('Received consult offer from another agent for task:', task.data.interactionId);
+    console.log('Received consult offer:', task.data.interactionId);
 }
 
 function handleConsultAccepted(task) {
-    console.info('Consult accepted for task:', task.data.interactionId);
-    if (currentConsultTask?.data.interactionId === task.data.interactionId) {
-        disableConsultTransferControls();
-    }
+    console.log('Consult accepted:', task.data.interactionId);
+    hideConsultButton();
+    showEndConsultButton();
+    
+    // Disable consult transfer until consulting begins
+    const consultTransferBtn = document.getElementById('btn-consult-transfer');
+    if (consultTransferBtn) consultTransferBtn.disabled = true;
 }
 
 function handleConsulting(task) {
-    console.info('Consulting for task:', task.data.interactionId);
-    if (currentConsultTask?.data.interactionId === task.data.interactionId) {
-        enableConsultTransferControls();
+    console.log('Consulting in progress:', task.data.interactionId);
+    const consultTransferBtn = document.getElementById('btn-consult-transfer');
+    if (consultTransferBtn) {
+        consultTransferBtn.style.display = 'inline-block';
+        consultTransferBtn.disabled = false;
     }
 }
 
 function handleConsultQueueFailed(task) {
-    console.error('Consult queue failed for task:', task.data.interactionId);
-    if (currentConsultTask?.data.interactionId === task.data.interactionId) {
-        resetConsultControls();
-        currentConsultTask = null;
-        currentConsultQueueId = null;
-    }
+    console.error('Queue consult failed:', task.data.interactionId);
+    currentConsultQueueId = null;
+    hideEndConsultButton();
+    showConsultButton();
 }
 
 function handleConsultQueueCancelled(task) {
-    console.log('Consult queue cancelled for task:', task.data.interactionId);
-    if (currentConsultTask?.data.interactionId === task.data.interactionId) {
-        resetConsultControls();
-        currentConsultTask = null;
-        currentConsultQueueId = null;
-    }
+    console.log('Queue consult cancelled:', task.data.interactionId);
+    currentConsultQueueId = null;
+    hideEndConsultButton();
+    showConsultButton();
+    enableTransferControls();
+    enableCallControlsPostConsult();
 }
 
 function handleConsultEnd(task) {
-    console.log('Consult ended for task:', task.data.interactionId);
-    if (currentConsultTask?.data.interactionId === task.data.interactionId) {
-        resetConsultControls();
-        currentConsultTask = null;
-        currentConsultQueueId = null;
+    console.log('Consult ended:', task.data.interactionId);
+    currentConsultQueueId = null;
+    refreshConsultUI();
+
+    if (task.data.isConsulted) {
+        enableWrapupMode();
     }
 }
 
-// UI Controls
-export function enableConsultTransferControls() {
-    const consultTransferBtn = document.getElementById('btn-consult-transfer');
-    if (consultTransferBtn) {
-        consultTransferBtn.disabled = false;
-        consultTransferBtn.style.display = 'inline-block';
-    }
+// UI Helper Functions
+function hideConsultButton() {
+    const consultBtn = document.getElementById('btn-consult');
+    if (consultBtn) consultBtn.style.display = 'none';
 }
 
-export function disableConsultTransferControls() {
+function showConsultButton() {
+    const consultBtn = document.getElementById('btn-consult');
+    if (consultBtn) consultBtn.style.display = 'inline-block';
+}
+
+function hideEndConsultButton() {
+    const endConsultBtn = document.getElementById('btn-end-consult');
+    if (endConsultBtn) endConsultBtn.style.display = 'none';
+}
+
+function showEndConsultButton() {
+    const endConsultBtn = document.getElementById('btn-end-consult');
+    if (endConsultBtn) endConsultBtn.style.display = 'inline-block';
+}
+
+function disableCallControlsPostConsult() {
+    const controls = ['btn-hold', 'pause-resume-recording', 'btn-end'];
+    controls.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.disabled = true;
+    });
+}
+
+function enableCallControlsPostConsult() {
+    const controls = ['btn-hold', 'pause-resume-recording', 'btn-end'];
+    controls.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.disabled = false;
+    });
+}
+
+function enableTransferControls() {
+    const transferBtn = document.getElementById('btn-transfer');
+    if (transferBtn) transferBtn.disabled = false;
+}
+
+function refreshConsultUI() {
+    enableCallControlsPostConsult();
+    enableTransferControls();
+    showConsultButton();
+    hideEndConsultButton();
+
     const consultTransferBtn = document.getElementById('btn-consult-transfer');
     if (consultTransferBtn) {
+        consultTransferBtn.style.display = 'none';
         consultTransferBtn.disabled = true;
     }
 }
 
+function enableWrapupMode() {
+    const wrapupBtn = document.getElementById('btn-wrapup');
+    const wrapupCodesDropdown = document.getElementById('wrapup-codes');
+    if (wrapupBtn && wrapupCodesDropdown) {
+        wrapupBtn.disabled = false;
+        wrapupCodesDropdown.disabled = false;
+    }
+    disableCallControlsPostConsult();
+}
+
+// UI State Update
+function updateConsultUI() {
+    disableCallControlsPostConsult();
+    const transferBtn = document.getElementById('btn-transfer');
+    if (transferBtn) transferBtn.disabled = true;
+    hideConsultButton();
+    showEndConsultButton();
+}
+
+/**
+ * Reset the consult controls to their initial state
+ */
 export function resetConsultControls() {
-    const elements = {
-        consult: document.getElementById('btn-consult'),
-        endConsult: document.getElementById('btn-end-consult'),
-        consultTransfer: document.getElementById('btn-consult-transfer')
-    };
+    const consultBtn = document.getElementById('btn-consult');
+    const endConsultBtn = document.getElementById('btn-end-consult');
+    const consultTransferBtn = document.getElementById('btn-consult-transfer');
 
-    if (elements.consult) {
-        elements.consult.style.display = 'inline-block';
-        elements.consult.disabled = false;
+    if (consultBtn) {
+        consultBtn.style.display = 'inline-block';
+        consultBtn.disabled = true;
     }
-    if (elements.endConsult) {
-        elements.endConsult.style.display = 'none';
-        elements.endConsult.disabled = true;
+    if (endConsultBtn) {
+        endConsultBtn.style.display = 'none';
+        endConsultBtn.disabled = true;
     }
-    if (elements.consultTransfer) {
-        elements.consultTransfer.disabled = true;
-        elements.consultTransfer.style.display = 'none';
+    if (consultTransferBtn) {
+        consultTransferBtn.style.display = 'none';
+        consultTransferBtn.disabled = true;
     }
-}
-
-// State getters
-export function getCurrentConsultTask() {
-    return currentConsultTask;
-}
-
-export function getCurrentConsultQueueId() {
-    return currentConsultQueueId;
 }

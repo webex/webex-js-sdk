@@ -6,8 +6,6 @@ import {
     setupConsultEventListeners,
     initializeConsultUI,
     initiateConsult,
-    enableConsultTransferControls,
-    disableConsultTransferControls,
     resetConsultControls,
     CONSULT_EVENTS
 } from './task-consult.js';
@@ -19,7 +17,6 @@ export const TASK_EVENTS = {
   TASK_MEDIA: 'task:media',
   TASK_UNASSIGNED: 'task:unassigned',
   TASK_HOLD: 'task:hold',
-  TASK_UNHOLD: 'task:unhold',
   TASK_PAUSE: 'task:pause',
   TASK_RESUME: 'task:resume',
   TASK_END: 'task:end',
@@ -71,6 +68,9 @@ export function initializeTaskUI(config = {}) {
         taskList: document.getElementById('taskList')
     };
 
+    // Log elements for debugging
+    console.log('Wrapup button:', elements.wrapup);
+
     // Disable initial controls
     Object.values(elements).forEach(el => {
         if (el && (el.tagName === 'BUTTON' || el.tagName === 'SELECT')) {
@@ -94,22 +94,71 @@ export function initializeTaskUI(config = {}) {
  * Setup event handlers for buttons and controls
  */
 function setupEventHandlers(config) {
+    // Get all UI elements
     const elements = {
         accept: document.getElementById('btn-accept'),
         decline: document.getElementById('btn-decline'),
         hold: document.getElementById('btn-hold'),
         mute: document.getElementById('btn-mute'),
         wrapup: document.getElementById('btn-wrapup'),
+        end: document.getElementById('btn-end'),
         pauseResumeRecording: document.getElementById('pause-resume-recording'),
         autoResumeCheckbox: document.getElementById('auto-resume-checkbox')
     };
 
-    // Set up click handlers
+    // Debug element presence
+    console.log('Setting up handlers. Elements:', elements);
+
+    // Set up direct click handlers
     if (config.onAccept) elements.accept?.addEventListener('click', () => config.onAccept(currentTask));
     if (config.onDecline) elements.decline?.addEventListener('click', () => config.onDecline(currentTask));
     if (config.onHold) elements.hold?.addEventListener('click', () => config.onHold(currentTask));
     if (config.onMute) elements.mute?.addEventListener('click', () => config.onMute(currentTask));
-    if (config.onWrapup) elements.wrapup?.addEventListener('click', () => config.onWrapup(currentTask));
+    
+    // End call handler
+    elements.end?.addEventListener('click', () => endTask(currentTask));
+
+    // Set up wrapup handler
+    const wrapupBtn = document.getElementById('btn-wrapup');
+    if (wrapupBtn) {
+        // Create handler that captures currentTask
+        const wrapupHandler = async (event) => {
+            event.preventDefault();
+            console.log('Wrapup button clicked, executing handler with task:', currentTask);
+            if (!currentTask) {
+                console.warn('No task available for wrapup');
+                return;
+            }
+            await submitWrapup(currentTask);
+        };
+
+        // Clean up old handler if exists
+        const oldHandler = wrapupBtn._wrapupHandler;
+        if (oldHandler) {
+            console.log('Removing old wrapup handler');
+            wrapupBtn.removeEventListener('click', oldHandler);
+        }
+
+        // Store and add new handler
+        wrapupBtn._wrapupHandler = wrapupHandler;
+        wrapupBtn.addEventListener('click', wrapupHandler);
+
+        // Add focus handler to ensure button state is correct
+        wrapupBtn.addEventListener('focus', () => {
+            if (currentTask && !wrapupBtn.disabled) {
+                console.log('Wrapup button focused, validating state...');
+                wrapupBtn.disabled = false;
+            }
+        });
+
+        console.log('Wrapup button setup complete:', {
+            buttonId: wrapupBtn.id,
+            hasHandler: true,
+            handlerType: typeof wrapupHandler
+        });
+    } else {
+        console.error('❌ Wrapup button not found when setting up handlers');
+    }
 
     // Recording controls
     if (elements.pauseResumeRecording) {
@@ -128,28 +177,34 @@ function setupEventHandlers(config) {
  * @param {Object} webex - Webex SDK instance
  */
 export function setupTaskEventListeners(webex) {
-    // Task lifecycle events
+    // Global Contact Center events
     webex.cc.on(TASK_EVENTS.TASK_INCOMING, handleIncomingTask);
-    webex.cc.on(TASK_EVENTS.TASK_ASSIGNED, handleTaskAssigned);
-    webex.cc.on(TASK_EVENTS.TASK_MEDIA, handleMediaTrack);
-    webex.cc.on(TASK_EVENTS.TASK_UNASSIGNED, handleTaskUnassigned);
-    webex.cc.on(TASK_EVENTS.TASK_HOLD, handleTaskHold);
-    webex.cc.on(TASK_EVENTS.TASK_UNHOLD, handleTaskUnhold);
-    webex.cc.on(TASK_EVENTS.TASK_END, handleTaskEnd);
-    webex.cc.on(TASK_EVENTS.TASK_WRAPUP, handleWrapup);
-    webex.cc.on(TASK_EVENTS.TASK_WRAPPEDUP, handleTaskWrappedUp);
-    webex.cc.on(TASK_EVENTS.TASK_REJECT, handleTaskRejected);
     webex.cc.on(TASK_EVENTS.TASK_HYDRATE, handleTaskHydrate);
     webex.cc.on(TASK_EVENTS.TASK_OFFER_CONTACT, handleTaskOfferContact);
+    webex.cc.on(TASK_EVENTS.TASK_WRAPUP, (data) => {
+        console.log('Global wrapup event received:', data);
+        handleWrapup(data);
+    });
 
-    // Setup consult event listeners
-    setupConsultEventListeners(webex);
+    // Register task-specific events when a task is received
+    webex.cc.on(TASK_EVENTS.TASK_INCOMING, (task) => {
+        // Task lifecycle events
+        task.on(TASK_EVENTS.TASK_ASSIGNED, handleTaskAssigned);
+        task.on(TASK_EVENTS.TASK_MEDIA, handleMediaTrack);
+        task.on(TASK_EVENTS.TASK_UNASSIGNED, handleTaskUnassigned);
+        task.on(TASK_EVENTS.TASK_HOLD, handleTaskHold);
+        task.on(TASK_EVENTS.TASK_RESUME, handleTaskResume);
+        task.on(TASK_EVENTS.TASK_END, handleTaskEnd);
+        task.on(TASK_EVENTS.TASK_WRAPUP, handleWrapup);
+        task.on(TASK_EVENTS.TASK_WRAPPEDUP, handleTaskWrappedUp);
+        task.on(TASK_EVENTS.TASK_REJECT, handleTaskRejected);
 
-    // Recording events
-    webex.cc.on(TASK_EVENTS.TASK_RECORDING_PAUSED, handleRecordingPaused);
-    webex.cc.on(TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED, handleRecordingPauseFailed);
-    webex.cc.on(TASK_EVENTS.TASK_RECORDING_RESUMED, handleRecordingResumed);
-    webex.cc.on(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, handleRecordingResumeFailed);
+        // Recording events
+        task.on(TASK_EVENTS.TASK_RECORDING_PAUSED, handleRecordingPaused);
+        task.on(TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED, handleRecordingPauseFailed);
+        task.on(TASK_EVENTS.TASK_RECORDING_RESUMED, handleRecordingResumed);
+        task.on(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, handleRecordingResumeFailed);
+    });
 
     console.log('✅ Task event listeners registered');
 }
@@ -177,8 +232,8 @@ function handleTaskHold(task) {
     }
 }
 
-function handleTaskUnhold(task) {
-    console.log('Task unheld:', task.data.interactionId);
+function handleTaskResume(task) {
+    console.log('Task resumed:', task.data.interactionId);
     if (currentTask?.data.interactionId === task.data.interactionId) {
         isHold = false;
         updateHoldControl();
@@ -195,6 +250,7 @@ function handleTaskEnd(task) {
             clearCurrentTask();
         } else {
             console.info('Call ended, wrapup required');
+            updateWrapupCodes(window.wrapupCodes || []);
             enableWrapupMode();
         }
         updateTaskList();
@@ -234,8 +290,50 @@ function handleTaskRejected(reason) {
 }
 
 function handleWrapup(data) {
-    console.log('Task in wrapup:', data);
+    console.log('Task in wrapup, received data:', data);
+    
+    // Validate and update task state
+    if (data && data.task) {
+        console.log('Updating current task for wrapup with task ID:', data.task.data.interactionId);
+        currentTask = data.task;
+    } else {
+        console.warn('No task data received in wrapup event');
+    }
+
+    // Update wrapup codes and validate
+    const codes = window.wrapupCodes || [];
+    console.log('Available wrapup codes:', codes);
+    updateWrapupCodes(codes);
+    
+    // Enable wrapup mode with state validation
     enableWrapupMode();
+    
+    // Re-initialize wrapup button click handler with validation
+    const wrapupBtn = document.getElementById('btn-wrapup');
+    const wrapupCodesDropdown = document.getElementById('wrapup-codes');
+    
+    if (wrapupBtn && wrapupBtn._wrapupHandler) {
+        console.log('Re-initializing wrapup handler with state:', {
+            hasCurrentTask: !!currentTask,
+            buttonEnabled: !wrapupBtn.disabled,
+            hasWrapupCodes: !!wrapupCodesDropdown?.options?.length,
+            handlerPresent: !!wrapupBtn._wrapupHandler
+        });
+        
+        wrapupBtn.removeEventListener('click', wrapupBtn._wrapupHandler);
+        wrapupBtn.addEventListener('click', wrapupBtn._wrapupHandler);
+        
+        // Force enable if we have a valid task
+        if (currentTask) {
+            wrapupBtn.disabled = false;
+            if (wrapupCodesDropdown) wrapupCodesDropdown.disabled = false;
+        }
+    } else {
+        console.error('Wrapup handler not properly initialized:', {
+            buttonFound: !!wrapupBtn,
+            hasHandler: !!wrapupBtn?._wrapupHandler
+        });
+    }
 }
 
 function handleTaskOfferContact(task) {
@@ -457,13 +555,19 @@ export function updateWrapupCodes(codes) {
     wrapupCodes = codes;
     const wrapupCodesDropdown = document.getElementById('wrapup-codes');
     if (wrapupCodesDropdown) {
-        wrapupCodesDropdown.innerHTML = '';
+        // Reset and create placeholder option
+        wrapupCodesDropdown.innerHTML = '<option value="" selected>Choose Wrapup Code...</option>';
+        
+        // Add wrapup codes
         wrapupCodes.forEach((code) => {
             const option = document.createElement('option');
             option.text = code.name;
             option.value = code.id;
             wrapupCodesDropdown.add(option);
         });
+
+        // Enable the dropdown
+        wrapupCodesDropdown.disabled = false;
     }
 }
 
@@ -478,12 +582,34 @@ function clearCurrentTask() {
 }
 
 function enableWrapupMode() {
+    console.log('Enabling wrapup mode...');
     const wrapupBtn = document.getElementById('btn-wrapup');
     const wrapupCodesDropdown = document.getElementById('wrapup-codes');
+
     if (wrapupBtn && wrapupCodesDropdown) {
+        console.log('Found wrapup UI elements:', {
+            wrapupBtn: wrapupBtn.id,
+            wrapupCodesDropdown: wrapupCodesDropdown.id
+        });
+
+        // Enable controls
         wrapupBtn.disabled = false;
         wrapupCodesDropdown.disabled = false;
+
+        // Log current state
+        console.log('Wrapup controls enabled:', {
+            buttonDisabled: wrapupBtn.disabled,
+            dropdownDisabled: wrapupCodesDropdown.disabled,
+            buttonHandler: wrapupBtn._wrapupHandler ? 'Present' : 'Missing',
+            currentTask: currentTask?.data?.interactionId
+        });
+
         disableCallControls();
+    } else {
+        console.error('Missing wrapup UI elements:', {
+            wrapupBtn: !!wrapupBtn,
+            wrapupCodesDropdown: !!wrapupCodesDropdown
+        });
     }
 }
 
@@ -515,7 +641,8 @@ function enableCallControls() {
     document.getElementById('btn-hold').disabled = false;
     document.getElementById('btn-mute').disabled = false;
     document.getElementById('btn-transfer').disabled = false;
-    document.getElementById('pause-resume-recording')?.disabled = false;
+    document.getElementById('btn-end').disabled = false;
+    document.getElementById('pause-resume-recording').disabled = false;
 }
 
 function resetCallControls() {
@@ -523,6 +650,7 @@ function resetCallControls() {
         'btn-hold': 'Hold Call',
         'btn-mute': 'Mute Call',
         'btn-transfer': 'Transfer',
+        'btn-end': 'End Call',
         'pause-resume-recording': 'Pause Recording'
     };
 
