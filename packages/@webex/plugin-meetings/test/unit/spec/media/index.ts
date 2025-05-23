@@ -218,7 +218,7 @@ describe('createMediaConnection', () => {
     );
   });
 
-  it('multistream firefox stop gathering after first relay if stopIceGatheringAfterFirstRelayCandidate is true', () => {
+  it('multistream firefox stops gathering after first relay if stopIceGatheringAfterFirstRelayCandidate is true', () => {
     const multistreamRoapMediaConnectionConstructorStub = sinon
       .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
       .returns(fakeRoapMediaConnection);
