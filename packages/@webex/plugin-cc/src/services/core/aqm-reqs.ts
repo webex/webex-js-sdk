@@ -157,7 +157,7 @@ export default class AqmReqs {
             }
             LoggerProxy.error(`Routing request timeout${keySuccess}${response!}${c.url}`, {
               module: AQM_REQS_FILE,
-              method: this.createPromise.name,
+              method: 'createPromise',
             });
             reject(
               new Err.Details('Service.aqm.reqs.Timeout', {
@@ -218,7 +218,7 @@ export default class AqmReqs {
     if (event.type === 'Welcome') {
       LoggerProxy.info(`Welcome message from Notifs Websocket`, {
         module: AQM_REQS_FILE,
-        method: this.onMessage.name,
+        method: 'onMessage',
       });
 
       return;
@@ -227,7 +227,7 @@ export default class AqmReqs {
     if (event.keepalive === 'true') {
       LoggerProxy.info(`Keepalive from web socket`, {
         module: AQM_REQS_FILE,
-        method: this.onMessage.name,
+        method: 'onMessage',
       });
 
       return;
@@ -236,7 +236,7 @@ export default class AqmReqs {
     if (event.type === 'AgentReloginFailed') {
       LoggerProxy.info('Silently handling the agent relogin fail', {
         module: AQM_REQS_FILE,
-        method: this.onMessage.name,
+        method: 'onMessage',
       });
     }
 
@@ -266,7 +266,7 @@ export default class AqmReqs {
     if (!isHandled) {
       LoggerProxy.info(`event=missingEventHandler | [AqmReqs] missing routing message handler`, {
         module: AQM_REQS_FILE,
-        method: this.onMessage.name,
+        method: 'onMessage',
       });
     }
   };

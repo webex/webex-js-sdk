@@ -81,6 +81,7 @@ export default class WebCallingService extends EventEmitter {
         `Invalid URL from u2c catalogue: ${rtmsURL} so falling back to default domain`,
         {
           module: WEB_CALLING_SERVICE_FILE,
+          method: 'getRTMSDomain',
         }
       );
 
@@ -107,7 +108,7 @@ export default class WebCallingService extends EventEmitter {
     this.line.on(LINE_EVENTS.UNREGISTERED, () => {
       LoggerProxy.log(`WxCC-SDK: Desktop unregistered successfully`, {
         module: WEB_CALLING_SERVICE_FILE,
-        method: this.registerWebCallingLine.name,
+        method: 'registerWebCallingLine',
       });
     });
 
@@ -126,7 +127,7 @@ export default class WebCallingService extends EventEmitter {
         clearTimeout(timeout);
         LoggerProxy.log(
           `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`,
-          {module: WEB_CALLING_SERVICE_FILE, method: this.registerWebCallingLine.name}
+          {module: WEB_CALLING_SERVICE_FILE, method: 'registerWebCallingLine'}
         );
         resolve();
       });
