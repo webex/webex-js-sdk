@@ -2,20 +2,22 @@ import {LocalMicrophoneStream, CALL_EVENT_KEYS} from '@webex/calling';
 import {CC_FILE} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import routingContact from '../contact';
-import {TaskData, TaskResponse, TASK_EVENTS} from '../types';
+import {TaskData, TaskResponse, TASK_EVENTS, IWebRTCTask} from '../types';
 import Voice from './Voice';
 import WebCallingService from '../../WebCallingService';
+import {CC_EVENTS} from '../../config/types';
 
-export default class WebRTC extends Voice {
+export default class WebRTC extends Voice implements IWebRTCTask {
   private localAudioStream: LocalMicrophoneStream;
   private webCallingService: WebCallingService;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
-    data: TaskData
+    data: TaskData,
+    callOptions: {isEndCallEnabled: boolean; isEndConsultEnabled: boolean}
   ) {
-    super(contact, data);
+    super(contact, data, callOptions);
     this.webCallingService = webCallingService;
   }
 
@@ -26,6 +28,19 @@ export default class WebRTC extends Voice {
   private handleRemoteMedia = (track: MediaStreamTrack) => {
     this.emit(TASK_EVENTS.TASK_MEDIA, track);
   };
+
+  /**
+   * This method is used to set the UI controls for the specific type of task
+   */
+  protected setUIControls(): void {
+    switch (this.data.type) {
+      case CC_EVENTS.AGENT_CONTACT_RESERVED:
+        this.taskUiControls.accept.enable();
+        break;
+      default:
+        break;
+    }
+  }
 
   /**
    * This method is used to unregister the web call listeners.
@@ -96,7 +111,7 @@ export default class WebRTC extends Voice {
    * task.toggleMute().then(()=>{}).catch(()=>{})
    * ```
    */
-  public async mute() {
+  public async toggleMute() {
     try {
       this.webCallingService.muteUnmuteCall(this.localAudioStream);
 

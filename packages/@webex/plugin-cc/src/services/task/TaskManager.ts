@@ -6,7 +6,7 @@ import WebCallingService from '../WebCallingService';
 import Task from './Task';
 import {MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
-import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
+import {CC_EVENTS, CC_TASK_EVENTS, Profile} from '../config/types';
 import {LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import TaskFactory from './TaskFactory';
@@ -19,6 +19,7 @@ export default class TaskManager extends EventEmitter {
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
   private static taskManager: TaskManager;
+  private agentProfile?: Profile;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -51,6 +52,13 @@ export default class TaskManager extends EventEmitter {
     this.call = call;
   };
 
+  /**
+   * Inject agent profile after instantiation
+   */
+  public setAgentProfile(profile: Profile): void {
+    this.agentProfile = profile;
+  }
+
   public registerIncomingCallEvent() {
     this.webCallingService.on(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
   }
@@ -76,10 +84,15 @@ export default class TaskManager extends EventEmitter {
             break;
 
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            task = TaskFactory.create(this.contact, this.webCallingService, {
-              ...payload.data,
-              isConsulted: false,
-            });
+            if (!this.agentProfile) {
+              throw new Error('Agent profile not set on TaskManager');
+            }
+            task = TaskFactory.create(
+              this.contact,
+              this.webCallingService,
+              {...payload.data, isConsulted: false},
+              this.agentProfile
+            );
             this.taskCollection[payload.data.interactionId] = task;
             // for telephony in-browser we wait for incoming call, else fire immediately
             if (
@@ -239,7 +252,9 @@ export default class TaskManager extends EventEmitter {
       throw new Error('Task not found for update');
     }
 
-    return task.updateTaskData(taskData);
+    task.updateTaskData(taskData);
+
+    return task;
   }
 
   private removeTaskFromCollection(task: Task) {
@@ -259,7 +274,7 @@ export default class TaskManager extends EventEmitter {
       task.data.interaction.mediaType === MEDIA_CHANNEL.TELEPHONY &&
       task instanceof WebRTC
     ) {
-      (task as WebRTC).unregisterWebCallListeners();
+      task.unregisterWebCallListeners();
       this.webCallingService.cleanUpCall();
     }
     if (task.data.interaction.state === 'new') {

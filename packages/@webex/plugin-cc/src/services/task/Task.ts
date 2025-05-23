@@ -1,6 +1,7 @@
 import {EventEmitter} from 'events';
 import {CallId} from '@webex/calling/dist/types/common/types';
 import {
+  ITask,
   TaskData,
   TaskResponse,
   WrapupPayLoad,
@@ -15,12 +16,12 @@ import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
 
-export default abstract class Task extends EventEmitter {
+export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
-  protected taskUiControls: TaskUIControls;
   protected metricsManager: MetricsManager;
   public data: TaskData;
   public webCallMap: Record<TaskId, CallId>;
+  public taskUiControls: TaskUIControls;
 
   constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
     super();
@@ -28,6 +29,7 @@ export default abstract class Task extends EventEmitter {
     this.data = data;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
+    this.initialiseUIControls();
   }
 
   private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
@@ -42,18 +44,8 @@ export default abstract class Task extends EventEmitter {
     return oldData;
   }
 
-  /**
-   * This method is used to get the task data.
-   * @returns TaskData
-   * @example
-   * ```typescript
-   * const controls = task.getUIControls();
-   * ```
-   */
-  public getUIControls(): TaskUIControls {
-    // Default UI controls for other media types
-    // Shape is a tuple (visibility: boolean, state: boolean (can be enabled/disabled))
-    return {
+  private initialiseUIControls() {
+    this.taskUiControls = {
       accept: new TaskButtonControl(true, true),
       decline: new TaskButtonControl(true, true),
       hold: new TaskButtonControl(false, false),
@@ -70,6 +62,11 @@ export default abstract class Task extends EventEmitter {
   }
 
   /**
+   * This method is used to set the UI controls data. Will be implemented in child classes.
+   */
+  protected setUIControls() {}
+
+  /**
    * This method is used to update the task data.
    * @param updatedData - TaskData
    * @param shouldOverwrite - boolean
@@ -79,10 +76,9 @@ export default abstract class Task extends EventEmitter {
    * task.updateTaskData(updatedData, true);
    * ```
    */
-  public updateTaskData(updatedData: TaskData, shouldOverwrite = false): Task {
+  public updateTaskData(updatedData: TaskData, shouldOverwrite = false) {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
-
-    return this;
+    this.setUIControls();
   }
 
   public abstract accept(): Promise<TaskResponse>;

@@ -1,10 +1,36 @@
 import {CC_FILE} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
-import {ConsultPayload, ResumeRecordingPayload, TaskResponse} from '../types';
+import routingContact from '../contact';
+import {ConsultPayload, ResumeRecordingPayload, TaskResponse, IVoiceTask, TaskData} from '../types';
 import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 
-export default class Voice extends Task {
+export default class Voice extends Task implements IVoiceTask {
+  private isEndCallEnabled: boolean;
+  private isEndConsultEnabled: boolean;
+
+  constructor(
+    contact: ReturnType<typeof routingContact>,
+    data: TaskData,
+    callOptions: {isEndCallEnabled: boolean; isEndConsultEnabled: boolean}
+  ) {
+    super(contact, data);
+    this.isEndCallEnabled = callOptions.isEndCallEnabled;
+    this.isEndConsultEnabled = callOptions.isEndConsultEnabled;
+  }
+
+  protected setUIControls(): void {
+    // if profile disables end-call, always hide the end-call button
+    if (!this.isEndCallEnabled) {
+      this.taskUiControls.end.hide();
+    }
+
+    // if profile disables end-consult, always hide the consult-end button
+    if (!this.isEndConsultEnabled) {
+      this.taskUiControls.endConsult.hide();
+    }
+  }
+
   /**
    * This method is used to accept the task.
    * It is expected to be overridden by child classes.

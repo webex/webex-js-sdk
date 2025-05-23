@@ -141,6 +141,7 @@ describe('webex.cc', () => {
       off: jest.fn(),
       emit: jest.fn(),
       unregisterIncomingCallEvent: jest.fn(),
+      setAgentProfile: jest.fn(),
     };
 
     mockMetricsManager = {

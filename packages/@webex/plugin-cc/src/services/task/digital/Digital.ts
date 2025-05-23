@@ -1,9 +1,9 @@
 import {CC_FILE} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
-import {TaskResponse} from '../types';
+import {IDigitalTask, TaskResponse} from '../types';
 import Task from '../Task';
 
-export default class Digital extends Task {
+export default class Digital extends Task implements IDigitalTask {
   /**
    * This is used for incoming digital task accept by agent.
    *
@@ -22,4 +22,6 @@ export default class Digital extends Task {
       throw detailedError;
     }
   }
+
+  protected setUIControls(): void {}
 }

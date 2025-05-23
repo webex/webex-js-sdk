@@ -34,7 +34,7 @@ describe('Task (base class)', () => {
   });
 
   it('getUIControls returns default controls shape', () => {
-    const controls = task.getUIControls();
+    const controls = task.taskUiControls;
     // accept and decline should be visible/enabled
     expect(controls.accept.visible).toBe(true);
     expect(controls.decline.enabled).toBe(true);
