@@ -1,13 +1,10 @@
 import sha256 from 'crypto-js/sha256';
 
 import {union} from 'lodash';
-import {serviceHostmapV2} from 'packages/@webex/webex-core/test/fixtures/host-catalog-v2';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from '../services/metrics';
 import ServiceCatalog from '../services/service-catalog';
-import ServiceRegistry from '../services/service-registry';
-import ServiceState from '../services/service-state';
 import fedRampServices from '../services/service-fed-ramp';
 import {COMMERCIAL_ALLOWED_DOMAINS} from '../services/constants';
 
@@ -28,28 +25,6 @@ const DEFAULT_CLUSTER_IDENTIFIER =
  */
 const Services = WebexPlugin.extend({
   namespace: 'Services',
-
-  /**
-   * The {@link WeakMap} of {@link ServiceRegistry} class instances that are
-   * keyed with WebexCore instances.
-   *
-   * @instance
-   * @type {WeakMap<WebexCore, ServiceRegistry>}
-   * @private
-   * @memberof Services
-   */
-  registries: new WeakMap(),
-
-  /**
-   * The {@link WeakMap} of {@link ServiceState} class instances that are
-   * keyed with WebexCore instances.
-   *
-   * @instance
-   * @type {WeakMap<WebexCore, ServiceState>}
-   * @private
-   * @memberof Services
-   */
-  states: new WeakMap(),
 
   props: {
     validateDomains: ['boolean', false, true],
@@ -690,24 +665,27 @@ const Services = WebexPlugin.extend({
   /**
    * @private
    * Organize a received hostmap from a service
+   * @param {object} serviceHostmap
    * catalog endpoint.
    * @returns {object}
    */
-  _formatReceivedHostmap() {
-    const serviceHostmap = serviceHostmapV2;
-
-    this._updateServiceUrls(serviceHostmap.activeServices);
-
+  _formatReceivedHostmap({services, activeServices}) {
     const formattedHostmap = {};
 
-    serviceHostmap.services.forEach(({id, serviceName, serviceUrls}) => {
+    services.forEach(({id, serviceName, serviceUrls}) => {
+      const formattedServiceUrls = serviceUrls.map((serviceUrl) => ({
+        host: new URL(serviceUrl).host,
+        ...serviceUrl,
+      }));
+
       formattedHostmap[id] = {
         id,
         serviceName,
-        serviceUrls,
+        serviceUrls: formattedServiceUrls,
       };
     });
 
+    this._updateServiceUrls(activeServices);
     this._updateHostCatalog(formattedHostmap);
 
     return formattedHostmap;
@@ -955,12 +933,7 @@ const Services = WebexPlugin.extend({
    */
   initialize() {
     const catalog = new ServiceCatalog();
-    const registry = new ServiceRegistry();
-    const state = new ServiceState();
-
     this._catalogs.set(this.webex, catalog);
-    this.registries.set(this.webex, registry);
-    this.states.set(this.webex, state);
 
     // Listen for configuration changes once.
     this.listenToOnce(this.webex, 'change:config', () => {
