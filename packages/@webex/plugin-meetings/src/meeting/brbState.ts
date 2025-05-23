@@ -95,6 +95,9 @@ export class BrbState {
     return this.sendLocalBrbStateToServer(sendSlotManager)
       .then(() => {
         this.state.syncToServerInProgress = false;
+
+        this.handleServerBrbUpdate(this.state.client.enabled);
+
         LoggerProxy.logger.info(
           `Meeting:brbState#applyClientStateToServer: sync with server completed`
         );
