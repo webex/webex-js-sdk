@@ -419,7 +419,7 @@ describe('plugin-meetings', () => {
       });
 
       describe('success', () => {
-        it('should update meetings to disable audio main dtx', () => {
+        it('should update meetings to stop ICE candidates gathering after first relay candidate', () => {
           webex.meetings._toggleStopIceGatheringAfterFirstRelayCandidate(true);
           assert.equal(webex.meetings.config.stopIceGatheringAfterFirstRelayCandidate, true);
         });
