@@ -856,7 +856,8 @@ describe('plugin-meetings', () => {
 
           const selfWithBrbChanged = cloneDeep(self);
           selfWithBrbChanged.controls.brb = value;
-          locusInfo.self = selfWithBrbChanged;
+
+          locusInfo.updateSelf(selfWithBrbChanged, []);
 
           locusInfo.emitScoped = sinon.stub();
 
@@ -880,7 +881,7 @@ describe('plugin-meetings', () => {
       it('should not trigger SELF_MEETING_BRB_CHANGED when brb state is undefined', () => {
         const selfWithBrbChanged = cloneDeep(self);
         selfWithBrbChanged.controls.brb = false;
-        locusInfo.self = selfWithBrbChanged;
+        locusInfo.updateSelf(selfWithBrbChanged, []);
 
         locusInfo.emitScoped = sinon.stub();
 
@@ -954,9 +955,9 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger MEDIA_INACTIVITY on server media inactivity', () => {
-        locusInfo.self = self;
-
         locusInfo.webex.internal.device.url = selfWithInactivity.deviceUrl;
+        locusInfo.updateSelf(self, []);
+
         locusInfo.emitScoped = sinon.stub();
         locusInfo.updateSelf(selfWithInactivity, []);
 
@@ -993,7 +994,7 @@ describe('plugin-meetings', () => {
         );
 
         // but sometimes "previous self" is defined, but without controls.audio.muted, so we test this here:
-        locusInfo.self = cloneDeep(self);
+        locusInfo.updateSelf(self, []);
         locusInfo.self.controls.audio = {};
 
         locusInfo.updateSelf(selfWithMutedByOthers, []);
@@ -1025,18 +1026,18 @@ describe('plugin-meetings', () => {
       });
 
       it('should not trigger SELF_REMOTE_MUTE_STATUS_UPDATED when being removed from meeting', () => {
+        locusInfo.webex.internal.device.url = self.deviceUrl;
         const selfWithMutedByOthers = cloneDeep(self);
 
         selfWithMutedByOthers.controls.audio.muted = true;
 
-        locusInfo.self = selfWithMutedByOthers;
+        locusInfo.updateSelf(selfWithMutedByOthers, []);
 
         // when user gets removed from meeting we receive a Locus DTO without any self.controls
         const selfWithoutControls = cloneDeep(self);
 
         selfWithoutControls.controls = undefined;
 
-        locusInfo.webex.internal.device.url = self.deviceUrl;
         locusInfo.emitScoped = sinon.stub();
         locusInfo.updateSelf(selfWithoutControls, []);
 
@@ -1047,12 +1048,12 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger SELF_REMOTE_MUTE_STATUS_UPDATED on othersMuted', () => {
-        locusInfo.self = self;
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.updateSelf(self, []);
         const selfWithMutedByOthers = cloneDeep(self);
 
         selfWithMutedByOthers.controls.audio.muted = true;
 
-        locusInfo.webex.internal.device.url = self.deviceUrl;
         locusInfo.emitScoped = sinon.stub();
         locusInfo.updateSelf(selfWithMutedByOthers, []);
 
@@ -1091,7 +1092,7 @@ describe('plugin-meetings', () => {
           );
 
           // but sometimes "previous self" is defined, but without controls.audio.muted, so we test this here:
-          locusInfo.self = cloneDeep(self);
+          locusInfo.updateSelf(self, []);
           locusInfo.self.controls.video = {};
 
           locusInfo.updateSelf(selfWithMutedByOthers, []);
@@ -1123,12 +1124,12 @@ describe('plugin-meetings', () => {
         });
 
         it('should emit event when remoteVideoMuted changed', () => {
-          locusInfo.self = self;
+          locusInfo.webex.internal.device.url = self.deviceUrl;
+          locusInfo.updateSelf(self, []);
           const selfWithMutedByOthers = cloneDeep(self);
 
           selfWithMutedByOthers.controls.video.muted = true;
 
-          locusInfo.webex.internal.device.url = self.deviceUrl;
           locusInfo.emitScoped = sinon.stub();
           locusInfo.updateSelf(selfWithMutedByOthers, []);
 
@@ -1145,7 +1146,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger SELF_MEETING_BREAKOUTS_CHANGED when breakouts changed', () => {
-        locusInfo.self = self;
+        locusInfo.updateSelf(self, []);
         const selfWithBreakoutsChanged = cloneDeep(self);
 
         selfWithBreakoutsChanged.controls.breakout.sessions.active[0].name = 'new name';
@@ -1184,14 +1185,14 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger SELF_REMOTE_MUTE_STATUS_UPDATED if muted and disallowUnmute changed', () => {
-        locusInfo.self = self;
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.updateSelf(self, []);
         const selfWithMutedByOthersAndDissalowUnmute = cloneDeep(self);
 
         // first simulate remote mute
         selfWithMutedByOthersAndDissalowUnmute.controls.audio.muted = true;
         selfWithMutedByOthersAndDissalowUnmute.controls.audio.disallowUnmute = true;
 
-        locusInfo.webex.internal.device.url = self.deviceUrl;
         locusInfo.emitScoped = sinon.stub();
         locusInfo.updateSelf(selfWithMutedByOthersAndDissalowUnmute, []);
 
@@ -1225,13 +1226,13 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger LOCAL_UNMUTE_REQUIRED on localAudioUnmuteRequired', () => {
-        locusInfo.self = self;
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.updateSelf(self, []);
         const selfWithLocalUnmuteRequired = cloneDeep(self);
 
         selfWithLocalUnmuteRequired.controls.audio.muted = false;
         selfWithLocalUnmuteRequired.controls.audio.localAudioUnmuteRequired = true;
 
-        locusInfo.webex.internal.device.url = self.deviceUrl;
         locusInfo.emitScoped = sinon.stub();
         locusInfo.updateSelf(selfWithLocalUnmuteRequired, []);
 
@@ -1250,14 +1251,14 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger LOCAL_UNMUTE_REQUESTED when receiving requestedToUnmute=true', () => {
-        locusInfo.self = self;
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.updateSelf(self, []);
         const selfWithRequestedToUnmute = cloneDeep(self);
 
         selfWithRequestedToUnmute.controls.audio.requestedToUnmute = true;
         selfWithRequestedToUnmute.controls.audio.lastModifiedRequestedToUnmute =
           '2023-06-16T19:25:04.369Z';
 
-        locusInfo.webex.internal.device.url = self.deviceUrl;
         locusInfo.emitScoped = sinon.stub();
         locusInfo.updateSelf(selfWithRequestedToUnmute, []);
 
@@ -1291,13 +1292,12 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger SELF_OBSERVING when moving meeting to DX', () => {
-        locusInfo.self = self;
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.updateSelf(self, []);
         const selfInitiatedMove = cloneDeep(self);
 
         // Inital move meeting is iniated
         selfInitiatedMove.devices[0].intent.type = 'MOVE_MEDIA';
-
-        locusInfo.webex.internal.device.url = self.deviceUrl;
 
         locusInfo.updateSelf(selfInitiatedMove, []);
 
@@ -1412,7 +1412,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger SELF_ROLES_CHANGED if self roles changed', () => {
-        locusInfo.self = self;
+        locusInfo.updateSelf(self, []);
         locusInfo.emitScoped = sinon.stub();
         const sampleNewSelf = cloneDeep(self);
         sampleNewSelf.controls.role.roles = [{type: 'COHOST', hasRole: true}];
@@ -1431,7 +1431,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should not trigger SELF_ROLES_CHANGED if self roles not changed', () => {
-        locusInfo.self = self;
+        locusInfo.updateSelf(self, []);
         locusInfo.emitScoped = sinon.stub();
         const sampleNewSelf = cloneDeep(self);
         sampleNewSelf.controls.role.roles = [{type: 'PRESENTER', hasRole: true}];
@@ -1450,7 +1450,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger SELF_MEETING_INTERPRETATION_CHANGED if self interpretation info changed', () => {
-        locusInfo.self = self;
+        locusInfo.updateSelf(self, []);
         locusInfo.emitScoped = sinon.stub();
         const sampleNewSelf = cloneDeep(self);
         sampleNewSelf.controls.interpretation.targetLanguage = 'it';
@@ -1472,7 +1472,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should not trigger SELF_MEETING_INTERPRETATION_CHANGED if self interpretation info not changed', () => {
-        locusInfo.self = self;
+        locusInfo.updateSelf(self, []);
         locusInfo.emitScoped = sinon.stub();
         const sampleNewSelf = cloneDeep(self);
         sampleNewSelf.controls.interpretation.targetLanguage = 'cn'; // same with previous one
@@ -1494,7 +1494,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should not trigger any events if controls is undefined', () => {
-        locusInfo.self = self;
+        locusInfo.updateSelf(self, []);
         locusInfo.emitScoped = sinon.stub();
         const newSelf = cloneDeep(self);
         newSelf.controls = undefined;
@@ -1515,6 +1515,31 @@ describe('plugin-meetings', () => {
           const eventName = call.args[1];
           assert.isFalse(eventsSet.has(eventName));
         });
+      });
+
+      it('calls getSelves with correct parameters', () => {
+        const getSelvesStub = sinon.stub(SelfUtils, 'getSelves').returns({
+          current: {},
+          previous: {},
+          updates: {},
+        });
+
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.participants = [{id: '1'}, {id: '2'}];
+        locusInfo.parsedLocus.self = {id: 'fake parsed locus self id'};
+
+        const parsedLocusSelf = locusInfo.parsedLocus.self; // need to store it before it's updated in updateSelf
+        locusInfo.updateSelf(self, [{id: '3'}]);
+
+        assert.calledWith(
+          getSelvesStub,
+          parsedLocusSelf,
+          self,
+          locusInfo.webex.internal.device.url,
+          locusInfo.participants
+        );
+
+        getSelvesStub.restore();
       });
     });
 
@@ -1782,11 +1807,11 @@ describe('plugin-meetings', () => {
       });
 
       it('should update media shares and emit LOCUS_INFO_UPDATE_MEDIA_SHARES when mediaShares change', () => {
-        const initialMediaShares = { audio: true, video: false };
-        const newMediaShares = { audio: false, video: true };
+        const initialMediaShares = {audio: true, video: false};
+        const newMediaShares = {audio: false, video: true};
 
         locusInfo.mediaShares = initialMediaShares;
-        locusInfo.parsedLocus = { mediaShares: null };
+        locusInfo.parsedLocus = {mediaShares: null};
 
         const parsedMediaShares = {
           current: newMediaShares,
@@ -1823,9 +1848,9 @@ describe('plugin-meetings', () => {
       });
 
       it('should force update media shares and emit LOCUS_INFO_UPDATE_MEDIA_SHARES even if shares are the same', () => {
-        const initialMediaShares = { audio: true, video: false };
+        const initialMediaShares = {audio: true, video: false};
         locusInfo.mediaShares = initialMediaShares;
-        locusInfo.parsedLocus = { mediaShares: null };
+        locusInfo.parsedLocus = {mediaShares: null};
 
         const parsedMediaShares = {
           current: initialMediaShares,
@@ -1857,7 +1882,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should not emit LOCUS_INFO_UPDATE_MEDIA_SHARES if mediaShares do not change and forceUpdate is false', () => {
-        const initialMediaShares = { audio: true, video: false };
+        const initialMediaShares = {audio: true, video: false};
         locusInfo.mediaShares = initialMediaShares;
 
         // Call the function with the same mediaShares and forceUpdate = false
@@ -1871,11 +1896,11 @@ describe('plugin-meetings', () => {
       });
 
       it('should update internal state correctly when mediaShares are updated', () => {
-        const initialMediaShares = { audio: true, video: false };
-        const newMediaShares = { audio: false, video: true };
+        const initialMediaShares = {audio: true, video: false};
+        const newMediaShares = {audio: false, video: true};
 
         locusInfo.mediaShares = initialMediaShares;
-        locusInfo.parsedLocus = { mediaShares: null };
+        locusInfo.parsedLocus = {mediaShares: null};
 
         const parsedMediaShares = {
           current: newMediaShares,
@@ -2413,6 +2438,21 @@ describe('plugin-meetings', () => {
         fakeLocus.controls.breakout.sessionId = 'sessionId2';
         locusInfo.onDeltaLocus(fakeLocus);
         assert.calledWith(locusInfo.updateParticipants, {}, true);
+      });
+
+      it('onDeltaLocus merges delta participants with existing participants', () => {
+        const FAKE_DELTA_PARTICIPANTS = [
+          {id: '1111'}, {id: '2222'}
+        ]
+        fakeLocus.participants = FAKE_DELTA_PARTICIPANTS;
+
+        sinon.spy(locusInfo, 'mergeParticipants');
+        locusInfo.updateParticipants = sinon.stub();
+        const existingParticipants = locusInfo.participants;
+
+        locusInfo.onDeltaLocus(fakeLocus);
+        assert.calledOnceWithExactly(locusInfo.mergeParticipants, existingParticipants, FAKE_DELTA_PARTICIPANTS);
+        assert.calledWith(locusInfo.updateParticipants, FAKE_DELTA_PARTICIPANTS, false);
       });
     });
 
