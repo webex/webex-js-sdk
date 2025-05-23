@@ -74,6 +74,10 @@ export default class TaskManager extends EventEmitter {
         if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
           task = this.taskCollection[payload.data.interactionId];
         }
+        LoggerProxy.log(`Handling task event ${payload.data?.type}`, {
+          module: TASK_MANAGER_FILE,
+          method: 'registerTaskListeners',
+        });
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
             task = new Task(this.contact, this.webCallingService, {
