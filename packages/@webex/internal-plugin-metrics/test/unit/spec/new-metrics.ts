@@ -264,19 +264,22 @@ describe('internal-plugin-metrics', () => {
     describe('#setDelaySubmitClientEvents', () => {
       it('sets delaySubmitClientEvents correctly and calls submitDelayedClientEvents when set to false', () => {
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
+        sinon.assert.match(webex.internal.newMetrics.delayedClientEventsOverrides, {});
 
-        webex.internal.newMetrics.setDelaySubmitClientEvents(true);
+        webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: true});
 
         assert.notCalled(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
 
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, true);
+        sinon.assert.match(webex.internal.newMetrics.delayedClientEventsOverrides, {});
 
-        webex.internal.newMetrics.setDelaySubmitClientEvents(false);
+        webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: false, overrides: {foo: 'bar'}});
 
         assert.calledOnce(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
-        assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
+        assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents, {foo: 'bar'});
 
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
+        sinon.assert.match(webex.internal.newMetrics.delayedClientEventsOverrides, {foo: 'bar'});
       });
 
       it('should not fail when called before webex is ready', () => {
@@ -291,10 +294,10 @@ describe('internal-plugin-metrics', () => {
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
 
         // Call the method before webex is ready, will not throw error
-        webex.internal.newMetrics.setDelaySubmitClientEvents(false);
-        webex.internal.newMetrics.setDelaySubmitClientEvents(true);
+        webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: false});
+        webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: true});
 
-        webex.internal.newMetrics.setDelaySubmitClientEvents(false);
+        webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: false});
         // Webex is ready
         webex.emit('ready');
 

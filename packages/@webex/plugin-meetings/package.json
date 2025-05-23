@@ -75,6 +75,7 @@
     "@webex/media-helpers": "workspace:*",
     "@webex/plugin-people": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
+    "@webex/ts-sdp": "^1.8.1",
     "@webex/web-capabilities": "^1.4.0",
     "@webex/webex-core": "workspace:*",
     "ampersand-collection": "^2.0.2",

@@ -2047,7 +2047,12 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
           meeting.mediaProperties.getCurrentConnectionInfo = sinon
             .stub()
-            .resolves({connectionType: 'udp', selectedCandidatePairChanges: 2, numTransports: 1});
+            .resolves({
+              connectionType: 'udp',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
+              ipVersion: 'IPv6',
+            });
           meeting.audio = muteStateStub;
           meeting.video = muteStateStub;
           sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
@@ -3059,6 +3064,9 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(webex.internal.newMetrics.submitClientEvent.thirdCall, {
             name: 'client.media-engine.ready',
+            payload: {
+              ipVersion: 'IPv6',
+            },
             options: {
               meetingId: meeting.id,
             },
@@ -3115,6 +3123,7 @@ describe('plugin-meetings', () => {
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
               selectedCandidatePairChanges: 2,
+              ipVersion: 'IPv6',
               numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: true,
@@ -3268,6 +3277,7 @@ describe('plugin-meetings', () => {
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
               selectedCandidatePairChanges: 2,
+              ipVersion: 'IPv6',
               numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: false,
@@ -3443,6 +3453,7 @@ describe('plugin-meetings', () => {
             correlation_id: meeting.correlationId,
             locus_id: meeting.locusUrl.split('/').pop(),
             connectionType: 'udp',
+            ipVersion: 'IPv6',
             selectedCandidatePairChanges: 2,
             numTransports: 1,
             isMultistream: false,
