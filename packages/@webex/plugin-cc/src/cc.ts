@@ -615,6 +615,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     }
 
+    LoggerProxy.log(`Received event: ${eventData.type}`, {
+      module: CC_FILE,
+      method: 'handleWebSocketMessage',
+    });
+
     switch (eventData.type) {
       case CC_EVENTS.AGENT_MULTI_LOGIN:
         // @ts-ignore
