@@ -728,6 +728,7 @@ describe('webex.cc', () => {
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent station login completed successfully', {
         module: CC_FILE,
         method: 'stationLogin',
+        trackingId: mockData.trackingId,
       });
       
       expect(stationLoginMock).toHaveBeenCalledWith({
@@ -775,8 +776,8 @@ describe('webex.cc', () => {
         method: 'stationLogin',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `stationLogin failed with trackingId: ${error.details.trackingId}`,
-        {module: CC_FILE, method: 'stationLogin'}
+        `stationLogin failed`,
+        {module: CC_FILE, method: 'stationLogin', trackingId: error.details.trackingId},
       );
     });
   });
@@ -841,8 +842,8 @@ describe('webex.cc', () => {
         method: 'stationLogout',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `stationLogout failed with trackingId: ${error.details.trackingId}`,
-        {module: CC_FILE, method: 'stationLogout'}
+        `stationLogout failed`,
+        {module: CC_FILE, method: 'stationLogout', trackingId: error.details.trackingId},
       );
     });
   });
@@ -894,8 +895,8 @@ describe('webex.cc', () => {
         method: 'stationReLogin',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `stationReLogin failed with trackingId: ${error.details.trackingId}`,
-        {module: CC_FILE, method: 'stationReLogin'}
+        `stationReLogin failed`,
+        {module: CC_FILE, method: 'stationReLogin', trackingId: error.details.trackingId}
       );
     });
 
@@ -1001,8 +1002,8 @@ describe('webex.cc', () => {
         method: 'setAgentState',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `setAgentState failed with trackingId: ${error.details.trackingId}`,
-        {module: CC_FILE, method: 'setAgentState'}
+        `setAgentState failed`,
+        {module: CC_FILE, method: 'setAgentState', trackingId: error.details.trackingId}
       );
     });
 
@@ -1027,8 +1028,8 @@ describe('webex.cc', () => {
         error.details.data.reason
       );
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `setAgentState failed with trackingId: ${error.details.trackingId}`,
-        {module: CC_FILE, method: 'setAgentState'}
+        `setAgentState failed`,
+        {module: CC_FILE, method: 'setAgentState', trackingId: error.details.trackingId}
       );
     });
   });
@@ -1125,8 +1126,8 @@ describe('webex.cc', () => {
         method: 'getBuddyAgents',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `getBuddyAgents failed with trackingId: ${error.details.trackingId}`,
-        {module: CC_FILE, method: 'getBuddyAgents'}
+        `getBuddyAgents failed`,
+        {module: CC_FILE, method: 'getBuddyAgents', trackingId: error.details.trackingId}
       );
     });
   });
@@ -1171,7 +1172,7 @@ describe('webex.cc', () => {
       const webSocketManagerOnSpy = jest.spyOn(webex.cc.services.webSocketManager, 'on');
       await webex.cc['silentRelogin']();
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent re-login process', {
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
@@ -1179,7 +1180,7 @@ describe('webex.cc', () => {
         'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
         {module: CC_FILE, method: 'silentRelogin'}
       );
-      expect(LoggerProxy.log).toHaveBeenCalledWith('Silent re-login process completed successfully', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Silent relogin process completed successfully', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
@@ -1217,12 +1218,12 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
       await webex.cc['silentRelogin']();
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent re-login process', {
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
       expect(LoggerProxy.log).toHaveBeenCalledWith(
-        'Agent not found during re-login, handling silently',
+        'Agent not found during relogin, handling silently',
         {module: CC_FILE, method: 'silentRelogin'}
       );
     });
@@ -1232,13 +1233,14 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
 
       await expect(webex.cc['silentRelogin']()).rejects.toThrow(error);
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent re-login process', {
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
-      expect(LoggerProxy.error).toHaveBeenCalledWith(`silentRelogin failed with trackingId: undefined`, {
+      expect(LoggerProxy.error).toHaveBeenCalledWith(`silentRelogin failed`, {
         module: CC_FILE,
         method: 'silentRelogin',
+        trackingId: undefined,
       });
     });
 
@@ -1269,11 +1271,11 @@ describe('webex.cc', () => {
 
       await webex.cc['silentRelogin']();
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent re-login process', {
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
-      expect(LoggerProxy.log).toHaveBeenCalledWith('Silent re-login process completed successfully', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Silent relogin process completed successfully', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
@@ -1398,8 +1400,8 @@ describe('webex.cc', () => {
         method: 'startOutdial',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `startOutdial failed with trackingId: ${error.details.trackingId}`,
-        {module: CC_FILE, method: 'startOutdial'}
+        `startOutdial failed`,
+        {module: CC_FILE, method: 'startOutdial', trackingId: error.details.trackingId}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'startOutdial', CC_FILE);
     });

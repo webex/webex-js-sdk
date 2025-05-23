@@ -323,7 +323,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             this.$webex.internal.mercury
               .connect()
               .then(() => {
-                LoggerProxy.info('Authentication: webex.internal.mercury.connect successful', {
+                LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
                   module: CC_FILE,
                   method: 'connectWebsocket',
                 });
@@ -421,6 +421,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       LoggerProxy.log('Agent station login completed successfully', {
         module: CC_FILE,
         method: 'stationLogin',
+        trackingId: resp.trackingId,
       });
 
       return response;
@@ -476,6 +477,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       LoggerProxy.log('Agent station logout completed successfully', {
         module: CC_FILE,
         method: 'stationLogout',
+        trackingId: resp.trackingId,
       });
 
       return resp;
@@ -520,6 +522,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       LoggerProxy.log('Agent station relogin completed successfully', {
         module: CC_FILE,
         method: 'stationReLogin',
+        trackingId: reLoginResponse.trackingId,
       });
 
       return reLoginResponse;
@@ -583,6 +586,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       LoggerProxy.log('Agent state changed successfully', {
         module: CC_FILE,
         method: 'setAgentState',
+        trackingId: agentStatusResponse.trackingId,
       });
 
       return agentStatusResponse;
@@ -745,7 +749,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Called when we finish registration to silently handle the errors
    */
   private async silentRelogin(): Promise<void> {
-    LoggerProxy.info('Starting silent re-login process', {
+    LoggerProxy.info('Starting silent relogin process', {
       module: CC_FILE,
       method: 'silentRelogin',
     });
@@ -799,14 +803,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
 
-      LoggerProxy.log('Silent re-login process completed successfully', {
+      LoggerProxy.log('Silent relogin process completed successfully', {
         module: CC_FILE,
         method: 'silentRelogin',
+        trackingId: reLoginResponse.trackingId,
       });
     } catch (error) {
       const {reason, error: detailedError} = getErrorDetails(error, 'silentRelogin', CC_FILE);
       if (reason === 'AGENT_NOT_FOUND') {
-        LoggerProxy.log('Agent not found during re-login, handling silently', {
+        LoggerProxy.log('Agent not found during relogin, handling silently', {
           module: CC_FILE,
           method: 'silentRelogin',
         });
@@ -888,6 +893,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       LoggerProxy.log('Outbound dial completed successfully', {
         module: CC_FILE,
         method: 'startOutdial',
+        trackingId: result.trackingId,
       });
 
       return result;

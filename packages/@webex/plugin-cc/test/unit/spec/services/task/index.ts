@@ -305,15 +305,17 @@ describe('Task', () => {
     expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({audio: true});
     expect(LocalMicrophoneStream).toHaveBeenCalledWith(mockStream);
     expect(answerCallSpy).toHaveBeenCalledWith(expect.any(LocalMicrophoneStream), taskId);
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task ${task.data.interactionId}`, {
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task`, {
       module: TASK_FILE,
       method: 'accept',
+      interactionId: task.data.interactionId,
     });
     expect(loggerLogSpy).toHaveBeenCalledWith(
-      `Task ${task.data.interactionId} accepted successfully with browser calling`,
+      `Task accepted successfully with browser calling`,
       {
         module: TASK_FILE,
         method: 'accept',
+        interactionId: task.data.interactionId,
       }
     );
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
@@ -358,13 +360,15 @@ describe('Task', () => {
       expectedMetrics,
       ['operational', 'behavioral', 'business']
     );
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task ${task.data.interactionId}`, {
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task`, {
       module: TASK_FILE,
       method: 'accept',
+      interactionId: task.data.interactionId,
     });
-    expect(loggerLogSpy).toHaveBeenCalledWith(`Task ${task.data.interactionId} accepted successfully`, {
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Task accepted successfully`, {
       module: TASK_FILE,
       method: 'accept',
+      interactionId: task.data.interactionId,
     });
   });
 
@@ -396,13 +400,15 @@ describe('Task', () => {
       expectedMetrics,
       ['operational', 'behavioral', 'business']
     );
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task ${task.data.interactionId}`, {
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task`, {
       module: TASK_FILE,
       method: 'accept',
+      interactionId: task.data.interactionId,
     });
-    expect(loggerLogSpy).toHaveBeenCalledWith(`Task ${task.data.interactionId} accepted successfully`, {
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Task accepted successfully`, {
       module: TASK_FILE,
       method: 'accept',
+      interactionId: task.data.interactionId,
     });
   });
 
@@ -411,9 +417,10 @@ describe('Task', () => {
 
     await expect(task.accept()).rejects.toThrow('Unsupported login action for this task');
     
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task ${task.data.interactionId}`, {
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task`, {
       module: TASK_FILE,
       method: 'accept',
+      interactionId: task.data.interactionId,
     });
 
   });
@@ -454,13 +461,15 @@ describe('Task', () => {
 
     expect(declineCallSpy).toHaveBeenCalledWith(taskId);
     expect(offSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, offSpy.mock.calls[0][1]);
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Declining task ${task.data.interactionId}`, {
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Declining task`, {
       module: TASK_FILE,
       method: 'decline',
+      interactionId: task.data.interactionId,
     });
-    expect(loggerLogSpy).toHaveBeenCalledWith(`Task ${task.data.interactionId} declined successfully`, {
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Task declined successfully`, {
       module: TASK_FILE,
       method: 'decline',
+      interactionId: task.data.interactionId,
     });
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
@@ -510,13 +519,15 @@ describe('Task', () => {
       data: {mediaResourceId: taskDataMock.mediaResourceId},
     });
     expect(response).toEqual(expectedResponse);
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Holding task ${task.data.interactionId}`, {
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Holding task`, {
       module: TASK_FILE,
       method: 'hold',
+      interactionId: task.data.interactionId,
     });
-    expect(loggerLogSpy).toHaveBeenCalledWith(`Task ${task.data.interactionId} placed on hold successfully`, {
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Task placed on hold successfully`, {
       module: TASK_FILE,
       method: 'hold',
+      interactionId: task.data.interactionId,
     });
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
@@ -956,13 +967,15 @@ describe('Task', () => {
 
     expect(contactMock.end).toHaveBeenCalledWith({interactionId: taskId});
     expect(response).toEqual(expectedResponse);
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Ending task ${task.data.interactionId}`, {
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Ending task`, {
       module: TASK_FILE,
       method: 'end',
+      interactionId: expectedResponse.data.interactionId,
     });
-    expect(loggerLogSpy).toHaveBeenCalledWith(`Task ${task.data.interactionId} ended successfully`, {
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Task ended successfully`, {
       module: TASK_FILE,
       method: 'end',
+      interactionId: expectedResponse.data.interactionId,
     });
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
@@ -1089,13 +1102,15 @@ describe('Task', () => {
     await task.pauseRecording();
 
     expect(contactMock.pauseRecording).toHaveBeenCalledWith({interactionId: taskId});
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Pausing recording for task ${task.data.interactionId}`, {
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Pausing recording`, {
       module: TASK_FILE,
       method: 'pauseRecording',
+      interactionId: task.data.interactionId,
     });
-    expect(loggerLogSpy).toHaveBeenCalledWith(`Recording paused successfully for task ${task.data.interactionId}`, {
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Recording paused successfully`, {
       module: TASK_FILE,
       method: 'pauseRecording',
+      interactionId: task.data.interactionId,
     });
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
@@ -1137,21 +1152,24 @@ describe('Task', () => {
   it('should resume the recording of the task', async () => {
     const resumePayload = {
       autoResumed: true,
+      interactionId: taskId,
     };
 
     await task.resumeRecording(resumePayload);
 
     expect(contactMock.resumeRecording).toHaveBeenCalledWith({
-      interactionId: taskId,
+      interactionId: resumePayload.interactionId,
       data: resumePayload,
     });
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Resuming recording for task ${task.data.interactionId}`, {
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Resuming recording`, {
       module: TASK_FILE,
       method: 'resumeRecording',
+      interactionId: task.data.interactionId,
     });
-    expect(loggerLogSpy).toHaveBeenCalledWith(`Recording resumed successfully for task ${task.data.interactionId}`, {
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Recording resumed successfully`, {
       module: TASK_FILE,
       method: 'resumeRecording',
+      interactionId: task.data.interactionId,
     });
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
@@ -1222,13 +1240,15 @@ describe('Task', () => {
     await task.toggleMute();
 
     expect(muteCallSpy).toHaveBeenCalledWith(mockStream);
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Toggling mute state for task ${task.data.interactionId}`, {
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Toggling mute state`, {
       module: TASK_FILE,
       method: 'toggleMute',
+      interactionId: task.data.interactionId,
     });
-    expect(loggerLogSpy).toHaveBeenCalledWith(`Mute state toggled successfully for task ${task.data.interactionId}`, {
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Mute state toggled successfully`, {
       module: TASK_FILE,
       method: 'toggleMute',
+      interactionId: task.data.interactionId,
     });
   });
 
@@ -1247,9 +1267,10 @@ describe('Task', () => {
     });
     await expect(task.toggleMute()).rejects.toThrow(new Error(error.details.data.reason));
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'mute', TASK_FILE);
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Toggling mute state for task ${task.data.interactionId}`, {
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Toggling mute state`, {
       module: TASK_FILE,
       method: 'toggleMute',
+      interactionId: task.data.interactionId,
     });
   });
 });
