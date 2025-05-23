@@ -661,6 +661,7 @@ export default class MeetingInfoV2 {
       locusId,
       extraParams,
       registrationId,
+      disableWebRedirect: true,
     });
 
     // If the body only contains the default properties, we don't have enough to
@@ -752,24 +753,6 @@ export default class MeetingInfoV2 {
               rawError: err,
             },
           });
-        }
-
-        if (err?.statusCode === 404) {
-          const returnFullUrl = err?.body?.data?.siteFullUrl;
-          if (returnFullUrl) {
-            return this.fetchMeetingInfo(
-              destination,
-              type,
-              password,
-              captchaInfo,
-              installedOrgID,
-              locusId,
-              extraParams,
-              options,
-              registrationId,
-              returnFullUrl
-            );
-          }
         }
 
         if (err?.statusCode === 403) {

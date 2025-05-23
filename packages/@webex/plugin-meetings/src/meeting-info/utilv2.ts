@@ -237,6 +237,7 @@ export default class MeetingInfoUtil {
       locusId,
       extraParams,
       registrationId,
+      disableWebRedirect,
     } = options;
     const body: any = {
       ...DEFAULT_MEETING_INFO_REQUEST_BODY,
@@ -296,7 +297,9 @@ export default class MeetingInfoUtil {
       body.locusId = locusId;
     }
 
-    body.disableWebRedirect = true;
+    if (disableWebRedirect) {
+      body.disableWebRedirect = disableWebRedirect;
+    }
 
     return body;
   }

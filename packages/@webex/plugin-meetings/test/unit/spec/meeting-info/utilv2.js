@@ -238,6 +238,24 @@ describe('plugin-meetings', () => {
             supportHostKey: true,
             supportCountryList: true,
             ...extraParams,
+          }
+        );
+      });
+
+      it('allows for disableWebRedirect', () => {
+
+        const res = MeetingInfoUtil.getRequestBody({
+          type: DESTINATION_TYPE.CONVERSATION_URL,
+          destination: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/bfb49281',
+          disableWebRedirect: true,
+        });
+
+        assert.deepEqual(
+          res,
+          {
+            conversationUrl: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/bfb49281',
+            supportHostKey: true,
+            supportCountryList: true,
             disableWebRedirect: true,
           }
         );
