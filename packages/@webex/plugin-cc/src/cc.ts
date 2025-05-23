@@ -302,6 +302,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async connectWebsocket() {
+    LoggerProxy.info('Connecting to websocket', {
+      module: CC_FILE,
+      method: 'connectWebsocket',
+    });
     try {
       return this.services.webSocketManager
         .initWebSocket({

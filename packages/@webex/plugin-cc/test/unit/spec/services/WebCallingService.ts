@@ -192,7 +192,7 @@ describe('WebCallingService', () => {
       expect(line.register).toHaveBeenCalled();
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `Invalid URL from u2c catalogue: invalid-url so falling back to default domain`,
-        {module: WEB_CALLING_SERVICE_FILE}
+        {module: WEB_CALLING_SERVICE_FILE, method: 'getRTMSDomain'}
       );
 
     });
