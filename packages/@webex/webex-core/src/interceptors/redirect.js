@@ -103,6 +103,7 @@ export default class RedirectInterceptor extends Interceptor {
       response.headers &&
       response.body &&
       response.body.code === APPAPI_REDIRECT_ERROR &&
+      response.body.data &&
       response.body.data.siteFullUrl
     ) {
       options = clone(options);
