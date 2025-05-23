@@ -9193,6 +9193,7 @@ __metadata:
     typescript: ^4.7.4
     uuid: ^3.3.2
     webrtc-adapter: ^8.1.2
+    xxhash-addon: 2.0.3
   languageName: unknown
   linkType: soft
 
@@ -35002,6 +35003,15 @@ __metadata:
   version: 4.0.2
   resolution: "xtend@npm:4.0.2"
   checksum: ac5dfa738b21f6e7f0dd6e65e1b3155036d68104e67e5d5d1bde74892e327d7e5636a076f625599dc394330a731861e87343ff184b0047fef1360a7ec0a5a36a
+  languageName: node
+  linkType: hard
+
+"xxhash-addon@npm:2.0.3":
+  version: 2.0.3
+  resolution: "xxhash-addon@npm:2.0.3"
+  dependencies:
+    node-gyp: latest
+  checksum: 67e8f7c4a89a6f4c7bf9c8425baac2518165d595d2db07365ea0abe5909bcbaf6702951867b384b0489b12ff32a343ee6d235d52636c4c3753a61ac6785369ce
   languageName: node
   linkType: hard
 

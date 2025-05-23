@@ -88,7 +88,8 @@
     "jwt-decode": "3.1.2",
     "lodash": "^4.17.21",
     "uuid": "^3.3.2",
-    "webrtc-adapter": "^8.1.2"
+    "webrtc-adapter": "^8.1.2",
+    "xxhash-addon": "2.0.3"
   },
   "//": [
     "TODO: upgrade jwt-decode when moving to node 18"
