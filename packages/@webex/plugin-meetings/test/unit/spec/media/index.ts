@@ -200,7 +200,7 @@ describe('createMediaConnection', () => {
     assert.calledOnce(rtcMetrics.sendMetricsInQueue);
   });
 
-  it('multistream non-firefox doesnt care about stopIceGatheringAfterFirstRelayCandidate', () => {
+  it('multistream non-firefox does not care about stopIceGatheringAfterFirstRelayCandidate', () => {
     const multistreamRoapMediaConnectionConstructorStub = sinon
       .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
       .returns(fakeRoapMediaConnection);
