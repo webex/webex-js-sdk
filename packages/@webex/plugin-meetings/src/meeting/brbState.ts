@@ -96,6 +96,9 @@ export class BrbState {
       .then(() => {
         this.state.syncToServerInProgress = false;
 
+        // This is a workaround for the fact that the server does not send the brb state
+        // in the locus update when a user joins with multiple devices.
+        // In the future, this could be improved with a new brb locus update handler
         this.handleServerBrbUpdate(this.state.client.enabled);
 
         LoggerProxy.logger.info(
