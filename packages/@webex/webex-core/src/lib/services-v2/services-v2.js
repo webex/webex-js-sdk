@@ -3,12 +3,12 @@ import sha256 from 'crypto-js/sha256';
 import {union, forEach} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
-import METRICS from './metrics';
-import ServiceCatalog from './service-catalog';
-import ServiceRegistry from './service-registry';
-import ServiceState from './service-state';
-import fedRampServices from './service-fed-ramp';
-import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
+import METRICS from '../services/metrics';
+import ServiceCatalog from '../services/service-catalog';
+import ServiceRegistry from '../services/service-registry';
+import ServiceState from '../services/service-state';
+import fedRampServices from '../services/service-fed-ramp';
+import {COMMERCIAL_ALLOWED_DOMAINS} from '../services/constants';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
