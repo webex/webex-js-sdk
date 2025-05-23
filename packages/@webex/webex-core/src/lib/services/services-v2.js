@@ -697,7 +697,18 @@ const Services = WebexPlugin.extend({
     const serviceHostmap = serviceHostmapV2;
 
     this._updateServiceUrls(serviceHostmap.activeServices);
-    this._updateHostCatalog(serviceHostmap.services);
+
+    const formattedHostmap = {};
+
+    serviceHostmap.services.forEach((service) => {
+      formattedHostmap[service.id] = {
+        id: service.id,
+        serviceName: service.serviceName,
+        serviceUrls,
+      };
+    });
+
+    this._updateHostCatalog(formattedHostmap);
 
     return formattedHostmap;
   },
