@@ -1,15 +1,15 @@
 import sha256 from 'crypto-js/sha256';
 
-import {union, forEach} from 'lodash';
+import {union} from 'lodash';
 import {serviceHostmapV2} from 'packages/@webex/webex-core/test/fixtures/host-catalog-v2';
 import WebexPlugin from '../webex-plugin';
 
-import METRICS from './metrics';
-import ServiceCatalog from './service-catalog';
-import ServiceRegistry from './service-registry';
-import ServiceState from './service-state';
-import fedRampServices from './service-fed-ramp';
-import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
+import METRICS from '../services/metrics';
+import ServiceCatalog from '../services/service-catalog';
+import ServiceRegistry from '../services/service-registry';
+import ServiceState from '../services/service-state';
+import fedRampServices from '../services/service-fed-ramp';
+import {COMMERCIAL_ALLOWED_DOMAINS} from '../services/constants';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
@@ -58,9 +58,9 @@ const Services = WebexPlugin.extend({
 
   _catalogs: new WeakMap(),
 
-  _serviceUrls: null,
+  _serviceUrls: {},
 
-  _hostCatalog: null,
+  _hostCatalog: {},
 
   /**
    * @private
@@ -700,10 +700,10 @@ const Services = WebexPlugin.extend({
 
     const formattedHostmap = {};
 
-    serviceHostmap.services.forEach((service) => {
-      formattedHostmap[service.id] = {
-        id: service.id,
-        serviceName: service.serviceName,
+    serviceHostmap.services.forEach(({id, serviceName, serviceUrls}) => {
+      formattedHostmap[id] = {
+        id,
+        serviceName,
         serviceUrls,
       };
     });
@@ -835,7 +835,7 @@ const Services = WebexPlugin.extend({
   _fetchNewServiceHostmap({from, query, token, forceRefresh} = {}) {
     const service = 'u2c';
     const resource = from ? `/${from}/catalog` : '/catalog';
-    const qs = {...query, format: 'hostmap'};
+    const qs = {...(query || {}), format: 'hostmap'};
 
     if (forceRefresh) {
       qs.timestamp = new Date().getTime();
