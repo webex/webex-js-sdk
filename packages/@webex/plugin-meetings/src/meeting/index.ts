@@ -3804,6 +3804,18 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Cancel an SIP call invitation made during a meeting
+   * @param {Object} invitee
+   * @param {String} invitee.memberId
+   * @returns {Promise} see #members.cancelSIPInvite
+   * @public
+   * @memberof Meeting
+   */
+  public cancelSIPInvite(invitee: {memberId: string}) {
+    return this.members.cancelSIPInvite(invitee);
+  }
+
+  /**
    * Admit the guest(s) to the call once they are waiting.
    * If the host/cohost is in a breakout session, the locus url
    * of the session must be provided as the authorizingLocusUrl.

@@ -342,6 +342,24 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#cancelSIPInvite', () => {
+      const memberId = uuid.v4();
+      it('should invoke cancelSIPInviteOptions from MembersUtil when cancelSIPInvite is called with valid params', async () => {
+        sandbox.spy(MembersUtil, 'cancelSIPInviteOptions');
+
+        const members = createMembers({url: url1});
+
+        await members.cancelSIPInvite({memberId});
+        assert.calledOnce(MembersUtil.cancelSIPInviteOptions);
+      });
+
+      it('should throw a rejection if there is no locus url', async () => {
+        const members = createMembers({url: false});
+
+        assert.isRejected(members.cancelSIPInvite({memberId}));
+      });
+    });
+
     describe('#assignRoles', () => {
       const fakeRoles = [
         {type: 'PRESENTER', hasRole: true},
