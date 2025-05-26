@@ -675,7 +675,7 @@ export default class Task extends EventEmitter implements ITask {
         ['operational', 'behavioral', 'business']
       );
 
-      LoggerProxy.log(`Consult started successfully`, {
+      LoggerProxy.log(`Consult started successfully to ${consultPayload.to}`, {
         module: TASK_FILE,
         method: 'consult',
         trackingId: result.trackingId,

@@ -625,18 +625,28 @@ describe('Task', () => {
 
   it('should initiate a consult call and return the expected response', async () => {
     const consultPayload = {
-      destination: '1234',
+      to: '1234',
       destinationType: DESTINATION_TYPE.AGENT,
     };
-    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}, trackingId: '1234'} as AgentContact;
     contactMock.consult.mockResolvedValue(expectedResponse);
 
     const response = await task.consult(consultPayload);
 
     expect(contactMock.consult).toHaveBeenCalledWith({interactionId: taskId, data: consultPayload});
     expect(response).toEqual(expectedResponse);
-    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
-      1,
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Starting consult`, {
+      module: TASK_FILE,
+      method: 'consult',
+      interactionId: task.data.interactionId,
+    });
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Consult started successfully to ${consultPayload.to}`, {
+      module: TASK_FILE,
+      method: 'consult',
+      trackingId: expectedResponse.trackingId,
+      interactionId: task.data.interactionId,
+    });
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
       {
         taskId: taskDataMock.interactionId,
@@ -662,14 +672,18 @@ describe('Task', () => {
     });
 
     const consultPayload = {
-      destination: '1234',
+      to: '1234',
       destinationType: DESTINATION_TYPE.AGENT,
     };
 
     await expect(task.consult(consultPayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'consult', TASK_FILE);
-    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
-      1,
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Starting consult`, {
+      module: TASK_FILE,
+      method: 'consult',
+      interactionId: task.data.interactionId,
+    });
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
       {
         taskId: taskDataMock.interactionId,

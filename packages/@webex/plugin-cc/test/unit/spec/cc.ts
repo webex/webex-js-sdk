@@ -1444,7 +1444,7 @@ describe('webex.cc', () => {
       expect(result).toEqual(mockQueuesResponse);
     });
 
-    it('shoule throw an error if orgId is not present', async () => {
+    it('should throw an error if orgId is not present', async () => {
       jest.spyOn(webex.credentials, 'getOrgId').mockResolvedValue(undefined);
       webex.cc.services.config.getQueues = jest.fn();
 
@@ -1452,6 +1452,10 @@ describe('webex.cc', () => {
         await webex.cc.getQueues();
       } catch (error) {
         expect(error).toEqual(new Error('Org ID not found.'));
+        expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
+          module: CC_FILE,
+          method: 'getQueues',
+        });
         expect(LoggerProxy.error).toHaveBeenCalledWith('Org ID not found.', {
           module: CC_FILE,
           method: 'getQueues',
@@ -1460,13 +1464,17 @@ describe('webex.cc', () => {
       }
     });
 
-    it('shoule throw an error if config getQueues throws an error', async () => {
+    it('should throw an error if config getQueues throws an error', async () => {
       webex.cc.services.config.getQueues = jest.fn().mockRejectedValue(new Error('Test error.'));
 
       try {
         await webex.cc.getQueues();
       } catch (error) {
         expect(error).toEqual(new Error('Test error.'));
+        expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
+          module: CC_FILE,
+          method: 'getQueues',
+        });
         expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
           'mockOrgId',
           0,
