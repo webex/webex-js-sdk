@@ -286,7 +286,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @memberof MembersRequest
    */
   cancelSIPInvite(options: any) {
-    if (!(options?.invitee?.memberId || options?.locusUrl)) {
+    if (!options?.invitee?.memberId || !options?.locusUrl) {
       throw new ParameterError(
         'invitee must be passed and the associated locus url for this meeting object must be defined.'
       );
