@@ -20,11 +20,7 @@ import {
     setupTaskEventListeners,
     acceptTask,
     toggleHold,
-    toggleMute,
-    getCurrentTask,
-    getTaskList,
-    handleTaskListUpdate,
-    updateTaskList
+    toggleMute
 } from './task-manager.js';
 
 // Button click handlers
