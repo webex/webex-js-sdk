@@ -2637,14 +2637,14 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_PARTICIPANTS, (payload) => {
       this.members.locusParticipantsUpdate(payload);
     });
-    this.locusInfo.on(LOCUSINFO.EVENTS.PARTICIPANT_RESON_CHANGED, (payload) => {
+    this.locusInfo.on(LOCUSINFO.EVENTS.PARTICIPANT_REASON_CHANGED, (payload) => {
       Trigger.trigger(
         this,
         {
           file: 'meeting/index',
           function: 'setUpLocusParticipantsListener',
         },
-        EVENT_TRIGGERS.MEETING_PARTICIPANT_RESON_CHANGED,
+        EVENT_TRIGGERS.MEETING_PARTICIPANT_REASON_CHANGED,
         {
           payload,
         }

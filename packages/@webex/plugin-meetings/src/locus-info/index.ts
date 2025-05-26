@@ -792,7 +792,7 @@ export default class LocusInfo extends EventsScope {
               file: 'locus-info',
               function: 'updateParticipants',
             },
-            LOCUSINFO.EVENTS.PARTICIPANT_RESON_CHANGED,
+            LOCUSINFO.EVENTS.PARTICIPANT_REASON_CHANGED,
             {
               displayName: participant?.person?.primaryDisplayString,
             }
