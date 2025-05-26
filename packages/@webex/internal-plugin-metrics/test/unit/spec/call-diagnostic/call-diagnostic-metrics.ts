@@ -3498,6 +3498,7 @@ describe('internal-plugin-metrics', () => {
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
 
         const options = {
+          meetingId: 'meetingId',
           correlationId: 'correlationId',
         };
 
@@ -3530,6 +3531,7 @@ describe('internal-plugin-metrics', () => {
           name: 'client.alert.displayed',
           payload: undefined,
           options: {
+            meetingId: 'meetingId',
             correlationId: 'correlationId',
             triggeredTime: now.toISOString(),
           },
@@ -3538,6 +3540,7 @@ describe('internal-plugin-metrics', () => {
           name: 'client.alert.removed',
           payload: undefined,
           options: {
+            meetingId: 'meetingId',
             correlationId: 'correlationId',
             triggeredTime: now.toISOString(),
           },
@@ -3546,7 +3549,81 @@ describe('internal-plugin-metrics', () => {
           name: 'client.call.aborted',
           payload: undefined,
           options: {
+            meetingId: 'meetingId',
             correlationId: 'correlationId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        submitClientEventSpy.resetHistory();
+
+        cd.submitDelayedClientEvents();
+
+        // should not call submitClientEvent again if delayedClientEvents was cleared
+        assert.notCalled(submitClientEventSpy);
+      });
+
+      it('calls submitClientEvent for every delayed event with overrides and clears delayedClientEvents array', () => {
+        const submitClientEventSpy = sinon.spy(cd, 'submitClientEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+
+        const options = {
+          meetingId: 'meetingId',
+          correlationId: 'correlationId',
+        };
+
+        const overrides = {
+          correlationId: 'newCorrelationId',
+        }
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+          delaySubmitEvent: true,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.alert.removed',
+          options,
+          delaySubmitEvent: true,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.call.aborted',
+          options,
+          delaySubmitEvent: true,
+        });
+
+        assert.notCalled(submitToCallDiagnosticsSpy);
+        assert.calledThrice(submitClientEventSpy);
+        submitClientEventSpy.resetHistory();
+
+        cd.submitDelayedClientEvents(overrides);
+
+        assert.calledThrice(submitClientEventSpy);
+        assert.calledWith(submitClientEventSpy.firstCall, {
+          name: 'client.alert.displayed',
+          payload: undefined,
+          options: {
+            meetingId: 'meetingId',
+            correlationId: 'newCorrelationId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        assert.calledWith(submitClientEventSpy.secondCall, {
+          name: 'client.alert.removed',
+          payload: undefined,
+          options: {
+            meetingId: 'meetingId',
+            correlationId: 'newCorrelationId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        assert.calledWith(submitClientEventSpy.thirdCall, {
+          name: 'client.call.aborted',
+          payload: undefined,
+          options: {
+            meetingId: 'meetingId',
+            correlationId: 'newCorrelationId',
             triggeredTime: now.toISOString(),
           },
         });
