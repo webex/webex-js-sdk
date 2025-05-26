@@ -67,7 +67,7 @@ describe('Utils', () => {
         reason: 'Test reason',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `${methodName} failed`,
+        `${methodName} failed with reason: ${error.details.data.reason}`,
         { module: moduleName, method: methodName, trackingId: 'test-tracking-id' }
       );
     });
@@ -119,7 +119,7 @@ describe('Utils', () => {
       Utils.getErrorDetails(error, 'someMethod', moduleName);
 
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'someMethod failed',
+        `someMethod failed with reason: ${error.details.data.reason}`,
         { module: moduleName, method: 'someMethod' , trackingId: trackingId }
       );
       expect(WebexRequest.getInstance().uploadLogs).toHaveBeenCalledWith({
@@ -155,7 +155,7 @@ describe('Utils', () => {
       
       // Should not throw when accessing properties with optional chaining
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `${methodName} failed`,
+        `${methodName} failed with reason: Error while performing ${methodName}`,
         { module: moduleName, method: methodName, trackingId: undefined }
       );
     });
@@ -178,7 +178,7 @@ describe('Utils', () => {
 
       // Check if error logging uses the trackingId from the details level
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `${methodName} failed`,
+        `${methodName} failed with reason: ${error.details.data.reason}`,
         { module: moduleName, method: methodName, trackingId: detailsTrackingId }
       );
       

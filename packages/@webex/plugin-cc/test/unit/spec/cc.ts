@@ -776,7 +776,7 @@ describe('webex.cc', () => {
         method: 'stationLogin',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `stationLogin failed`,
+        `stationLogin failed with reason: ${error.details.data.reason}`,
         {module: CC_FILE, method: 'stationLogin', trackingId: error.details.trackingId},
       );
     });
@@ -842,7 +842,7 @@ describe('webex.cc', () => {
         method: 'stationLogout',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `stationLogout failed`,
+        `stationLogout failed with reason: ${error.details.data.reason}`,
         {module: CC_FILE, method: 'stationLogout', trackingId: error.details.trackingId},
       );
     });
@@ -895,7 +895,7 @@ describe('webex.cc', () => {
         method: 'stationReLogin',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `stationReLogin failed`,
+        `stationReLogin failed with reason: ${error.details.data.reason}`,
         {module: CC_FILE, method: 'stationReLogin', trackingId: error.details.trackingId}
       );
     });
@@ -998,7 +998,7 @@ describe('webex.cc', () => {
         method: 'setAgentState',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `setAgentState failed`,
+        `setAgentState failed with reason: ${error.details.data.reason}`,
         {module: CC_FILE, method: 'setAgentState', trackingId: error.details.trackingId}
       );
     });
@@ -1024,7 +1024,7 @@ describe('webex.cc', () => {
         error.details.data.reason
       );
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `setAgentState failed`,
+        `setAgentState failed with reason: ${error.details.data.reason}`,
         {module: CC_FILE, method: 'setAgentState', trackingId: error.details.trackingId}
       );
     });
@@ -1123,7 +1123,7 @@ describe('webex.cc', () => {
         method: 'getBuddyAgents',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `getBuddyAgents failed`,
+        `getBuddyAgents failed with reason: ${error.details.data.reason}`,
         {module: CC_FILE, method: 'getBuddyAgents', trackingId: error.details.trackingId}
       );
     });
@@ -1234,7 +1234,7 @@ describe('webex.cc', () => {
         module: CC_FILE,
         method: 'silentRelogin',
       });
-      expect(LoggerProxy.error).toHaveBeenCalledWith(`silentRelogin failed`, {
+      expect(LoggerProxy.error).toHaveBeenCalledWith(`silentRelogin failed with reason: Error while performing silentRelogin`, {
         module: CC_FILE,
         method: 'silentRelogin',
         trackingId: undefined,
@@ -1400,8 +1400,8 @@ describe('webex.cc', () => {
         method: 'startOutdial',
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `startOutdial failed`,
-        {module: CC_FILE, method: 'startOutdial', trackingId: error.details.trackingId}
+        `startOutdial failed with reason: ${error.details.data.reason}`,
+        {module: CC_FILE, method: `startOutdial`, trackingId: error.details.trackingId}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'startOutdial', CC_FILE);
     });
