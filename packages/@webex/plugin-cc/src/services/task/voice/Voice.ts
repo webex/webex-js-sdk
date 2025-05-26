@@ -12,11 +12,12 @@ export default class Voice extends Task implements IVoiceTask {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
-    callOptions: {isEndCallEnabled: boolean; isEndConsultEnabled: boolean}
+    callOptions: {isEndCallEnabled?: boolean; isEndConsultEnabled?: boolean} = {}
   ) {
     super(contact, data);
-    this.isEndCallEnabled = callOptions.isEndCallEnabled;
-    this.isEndConsultEnabled = callOptions.isEndConsultEnabled;
+    // apply defaults when no explicit setting provided
+    this.isEndCallEnabled = callOptions.isEndCallEnabled ?? true;
+    this.isEndConsultEnabled = callOptions.isEndConsultEnabled ?? true;
   }
 
   protected setUIControls(): void {

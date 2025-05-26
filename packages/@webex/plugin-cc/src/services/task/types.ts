@@ -417,7 +417,7 @@ export type ContactCleanupData = {
 export type TaskResponse = AgentContact | Error | void;
 
 // TODO: Remove this interface when we have a proper refactor of the Task com,pleted
-export interface IBaseTask extends EventEmitter {
+export interface IOldTask extends EventEmitter {
   /**
    * Event data received in the CC events
    */
@@ -433,7 +433,7 @@ export interface IBaseTask extends EventEmitter {
   /**
    * Used to update the task when the data received on each event
    */
-  updateTaskData(newData: TaskData): IBaseTask;
+  updateTaskData(newData: TaskData): IOldTask;
   /**
    * Answers/accepts the incoming task
    *
@@ -512,7 +512,7 @@ export interface IBaseTask extends EventEmitter {
 
 /**
  * Represents an interface for managing general task operations.
- * Extends IBaseTask with UI controls and core task actions.
+ * Extends IOldTask with UI controls and core task actions.
  */
 export interface ITask extends EventEmitter {
   /**

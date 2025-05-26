@@ -3,11 +3,10 @@ import {ICall, LINE_EVENTS} from '@webex/calling';
 import {WebSocketManager} from '../core/websocket/WebSocketManager';
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
-import Task from './Task';
-import {MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
+import {MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId, ITask} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
-import {CC_EVENTS, CC_TASK_EVENTS, Profile} from '../config/types';
-import {LoginOption} from '../../types';
+import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
+import {AgentConfigFlags, LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
@@ -15,11 +14,11 @@ import WebRTC from './voice/WebRTC';
 export default class TaskManager extends EventEmitter {
   private call: ICall;
   private contact: ReturnType<typeof routingContact>;
-  private taskCollection: Record<TaskId, Task>;
+  private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
   private static taskManager: TaskManager;
-  private agentProfile?: Profile;
+  private agentConfigFlags?: AgentConfigFlags;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -55,8 +54,8 @@ export default class TaskManager extends EventEmitter {
   /**
    * Inject agent profile after instantiation
    */
-  public setAgentProfile(profile: Profile): void {
-    this.agentProfile = profile;
+  public setAgentProfile(agentConfigFlags: AgentConfigFlags): void {
+    this.agentConfigFlags = agentConfigFlags;
   }
 
   public registerIncomingCallEvent() {
@@ -70,7 +69,7 @@ export default class TaskManager extends EventEmitter {
   private registerTaskListeners() {
     this.webSocketManager.on('message', (event: string) => {
       const payload = JSON.parse(event);
-      let task: Task | undefined;
+      let task: ITask | undefined;
 
       if (payload.data?.type) {
         // for events emitted on existing tasks
@@ -84,14 +83,14 @@ export default class TaskManager extends EventEmitter {
             break;
 
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            if (!this.agentProfile) {
+            if (!this.agentConfigFlags) {
               throw new Error('Agent profile not set on TaskManager');
             }
             task = TaskFactory.create(
               this.contact,
               this.webCallingService,
               {...payload.data, isConsulted: false},
-              this.agentProfile
+              this.agentConfigFlags
             );
             this.taskCollection[payload.data.interactionId] = task;
             // for telephony in-browser we wait for incoming call, else fire immediately
@@ -246,15 +245,16 @@ export default class TaskManager extends EventEmitter {
     });
   }
 
-  private updateTaskData(task: Task | undefined, taskData: TaskData) {
+  private updateTaskData(task: ITask | undefined, taskData: TaskData) {
     if (!task) {
       throw new Error('Task not found for update');
     }
 
     task.updateTaskData(taskData);
+    this.taskCollection[taskData.interactionId] = task;
   }
 
-  private removeTaskFromCollection(task: Task) {
+  private removeTaskFromCollection(task: ITask) {
     const id = task.data.interactionId;
     if (id && this.taskCollection[id]) {
       delete this.taskCollection[id];
@@ -265,7 +265,7 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
-  private handleTaskCleanup(task: Task) {
+  private handleTaskCleanup(task: ITask) {
     if (
       this.webCallingService.loginOption === LoginOption.BROWSER &&
       task.data.interaction.mediaType === MEDIA_CHANNEL.TELEPHONY &&
@@ -281,11 +281,11 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
-  public getTask(taskId: TaskId): Task | undefined {
+  public getTask(taskId: TaskId): ITask | undefined {
     return this.taskCollection[taskId];
   }
 
-  public getAllTasks(): Record<TaskId, Task> {
+  public getAllTasks(): Record<TaskId, ITask> {
     return {...this.taskCollection};
   }
 

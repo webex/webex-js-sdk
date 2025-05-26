@@ -5,7 +5,7 @@ import Voice from './voice/Voice';
 import WebRTC from './voice/WebRTC';
 import Digital from './digital/Digital';
 import {MEDIA_CHANNEL, TaskData} from './types';
-import {Profile} from '../config/types';
+import {AgentConfigFlags} from '../../types';
 
 export default class TaskFactory {
   /**
@@ -15,18 +15,15 @@ export default class TaskFactory {
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    agentProfile: Profile
+    agentConfigFlags: AgentConfigFlags
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
-    const {isEndCallEnabled, isEndConsultEnabled} = agentProfile;
+    const {isEndCallEnabled, isEndConsultEnabled} = agentConfigFlags;
 
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:
         if (webCallingService.loginOption === 'BROWSER') {
-          return new WebRTC(contact, webCallingService, data, {
-            isEndCallEnabled,
-            isEndConsultEnabled,
-          });
+          return new WebRTC(contact, webCallingService, data);
         }
 
         return new Voice(contact, data, {

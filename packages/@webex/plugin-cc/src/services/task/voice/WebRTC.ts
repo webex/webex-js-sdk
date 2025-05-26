@@ -15,7 +15,7 @@ export default class WebRTC extends Voice implements IWebRTCTask {
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    callOptions: {isEndCallEnabled: boolean; isEndConsultEnabled: boolean}
+    callOptions: {isEndCallEnabled?: boolean; isEndConsultEnabled?: boolean} = {}
   ) {
     super(contact, data, callOptions);
     this.webCallingService = webCallingService;
@@ -33,6 +33,7 @@ export default class WebRTC extends Voice implements IWebRTCTask {
    * This method is used to set the UI controls for the specific type of task
    */
   protected setUIControls(): void {
+    // TODO: This implementation will change based on the type of task. We need to modify it appropriately, we can even read from task data rather than listening to events
     switch (this.data.type) {
       case CC_EVENTS.AGENT_CONTACT_RESERVED:
         this.taskUiControls.accept.enable();
