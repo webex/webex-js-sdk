@@ -144,7 +144,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['operational']
       );
 
-      LoggerProxy.log('CC SDK registration completed successfully', {
+      LoggerProxy.log(`CC SDK registration completed successfully with agentId: ${resp.agentId}`, {
         module: CC_FILE,
         method: 'register',
       });
@@ -272,9 +272,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['operational']
       );
 
-      LoggerProxy.log('Successfully retrieved buddy agents', {
+      LoggerProxy.log(`Successfully retrieved ${resp.data.agentList.length} buddy agents`, {
         module: CC_FILE,
         method: 'getBuddyAgents',
+        trackingId: resp.trackingId,
       });
 
       return resp;
@@ -422,11 +423,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.log('Agent station login completed successfully', {
-        module: CC_FILE,
-        method: 'stationLogin',
-        trackingId: resp.trackingId,
-      });
+      LoggerProxy.log(
+        `Agent station login completed successfully agentId: ${resp.data.agentId} loginOption: ${data.loginOption} teamId: ${data.teamId}`,
+        {
+          module: CC_FILE,
+          method: 'stationLogin',
+          trackingId: resp.trackingId,
+        }
+      );
 
       return response;
     } catch (error) {
@@ -478,7 +482,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.webCallingService.deregisterWebCallingLine();
       }
 
-      LoggerProxy.log('Agent station logout completed successfully', {
+      LoggerProxy.log(`Agent station logout completed successfully`, {
         module: CC_FILE,
         method: 'stationLogout',
         trackingId: resp.trackingId,
@@ -523,7 +527,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.log('Agent station relogin completed successfully', {
+      LoggerProxy.log(`Agent station relogin completed successfully`, {
         module: CC_FILE,
         method: 'stationReLogin',
         trackingId: reLoginResponse.trackingId,
@@ -587,11 +591,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.log('Agent state changed successfully', {
-        module: CC_FILE,
-        method: 'setAgentState',
-        trackingId: agentStatusResponse.trackingId,
-      });
+      LoggerProxy.log(
+        `Agent state changed successfully to auxCodeId: ${agentStatusResponse.data.auxCodeId}`,
+        {
+          module: CC_FILE,
+          method: 'setAgentState',
+          trackingId: agentStatusResponse.trackingId,
+        }
+      );
 
       return agentStatusResponse;
     } catch (error) {
@@ -807,11 +814,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
 
-      LoggerProxy.log('Silent relogin process completed successfully', {
-        module: CC_FILE,
-        method: 'silentRelogin',
-        trackingId: reLoginResponse.trackingId,
-      });
+      LoggerProxy.log(
+        `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,
+        {
+          module: CC_FILE,
+          method: 'silentRelogin',
+          trackingId: reLoginResponse.trackingId,
+        }
+      );
     } catch (error) {
       const {reason, error: detailedError} = getErrorDetails(error, 'silentRelogin', CC_FILE);
       if (reason === 'AGENT_NOT_FOUND') {
@@ -894,7 +904,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.log('Outbound dial completed successfully', {
+      LoggerProxy.log(`Outbound dial completed successfully`, {
         module: CC_FILE,
         method: 'startOutdial',
         trackingId: result.trackingId,
@@ -959,7 +969,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     const result = await this.services.config.getQueues(orgId, page, pageSize, search, filter);
 
-    LoggerProxy.log('Successfully retrieved queues', {
+    LoggerProxy.log(`Successfully retrieved ${result?.length} queues`, {
       module: CC_FILE,
       method: 'getQueues',
     });
@@ -1050,10 +1060,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.log(`[${trackingId}] updateAgentDeviceType | profile updated successfully`, {
-        module: CC_FILE,
-        method: 'updateAgentDeviceType',
-      });
+      LoggerProxy.log(
+        `[${trackingId}] updateAgentDeviceType | profile updated successfully with ${loginPayload.loginOption}`,
+        {
+          module: CC_FILE,
+          method: 'updateAgentDeviceType',
+        }
+      );
 
       const deviceTypeUpdateResponse: UpdateDeviceTypeResponse = {
         ...resp,
