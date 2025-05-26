@@ -882,7 +882,7 @@ function register() {
           loginVoiceOptions.filter((o) => agentProfile.webRtcEnabled || o !== 'BROWSER')
         );
         dialNumber.value = agentProfile.dn ?? '';
-        dialNumber.disabled = agentProfile.dn ? false : true;
+        dialNumber.disabled = !agentProfile.dn;
         if (loginVoiceOptions.length > 0) loginAgentElm.disabled = false;
 
         if (agentProfile.isAgentLoggedIn) {
