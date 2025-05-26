@@ -104,8 +104,7 @@ export default class TaskManager extends EventEmitter {
             }
             break;
           case CC_EVENTS.AGENT_OFFER_CONTACT:
-            // We don't have to emit any event here since this will be result of promise.
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             LoggerProxy.log('Agent offer contact', {
               module: TASK_MANAGER_FILE,
               method: 'registerTaskListeners',
@@ -122,24 +121,24 @@ export default class TaskManager extends EventEmitter {
             });
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_ASSIGNED, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
-            task = this.updateTaskData(task, {
+            this.updateTaskData(task, {
               ...payload.data,
               wrapUpRequired: true,
             });
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
           case CC_EVENTS.CONTACT_ENDED:
           case CC_EVENTS.AGENT_INVITE_FAILED:
-            task = this.updateTaskData(task, {
+            this.updateTaskData(task, {
               ...payload.data,
               wrapUpRequired: payload.data.interaction.state !== 'new',
             });
@@ -149,28 +148,28 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
             // As soon as the main interaction is held, we need to emit TASK_HOLD
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_HOLD, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_UNHELD:
             // As soon as the main interaction is unheld, we need to emit TASK_RESUME
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RESUME, task);
             break;
           case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
-            task = this.updateTaskData(task, {
+            this.updateTaskData(task, {
               ...payload.data,
               wrapUpRequired: true,
             });
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED, task);
             break;
           case CC_EVENTS.AGENT_CONSULT_CREATED:
             // Received when self agent initiates a consult
-            task = this.updateTaskData(task, {
+            this.updateTaskData(task, {
               ...payload.data,
               isConsulted: false, // This ensures that the task consult status is always reset
             });
@@ -178,7 +177,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_OFFER_CONSULT:
             // Received when other agent sends us a consult offer
-            task = this.updateTaskData(task, {
+            this.updateTaskData(task, {
               ...payload.data,
               isConsulted: true, // This ensures that the task is marked as us being requested for a consult
             });
@@ -186,7 +185,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONSULTING:
             // Received when agent is in an active consult state
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             if (task.data.isConsulted) {
               // Fire only if you are the agent who received the consult request
               task.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, task);
@@ -198,10 +197,10 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONSULT_FAILED:
             // This can only be received by the agent who initiated the consult.
             // We need not emit any event here since this will be result of promise
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             break;
           case CC_EVENTS.AGENT_CONSULT_ENDED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             if (task.data.isConsulted) {
               // This will be the end state of the task as soon as we end the consult in case of
               // us being offered a consult
@@ -211,30 +210,30 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CTQ_CANCELLED:
             // This event is received when the consult using queue is cancelled using API
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED, task);
             break;
           case CC_EVENTS.AGENT_WRAPUP:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
             this.removeTaskFromCollection(task);
             task.emit(TASK_EVENTS.TASK_WRAPPEDUP, task);
             break;
           case CC_EVENTS.CONTACT_RECORDING_PAUSED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RECORDING_PAUSED, task);
             break;
           case CC_EVENTS.CONTACT_RECORDING_PAUSE_FAILED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED, task);
             break;
           case CC_EVENTS.CONTACT_RECORDING_RESUMED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RECORDING_RESUMED, task);
             break;
           case CC_EVENTS.CONTACT_RECORDING_RESUME_FAILED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, task);
             break;
           default:
@@ -247,14 +246,12 @@ export default class TaskManager extends EventEmitter {
     });
   }
 
-  private updateTaskData(task: Task | undefined, taskData: TaskData): Task {
+  private updateTaskData(task: Task | undefined, taskData: TaskData) {
     if (!task) {
       throw new Error('Task not found for update');
     }
 
     task.updateTaskData(taskData);
-
-    return task;
   }
 
   private removeTaskFromCollection(task: Task) {
