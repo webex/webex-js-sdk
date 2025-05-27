@@ -34,7 +34,7 @@ export const METHODS = {
   STATION_LOGOUT: 'stationLogout',
   STATION_RELOGIN: 'stationReLogin',
   SET_AGENT_STATE: 'setAgentState',
-  HANDLE_WEBSOCKET_MESSAGE: 'handleWebSocketMessage',
+  HANDLE_WEBSOCKET_MESSAGE: 'handleWebsocketMessage',
   SETUP_EVENT_LISTENERS: 'setupEventListeners',
   GET_CONNECTION_CONFIG: 'getConnectionConfig',
   HANDLE_CONNECTION_LOST: 'handleConnectionLost',

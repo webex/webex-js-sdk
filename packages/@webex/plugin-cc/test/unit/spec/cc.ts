@@ -1608,7 +1608,7 @@ describe('webex.cc', () => {
       );
       expect(messageCalls).toHaveLength(1);
       const [, messageCallback] = messageCalls[0];
-      expect(messageCallback).toBe(webex.cc['handleWebSocketMessage']);
+      expect(messageCallback).toBe(webex.cc['handleWebsocketMessage']);
 
       const connectionCalls = webex.cc.services.connectionService.off.mock.calls.filter(
         ([evt]) => evt === 'connectionLost'
@@ -1674,7 +1674,7 @@ describe('webex.cc', () => {
     });
   });
 
-  describe('handleWebSocketMessage events', () => {
+  describe('handleWebsocketMessage events', () => {
     let messageCallback;
     let emitSpy;
 

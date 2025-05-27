@@ -87,7 +87,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webex: this.$webex,
         connectionConfig: this.getConnectionConfig(),
       });
-      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
+      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
@@ -189,7 +189,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
       this.taskManager.unregisterIncomingCallEvent();
 
-      this.services.webSocketManager.off('message', this.handleWebSocketMessage);
+      this.services.webSocketManager.off('message', this.handleWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
       if (
@@ -624,7 +624,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  private handleWebSocketMessage = (event: string) => {
+  private handleWebsocketMessage = (event: string) => {
     const eventData = JSON.parse(event);
     // Re-emit all the events related to agent except keep-alives
     if (!eventData.keepalive && eventData.data && eventData.data.type) {
@@ -818,7 +818,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
       this.agentConfig.isAgentLoggedIn = true;
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
-      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
+      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       LoggerProxy.log(
         `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,
