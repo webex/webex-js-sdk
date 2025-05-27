@@ -131,6 +131,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.setupEventListeners();
 
       const resp = await this.connectWebsocket();
+      // Ensure 'dn' is always populated from 'defaultDn'
+      resp.dn = resp.defaultDn;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
         {
@@ -766,6 +768,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       case LoginOption.AGENT_DN:
       case LoginOption.EXTENSION:
         this.agentConfig.defaultDn = dn;
+        this.agentConfig.dn = dn;
         break;
       default:
         LoggerProxy.error(`Unsupported device type: ${deviceType}`, {
