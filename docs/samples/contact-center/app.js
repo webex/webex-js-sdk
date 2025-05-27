@@ -1655,11 +1655,12 @@ function populateLoginOptions(options) {
   });
 }
 
+idleCodesDropdown.addEventListener('change', handleAgentStatus);
+
 updateLoginOptionElm.addEventListener('change', (e) => {
   updateDialNumberElm.disabled = e.target.value === 'BROWSER';
 });
 
-// toggle Save button enabled only when all required inputs are valid
 function updateApplyButtonState() {
   const team = updateTeamDropdownElm.value;
   const loginOption = updateLoginOptionElm.value;
@@ -1668,10 +1669,8 @@ function updateApplyButtonState() {
   applyupdateAgentProfileBtn.disabled = !(team && loginOption && dialValid);
 }
 
-// wire up input changes
 updateTeamDropdownElm.addEventListener('change', updateApplyButtonState);
 updateLoginOptionElm.addEventListener('change', updateApplyButtonState);
 updateDialNumberElm.addEventListener('input', updateApplyButtonState);
 
-// ensure initial state
 updateApplyButtonState();
