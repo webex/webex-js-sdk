@@ -6,13 +6,13 @@ import AmpState from 'ampersand-state';
 /**
  * @class
  */
-const ServiceUrl = AmpState.extend({
-  namespace: 'ServiceUrl',
+const Service = AmpState.extend({
+  namespace: 'Service',
 
   props: {
-    defaultUrl: ['string', true, undefined],
-    hosts: ['array', false, () => []],
-    name: ['string', true, undefined],
+    serviceUrls: ['array', false, () => []],
+    serviceName: ['string', true, undefined],
+    id: ['string', true, undefined],
   },
 
   /**
@@ -33,7 +33,7 @@ const ServiceUrl = AmpState.extend({
 
   /**
    * Generate a list of urls based on this
-   * `ServiceUrl`'s known hosts.
+   * `Service`'s known hosts.
    * @returns {string[]}
    */
   _getHostUrls() {
@@ -82,7 +82,7 @@ const ServiceUrl = AmpState.extend({
   },
 
   /**
-   * Attempt to mark a host from this `ServiceUrl` as failed and return true
+   * Attempt to mark a host from this `Service` as failed and return true
    * if the provided url has a host that could be successfully marked as failed.
    *
    * @param {string} url
@@ -121,4 +121,4 @@ const ServiceUrl = AmpState.extend({
 });
 /* eslint-enable no-underscore-dangle */
 
-export default ServiceUrl;
+export default Service;

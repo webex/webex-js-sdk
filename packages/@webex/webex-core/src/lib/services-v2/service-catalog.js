@@ -3,7 +3,7 @@ import Url from 'url';
 import AmpState from 'ampersand-state';
 
 import {union} from 'lodash';
-import ServiceUrl from './service-url';
+import Service from './service';
 
 /* eslint-disable no-underscore-dangle */
 /**
@@ -56,32 +56,32 @@ const ServiceCatalog = AmpState.extend({
 
   /**
    * @private
-   * Search the service url array to locate a `ServiceUrl`
+   * Search the service url array to locate a `Service`
    * class object based on its name.
    * @param {string} name
    * @param {string} [serviceGroup]
-   * @returns {ServiceUrl}
+   * @returns {Service}
    */
   _getUrl(name, serviceGroup) {
     const serviceUrls =
       typeof serviceGroup === 'string'
-        ? this.serviceGroups[serviceGroup] || []
-        : [
+        ? this.serviceGroups[serviceGroup] || {}
+        : {
             ...this.serviceGroups.override,
             ...this.serviceGroups.postauth,
             ...this.serviceGroups.signin,
             ...this.serviceGroups.preauth,
             ...this.serviceGroups.discovery,
-          ];
+          };
 
-    return serviceUrls.find((serviceUrl) => serviceUrl.name === name);
+    return Object.values(serviceUrls).filter((serviceUrl) => serviceUrl.serviceName === name);
   },
 
   /**
    * @private
-   * Generate an array of `ServiceUrl`s that is organized from highest auth
+   * Generate an array of `Service`s that is organized from highest auth
    * level to lowest auth level.
-   * @returns {Array<ServiceUrl>} - array of `ServiceUrl`s
+   * @returns {Array<Service>} - array of `Service`s
    */
   _listServiceUrls() {
     return [
@@ -91,53 +91,6 @@ const ServiceCatalog = AmpState.extend({
       ...this.serviceGroups.preauth,
       ...this.serviceGroups.discovery,
     ];
-  },
-
-  /**
-   * @private
-   * Safely load one or more `ServiceUrl`s into this `Services` instance.
-   * @param {string} serviceGroup
-   * @param  {Array<ServiceUrl>} services
-   * @returns {Services}
-   */
-  _loadServiceUrls(serviceGroup, services) {
-    // declare namespaces outside of loop
-    let existingService;
-
-    services.forEach((service) => {
-      existingService = this._getUrl(service.name, serviceGroup);
-
-      if (!existingService) {
-        this.serviceGroups[serviceGroup].push(service);
-      }
-    });
-
-    return this;
-  },
-
-  /**
-   * @private
-   * Safely unload one or more `ServiceUrl`s into this `Services` instance
-   * @param {string} serviceGroup
-   * @param  {Array<ServiceUrl>} services
-   * @returns {Services}
-   */
-  _unloadServiceUrls(serviceGroup, services) {
-    // declare namespaces outside of loop
-    let existingService;
-
-    services.forEach((service) => {
-      existingService = this._getUrl(service.name, serviceGroup);
-
-      if (existingService) {
-        this.serviceGroups[serviceGroup].splice(
-          this.serviceGroups[serviceGroup].indexOf(existingService),
-          1
-        );
-      }
-    });
-
-    return this;
   },
 
   /**
@@ -234,7 +187,7 @@ const ServiceCatalog = AmpState.extend({
   /**
    * Find a service based on the provided url.
    * @param {string} url - Must be parsable by `Url`
-   * @returns {serviceUrl} - ServiceUrl assocated with provided url
+   * @returns {Service} - Service assocated with provided url
    */
   findServiceUrlFromUrl(url) {
     const serviceUrls = [
@@ -338,10 +291,10 @@ const ServiceCatalog = AmpState.extend({
   /**
    * Mark a priority host service url as failed.
    * This will mark the host associated with the
-   * `ServiceUrl` to be removed from the its
+   * `Service` to be removed from the its
    * respective host array, and then return the next
-   * viable host from the `ServiceUrls` host array,
-   * or the `ServiceUrls` default url if no other priority
+   * viable host from the `Service` host array,
+   * or the `Service` default url if no other priority
    * hosts are available, or if `noPriorityHosts` is set to
    * `true`.
    * @param {string} url
@@ -380,7 +333,7 @@ const ServiceCatalog = AmpState.extend({
   },
 
   /**
-   * Update the current list of `ServiceUrl`s against a provided
+   * Update the current list of `Service`s against a provided
    * service hostmap.
    * @emits ServiceCatalog#preauthorized
    * @emits ServiceCatalog#postauthorized
@@ -388,29 +341,8 @@ const ServiceCatalog = AmpState.extend({
    * @param {object} serviceHostmap
    * @returns {Services}
    */
-  updateServiceUrls(serviceGroup, serviceHostmap) {
-    const currentServiceUrls = this.serviceGroups[serviceGroup];
-
-    const unusedUrls = currentServiceUrls.filter((serviceUrl) =>
-      serviceHostmap.every((item) => item.name !== serviceUrl.name)
-    );
-
-    this._unloadServiceUrls(serviceGroup, unusedUrls);
-
-    serviceHostmap.forEach((serviceObj) => {
-      const service = this._getUrl(serviceObj.name, serviceGroup);
-
-      if (service) {
-        service.defaultUrl = serviceObj.defaultUrl;
-        service.hosts = serviceObj.hosts || [];
-      } else {
-        this._loadServiceUrls(serviceGroup, [
-          new ServiceUrl({
-            ...serviceObj,
-          }),
-        ]);
-      }
-    });
+  updateServices(serviceGroup, serviceHostmap) {
+    this.serviceGroups[serviceGroup] = serviceHostmap.map((service) => new Service(service));
 
     this.status[serviceGroup].ready = true;
     this.trigger(serviceGroup);
