@@ -881,8 +881,8 @@ function register() {
         populateLoginOptions(
           loginVoiceOptions.filter((o) => agentProfile.webRtcEnabled || o !== 'BROWSER')
         );
-        dialNumber.value = agentProfile.defaultDn ? agentProfile.defaultDn : '';
-        dialNumber.disabled = agentProfile.defaultDn ? false : true;
+        dialNumber.value = agentProfile.dn ?? '';
+        dialNumber.disabled = !agentProfile.dn;
         if (loginVoiceOptions.length > 0) loginAgentElm.disabled = false;
 
         if (agentProfile.isAgentLoggedIn) {
