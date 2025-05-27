@@ -395,7 +395,7 @@ describe('plugin-meetings', () => {
       it('returns the correct options', () => {
         const locusUrl = 'TestLocusUrl';
         const memberId = 'test';
-        const invitee = {memberId}
+        const invitee = {memberId};
 
         assert.deepEqual(
           MembersUtil.cancelSIPInviteOptions(
