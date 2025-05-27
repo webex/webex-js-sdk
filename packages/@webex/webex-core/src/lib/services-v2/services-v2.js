@@ -24,6 +24,8 @@ const DEFAULT_CLUSTER_IDENTIFIER =
 /* eslint-disable no-underscore-dangle */
 /**
  * @class
+ * This is the v2 implementation of the Services plugin. Used to manage DNSSec enabled users
+ * Use this at your own risk! This service will be updated continuously and may not be backwards compatible.
  */
 const Services = WebexPlugin.extend({
   namespace: 'Services',
