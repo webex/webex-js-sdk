@@ -1259,7 +1259,7 @@ describe('Task', () => {
       method: 'toggleMute',
       interactionId: task.data.interactionId,
     });
-    expect(loggerLogSpy).toHaveBeenCalledWith(`Mute state toggled successfully`, {
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Mute state toggled successfully isCallMuted: ${webCallingService.isCallMuted()}`, {
       module: TASK_FILE,
       method: 'toggleMute',
       interactionId: task.data.interactionId,

@@ -191,11 +191,14 @@ export default class Task extends EventEmitter implements ITask {
 
       this.webCallingService.muteUnmuteCall(this.localAudioStream);
 
-      LoggerProxy.log(`Mute state toggled successfully`, {
-        module: TASK_FILE,
-        method: METHODS.TOGGLE_MUTE,
-        interactionId: this.data.interactionId,
-      });
+      LoggerProxy.log(
+        `Mute state toggled successfully isCallMuted: ${this.webCallingService.isCallMuted()}`,
+        {
+          module: TASK_FILE,
+          method: METHODS.TOGGLE_MUTE,
+          interactionId: this.data.interactionId,
+        }
+      );
 
       return Promise.resolve();
     } catch (error) {
