@@ -146,17 +146,8 @@ export default class Task extends EventEmitter implements ITask {
 
         return Promise.resolve(); // TODO: Update this with sending the task object received in AgentContactAssigned
       }
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
-        {
-          taskId: this.data.interactionId,
-          error: 'Unsupported login action for this task',
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(this.data),
-        },
-        ['operational', 'behavioral', 'business']
-      );
 
-      return Promise.reject(new Error('Unsupported login action for this task'));
+      return Promise.resolve(); // TODO: reject for extension as part of refactor
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, METHODS.ACCEPT, TASK_FILE);
       this.metricsManager.trackEvent(

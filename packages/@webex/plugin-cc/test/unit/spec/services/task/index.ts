@@ -412,19 +412,6 @@ describe('Task', () => {
     });
   });
 
-  it('should throw error for accept API for Extension login option', async () => {
-    webCallingService.loginOption = LoginOption.EXTENSION;
-
-    await expect(task.accept()).rejects.toThrow('Unsupported login action for this task');
-    
-    expect(loggerInfoSpy).toHaveBeenCalledWith(`Accepting task`, {
-      module: TASK_FILE,
-      method: 'accept',
-      interactionId: task.data.interactionId,
-    });
-
-  });
-
   it('should handle errors in accept method', async () => {
     const error = {
       details: {
