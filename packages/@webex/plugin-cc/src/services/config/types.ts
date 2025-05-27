@@ -560,6 +560,7 @@ export type Profile = {
   };
   teams: Team[];
   defaultDn: string;
+  dn?: string;
   forceDefaultDn: boolean;
   forceDefaultDnForAgent: boolean;
   regexUS: RegExp | string;
