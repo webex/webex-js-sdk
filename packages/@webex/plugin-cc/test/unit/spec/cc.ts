@@ -141,7 +141,7 @@ describe('webex.cc', () => {
       off: jest.fn(),
       emit: jest.fn(),
       unregisterIncomingCallEvent: jest.fn(),
-      setAgentProfile: jest.fn(),
+      setConfigFlags: jest.fn(),
     };
 
     mockMetricsManager = {
@@ -301,6 +301,12 @@ describe('webex.cc', () => {
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
         module: CC_FILE,
         method: 'mockConstructor',
+      });
+      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
+        isEndCallEnabled: mockAgentProfile.isEndCallEnabled,
+        isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
+        webRtcEnabled: mockAgentProfile.webRtcEnabled,
+        autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
       });
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);

@@ -6,8 +6,10 @@ import WebCallingService from '../WebCallingService';
 import {MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId, ITask} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
-import {AgentConfigFlags, LoginOption} from '../../types';
+import {ConfigFlags, LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
+import MetricsManager from '../../metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
 
@@ -17,8 +19,9 @@ export default class TaskManager extends EventEmitter {
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
+  private metricsManager: MetricsManager;
   private static taskManager: TaskManager;
-  private agentConfigFlags?: AgentConfigFlags;
+  private configFlags?: ConfigFlags;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -30,6 +33,7 @@ export default class TaskManager extends EventEmitter {
     this.webCallingService = webCallingService;
     this.webSocketManager = webSocketManager;
     this.taskCollection = {};
+    this.metricsManager = MetricsManager.getInstance();
 
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
@@ -54,8 +58,8 @@ export default class TaskManager extends EventEmitter {
   /**
    * Inject agent profile after instantiation
    */
-  public setAgentProfile(agentConfigFlags: AgentConfigFlags): void {
-    this.agentConfigFlags = agentConfigFlags;
+  public setConfigFlags(configFlags: ConfigFlags): void {
+    this.configFlags = configFlags;
   }
 
   public registerIncomingCallEvent() {
@@ -83,14 +87,11 @@ export default class TaskManager extends EventEmitter {
             break;
 
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            if (!this.agentConfigFlags) {
-              throw new Error('Agent profile not set on TaskManager');
-            }
-            task = TaskFactory.create(
+            task = TaskFactory.createTask(
               this.contact,
               this.webCallingService,
               {...payload.data, isConsulted: false},
-              this.agentConfigFlags
+              this.configFlags
             );
             this.taskCollection[payload.data.interactionId] = task;
             // for telephony in-browser we wait for incoming call, else fire immediately
@@ -111,7 +112,7 @@ export default class TaskManager extends EventEmitter {
             this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, task);
             break;
           case CC_EVENTS.AGENT_OUTBOUND_FAILED:
-            if (task?.data) {
+            if (task.data) {
               this.removeTaskFromCollection(task);
             }
             LoggerProxy.log('Agent outbound failed', {
@@ -132,6 +133,15 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
             this.updateTaskData(task, payload.data);
+            this.metricsManager.trackEvent(
+              METRIC_EVENT_NAMES.AGENT_RONA,
+              {
+                ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
+                taskId: payload.data.interactionId,
+                reason: payload.data.reason,
+              },
+              ['behavioral', 'operational']
+            );
             this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;

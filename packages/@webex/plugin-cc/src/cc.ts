@@ -18,7 +18,7 @@ import {
   UploadLogsResponse,
   UpdateDeviceTypeResponse,
   GenericError,
-  AgentConfigFlags,
+  ConfigFlags,
 } from './types';
 import {
   READY,
@@ -132,11 +132,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.setupEventListeners();
 
       const resp = await this.connectWebsocket();
-      const agentConfigFlags: AgentConfigFlags = {
+      const configFlags: ConfigFlags = {
         isEndCallEnabled: this.agentConfig.isEndCallEnabled,
         isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
+        webRtcEnabled: this.agentConfig.webRtcEnabled,
+        autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
       };
-      this.taskManager.setAgentProfile(agentConfigFlags);
+      this.taskManager.setConfigFlags(configFlags);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
         {

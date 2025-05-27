@@ -1,11 +1,11 @@
 import {CC_FILE} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import routingContact from '../contact';
-import {ConsultPayload, ResumeRecordingPayload, TaskResponse, IVoiceTask, TaskData} from '../types';
+import {ConsultPayload, ResumeRecordingPayload, TaskResponse, IVoice, TaskData} from '../types';
 import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 
-export default class Voice extends Task implements IVoiceTask {
+export default class Voice extends Task implements IVoice {
   private isEndCallEnabled: boolean;
   private isEndConsultEnabled: boolean;
 
@@ -39,7 +39,8 @@ export default class Voice extends Task implements IVoiceTask {
    * @throws Error
    */
   public async accept(): Promise<TaskResponse> {
-    LoggerProxy.warn('Method not implemented here. Please override in the child class.');
+    LoggerProxy.error('Unsupported operation: accept() in Voice object');
+    throw new Error('Unsupported operation: accept() in Voice class');
   }
 
   /**

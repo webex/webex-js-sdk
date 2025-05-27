@@ -77,7 +77,7 @@ describe('TaskManager', () => {
     offSpy = jest.spyOn(webCallingService, 'off');
 
     taskManager = new TaskManager(contactMock, webCallingService, webSocketManagerMock);
-    taskManager.setAgentProfile({} as Profile);
+    taskManager.setConfigFlags({} as Profile);
 
     taskManager.taskCollection[taskId] = {
       emit: jest.fn(),
@@ -88,7 +88,7 @@ describe('TaskManager', () => {
     };
     taskManager.call = mockCall;
 
-    jest.spyOn(TaskFactory, 'create').mockImplementation((contact, webCallingService, data, agentProfile) => {
+    jest.spyOn(TaskFactory, 'createTask').mockImplementation((contact, webCallingService, data, configFlags) => {
     const task: any = {
       emit: jest.fn(),
       accept: jest.fn(),

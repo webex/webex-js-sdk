@@ -300,9 +300,11 @@ export interface GenericError extends Error {
  * These flags determine the availability of certain features in the Agent UI.
  * @internal
  */
-export type AgentConfigFlags = {
+export type ConfigFlags = {
   isEndCallEnabled: boolean;
   isEndConsultEnabled: boolean;
+  webRtcEnabled: boolean;
+  autoWrapup: boolean;
 };
 
 export type StationLoginResponse = Agent.StationLoginSuccessResponse | Error;

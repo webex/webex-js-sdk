@@ -1,9 +1,9 @@
 import {CC_FILE} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
-import {IDigitalTask, TaskResponse} from '../types';
+import {IDigital, TaskResponse} from '../types';
 import Task from '../Task';
 
-export default class Digital extends Task implements IDigitalTask {
+export default class Digital extends Task implements IDigital {
   /**
    * This is used for incoming digital task accept by agent.
    *

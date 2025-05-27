@@ -5,20 +5,20 @@ import Voice from './voice/Voice';
 import WebRTC from './voice/WebRTC';
 import Digital from './digital/Digital';
 import {MEDIA_CHANNEL, TaskData} from './types';
-import {AgentConfigFlags} from '../../types';
+import {ConfigFlags} from '../../types';
 
 export default class TaskFactory {
   /**
    * Creates the correct Task subclass based on mediaType & loginOption
    */
-  public static create(
+  public static createTask(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    agentConfigFlags: AgentConfigFlags
+    configFlags: ConfigFlags
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
-    const {isEndCallEnabled, isEndConsultEnabled} = agentConfigFlags;
+    const {isEndCallEnabled, isEndConsultEnabled} = configFlags;
 
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:

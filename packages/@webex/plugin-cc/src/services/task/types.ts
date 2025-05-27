@@ -577,7 +577,7 @@ export interface ITask extends EventEmitter {
  * Represents an interface for voice-specific tasks.
  * Extends ITask with methods for hold, resume, and consult.
  */
-export interface IVoiceTask extends ITask {
+export interface IVoice extends ITask {
   /**
    * This is used to hold the task.
    * @returns Promise<TaskResponse>
@@ -612,13 +612,13 @@ export interface IVoiceTask extends ITask {
  * Represents a digital task interface.
  * Alias for ITask to indicate digital-only tasks.
  */
-export type IDigitalTask = ITask;
+export type IDigital = ITask;
 
 /**
  * Represents an interface for WebRTC tasks.
- * Extends IVoiceTask with methods for mute, decline, and unregister web call listeners.
+ * Extends IVoice with methods for mute, decline, and unregister web call listeners.
  */
-export interface IWebRTCTask extends IVoiceTask {
+export interface IWebRTC extends IVoice {
   /**
    * This method is used to mute/unmute the call.
    * @returns Promise<TaskResponse>

@@ -3,7 +3,7 @@ import TaskFactory from '../../../../../src/services/task/TaskFactory';
 import {MEDIA_CHANNEL, TaskData} from '../../../../../src/services/task/types';
 import {LoginOption} from '../../../../../src/types';
 import WebCallingService from '../../../../../src/services/WebCallingService';
-import {Profile} from '../../../../../src/config/types';
+import {ConfigFlags} from '../../../../../src/types';
 
 describe('TaskFactory', () => {
   const dummyContact = {} as any;
@@ -15,20 +15,22 @@ describe('TaskFactory', () => {
   const makeSvc = (loginOption: LoginOption) =>
     ({loginOption} as unknown) as WebCallingService;
 
-  const agentProfile: Profile = {
+  const configFlags: ConfigFlags = {
     isEndCallEnabled: true,
     isEndConsultEnabled: true,
+    webRtcEnabled: true,
+    autoWrapup: false,
   };
 
   it('creates WebRTC for TELEPHONY + BROWSER', () => {
     const svc = makeSvc(LoginOption.BROWSER);
-    const task = TaskFactory.create(dummyContact, svc, baseData as TaskData, agentProfile);
+    const task = TaskFactory.createTask(dummyContact, svc, baseData as TaskData, configFlags);
     expect(task.constructor.name).toBe('WebRTC');
   });
 
   it('creates Voice for TELEPHONY + EXTENSION', () => {
     const svc = makeSvc(LoginOption.EXTENSION);
-    const task = TaskFactory.create(dummyContact, svc, baseData as TaskData, agentProfile);
+    const task = TaskFactory.createTask(dummyContact, svc, baseData as TaskData, configFlags);
     expect(task.constructor.name).toBe('Voice');
   });
 
@@ -36,7 +38,7 @@ describe('TaskFactory', () => {
     const svc = makeSvc(LoginOption.BROWSER);
     for (const type of [MEDIA_CHANNEL.CHAT, MEDIA_CHANNEL.EMAIL, MEDIA_CHANNEL.SOCIAL]) {
       const data = {...baseData, interaction: {mediaType: type}} as TaskData;
-      const task = TaskFactory.create(dummyContact, svc, data, agentProfile);
+      const task = TaskFactory.createTask(dummyContact, svc, data, configFlags);
       expect(task.constructor.name).toBe('Digital');
     }
   });
@@ -46,10 +48,10 @@ describe('TaskFactory', () => {
     const svcExt = makeSvc(LoginOption.EXTENSION);
     const data = {interactionId: 'id', interaction: {}} as TaskData;
 
-    const t1 = TaskFactory.create(dummyContact, svcBrowser, data, agentProfile);
+    const t1 = TaskFactory.createTask(dummyContact, svcBrowser, data, configFlags);
     expect(t1.constructor.name).toBe('WebRTC');
 
-    const t2 = TaskFactory.create(dummyContact, svcExt, data, agentProfile);
+    const t2 = TaskFactory.createTask(dummyContact, svcExt, data, configFlags);
     expect(t2.constructor.name).toBe('Voice');
   });
 });
