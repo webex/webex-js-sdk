@@ -113,7 +113,7 @@ describe('plugin-meetings', () => {
 
     it('invokes handleServerBrbUpdate with correct client state after syncing with server', async () => {
       const sendLocalBrbStateToServerStub = sinon
-        .stub(brbState as any, 'sendLocalBrbStateToServer')
+        .stub(brbState, 'sendLocalBrbStateToServer')
         .resolves();
 
       const handleServerBrbUpdateSpy = sinon.spy(brbState, 'handleServerBrbUpdate');
