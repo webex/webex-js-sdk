@@ -893,7 +893,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Updates the agent device type.
    * This method allows the agent to change their device type (e.g., from BROWSER to EXTENSION or anything else).
    * It will also throw an error if the new device type is the same as the current one.
-   * @param data type is AgentDeviceUpdate - The data required to update the agent device type, including the new login option and dial number.
+   * @param data type is AgentDeviceUpdate - The data required to update the agent device type, including the new login option, new team and dial number.
    * @returns Promise<UpdateDeviceTypeResponse>
    * @throws Error
    * @example
@@ -901,6 +901,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * const data = {
    *   loginOption: 'EXTENSION',
    *   dialNumber: '1234567890',
+   *   teamId: 'team-id-if-needed', // Optional, if not provided, current team ID will be used
    * };
    * const result = await webex.cc.updateAgentDeviceType(data);
    * ```
@@ -942,7 +943,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
 
       const loginPayload: AgentLogin = {
-        teamId: this.agentConfig.currentTeamId ?? EMPTY_STRING,
+        teamId: data.teamId ?? this.agentConfig.currentTeamId ?? EMPTY_STRING,
         loginOption: data.loginOption,
         dialNumber: data.dialNumber,
       };

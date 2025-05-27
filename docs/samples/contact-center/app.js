@@ -38,7 +38,8 @@ const buddyAgentsDropdownElm = document.getElementById('buddyAgentsDropdown');
 const updateAgentDeviceTypeElm = document.querySelector('#updateAgentDeviceType');
 const updateFieldsContainer = document.querySelector('#updateAgentDeviceTypeFields');
 const updateLoginOptionElm = document.querySelector('#updateLoginOption');
-const updateDialNumberElm = document.querySelector('#updateDialNumber');
+const updateDialNumberElm  = document.querySelector('#updateDialNumber');
+const updateTeamDropdownElm = document.querySelector('#updateTeamDropdown');
 const incomingCallListener = document.querySelector('#incomingsection');
 const incomingDetailsElm = document.querySelector('#incoming-task');
 const answerElm = document.querySelector('#answer');
@@ -1132,6 +1133,7 @@ function logoutAgent() {
 
 async function updateAgentDeviceType() {
   const payload = {
+    teamId: teamsDropdown.value,
     loginOption: agentDeviceType,
     dialNumber: dialNumber.value
   };
@@ -1153,6 +1155,7 @@ async function applyupdateAgentDeviceType() {
   const loginOption = updateLoginOptionElm.value;
   const newDial = loginOption === 'BROWSER' ? '' : updateDialNumberElm.value;
   const payload = {
+    teamId: updateTeamDropdownElm?.value || teamsDropdown.value,
     loginOption,
     dialNumber: newDial,
   };

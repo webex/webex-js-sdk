@@ -1658,6 +1658,31 @@ describe('webex.cc', () => {
       expect(result).toEqual(mockResp);
     });
 
+    it('should use provided teamId if passed in payload', async () => {
+      const dataWithTeam = {
+        teamId: 'newTeam',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '0000',
+      };
+      const mockResp = {
+        ...{} as any,
+        type: 'AgentDeviceTypeUpdateSuccess',
+      };
+      jest.spyOn(webex.cc, 'stationLogout').mockResolvedValue({});
+      const loginSpy = jest
+        .spyOn(webex.cc, 'stationLogin')
+        .mockResolvedValue(mockResp);
+
+      const result = await webex.cc.updateAgentDeviceType(dataWithTeam);
+
+      expect(loginSpy).toHaveBeenCalledWith({
+        teamId: 'newTeam',
+        loginOption: dataWithTeam.loginOption,
+        dialNumber: dataWithTeam.dialNumber,
+      });
+      expect(result).toEqual(mockResp);
+    });
+
     it('should track failure and throw when stationLogout fails', async () => {
       const data = {loginOption: LoginOption.EXTENSION, dialNumber: '98765'};
       const err = new Error('logout failure');
