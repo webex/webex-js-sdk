@@ -1,9 +1,7 @@
 import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
-import ExtendedError from '../../Errors/catalog/ExtendedError';
 import {ERROR_CODE} from '../../Errors/types';
 import {emitFinalFailure, handleRegistrationErrors} from '../../common';
-import {uploadLogsSilently} from '../../common/Utils';
 
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
@@ -795,12 +793,10 @@ export class Registration implements IRegistration {
         method: 'deregister',
       });
     } catch (err) {
-      const extendedError = new Error(`Delete failed with Mobius: ${err}`) as ExtendedError;
-      log.error(extendedError, {
+      log.warn(`Delete failed with Mobius: ${err}`, {
         file: REGISTRATION_FILE,
         method: 'deregister',
       });
-      await uploadLogsSilently();
     }
 
     this.clearKeepaliveTimer();

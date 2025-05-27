@@ -405,11 +405,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         message: SUCCESS_MESSAGE,
       };
 
-      log.log(
-        `Successfully deleted ${santizedSessionIds?.length} call history records`,
-        loggerContext
-      );
-
       return responseDetails;
     } catch (err: unknown) {
       const extendedError = new Error(

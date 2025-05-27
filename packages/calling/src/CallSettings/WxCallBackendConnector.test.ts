@@ -117,10 +117,13 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         file: CALL_SETTINGS_FILE,
         method: 'getCallWaitingSetting',
       });
-      expect(logSpy).toHaveBeenCalledWith('Successfully got Call Waiting settings', {
-        file: CALL_SETTINGS_FILE,
-        method: 'getCallWaitingSetting',
-      });
+      expect(logSpy).toHaveBeenCalledWith(
+        `Successfully got Call Waiting settings, personId: ${personId}`,
+        {
+          file: CALL_SETTINGS_FILE,
+          method: 'getCallWaitingSetting',
+        }
+      );
       expect(errorSpy).not.toHaveBeenCalled();
     });
 
@@ -261,10 +264,13 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         file: CALL_SETTINGS_FILE,
         method: 'getDoNotDisturbSetting',
       });
-      expect(logSpy).toHaveBeenCalledWith('Successfully got Do Not Disturb settings', {
-        file: CALL_SETTINGS_FILE,
-        method: 'getDoNotDisturbSetting',
-      });
+      expect(logSpy).toHaveBeenCalledWith(
+        `Successfully got Do Not Disturb settings, personId: ${personId}`,
+        {
+          file: CALL_SETTINGS_FILE,
+          method: 'getDoNotDisturbSetting',
+        }
+      );
       expect(errorSpy).not.toHaveBeenCalled();
     });
 

@@ -126,7 +126,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
-      log.log('Successfully got Call Waiting settings', loggerContext);
+      log.log(`Successfully got Call Waiting settings, personId: ${this.personId}`, loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {
@@ -170,7 +170,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
-      log.log('Successfully got Do Not Disturb settings', loggerContext);
+      log.log(
+        `Successfully got Do Not Disturb settings, personId: ${this.personId}`,
+        loggerContext
+      );
 
       return responseDetails;
     } catch (err: unknown) {
@@ -218,7 +221,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
-      log.log('Successfully set Do Not Disturb settings', loggerContext);
+      log.log(
+        `Successfully set Do Not Disturb settings, personId: ${this.personId}`,
+        loggerContext
+      );
 
       return responseDetails;
     } catch (err: unknown) {
@@ -260,7 +266,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
-      log.log('Successfully got Call Forward settings', loggerContext);
+      log.log(`Successfully got Call Forward settings, personId: ${this.personId}`, loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {
@@ -305,7 +311,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
-      log.log('Successfully set Call Forward settings', loggerContext);
+      log.log(`Successfully set Call Forward settings, personId: ${this.personId}`, loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {
@@ -347,7 +353,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
-      log.log('Successfully got Voicemail settings', loggerContext);
+      log.log(`Successfully got Voicemail settings, personId: ${this.personId}`, loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {
@@ -389,6 +395,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         },
         message: SUCCESS_MESSAGE,
       };
+
+      log.log(`Successfully set Voicemail settings, personId: ${this.personId}`, loggerContext);
 
       return responseDetails;
     } catch (err: unknown) {
