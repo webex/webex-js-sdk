@@ -96,7 +96,7 @@ export const CC_TASK_EVENTS = {
  * @public
  */
 export const CC_AGENT_EVENTS = {
-  /** Welcome event when agent connects */
+  /** Welcome event when agent connects to websocket/backend */
   WELCOME: 'Welcome',
   /** Event emitted when agent re-login is successful */
   AGENT_RELOGIN_SUCCESS: 'AgentReloginSuccess',
