@@ -916,7 +916,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     LoggerProxy.info(`[${trackingId}] updateAgentProfile | starting profile update`, {
       module: CC_FILE,
-      method: this.updateAgentProfile.name,
+      method: `updateAgentProfile`,
     });
 
     try {
