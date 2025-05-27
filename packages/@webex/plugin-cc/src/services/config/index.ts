@@ -59,7 +59,7 @@ export default class AgentConfigService {
       );
 
       const userConfigData = await userConfigPromise;
-      LoggerProxy.info('Fetched user data', {
+      LoggerProxy.info(`Fetched user data, userId: ${userConfigData.ciUserId}`, {
         module: CONFIG_FILE_NAME,
         method: METHODS.GET_AGENT_CONFIG,
       });

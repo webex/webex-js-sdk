@@ -774,7 +774,7 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched user data', {
+      expect(LoggerProxy.info).toHaveBeenCalledWith(`Fetched user data, userId: ${mockUserConfig.ciUserId}`, {
         module: CONFIG_FILE_NAME,
         method: 'getAgentConfig',
       });
@@ -911,7 +911,7 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched user data', {
+      expect(LoggerProxy.info).toHaveBeenCalledWith(`Fetched user data, userId: ${mockUserConfig.ciUserId}`, {
         module: CONFIG_FILE_NAME,
         method: 'getAgentConfig',
       });

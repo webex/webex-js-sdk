@@ -49,9 +49,10 @@ export default class TaskManager extends EventEmitter {
 
     if (currentTask) {
       this.webCallingService.mapCallToTask(call.getCallId(), currentTask.data.interactionId);
-      LoggerProxy.log('Call mapped to task', {
+      LoggerProxy.log(`Call mapped to task`, {
         module: TASK_MANAGER_FILE,
         method: METHODS.HANDLE_INCOMING_WEB_CALL,
+        interactionId: currentTask.data.interactionId,
       });
       this.emit(TASK_EVENTS.TASK_INCOMING, currentTask);
     }
@@ -78,6 +79,7 @@ export default class TaskManager extends EventEmitter {
         LoggerProxy.info(`Handling task event ${payload.data?.type}`, {
           module: TASK_MANAGER_FILE,
           method: METHODS.REGISTER_TASK_LISTENERS,
+          interactionId: payload.data?.interactionId,
         });
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
@@ -107,9 +109,10 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_OFFER_CONTACT:
             // We don't have to emit any event here since this will be result of promise.
             task = this.updateTaskData(task, payload.data);
-            LoggerProxy.log('Agent offer contact', {
+            LoggerProxy.log(`Agent offer contact received for task`, {
               module: TASK_MANAGER_FILE,
               method: METHODS.REGISTER_TASK_LISTENERS,
+              interactionId: payload.data?.interactionId,
             });
             this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, task);
             break;
@@ -118,9 +121,10 @@ export default class TaskManager extends EventEmitter {
             if (task.data) {
               this.removeTaskFromCollection(task);
             }
-            LoggerProxy.log('Agent outbound failed', {
+            LoggerProxy.log(`Agent outbound failed for task`, {
               module: TASK_MANAGER_FILE,
               method: METHODS.REGISTER_TASK_LISTENERS,
+              interactionId: payload.data?.interactionId,
             });
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
@@ -276,9 +280,10 @@ export default class TaskManager extends EventEmitter {
 
       return currentTask;
     } catch (error) {
-      LoggerProxy.error(`Failed to update task ${taskData.interactionId}`, {
+      LoggerProxy.error(`Failed to update task`, {
         module: TASK_MANAGER_FILE,
         method: METHODS.UPDATE_TASK_DATA,
+        interactionId: taskData.interactionId,
       });
 
       return task;
@@ -288,9 +293,10 @@ export default class TaskManager extends EventEmitter {
   private removeTaskFromCollection(task: ITask) {
     if (task?.data?.interactionId) {
       delete this.taskCollection[task.data.interactionId];
-      LoggerProxy.info(`Task removed from collection: ${task.data.interactionId}`, {
+      LoggerProxy.info(`Task removed from collection`, {
         module: TASK_MANAGER_FILE,
         method: METHODS.REMOVE_TASK_FROM_COLLECTION,
+        interactionId: task.data.interactionId,
       });
     }
   }

@@ -852,7 +852,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.agentConfig.deviceType = deviceType;
     switch (deviceType) {
       case LoginOption.BROWSER:
-        await this.webCallingService.registerWebCallingLine();
+        try {
+          await this.webCallingService.registerWebCallingLine();
+        } catch (error) {
+          LoggerProxy.error(`Error registering web calling line: ${error}`, {
+            module: CC_FILE,
+            method: METHODS.HANDLE_DEVICE_TYPE,
+          });
+          throw error;
+        }
         break;
       case LoginOption.AGENT_DN:
       case LoginOption.EXTENSION:
