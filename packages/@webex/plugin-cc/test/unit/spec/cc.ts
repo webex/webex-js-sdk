@@ -1617,19 +1617,7 @@ describe('webex.cc', () => {
         ...webex.cc.agentConfig,
         currentTeamId: 'teamId',
         agentId: 'agent123',
-        isAgentLoggedIn: true,
       } as any;
-    });
-
-    it('should throw if agent is not logged in', async () => {
-      webex.cc.agentConfig.isAgentLoggedIn = false;
-      const payload = {
-        teamId: 'teamId',
-        loginOption: LoginOption.BROWSER,
-        dialNumber: '',
-      };
-      await expect(webex.cc.updateAgentProfile(payload))
-        .rejects.toThrow('Agent must be logged in to update profile');
     });
 
     it('should logout then login and return AgentDeviceTypeUpdateSuccess type', async () => {

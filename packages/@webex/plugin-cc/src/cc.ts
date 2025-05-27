@@ -907,10 +907,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async updateAgentProfile(data: AgentProfileUpdate): Promise<UpdateDeviceTypeResponse> {
-    if (!this.agentConfig?.isAgentLoggedIn) {
-      throw new Error('Agent must be logged in to update profile');
-    }
-
     this.metricsManager.timeEvent([
       METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_SUCCESS,
       METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
