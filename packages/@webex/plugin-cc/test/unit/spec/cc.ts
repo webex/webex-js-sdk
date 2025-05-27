@@ -850,11 +850,16 @@ describe('webex.cc', () => {
 
   describe('stationRelogin', () => {
     it('should relogin successfully', async () => {
-      const response = {};
+      const response = {
+        data: {
+          agentId: 'agentId',
+          teamId: 'teamId',
+        }
+      };
 
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'reload')
-        .mockResolvedValue({} as StationLoginSuccess);
+        .mockResolvedValue(response as StationLoginSuccess);
 
       const result = await webex.cc.stationReLogin();
 
@@ -863,7 +868,7 @@ describe('webex.cc', () => {
         module: CC_FILE,
         method: 'stationReLogin',
       });
-      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent station relogin completed successfully', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith(`Agent station relogin completed successfully agentID: ${response.data.agentId} teamId: ${response.data.teamId}`, {
         module: CC_FILE,
         method: 'stationReLogin',
       });

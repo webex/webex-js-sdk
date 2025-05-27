@@ -311,7 +311,7 @@ describe('Task', () => {
       interactionId: task.data.interactionId,
     });
     expect(loggerLogSpy).toHaveBeenCalledWith(
-      `Task accepted successfully with browser calling`,
+      `Task accepted successfully with webrtc calling`,
       {
         module: TASK_FILE,
         method: 'accept',
@@ -1280,7 +1280,7 @@ describe('Task', () => {
       throw error;
     });
     await expect(task.toggleMute()).rejects.toThrow(new Error(error.details.data.reason));
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'mute', TASK_FILE);
+    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'toggleMute', TASK_FILE);
     expect(loggerInfoSpy).toHaveBeenCalledWith(`Toggling mute state`, {
       module: TASK_FILE,
       method: 'toggleMute',

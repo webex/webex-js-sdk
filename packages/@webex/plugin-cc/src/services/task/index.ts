@@ -4,6 +4,7 @@ import {CallId} from '@webex/calling/dist/types/common/types';
 import {getErrorDetails} from '../core/Utils';
 import {LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
+import {METHODS} from './constants';
 import routingContact from './contact';
 import LoggerProxy from '../../logger-proxy';
 import {
@@ -93,7 +94,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Accepting task`, {
         module: TASK_FILE,
-        method: 'accept',
+        method: METHODS.ACCEPT,
         interactionId: this.data.interactionId,
       });
       this.metricsManager.timeEvent([
@@ -105,7 +106,7 @@ export default class Task extends EventEmitter implements ITask {
         const response = await this.contact.accept({interactionId: this.data.interactionId});
         LoggerProxy.log(`Task accepted successfully`, {
           module: TASK_FILE,
-          method: 'accept',
+          method: METHODS.ACCEPT,
           trackingId: response.trackingId,
           interactionId: this.data.interactionId,
         });
@@ -137,9 +138,9 @@ export default class Task extends EventEmitter implements ITask {
           ['operational', 'behavioral', 'business']
         );
 
-        LoggerProxy.log(`Task accepted successfully with browser calling`, {
+        LoggerProxy.log(`Task accepted successfully with webrtc calling`, {
           module: TASK_FILE,
-          method: 'accept',
+          method: METHODS.ACCEPT,
           interactionId: this.data.interactionId,
         });
 
@@ -157,7 +158,7 @@ export default class Task extends EventEmitter implements ITask {
 
       return Promise.reject(new Error('Unsupported login action for this task'));
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'accept', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.ACCEPT, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
         {
@@ -184,7 +185,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Toggling mute state`, {
         module: TASK_FILE,
-        method: 'toggleMute',
+        method: METHODS.TOGGLE_MUTE,
         interactionId: this.data.interactionId,
       });
 
@@ -192,13 +193,13 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Mute state toggled successfully`, {
         module: TASK_FILE,
-        method: 'toggleMute',
+        method: METHODS.TOGGLE_MUTE,
         interactionId: this.data.interactionId,
       });
 
       return Promise.resolve();
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'mute', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.TOGGLE_MUTE, TASK_FILE);
       throw detailedError;
     }
   }
@@ -217,7 +218,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Declining task`, {
         module: TASK_FILE,
-        method: 'decline',
+        method: METHODS.DECLINE,
         interactionId: this.data.interactionId,
       });
       this.metricsManager.timeEvent([
@@ -236,13 +237,13 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Task declined successfully`, {
         module: TASK_FILE,
-        method: 'decline',
+        method: METHODS.DECLINE,
         interactionId: this.data.interactionId,
       });
 
       return Promise.resolve();
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'decline', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.DECLINE, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
         {
@@ -269,7 +270,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Holding task`, {
         module: TASK_FILE,
-        method: 'hold',
+        method: METHODS.HOLD,
         interactionId: this.data.interactionId,
       });
 
@@ -295,14 +296,14 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Task placed on hold successfully`, {
         module: TASK_FILE,
-        method: 'hold',
+        method: METHODS.HOLD,
         trackingId: response.trackingId,
         interactionId: this.data.interactionId,
       });
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'hold', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.HOLD, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
         {
@@ -330,7 +331,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Resuming task`, {
         module: TASK_FILE,
-        method: 'resume',
+        method: METHODS.RESUME,
         interactionId: this.data.interactionId,
       });
       const {mainInteractionId} = this.data.interaction;
@@ -359,14 +360,14 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Task resumed successfully`, {
         module: TASK_FILE,
-        method: 'resume',
+        method: METHODS.RESUME,
         trackingId: response.trackingId,
         interactionId: this.data.interactionId,
       });
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'resume', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.RESUME, TASK_FILE);
       const mainInteractionId = this.data.interaction?.mainInteractionId;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
@@ -397,7 +398,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Ending task`, {
         module: TASK_FILE,
-        method: 'end',
+        method: METHODS.END,
         interactionId: this.data.interactionId,
       });
 
@@ -419,14 +420,14 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Task ended successfully`, {
         module: TASK_FILE,
-        method: 'end',
+        method: METHODS.END,
         trackingId: response.trackingId,
         interactionId: this.data.interactionId,
       });
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'end', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.END, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_END_FAILED,
         {
@@ -453,7 +454,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Wrapping up task`, {
         module: TASK_FILE,
-        method: 'wrapup',
+        method: METHODS.WRAPUP,
         interactionId: this.data.interactionId,
       });
 
@@ -490,14 +491,14 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Task wrapped up successfully`, {
         module: TASK_FILE,
-        method: 'wrapup',
+        method: METHODS.WRAPUP,
         trackingId: response.trackingId,
         interactionId: this.data.interactionId,
       });
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'wrapup', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.WRAPUP, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
         {
@@ -525,7 +526,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Pausing recording`, {
         module: TASK_FILE,
-        method: 'pauseRecording',
+        method: METHODS.PAUSE_RECORDING,
         interactionId: this.data.interactionId,
       });
 
@@ -547,14 +548,14 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Recording paused successfully`, {
         module: TASK_FILE,
-        method: 'pauseRecording',
+        method: METHODS.PAUSE_RECORDING,
         trackingId: result.trackingId,
         interactionId: this.data.interactionId,
       });
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'pauseRecording', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.PAUSE_RECORDING, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
         {
@@ -584,7 +585,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Resuming recording`, {
         module: TASK_FILE,
-        method: 'resumeRecording',
+        method: METHODS.RESUME_RECORDING,
         interactionId: this.data.interactionId,
       });
 
@@ -611,14 +612,14 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Recording resumed successfully`, {
         module: TASK_FILE,
-        method: 'resumeRecording',
+        method: METHODS.RESUME_RECORDING,
         trackingId: result.trackingId,
         interactionId: this.data.interactionId,
       });
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'resumeRecording', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.RESUME_RECORDING, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
         {
@@ -650,7 +651,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Starting consult`, {
         module: TASK_FILE,
-        method: 'consult',
+        method: METHODS.CONSULT,
         interactionId: this.data.interactionId,
       });
 
@@ -677,14 +678,14 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Consult started successfully to ${consultPayload.to}`, {
         module: TASK_FILE,
-        method: 'consult',
+        method: METHODS.CONSULT,
         trackingId: result.trackingId,
         interactionId: this.data.interactionId,
       });
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'consult', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
         {
@@ -718,7 +719,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Ending consult`, {
         module: TASK_FILE,
-        method: 'endConsult',
+        method: METHODS.END_CONSULT,
         interactionId: this.data.interactionId,
       });
 
@@ -743,14 +744,14 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Consult ended successfully`, {
         module: TASK_FILE,
-        method: 'endConsult',
+        method: METHODS.END_CONSULT,
         trackingId: result.trackingId,
         interactionId: this.data.interactionId,
       });
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'endConsult', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.END_CONSULT, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
         {
@@ -782,7 +783,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Transferring task to ${transferPayload.to}`, {
         module: TASK_FILE,
-        method: 'transfer',
+        method: METHODS.TRANSFER,
         interactionId: this.data.interactionId,
       });
 
@@ -818,14 +819,14 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Task transferred successfully to ${transferPayload.to}`, {
         module: TASK_FILE,
-        method: 'transfer',
+        method: METHODS.TRANSFER,
         trackingId: result.trackingId,
         interactionId: this.data.interactionId,
       });
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'transfer', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.TRANSFER, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
@@ -862,7 +863,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Initiating consult transfer to ${consultTransferPayload.to}`, {
         module: TASK_FILE,
-        method: 'consultTransfer',
+        method: METHODS.CONSULT_TRANSFER,
         interactionId: this.data.interactionId,
       });
 
@@ -898,14 +899,14 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Consult transfer completed successfully to ${consultTransferPayload.to}`, {
         module: TASK_FILE,
-        method: 'consultTransfer',
+        method: METHODS.CONSULT_TRANSFER,
         trackingId: result.trackingId,
         interactionId: this.data.interactionId,
       });
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'consultTransfer', TASK_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT_TRANSFER, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
