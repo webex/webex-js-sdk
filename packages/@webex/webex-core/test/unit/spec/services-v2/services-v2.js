@@ -5,9 +5,9 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {Services} from '@webex/webex-core';
+import {ServicesV2} from '@webex/webex-core';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
-import {serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
+import {formattedServiceHostmapV2, serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
 
 const waitForAsync = () =>
   new Promise((resolve) =>
@@ -18,7 +18,7 @@ const waitForAsync = () =>
 
 /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
-  describe('Services', () => {
+  describe('ServicesV2', () => {
     let webex;
     let services;
     let catalog;
@@ -26,7 +26,7 @@ describe('webex-core', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          services: Services,
+          services: ServicesV2,
           newMetrics: NewMetrics,
         },
       });
@@ -460,37 +460,25 @@ describe('webex-core', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         assert(
-          Object.keys(serviceHostmap.serviceLinks).length >= formattedHM.length,
+          serviceHostmap.services.length >= Object.values(formattedHM).length,
           'length is not equal or less than'
         );
-      });
-
-      it('creates an array of equal or less length of hostMap', () => {
-        formattedHM = services._formatReceivedHostmap(serviceHostmap);
-
-        assert(
-          Object.keys(serviceHostmap.hostCatalog).length >= formattedHM.length,
-          'length is not equal or less than'
-        );
-      });
-
-      it('creates an array with matching url data', () => {
-        formattedHM = services._formatReceivedHostmap(serviceHostmap);
-
-        formattedHM.forEach((entry) => {
-          assert.equal(serviceHostmap.serviceLinks[entry.name], entry.defaultUrl);
-        });
       });
 
       it('has all keys in host map hosts', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        formattedHM.forEach((service) => {
-          service.hosts.forEach((host) => {
+        Object.values(formattedHM).forEach((service) => {
+          assert.hasAllKeys(
+            service,
+            ['id', 'serviceName', 'serviceUrls'],
+            `${service.serviceName} has an invalid host shape`
+          );
+          service.serviceUrls.forEach((serviceUrl) => {
             assert.hasAllKeys(
-              host,
-              ['homeCluster', 'host', 'id', 'priority', 'ttl'],
-              `${service.name} has an invalid host shape`
+              serviceUrl,
+              ['host', 'baseUrl', 'priority'],
+              `${service.serviceName} has an invalid host shape`
             );
           });
         });
@@ -499,173 +487,25 @@ describe('webex-core', () => {
       it('creates a formmated host map containing all received host map service entries', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        formattedHM.forEach((service) => {
-          const foundServiceKey = Object.keys(serviceHostmap.serviceLinks).find(
-            (key) => service.name === key
+        Object.values(formattedHM).forEach((service) => {
+          const foundServiceKey = Object.keys(serviceHostmap.activeServices).find(
+            (key) => service.serviceName === key
           );
 
           assert.isDefined(foundServiceKey);
         });
       });
 
-      it('creates an array with matching names', () => {
-        formattedHM = services._formatReceivedHostmap(serviceHostmap);
-
-        assert.hasAllKeys(
-          serviceHostmap.serviceLinks,
-          formattedHM.map((item) => item.name)
-        );
-      });
-
       it('creates the expected formatted host map', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        assert.deepEqual(formattedHM, [
-          {
-            defaultHost: 'example-a.com',
-            defaultUrl: 'https://example-a.com/api/v1',
-            hosts: [
-              {
-                homeCluster: true,
-                host: 'example-a-1.com',
-                id: '0:0:0:example-a',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-a-2.com',
-                id: '0:0:0:example-a',
-                priority: 3,
-                ttl: -1,
-              },
-            ],
-            name: 'example-a',
-          },
-          {
-            defaultHost: 'example-b.com',
-            defaultUrl: 'https://example-b.com/api/v1',
-            hosts: [
-              {
-                homeCluster: true,
-                host: 'example-b-1.com',
-                id: '0:0:0:example-b',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-b-2.com',
-                id: '0:0:0:example-b',
-                priority: 3,
-                ttl: -1,
-              },
-            ],
-            name: 'example-b',
-          },
-          {
-            defaultHost: 'example-c.com',
-            defaultUrl: 'https://example-c.com/api/v1',
-            hosts: [
-              {
-                homeCluster: true,
-                host: 'example-c-1.com',
-                id: '0:0:0:example-c',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-c-2.com',
-                id: '0:0:0:example-c',
-                priority: 3,
-                ttl: -1,
-              },
-            ],
-            name: 'example-c',
-          },
-          {
-            defaultHost: 'example-d.com',
-            defaultUrl: 'https://example-d.com/api/v1',
-            hosts: [
-              {
-                homeCluster: true,
-                host: 'example-c-1.com',
-                id: '0:0:0:example-d',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-c-2.com',
-                id: '0:0:0:example-d',
-                priority: 3,
-                ttl: -1,
-              },
-            ],
-            name: 'example-d',
-          },
-          {
-            defaultHost: 'example-e.com',
-            defaultUrl: 'https://example-e.com/api/v1',
-            hosts: [
-              {
-                homeCluster: true,
-                host: 'example-e-1.com',
-                id: '0:0:0:different-e',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-e-2.com',
-                id: '0:0:0:different-e',
-                priority: 3,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-e-3.com',
-                id: '0:0:0:different-e',
-                priority: 1,
-                ttl: -1,
-              },
-              {
-                homeCluster: false,
-                host: 'example-e-4.com',
-                id: '0:0:0:different-e',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: false,
-                host: 'example-e-5.com',
-                id: '0:0:0:different-e',
-                priority: 3,
-                ttl: -1,
-              },
-            ],
-            name: 'example-e',
-          },
-          {
-            defaultHost: 'example-f.com',
-            defaultUrl: 'https://example-f.com/api/v1',
-            hosts: [],
-            name: 'example-f',
-          },
-          {
-            defaultHost: 'example-g.com',
-            defaultUrl: 'https://example-g.com/api/v1',
-            hosts: [],
-            name: 'example-g',
-          },
-        ]);
+        assert.deepEqual(formattedHM, formattedServiceHostmapV2);
       });
 
       it('has hostCatalog updated', () => {
         services._formatReceivedHostmap(serviceHostmap);
 
-        assert.deepStrictEqual(services._hostCatalog, serviceHostmap.hostCatalog);
+        assert.deepStrictEqual(services._hostCatalog, formattedServiceHostmapV2);
       });
     });
 

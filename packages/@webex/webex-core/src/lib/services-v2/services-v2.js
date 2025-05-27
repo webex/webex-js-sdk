@@ -674,7 +674,7 @@ const Services = WebexPlugin.extend({
 
     services.forEach(({id, serviceName, serviceUrls}) => {
       const formattedServiceUrls = serviceUrls.map((serviceUrl) => ({
-        host: new URL(serviceUrl).host,
+        host: new URL(serviceUrl.baseUrl).host,
         ...serviceUrl,
       }));
 
@@ -684,7 +684,6 @@ const Services = WebexPlugin.extend({
         serviceUrls: formattedServiceUrls,
       };
     });
-
     this._updateServiceUrls(activeServices);
     this._updateHostCatalog(formattedHostmap);
 
