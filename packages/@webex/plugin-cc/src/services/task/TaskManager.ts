@@ -69,7 +69,7 @@ export default class TaskManager extends EventEmitter {
   private registerTaskListeners() {
     this.webSocketManager.on('message', (event: string) => {
       const payload = JSON.parse(event);
-      let task: ITask | undefined;
+      let task: ITask;
 
       if (payload.data?.type) {
         // for events emitted on existing tasks
@@ -78,7 +78,7 @@ export default class TaskManager extends EventEmitter {
         }
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
-            this.taskCollection[payload.data.interactionId] = task!;
+            this.taskCollection[payload.data.interactionId] = task;
             this.emit(TASK_EVENTS.TASK_HYDRATE, task);
             break;
 
@@ -245,7 +245,7 @@ export default class TaskManager extends EventEmitter {
     });
   }
 
-  private updateTaskData(task: ITask | undefined, taskData: TaskData) {
+  private updateTaskData(task: ITask, taskData: TaskData) {
     if (!task) {
       throw new Error('Task not found for update');
     }
@@ -281,7 +281,7 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
-  public getTask(taskId: TaskId): ITask | undefined {
+  public getTask(taskId: TaskId): ITask {
     return this.taskCollection[taskId];
   }
 
