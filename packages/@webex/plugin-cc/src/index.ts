@@ -99,8 +99,6 @@ export type {
   StationLoginResponse,
   /** Station logout response */
   StationLogoutResponse,
-  /** Station re-login response */
-  StationReLoginResponse,
   /** Buddy agents response */
   BuddyAgentsResponse,
   /** Buddy agents information */
