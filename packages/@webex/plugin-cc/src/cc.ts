@@ -1,5 +1,6 @@
 import {WebexPlugin} from '@webex/webex-core';
 import EventEmitter from 'events';
+import {v4 as uuidv4} from 'uuid';
 import {
   SetStateResponse,
   CCPluginConfig,
@@ -7,6 +8,7 @@ import {
   WebexSDK,
   LoginOption,
   AgentLogin,
+  AgentProfileUpdate,
   StationLoginResponse,
   StationLogoutResponse,
   StationReLoginResponse,
@@ -14,6 +16,8 @@ import {
   BuddyAgents,
   SubscribeRequest,
   UploadLogsResponse,
+  UpdateDeviceTypeResponse,
+  GenericError,
 } from './types';
 import {
   READY,
@@ -127,6 +131,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.setupEventListeners();
 
       const resp = await this.connectWebsocket();
+      // Ensure 'dn' is always populated from 'defaultDn'
+      resp.dn = resp.defaultDn;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
         {
@@ -367,6 +373,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       const resp = await loginResponse;
       const {channelsMap, ...loginData} = resp.data;
+      this.agentConfig.currentTeamId = resp.data.teamId;
       const response = {
         ...loginData,
         mmProfile: {
@@ -699,6 +706,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       let {auxCodeId} = reLoginResponse.data;
       this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp;
       this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
+      this.agentConfig.currentTeamId = reLoginResponse.data.teamId;
       await this.handleDeviceType(deviceType as LoginOption, dn);
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
@@ -760,6 +768,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       case LoginOption.AGENT_DN:
       case LoginOption.EXTENSION:
         this.agentConfig.defaultDn = dn;
+        this.agentConfig.dn = dn;
         break;
       default:
         LoggerProxy.error(`Unsupported device type: ${deviceType}`, {
@@ -873,10 +882,113 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * messages, and client-side events, then securely submits them to Webex's diagnostics
    * service. The returned tracking ID, feedbackID can be provided to Webex support for faster
    * issue resolution.
-   * @returns Promise<SubmitLogsResponse>
+   * @returns Promise<UploadLogsResponse>
    * @throws Error
    */
   public async uploadLogs(): Promise<UploadLogsResponse> {
     return this.webexRequest.uploadLogs();
+  }
+
+  /**
+   * Updates the agent device type.
+   * This method allows the agent to change their device type (e.g., from BROWSER to EXTENSION or anything else).
+   * It will also throw an error if the new device type is the same as the current one.
+   * @param data type is AgentProfileUpdate - The data required to update the agent device type, including the login option, team id and dial number.
+   * @returns Promise<UpdateDeviceTypeResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * const data = {
+   *   loginOption: 'EXTENSION',
+   *   dialNumber: '1234567890',
+   *   teamId: 'team-id-if-needed', // Optional, if not provided, current team ID will be used
+   * };
+   * const result = await webex.cc.updateAgentProfile(data);
+   * ```
+   */
+  public async updateAgentProfile(data: AgentProfileUpdate): Promise<UpdateDeviceTypeResponse> {
+    this.metricsManager.timeEvent([
+      METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_SUCCESS,
+      METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
+    ]);
+
+    const trackingId = `WX_CC_SDK_${uuidv4()}`;
+
+    LoggerProxy.info(`[${trackingId}] updateAgentProfile | starting profile update`, {
+      module: CC_FILE,
+      method: `updateAgentProfile`,
+    });
+
+    try {
+      // Only block if both loginOption AND teamId remain unchanged
+      if (
+        this.webCallingService?.loginOption === data.loginOption &&
+        data.teamId === this.agentConfig.currentTeamId
+      ) {
+        const message =
+          'Will not proceed with device update as new Device type is same as current device type and teamId is same as current teamId';
+        const err = new Error(message) as GenericError;
+        err.details = {
+          type: 'Identical Device Change Failure',
+          orgId: this.$webex.credentials.getOrgId(),
+          trackingId,
+          data: {
+            agentId: this.agentConfig.agentId,
+            reasonCode: 'R002',
+            reason: message,
+          },
+        };
+        throw err;
+      }
+
+      await this.stationLogout({
+        logoutReason: 'User requested agent device change',
+      });
+
+      const loginPayload: AgentLogin = {
+        teamId: data.teamId,
+        loginOption: data.loginOption,
+        dialNumber: data.dialNumber,
+      };
+
+      const resp = await this.stationLogin(loginPayload);
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
+          loginType: data.loginOption,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log(`[${trackingId}] updateAgentProfile | profile updated successfully`, {
+        module: CC_FILE,
+        method: this.updateAgentProfile.name,
+      });
+
+      const deviceTypeUpdateResponse: UpdateDeviceTypeResponse = {
+        ...resp,
+        type: 'AgentDeviceTypeUpdateSuccess',
+      };
+
+      return deviceTypeUpdateResponse;
+    } catch (error) {
+      const failure = (error as GenericError).details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          loginType: data.loginOption,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.error(`[${trackingId}] updateAgentProfile | error updating profile: ${error}`, {
+        module: CC_FILE,
+        method: this.updateAgentProfile.name,
+      });
+      throw error;
+    }
   }
 }
