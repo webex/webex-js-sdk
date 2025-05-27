@@ -237,13 +237,11 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
     item.eventPayload?.event?.eventData?.markAsTestEvent
   );
 
-  let pairedDevice;
-
   // Set upgradeChannel to 'gold' if buildType is 'prod', otherwise to the buildType value
   const upgradeChannel = buildType === 'prod' ? 'gold' : buildType;
   if (webex.devicemanager) {
-    pairedDevice = webex.devicemanager.getPairedDevice();
-    if (pairedDevice.id) {
+    const pairedDevice = webex.devicemanager.getPairedDevice();
+    if (pairedDevice) {
       const devicePayload = {
         deviceId: pairedDevice.deviceInfo.id,
         // deviceJoinType:
