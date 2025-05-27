@@ -143,8 +143,6 @@ export default class Task extends EventEmitter implements ITask {
           method: METHODS.ACCEPT,
           interactionId: this.data.interactionId,
         });
-
-        return Promise.resolve(); // TODO: Update this with sending the task object received in AgentContactAssigned
       }
 
       return Promise.resolve(); // TODO: reject for extension as part of refactor
