@@ -1285,7 +1285,7 @@ describe('webex.cc', () => {
 
 
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.EXTENSION);
-      expect(webex.cc.agentConfig.defaultDn).toBe('12345');
+      expect(webex.cc.agentConfig.dn).toBe('12345');
       expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('auxCodeId');
       expect(webex.cc.agentConfig.lastStateChangeTimestamp).toStrictEqual(1738575135188);
       expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toStrictEqual(1738575135189);
@@ -1315,7 +1315,7 @@ describe('webex.cc', () => {
       await webex.cc['silentRelogin']();
 
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.AGENT_DN);
-      expect(webex.cc.agentConfig.defaultDn).toBe('67890');
+      expect(webex.cc.agentConfig.dn).toBe('67890');
     });
   });
 
