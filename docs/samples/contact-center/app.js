@@ -878,6 +878,19 @@ function register() {
             option.text = team.name;
             teamsDropdown.add(option);
         });
+        if (updateTeamDropdownElm) {
+          updateTeamDropdownElm.innerHTML = teamsDropdown.innerHTML;
+          updateTeamDropdownElm.value      = teamsDropdown.value;  // sync initial selection
+        }
+        // Keep both dropdowns in sync
+        teamsDropdown.addEventListener('change', () => {
+          if (updateTeamDropdownElm) {
+            updateTeamDropdownElm.value = teamsDropdown.value;
+          }
+        });
+        updateTeamDropdownElm.addEventListener('change', () => {
+          teamsDropdown.value = updateTeamDropdownElm.value;
+        });
         const loginVoiceOptions = agentProfile.loginVoiceOptions;
         populateLoginOptions(
           loginVoiceOptions.filter((o) => agentProfile.webRtcEnabled || o !== 'BROWSER')
@@ -1131,26 +1144,6 @@ function logoutAgent() {
   });
 }
 
-async function updateAgentDeviceType() {
-  const payload = {
-    teamId: teamsDropdown.value,
-    loginOption: agentDeviceType,
-    dialNumber: dialNumber.value
-  };
-  try {
-    const response = await webex.cc.updateAgentDeviceType(payload);
-    console.log('Profile updated successfully', response);
-  }
-  catch (error) {
-    console.error('Profile update failed', error);
-    alert('Profile update failed');
-  }
-}
-
-function showupdateAgentDeviceTypeUI() {
-  updateFieldsContainer.classList.toggle('hidden');
-}
-
 async function applyupdateAgentDeviceType() {
   const loginOption = updateLoginOptionElm.value;
   const newDial = loginOption === 'BROWSER' ? '' : updateDialNumberElm.value;
@@ -1173,6 +1166,14 @@ async function applyupdateAgentDeviceType() {
     console.error('Profile update failed', err);
     alert('Profile update failed');
   }
+}
+
+function showupdateAgentDeviceTypeUI() {
+  // ensure update dialog reflects current team
+  if (updateTeamDropdownElm) {
+    updateTeamDropdownElm.value = teamsDropdown.value;
+  }
+  updateFieldsContainer.classList.toggle('hidden');
 }
 
 function showAgentStatePopup(reason) {

@@ -1740,5 +1740,27 @@ describe('webex.cc', () => {
         }),
       });
     });
+
+    it('should allow update when same device type but different teamId', async () => {
+      webex.cc.agentConfig.currentTeamId = 'team1';
+      webex.cc.webCallingService.loginOption = LoginOption.BROWSER;
+
+      const data = {
+        teamId: 'team2',
+        loginOption: LoginOption.BROWSER,
+        dialNumber: '1234',
+      };
+      jest.spyOn(webex.cc, 'stationLogout').mockResolvedValue({});
+      const loginSpy = jest.spyOn(webex.cc, 'stationLogin').mockResolvedValue({
+        type: 'AgentDeviceTypeUpdateSuccess',
+      } as any);
+
+      await expect(webex.cc.updateAgentDeviceType(data)).resolves.toBeDefined();
+      expect(loginSpy).toHaveBeenCalledWith({
+        teamId: 'team2',
+        loginOption: data.loginOption,
+        dialNumber: data.dialNumber,
+      });
+    });
   });
 });

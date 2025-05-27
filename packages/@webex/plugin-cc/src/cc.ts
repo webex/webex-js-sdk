@@ -920,8 +920,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
 
     try {
-      // ensure we change device type
-      if (this.webCallingService?.loginOption === data.loginOption) {
+      const newTeamId = data.teamId ?? this.agentConfig.currentTeamId ?? EMPTY_STRING;
+      // Only block if both loginOption AND teamId remain unchanged
+      if (
+        this.webCallingService?.loginOption === data.loginOption &&
+        newTeamId === this.agentConfig.currentTeamId
+      ) {
         const message =
           'Will not proceed with device update as new Device type is same as current device type';
         const err = new Error(message) as GenericError;
@@ -943,7 +947,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
 
       const loginPayload: AgentLogin = {
-        teamId: data.teamId ?? this.agentConfig.currentTeamId ?? EMPTY_STRING,
+        teamId: newTeamId,
         loginOption: data.loginOption,
         dialNumber: data.dialNumber,
       };
