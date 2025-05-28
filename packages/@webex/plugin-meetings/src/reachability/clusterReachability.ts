@@ -49,7 +49,13 @@ export class ClusterReachability extends EventsScope {
   private srflxIceCandidates: RTCIceCandidate[] = [];
   public readonly isVideoMesh: boolean;
   public readonly name;
-  public readonly reachedSubnets: Set<string> = new Set();
+  public readonly reachedSubnets: Set<{
+    protocol: string;
+    serverIp: string;
+    reachable: string;
+    latency: number;
+    port?: number;
+  }> = new Set();
 
   /**
    * Constructor for ClusterReachability
@@ -252,13 +258,15 @@ export class ClusterReachability extends EventsScope {
    * @param {number} latency
    * @param {string|null} [publicIp]
    * @param {string|null} [serverIp]
+   * @param {number|null} [port]
    * @returns {void}
    */
   private saveResult(
     protocol: 'udp' | 'tcp' | 'xtls',
     latency: number,
     publicIp?: string | null,
-    serverIp?: string | null
+    serverIp?: string | null,
+    port?: number | null
   ) {
     const result = this.result[protocol];
 
@@ -289,7 +297,21 @@ export class ClusterReachability extends EventsScope {
     }
 
     if (serverIp) {
-      this.reachedSubnets.add(serverIp);
+      // Checking if the serverIp and port combination already exists in the reachedSubnets
+      const isDuplicate = Array.from(this.reachedSubnets).some(
+        (subnet) =>
+          subnet.serverIp === serverIp && subnet.protocol === protocol && subnet.port === port
+      );
+
+      if (!isDuplicate) {
+        this.reachedSubnets.add({
+          protocol,
+          serverIp,
+          reachable: 'true',
+          latency,
+          port,
+        });
+      }
     }
   }
 
@@ -359,14 +381,26 @@ export class ClusterReachability extends EventsScope {
             }
           }
 
-          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp);
+          this.saveResult(
+            'udp',
+            latencyInMilliseconds,
+            e.candidate.address,
+            serverIp,
+            e.candidate.port
+          );
 
           this.determineNatType(e.candidate);
         }
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
           const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
-          this.saveResult(protocol, latencyInMilliseconds, null, e.candidate.address);
+          this.saveResult(
+            protocol,
+            latencyInMilliseconds,
+            null,
+            e.candidate.address,
+            e.candidate.port
+          );
         }
       }
     };

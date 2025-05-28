@@ -165,7 +165,7 @@ export default class Reachability extends EventsScope {
         let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
         for (let i = 0; i < reachedSubnetsArray.length; i += 1) {
           const subnet = reachedSubnetsArray[i];
-          const reachedSubnetFirstOctet = subnet.split('.')[0];
+          const reachedSubnetFirstOctet = subnet.serverIp.split('.')[0];
 
           if (subnetFirstOctet === reachedSubnetFirstOctet) {
             acc.add(cluster.name);
@@ -460,13 +460,33 @@ export default class Reachability extends EventsScope {
 
       const allClusterResults: ReachabilityResults = JSON.parse(resultsJson);
 
-      results = mapValues(allClusterResults, (clusterResult) => ({
-        udp: this.mapTransportResultToBackendDataFormat(clusterResult.udp || {result: 'untested'}),
-        tcp: this.mapTransportResultToBackendDataFormat(clusterResult.tcp || {result: 'untested'}),
-        xtls: this.mapTransportResultToBackendDataFormat(
-          clusterResult.xtls || {result: 'untested'}
-        ),
-      }));
+      results = mapValues(allClusterResults, (clusterResult, clusterKey) => {
+        const clusterReachability = this.clusterReachability[clusterKey];
+        const subnets = clusterReachability
+          ? Array.from(clusterReachability.reachedSubnets || [])
+          : [];
+
+        return {
+          udp: {
+            ...this.mapTransportResultToBackendDataFormat(
+              clusterResult.udp || {result: 'untested'}
+            ),
+            subnets: subnets.filter((subnet) => subnet.protocol === 'udp'),
+          },
+          tcp: {
+            ...this.mapTransportResultToBackendDataFormat(
+              clusterResult.tcp || {result: 'untested'}
+            ),
+            subnets: subnets.filter((subnet) => subnet.protocol === 'tcp'),
+          },
+          xtls: {
+            ...this.mapTransportResultToBackendDataFormat(
+              clusterResult.xtls || {result: 'untested'}
+            ),
+            subnets: subnets.filter((subnet) => subnet.protocol === 'xtls'),
+          },
+        };
+      });
     } catch (e) {
       // empty storage, that's ok
       LoggerProxy.logger.warn(
