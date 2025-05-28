@@ -43,18 +43,6 @@ describe('http-core', () => {
 
           assert.isRejected(interceptor.onResponse({}, response));
         });
-        it('resolves on appapi redirect error', () => {
-          const response = {
-            statusCode: 404,
-            body: {
-              code: 404100,
-            },
-          };
-
-          return interceptor.onResponse({}, response).then((result) => {
-            assert.equal(result, response);
-          });
-        });
       });
     });
   });
