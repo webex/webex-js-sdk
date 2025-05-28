@@ -130,14 +130,17 @@
                   <input id="dialNumber" name="dialNumber" placeholder="Dial Number" value="" type="text">
                   <button id="loginAgent" disabled class="btn btn-primary my-3" onclick="doAgentLogin()">Login</button>
                   <button id="logoutAgent" class="btn btn-primary my-3 ml-2 hidden" onclick="logoutAgent()">Logout</button>
-                  <button id="updateAgentDeviceType" class="btn btn-primary my-3 ml-2 hidden" onclick="showupdateAgentDeviceTypeUI()">Update Profile</button>
+                  <button id="updateAgentProfile" class="btn btn-primary my-3 ml-2 hidden" onclick="showupdateAgentProfileUI()">Update Profile</button>
 
-                  <div id="updateAgentDeviceTypeFields" class="hidden" style="margin-top:1rem;">
+                  <div id="updateAgentProfileFields" class="hidden" style="margin-top:1rem;">
+                    <select id="updateTeamDropdown" class="form-control w-auto my-2">
+                      <option value="" selected hidden>Choose Team …</option>
+                    </select>
                     <select id="updateLoginOption" class="form-control w-auto">
                       <option value="" selected hidden>Choose Login Option …</option>
                     </select>
                     <input id="updateDialNumber" placeholder="Dial Number" value="" type="text" class="form-control w-auto my-2" />
-                    <button id="applyupdateAgentDeviceType" class="btn btn-secondary" onclick="applyupdateAgentDeviceType()">Save</button>
+                    <button id="applyupdateAgentProfile" disabled class="btn btn-secondary" onclick="applyupdateAgentProfile()">Save</button>
                   </div>
                 </fieldset>
                 <fieldset style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
