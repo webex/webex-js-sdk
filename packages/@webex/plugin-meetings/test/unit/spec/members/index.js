@@ -358,6 +358,14 @@ describe('plugin-meetings', () => {
 
         assert.isRejected(members.cancelSIPInvite({memberId}));
       });
+      
+      it('should throw a rejection if memberId is not provided', async () => {
+        const members = createMembers({url: url1});
+
+        assert.isRejected(members.cancelSIPInvite({}));
+        assert.isRejected(members.cancelSIPInvite({memberId: null}));
+        assert.isRejected(members.cancelSIPInvite({memberId: undefined}));
+      });
     });
 
     describe('#assignRoles', () => {
