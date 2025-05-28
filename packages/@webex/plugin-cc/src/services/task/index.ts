@@ -28,6 +28,7 @@ import {Failure} from '../core/GlobalTypes';
 
 /**
  * Task class that implements the {@link ITask} interface
+ * Represents a contact center task/interaction that can be managed by an agent
  * @implements {ITask}
  */
 export default class Task extends EventEmitter implements ITask {
@@ -38,6 +39,12 @@ export default class Task extends EventEmitter implements ITask {
   private metricsManager: MetricsManager;
   public webCallMap: Record<TaskId, CallId>;
 
+  /**
+   * Creates a new Task instance
+   * @param contact - The routing contact service instance
+   * @param webCallingService - The web calling service instance
+   * @param data - Initial task data
+   */
   constructor(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
@@ -83,7 +90,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used for incoming task accept by agent.
+   * Agent accepts the incoming task.
    *
    * @returns Promise<TaskResponse>
    * @throws Error
@@ -118,22 +125,9 @@ export default class Task extends EventEmitter implements ITask {
           },
           ['operational', 'behavioral', 'business']
         );
-
-        return Promise.resolve(); // TODO: Update this with sending the task object received in AgentContactAssigned
       }
 
-      // TODO: Invoke the accept API from services layer. This is going to be used in Outbound Dialer scenario
-      const response = await this.contact.accept({interactionId: this.data.interactionId});
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-          taskId: this.data.interactionId,
-        },
-        ['operational', 'behavioral', 'business']
-      );
-
-      return response;
+      return Promise.resolve(); // TODO: Update this with sending the task object received in AgentContactAssigned
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'accept', CC_FILE);
       this.metricsManager.trackEvent(
@@ -150,8 +144,8 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used for the placing the call in mute or unmute by the agent.
-   *
+   * Agent can mute/unmute the webrtc task.
+   * @returns Promise<void> - Resolves when mute/unmute operation completes
    * @throws Error
    * @example
    * ```typescript
@@ -170,7 +164,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used for the incoming task decline by agent.
+   * Agent can decline the incoming task.
    *
    * @returns Promise<TaskResponse>
    * @throws Error
@@ -212,7 +206,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to hold the task.
+   * Puts the customer's task/interaction on hold.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -260,7 +254,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to resume the task.
+   * Resumes the customer's task/interaction that was previously put on hold.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -314,7 +308,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to end the task.
+   * Ends the task/interaction with the customer.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -355,10 +349,10 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to wrap up the task.
-   * @param wrapupPayload - WrapupPayLoad
+   * Wraps up the task/interaction with the customer.
+   * @param wrapupPayload - WrapupPayLoad containing auxCodeId and wrapUpReason
    * @returns Promise<TaskResponse>
-   * @throws Error
+   * @throws Error - Throws if task data is unavailable, auxCodeId is missing, or wrapUpReason is missing
    * @example
    * ```typescript
    * task.wrapup(wrapupPayload).then(()=>{}).catch(()=>{})
@@ -415,7 +409,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to pause the call recording
+   * Pause the recording for the voice task.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -458,8 +452,8 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to pause the call recording
-   * @param resumeRecordingPayload
+   * Resumes the recording for the voice task that was previously paused.
+   * @param resumeRecordingPayload - Configuration for resuming recording, defaults to {autoResumed: false}
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -509,8 +503,8 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to consult the task
-   * @param consultPayload
+   * Consults another agent or queue on an onngoing task for further assistance.
+   * @param consultPayload - ConsultPayload containing destination and destinationType
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -564,7 +558,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to end the consult
+   * Ends the consult session in progress for a task.
    * @param consultEndPayload
    * @returns Promise<TaskResponse>
    * @throws Error
@@ -615,8 +609,8 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to blind transfer or vTeam transfer the task
-   * @param transferPayload
+   * Transfer the task to an agent dierctly or to the queue.
+   * @param transferPayload - Transfer configuration containing destination and destination type
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -680,8 +674,8 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to consult transfer the task
-   * @param consultTransferPayload
+   * Transfer the task to the consulting agent.
+   * @param consultTransferPayload - ConsultTransfer configuration containing destination and destinationType
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example

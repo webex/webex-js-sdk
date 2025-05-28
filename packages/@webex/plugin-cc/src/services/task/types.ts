@@ -119,18 +119,12 @@ export enum TASK_EVENTS {
   TASK_CONSULT_QUEUE_CANCELLED = 'task:consultQueueCancelled',
   /** Triggered when a queue consultation fails */
   TASK_CONSULT_QUEUE_FAILED = 'task:consultQueueFailed',
-  /** Triggered when a consultation request is accepted */
-  TASK_CONSULT_ACCEPTED = 'task:consultAccepted',
   /** Triggered when consultation is in progress */
   TASK_CONSULTING = 'task:consulting',
   /** Triggered when a new consultation is created */
   TASK_CONSULT_CREATED = 'task:consultCreated',
   /** Triggered when a consultation is offered */
   TASK_OFFER_CONSULT = 'task:offerConsult',
-  /** Triggered when a task is paused */
-  TASK_PAUSE = 'task:pause',
-  /** Triggered when a paused task is resumed */
-  TASK_RESUME = 'task:resume',
   /** Triggered when a task is completed/terminated */
   TASK_END = 'task:end',
   /** Triggered when a task enters wrap-up state */
@@ -145,7 +139,7 @@ export enum TASK_EVENTS {
   TASK_RECORDING_RESUMED = 'task:recordingResumed',
   /** Triggered when recording resume attempt fails */
   TASK_RECORDING_RESUME_FAILED = 'task:recordingResumeFailed',
-  /** Triggered when a task is rejected */
+  /** Triggered when a task is rejected/unanswered */
   TASK_REJECT = 'task:rejected',
   /** Triggered when a task is populated with data */
   TASK_HYDRATE = 'task:hydrate',
