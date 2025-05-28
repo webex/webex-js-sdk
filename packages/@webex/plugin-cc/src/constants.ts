@@ -43,7 +43,7 @@ export const METHODS = {
   START_OUTDIAL: 'startOutdial',
   GET_QUEUES: 'getQueues',
   UPLOAD_LOGS: 'uploadLogs',
-  UPDATE_AGENT_DEVICE_TYPE: 'updateAgentDeviceType',
+  UPDATE_AGENT_PROFILE: 'updateAgentProfile',
   GET_DEVICE_ID: 'getDeviceId',
   HANDLE_INCOMING_TASK: 'handleIncomingTask',
   HANDLE_TASK_HYDRATE: 'handleTaskHydrate',
