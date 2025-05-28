@@ -26,6 +26,7 @@ import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
   endPointMap,
+  METHODS,
 } from './constants';
 
 /*
@@ -58,7 +59,10 @@ export default class AgentConfigService {
       );
 
       const userConfigData = await userConfigPromise;
-      LoggerProxy.info('Fetched user data', {module: CONFIG_FILE_NAME, method: 'getAgentConfig'});
+      LoggerProxy.info(`Fetched user data, userId: ${userConfigData.ciUserId}`, {
+        module: CONFIG_FILE_NAME,
+        method: METHODS.GET_AGENT_CONFIG,
+      });
 
       const agentProfilePromise = this.getDesktopProfileById(orgId, userConfigData.agentProfileId);
       const siteInfoPromise = this.getSiteInfo(orgId, userConfigData.siteId);
@@ -100,7 +104,7 @@ export default class AgentConfigService {
 
       LoggerProxy.info('Fetched all required data', {
         module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
+        method: METHODS.GET_AGENT_CONFIG,
       });
 
       const response = parseAgentConfigs({
@@ -119,18 +123,18 @@ export default class AgentConfigService {
       // replace CONFIG_FILE_NAME with CONFIG_FILE_NAME
       LoggerProxy.info('Parsing completed for agent-config', {
         module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
+        method: METHODS.GET_AGENT_CONFIG,
       });
       LoggerProxy.info('Fetched configuration data successfully', {
         module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
+        method: METHODS.GET_AGENT_CONFIG,
       });
 
       return response;
     } catch (error) {
       LoggerProxy.error(`getAgentConfig call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
+        method: METHODS.GET_AGENT_CONFIG,
       });
       throw error;
     }
@@ -143,6 +147,11 @@ export default class AgentConfigService {
    * @returns {Promise<AgentResponse>}
    */
   public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentResponse> {
+    LoggerProxy.info('Fetching user data using CI', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_USER_USING_CI,
+    });
+
     try {
       const resource = endPointMap.userByCI(orgId, agentId);
       const response = await this.webexReq.request({
@@ -157,14 +166,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getUserUsingCI api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getUserUsingCI',
+        method: METHODS.GET_USER_USING_CI,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getUserUsingCI API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getUserUsingCI',
+        method: METHODS.GET_USER_USING_CI,
       });
       throw error;
     }
@@ -180,6 +189,11 @@ export default class AgentConfigService {
     orgId: string,
     desktopProfileId: string
   ): Promise<DesktopProfileResponse> {
+    LoggerProxy.info('Fetching desktop profile', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_DESKTOP_PROFILE_BY_ID,
+    });
+
     try {
       const resource = endPointMap.desktopProfile(orgId, desktopProfileId);
       const response = await this.webexReq.request({
@@ -194,14 +208,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getDesktopProfileById api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getDesktopProfileById',
+        method: METHODS.GET_DESKTOP_PROFILE_BY_ID,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getDesktopProfileById API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getDesktopProfileById',
+        method: METHODS.GET_DESKTOP_PROFILE_BY_ID,
       });
       throw error;
     }
@@ -217,6 +231,11 @@ export default class AgentConfigService {
     orgId: string,
     multimediaProfileId: string
   ): Promise<MultimediaProfileResponse> {
+    LoggerProxy.info('Fetching multimedia profile', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_MULTIMEDIA_PROFILE_BY_ID,
+    });
+
     try {
       const resource = endPointMap.multimediaProfile(orgId, multimediaProfileId);
       const response = await this.webexReq.request({
@@ -231,14 +250,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getMultimediaProfileById API success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getMultimediaProfileById',
+        method: METHODS.GET_MULTIMEDIA_PROFILE_BY_ID,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getMultimediaProfileById API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getMultimediaProfileById',
+        method: METHODS.GET_MULTIMEDIA_PROFILE_BY_ID,
       });
       throw error;
     }
@@ -259,6 +278,11 @@ export default class AgentConfigService {
     pageSize: number,
     filter: string[]
   ): Promise<ListTeamsResponse> {
+    LoggerProxy.info('Fetching list of teams', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_LIST_OF_TEAMS,
+    });
+
     try {
       const resource = endPointMap.listTeams(orgId, page, pageSize, filter);
       const response = await this.webexReq.request({
@@ -273,14 +297,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getListOfTeams api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getListOfTeams',
+        method: METHODS.GET_LIST_OF_TEAMS,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getListOfTeams API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getListOfTeams',
+        method: METHODS.GET_LIST_OF_TEAMS,
       });
       throw error;
     }
@@ -315,7 +339,7 @@ export default class AgentConfigService {
     } catch (error) {
       LoggerProxy.error(`getAllTeams API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getAllTeams',
+        method: METHODS.GET_ALL_TEAMS,
       });
       throw error;
     }
@@ -337,6 +361,11 @@ export default class AgentConfigService {
     filter: string[],
     attributes: string[]
   ): Promise<ListAuxCodesResponse> {
+    LoggerProxy.info('Fetching list of aux codes', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_LIST_OF_AUX_CODES,
+    });
+
     try {
       const resource = endPointMap.listAuxCodes(orgId, page, pageSize, filter, attributes);
       const response = await this.webexReq.request({
@@ -351,14 +380,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getListOfAuxCodes api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getListOfAuxCodes',
+        method: METHODS.GET_LIST_OF_AUX_CODES,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getListOfAuxCodes API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getListOfAuxCodes',
+        method: METHODS.GET_LIST_OF_AUX_CODES,
       });
       throw error;
     }
@@ -401,7 +430,7 @@ export default class AgentConfigService {
     } catch (error) {
       LoggerProxy.error(`getAllAuxCodes API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getAllAuxCodes',
+        method: METHODS.GET_ALL_AUX_CODES,
       });
       throw error;
     }
@@ -414,6 +443,10 @@ export default class AgentConfigService {
    * @returns {Promise<SiteInfo>}
    */
   public async getSiteInfo(orgId: string, siteId: string): Promise<SiteInfo> {
+    LoggerProxy.info('Fetching site information', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_SITE_INFO,
+    });
     try {
       const resource = endPointMap.siteInfo(orgId, siteId);
       const response = await this.webexReq.request({
@@ -428,14 +461,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getSiteInfo api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getSiteInfo',
+        method: METHODS.GET_SITE_INFO,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getSiteInfo API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getSiteInfo',
+        method: METHODS.GET_SITE_INFO,
       });
       throw error;
     }
@@ -459,13 +492,16 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.log('getOrgInfo api success.', {module: CONFIG_FILE_NAME, method: 'getOrgInfo'});
+      LoggerProxy.log('getOrgInfo api success.', {
+        module: CONFIG_FILE_NAME,
+        method: METHODS.GET_ORG_INFO,
+      });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getOrgInfo API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getOrgInfo',
+        method: METHODS.GET_ORG_INFO,
       });
       throw error;
     }
@@ -491,14 +527,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getOrganizationSetting api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getOrganizationSetting',
+        method: METHODS.GET_ORGANIZATION_SETTING,
       });
 
       return Promise.resolve(response.body.data[0]);
     } catch (error) {
       LoggerProxy.error(`getOrganizationSetting API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getOrganizationSetting',
+        method: METHODS.GET_ORGANIZATION_SETTING,
       });
       throw error;
     }
@@ -524,14 +560,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getTenantData api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getTenantData',
+        method: METHODS.GET_TENANT_DATA,
       });
 
       return Promise.resolve(response.body.data[0]);
     } catch (error) {
       LoggerProxy.error(`getTenantData API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getTenantData',
+        method: METHODS.GET_TENANT_DATA,
       });
       throw error;
     }
@@ -557,14 +593,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getURLMapping api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getURLMapping',
+        method: METHODS.GET_URL_MAPPING,
       });
 
       return Promise.resolve(response.body.data);
     } catch (error) {
       LoggerProxy.error(`getURLMapping API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getURLMapping',
+        method: METHODS.GET_URL_MAPPING,
       });
       throw error;
     }
@@ -590,14 +626,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getDialPlanData api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getDialPlanData',
+        method: METHODS.GET_DIAL_PLAN_DATA,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getDialPlanData API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getDialPlanData',
+        method: METHODS.GET_DIAL_PLAN_DATA,
       });
       throw error;
     }
@@ -619,6 +655,11 @@ export default class AgentConfigService {
     search?: string,
     filter?: string
   ): Promise<ContactServiceQueue[]> {
+    LoggerProxy.info('Fetching queue list', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_QUEUES,
+    });
+
     try {
       let queryParams = `page=${page}&pageSize=${pageSize}&desktopProfileFilter=true`;
       if (search) queryParams += `&search=${search}`;
@@ -635,13 +676,16 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.log('getQueues API success.', {module: CONFIG_FILE_NAME, method: 'getQueues'});
+      LoggerProxy.log('getQueues API success.', {
+        module: CONFIG_FILE_NAME,
+        method: METHODS.GET_QUEUES,
+      });
 
       return response.body?.data;
     } catch (error) {
       LoggerProxy.error(`getQueues API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getQueues',
+        method: METHODS.GET_QUEUES,
       });
       throw error;
     }
