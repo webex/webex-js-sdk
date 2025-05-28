@@ -102,11 +102,11 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
       const response = await callSettingsClient.getCallWaitingSetting();
       const toggleSetting = response.data.callSetting as ToggleSetting;
 
-      expect(webex.request).not.toHaveBeenCalled();
+      expect(webex.request).not.toBeCalled();
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe(SUCCESS_MESSAGE);
       expect(toggleSetting.enabled).toBe(true);
-      expect(global.fetch).toHaveBeenCalledWith(callWaitingUrl, {
+      expect(global.fetch).toBeCalledOnceWith(callWaitingUrl, {
         method: HTTP_METHODS.GET,
         headers: {
           Authorization: await webex.credentials.getUserToken(),
@@ -163,13 +163,13 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
 
       expect(response.statusCode).toBe(403);
       expect(response.message).toBe(FAILURE_MESSAGE);
-      expect(global.fetch).toHaveBeenCalledWith(callWaitingUrl, {
+      expect(global.fetch).toBeCalledOnceWith(callWaitingUrl, {
         method: HTTP_METHODS.GET,
         headers: {
           Authorization: await webex.credentials.getUserToken(),
         },
       });
-      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 403,
         },
@@ -311,7 +311,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         method: HTTP_METHODS.GET,
         uri,
       });
-      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 403,
         },

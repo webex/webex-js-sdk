@@ -164,7 +164,7 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
-      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(responsePayload, {
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(responsePayload, {
         file: UCM_CONNECTOR_FILE,
         method: callSettingsClient.getCallForwardAlwaysSetting.name,
       });
@@ -195,7 +195,7 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.statusCode).toEqual(400);
       expect(response.message).toEqual(FAILURE_MESSAGE);
       expect(response.data.error).toEqual('Directory Number is mandatory for UCM backend');
-      expect(webex.request).not.toHaveBeenCalled();
+      expect(webex.request).not.toBeCalled();
 
       expect(log.info).toHaveBeenCalled();
       expect(log.error).not.toHaveBeenCalled();
@@ -218,7 +218,7 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         expect(response.statusCode).toEqual(501);
         expect(response.message).toEqual(FAILURE_MESSAGE);
         expect(response.data.error).toEqual('Method is not implemented at the backend');
-        expect(webex.request).not.toHaveBeenCalled();
+        expect(webex.request).not.toBeCalled();
       });
     });
   });

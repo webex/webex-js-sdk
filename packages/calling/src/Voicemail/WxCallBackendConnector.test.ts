@@ -88,7 +88,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       };
       expect(response).toEqual(responseDetails);
       expect(response.message).toBe(FAILURE);
-      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 400,
         },
@@ -428,7 +428,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       });
 
       expect(response).toEqual(responseDetails);
-      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 400,
         },

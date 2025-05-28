@@ -231,7 +231,7 @@ describe('Call history tests', () => {
       }));
       expect(response.statusCode).toEqual(200);
       expect(response).toEqual(MOCK_UPDATE_MISSED_CALL_RESPONSE);
-      expect(global.fetch).toHaveBeenCalledWith(janusSetReadStateUrl, {
+      expect(global.fetch).toBeCalledOnceWith(janusSetReadStateUrl, {
         method: HTTP_METHODS.POST,
         headers: {
           [CONTENT_TYPE]: APPLICATION_JSON,
@@ -348,7 +348,7 @@ describe('Call history tests', () => {
       expect(response.data.error).toEqual(ERROR_DETAILS_400.data.error);
       expect(response.statusCode).toBe(400);
       expect(response.message).toBe('FAILURE');
-      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {statusCode: 400},
         {file: 'CallHistory', method: 'fetchLinesData'}
       );
