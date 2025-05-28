@@ -13,3 +13,32 @@ export const WRAPUP = '/wrapup';
 export const END = '/end';
 export const TASK_MANAGER_FILE = 'taskManager';
 export const TASK_FILE = 'task';
+
+// METHOD NAMES
+export const METHODS = {
+  // Task class methods
+  ACCEPT: 'accept',
+  TOGGLE_MUTE: 'toggleMute',
+  DECLINE: 'decline',
+  HOLD: 'hold',
+  RESUME: 'resume',
+  END: 'end',
+  WRAPUP: 'wrapup',
+  PAUSE_RECORDING: 'pauseRecording',
+  RESUME_RECORDING: 'resumeRecording',
+  CONSULT: 'consult',
+  END_CONSULT: 'endConsult',
+  TRANSFER: 'transfer',
+  CONSULT_TRANSFER: 'consultTransfer',
+  UPDATE_TASK_DATA: 'updateTaskData',
+  RECONCILE_DATA: 'reconcileData',
+
+  // TaskManager class methods
+  HANDLE_INCOMING_WEB_CALL: 'handleIncomingWebCall',
+  REGISTER_TASK_LISTENERS: 'registerTaskListeners',
+  REMOVE_TASK_FROM_COLLECTION: 'removeTaskFromCollection',
+  HANDLE_TASK_CLEANUP: 'handleTaskCleanup',
+  GET_TASK: 'getTask',
+  GET_ALL_TASKS: 'getAllTasks',
+  GET_TASK_MANAGER: 'getTaskManager',
+};

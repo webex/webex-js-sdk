@@ -769,7 +769,8 @@ function generateWebexConfig({credentials}) {
     appPlatform: 'testClient',
     fedramp: false,
     logger: {
-      level: 'info'
+      level: 'info',
+      bufferLogLevel: 'log',
     },
     credentials,
     // Any other sdk config we need
