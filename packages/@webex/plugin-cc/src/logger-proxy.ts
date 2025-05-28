@@ -42,7 +42,9 @@ export default class LoggerProxy {
     const timestamp = new Date().toISOString();
     const moduleName = context.module || 'unknown';
     const methodName = context.method || 'unknown';
+    const interactionId = context.interactionId ? ` - interactionId:${context.interactionId}` : '';
+    const trackingId = context.trackingId ? ` - trackingId:${context.trackingId}` : '';
 
-    return `${timestamp} ${LOG_PREFIX} - [${level}]: module:${moduleName} - method:${methodName} - ${message}`;
+    return `${timestamp} ${LOG_PREFIX} - [${level}]: module:${moduleName} - method:${methodName}${interactionId}${trackingId} - ${message}`;
   }
 }
