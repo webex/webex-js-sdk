@@ -3,7 +3,7 @@ import Url from 'url';
 import AmpState from 'ampersand-state';
 
 import {union} from 'lodash';
-import Service from './service';
+import ServiceDetails from './service-details';
 
 /* eslint-disable no-underscore-dangle */
 /**
@@ -341,8 +341,8 @@ const ServiceCatalog = AmpState.extend({
    * @param {object} serviceHostmap
    * @returns {Services}
    */
-  updateServices(serviceGroup, serviceHostmap) {
-    this.serviceGroups[serviceGroup] = serviceHostmap.map((service) => new Service(service));
+  updateServiceGroups(serviceGroup, serviceHostmap) {
+    this.serviceGroups[serviceGroup] = serviceHostmap.map((service) => new ServiceDetails(service));
 
     this.status[serviceGroup].ready = true;
     this.trigger(serviceGroup);

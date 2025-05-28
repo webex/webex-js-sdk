@@ -189,7 +189,7 @@ const Services = WebexPlugin.extend({
       forceRefresh,
     })
       .then((serviceHostMap) => {
-        catalog.updateServices(serviceGroup, serviceHostMap);
+        catalog.updateServiceGroups(serviceGroup, serviceHostMap);
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
       })
@@ -455,7 +455,7 @@ const Services = WebexPlugin.extend({
 
     const serviceHostMap = this._formatReceivedHostmap(hostMap);
 
-    return catalog.updateServices(serviceGroup, serviceHostMap);
+    return catalog.updateServiceGroups(serviceGroup, serviceHostMap);
   },
 
   /**
@@ -858,7 +858,7 @@ const Services = WebexPlugin.extend({
         }));
 
         // Inject formatted discovery services into services catalog.
-        catalog.updateServices('discovery', formattedDiscoveryServices);
+        catalog.updateServiceGroups('discovery', formattedDiscoveryServices);
       }
 
       if (services.override) {
@@ -869,7 +869,7 @@ const Services = WebexPlugin.extend({
         }));
 
         // Inject formatted override services into services catalog.
-        catalog.updateServices('override', formattedOverrideServices);
+        catalog.updateServiceGroups('override', formattedOverrideServices);
       }
 
       // if not fedramp, append on the commercialAllowedDomains

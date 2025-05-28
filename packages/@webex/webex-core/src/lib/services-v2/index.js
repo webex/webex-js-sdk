@@ -21,4 +21,4 @@ export {default as ServerErrorInterceptorV2} from './interceptors/server-error';
 export {default as HostMapInterceptorV2} from './interceptors/hostmap';
 export {default as ServiceCatalogV2} from './service-catalog';
 export {default as ServiceHostV2} from './service-host';
-export {default as ServiceV2} from './service';
+export {default as ServiceDetails} from './service-details';
