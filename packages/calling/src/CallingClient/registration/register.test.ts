@@ -610,9 +610,23 @@ describe('Registration Tests', () => {
       expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
       expect(restoreSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
       expect(restartRegSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Keep-alive missed 1 times. Status -> 503 ',
+        expect.objectContaining({
+          file: REGISTRATION_FILE,
+          method: 'startKeepaliveTimer',
+        })
+      );
 
       expect(webex.request).toBeCalledTimes(7);
       expect(reg.keepaliveTimer).toBe(undefined);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Keep-alive missed 1 times. Status -> 503 ',
+        expect.objectContaining({
+          file: REGISTRATION_FILE,
+          method: 'startKeepaliveTimer',
+        })
+      );
       expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.RECONNECTING);
       expect(lineEmitter).nthCalledWith(4, LINE_EVENTS.RECONNECTING);
       expect(lineEmitter).nthCalledWith(5, LINE_EVENTS.UNREGISTERED);
@@ -792,6 +806,13 @@ describe('Registration Tests', () => {
         file: REGISTRATION_FILE,
         method: KEEPALIVE_UTIL,
       });
+      expect(warnSpy).toBeCalledWith(
+        'Keep-alive missed 1 times. Status -> 404 ',
+        expect.objectContaining({
+          file: REGISTRATION_FILE,
+          method: 'startKeepaliveTimer',
+        })
+      );
     });
 
     it('verify failure keep-alive case with active call present: Restore Success after call ends', async () => {
