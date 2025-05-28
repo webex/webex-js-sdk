@@ -50,8 +50,15 @@ export default class HttpStatusInterceptor extends Interceptor {
       if (
         response.statusCode === 404 &&
         response.body &&
-        (response.body.errorCode === LOCUS_REDIRECT_ERROR ||
-          response.body.code === APPAPI_REDIRECT_ERROR)
+        response.body.errorCode === LOCUS_REDIRECT_ERROR
+      ) {
+        return Promise.resolve(response);
+      }
+      // to handle appapi redirects
+      if (
+        response.statusCode === 404 &&
+        response.body &&
+        response.body.code === APPAPI_REDIRECT_ERROR
       ) {
         return Promise.resolve(response);
       }
