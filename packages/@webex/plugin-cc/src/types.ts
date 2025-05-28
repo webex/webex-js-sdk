@@ -247,7 +247,7 @@ export type AgentLogin = {
   loginOption: LoginOption;
 };
 
-export type AgentDeviceUpdate = Pick<AgentLogin, 'loginOption' | 'dialNumber'>;
+export type AgentProfileUpdate = Pick<AgentLogin, 'loginOption' | 'dialNumber' | 'teamId'>;
 
 export type RequestBody =
   | SubscribeRequest
