@@ -12,6 +12,7 @@ import {Profile} from './services/config/types';
  * Generic type for converting a const enum object into a union type of its values.
  * @template T The enum object type
  * @internal
+ * @ignore
  */
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
@@ -21,6 +22,7 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @public
  * @example
  * const method: HTTP_METHODS = HTTP_METHODS.GET;
+ * @ignore
  */
 export const HTTP_METHODS = {
   /** HTTP GET method for retrieving data */
@@ -40,6 +42,7 @@ export const HTTP_METHODS = {
  * @public
  * @example
  * function makeRequest(method: HTTP_METHODS) { ... }
+ * @ignore
  */
 export type HTTP_METHODS = Enum<typeof HTTP_METHODS>;
 
@@ -52,6 +55,7 @@ export type HTTP_METHODS = Enum<typeof HTTP_METHODS>;
  *   resource: '/users',
  *   method: HTTP_METHODS.GET
  * };
+ * @ignore
  */
 export type WebexRequestPayload = {
   /** Service name to target */
@@ -79,18 +83,21 @@ export type WebexRequestPayload = {
 /**
  * Event listener function type.
  * @internal
+ * @ignore
  */
 type Listener = (e: string, data?: unknown) => void;
 
 /**
  * Event listener removal function type.
  * @internal
+ * @ignore
  */
 type ListenerOff = (e: string) => void;
 
 /**
  * Service host configuration.
  * @internal
+ * @ignore
  */
 type ServiceHost = {
   /** Host URL/domain for the service */
@@ -156,6 +163,7 @@ export interface CCPluginConfig {
  * @example
  * logger.log('This is a log message');
  * logger.error('This is an error message');
+ * @ignore
  */
 export type Logger = {
   /** Log general messages */
@@ -175,6 +183,7 @@ export type Logger = {
 /**
  * Contextual information for log entries.
  * @public
+ * @ignore
  */
 export interface LogContext {
   /** Module name where the log originated */
@@ -189,6 +198,7 @@ export interface LogContext {
  * @public
  * @example
  * const level: LOGGING_LEVEL = LOGGING_LEVEL.error;
+ * @ignore
  */
 export enum LOGGING_LEVEL {
   /** Critical failures that require immediate attention */
@@ -208,6 +218,7 @@ export enum LOGGING_LEVEL {
  * @public
  * @example
  * const meta: LogsMetaData = { feedbackId: 'fb123', correlationId: 'corr456' };
+ * @ignore
  */
 export type LogsMetaData = {
   /** Optional feedback ID to associate with logs */
@@ -221,6 +232,7 @@ export type LogsMetaData = {
  * @public
  * @example
  * const response: UploadLogsResponse = { trackingid: 'track123', url: 'https://...', userId: 'user1' };
+ * @ignore
  */
 export type UploadLogsResponse = {
   /** Tracking ID for the upload request */
@@ -238,6 +250,7 @@ export type UploadLogsResponse = {
 /**
  * Internal Webex SDK interfaces needed for plugin integration.
  * @internal
+ * @ignore
  */
 interface IWebexInternal {
   /** Mercury service for real-time messaging */
@@ -330,6 +343,7 @@ interface IWebexInternal {
  * @example
  * const sdk: WebexSDK = ...;
  * sdk.request({ service: 'identity', resource: '/users', method: HTTP_METHODS.GET });
+ * @ignore
  */
 export interface WebexSDK {
   /** Version of the WebexSDK */
@@ -362,6 +376,7 @@ export interface WebexSDK {
  * @example
  * const cc: IContactCenter = ...;
  * cc.register().then(profile => { ... });
+ * @ignore
  */
 export interface IContactCenter {
   /**
@@ -381,6 +396,7 @@ export interface IContactCenter {
  * @public
  * @example
  * const response: IHttpResponse = { body: {}, statusCode: 200, method: 'GET', headers: {}, url: '...' };
+ * @ignore
  */
 export interface IHttpResponse {
   /** Response body content */
@@ -400,6 +416,7 @@ export interface IHttpResponse {
  * @public
  * @example
  * const option: LoginOption = LoginOption.AGENT_DN;
+ * @ignore
  */
 export const LoginOption = {
   /** Login using agent's direct number */
@@ -415,6 +432,7 @@ export const LoginOption = {
  * @public
  * @example
  * function login(option: LoginOption) { ... }
+ * @ignore
  */
 export type LoginOption = Enum<typeof LoginOption>;
 
@@ -423,6 +441,7 @@ export type LoginOption = Enum<typeof LoginOption>;
  * @public
  * @example
  * const req: SubscribeRequest = { force: true, isKeepAliveEnabled: true, clientType: 'browser', allowMultiLogin: false };
+ * @ignore
  */
 export type SubscribeRequest = {
   /** Whether to force connection even if another exists */
@@ -441,6 +460,7 @@ export type SubscribeRequest = {
  * @public
  * @example
  * const team: Team = { id: 'team1', name: 'Support', desktopLayoutId: 'layout1' };
+ * @ignore
  */
 export type Team = {
   /**
@@ -465,6 +485,7 @@ export type Team = {
  * @public
  * @example
  * const login: AgentLogin = { dialNumber: '1234', teamId: 'team1', loginOption: LoginOption.AGENT_DN };
+ * @ignore
  */
 export type AgentLogin = {
   /**
@@ -491,12 +512,14 @@ export type AgentLogin = {
  * @public
  * @example
  * const update: AgentDeviceUpdate = { loginOption: LoginOption.BROWSER, dialNumber: '5678' };
+ * @ignore
  */
 export type AgentDeviceUpdate = Pick<AgentLogin, 'loginOption' | 'dialNumber'>;
 
 /**
  * Union type for all possible request body types.
  * @internal
+ * @ignore
  */
 export type RequestBody =
   | SubscribeRequest
@@ -520,6 +543,7 @@ export type RequestBody =
  * @public
  * @example
  * const opts: BuddyAgents = { mediaType: 'telephony', state: 'Available' };
+ * @ignore
  */
 export type BuddyAgents = {
   /**
@@ -543,6 +567,7 @@ export type BuddyAgents = {
  * @example
  * const err: GenericError = new Error('Failed');
  * err.details = { type: 'ERR', orgId: 'org1', trackingId: 'track1', data: {} };
+ * @ignore
  */
 export interface GenericError extends Error {
   /** Structured details about the error */
@@ -564,6 +589,7 @@ export interface GenericError extends Error {
  * @public
  * @example
  * function handleLogin(resp: StationLoginResponse) { ... }
+ * @ignore
  */
 export type StationLoginResponse = Agent.StationLoginSuccessResponse | Error;
 
@@ -573,6 +599,7 @@ export type StationLoginResponse = Agent.StationLoginSuccessResponse | Error;
  * @public
  * @example
  * function handleLogout(resp: StationLogoutResponse) { ... }
+ * @ignore
  */
 export type StationLogoutResponse = Agent.LogoutSuccess | Error;
 
@@ -582,6 +609,7 @@ export type StationLogoutResponse = Agent.LogoutSuccess | Error;
  * @public
  * @example
  * function handleReLogin(resp: StationReLoginResponse) { ... }
+ * @ignore
  */
 export type StationReLoginResponse = Agent.ReloginSuccess | Error;
 
@@ -591,6 +619,7 @@ export type StationReLoginResponse = Agent.ReloginSuccess | Error;
  * @public
  * @example
  * function handleStateChange(resp: SetStateResponse) { ... }
+ * @ignore
  */
 export type SetStateResponse = Agent.StateChangeSuccess | Error;
 
@@ -600,6 +629,7 @@ export type SetStateResponse = Agent.StateChangeSuccess | Error;
  * @public
  * @example
  * function handleBuddyAgents(resp: BuddyAgentsResponse) { ... }
+ * @ignore
  */
 export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
 
@@ -609,5 +639,6 @@ export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
  * @public
  * @example
  * function handleUpdateDeviceType(resp: UpdateDeviceTypeResponse) { ... }
+ * @ignore
  */
 export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;

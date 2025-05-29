@@ -5,6 +5,7 @@
  * @example
  * import config from './config';
  * const allowMultiLogin = config.cc.allowMultiLogin;
+ * @ignore
  */
 export default {
   /**

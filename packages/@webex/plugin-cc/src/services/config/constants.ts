@@ -7,6 +7,7 @@ export const DEFAULT_PAGE = 0;
  * @public
  * @example
  * const pageSize = DEFAULT_PAGE_SIZE; // 100
+ * @ignore
  */
 export const DEFAULT_PAGE_SIZE = 100;
 
@@ -14,6 +15,7 @@ export const DEFAULT_PAGE_SIZE = 100;
  * Agent state ID for 'Available'.
  * @type {string}
  * @public
+ * @ignore
  */
 export const AGENT_STATE_AVAILABLE_ID = '0';
 
@@ -21,6 +23,7 @@ export const AGENT_STATE_AVAILABLE_ID = '0';
  * Agent state label for 'Available'.
  * @type {string}
  * @public
+ * @ignore
  */
 export const AGENT_STATE_AVAILABLE = 'Available';
 
@@ -28,6 +31,7 @@ export const AGENT_STATE_AVAILABLE = 'Available';
  * Description for the 'Available' agent state.
  * @type {string}
  * @public
+ * @ignore
  */
 export const AGENT_STATE_AVAILABLE_DESCRIPTION = 'Agent is available to receive calls';
 
@@ -35,6 +39,7 @@ export const AGENT_STATE_AVAILABLE_DESCRIPTION = 'Agent is available to receive 
  * Default attributes for auxiliary code API requests.
  * @type {string[]}
  * @public
+ * @ignore
  */
 export const DEFAULT_AUXCODE_ATTRIBUTES = [
   'id',
@@ -60,6 +65,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.userByCI('org123', 'agent456');
+   * @ignore
    */
   userByCI: (orgId: string, agentId: string) =>
     `organization/${orgId}/user/by-ci-user-id/${agentId}`,
@@ -72,6 +78,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.desktopProfile('org123', 'profile789');
+   * @ignore
    */
   desktopProfile: (orgId: string, desktopProfileId: string) =>
     `organization/${orgId}/agent-profile/${desktopProfileId}`,
@@ -84,6 +91,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.multimediaProfile('org123', 'multi456');
+   * @ignore
    */
   multimediaProfile: (orgId: string, multimediaProfileId: string) =>
     `organization/${orgId}/multimedia-profile/${multimediaProfileId}`,
@@ -98,6 +106,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.listTeams('org123', 0, 100, ['team1', 'team2']);
+   * @ignore
    */
   listTeams: (orgId: string, page: number, pageSize: number, filter: string[]) =>
     `organization/${orgId}/v2/team?page=${page}&pageSize=${pageSize}${
@@ -115,6 +124,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.listAuxCodes('org123', 0, 100, ['aux1'], ['id', 'name']);
+   * @ignore
    */
   listAuxCodes: (
     orgId: string,
@@ -134,6 +144,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.orgInfo('org123');
+   * @ignore
    */
   orgInfo: (orgId: string) => `organization/${orgId}`,
 
@@ -144,6 +155,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.orgSettings('org123');
+   * @ignore
    */
   orgSettings: (orgId: string) => `organization/${orgId}/v2/organization-setting?agentView=true`,
 
@@ -155,6 +167,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.siteInfo('org123', 'site456');
+   * @ignore
    */
   siteInfo: (orgId: string, siteId: string) => `organization/${orgId}/site/${siteId}`,
 
@@ -165,6 +178,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.tenantData('org123');
+   * @ignore
    */
   tenantData: (orgId: string) => `organization/${orgId}/v2/tenant-configuration?agentView=true`,
 
@@ -175,6 +189,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.urlMapping('org123');
+   * @ignore
    */
   urlMapping: (orgId: string) => `organization/${orgId}/v2/org-url-mapping?sort=name,ASC`,
 
@@ -185,6 +200,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.dialPlan('org123');
+   * @ignore
    */
   dialPlan: (orgId: string) => `organization/${orgId}/dial-plan?agentView=true`,
 
@@ -196,6 +212,7 @@ export const endPointMap = {
    * @public
    * @example
    * const url = endPointMap.queueList('org123', 'page=0&pageSize=10');
+   * @ignore
    */
   queueList: (orgId: string, queryParams: string) =>
     `organization/${orgId}/v2/contact-service-queue?${queryParams}`,
