@@ -110,5 +110,24 @@ describe('plugin-meetings', () => {
 
       assert.isTrue(brbState.state.server.enabled);
     });
+
+    it('invokes handleServerBrbUpdate with correct client state after syncing with server', async () => {
+      const sendLocalBrbStateToServerStub = sinon
+        .stub(brbState, 'sendLocalBrbStateToServer')
+        .resolves();
+
+      const handleServerBrbUpdateSpy = sinon.spy(brbState, 'handleServerBrbUpdate');
+
+      await brbState.enable(true, meeting.sendSlotManager);
+
+      assert.isTrue(sendLocalBrbStateToServerStub.calledOnce);
+
+      assert.isTrue(handleServerBrbUpdateSpy.calledOnceWith(brbState.state.client.enabled));
+
+      assert.isFalse(brbState.state.syncToServerInProgress);
+
+      sendLocalBrbStateToServerStub.restore();
+      handleServerBrbUpdateSpy.restore();
+    });
   });
 });

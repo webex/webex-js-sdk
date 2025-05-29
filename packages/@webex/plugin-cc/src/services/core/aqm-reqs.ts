@@ -1,10 +1,9 @@
 import {Msg} from './GlobalTypes';
 import * as Err from './Err';
 import {HTTP_METHODS, WebexRequestPayload} from '../../types';
-
 import LoggerProxy from '../../logger-proxy';
 import {CbRes, Conf, ConfEmpty, Pending, Req, Res, ResEmpty} from './types';
-import {TIMEOUT_REQ} from './constants';
+import {TIMEOUT_REQ, METHODS} from './constants';
 import {AQM_REQS_FILE} from '../../constants';
 import WebexRequest from './WebexRequest';
 import {WebSocketManager} from './websocket/WebSocketManager';
@@ -98,12 +97,12 @@ export default class AqmReqs {
             if ('errId' in notifFail) {
               LoggerProxy.log(`Routing request failed: ${JSON.stringify(msg)}`, {
                 module: AQM_REQS_FILE,
-                method: 'createPromise',
+                method: METHODS.CREATE_PROMISE,
               });
               const eerr = new Err.Details(notifFail.errId, msg as any);
               LoggerProxy.log(`Routing request failed: ${eerr}`, {
                 module: AQM_REQS_FILE,
-                method: 'createPromise',
+                method: METHODS.CREATE_PROMISE,
               });
               reject(eerr);
             } else {
@@ -157,7 +156,7 @@ export default class AqmReqs {
             }
             LoggerProxy.error(`Routing request timeout${keySuccess}${response!}${c.url}`, {
               module: AQM_REQS_FILE,
-              method: this.createPromise.name,
+              method: METHODS.CREATE_PROMISE,
             });
             reject(
               new Err.Details('Service.aqm.reqs.Timeout', {
@@ -218,7 +217,7 @@ export default class AqmReqs {
     if (event.type === 'Welcome') {
       LoggerProxy.info(`Welcome message from Notifs Websocket`, {
         module: AQM_REQS_FILE,
-        method: this.onMessage.name,
+        method: METHODS.ON_MESSAGE,
       });
 
       return;
@@ -227,7 +226,7 @@ export default class AqmReqs {
     if (event.keepalive === 'true') {
       LoggerProxy.info(`Keepalive from web socket`, {
         module: AQM_REQS_FILE,
-        method: this.onMessage.name,
+        method: METHODS.ON_MESSAGE,
       });
 
       return;
@@ -236,7 +235,7 @@ export default class AqmReqs {
     if (event.type === 'AgentReloginFailed') {
       LoggerProxy.info('Silently handling the agent relogin fail', {
         module: AQM_REQS_FILE,
-        method: this.onMessage.name,
+        method: METHODS.ON_MESSAGE,
       });
     }
 
@@ -266,7 +265,7 @@ export default class AqmReqs {
     if (!isHandled) {
       LoggerProxy.info(`event=missingEventHandler | [AqmReqs] missing routing message handler`, {
         module: AQM_REQS_FILE,
-        method: this.onMessage.name,
+        method: METHODS.ON_MESSAGE,
       });
     }
   };

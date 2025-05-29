@@ -79,6 +79,8 @@ export type Logger = {
 export interface LogContext {
   module?: string;
   method?: string;
+  interactionId?: string;
+  trackingId?: string;
 }
 
 export enum LOGGING_LEVEL {
@@ -247,7 +249,7 @@ export type AgentLogin = {
   loginOption: LoginOption;
 };
 
-export type AgentDeviceUpdate = Pick<AgentLogin, 'loginOption' | 'dialNumber'>;
+export type AgentProfileUpdate = Pick<AgentLogin, 'loginOption' | 'dialNumber' | 'teamId'>;
 
 export type RequestBody =
   | SubscribeRequest

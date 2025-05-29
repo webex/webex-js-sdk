@@ -18,6 +18,7 @@ import {
   POST_AUTH,
   WCC_CALLING_RTMS_DOMAIN,
   DEREGISTER_WEBCALLING_LINE_MSG,
+  METHODS,
 } from './constants';
 
 export default class WebCallingService extends EventEmitter {
@@ -81,6 +82,7 @@ export default class WebCallingService extends EventEmitter {
         `Invalid URL from u2c catalogue: ${rtmsURL} so falling back to default domain`,
         {
           module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.GET_RTMS_DOMAIN,
         }
       );
 
@@ -107,7 +109,7 @@ export default class WebCallingService extends EventEmitter {
     this.line.on(LINE_EVENTS.UNREGISTERED, () => {
       LoggerProxy.log(`WxCC-SDK: Desktop unregistered successfully`, {
         module: WEB_CALLING_SERVICE_FILE,
-        method: this.registerWebCallingLine.name,
+        method: METHODS.REGISTER_WEB_CALLING_LINE,
       });
     });
 
@@ -126,7 +128,7 @@ export default class WebCallingService extends EventEmitter {
         clearTimeout(timeout);
         LoggerProxy.log(
           `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`,
-          {module: WEB_CALLING_SERVICE_FILE, method: this.registerWebCallingLine.name}
+          {module: WEB_CALLING_SERVICE_FILE, method: METHODS.REGISTER_WEB_CALLING_LINE}
         );
         resolve();
       });
@@ -137,7 +139,7 @@ export default class WebCallingService extends EventEmitter {
   public async deregisterWebCallingLine() {
     LoggerProxy.log(DEREGISTER_WEBCALLING_LINE_MSG, {
       module: WEB_CALLING_SERVICE_FILE,
-      method: 'deregisterWebCallingLine',
+      method: METHODS.DEREGISTER_WEB_CALLING_LINE,
     });
     this.cleanUpCall();
     this.line?.deregister();
@@ -146,25 +148,40 @@ export default class WebCallingService extends EventEmitter {
   public answerCall(localAudioStream: LocalMicrophoneStream, taskId: string) {
     if (this.call) {
       try {
-        this.webex.logger.info(`Call answered: ${taskId}`);
+        LoggerProxy.info(`Call answered: ${taskId}`, {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.ANSWER_CALL,
+        });
         this.call.answer(localAudioStream);
         this.registerCallListeners();
       } catch (error) {
-        this.webex.logger.error(`Failed to answer call for ${taskId}. Error: ${error}`);
+        LoggerProxy.error(`Failed to answer call for ${taskId}. Error: ${error}`, {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.ANSWER_CALL,
+        });
         // Optionally, throw the error to allow the invoker to handle it
         throw error;
       }
     } else {
-      this.webex.logger.log(`Cannot answer a non WebRtc Call: ${taskId}`);
+      LoggerProxy.log(`Cannot answer a non WebRtc Call: ${taskId}`, {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: METHODS.ANSWER_CALL,
+      });
     }
   }
 
   public muteUnmuteCall(localAudioStream: LocalMicrophoneStream) {
     if (this.call) {
-      this.webex.logger.info('Call mute or unmute requested!');
+      LoggerProxy.info('Call mute or unmute requested!', {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: METHODS.MUTE_UNMUTE_CALL,
+      });
       this.call.mute(localAudioStream);
     } else {
-      this.webex.logger.log(`Cannot mute a non WebRtc Call`);
+      LoggerProxy.log(`Cannot mute a non WebRtc Call`, {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: METHODS.MUTE_UNMUTE_CALL,
+      });
     }
   }
 
@@ -179,16 +196,25 @@ export default class WebCallingService extends EventEmitter {
   public declineCall(taskId: string) {
     if (this.call) {
       try {
-        this.webex.logger.info(`Call end requested: ${taskId}`);
+        LoggerProxy.info(`Call end requested: ${taskId}`, {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.DECLINE_CALL,
+        });
         this.call.end();
         this.cleanUpCall();
       } catch (error) {
-        this.webex.logger.error(`Failed to end call: ${taskId}. Error: ${error}`);
+        LoggerProxy.error(`Failed to end call: ${taskId}. Error: ${error}`, {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.DECLINE_CALL,
+        });
         // Optionally, throw the error to allow the invoker to handle it
         throw error;
       }
     } else {
-      this.webex.logger.log(`Cannot end a non WebRtc Call: ${taskId}`);
+      LoggerProxy.log(`Cannot end a non WebRtc Call: ${taskId}`, {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: METHODS.DECLINE_CALL,
+      });
     }
   }
 
