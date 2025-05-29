@@ -6,6 +6,7 @@ import HttpError from '../http-error';
 import Interceptor from '../lib/interceptor';
 
 const LOCUS_REDIRECT_ERROR = 2000002;
+const APPAPI_REDIRECT_ERROR = 404100;
 
 /**
  * @class
@@ -50,6 +51,14 @@ export default class HttpStatusInterceptor extends Interceptor {
         response.statusCode === 404 &&
         response.body &&
         response.body.errorCode === LOCUS_REDIRECT_ERROR
+      ) {
+        return Promise.resolve(response);
+      }
+      // to handle appapi redirects
+      if (
+        response.statusCode === 404 &&
+        response.body &&
+        response.body.code === APPAPI_REDIRECT_ERROR
       ) {
         return Promise.resolve(response);
       }
