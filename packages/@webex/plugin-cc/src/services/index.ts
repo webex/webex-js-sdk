@@ -10,6 +10,9 @@ import aqmDialer from './task/dialer';
 /**
  * Services class provides centralized access to all contact center plugin services
  * using a singleton pattern to ensure a single instance throughout the application.
+ * @private
+ * @ignore
+ * @class
  */
 export default class Services {
   /** Agent services for managing agent state and capabilities */

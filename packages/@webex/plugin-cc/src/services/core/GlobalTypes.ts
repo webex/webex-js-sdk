@@ -1,6 +1,8 @@
 /**
  * Generic message interface used throughout the plugin
  * @template T - Type of the data payload (defaults to any)
+ * @private
+ * @ignore
  */
 export type Msg<T = any> = {
   /** Message/Event type identifier */
@@ -15,6 +17,8 @@ export type Msg<T = any> = {
 
 /**
  * Represents a failure message with specific error details
+ * @private
+ * @ignore
  */
 export type Failure = Msg<{
   /** Agent identifier associated with the failure */
