@@ -1,7 +1,7 @@
 /**
  * Constants for Task Service
  * @module @webex/plugin-cc/services/task/constants
- * @private
+ * @ignore
  */
 
 export const TASK_MESSAGE_TYPE = 'RoutingMessage';

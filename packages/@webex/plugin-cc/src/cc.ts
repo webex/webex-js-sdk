@@ -327,7 +327,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @param {BuddyAgents} data The data required to fetch buddy agents
    * @returns {Promise<BuddyAgentsResponse>} A promise resolving to the buddy agents information
    * @throws {Error} If fetching buddy agents fails
-   * * @example
+   * @example
    * ```typescript
    * const cc = webex.cc;
    * await cc.register();
@@ -894,7 +894,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * This is used for making the outdial call.
-   * @param destination The destination number to dial
+   * @param destination - The destination number to dial
    * @returns Promise<TaskResponse> Resolves with the outdial task response
    * @throws Error If the outdial operation fails
    * @public
@@ -1009,7 +1009,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * }
    * catch (error) {
    *    console.error('Error during registration:', error);
-   *    await cc.uploadLogs();
+   *    cc.uploadLogs();
    * }
    * ```
    */
