@@ -33,6 +33,7 @@ const PRODUCT_NAME_UPPER = PRODUCT_NAME.toUpperCase();
  * @remarks
  * This class is responsible for tracking, batching, and submitting various types of metric events.
  * It also provides utility methods for extracting common tracking fields from AQM responses.
+ * @ignore
  */
 export default class MetricsManager {
   /**

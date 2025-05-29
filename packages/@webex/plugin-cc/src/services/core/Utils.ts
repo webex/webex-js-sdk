@@ -10,6 +10,7 @@ import WebexRequest from './WebexRequest';
  * @param errObj - The Webex request payload object.
  * @returns An object containing the tracking ID and message body.
  * @private
+ * @ignore
  */
 const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
   return {
@@ -29,6 +30,7 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
  * @example
  * const details = getErrorDetails(error, 'fetchData', 'DataModule');
  * if (details.error) { handleError(details.error); }
+ * @ignore
  */
 export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
   const failure = error.details as Failure;
@@ -58,6 +60,7 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
  * @public
  * @example
  * const errDetails = createErrDetailsObject(webexRequestPayload);
+ * @ignore
  */
 export const createErrDetailsObject = (errObj: WebexRequestPayload) => {
   const details = getCommonErrorDetails(errObj);
