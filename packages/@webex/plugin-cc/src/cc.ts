@@ -19,7 +19,6 @@ import {
   AgentProfileUpdate,
   StationLoginResponse,
   StationLogoutResponse,
-  StationReLoginResponse,
   BuddyAgentsResponse,
   BuddyAgents,
   SubscribeRequest,
@@ -61,33 +60,32 @@ import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
 
 /**
- * Contact Center Plugin main class which provides functionality for agent management
+ * @class ContactCenter
+ * @extends WebexPlugin
+ * @implements IContactCenter
+ * @description
+ Contact Center Plugin main class which provides functionality for agent management
  * in Webex Contact Center. This includes capabilities for:
- * - Agent login/logout and state management
- * - Task handling and routing
- * - Real-time event processing
- * - Device and configuration management
- * - Queue management
- * - Metrics tracking and logging
+ * - Agent login/logout
+ * - State management
+ * - Task handling
+ * - Call Controls
+ *     - Mute/Unmute Call
+ *     - Hold/Resume Call
+ *     - Pause/Resume Call Recording
+ *     - Transfer Task
+ *     - Consult & Transfer Call
+ * - Outdial
  *
- * @category Core
  * @example
  * ```typescript
- * // Initialize the Contact Center plugin
- * const cc = new ContactCenter();
- *
- * // Register and login
+ * const cc = webex.cc;
  * await cc.register();
- * await cc.stationLogin({
- *   teamId: "team123",
- *   loginOption: LoginOption.BROWSER
- * });
- *
- * // Set agent state
- * await cc.setAgentState({
- *   state: "Available"
- * });
+ * await cc.stationLogin({ teamId: 'team123', loginOption: 'AGENT_DN', dialNumber: '+1234567890' });
+ * await cc.setAgentState({ state: 'Available' });
  * ```
+ *
+ * @public
  */
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   /** Plugin namespace identifier */
@@ -124,6 +122,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public LoggerProxy = LoggerProxy;
 
   /**
+   * @ignore
    * Creates an instance of ContactCenter plugin
    * @param {any[]} args Arguments passed to plugin constructor
    */
@@ -195,10 +194,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Initializes the Contact Center SDK by setting up mercury connection
+   * Initializes the Contact Center SDK by setting up the web socket connections
    * @returns {Promise<Profile>} Agent profile information after successful registration
    * @throws {Error} If registration fails
    * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * // After registration, you can perform operations like login, state change, etc.
+   * ```
    */
   public async register(): Promise<Profile> {
     LoggerProxy.info('Starting CC SDK registration', {
@@ -251,10 +256,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Unregisters the Contact Center SDK and cleans up all resources
+   * Unregisters the Contact Center SDK by closing all the web socket connections and removing event listeners
+   * @remarks
+   * This method does not do a station signout.
    * @returns {Promise<void>} Resolves when deregistration is complete
    * @throws {Error} If deregistration fails
    * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * // Perform operations like login, state change, etc.
+   * await cc.deregister();
+   * ```
    */
   public async deregister(): Promise<void> {
     try {
@@ -321,12 +335,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Returns the list of buddy agents in the given state and media according to agent profile settings
+   * Returns the list of buddy agents who are in the given user state and media type based on their agent profile settings
    * @param {BuddyAgents} data The data required to fetch buddy agents
    * @returns {Promise<BuddyAgentsResponse>} A promise resolving to the buddy agents information
    * @throws {Error} If fetching buddy agents fails
-   * @example getBuddyAgents({state: 'Available', mediaType: 'telephony'})
-   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   * await cc.getBuddyAgents({state: 'Available', mediaType: 'telephony'});
+   * ```
    */
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
     LoggerProxy.info('Fetching buddy agents', {
@@ -446,6 +465,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @returns {Promise<StationLoginResponse>} Response containing login status and profile
    * @throws {Error} If login fails
    * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({
+   *  teamId: 'team123',
+   *  loginOption: 'EXTENSION',
+   *  dialNumber: '1002'
+   * });
+   * // After successful login, you can perform operations like state change, task handling, etc.
+   * ```
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     LoggerProxy.info('Starting agent station login', {
@@ -530,7 +560,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Logs out the currently logged in agent
+   * Performs a station logout operation for the agent
+   * @remarks
+   * A logout operation cannot happen if the agent is in an interaction or haven't logged in yet.
    * @param {Logout} data Logout parameters
    * @returns {Promise<StationLogoutResponse>} Response indicating logout status
    * @throws {Error} If logout fails
@@ -588,55 +620,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Re-authenticates an agent's login session
-   * @returns {Promise<StationReLoginResponse>} Response indicating relogin status
-   * @throws {Error} If relogin fails
-   * @public
-   */
-  public async stationReLogin(): Promise<StationReLoginResponse> {
-    LoggerProxy.info('Starting agent station relogin', {
-      module: CC_FILE,
-      method: METHODS.STATION_RELOGIN,
-    });
-    try {
-      this.metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS,
-        METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED,
-      ]);
-      const reLoginResponse = await this.services.agent.reload();
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(reLoginResponse),
-        },
-        ['behavioral', 'business', 'operational']
-      );
-
-      LoggerProxy.log(
-        `Agent station relogin completed successfully agentID: ${reLoginResponse.data?.agentId} teamId: ${reLoginResponse.data?.teamId}`,
-        {
-          module: CC_FILE,
-          method: METHODS.STATION_RELOGIN,
-          trackingId: reLoginResponse.trackingId,
-        }
-      );
-
-      return reLoginResponse;
-    } catch (error) {
-      const failure = error.details as Failure;
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED,
-        {
-          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
-        },
-        ['behavioral', 'business', 'operational']
-      );
-      const {error: detailedError} = getErrorDetails(error, METHODS.STATION_RELOGIN, CC_FILE);
-      throw detailedError;
-    }
-  }
-
-  /**
    * Gets the device ID based on login option and dial number
    * @param {string} loginOption The login option (BROWSER, EXTENSION, etc)
    * @param {string} dialNumber The dial number if applicable
@@ -652,11 +635,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Sets the agent state like Available, Idle, etc.
+   * Sets the state of the agent to Available or any of the Idle states
    * @param {StateChange} data State change parameters including the new state
    * @returns {Promise<SetStateResponse>} Response with updated state information
    * @throws {Error} If state change fails
    * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   * await cc.setAgentState({
+   *    state: 'Available',
+   *    auxCodeId: '12345',
+   *    lastStateChangeReason: 'Manual state change',
+   *    agentId: 'agent123',
+   * });
+   * ```
    */
   public async setAgentState(data: StateChange): Promise<SetStateResponse> {
     LoggerProxy.info('Setting agent state', {
@@ -988,16 +983,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * This is used for making the outdial call.
-   * @param destination
-   * @returns Promise<TaskResponse>
-   * @throws Error
+   * @param destination - The destination number to dial
+   * @returns Promise<TaskResponse> Resolves with the outdial task response
+   * @throws Error If the outdial operation fails
+   * @public
    * @example
    * ```typescript
-   * const destination = '1234567890';
-   * const result = await webex.cc.startOutdial(destination).then(()=>{}).catch(()=>{});
+   * const destination = '+1234567890';
+   * const cc = webex.cc;
+   * await cc.register();
+   * const task = await cc.startOutdial(destination);
+   * // Can do task operations like accept, reject, etc.
    * ```
+   * Refer to {@link ITask | ITask interface} for more details.
    */
-
   public async startOutdial(destination: string): Promise<TaskResponse> {
     LoggerProxy.info('Starting outbound dial', {
       module: CC_FILE,
@@ -1056,21 +1055,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * This is used for getting the list of queues.
-   * @param search - optional
-   * @param filter - optional
-   * @param page - default is 0
-   * @param pageSize - default is 100
-   * @returns Promise<ContactServiceQueue[]>
-   * @throws Error
-   *
+   * This is used for getting the list of queues to which a task can be consulted or transferred.
+   * @param search - optional search string
+   * @param filter - optional filter string
+   * @param page - page number (default is 0)
+   * @param pageSize - number of items per page (default is 100)
+   * @returns Promise<ContactServiceQueue[]> Resolves with the list of queues
+   * @throws Error If the operation fails
+   * @public
    * @example
    * ```typescript
-   * const search = 'queue';
-   * const filter = 'id == "e23ad456-1ebd-1b43-b9d0-34f39c7dcb5e"';
-   * const page = 0;
-   * const pageSize = 100;
-   * const result = await webex.cc.getQueues(search, filter, page, pageSize);
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   * const queues = await cc.getQueues();
    * ```
    */
   public async getQueues(
@@ -1112,8 +1110,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * messages, and client-side events, then securely submits them to Webex's diagnostics
    * service. The returned tracking ID, feedbackID can be provided to Webex support for faster
    * issue resolution.
-   * @returns Promise<UploadLogsResponse>
-   * @throws Error
+   * @returns Promise<UploadLogsResponse> Resolves with the upload logs response
+   * @throws Error If the upload fails
+   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * try {
+   *    await cc.register();
+   * }
+   * catch (error) {
+   *    console.error('Error during registration:', error);
+   *    cc.uploadLogs();
+   * }
+   * ```
    */
   public async uploadLogs(): Promise<UploadLogsResponse> {
     return this.webexRequest.uploadLogs();
@@ -1123,9 +1133,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Updates the agent device type.
    * This method allows the agent to change their device type (e.g., from BROWSER to EXTENSION or anything else).
    * It will also throw an error if the new device type is the same as the current one.
-   * @param data type is AgentProfileUpdate - The data required to update the agent device type, including the login option, team id and dial number.
-   * @returns Promise<UpdateDeviceTypeResponse>
-   * @throws Error
+   * @param data type is AgentDeviceUpdate - The data required to update the agent device type, including the new login option and dial number.
+   * @returns Promise<UpdateDeviceTypeResponse> Resolves with the device type update response
+   * @throws Error If the update fails
    * @example
    * ```typescript
    * const data = {
@@ -1134,7 +1144,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    *   teamId: 'team-id-if-needed', // Optional, if not provided, current team ID will be used
    * };
    * const result = await webex.cc.updateAgentProfile(data);
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   * await cc.updateAgentDeviceType(data);
    * ```
+   * @public
    */
   public async updateAgentProfile(data: AgentProfileUpdate): Promise<UpdateDeviceTypeResponse> {
     this.metricsManager.timeEvent([

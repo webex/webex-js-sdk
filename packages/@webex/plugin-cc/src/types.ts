@@ -517,13 +517,6 @@ export type StationLoginResponse = Agent.StationLoginSuccessResponse | Error;
 export type StationLogoutResponse = Agent.LogoutSuccess | Error;
 
 /**
- * Response type for station relogin operations
- * Either a success response with relogin details or an error
- * @public
- */
-export type StationReLoginResponse = Agent.ReloginSuccess | Error;
-
-/**
  * Response type for agent state change operations
  * Either a success response with state change details or an error
  * @public
