@@ -63,10 +63,14 @@ import {Failure} from './services/core/GlobalTypes';
  * @extends WebexPlugin
  * @implements IContactCenter
  * @description
- * Main class for the Webex Contact Center Plugin. This class provides the primary interface for managing contact center agents, handling tasks, interacting with contact center services, and integrating with Webex Contact Center features through the WebexSDK.
- *
- * @remarks
- * The ContactCenter class exposes methods for agent login/logout, state management, task handling, device management, queue retrieval, metrics tracking, and log upload. It also manages real-time event processing and connection state changes.
+ Contact Center Plugin main class which provides functionality for agent management
+ * in Webex Contact Center. This includes capabilities for:
+ * - Agent login/logout
+ * - State management
+ * - Task handling and routing
+ * - Real-time event processing
+ * - Queue management
+ * - Metrics tracking and logging
  *
  * @example
  * ```typescript
