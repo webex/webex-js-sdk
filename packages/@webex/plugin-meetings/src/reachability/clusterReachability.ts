@@ -371,23 +371,23 @@ export class ClusterReachability extends EventsScope {
       if (e.candidate) {
         if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
           let serverIp = null;
+          let port = null;
           if ('url' in e.candidate) {
-            const stunServerUrlRegex = /stun:([\d.]+):\d+/;
+            const stunServerUrlRegex = /stun:([\d.]+):(\d+)/;
 
             const match = (e.candidate as any).url.match(stunServerUrlRegex);
             if (match) {
               // eslint-disable-next-line prefer-destructuring
               serverIp = match[1];
+              // eslint-disable-next-line prefer-destructuring
+              port = match[2];
+              if (port) {
+                port = Number(port);
+              }
             }
           }
 
-          this.saveResult(
-            'udp',
-            latencyInMilliseconds,
-            e.candidate.address,
-            serverIp,
-            e.candidate.port
-          );
+          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp, port);
 
           this.determineNatType(e.candidate);
         }
