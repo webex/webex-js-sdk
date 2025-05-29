@@ -9,7 +9,8 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
 /**
  * Events emitted on task objects
  * @enum {string}
- * @public
+ * @private
+ * @ignore
  */
 export const CC_TASK_EVENTS = {
   /** Event emitted when assigning contact to agent fails */
@@ -93,10 +94,11 @@ export const CC_TASK_EVENTS = {
 /**
  * Events emitted on Contact Center agent operations
  * @enum {string}
- * @public
+ * @private
+ * @ignore
  */
 export const CC_AGENT_EVENTS = {
-  /** Welcome event when agent connects */
+  /** Welcome event when agent connects to websocket/backend */
   WELCOME: 'Welcome',
   /** Event emitted when agent re-login is successful */
   AGENT_RELOGIN_SUCCESS: 'AgentReloginSuccess',
