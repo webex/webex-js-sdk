@@ -9,16 +9,20 @@ import * as Contact from './services/task/types';
 import {Profile} from './services/config/types';
 
 /**
- * Generic type for converting a const enum object into a union type of its values
+ * Generic type for converting a const enum object into a union type of its values.
  * @template T The enum object type
  * @internal
+ * @ignore
  */
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 /**
- * HTTP methods supported by WebexRequest
+ * HTTP methods supported by WebexRequest.
  * @enum {string}
  * @public
+ * @example
+ * const method: HTTP_METHODS = HTTP_METHODS.GET;
+ * @ignore
  */
 export const HTTP_METHODS = {
   /** HTTP GET method for retrieving data */
@@ -34,14 +38,24 @@ export const HTTP_METHODS = {
 } as const;
 
 /**
- * Union type of HTTP methods
+ * Union type of HTTP methods.
  * @public
+ * @example
+ * function makeRequest(method: HTTP_METHODS) { ... }
+ * @ignore
  */
 export type HTTP_METHODS = Enum<typeof HTTP_METHODS>;
 
 /**
- * Payload for making requests to Webex APIs
+ * Payload for making requests to Webex APIs.
  * @public
+ * @example
+ * const payload: WebexRequestPayload = {
+ *   service: 'identity',
+ *   resource: '/users',
+ *   method: HTTP_METHODS.GET
+ * };
+ * @ignore
  */
 export type WebexRequestPayload = {
   /** Service name to target */
@@ -67,20 +81,23 @@ export type WebexRequestPayload = {
 };
 
 /**
- * Event listener function type
+ * Event listener function type.
  * @internal
+ * @ignore
  */
 type Listener = (e: string, data?: unknown) => void;
 
 /**
- * Event listener removal function type
+ * Event listener removal function type.
  * @internal
+ * @ignore
  */
 type ListenerOff = (e: string) => void;
 
 /**
- * Service host configuration
+ * Service host configuration.
  * @internal
+ * @ignore
  */
 type ServiceHost = {
   /** Host URL/domain for the service */
@@ -96,9 +113,20 @@ type ServiceHost = {
 };
 
 /**
- * Configuration options for the Contact Center Plugin
+ * Configuration options for the Contact Center Plugin.
  * @interface CCPluginConfig
  * @public
+ * @example
+ * const config: CCPluginConfig = {
+ *   allowMultiLogin: true,
+ *   allowAutomatedRelogin: false,
+ *   clientType: 'browser',
+ *   isKeepAliveEnabled: true,
+ *   force: false,
+ *   metrics: { clientName: 'myClient', clientType: 'browser' },
+ *   logging: { enable: true, verboseEvents: false },
+ *   callingClientConfig: { ... }
+ * };
  */
 export interface CCPluginConfig {
   /** Whether to allow multiple logins from different devices */
@@ -130,8 +158,12 @@ export interface CCPluginConfig {
 }
 
 /**
- * Logger interface for standardized logging throughout the plugin
+ * Logger interface for standardized logging throughout the plugin.
  * @public
+ * @example
+ * logger.log('This is a log message');
+ * logger.error('This is an error message');
+ * @ignore
  */
 export type Logger = {
   /** Log general messages */
@@ -149,8 +181,9 @@ export type Logger = {
 };
 
 /**
- * Contextual information for log entries
+ * Contextual information for log entries.
  * @public
+ * @ignore
  */
 export interface LogContext {
   /** Module name where the log originated */
@@ -162,9 +195,12 @@ export interface LogContext {
 }
 
 /**
- * Available logging severity levels
+ * Available logging severity levels.
  * @enum {string}
  * @public
+ * @example
+ * const level: LOGGING_LEVEL = LOGGING_LEVEL.error;
+ * @ignore
  */
 export enum LOGGING_LEVEL {
   /** Critical failures that require immediate attention */
@@ -180,8 +216,11 @@ export enum LOGGING_LEVEL {
 }
 
 /**
- * Metadata for log uploads
+ * Metadata for log uploads.
  * @public
+ * @example
+ * const meta: LogsMetaData = { feedbackId: 'fb123', correlationId: 'corr456' };
+ * @ignore
  */
 export type LogsMetaData = {
   /** Optional feedback ID to associate with logs */
@@ -191,8 +230,11 @@ export type LogsMetaData = {
 };
 
 /**
- * Response from uploading logs to the server
+ * Response from uploading logs to the server.
  * @public
+ * @example
+ * const response: UploadLogsResponse = { trackingid: 'track123', url: 'https://...', userId: 'user1' };
+ * @ignore
  */
 export type UploadLogsResponse = {
   /** Tracking ID for the upload request */
@@ -208,8 +250,9 @@ export type UploadLogsResponse = {
 };
 
 /**
- * Internal Webex SDK interfaces needed for plugin integration
+ * Internal Webex SDK interfaces needed for plugin integration.
  * @internal
+ * @ignore
  */
 interface IWebexInternal {
   /** Mercury service for real-time messaging */
@@ -296,9 +339,13 @@ interface IWebexInternal {
 }
 
 /**
- * Interface representing the WebexSDK core functionality
+ * Interface representing the WebexSDK core functionality.
  * @interface WebexSDK
  * @public
+ * @example
+ * const sdk: WebexSDK = ...;
+ * sdk.request({ service: 'identity', resource: '/users', method: HTTP_METHODS.GET });
+ * @ignore
  */
 export interface WebexSDK {
   /** Version of the WebexSDK */
@@ -328,6 +375,10 @@ export interface WebexSDK {
  * An interface for the `ContactCenter` class.
  * The `ContactCenter` package is designed to provide a set of APIs to perform various operations for the Agent flow within Webex Contact Center.
  * @public
+ * @example
+ * const cc: IContactCenter = ...;
+ * cc.register().then(profile => { ... });
+ * @ignore
  */
 export interface IContactCenter {
   /**
@@ -335,13 +386,19 @@ export interface IContactCenter {
    * This establishes WebSocket connectivity for real-time communication.
    *
    * @returns A Promise that resolves to the agent's profile upon successful registration
+   * @public
+   * @example
+   * cc.register().then(profile => { ... });
    */
   register(): Promise<Profile>;
 }
 
 /**
- * Generic HTTP response structure
+ * Generic HTTP response structure.
  * @public
+ * @example
+ * const response: IHttpResponse = { body: {}, statusCode: 200, method: 'GET', headers: {}, url: '...' };
+ * @ignore
  */
 export interface IHttpResponse {
   /** Response body content */
@@ -357,8 +414,11 @@ export interface IHttpResponse {
 }
 
 /**
- * Supported login options for agent authentication
+ * Supported login options for agent authentication.
  * @public
+ * @example
+ * const option: LoginOption = LoginOption.AGENT_DN;
+ * @ignore
  */
 export const LoginOption = {
   /** Login using agent's direct number */
@@ -370,14 +430,20 @@ export const LoginOption = {
 } as const;
 
 /**
- * Union type of login options
+ * Union type of login options.
  * @public
+ * @example
+ * function login(option: LoginOption) { ... }
+ * @ignore
  */
 export type LoginOption = Enum<typeof LoginOption>;
 
 /**
- * Request payload for subscribing to the contact center websocket
+ * Request payload for subscribing to the contact center websocket.
  * @public
+ * @example
+ * const req: SubscribeRequest = { force: true, isKeepAliveEnabled: true, clientType: 'browser', allowMultiLogin: false };
+ * @ignore
  */
 export type SubscribeRequest = {
   /** Whether to force connection even if another exists */
@@ -394,6 +460,9 @@ export type SubscribeRequest = {
  * Represents the response from getListOfTeams method.
  * Teams are groups of agents that can be managed together.
  * @public
+ * @example
+ * const team: Team = { id: 'team1', name: 'Support', desktopLayoutId: 'layout1' };
+ * @ignore
  */
 export type Team = {
   /**
@@ -414,8 +483,11 @@ export type Team = {
 };
 
 /**
- * Represents the request to perform agent login
+ * Represents the request to perform agent login.
  * @public
+ * @example
+ * const login: AgentLogin = { dialNumber: '1234', teamId: 'team1', loginOption: LoginOption.AGENT_DN };
+ * @ignore
  */
 export type AgentLogin = {
   /**
@@ -438,14 +510,18 @@ export type AgentLogin = {
 };
 
 /**
- * Represents the request to update agent device settings
+ * Represents the request to update agent device settings.
  * @public
+ * @example
+ * const update: AgentDeviceUpdate = { loginOption: LoginOption.BROWSER, dialNumber: '5678' };
+ * @ignore
  */
 export type AgentDeviceUpdate = Pick<AgentLogin, 'loginOption' | 'dialNumber' | 'teamId'>;
 
 /**
- * Union type for all possible request body types
+ * Union type for all possible request body types.
  * @internal
+ * @ignore
  */
 export type RequestBody =
   | SubscribeRequest
@@ -467,6 +543,9 @@ export type RequestBody =
  * Represents the options to fetch buddy agents for the logged in agent.
  * Buddy agents are other agents who can be consulted or transfered to.
  * @public
+ * @example
+ * const opts: BuddyAgents = { mediaType: 'telephony', state: 'Available' };
+ * @ignore
  */
 export type BuddyAgents = {
   /**
@@ -484,9 +563,13 @@ export type BuddyAgents = {
 };
 
 /**
- * Generic error structure for Contact Center SDK errors
- * Contains detailed information about the error context
+ * Generic error structure for Contact Center SDK errors.
+ * Contains detailed information about the error context.
  * @public
+ * @example
+ * const err: GenericError = new Error('Failed');
+ * err.details = { type: 'ERR', orgId: 'org1', trackingId: 'track1', data: {} };
+ * @ignore
  */
 export interface GenericError extends Error {
   /** Structured details about the error */
@@ -503,36 +586,61 @@ export interface GenericError extends Error {
 }
 
 /**
- * Response type for station login operations
- * Either a success response with agent details or an error
+ * Response type for station login operations.
+ * Either a success response with agent details or an error.
  * @public
+ * @example
+ * function handleLogin(resp: StationLoginResponse) { ... }
+ * @ignore
  */
 export type StationLoginResponse = Agent.StationLoginSuccessResponse | Error;
 
 /**
- * Response type for station logout operations
- * Either a success response with logout details or an error
+ * Response type for station logout operations.
+ * Either a success response with logout details or an error.
  * @public
+ * @example
+ * function handleLogout(resp: StationLogoutResponse) { ... }
+ * @ignore
  */
 export type StationLogoutResponse = Agent.LogoutSuccess | Error;
 
 /**
- * Response type for agent state change operations
- * Either a success response with state change details or an error
+ * Response type for station relogin operations.
+ * Either a success response with relogin details or an error.
  * @public
+ * @example
+ * function handleReLogin(resp: StationReLoginResponse) { ... }
+ * @ignore
+ */
+export type StationReLoginResponse = Agent.ReloginSuccess | Error;
+
+/**
+ * Response type for agent state change operations.
+ * Either a success response with state change details or an error.
+ * @public
+ * @example
+ * function handleStateChange(resp: SetStateResponse) { ... }
+ * @ignore
  */
 export type SetStateResponse = Agent.StateChangeSuccess | Error;
 
 /**
- * Response type for buddy agents query operations
- * Either a success response with list of buddy agents or an error
+ * Response type for buddy agents query operations.
+ * Either a success response with list of buddy agents or an error.
  * @public
+ * @example
+ * function handleBuddyAgents(resp: BuddyAgentsResponse) { ... }
+ * @ignore
  */
 export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
 
 /**
- * Response type for device type update operations
- * Either a success response with update confirmation or an error
+ * Response type for device type update operations.
+ * Either a success response with update confirmation or an error.
  * @public
+ * @example
+ * function handleUpdateDeviceType(resp: UpdateDeviceTypeResponse) { ... }
+ * @ignore
  */
 export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;
