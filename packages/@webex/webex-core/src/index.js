@@ -34,7 +34,6 @@ export {
   ServiceInterceptorV2,
   ServerErrorInterceptorV2,
   ServicesV2,
-  ServiceHostV2,
   ServiceUrlV2,
   HostMapInterceptorV2,
 } from './lib/services-v2';

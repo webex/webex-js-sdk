@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 export const serviceHostmapV2 = {
-=======
-const hostCatalogV2 = {
->>>>>>> 091ea87688249dd5705df857278f8a62e9176bcb
   activeServices: {
     conversation: 'urn:TEAM:us-east-2_a:conversation',
     idbroker: 'urn:TEAM:us-east-2_a:idbroker',
