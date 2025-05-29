@@ -119,6 +119,8 @@ export enum TASK_EVENTS {
   TASK_CONSULT_QUEUE_CANCELLED = 'task:consultQueueCancelled',
   /** Triggered when a queue consultation fails */
   TASK_CONSULT_QUEUE_FAILED = 'task:consultQueueFailed',
+  /** Triggered when a consultation request is accepted */
+  TASK_CONSULT_ACCEPTED = 'task:consultAccepted',
   /** Triggered when consultation is in progress */
   TASK_CONSULTING = 'task:consulting',
   /** Triggered when a new consultation is created */

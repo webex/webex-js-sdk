@@ -164,7 +164,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * Agent can decline the incoming task.
+   * Declines the incoming webrtc task.
    *
    * @returns Promise<TaskResponse>
    * @throws Error
@@ -206,7 +206,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * Puts the customer's task/interaction on hold.
+   * Puts the current task/interaction on hold.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -254,7 +254,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * Resumes the customer's task/interaction that was previously put on hold.
+   * Resumes the task/interaction that was previously put on hold.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -409,7 +409,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * Pause the recording for the voice task.
+   * Pauses the recording for the voice task.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -674,15 +674,15 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * Transfer the task to the consulting agent.
-   * @param consultTransferPayload - ConsultTransfer configuration containing destination and destinationType
+   * Transfer the task to the consulted agent or queue.
+   * @param consultTransferPayload - Consult transfer configuration containing destination and destinationType
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
    * ```typescript
    * const consultTransferPayload = {
-   * destination: 'anotherAgentId',
-   * destinationType: 'agent',
+   * destination: 'anotherAgentId | queueId',
+   * destinationType: 'agent | queue',
    * }
    * task.consultTransfer(consultTransferPayload).then(()=>{}).catch(()=>{});
    * ```
