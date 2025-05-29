@@ -5338,10 +5338,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.cleanUpBeforeReconnection();
 
     return this.reconnectionManager
-      .reconnect(options, async () => {
-        await this.waitForRemoteSDPAnswer();
-        await this.waitForMediaConnectionConnected();
-      })
+      .reconnect(options)
       .then(() => {
         LoggerProxy.logger.log('Meeting:index#reconnect --> Meeting reconnect success');
       })
