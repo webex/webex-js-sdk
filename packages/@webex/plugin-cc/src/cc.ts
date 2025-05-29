@@ -67,10 +67,14 @@ import {Failure} from './services/core/GlobalTypes';
  * in Webex Contact Center. This includes capabilities for:
  * - Agent login/logout
  * - State management
- * - Task handling and routing
- * - Real-time event processing
- * - Queue management
- * - Metrics tracking and logging
+ * - Task handling
+ * - Call Controls
+ *     - Mute/Unmute Call
+ *     - Hold/Resume Call
+ *     - Pause/Resume Call Recording
+ *     - Transfer Task
+ *     - Consult & Transfer Call
+ * - Outdial
  *
  * @example
  * ```typescript
