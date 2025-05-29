@@ -37,7 +37,17 @@ const ServiceDetails = AmpState.extend({
    * @returns {string} - The priority host url.
    */
   _getPriorityHostUrl() {
-    const priorityServiceUrl = this.serviceUrls.find((url) => url.priority > 0);
+    let priorityServiceUrl = this.serviceUrls.find((url) => url.priority > 0 && !url.failed);
+
+    if (!priorityServiceUrl) {
+      this.serviceUrls = this.serviceUrls.map((serviceUrl) => {
+        serviceUrl.failed = false;
+
+        return serviceUrl;
+      });
+
+      priorityServiceUrl = this.serviceUrls.find((url) => url.priority > 0 && !url.failed);
+    }
 
     return this._generateHostUrl(priorityServiceUrl);
   },
@@ -50,8 +60,9 @@ const ServiceDetails = AmpState.extend({
    * @returns {boolean}
    */
   failHost(url) {
-    const {hostname} = Url.parse(url);
-    const foundHost = this.serviceUrls.find((hostObj) => hostObj.host === hostname);
+    const failedUrl = Url.parse(url);
+
+    const foundHost = this.serviceUrls.find((serviceUrl) => serviceUrl.host === failedUrl.host);
 
     if (foundHost) {
       foundHost.failed = true;

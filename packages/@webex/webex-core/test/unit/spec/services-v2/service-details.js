@@ -56,165 +56,78 @@ describe('webex-core', () => {
       });
     });
 
-    // describe('#_generateHostUrl()', () => {
-    //   it('returns a string', () => {
-    //     serviceUrl.hosts.forEach(({host}) => {
-    //       assert.typeOf(serviceUrl._generateHostUrl(host), 'string');
-    //     });
-    //   });
+    describe('#_generateHostUrl()', () => {
+      it('returns a string', () => {
+        serviceDetails.serviceUrls.forEach((serviceUrl) => {
+          assert.typeOf(serviceDetails._generateHostUrl(serviceUrl), 'string');
+        });
+      });
 
-    //   it('replaces the host of a pass in url', () => {
-    //     serviceUrl.hosts.forEach(({host}) => {
-    //       assert.include(serviceUrl._generateHostUrl(host), `https://${host}/api/v1`);
-    //     });
-    //   });
-    // });
+      it('replaces the host of a pass in url', () => {
+        serviceDetails.serviceUrls.forEach((serviceUrl) => {
+          assert.equal(
+            serviceDetails._generateHostUrl(serviceUrl),
+            `https://${serviceUrl.host}/conversation/api/v1`
+          );
+        });
+      });
+    });
 
-    // describe('#_getHostUrls()', () => {
-    //   it('returns an array of objects with an updated url and priority', () => {
-    //     serviceUrl._getHostUrls().forEach((hu) => {
-    //       assert.hasAllKeys(hu, ['url', 'priority']);
-    //     });
-    //   });
+    describe('#_getPriorityHostUrl()', () => {
+      it('validates that the retrieved high priority host matches the manually retrieved high priority host', () => {
+        assert.equal(
+          serviceDetails._getPriorityHostUrl(),
+          serviceDetails._generateHostUrl(template.serviceUrls[0])
+        );
+      });
 
-    //   it('generates an array objects from current hosts', () => {
-    //     const hostUrls = serviceUrl._getHostUrls();
+      it('should pick most priority non failed host', () => {
+        serviceDetails.serviceUrls[0].failed = true;
 
-    //     hostUrls.forEach((hu, i) => {
-    //       assert.equal(hu.url, serviceUrl._generateHostUrl(serviceUrl.hosts[i].host));
-    //       assert.equal(hu.priority, serviceUrl.hosts[i].priority);
-    //     });
-    //   });
-    // });
+        assert.isTrue(serviceDetails.serviceUrls[0].failed);
 
-    // describe('#_getPriorityHostUrl()', () => {
-    //   let highPriorityHost;
+        const priorityHost = serviceDetails._getPriorityHostUrl();
+        assert.equal(priorityHost, serviceDetails.serviceUrls[1].baseUrl);
+      });
 
-    //   beforeEach(() => {
-    //     highPriorityHost = serviceUrl._generateHostUrl(
-    //       serviceUrl.hosts.reduce((o, c) => (o.priority > c.priority || !o.homeCluster ? c : o))
-    //         .host
-    //     );
-    //   });
+      it('should reset the hosts when all have failed', () => {
+        serviceDetails.serviceUrls.forEach((serviceUrl) => {
+          /* eslint-disable-next-line no-param-reassign */
+          serviceUrl.failed = true;
+        });
 
-    //   it('validates that the retrieved high priority host matches the manually retrieved high priority host', () => {
-    //     assert.equal(serviceUrl._getPriorityHostUrl(), highPriorityHost);
-    //   });
+        assert.isTrue(serviceDetails.serviceUrls.every((serviceUrl) => serviceUrl.failed));
 
-    //   it('should reset the hosts when all have failed', () => {
-    //     serviceUrl.hosts.forEach((host) => {
-    //       /* eslint-disable-next-line no-param-reassign */
-    //       host.failed = true;
-    //     });
+        const priorityHost = serviceDetails._getPriorityHostUrl();
 
-    //     serviceUrl._getPriorityHostUrl();
+        assert.equal(priorityHost, serviceDetails.serviceUrls[0].baseUrl);
+        assert.isTrue(serviceDetails.serviceUrls.every((serviceUrl) => !serviceUrl.failed));
+      });
+    });
 
-    //     const homeClusterUrls = serviceUrl.hosts.filter((host) => host.homeCluster);
+    describe('#failHost()', () => {
+      it('marks a host as failed', () => {
+        serviceDetails.failHost(serviceDetails.serviceUrls[0].baseUrl);
 
-    //     assert.isTrue(homeClusterUrls.every((host) => !host.failed));
-    //   });
-    // });
+        const removedHost = serviceDetails.serviceUrls.find(
+          (currentHost) => currentHost.host === serviceDetails.serviceUrls[0].host
+        );
 
-    // describe('#failHost()', () => {
-    //   let host;
-    //   let hostUrl;
+        assert.isTrue(removedHost.failed);
+      });
 
-    //   beforeEach(() => {
-    //     host = 'example-host-px.com';
-    //     hostUrl = 'https://example-host-px.com/api/v1';
-    //     serviceUrl.hosts.push({host, priority: 10, ttl: -1});
-    //   });
+      it('returns true if hostUrl was found', () => {
+        const removedHostResult = serviceDetails.failHost(serviceDetails.serviceUrls[0].baseUrl);
 
-    //   it('marks a host as failed', () => {
-    //     serviceUrl.failHost(hostUrl);
+        assert.isTrue(removedHostResult);
+      });
 
-    //     const removedHost = serviceUrl.hosts.find((currentHost) => currentHost.host === host);
+      it('returns false if hostUrl was not found', () => {
+        const removedHostResult = serviceDetails.failHost('https://someurl.com/api/vq');
 
-    //     assert.isTrue(removedHost.failed);
-    //   });
-
-    //   it('does not mark failed a host if the hostUrl is defaultUrl', () => {
-    //     // Remove here as countermeasure to beforeEach
-    //     serviceUrl.failHost(hostUrl);
-
-    //     const hostLength = serviceUrl.hosts.length;
-    //     const foundHost = serviceUrl.failHost(serviceUrl.defaultUrl);
-
-    //     assert.isTrue(foundHost);
-    //     assert.equal(hostLength, serviceUrl.hosts.length);
-    //     assert.isDefined(serviceUrl.defaultUrl);
-    //     assert.equal(serviceUrl.defaultUrl, template.defaultUrl);
-    //   });
-
-    //   it('returns true if hostUrl was found', () => {
-    //     const removedHostResult = serviceUrl.failHost(hostUrl);
-
-    //     assert.isTrue(removedHostResult);
-    //   });
-
-    //   it('returns false if hostUrl was not found', () => {
-    //     const removedHostResult = serviceUrl.failHost('https://someurl.com/api/vq');
-
-    //     assert.isFalse(removedHostResult);
-    //   });
-    // });
-
-    // describe('#get()', () => {
-    //   it('returns a string', () => {
-    //     assert.typeOf(serviceUrl.get(), 'string');
-    //   });
-
-    //   // This may be updated in a later PR if
-    //   // changes to federation before release occur.
-    //   it('returns the defaultUrl value', () => {
-    //     assert.equal(serviceUrl.get(), serviceUrl.defaultUrl);
-    //   });
-
-    //   it('returns the highest priority host as url', () => {
-    //     const hpUrl = serviceUrl.get(true);
-
-    //     assert.equal(hpUrl, serviceUrl._getPriorityHostUrl());
-    //     assert.isDefined(serviceUrl.hosts.find((hostObj) => hpUrl.includes(hostObj.host)));
-    //   });
-
-    //   describe('when a clusterId is provided', () => {
-    //     let highPriorityHost;
-    //     let hosts;
-    //     let url;
-
-    //     describe('when the clusterId is a home cluster', () => {
-    //       beforeEach(() => {
-    //         hosts = serviceUrl.hosts.filter((host) => host.homeCluster);
-
-    //         highPriorityHost = hosts.reduce((current, next) =>
-    //           current.priority <= next.priority ? current : next
-    //         ).host;
-
-    //         url = serviceUrl.get(true, hosts[0].id);
-    //       });
-
-    //       it('should return a url from the correct cluster', () => {
-    //         assert.isTrue(url.includes(highPriorityHost));
-    //       });
-    //     });
-
-    //     describe('when the clusterId is not a home cluster', () => {
-    //       beforeEach(() => {
-    //         hosts = serviceUrl.hosts.filter((host) => !host.homeCluster);
-
-    //         highPriorityHost = hosts.reduce((current, next) =>
-    //           current.priority <= next.priority ? current : next
-    //         ).host;
-
-    //         url = serviceUrl.get(true, hosts[0].id);
-    //       });
-
-    //       it('should return a url from the correct cluster', () => {
-    //         assert.isTrue(url.includes(highPriorityHost));
-    //       });
-    //     });
-    //   });
-    // });
+        assert.isFalse(removedHostResult);
+      });
+    });
   });
 });
 /* eslint-enable no-underscore-dangle */
