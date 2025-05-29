@@ -1,9 +1,3 @@
-/**
- * @fileoverview This module defines the core types and interfaces for managing tasks in the Contact Center SDK.
- * It includes definitions for task operations, events, media channels, and interaction data structures.
- * These types are essential for handling customer interactions across various communication channels.
- */
-
 import {CallId} from '@webex/calling/dist/types/common/types';
 import EventEmitter from 'events';
 import {Msg} from '../core/GlobalTypes';
@@ -505,7 +499,7 @@ export type AgentContact = Msg<{
 
 /**
  * Information about a virtual team in the contact center
- * @public
+ * @ignore
  */
 export type VTeam = {
   /** Profile ID of the agent in the virtual team */
@@ -522,7 +516,7 @@ export type VTeam = {
 
 /**
  * Detailed information about a virtual team configuration
- * @public
+ * @ignore
  */
 export type VteamDetails = {
   /** Name of the virtual team */
@@ -540,7 +534,7 @@ export type VteamDetails = {
 /**
  * Response type for successful virtual team operations
  * Contains details about virtual teams and their capabilities
- * @public
+ * @ignore
  */
 export type VTeamSuccess = Msg<{
   /** Response data containing team information */
@@ -780,7 +774,7 @@ export interface ITask extends EventEmitter {
 
   /**
    * Answers or accepts an incoming task
-   * @returns Promise resolving to a TaskResponse
+   * @returns Promise<TaskResponse>
    * @example
    * ```typescript
    * task.accept();
@@ -790,7 +784,7 @@ export interface ITask extends EventEmitter {
 
   /**
    * Declines an incoming task for Browser Login
-   * @returns Promise resolving to a TaskResponse
+   * @returns Promise<TaskResponse>
    * @example
    * ```typescript
    * task.decline();
@@ -800,7 +794,7 @@ export interface ITask extends EventEmitter {
 
   /**
    * Places the current task on hold
-   * @returns Promise resolving to a TaskResponse
+   * @returns Promise<TaskResponse>
    * @example
    * ```typescript
    * task.hold();
@@ -810,7 +804,7 @@ export interface ITask extends EventEmitter {
 
   /**
    * Resumes a task that was previously on hold
-   * @returns Promise resolving to a TaskResponse
+   * @returns Promise<TaskResponse>
    * @example
    * ```typescript
    * task.resume();
@@ -820,7 +814,7 @@ export interface ITask extends EventEmitter {
 
   /**
    * Ends/terminates the current task
-   * @returns Promise resolving to a TaskResponse
+   * @returns Promise<TaskResponse>
    * @example
    * ```typescript
    * task.end();
@@ -831,7 +825,7 @@ export interface ITask extends EventEmitter {
   /**
    * Initiates wrap-up process for the task with specified details
    * @param wrapupPayload - Wrap-up details including reason and auxiliary code
-   * @returns Promise resolving to a TaskResponse
+   * @returns Promise<TaskResponse>
    * @example
    * ```typescript
    * task.wrapup({
@@ -843,8 +837,8 @@ export interface ITask extends EventEmitter {
   wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse>;
 
   /**
-   * Pauses the current task's recording
-   * @returns Promise resolving to a TaskResponse
+   * Pauses the recording for current task
+   * @returns Promise<TaskResponse>
    * @example
    * ```typescript
    * task.pauseRecording();
@@ -855,7 +849,7 @@ export interface ITask extends EventEmitter {
   /**
    * Resumes a previously paused recording
    * @param resumeRecordingPayload - Parameters for resuming the recording
-   * @returns Promise resolving to a TaskResponse
+   * @returns Promise<TaskResponse>
    * @example
    * ```typescript
    * task.resumeRecording({

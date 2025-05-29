@@ -409,7 +409,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * Pauses the recording for the voice task.
+   * Pauses the recording for the current voice task.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
