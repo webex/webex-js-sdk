@@ -12,6 +12,7 @@ import AqmReqs from '../core/aqm-reqs';
  * @returns {{
  *   startOutdial: (params: {data: Contact.DialerPayload}) => Promise<any>
  * }} Object containing methods for outbound dialing.
+ * @ignore
  */
 export default function aqmDialer(aqm: AqmReqs) {
   return {
@@ -25,6 +26,7 @@ export default function aqmDialer(aqm: AqmReqs) {
      * Emits:
      * - `CC_EVENTS.AGENT_OFFER_CONTACT` on success
      * - `CC_EVENTS.AGENT_OUTBOUND_FAILED` on failure
+     * @ignore
      */
     startOutdial: aqm.req((p: {data: Contact.DialerPayload}) => ({
       url: `${TASK_API}`,
