@@ -23,10 +23,7 @@ import {
 /**
  * WebCallingService provides WebRTC calling functionality for Contact Center agents.
  * It handles registration, call management, and media operations for voice interactions.
- *
- * @export
- * @class WebCallingService
- * @extends {EventEmitter}
+ * @internal
  */
 export default class WebCallingService extends EventEmitter {
   /**

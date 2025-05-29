@@ -27,10 +27,15 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import {Failure} from '../core/GlobalTypes';
 
 /**
- * Task class that implements the {@link ITask} interface
- * Represents a contact center task/interaction that can be managed by an agent
+ * Task class represents a contact center task/interaction that can be managed by an agent.
+ * This class provides all the necessary methods to manage tasks in a contact center enivornment, handling various call control operations and task lifecycle management.
  * @implements {ITask}
+ * @example
+ * ```typescript
+ * const task = new Task(contact, webCallingService, taskData);
+ * ```
  */
+
 export default class Task extends EventEmitter implements ITask {
   private contact: ReturnType<typeof routingContact>;
   private localAudioStream: LocalMicrophoneStream;
@@ -59,14 +64,25 @@ export default class Task extends EventEmitter implements ITask {
     this.registerWebCallListeners();
   }
 
+  /**
+   * @ignore
+   * @private
+   */
   private handleRemoteMedia = (track: MediaStreamTrack) => {
     this.emit(TASK_EVENTS.TASK_MEDIA, track);
   };
 
+  /**
+   * @ignore
+   * @private
+   */
   private registerWebCallListeners() {
     this.webCallingService.on(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleRemoteMedia);
   }
 
+  /**
+   * @ignore
+   */
   public unregisterWebCallListeners() {
     this.webCallingService.off(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleRemoteMedia);
   }
@@ -125,9 +141,22 @@ export default class Task extends EventEmitter implements ITask {
           },
           ['operational', 'behavioral', 'business']
         );
+
+        return Promise.resolve(); // TODO: Update this with sending the task object received in AgentContactAssigned
       }
 
-      return Promise.resolve(); // TODO: Update this with sending the task object received in AgentContactAssigned
+      // TODO: Invoke the accept API from services layer. This is going to be used in Outbound Dialer scenario
+      const response = await this.contact.accept({interactionId: this.data.interactionId});
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+          taskId: this.data.interactionId,
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      return response;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'accept', CC_FILE);
       this.metricsManager.trackEvent(

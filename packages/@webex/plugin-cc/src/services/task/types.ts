@@ -95,51 +95,279 @@ export type MEDIA_CHANNEL = Enum<typeof MEDIA_CHANNEL>;
  * @public
  */
 export enum TASK_EVENTS {
-  /** Triggered when a new task is received by the system */
+  /**
+   * Triggered when a new task is received by the system
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_INCOMING, (task: ITask) => {
+   *   console.log('New task received:', task.data.interactionId);
+   *   // Handle incoming task
+   * });
+   * ```
+   */
   TASK_INCOMING = 'task:incoming',
-  /** Triggered when a task is successfully assigned to an agent */
+
+  /**
+   * Triggered when a task is successfully assigned to an agent
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_ASSIGNED, (task: ITask) => {
+   *   console.log('Task assigned:', task.data.interactionId);
+   *   // Begin handling the assigned task
+   * });
+   * ```
+   */
   TASK_ASSIGNED = 'task:assigned',
-  /** Triggered when the media state of a task changes */
+
+  /**
+   * Triggered when the media state of a task changes
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_MEDIA, (track: MediaStreamTrack) => {
+   *   // Handle media track updates
+   * });
+   * ```
+   */
   TASK_MEDIA = 'task:media',
-  /** Triggered when a task is removed from an agent */
+
+  /**
+   * Triggered when a task is removed from an agent
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_UNASSIGNED, (task: ITask) => {
+   *   console.log('Task unassigned:', task.data.interactionId);
+   *   // Clean up task resources
+   * });
+   * ```
+   */
   TASK_UNASSIGNED = 'task:unassigned',
-  /** Triggered when a task is placed on hold */
+
+  /**
+   * Triggered when a task is placed on hold
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_HOLD, (task: ITask) => {
+   *   console.log('Task placed on hold:', task.data.interactionId);
+   *   // Update UI to show hold state
+   * });
+   * ```
+   */
   TASK_HOLD = 'task:hold',
-  /** Triggered when a task is resumed from hold */
+
+  /**
+   * Triggered when a task is resumed from hold
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_UNHOLD, (task: ITask) => {
+   *   console.log('Task resumed from hold:', task.data.interactionId);
+   *   // Update UI to show active state
+   * });
+   * ```
+   */
   TASK_UNHOLD = 'task:unhold',
-  /** Triggered when a consultation session ends */
+
+  /**
+   * Triggered when a consultation session ends
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONSULT_END, (task: ITask) => {
+   *   console.log('Consultation ended:', task.data.interactionId);
+   *   // Clean up consultation resources
+   * });
+   * ```
+   */
   TASK_CONSULT_END = 'task:consultEnd',
-  /** Triggered when a queue consultation is cancelled */
+
+  /**
+   * Triggered when a queue consultation is cancelled
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED, (task: ITask) => {
+   *   console.log('Queue consultation cancelled:', task.data.interactionId);
+   *   // Handle consultation cancellation
+   * });
+   * ```
+   */
   TASK_CONSULT_QUEUE_CANCELLED = 'task:consultQueueCancelled',
-  /** Triggered when a queue consultation fails */
+
+  /**
+   * Triggered when a queue consultation fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED, (task: ITask) => {
+   *   console.log('Queue consultation failed:', task.data.interactionId);
+   *   // Handle consultation failure
+   * });
+   * ```
+   */
   TASK_CONSULT_QUEUE_FAILED = 'task:consultQueueFailed',
-  /** Triggered when a consultation request is accepted */
+
+  /**
+   * Triggered when a consultation request is accepted
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONSULT_ACCEPTED, (task: ITask) => {
+   *   console.log('Consultation accepted:', task.data.interactionId);
+   *   // Begin consultation
+   * });
+   * ```
+   */
   TASK_CONSULT_ACCEPTED = 'task:consultAccepted',
-  /** Triggered when consultation is in progress */
+
+  /**
+   * Triggered when consultation is in progress
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONSULTING, (task: ITask) => {
+   *   console.log('Consulting in progress:', task.data.interactionId);
+   *   // Handle ongoing consultation
+   * });
+   * ```
+   */
   TASK_CONSULTING = 'task:consulting',
-  /** Triggered when a new consultation is created */
+
+  /**
+   * Triggered when a new consultation is created
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONSULT_CREATED, (task: ITask) => {
+   *   console.log('Consultation created:', task.data.interactionId);
+   *   // Initialize consultation
+   * });
+   * ```
+   */
   TASK_CONSULT_CREATED = 'task:consultCreated',
-  /** Triggered when a consultation is offered */
+
+  /**
+   * Triggered when a consultation is offered
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_OFFER_CONSULT, (task: ITask) => {
+   *   console.log('Consultation offered:', task.data.interactionId);
+   *   // Handle consultation offer
+   * });
+   * ```
+   */
   TASK_OFFER_CONSULT = 'task:offerConsult',
-  /** Triggered when a task is completed/terminated */
+
+  /**
+   * Triggered when a task is completed/terminated
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_END, (task: ITask) => {
+   *   console.log('Task ended:', task.data.interactionId);
+   *   // Clean up and finalize task
+   * });
+   * ```
+   */
   TASK_END = 'task:end',
-  /** Triggered when a task enters wrap-up state */
+
+  /**
+   * Triggered when a task enters wrap-up state
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_WRAPUP, (task: ITask) => {
+   *   console.log('Task in wrap-up:', task.data.interactionId);
+   *   // Begin wrap-up process
+   * });
+   * ```
+   */
   TASK_WRAPUP = 'task:wrapup',
-  /** Triggered when task wrap-up is completed */
+
+  /**
+   * Triggered when task wrap-up is completed
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_WRAPPEDUP, (task: ITask) => {
+   *   console.log('Task wrapped up:', task.data.interactionId);
+   *   // Finalize task completion
+   * });
+   * ```
+   */
   TASK_WRAPPEDUP = 'task:wrappedup',
-  /** Triggered when recording is paused */
+
+  /**
+   * Triggered when recording is paused
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_RECORDING_PAUSED, (task: ITask) => {
+   *   console.log('Recording paused:', task.data.interactionId);
+   *   // Update recording state
+   * });
+   * ```
+   */
   TASK_RECORDING_PAUSED = 'task:recordingPaused',
-  /** Triggered when recording pause attempt fails */
+
+  /**
+   * Triggered when recording pause attempt fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED, (task: ITask) => {
+   *   console.log('Recording pause failed:', task.data.interactionId);
+   *   // Handle pause failure
+   * });
+   * ```
+   */
   TASK_RECORDING_PAUSE_FAILED = 'task:recordingPauseFailed',
-  /** Triggered when recording is resumed */
+
+  /**
+   * Triggered when recording is resumed
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_RECORDING_RESUMED, (task: ITask) => {
+   *   console.log('Recording resumed:', task.data.interactionId);
+   *   // Update recording state
+   * });
+   * ```
+   */
   TASK_RECORDING_RESUMED = 'task:recordingResumed',
-  /** Triggered when recording resume attempt fails */
+
+  /**
+   * Triggered when recording resume attempt fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, (task: ITask) => {
+   *   console.log('Recording resume failed:', task.data.interactionId);
+   *   // Handle resume failure
+   * });
+   * ```
+   */
   TASK_RECORDING_RESUME_FAILED = 'task:recordingResumeFailed',
-  /** Triggered when a task is rejected/unanswered */
+
+  /**
+   * Triggered when a task is rejected/unanswered
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_REJECT, (task: ITask) => {
+   *   console.log('Task rejected:', task.data.interactionId);
+   *   // Handle task rejection
+   * });
+   * ```
+   */
   TASK_REJECT = 'task:rejected',
-  /** Triggered when a task is populated with data */
+
+  /**
+   * Triggered when a task is populated with data
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_HYDRATE, (task: ITask) => {
+   *   console.log('Task hydrated:', task.data.interactionId);
+   *   // Process task data
+   * });
+   * ```
+   */
   TASK_HYDRATE = 'task:hydrate',
-  /** Triggered when a new contact is offered */
+
+  /**
+   * Triggered when a new contact is offered
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_OFFER_CONTACT, (task: ITask) => {
+   *   console.log('Contact offered:', task.data.interactionId);
+   *   // Handle contact offer
+   * });
+   * ```
+   */
   TASK_OFFER_CONTACT = 'task:offerContact',
 }
 
@@ -740,7 +968,9 @@ export type ContactCleanupData = {
 
 /**
  * Response type for task public methods
- * Can be an AgentContact object, Error, or void
+ * Can be an {@link AgentContact} object containing updated task state,
+ * an Error in case of failure, or void for operations that don't return data
+ * @public
  */
 export type TaskResponse = AgentContact | Error | void;
 
@@ -750,30 +980,36 @@ export type TaskResponse = AgentContact | Error | void;
  */
 export interface ITask extends EventEmitter {
   /**
-   * Event data received in the Contact Center events
+   * Event data received in the Contact Center events.
+   * Contains detailed task information including interaction details, media resources,
+   * and participant data as defined in {@link TaskData}
    */
   data: TaskData;
 
   /**
-   * Map associating tasks with their corresponding call identifiers
+   * Map associating tasks with their corresponding call identifiers.
    */
   webCallMap: Record<TaskId, CallId>;
 
   /**
    * Deregisters all web call event listeners
    * Used when cleaning up task resources
+   * @ignore
    */
   unregisterWebCallListeners(): void;
 
   /**
    * Updates the task data with new information
-   * @param newData - Updated task data to apply
+   * @param newData - Updated task data to apply, must conform to {@link TaskData} structure
    * @returns Updated task instance
+   * @ignore
    */
   updateTaskData(newData: TaskData): ITask;
 
   /**
-   * Answers or accepts an incoming task
+   * Answers or accepts an incoming task.
+   * Once accepted, the task will be assigned to the agent and trigger a {@link TASK_EVENTS.TASK_ASSIGNED} event.
+   * The response will contain updated agent contact information as defined in {@link AgentContact}.
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript

@@ -12,6 +12,7 @@ import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
+/** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
   private contact: ReturnType<typeof routingContact>;
