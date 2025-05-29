@@ -511,6 +511,7 @@ describe('plugin-meetings', () => {
             password: 'abc',
             captchaID: '999',
             captchaVerifyCode: 'aabbcc11',
+            disableWebRedirect: true
           },
         });
         assert.deepEqual(result, requestResponse);
@@ -544,6 +545,7 @@ describe('plugin-meetings', () => {
             supportCountryList: true,
             meetingKey: '1234323',
             installedOrgID,
+            disableWebRedirect: true
           },
         });
         assert.deepEqual(result, requestResponse);
@@ -578,6 +580,7 @@ describe('plugin-meetings', () => {
             supportCountryList: true,
             meetingKey: '1234323',
             locusId,
+            disableWebRedirect: true
           },
         });
         assert.deepEqual(result, requestResponse);
@@ -613,6 +616,7 @@ describe('plugin-meetings', () => {
             supportCountryList: true,
             meetingKey: '1234323',
             ...extraParams,
+            disableWebRedirect: true
           },
         });
         assert.deepEqual(result, requestResponse);
@@ -843,6 +847,7 @@ describe('plugin-meetings', () => {
                 supportCountryList: true,
                 meetingKey: '1234323',
                 ...extraParams,
+                disableWebRedirect: true
               },
             });
             assert.deepEqual(result, requestResponse);
@@ -922,6 +927,7 @@ describe('plugin-meetings', () => {
             supportCountryList: true,
             meetingKey: '1234323',
             ...extraParams,
+            disableWebRedirect: true
           },
         });
         assert.deepEqual(result, requestResponse);
