@@ -79,6 +79,8 @@ export type Logger = {
 export interface LogContext {
   module?: string;
   method?: string;
+  interactionId?: string;
+  trackingId?: string;
 }
 
 export enum LOGGING_LEVEL {

@@ -29,6 +29,7 @@ import {
   OUTBOUND_TYPE,
   UNKNOWN_ERROR,
   MERCURY_DISCONNECTED_SUCCESS,
+  METHODS,
 } from './constants';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
@@ -86,7 +87,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webex: this.$webex,
         connectionConfig: this.getConnectionConfig(),
       });
-      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
+      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
@@ -123,6 +124,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * This is used for making the CC SDK ready by setting up the cc mercury connection.
    */
   public async register(): Promise<Profile> {
+    LoggerProxy.info('Starting CC SDK registration', {
+      module: CC_FILE,
+      method: METHODS.REGISTER,
+    });
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
@@ -142,6 +147,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['operational']
       );
 
+      LoggerProxy.log(`CC SDK registration completed successfully with agentId: ${resp.agentId}`, {
+        module: CC_FILE,
+        method: METHODS.REGISTER,
+      });
+
       return resp;
     } catch (error) {
       this.metricsManager.trackEvent(
@@ -153,7 +163,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
-        method: this.register.name,
+        method: METHODS.REGISTER,
       });
       this.webexRequest.uploadLogs({
         correlationId: error?.trackingId,
@@ -179,7 +189,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
       this.taskManager.unregisterIncomingCallEvent();
 
-      this.services.webSocketManager.off('message', this.handleWebSocketMessage);
+      this.services.webSocketManager.off('message', this.handleWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
       if (
@@ -194,7 +204,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           await this.$webex.internal.device.unregister();
           LoggerProxy.log(MERCURY_DISCONNECTED_SUCCESS, {
             module: CC_FILE,
-            method: 'deregister',
+            method: METHODS.DEREGISTER,
           });
         }
       }
@@ -208,7 +218,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       LoggerProxy.log('Deregistered successfully', {
         module: CC_FILE,
-        method: 'deregister',
+        method: METHODS.DEREGISTER,
       });
 
       this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS, {}, [
@@ -225,7 +235,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       LoggerProxy.error(`Error during deregister: ${error}`, {
         module: CC_FILE,
-        method: 'deregister',
+        method: METHODS.DEREGISTER,
       });
 
       throw error;
@@ -241,6 +251,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @example getBuddyAgents({state: 'Available', mediaType: 'telephony'})
    */
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
+    LoggerProxy.info('Fetching buddy agents', {
+      module: CC_FILE,
+      method: METHODS.GET_BUDDY_AGENTS,
+    });
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS,
@@ -261,6 +275,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['operational']
       );
 
+      LoggerProxy.log(`Successfully retrieved ${resp.data.agentList.length} buddy agents`, {
+        module: CC_FILE,
+        method: METHODS.GET_BUDDY_AGENTS,
+        trackingId: resp.trackingId,
+      });
+
       return resp;
     } catch (error) {
       const failureResp = error.details as Failure;
@@ -274,7 +294,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
         ['operational']
       );
-      const {error: detailedError} = getErrorDetails(error, 'getBuddyAgents', CC_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.GET_BUDDY_AGENTS, CC_FILE);
       throw detailedError;
     }
   }
@@ -286,6 +306,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async connectWebsocket() {
+    LoggerProxy.info('Connecting to websocket', {
+      module: CC_FILE,
+      method: METHODS.CONNECT_WEBSOCKET,
+    });
     try {
       return this.services.webSocketManager
         .initWebSocket({
@@ -297,7 +321,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
           LoggerProxy.log(`Agent config is fetched successfully`, {
             module: CC_FILE,
-            method: this.connectWebsocket.name,
+            method: METHODS.CONNECT_WEBSOCKET,
           });
 
           if (
@@ -307,15 +331,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             this.$webex.internal.mercury
               .connect()
               .then(() => {
-                LoggerProxy.info('Authentication: webex.internal.mercury.connect successful', {
+                LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
                   module: CC_FILE,
-                  method: this.connectWebsocket.name,
+                  method: METHODS.CONNECT_WEBSOCKET,
                 });
               })
               .catch((error) => {
                 LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
                   module: CC_FILE,
-                  method: this.connectWebsocket.name,
+                  method: METHODS.CONNECT_WEBSOCKET,
                 });
               });
           }
@@ -331,7 +355,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     } catch (error) {
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
-        method: this.connectWebsocket.name,
+        method: METHODS.CONNECT_WEBSOCKET,
       });
 
       throw error;
@@ -345,6 +369,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws Error
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
+    LoggerProxy.info('Starting agent station login', {
+      module: CC_FILE,
+      method: METHODS.STATION_LOGIN,
+    });
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
@@ -398,6 +426,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
+      LoggerProxy.log(
+        `Agent station login completed successfully agentId: ${resp.data.agentId} loginOption: ${data.loginOption} teamId: ${data.teamId}`,
+        {
+          module: CC_FILE,
+          method: METHODS.STATION_LOGIN,
+          trackingId: resp.trackingId,
+        }
+      );
+
       return response;
     } catch (error) {
       const failure = error.details as Failure;
@@ -409,7 +446,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
         ['behavioral', 'business', 'operational']
       );
-      const {error: detailedError} = getErrorDetails(error, 'stationLogin', CC_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.STATION_LOGIN, CC_FILE);
       throw detailedError;
     }
   }
@@ -420,6 +457,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws Error
    */
   public async stationLogout(data: Logout): Promise<StationLogoutResponse> {
+    LoggerProxy.info('Starting agent station logout', {
+      module: CC_FILE,
+      method: METHODS.STATION_LOGOUT,
+    });
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
@@ -444,6 +485,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.webCallingService.deregisterWebCallingLine();
       }
 
+      LoggerProxy.log(`Agent station logout completed successfully`, {
+        module: CC_FILE,
+        method: METHODS.STATION_LOGOUT,
+        trackingId: resp.trackingId,
+      });
+
       return resp;
     } catch (error) {
       const failure = error.details as Failure;
@@ -455,7 +502,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
         ['behavioral', 'business', 'operational']
       );
-      const {error: detailedError} = getErrorDetails(error, 'stationLogout', CC_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.STATION_LOGOUT, CC_FILE);
       throw detailedError;
     }
   }
@@ -465,6 +512,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws Error
    */
   public async stationReLogin(): Promise<StationReLoginResponse> {
+    LoggerProxy.info('Starting agent station relogin', {
+      module: CC_FILE,
+      method: METHODS.STATION_RELOGIN,
+    });
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS,
@@ -479,6 +530,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
+      LoggerProxy.log(
+        `Agent station relogin completed successfully agentID: ${reLoginResponse.data?.agentId} teamId: ${reLoginResponse.data?.teamId}`,
+        {
+          module: CC_FILE,
+          method: METHODS.STATION_RELOGIN,
+          trackingId: reLoginResponse.trackingId,
+        }
+      );
+
       return reLoginResponse;
     } catch (error) {
       const failure = error.details as Failure;
@@ -489,7 +549,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
         ['behavioral', 'business', 'operational']
       );
-      const {error: detailedError} = getErrorDetails(error, 'stationReLogin', CC_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.STATION_RELOGIN, CC_FILE);
       throw detailedError;
     }
   }
@@ -510,6 +570,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
 
   public async setAgentState(data: StateChange): Promise<SetStateResponse> {
+    LoggerProxy.info('Setting agent state', {
+      module: CC_FILE,
+      method: METHODS.SET_AGENT_STATE,
+    });
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
@@ -533,10 +597,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.log(`SET AGENT STATUS API SUCCESS`, {
-        module: CC_FILE,
-        method: this.setAgentState.name,
-      });
+      LoggerProxy.log(
+        `Agent state changed successfully to auxCodeId: ${agentStatusResponse.data.auxCodeId}`,
+        {
+          module: CC_FILE,
+          method: METHODS.SET_AGENT_STATE,
+          trackingId: agentStatusResponse.trackingId,
+        }
+      );
 
       return agentStatusResponse;
     } catch (error) {
@@ -551,12 +619,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
         ['behavioral', 'business', 'operational']
       );
-      const {error: detailedError} = getErrorDetails(error, 'setAgentState', CC_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.SET_AGENT_STATE, CC_FILE);
       throw detailedError;
     }
   }
 
-  private handleWebSocketMessage = (event: string) => {
+  private handleWebsocketMessage = (event: string) => {
     const eventData = JSON.parse(event);
     // Re-emit all the events related to agent except keep-alives
     if (!eventData.keepalive && eventData.data && eventData.data.type) {
@@ -567,6 +635,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (!eventData.type) {
       return;
     }
+
+    LoggerProxy.log(`Received event: ${eventData.type}`, {
+      module: CC_FILE,
+      method: METHODS.HANDLE_WEBSOCKET_MESSAGE,
+    });
 
     switch (eventData.type) {
       case CC_EVENTS.AGENT_MULTI_LOGIN:
@@ -675,13 +748,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // TODO: Emit an event saying connection is lost
       LoggerProxy.info('event=handleConnectionLost | Connection lost', {
         module: CC_FILE,
-        method: this.handleConnectionLost.name,
+        method: METHODS.HANDLE_CONNECTION_LOST,
       });
     } else if (msg.isSocketReconnected) {
       // TODO: Emit an event saying connection is re-estabilished
       LoggerProxy.info(
         'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
-        {module: CC_FILE, method: this.handleConnectionLost.name}
+        {module: CC_FILE, method: METHODS.HANDLE_CONNECTION_LOST}
       );
       if (this.$config && this.$config.allowAutomatedRelogin) {
         await this.silentRelogin();
@@ -693,6 +766,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Called when we finish registration to silently handle the errors
    */
   private async silentRelogin(): Promise<void> {
+    LoggerProxy.info('Starting silent relogin process', {
+      module: CC_FILE,
+      method: METHODS.SILENT_RELOGIN,
+    });
+
     try {
       const reLoginResponse = await this.services.agent.reload();
       const {
@@ -712,7 +790,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (lastStateChangeReason === 'agent-wss-disconnect') {
         LoggerProxy.info(
           'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
-          {module: CC_FILE, method: this.silentRelogin.name}
+          {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
         );
         auxCodeId = AGENT_STATE_AVAILABLE_ID;
         const stateChangeData: StateChange = {
@@ -733,20 +811,33 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         } catch (error) {
           LoggerProxy.error(
             `event=requestAutoStateChange | Error requesting state change to available on socket reconnect: ${error}`,
-            {module: CC_FILE, method: this.silentRelogin.name}
+            {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
           );
         }
       }
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
       this.agentConfig.isAgentLoggedIn = true;
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
-      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
-    } catch (error) {
-      const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin', CC_FILE);
-      if (reason === 'AGENT_NOT_FOUND') {
-        LoggerProxy.log('Agent not found during re-login, handling silently', {
+      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
+
+      LoggerProxy.log(
+        `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,
+        {
           module: CC_FILE,
-          method: 'silentRelogin',
+          method: METHODS.SILENT_RELOGIN,
+          trackingId: reLoginResponse.trackingId,
+        }
+      );
+    } catch (error) {
+      const {reason, error: detailedError} = getErrorDetails(
+        error,
+        METHODS.SILENT_RELOGIN,
+        CC_FILE
+      );
+      if (reason === 'AGENT_NOT_FOUND') {
+        LoggerProxy.log('Agent not found during relogin, handling silently', {
+          module: CC_FILE,
+          method: METHODS.SILENT_RELOGIN,
         });
 
         return;
@@ -763,7 +854,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.agentConfig.deviceType = deviceType;
     switch (deviceType) {
       case LoginOption.BROWSER:
-        await this.webCallingService.registerWebCallingLine();
+        try {
+          await this.webCallingService.registerWebCallingLine();
+        } catch (error) {
+          LoggerProxy.error(`Error registering web calling line: ${error}`, {
+            module: CC_FILE,
+            method: METHODS.HANDLE_DEVICE_TYPE,
+          });
+          throw error;
+        }
         break;
       case LoginOption.AGENT_DN:
       case LoginOption.EXTENSION:
@@ -773,7 +872,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       default:
         LoggerProxy.error(`Unsupported device type: ${deviceType}`, {
           module: CC_FILE,
-          method: this.handleDeviceType.name,
+          method: METHODS.HANDLE_DEVICE_TYPE,
         });
         throw new Error(`Unsupported device type: ${deviceType}`);
     }
@@ -792,6 +891,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
 
   public async startOutdial(destination: string): Promise<TaskResponse> {
+    LoggerProxy.info('Starting outbound dial', {
+      module: CC_FILE,
+      method: METHODS.START_OUTDIAL,
+    });
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_OUTDIAL_SUCCESS,
@@ -820,6 +923,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
+      LoggerProxy.log(`Outbound dial completed successfully`, {
+        module: CC_FILE,
+        method: METHODS.START_OUTDIAL,
+        trackingId: result.trackingId,
+        interactionId: result.data?.interactionId,
+      });
+
       return result;
     } catch (error) {
       const failure = error.details as Failure;
@@ -832,7 +942,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
         ['behavioral', 'business', 'operational']
       );
-      const {error: detailedError} = getErrorDetails(error, 'startOutdial', CC_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.START_OUTDIAL, CC_FILE);
       throw detailedError;
     }
   }
@@ -861,18 +971,30 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     page = DEFAULT_PAGE,
     pageSize = DEFAULT_PAGE_SIZE
   ): Promise<ContactServiceQueue[]> {
+    LoggerProxy.info('Fetching queues', {
+      module: CC_FILE,
+      method: METHODS.GET_QUEUES,
+    });
+
     const orgId = this.$webex.credentials.getOrgId();
 
     if (!orgId) {
       LoggerProxy.error('Org ID not found.', {
         module: CC_FILE,
-        method: this.getQueues.name,
+        method: METHODS.GET_QUEUES,
       });
 
       throw new Error('Org ID not found.');
     }
 
-    return this.services.config.getQueues(orgId, page, pageSize, search, filter);
+    const result = await this.services.config.getQueues(orgId, page, pageSize, search, filter);
+
+    LoggerProxy.log(`Successfully retrieved ${result?.length} queues`, {
+      module: CC_FILE,
+      method: METHODS.GET_QUEUES,
+    });
+
+    return result;
   }
 
   /**
@@ -914,9 +1036,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     const trackingId = `WX_CC_SDK_${uuidv4()}`;
 
-    LoggerProxy.info(`[${trackingId}] updateAgentProfile | starting profile update`, {
+    LoggerProxy.info(`starting profile update`, {
       module: CC_FILE,
-      method: `updateAgentProfile`,
+      method: METHODS.UPDATE_AGENT_PROFILE,
+      trackingId,
     });
 
     try {
@@ -962,10 +1085,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.log(`[${trackingId}] updateAgentProfile | profile updated successfully`, {
-        module: CC_FILE,
-        method: this.updateAgentProfile.name,
-      });
+      LoggerProxy.log(
+        `profile updated successfully with ${loginPayload.loginOption} teamId: ${loginPayload.teamId}`,
+        {
+          module: CC_FILE,
+          method: METHODS.UPDATE_AGENT_PROFILE,
+          trackingId,
+        }
+      );
 
       const deviceTypeUpdateResponse: UpdateDeviceTypeResponse = {
         ...resp,
@@ -984,9 +1111,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      LoggerProxy.error(`[${trackingId}] updateAgentProfile | error updating profile: ${error}`, {
+      LoggerProxy.error(`error updating profile: ${error}`, {
         module: CC_FILE,
-        method: this.updateAgentProfile.name,
+        method: METHODS.UPDATE_AGENT_PROFILE,
+        trackingId,
       });
       throw error;
     }
