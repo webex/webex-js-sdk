@@ -96,6 +96,25 @@ describe('webex-core', () => {
 
           assert.equal(interceptor.onResponse({$redirectCount: 5}, response), response);
         });
+
+        it('redirects GET requests to new url on appapi redirect error', () => {
+          const response = {
+            statusCode: 404,
+            headers: {},
+            body: {
+              code: 404100,
+              data: {
+                siteFullUrl: 'newlocus.example.com'
+              },
+            },
+          };
+
+          interceptor.onResponse({$redirectCount: 0, uri: 'https://test.webex.com/meet/v1/join'}, response);
+          sinon.assert.calledWith(webex.request, {
+            $redirectCount: 1,
+            uri: 'https://newlocus.example.com/meet/v1/join',
+          });
+        });
       });
     });
   });
