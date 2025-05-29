@@ -1,3 +1,9 @@
+/**
+ * Constants for Task Service
+ * @module @webex/plugin-cc/services/task/constants
+ * @ignore
+ */
+
 export const TASK_MESSAGE_TYPE = 'RoutingMessage';
 export const TASK_API = '/v1/tasks/';
 export const HOLD = '/hold';

@@ -19,6 +19,6 @@ export const ATTRIBUTES = {};
 export const OUTDIAL_MEDIA_TYPE = 'telephony';
 export const OUTBOUND_TYPE = 'OUTDIAL';
 
-// add these:
+// Log related constants
 export const UNKNOWN_ERROR = 'Unknown error';
 export const MERCURY_DISCONNECTED_SUCCESS = 'Mercury disconnected successfully';
