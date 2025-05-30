@@ -203,6 +203,22 @@ const MembersUtil = {
     };
   },
 
+  getMoveMemberToLobbyRequestBody: (memberId: string) => ({
+    moveToLobby: {
+      participantIds: [memberId],
+    },
+  }),
+
+  getMoveMemberToLobbyRequestParams: (options: {memberId: string; locusUrl: string}, body) => {
+    const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
+
+    return {
+      method: HTTP_VERBS.PATCH,
+      uri,
+      body,
+    };
+  },
+
   /**
    * @param {ServerRoleShape} role
    * @returns {ServerRoleShape} the role shape to be added to the body

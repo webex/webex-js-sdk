@@ -1,5 +1,6 @@
 import {WEBEX_REQUEST_FILE} from '../../constants';
 import LoggerProxy from '../../logger-proxy';
+import {METHODS} from './constants';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import MetricsManager from '../../metrics/MetricsManager';
 import {
@@ -59,7 +60,7 @@ class WebexRequest {
       );
       LoggerProxy.info(`Logs uploaded successfully with feedbackId: ${feedbackId}`, {
         module: WEBEX_REQUEST_FILE,
-        method: 'uploadLogs',
+        method: METHODS.UPLOAD_LOGS,
       });
 
       MetricsManager.getInstance().trackEvent(
@@ -82,7 +83,7 @@ class WebexRequest {
     } catch (error) {
       LoggerProxy.error(`Error uploading logs: ${error}`, {
         module: WEBEX_REQUEST_FILE,
-        method: 'uploadLogs',
+        method: METHODS.UPLOAD_LOGS,
       });
 
       MetricsManager.getInstance().trackEvent(

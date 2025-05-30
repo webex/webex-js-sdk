@@ -789,10 +789,14 @@ describe('plugin-meetings', () => {
           }),
           false
         );
-        assert.deepEqual(
-          MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD'], undefined),
-          false
-        );
+        assert.deepEqual(MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD'], undefined), false);
+      });
+    });
+
+    describe('canMoveToLobby', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canMoveToLobby(['MOVE_TO_LOBBY']), true);
+        assert.deepEqual(MeetingUtil.canMoveToLobby([]), false);
       });
     });
 

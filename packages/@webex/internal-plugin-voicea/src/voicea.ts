@@ -8,6 +8,7 @@ import {
   VOICEA,
   ANNOUNCE_STATUS,
   TURN_ON_CAPTION_STATUS,
+  TOGGLE_MANUAL_CAPTION_STATUS,
 } from './constants';
 // eslint-disable-next-line no-unused-vars
 import {
@@ -38,6 +39,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private captionStatus: string;
 
+  private toggleManualCaptionStatus: string;
+
   /**
    * @param {Object} e
    * @returns {undefined}
@@ -58,7 +61,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         this.processTranscription(e.data.voiceaPayload);
         break;
       case AIBRIDGE_RELAY_TYPES.MANUAL.TRANSCRIPTION:
-      case AIBRIDGE_RELAY_TYPES.MANUAL.CAPIONER:
+      case AIBRIDGE_RELAY_TYPES.MANUAL.CAPTIONER:
         this.processManualTranscription({
           ...e.data.transcriptPayload,
           sender: e.headers?.from,
@@ -94,6 +97,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.hasSubscribedToEvents = false;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
+    this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
   }
 
   /**
@@ -107,6 +111,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.vmcDeviceId = undefined;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
+    this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
   }
 
   /**
@@ -308,6 +313,55 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
+   * Send manual closed captions to voicea service
+   * @param {string} text
+   * @param {number} timeStamp
+   * @param {number[]} csis
+   * @param {boolean} isFinal
+   * @returns {void}
+   */
+  public sendManualClosedCaption = (
+    text: string,
+    timeStamp: number,
+    csis: number[],
+    isFinal: boolean
+  ): void => {
+    // @ts-ignore
+    if (!this.webex.internal.llm.isConnected()) return;
+
+    // @ts-ignore
+    this.webex.internal.llm.socket.send({
+      id: `${this.seqNum}`,
+      type: 'publishRequest',
+      recipients: {
+        // @ts-ignore
+        route: this.webex.internal.llm.getBinding(),
+      },
+      headers: {},
+      data: {
+        eventType: 'relay.event',
+        relayType: AIBRIDGE_RELAY_TYPES.MANUAL.CAPTIONER,
+        transcriptPayload: {
+          type: isFinal
+            ? TRANSCRIPTION_TYPE.MANUAL_CAPTION_FINAL_RESULT
+            : TRANSCRIPTION_TYPE.MANUAL_CAPTION_INTERIM_RESULT,
+          id: uuid.v4(),
+          transcripts: [
+            {
+              text,
+              start_millis: timeStamp,
+              end_millis: timeStamp,
+              csis,
+            },
+          ],
+        },
+      },
+      trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
+    });
+    this.seqNum += 1;
+  };
+
+  /**
    * request turn on Captions
    * @param {string} [languageCode] - Optional Parameter for spoken language code. Defaults to English
    * @returns {Promise}
@@ -387,7 +441,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   /**
    * Toggle transcribing for highlights
-   * @param {bool} activate if true transcribing is turned on
+   * @param {boolean} activate true means to turn on transcribing and false means to turn off
    * @param {string} spokenLanguage language code for spoken language
    * @returns {Promise}
    */
@@ -417,10 +471,14 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   /**
    * Toggle turn on manual caption
-   * @param {bool} enable if true manual caption is turned on
+   * @param {boolean} enable true means to turn on manual caption, false means to turn off
    * @returns {Promise}
    */
   public toggleManualCaption = (enable: boolean): undefined | Promise<void> => {
+    if (this.toggleManualCaptionStatus === TOGGLE_MANUAL_CAPTION_STATUS.SENDING) return undefined;
+
+    this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.SENDING;
+
     // @ts-ignore
     return this.request({
       method: 'PUT',
@@ -431,9 +489,16 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
           enable,
         },
       },
-    }).then((): undefined | Promise<void> => {
-      return undefined;
-    });
+    })
+      .then((): undefined | Promise<void> => {
+        this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
+
+        return undefined;
+      })
+      .catch(() => {
+        this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
+        throw new Error('toggle manual captions fail');
+      });
   };
 
   /**

@@ -942,7 +942,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   /**
    * Submit Delayed Client Event CA events. Clears delayedClientEvents array after submission.
    */
-  public submitDelayedClientEvents() {
+  public submitDelayedClientEvents(overrides?: Partial<DelayedClientEvent['options']>) {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @submitDelayedClientEvents. Submitting delayed client events.'
@@ -953,7 +953,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     const promises = this.delayedClientEvents.map((delayedSubmitClientEventParams) => {
-      return this.submitClientEvent(delayedSubmitClientEventParams);
+      const {name, payload, options} = delayedSubmitClientEventParams;
+      const optionsWithOverrides: DelayedClientEvent['options'] = {...options, ...overrides};
+
+      return this.submitClientEvent({name, payload, options: optionsWithOverrides});
     });
 
     this.delayedClientEvents = [];
