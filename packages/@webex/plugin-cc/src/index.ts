@@ -82,7 +82,7 @@ export type {
   /** Agent login information */
   AgentLogin,
   /** Agent device update information */
-  AgentDeviceUpdate,
+  AgentProfileUpdate,
   /** Station login response */
   StationLoginResponse,
   /** Station logout response */

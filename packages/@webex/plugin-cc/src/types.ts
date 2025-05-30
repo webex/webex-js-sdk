@@ -510,13 +510,13 @@ export type AgentLogin = {
 };
 
 /**
- * Represents the request to update agent device settings.
+ * Represents the request to update agent profile settings.
  * @public
  * @example
- * const update: AgentDeviceUpdate = { loginOption: LoginOption.BROWSER, dialNumber: '5678' };
+ * const update: AgentProfileUpdate = { loginOption: LoginOption.BROWSER, dialNumber: '5678' };
  * @ignore
  */
-export type AgentDeviceUpdate = Pick<AgentLogin, 'loginOption' | 'dialNumber' | 'teamId'>;
+export type AgentProfileUpdate = Pick<AgentLogin, 'loginOption' | 'dialNumber' | 'teamId'>;
 
 /**
  * Union type for all possible request body types.
