@@ -265,14 +265,11 @@ export default class TaskManager extends EventEmitter {
   }
 
   private removeTaskFromCollection(task: ITask) {
-    const id = task.data.interactionId;
-    if (id && this.taskCollection[id]) {
-      delete this.taskCollection[id];
-      LoggerProxy.info(`Task removed: ${id}`, {
-        module: TASK_MANAGER_FILE,
-        method: 'removeTaskFromCollection',
-      });
-    }
+    delete this.taskCollection[task.data.interactionId];
+    LoggerProxy.info(`Task removed: ${task.data.interactionId}`, {
+      module: TASK_MANAGER_FILE,
+      method: 'removeTaskFromCollection',
+    });
   }
 
   private handleTaskCleanup(task: ITask) {

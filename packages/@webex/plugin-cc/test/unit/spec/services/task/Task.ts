@@ -5,6 +5,23 @@ class DummyTask extends Task {
   public accept() { return Promise.resolve({} as any); }
 }
 
+jest.mock('../../../../../src/logger-proxy', () => ({
+  __esModule: true,
+  default: {
+    log: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    initialize: jest.fn(),
+  },
+}));
+
+jest.mock('../../../../../src/services/core/WebexRequest', () => ({
+  __esModule: true,
+  default: {
+    getInstance: jest.fn().mockReturnValue({ uploadLogs: jest.fn() }),
+  },
+}));
+
 describe('Task (base class)', () => {
   const dummyContact = {} as any;
   const initialData = {
@@ -123,5 +140,64 @@ describe('Task common methods', () => {
       data: payload,
     });
     expect(result).toEqual({result: 'wrap'});
+  });
+});
+
+describe('Task failure scenarios', () => {
+  let contact: any;
+  let task: DummyTask;
+  const taskData = {interactionId: '123', foo: 'bar', nested: {a: 1, b: 2}} as TaskData;
+
+  beforeEach(() => {
+    contact = {
+      vteamTransfer: jest.fn(),
+      blindTransfer: jest.fn(),
+      end: jest.fn(),
+      wrapup: jest.fn(),
+    };
+    task = new DummyTask(contact, taskData);
+  });
+
+  it('transfer rejects when blindTransfer throws', async () => {
+    const payload = {to: 'dest', destinationType: DESTINATION_TYPE.AGENT} as any;
+    const err = new Error('Error while performing transfer');
+    contact.blindTransfer.mockRejectedValue(err);
+
+    await expect(task.transfer(payload))
+      .rejects
+      .toThrow('Error while performing transfer');
+  });
+
+  it('transfer rejects when vteamTransfer throws', async () => {
+    const payload = {to: 'queue1', destinationType: DESTINATION_TYPE.QUEUE} as any;
+    const err = new Error('Error while performing transfer');
+    contact.vteamTransfer.mockRejectedValue(err);
+
+    await expect(task.transfer(payload))
+      .rejects
+      .toThrow('Error while performing transfer');
+  });
+
+  it('end rejects when contact.end throws', async () => {
+    const err = new Error('Error while performing end');
+    contact.end.mockRejectedValue(err);
+
+    await expect(task.end()).rejects.toThrow('Error while performing end');
+  });
+
+  it('wrapup throws when auxCodeId is missing', async () => {
+    await expect(task.wrapup({auxCodeId: '', wrapUpReason: 'reason1'} as any)).rejects.toThrow('Error while performing wrapup');
+  });
+
+  it('wrapup throws when wrapUpReason is missing', async () => {
+    await expect(task.wrapup({auxCodeId: 'code1', wrapUpReason: ''} as any)).rejects.toThrow('Error while performing wrapup');
+  });
+
+  it('wrapup rejects when contact.wrapup throws', async () => {
+    const payload = {auxCodeId: 'code1', wrapUpReason: 'reason1'} as any;
+    const err = new Error('Error while performing wrapup');
+    contact.wrapup.mockRejectedValue(err);
+
+    await expect(task.wrapup(payload)).rejects.toThrow('Error while performing wrapup');
   });
 });
