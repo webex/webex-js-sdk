@@ -1,18 +1,18 @@
 import merge from 'lodash/merge';
 import WebexCore from '@webex/webex-core';
 import {Buffer} from 'safe-buffer';
+import '@webex/plugin-authorization';
+import '@webex/internal-plugin-mercury';
+import '@webex/plugin-logger';
+import '@webex/internal-plugin-support';
 
-require('@webex/plugin-authorization');
-require('@webex/plugin-cc');
-require('@webex/internal-plugin-mercury');
-require('@webex/plugin-logger');
-require('@webex/internal-plugin-support');
+import './index';
+
+import config from './webex-config';
 
 if (!global.Buffer) {
   global.Buffer = Buffer;
 }
-
-const config = require('./config');
 
 const Webex = WebexCore.extend({
   webex: true,
@@ -20,7 +20,7 @@ const Webex = WebexCore.extend({
 });
 
 Webex.init = function init(attrs = {}) {
-  attrs.config = merge({}, config, attrs.config); // eslint-disable-line no-param-reassign
+  attrs.config = merge({}, config, attrs.config);
 
   return new Webex(attrs);
 };

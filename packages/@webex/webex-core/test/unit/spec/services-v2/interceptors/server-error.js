@@ -1,0 +1,204 @@
+import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
+import sinon from 'sinon';
+import {ServerErrorInterceptor, WebexHttpError} from '@webex/webex-core';
+
+const {assert} = chai;
+
+chai.use(chaiAsPromised);
+sinon.assert.expose(chai.assert, {prefix: ''});
+
+describe('webex-core', () => {
+  describe('ServerErrorInterceptor', () => {
+    let interceptor;
+
+    beforeAll(() => {
+      interceptor = new ServerErrorInterceptor();
+    });
+
+    describe('#onResponseError()', () => {
+      let options;
+      let reason;
+
+      beforeEach(() => {
+        options = {};
+      });
+
+      describe('when reason is a webex server error and the uri exist', () => {
+        let get;
+        let markFailedUrl;
+        let submitClientMetrics;
+
+        beforeEach(() => {
+          options.uri = 'http://not-a-url.com/';
+          reason = new WebexHttpError.InternalServerError({
+            message: 'test message',
+            statusCode: 500,
+            options: {
+              url: 'http://not-a-url.com/',
+              headers: {
+                trackingId: 'tid',
+              },
+            },
+          });
+
+          interceptor.webex = {
+            internal: {
+              device: {
+                features: {
+                  developer: {
+                    get: sinon.stub(),
+                  },
+                },
+              },
+              metrics: {
+                submitClientMetrics: sinon.spy(),
+              },
+              services: {
+                markFailedUrl: sinon.stub(),
+              },
+            },
+          };
+
+          get = interceptor.webex.internal.device.features.developer.get;
+          markFailedUrl = interceptor.webex.internal.services.markFailedUrl;
+          submitClientMetrics = interceptor.webex.internal.metrics.submitClientMetrics;
+
+          markFailedUrl.returns();
+        });
+
+        it("should get the feature 'web-high-availability'", (done) => {
+          interceptor.onResponseError(options, reason).catch(() => {
+            assert.calledWith(get, 'web-high-availability');
+
+            done();
+          });
+        });
+
+        describe('when the web-ha feature is enabled', () => {
+          beforeEach(() => {
+            get.returns({value: true});
+          });
+
+          it('should submit appropriate client metrics', (done) => {
+            interceptor.onResponseError(options, reason).catch(() => {
+              assert.calledWith(submitClientMetrics, 'web-ha', {
+                fields: {success: false},
+                tags: {
+                  action: 'failed',
+                  error: reason.message,
+                  url: options.uri,
+                },
+              });
+
+              done();
+            });
+          });
+
+          it('should mark a url as failed', (done) => {
+            interceptor.onResponseError(options, reason).catch(() => {
+              assert.calledWith(markFailedUrl, options.uri);
+
+              done();
+            });
+          });
+
+          it('should mark a url as failed for a 503', (done) => {
+            reason = new WebexHttpError.ServiceUnavailable({
+              message: 'test message',
+              statusCode: 503,
+              options: {
+                url: 'http://not-a-url.com/',
+                headers: {
+                  trackingId: 'tid',
+                },
+              },
+            });
+
+            interceptor.onResponseError(options, reason).catch(() => {
+              assert.calledWith(markFailedUrl, options.uri);
+
+              done();
+            });
+          });
+
+          it('should return a rejected promise with a reason', (done) => {
+            interceptor.onResponseError(options, reason).catch((error) => {
+              assert.instanceOf(error, WebexHttpError.InternalServerError);
+
+              done();
+            });
+          });
+        });
+
+        describe('when the web-ha feature is not available or disabled', () => {
+          beforeEach(() => {
+            get.returns({value: false});
+          });
+
+          it('should return a rejected promise with the reason', (done) => {
+            interceptor.onResponseError(options, reason).catch((error) => {
+              assert.instanceOf(error, WebexHttpError.InternalServerError);
+
+              done();
+            });
+          });
+
+          it('should not attempt to submit client metrics', (done) => {
+            interceptor.onResponseError(options, reason).catch(() => {
+              assert.notCalled(submitClientMetrics);
+
+              done();
+            });
+          });
+
+          it('should not attempt to mark a url as failed', (done) => {
+            interceptor.onResponseError(options, reason).catch(() => {
+              assert.notCalled(markFailedUrl);
+
+              done();
+            });
+          });
+        });
+      });
+
+      describe('when the reason is not a webex server error', () => {
+        beforeEach(() => {
+          options.uri = 'http://not-a-url.com/';
+          reason = {};
+        });
+
+        it('should return a rejected promise with the reason', (done) => {
+          interceptor.onResponseError(options, reason).catch((error) => {
+            assert.deepEqual(error, reason);
+
+            done();
+          });
+        });
+      });
+
+      describe('when the uri does not exist', () => {
+        beforeEach(() => {
+          delete options.uri;
+          reason = new WebexHttpError.InternalServerError({
+            statusCode: 500,
+            options: {
+              url: 'http://not-a-url.com/',
+              headers: {
+                trackingId: 'tid',
+              },
+            },
+          });
+        });
+
+        it('should return a rejected promise with the reason', (done) => {
+          interceptor.onResponseError(options, reason).catch((error) => {
+            assert.instanceOf(error, WebexHttpError.InternalServerError);
+
+            done();
+          });
+        });
+      });
+    });
+  });
+});
