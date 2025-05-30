@@ -850,10 +850,15 @@ const Services = WebexPlugin.extend({
       // Check for discovery services.
       if (services.discovery) {
         // Format the discovery configuration into an injectable array.
-        const formattedDiscoveryServices = Object.keys(services.discovery).map((key) => ({
-          name: key,
-          defaultUrl: services.discovery[key],
-        }));
+        const formattedDiscoveryServices = Object.keys(services.discovery).map((key) => {
+          const url = new URL(services.discovery[key]);
+
+          return {
+            id: key,
+            serviceName: key,
+            serviceUrls: [{baseUrl: url, host: url.host, priority: 1}],
+          };
+        });
 
         // Inject formatted discovery services into services catalog.
         catalog.updateServiceGroups('discovery', formattedDiscoveryServices);
@@ -861,10 +866,15 @@ const Services = WebexPlugin.extend({
 
       if (services.override) {
         // Format the override configuration into an injectable array.
-        const formattedOverrideServices = Object.keys(services.override).map((key) => ({
-          name: key,
-          defaultUrl: services.override[key],
-        }));
+        const formattedOverrideServices = Object.keys(services.override).map((key) => {
+          const url = new URL(services.override[key]);
+
+          return {
+            id: key,
+            serviceName: key,
+            serviceUrls: [{baseUrl: url, host: url.host, priority: 1}],
+          };
+        });
 
         // Inject formatted override services into services catalog.
         catalog.updateServiceGroups('override', formattedOverrideServices);

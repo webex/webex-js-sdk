@@ -338,7 +338,7 @@ const ServiceCatalog = AmpState.extend({
    * @emits ServiceCatalog#preauthorized
    * @emits ServiceCatalog#postauthorized
    * @param {string} serviceGroup
-   * @param {object} serviceHostmap
+   * @param {array} serviceHostmap
    * @returns {Services}
    */
   updateServiceGroups(serviceGroup, serviceHostmap) {

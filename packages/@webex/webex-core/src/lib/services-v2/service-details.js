@@ -1,5 +1,3 @@
-import Url from 'url';
-
 import AmpState from 'ampersand-state';
 
 /**
@@ -9,7 +7,6 @@ const ServiceDetails = AmpState.extend({
   namespace: 'ServiceDetails',
 
   props: {
-    defaultUrl: ['string', true, undefined],
     serviceUrls: ['array', false, () => []],
     serviceName: ['string', true, undefined],
     id: ['string', true, undefined],
@@ -22,13 +19,13 @@ const ServiceDetails = AmpState.extend({
    * @returns {string}
    */
   _generateHostUrl(serviceUrl) {
-    const url = new Url(serviceUrl.baseUrl);
+    const url = new URL(serviceUrl.baseUrl);
 
     // setting url.hostname will not apply during Url.format(), set host via
     // a string literal instead.
     url.host = `${serviceUrl.host}${url.port ? `:${url.port}` : ''}`;
 
-    return Url.format(url);
+    return url.href;
   },
 
   /**
@@ -61,7 +58,7 @@ const ServiceDetails = AmpState.extend({
    * @returns {boolean}
    */
   failHost(url) {
-    const failedUrl = new Url(url);
+    const failedUrl = new URL(url);
 
     const foundHost = this.serviceUrls.find((serviceUrl) => serviceUrl.host === failedUrl.host);
 
