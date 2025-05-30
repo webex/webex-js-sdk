@@ -395,7 +395,7 @@ export type DesktopProfileResponse = {
 /**
  * Response containing multimedia profile configuration for an agent
  * Defines capabilities across different communication channels
- * @public
+ * @private
  */
 export type MultimediaProfileResponse = {
   /** Organization identifier */
@@ -497,7 +497,7 @@ export type ListAuxCodesResponse = {
 
 /**
  * Configuration for a team in the contact center system
- * @public
+ * @private
  */
 export type TeamList = {
   /** Unique identifier for the team */
@@ -530,7 +530,7 @@ export type TeamList = {
 
 /**
  * Response type for listing teams with pagination metadata
- * @public
+ * @private
  */
 export type ListTeamsResponse = {
   /** Array of team configurations */
@@ -550,7 +550,8 @@ export type ListTeamsResponse = {
 
 /**
  * Basic organization information in the contact center system
- * @public
+ * @private
+ * @ignore
  */
 export type OrgInfo = {
   /** Tenant identifier */
@@ -561,7 +562,7 @@ export type OrgInfo = {
 
 /**
  * Organization-wide feature settings and configurations
- * @public
+ * @private
  */
 export type OrgSettings = {
   /** Whether WebRTC functionality is enabled */
@@ -574,7 +575,7 @@ export type OrgSettings = {
 
 /**
  * Contact center site configuration information
- * @public
+ * @private
  */
 export type SiteInfo = {
   /** Unique site identifier */
@@ -591,7 +592,7 @@ export type SiteInfo = {
 
 /**
  * Tenant-level configuration data and settings
- * @public
+ * @private
  */
 export type TenantData = {
   /** Desktop inactivity timeout in minutes */
@@ -618,6 +619,10 @@ export type TenantData = {
   lostConnectionRecoveryTimeout: number;
 };
 
+/**
+ * URL mapping configuration for external integrations
+ * @public
+ */
 export type URLMapping = {
   id: string;
   name: string;
@@ -630,12 +635,14 @@ export type URLMapping = {
 /**
  * Constant representing idle code
  * @public
+ * @ignore
  */
 export const IDLE_CODE = 'IDLE_CODE';
 
 /**
  * Constant representing wrap up code
  * @public
+ * @ignore
  */
 export const WRAP_UP_CODE = 'WRAP_UP_CODE';
 

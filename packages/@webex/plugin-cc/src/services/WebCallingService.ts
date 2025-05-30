@@ -53,7 +53,7 @@ export default class WebCallingService extends EventEmitter {
 
   /**
    * The login option selected for this session
-   * @public
+   * @private
    */
   public loginOption: LoginOption;
 
@@ -76,7 +76,7 @@ export default class WebCallingService extends EventEmitter {
   /**
    * Sets the login option for the current session
    * @param {LoginOption} loginOption - The login option to use
-   * @public
+   * @private
    */
   public setLoginOption(loginOption: LoginOption): void {
     this.loginOption = loginOption;
@@ -113,7 +113,7 @@ export default class WebCallingService extends EventEmitter {
   /**
    * Cleans up resources associated with the current call
    * Removes event listeners and clears the call-task mapping
-   * @public
+   * @private
    */
   public cleanUpCall(): void {
     if (this.call) {
@@ -161,7 +161,7 @@ export default class WebCallingService extends EventEmitter {
    * Registers the WebCalling line for receiving calls
    * Sets up event listeners for line events and initializes the calling client
    *
-   * @public
+   * @private
    * @returns {Promise<void>} A promise that resolves when registration is complete
    * @throws {Error} When registration times out
    */
@@ -215,7 +215,7 @@ export default class WebCallingService extends EventEmitter {
    * Deregisters the WebCalling line
    * Cleans up any active calls and deregisters from the calling service
    *
-   * @public
+   * @private
    * @returns {Promise<void>} A promise that resolves when deregistration is complete
    */
   public async deregisterWebCallingLine(): Promise<void> {
@@ -230,7 +230,7 @@ export default class WebCallingService extends EventEmitter {
   /**
    * Answers an incoming call with the provided audio stream
    *
-   * @public
+   * @private
    * @param {LocalMicrophoneStream} localAudioStream - The local microphone stream to use
    * @param {string} taskId - The task ID associated with this call
    * @throws {Error} If answering the call fails
@@ -263,7 +263,7 @@ export default class WebCallingService extends EventEmitter {
   /**
    * Toggles the mute state of the current call
    *
-   * @public
+   * @private
    * @param {LocalMicrophoneStream} localAudioStream - The local microphone stream to control
    */
   public muteUnmuteCall(localAudioStream: LocalMicrophoneStream): void {
@@ -284,7 +284,7 @@ export default class WebCallingService extends EventEmitter {
   /**
    * Checks if the current call is muted
    *
-   * @public
+   * @private
    * @returns {boolean} True if the call is muted, false otherwise or if no call exists
    */
   public isCallMuted(): boolean {
@@ -298,7 +298,7 @@ export default class WebCallingService extends EventEmitter {
   /**
    * Declines or ends the current call
    *
-   * @public
+   * @private
    * @param {string} taskId - The task ID associated with this call
    * @throws {Error} If ending the call fails
    */
@@ -330,7 +330,7 @@ export default class WebCallingService extends EventEmitter {
   /**
    * Maps a call ID to a task ID for correlation
    *
-   * @public
+   * @private
    * @param {string} callId - The unique call identifier
    * @param {string} taskId - The associated task identifier
    */
@@ -341,7 +341,7 @@ export default class WebCallingService extends EventEmitter {
   /**
    * Gets the task ID associated with a call ID
    *
-   * @public
+   * @private
    * @param {string} callId - The call ID to look up
    * @returns {string|undefined} The associated task ID or undefined if not found
    */

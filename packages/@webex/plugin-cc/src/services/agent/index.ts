@@ -9,8 +9,7 @@ import {CC_EVENTS} from '../config/types';
 /**
  * Agent Service provides methods to manage agent states and operations
  * @param routing - AqmReqs instance for making API requests
- * @category Services
- * @public
+ * @ignore
  */
 export default function routingAgent(routing: AqmReqs) {
   return {
