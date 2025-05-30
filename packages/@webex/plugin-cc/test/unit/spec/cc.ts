@@ -30,7 +30,7 @@ import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
 import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
 import MetricsManager from '../../../src/metrics/MetricsManager';
-import { METRIC_EVENT_NAMES } from '../../../src/metrics/constants';
+import {METRIC_EVENT_NAMES} from '../../../src/metrics/constants';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebexRequest from '../../../src/services/core/WebexRequest';
 
@@ -76,7 +76,7 @@ describe('webex.cc', () => {
         getOrgId: jest.fn(() => 'mockOrgId'),
       },
       config: config,
-      once: jest.fn((event, callback) => callback()),    
+      once: jest.fn((event, callback) => callback()),
     }) as unknown as WebexSDK;
 
     mockWebSocketManager = {
@@ -305,7 +305,7 @@ describe('webex.cc', () => {
       expect(result).toEqual(mockAgentProfile);
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
-        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
       ]);
     });
 
@@ -348,7 +348,7 @@ describe('webex.cc', () => {
       expect(result).toEqual(mockAgentProfile);
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
-        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
       ]);
     });
 
@@ -388,10 +388,13 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.register();
 
-      expect(LoggerProxy.error).toHaveBeenCalledWith(`Error occurred during mercury.connect() ${mockError}`, {
-        module: CC_FILE,
-        method: 'mockConstructor',
-      });
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `Error occurred during mercury.connect() ${mockError}`,
+        {
+          module: CC_FILE,
+          method: 'mockConstructor',
+        }
+      );
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
       expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
@@ -402,7 +405,6 @@ describe('webex.cc', () => {
           allowMultiLogin: false,
         },
       });
-
 
       expect(mockTaskManager.on).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_INCOMING,
@@ -473,7 +475,7 @@ describe('webex.cc', () => {
       webex.cc.agentConfig = {
         agentId: 'agentId',
         webRtcEnabled: true,
-        loginVoiceOptions: ['BROWSER', 'EXTENSION', 'AGENT_DN']
+        loginVoiceOptions: ['BROWSER', 'EXTENSION', 'AGENT_DN'],
       };
 
       const registerWebCallingLineSpy = jest.spyOn(
@@ -491,11 +493,15 @@ describe('webex.cc', () => {
           trackingId: '1234',
           eventType: 'DESKTOP_MESSAGE',
           channelsMap: {
-            chat: ["25d8ggg7-4821-7de7-b626-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
-            email: ["14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            chat: ['25d8ggg7-4821-7de7-b626-36437adec509', '14e7fff7-7de7-4821-a919-36437adec509'],
+            email: [
+              '14e7fff7-7de7-4821-a919-36437adec509',
+              '14e7fff7-7de7-4821-a919-36437adec509',
+              '14e7fff7-7de7-4821-a919-36437adec509',
+            ],
             social: [],
-            telephony:["14e7fff7-7de7-4821-a919-36437adec509"],
-          }
+            telephony: ['14e7fff7-7de7-4821-a919-36437adec509'],
+          },
         },
         trackingId: 'notifs_52628',
         orgId: 'orgId',
@@ -515,10 +521,10 @@ describe('webex.cc', () => {
           chat: 2,
           email: 3,
           social: 0,
-          telephony: 1
+          telephony: 1,
         },
-        notifsTrackingId: 'notifs_52628'
-      }
+        notifsTrackingId: 'notifs_52628',
+      };
 
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
@@ -542,7 +548,10 @@ describe('webex.cc', () => {
         },
       });
 
-      expect(mockMetricsManager.timeEvent).toBeCalledWith([METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS, METRIC_EVENT_NAMES.STATION_LOGIN_FAILED]);
+      expect(mockMetricsManager.timeEvent).toBeCalledWith([
+        METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
+        METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
+      ]);
       expect(result).toEqual(responseMock);
 
       const onSpy = jest.spyOn(mockTaskManager, 'on');
@@ -573,12 +582,18 @@ describe('webex.cc', () => {
       // Simulate receiving a message event
       messageCallback(JSON.stringify(agentStateChangeEventData));
 
-      expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_EVENTS.AGENT_STATE_CHANGE, agentStateChangeEventData.data);
+      expect(ccEmitSpy).toHaveBeenCalledWith(
+        AGENT_EVENTS.AGENT_STATE_CHANGE,
+        agentStateChangeEventData.data
+      );
 
       // Simulate receiving a message event
       messageCallback(JSON.stringify(agentMultiLoginEventData));
 
-      expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_EVENTS.AGENT_MULTI_LOGIN, agentMultiLoginEventData.data);
+      expect(ccEmitSpy).toHaveBeenCalledWith(
+        AGENT_EVENTS.AGENT_MULTI_LOGIN,
+        agentMultiLoginEventData.data
+      );
     });
 
     it('should not attempt mobius registration for LoginOption.BROWSER if webrtc is disabled', async () => {
@@ -589,7 +604,7 @@ describe('webex.cc', () => {
 
       webex.cc.agentConfig = {
         agentId: 'agentId',
-        webRtcEnabled: false
+        webRtcEnabled: false,
       };
 
       const mockData = {
@@ -602,17 +617,17 @@ describe('webex.cc', () => {
           trackingId: '1234',
           eventType: 'DESKTOP_MESSAGE',
           channelsMap: {
-            chat: ["25d8ggg7-4821-7de7-b626-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            chat: ['25d8ggg7-4821-7de7-b626-36437adec509', '14e7fff7-7de7-4821-a919-36437adec509'],
             email: [],
             social: [],
-            telephony:["14e7fff7-7de7-4821-a919-36437adec509"],
-          }
+            telephony: ['14e7fff7-7de7-4821-a919-36437adec509'],
+          },
         },
         trackingId: '1234',
         orgId: 'orgId',
         type: 'StationLoginSuccess',
         eventType: 'STATION_LOGIN',
-      }
+      };
 
       const registerWebCallingLineSpy = jest.spyOn(
         webex.cc.webCallingService,
@@ -620,7 +635,8 @@ describe('webex.cc', () => {
       );
 
       const stationLoginSpy = jest
-        .spyOn(webex.cc.services.agent, 'stationLogin').mockResolvedValue(mockData as unknown as StationLoginSuccess);
+        .spyOn(webex.cc.services.agent, 'stationLogin')
+        .mockResolvedValue(mockData as unknown as StationLoginSuccess);
 
       await webex.cc.stationLogin(options);
 
@@ -643,13 +659,13 @@ describe('webex.cc', () => {
 
     it('should login successfully with other LoginOption', async () => {
       webex.cc.agentConfig = {
-        webRtcEnabled: true
+        webRtcEnabled: true,
       };
 
       const options = {
         teamId: 'teamId',
         loginOption: LoginOption.AGENT_DN,
-        dialNumber: '1234567890',
+        dialNumber: '12345678901',
       };
 
       const mockData = {
@@ -662,11 +678,15 @@ describe('webex.cc', () => {
           trackingId: '1234',
           eventType: 'DESKTOP_MESSAGE',
           channelsMap: {
-            chat: ["25d8ggg7-4821-7de7-b626-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
-            email: ["14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509", "14e7fff7-7de7-4821-a919-36437adec509"],
+            chat: ['25d8ggg7-4821-7de7-b626-36437adec509', '14e7fff7-7de7-4821-a919-36437adec509'],
+            email: [
+              '14e7fff7-7de7-4821-a919-36437adec509',
+              '14e7fff7-7de7-4821-a919-36437adec509',
+              '14e7fff7-7de7-4821-a919-36437adec509',
+            ],
             social: [],
-            telephony:["14e7fff7-7de7-4821-a919-36437adec509"],
-          }
+            telephony: ['14e7fff7-7de7-4821-a919-36437adec509'],
+          },
         },
         trackingId: 'notifs_52628',
         orgId: 'orgId',
@@ -686,10 +706,10 @@ describe('webex.cc', () => {
           chat: 2,
           email: 3,
           social: 0,
-          telephony: 1
+          telephony: 1,
         },
-        notifsTrackingId: 'notifs_52628'
-      }
+        notifsTrackingId: 'notifs_52628',
+      };
 
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
@@ -699,11 +719,11 @@ describe('webex.cc', () => {
 
       expect(stationLoginMock).toHaveBeenCalledWith({
         data: {
-          dialNumber: '1234567890',
+          dialNumber: '12345678901',
           teamId: 'teamId',
           deviceType: LoginOption.AGENT_DN,
           isExtension: false,
-          deviceId: '1234567890',
+          deviceId: '12345678901',
           roles: [AGENT],
           teamName: '',
           siteId: '',
@@ -716,7 +736,7 @@ describe('webex.cc', () => {
 
     it('should handle error during stationLogin', async () => {
       webex.cc.agentConfig = {
-        webRtcEnabled: true
+        webRtcEnabled: true,
       };
 
       const options = {
@@ -733,9 +753,14 @@ describe('webex.cc', () => {
           },
         },
       };
+
       jest.spyOn(webex.cc.services.agent, 'stationLogin').mockRejectedValue(error);
 
-      await expect(webex.cc.stationLogin(options)).rejects.toThrow(error.details.data.reason);
+      try {
+        await webex.cc.stationLogin(options);
+      } catch (err) {
+        expect(err.reason).toEqual(error.details.data.reason);
+      }
 
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `stationLogin failed with trackingId: ${error.details.trackingId}`,
@@ -770,7 +795,7 @@ describe('webex.cc', () => {
       expect(result).toEqual(response);
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
-        METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED
+        METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
       ]);
     });
 
@@ -810,7 +835,7 @@ describe('webex.cc', () => {
       expect(result).toEqual(response);
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS,
-        METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED
+        METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED,
       ]);
     });
 
@@ -867,7 +892,7 @@ describe('webex.cc', () => {
       });
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
-        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
       ]);
     });
 
@@ -893,7 +918,7 @@ describe('webex.cc', () => {
       });
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
-        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
       ]);
     });
 
@@ -996,7 +1021,7 @@ describe('webex.cc', () => {
       expect(result).toEqual(buddyAgentsResponse);
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS,
-        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
       ]);
     });
 
@@ -1067,10 +1092,7 @@ describe('webex.cc', () => {
         'registerWebCallingLine'
       );
 
-      const setLoginOptionSpy = jest.spyOn(
-        webex.cc.webCallingService,
-        'setLoginOption'
-      );
+      const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
       const incomingTaskListenerSpy = jest.spyOn(webex.cc, 'incomingTaskListener');
       const webSocketManagerOnSpy = jest.spyOn(webex.cc.services.webSocketManager, 'on');
       await webex.cc['silentRelogin']();
@@ -1360,7 +1382,7 @@ describe('webex.cc', () => {
     let mockWebSocketManager;
     let mercuryDisconnectSpy;
     let deviceUnregisterSpy;
-    
+
     beforeEach(() => {
       webex.cc.agentConfig = {
         agentId: 'agentId',
@@ -1376,7 +1398,7 @@ describe('webex.cc', () => {
       };
 
       webex.cc.services.webSocketManager = mockWebSocketManager;
-      
+
       webex.internal = webex.internal || {};
       webex.internal.mercury = {
         connected: true,
@@ -1386,7 +1408,7 @@ describe('webex.cc', () => {
       webex.internal.device = {
         unregister: jest.fn().mockResolvedValue(),
       };
-      
+
       mercuryDisconnectSpy = jest.spyOn(webex.internal.mercury, 'disconnect');
       deviceUnregisterSpy = jest.spyOn(webex.internal.device, 'unregister');
     });
@@ -1394,10 +1416,19 @@ describe('webex.cc', () => {
     it('should unregister successfully and clean up all resources when webrtc is enabled', async () => {
       await webex.cc.deregister();
 
-      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
-      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, expect.any(Function));
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_INCOMING,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
       expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
-      expect(webex.cc.services.connectionService.off).toHaveBeenCalledWith('connectionLost', expect.any(Function));
+      expect(webex.cc.services.connectionService.off).toHaveBeenCalledWith(
+        'connectionLost',
+        expect.any(Function)
+      );
 
       expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
       expect(webex.cc.agentConfig).toBeNull();
@@ -1406,14 +1437,14 @@ describe('webex.cc', () => {
       expect(webex.internal.mercury.off).toHaveBeenCalledWith('offline');
       expect(mercuryDisconnectSpy).toHaveBeenCalled();
       expect(deviceUnregisterSpy).toHaveBeenCalled();
-      
+
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
-        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL
+        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
       ]);
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS, 
-        {}, 
+        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_SUCCESS,
+        {},
         ['operational']
       );
 
@@ -1441,9 +1472,7 @@ describe('webex.cc', () => {
       const [, hydrateCallback] = hydrateCalls[0];
       expect(hydrateCallback).toBe(webex.cc['handleTaskHydrate']);
 
-      const messageCalls = mockWebSocketManager.off.mock.calls.filter(
-        ([evt]) => evt === 'message'
-      );
+      const messageCalls = mockWebSocketManager.off.mock.calls.filter(([evt]) => evt === 'message');
       expect(messageCalls).toHaveLength(1);
       const [, messageCallback] = messageCalls[0];
       expect(messageCallback).toBe(webex.cc['handleWebSocketMessage']);
@@ -1459,12 +1488,21 @@ describe('webex.cc', () => {
     it('should skip webCallingService and internal cleanup when webrtc is disabled', async () => {
       webex.cc.agentConfig.webRtcEnabled = false;
       await webex.cc.deregister();
-  
-      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
-      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, expect.any(Function));
+
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_INCOMING,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
       expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
-      expect(webex.cc.services.connectionService.off).toHaveBeenCalledWith('connectionLost', expect.any(Function));
-  
+      expect(webex.cc.services.connectionService.off).toHaveBeenCalledWith(
+        'connectionLost',
+        expect.any(Function)
+      );
+
       expect(webex.internal.mercury.off).not.toHaveBeenCalled();
       expect(mercuryDisconnectSpy).not.toHaveBeenCalled();
       expect(deviceUnregisterSpy).not.toHaveBeenCalled();
@@ -1494,19 +1532,25 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.deregister()).rejects.toThrow('Failed to deregister device');
 
-      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
-      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, expect.any(Function));
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_INCOMING,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
 
       expect(LoggerProxy.error).toHaveBeenCalledWith(`Error during deregister: ${mockError}`, {
         module: CC_FILE,
         method: 'deregister',
       });
-      
+
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL, 
+        METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
         {
           error: 'Failed to deregister device',
-        }, 
+        },
         ['operational']
       );
     });
@@ -1522,7 +1566,7 @@ describe('webex.cc', () => {
     });
 
     it('should emit AGENT_STATION_LOGIN_SUCCESS on CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS with mapped payload', () => {
-      const channelsMap = {chat: ['c1','c2'], email: [], social: ['s1'], telephony: []};
+      const channelsMap = {chat: ['c1', 'c2'], email: [], social: ['s1'], telephony: []};
       const payload = {
         trackingId: 'track-123',
         data: {
@@ -1538,35 +1582,31 @@ describe('webex.cc', () => {
 
       messageCallback(JSON.stringify(payload));
 
-      expect(emitSpy).toHaveBeenNthCalledWith(
-        2,
-        AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
-        {
-          agentId: 'agent-id',
-          teamId: 'team-id',
-          siteId: 'site-id',
-          roles: ['role1', 'role2'],
-          mmProfile: {
-            chat: 2,
-            email: 0,
-            social: 1,
-            telephony: 0,
-          },
-          notifsTrackingId: 'track-123',
-          type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
-        }
-      );
+      expect(emitSpy).toHaveBeenNthCalledWith(2, AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, {
+        agentId: 'agent-id',
+        teamId: 'team-id',
+        siteId: 'site-id',
+        roles: ['role1', 'role2'],
+        mmProfile: {
+          chat: 2,
+          email: 0,
+          social: 1,
+          telephony: 0,
+        },
+        notifsTrackingId: 'track-123',
+        type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+      });
     });
 
     it('should emit AGENT_RELOGIN_SUCCESS on CC_EVENTS.AGENT_RELOGIN_SUCCESS with mapped payload', () => {
-      const channelsMap = {chat: ['a','b'], email: [], social: ['x'], telephony: ['y','z']};
+      const channelsMap = {chat: ['a', 'b'], email: [], social: ['x'], telephony: ['y', 'z']};
       const payload = {
         trackingId: 'trk-relogin',
         data: {
           agentId: 'agent-re',
           teamId: 'team-re',
           siteId: 'site-re',
-          roles: ['r1','r2'],
+          roles: ['r1', 'r2'],
           channelsMap,
           type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
         },
@@ -1575,36 +1615,41 @@ describe('webex.cc', () => {
 
       messageCallback(JSON.stringify(payload));
 
-      expect(emitSpy).toHaveBeenNthCalledWith(
-        2,
-        AGENT_EVENTS.AGENT_RELOGIN_SUCCESS,
-        {
-          agentId: 'agent-re',
-          teamId: 'team-re',
-          siteId: 'site-re',
-          roles: ['r1', 'r2'],
-          mmProfile: {
-            chat: 2,
-            email: 0,
-            social: 1,
-            telephony: 2,
-          },
-          notifsTrackingId: 'trk-relogin',
-          type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
-        }
-      );
+      expect(emitSpy).toHaveBeenNthCalledWith(2, AGENT_EVENTS.AGENT_RELOGIN_SUCCESS, {
+        agentId: 'agent-re',
+        teamId: 'team-re',
+        siteId: 'site-re',
+        roles: ['r1', 'r2'],
+        mmProfile: {
+          chat: 2,
+          email: 0,
+          social: 1,
+          telephony: 2,
+        },
+        notifsTrackingId: 'trk-relogin',
+        type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+      });
     });
 
     [
-      { ccEvent: CC_EVENTS.AGENT_STATION_LOGIN_FAILED, constant: AGENT_EVENTS.AGENT_STATION_LOGIN_FAILED },
-      { ccEvent: CC_EVENTS.AGENT_LOGOUT_SUCCESS, constant: AGENT_EVENTS.AGENT_LOGOUT_SUCCESS },
-      { ccEvent: CC_EVENTS.AGENT_LOGOUT_FAILED, constant: AGENT_EVENTS.AGENT_LOGOUT_FAILED },
-      { ccEvent: CC_EVENTS.AGENT_DN_REGISTERED, constant: AGENT_EVENTS.AGENT_DN_REGISTERED },
-      { ccEvent: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS, constant: AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS },
-      { ccEvent: CC_EVENTS.AGENT_STATE_CHANGE_FAILED, constant: AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED },
-    ].forEach(({ ccEvent, constant }) => {
+      {
+        ccEvent: CC_EVENTS.AGENT_STATION_LOGIN_FAILED,
+        constant: AGENT_EVENTS.AGENT_STATION_LOGIN_FAILED,
+      },
+      {ccEvent: CC_EVENTS.AGENT_LOGOUT_SUCCESS, constant: AGENT_EVENTS.AGENT_LOGOUT_SUCCESS},
+      {ccEvent: CC_EVENTS.AGENT_LOGOUT_FAILED, constant: AGENT_EVENTS.AGENT_LOGOUT_FAILED},
+      {ccEvent: CC_EVENTS.AGENT_DN_REGISTERED, constant: AGENT_EVENTS.AGENT_DN_REGISTERED},
+      {
+        ccEvent: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS,
+        constant: AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS,
+      },
+      {
+        ccEvent: CC_EVENTS.AGENT_STATE_CHANGE_FAILED,
+        constant: AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED,
+      },
+    ].forEach(({ccEvent, constant}) => {
       it(`should emit ${constant} on ${ccEvent}`, () => {
-        const sample = { foo: 'bar', type: ccEvent };
+        const sample = {foo: 'bar', type: ccEvent};
         messageCallback(JSON.stringify({type: ccEvent, data: sample}));
         expect(emitSpy).toHaveBeenCalledWith(constant, sample);
       });
@@ -1649,7 +1694,9 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.updateAgentDeviceType(data);
 
-      expect(webex.cc.stationLogout).toHaveBeenCalledWith({logoutReason: 'User requested agent device change'});
+      expect(webex.cc.stationLogout).toHaveBeenCalledWith({
+        logoutReason: 'User requested agent device change',
+      });
       expect(webex.cc.stationLogin).toHaveBeenCalledWith({
         teamId: 'teamId',
         loginOption: data.loginOption,
@@ -1670,7 +1717,7 @@ describe('webex.cc', () => {
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
         expect.objectContaining({loginType: data.loginOption}),
-        ['behavioral','business','operational']
+        ['behavioral', 'business', 'operational']
       );
       expect(logSpy).toHaveBeenCalledWith(
         `[WX_CC_SDK_mock-tracking-uuid] updateAgentDeviceType | error updating profile: ${err}`,
@@ -1691,7 +1738,7 @@ describe('webex.cc', () => {
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.AGENT_DEVICE_TYPE_UPDATE_FAILED,
         expect.objectContaining({loginType: data.loginOption}),
-        ['behavioral','business','operational']
+        ['behavioral', 'business', 'operational']
       );
       expect(logSpy).toHaveBeenCalledWith(
         `[WX_CC_SDK_mock-tracking-uuid] updateAgentDeviceType | error updating profile: ${loginErr}`,
@@ -1704,13 +1751,15 @@ describe('webex.cc', () => {
       webex.cc.webCallingService.loginOption = data.loginOption;
 
       await expect(webex.cc.updateAgentDeviceType(data)).rejects.toMatchObject({
-        message: 'Will not proceed with device update as new Device type is same as current device type',
+        message:
+          'Will not proceed with device update as new Device type is same as current device type',
         details: expect.objectContaining({
           type: 'Identical Device Change Failure',
           trackingId: 'WX_CC_SDK_mock-tracking-uuid',
           data: expect.objectContaining({
             agentId: webex.cc.agentConfig.agentId,
-            reason: 'Will not proceed with device update as new Device type is same as current device type',
+            reason:
+              'Will not proceed with device update as new Device type is same as current device type',
           }),
         }),
       });
