@@ -24,6 +24,7 @@ import {
   CALL_WAITING_ENDPOINT,
   CF_ENDPOINT,
   DND_ENDPOINT,
+  METHODS,
   ORG_ENDPOINT,
   PEOPLE_ENDPOINT,
   USER_ENDPOINT,
@@ -81,10 +82,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
   public async getCallWaitingSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
       file: CALL_SETTINGS_FILE,
-      method: 'getCallWaitingSetting',
+      method: METHODS.GET_CALL_WAITING_SETTING,
     };
 
-    log.info('Getting Call Waiting settings', loggerContext);
+    log.info('invoking', loggerContext);
 
     try {
       if (!this.xsiEndpoint) {
@@ -151,10 +152,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
   public async getDoNotDisturbSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
       file: CALL_SETTINGS_FILE,
-      method: 'getDoNotDisturbSetting',
+      method: METHODS.GET_DO_NOT_DISTURB_SETTING,
     };
 
-    log.info('Getting Do Not Disturb settings', loggerContext);
+    log.info('invoking', loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -196,10 +197,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
   public async setDoNotDisturbSetting(enabled: boolean): Promise<CallSettingResponse> {
     const loggerContext = {
       file: CALL_SETTINGS_FILE,
-      method: 'setDoNotDisturbSetting',
+      method: METHODS.SET_DO_NOT_DISTURB_SETTING,
     };
 
-    log.info('Setting Do Not Disturb settings', loggerContext);
+    log.info('invoking with', loggerContext);
 
     try {
       const dndRequestBody: ToggleSetting = {
@@ -247,10 +248,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
   public async getCallForwardSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
       file: CALL_SETTINGS_FILE,
-      method: 'getCallForwardingSetting',
+      method: METHODS.GET_CALL_FORWARD_SETTING,
     };
 
-    log.info('Getting Call Forward settings', loggerContext);
+    log.info('invoking', loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -291,10 +292,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
   ): Promise<CallSettingResponse> {
     const loggerContext = {
       file: CALL_SETTINGS_FILE,
-      method: 'setCallForwardingSetting',
+      method: METHODS.SET_CALL_FORWARD_SETTING,
     };
 
-    log.info('Setting Call Forward settings', loggerContext);
+    log.info('invoking', loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -334,10 +335,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
   public async getVoicemailSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
       file: CALL_SETTINGS_FILE,
-      method: 'getVoicemailSetting',
+      method: METHODS.GET_VOICEMAIL_SETTING,
     };
 
-    log.info('Getting Voicemail settings', loggerContext);
+    log.info('invoking', loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -376,10 +377,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
   ): Promise<CallSettingResponse> {
     const loggerContext = {
       file: CALL_SETTINGS_FILE,
-      method: 'setVoicemailSetting',
+      method: METHODS.SET_VOICEMAIL_SETTING,
     };
 
-    log.info('Setting Voicemail settings', loggerContext);
+    log.info('invoking with', loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -419,9 +420,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getCallForwardAlwaysSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: WEBEX_CALLING_CONNECTOR_FILE,
-      method: this.getCallForwardAlwaysSetting.name,
+      file: CALL_SETTINGS_FILE,
+      method: METHODS.GET_CALL_FORWARD_ALWAYS_SETTING,
     };
+
+    log.info('invoking', loggerContext);
     const cfResponse = await this.getCallForwardSetting();
 
     if (cfResponse.statusCode === 200) {

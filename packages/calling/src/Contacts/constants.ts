@@ -20,3 +20,14 @@ export enum encryptedFields {
   SIP_ADDRESSES = 'sipAddresses',
   TITLE = 'title',
 }
+
+export const METHODS = {
+  getContacts: 'getContacts',
+  createNewEncryptionKeyUrl: 'createNewEncryptionKeyUrl',
+  fetchEncryptionKeyUrl: 'fetchEncryptionKeyUrl',
+  fetchDefaultGroup: 'fetchDefaultGroup',
+  createContactGroup: 'createContactGroup',
+  deleteContactGroup: 'deleteContactGroup',
+  createContact: 'createContact',
+  deleteContact: 'deleteContact',
+};

@@ -14,7 +14,6 @@ import {
   SERVICES_ENDPOINT,
   SUCCESS_MESSAGE,
   XSI_ACTION_ENDPOINT_ORG_URL_PARAM,
-  WEBEX_CALLING_CONNECTOR_FILE,
 } from '../common/constants';
 import {
   CALL_SETTINGS_FILE,
@@ -113,7 +112,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         },
       });
 
-      expect(infoSpy).toHaveBeenCalledWith('Getting Call Waiting settings', {
+      expect(infoSpy).toHaveBeenCalledWith('invoking', {
         file: CALL_SETTINGS_FILE,
         method: 'getCallWaitingSetting',
       });
@@ -179,7 +178,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         }
       );
 
-      expect(infoSpy).toHaveBeenCalledWith('Getting Call Waiting settings', {
+      expect(infoSpy).toHaveBeenCalledWith('invoking', {
         file: CALL_SETTINGS_FILE,
         method: 'getCallWaitingSetting',
       });
@@ -260,7 +259,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         uri,
       });
 
-      expect(infoSpy).toHaveBeenCalledWith('Getting Do Not Disturb settings', {
+      expect(infoSpy).toHaveBeenCalledWith('invoking', {
         file: CALL_SETTINGS_FILE,
         method: 'getDoNotDisturbSetting',
       });
@@ -321,7 +320,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         }
       );
 
-      expect(infoSpy).toHaveBeenCalledWith('Getting Do Not Disturb settings', {
+      expect(infoSpy).toHaveBeenCalledWith('invoking', {
         file: CALL_SETTINGS_FILE,
         method: 'getDoNotDisturbSetting',
       });
@@ -387,7 +386,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         },
         {
           file: CALL_SETTINGS_FILE,
-          method: 'setCallForwardingSetting',
+          method: 'setCallForwardSetting',
         }
       );
     });
@@ -408,7 +407,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         },
         {
           file: CALL_SETTINGS_FILE,
-          method: 'getCallForwardingSetting',
+          method: 'getCallForwardSetting',
         }
       );
     });
@@ -559,8 +558,9 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         file: CALL_SETTINGS_FILE,
         method: callSettingsClient.getVoicemailSetting.name,
       });
+
       expect(warnSpy).toBeCalledWith('Unable to retrieve voicemail settings.', {
-        file: WEBEX_CALLING_CONNECTOR_FILE,
+        file: CALL_SETTINGS_FILE,
         method: callSettingsClient.getCallForwardAlwaysSetting.name,
       });
     });

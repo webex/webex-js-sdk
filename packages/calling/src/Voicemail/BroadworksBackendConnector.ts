@@ -53,6 +53,7 @@ import {
   NO_VOICEMAIL_STATUS_CODE,
   RADIX_RAND,
   PREFIX,
+  METHODS,
 } from './constants';
 /**
  *
@@ -97,10 +98,10 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   public init() {
     const loggerContext = {
       file: BROADWORKS_VOICEMAIL_FILE,
-      method: 'init',
+      method: METHODS.INIT,
     };
 
-    log.info('Initializing Broadworks voicemail connector', loggerContext);
+    log.info('invoking', loggerContext);
 
     const response = this.setXsiVoiceMessageURI();
 
@@ -124,10 +125,10 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   private async getUserId() {
     const loggerContext = {
       file: BROADWORKS_VOICEMAIL_FILE,
-      method: 'getUserId',
+      method: METHODS.GET_USER_ID,
     };
 
-    log.info('Getting user ID from Broadworks token', loggerContext);
+    log.info('invoking', loggerContext);
     try {
       await this.getBwToken();
       /* istanbul ignore else */
@@ -163,10 +164,10 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   private async getBwToken() {
     const loggerContext = {
       file: BROADWORKS_VOICEMAIL_FILE,
-      method: 'getBwToken',
+      method: METHODS.GET_BW_TOKEN,
     };
 
-    log.info('Fetching Broadworks token', loggerContext);
+    log.info('invoking', loggerContext);
     try {
       const bwTokenResponse = await (<WebexRequestPayload>this.webex.request({
         uri: `${this.webex.internal.services._serviceUrls.broadworksIdpProxy}${BW_TOKEN_FETCH_ENDPOINT}`,
@@ -181,7 +182,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
       const extendedError = new Error(`Broadworks token exception: ${err}`) as ExtendedError;
       log.error(extendedError, {
         file: BROADWORKS_VOICEMAIL_FILE,
-        method: 'getBwToken',
+        method: METHODS.GET_BW_TOKEN,
       });
       await uploadLogsSilently();
     }
@@ -193,10 +194,10 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   private async setXsiVoiceMessageURI() {
     const loggerContext = {
       file: BROADWORKS_VOICEMAIL_FILE,
-      method: 'setXsiVoiceMessageURI',
+      method: METHODS.SET_XSI_VOICE_MESSAGE_URI,
     };
 
-    log.info('Setting XSI voice message URI', loggerContext);
+    log.info('invoking', loggerContext);
     let userIdResponse = await this.getUserId();
 
     this.xsiEndpoint = await getXsiActionEndpoint(this.webex, loggerContext, CALLING_BACKEND.BWRKS);
@@ -235,11 +236,11 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   ): Promise<VoicemailResponseEvent> {
     const loggerContext = {
       file: BROADWORKS_VOICEMAIL_FILE,
-      method: 'getVoicemailList',
+      method: METHODS.GET_VOICEMAIL_LIST,
     };
 
     log.info(
-      `Fetching voicemail list with offset: ${offset}, offsetLimit: ${offsetLimit}, sort type: ${sort}`,
+      `invoking with offset: ${offset}, offsetLimit: ${offsetLimit}, sort type: ${sort}`,
       loggerContext
     );
     const urlXsi = `${this.xsiVoiceMessageURI}${JSON_FORMAT}`;
@@ -327,10 +328,10 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   public async getVoicemailContent(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
       file: BROADWORKS_VOICEMAIL_FILE,
-      method: 'getVoicemailContent',
+      method: METHODS.GET_VOICEMAIL_CONTENT,
     };
 
-    log.info(`Fetching voicemail content for message ID: ${messageId}`, loggerContext);
+    log.info(`invoking with messageId: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}`;
@@ -402,10 +403,10 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   public async voicemailMarkAsRead(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
       file: BROADWORKS_VOICEMAIL_FILE,
-      method: 'voicemailMarkAsRead',
+      method: METHODS.VOICEMAIL_MARK_AS_READ,
     };
 
-    log.info(`Marking voicemail with ID ${messageId} as read`, loggerContext);
+    log.info(`invoking with messageId: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${MARK_AS_READ}`;
@@ -456,10 +457,10 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   public async voicemailMarkAsUnread(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
       file: BROADWORKS_VOICEMAIL_FILE,
-      method: 'voicemailMarkAsUnread',
+      method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
     };
 
-    log.info(`Marking voicemail with ID ${messageId} as unread`, loggerContext);
+    log.info(`invoking with messageId: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${MARK_AS_UNREAD}`;
@@ -512,10 +513,10 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
   public async deleteVoicemail(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
       file: BROADWORKS_VOICEMAIL_FILE,
-      method: 'deleteVoicemail',
+      method: METHODS.DELETE_VOICEMAIL,
     };
 
-    log.info(`Deleting voicemail with ID ${messageId}`, loggerContext);
+    log.info(`invoking with messageId: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}`;
@@ -564,7 +565,15 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
    * @returns Promise.
    */
   public async getVMTranscript(messageId: string): Promise<VoicemailResponseEvent | null> {
-    log.info(`Message Id: ${messageId}`, {});
+    const loggerContext = {
+      file: BROADWORKS_VOICEMAIL_FILE,
+      method: METHODS.GET_VM_TRANSCRIPT,
+    };
+
+    log.info(`invoking with messageId: ${messageId}`, loggerContext);
+
+    // Using 'this' to fix TypeScript warning about not using 'this' in a class method
+    this.xsiEndpoint = this.xsiEndpoint || '';
 
     return Promise.resolve(null);
   }
@@ -576,7 +585,10 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
    * @param callingPartyInfo - Calling Party Info.
    */
   public resolveContact(callingPartyInfo: CallingPartyInfo): Promise<DisplayInformation | null> {
-    log.info(`Calling Party Info: ${callingPartyInfo}`, {});
+    log.info(`invoking with Calling Party Info: ${callingPartyInfo}`, {
+      file: BROADWORKS_VOICEMAIL_FILE,
+      method: METHODS.RESOLVE_CONTACT,
+    });
 
     return Promise.resolve(null);
   }

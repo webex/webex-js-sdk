@@ -1,6 +1,6 @@
 /* eslint-disable dot-notation */
 /* eslint-disable valid-jsdoc */
-import {CALL_MANAGER_FILE} from '../constants';
+import {CALL_MANAGER_FILE, METHODS} from '../constants';
 import {CALLING_CLIENT_EVENT_KEYS, CallEventTypes, LINE_EVENT_KEYS} from '../../Events/types';
 import {Eventing} from '../../Events/impl';
 import SDKConnector from '../../SDKConnector';
@@ -65,6 +65,10 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
     lineId: string,
     destination?: CallDetails
   ): ICall => {
+    log.info(`invoking with ${direction}, ${deviceId} and ${lineId}`, {
+      file: CALL_MANAGER_FILE,
+      method: METHODS.createCall,
+    });
     log.log('Creating call object', {});
     const newCall = createCall(
       this.activeMobiusUrl,
@@ -139,6 +143,10 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    * @param event - Mobius Events.
    */
   private dequeueWsEvents(event: unknown) {
+    log.info(`invoking with event ${event}`, {
+      file: CALL_MANAGER_FILE,
+      method: METHODS.dequeueWsEvents,
+    });
     const mobiusEvent = event as MobiusCallEvent;
     const {callId, correlationId} = mobiusEvent.data;
 

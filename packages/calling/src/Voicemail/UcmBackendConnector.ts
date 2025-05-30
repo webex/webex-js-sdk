@@ -20,7 +20,7 @@ import {
   FAILURE_MESSAGE,
 } from '../common/constants';
 import log from '../Logger';
-import {API_V1, LIMIT, OFFSET, SORT_ORDER, VMGATEWAY, VOICEMAILS} from './constants';
+import {API_V1, LIMIT, METHODS, OFFSET, SORT_ORDER, VMGATEWAY, VOICEMAILS} from './constants';
 import {
   CallingPartyInfo,
   IUcmBackendConnector,
@@ -73,10 +73,10 @@ export class UcmBackendConnector implements IUcmBackendConnector {
   public init() {
     const loggerContext = {
       file: UCM_CONNECTOR_FILE,
-      method: 'init',
+      method: METHODS.INIT,
     };
 
-    log.info('Initializing UCM calling voicemail connector', loggerContext);
+    log.info('invoking', loggerContext);
     const response = this.setUcmVoiceMessageBaseURI();
     log.log('UCM calling voicemail connector initialized successfully', loggerContext);
 
@@ -94,6 +94,12 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    *
    */
   private setUcmVoiceMessageBaseURI() {
+    const loggerContext = {
+      file: UCM_CONNECTOR_FILE,
+      method: METHODS.SET_UCM_VOICE_MESSAGE_BASE_URI,
+    };
+
+    log.info('invoking', loggerContext);
     this.vgEndpoint = getVgActionEndpoint(this.webex, CALLING_BACKEND.UCM);
     this.vgVoiceMessageURI = `${this.vgEndpoint}/${VMGATEWAY}/${API_V1}/${USERS}/${this.userId}/`;
 
@@ -111,10 +117,13 @@ export class UcmBackendConnector implements IUcmBackendConnector {
   public async getVoicemailList(offset: number, offsetLimit: number, sort: SORT) {
     const loggerContext = {
       file: UCM_CONNECTOR_FILE,
-      method: 'getVoicemailList',
+      method: METHODS.GET_VOICEMAIL_LIST,
     };
 
-    log.info(`Offset: ${offset} Offset limit: ${offsetLimit} Sort type:${sort}`, loggerContext);
+    log.info(
+      `invoking with Offset: ${offset} Offset limit: ${offsetLimit} Sort type:${sort}`,
+      loggerContext
+    );
     const urlVg = `${this.vgVoiceMessageURI}${VOICEMAILS}/${OFFSET}=${offset}${LIMIT}=${offsetLimit}${SORT_ORDER}=${sort}`;
 
     try {
@@ -191,10 +200,10 @@ export class UcmBackendConnector implements IUcmBackendConnector {
   public async getVoicemailContent(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
       file: UCM_CONNECTOR_FILE,
-      method: 'getVoicemailContent',
+      method: METHODS.GET_VOICEMAIL_CONTENT,
     };
 
-    log.info(`Getting voicemail content with  Message ID: ${messageId}`, loggerContext);
+    log.info(`invoking with Message ID: ${messageId}`, loggerContext);
 
     try {
       const response = (await this.getVoicemailContentUcm(messageId)) as VoicemailResponseEvent;
@@ -232,6 +241,13 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    * @param messageId - MessageId from voicemail list api to get voicemail content.
    */
   public async getVoicemailContentUcm(messageId: string) {
+    const loggerContext = {
+      file: UCM_CONNECTOR_FILE,
+      method: METHODS.GET_VOICEMAIL_CONTENT_UCM,
+    };
+
+    log.info(`invoking with Message ID: ${messageId}`, loggerContext);
+
     return new Promise((resolve, reject) => {
       const voicemailContentUrl = `${this.vgVoiceMessageURI}${VOICEMAILS}/${messageId}/${CONTENT}`;
       const mercuryApi = `${this.webex.internal.services._serviceUrls.mercuryApi}`;
@@ -272,6 +288,12 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    * @param mercuryApi - MercuryApi from webex serviceUrls.
    */
   async returnUcmPromise(voicemailContentUrl: string, mercuryApi: string) {
+    const loggerContext = {
+      file: UCM_CONNECTOR_FILE,
+      method: METHODS.RETURN_UCM_PROMISE,
+    };
+
+    log.info('invoking', loggerContext);
     const response = <WebexRequestPayload>await this.webex.request({
       uri: `${voicemailContentUrl}`,
       method: HTTP_METHODS.GET,
@@ -311,10 +333,10 @@ export class UcmBackendConnector implements IUcmBackendConnector {
   public async voicemailMarkAsRead(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
       file: UCM_CONNECTOR_FILE,
-      method: 'voicemailMarkAsRead',
+      method: METHODS.VOICEMAIL_MARK_AS_READ,
     };
 
-    log.info(`Marking voicemail as read Message ID: ${messageId}`, loggerContext);
+    log.info(`invoking with Message ID: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.vgVoiceMessageURI}${VOICEMAILS}/${messageId}`;
@@ -357,10 +379,10 @@ export class UcmBackendConnector implements IUcmBackendConnector {
   public async voicemailMarkAsUnread(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
       file: UCM_CONNECTOR_FILE,
-      method: 'voicemailMarkAsUnread',
+      method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
     };
 
-    log.info(`Marking voicemail as unread Message ID: ${messageId}`, loggerContext);
+    log.info(`invoking with Message ID: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.vgVoiceMessageURI}${VOICEMAILS}/${messageId}`;
@@ -405,10 +427,10 @@ export class UcmBackendConnector implements IUcmBackendConnector {
   public async deleteVoicemail(messageId: string): Promise<VoicemailResponseEvent> {
     const loggerContext = {
       file: UCM_CONNECTOR_FILE,
-      method: 'deleteVoicemail',
+      method: METHODS.DELETE_VOICEMAIL,
     };
 
-    log.info(`Deleting voicemail with Message ID: ${messageId}`, loggerContext);
+    log.info(`invoking with Message ID: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.vgVoiceMessageURI}${VOICEMAILS}/${messageId}`;

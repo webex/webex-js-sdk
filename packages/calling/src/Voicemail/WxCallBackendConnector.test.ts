@@ -98,7 +98,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         }
       );
       expect(infoSpy).toHaveBeenCalledWith(
-        'Offset: 0 Offset limit: 20 Sort type:DESC',
+        'invoking with Offset: 0 Offset limit: 20 Sort type:DESC',
         expect.objectContaining({
           file: 'WxCallBackendConnector',
           method: 'getVoicemailList',
@@ -138,13 +138,10 @@ describe('Voicemail webex call Backend Connector Test case', () => {
           method: 'voicemailMarkAsRead',
         }
       );
-      expect(infoSpy).toHaveBeenCalledWith(
-        `Marking voicemail as read for messageId: ${messageId.$}`,
-        {
-          file: 'WxCallBackendConnector',
-          method: 'voicemailMarkAsRead',
-        }
-      );
+      expect(infoSpy).toHaveBeenCalledWith(`invoking with messageId: ${messageId.$}`, {
+        file: 'WxCallBackendConnector',
+        method: 'voicemailMarkAsRead',
+      });
       expect(errorSpy).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
@@ -182,13 +179,10 @@ describe('Voicemail webex call Backend Connector Test case', () => {
           method: 'voicemailMarkAsUnread',
         }
       );
-      expect(infoSpy).toHaveBeenCalledWith(
-        `Marking voicemail as unread for messageId: ${messageId.$}`,
-        {
-          file: 'WxCallBackendConnector',
-          method: 'voicemailMarkAsUnread',
-        }
-      );
+      expect(infoSpy).toHaveBeenCalledWith(`invoking with messageId: ${messageId.$}`, {
+        file: 'WxCallBackendConnector',
+        method: 'voicemailMarkAsUnread',
+      });
       expect(errorSpy).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
@@ -227,7 +221,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
           method: 'deleteVoicemail',
         }
       );
-      expect(infoSpy).toHaveBeenCalledWith(`Deleting voicemail for messageId: ${messageId.$}`, {
+      expect(infoSpy).toHaveBeenCalledWith(`invoking with messageId: ${messageId.$}`, {
         file: 'WxCallBackendConnector',
         method: 'deleteVoicemail',
       });
@@ -437,7 +431,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
           method: 'getVoicemailSummary',
         }
       );
-      expect(infoSpy).toHaveBeenCalledWith('Fetching voicemail summary', {
+      expect(infoSpy).toHaveBeenCalledWith('invoking', {
         file: 'WxCallBackendConnector',
         method: 'getVoicemailSummary',
       });
@@ -517,7 +511,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         headers: {},
       });
       expect(response).toEqual(responseDetails);
-      expect(infoSpy).toHaveBeenCalledWith('Fetching voicemail summary', {
+      expect(infoSpy).toHaveBeenCalledWith('invoking', {
         file: 'WxCallBackendConnector',
         method: 'getVoicemailSummary',
       });

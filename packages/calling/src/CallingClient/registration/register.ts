@@ -41,6 +41,7 @@ import {
   DEFAULT_REHOMING_INTERVAL_MAX,
   DEFAULT_KEEPALIVE_INTERVAL,
   REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
+  METHODS,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -118,12 +119,13 @@ export class Registration implements IRegistration {
   }
 
   public setActiveMobiusUrl(url: string) {
-    log.log(`ActiveMobiusUrl: ${url}`, {method: 'setActiveMobiusUrl', file: REGISTRATION_FILE});
+    log.info(`invoking with ${url}`, {method: METHODS.updateActiveMobius, file: REGISTRATION_FILE});
     this.activeMobiusUrl = url;
     this.callManager.updateActiveMobius(url);
   }
 
   public setMobiusServers(primaryMobiusUris: string[], backupMobiusUris: string[]) {
+    log.log('invoking', {method: METHODS.setMobiusServers, file: REGISTRATION_FILE});
     this.primaryMobiusUris = primaryMobiusUris;
     this.backupMobiusUris = backupMobiusUris;
   }
@@ -500,6 +502,7 @@ export class Registration implements IRegistration {
    *
    */
   public async handleConnectionRestoration(retry: boolean): Promise<boolean> {
+    log.info('invoking', {method: METHODS.handleConnectionRestoration, file: REGISTRATION_FILE});
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
@@ -856,6 +859,7 @@ export class Registration implements IRegistration {
    *
    */
   public async reconnectOnFailure(caller: string) {
+    log.info('invoking', {method: METHODS.reconnectOnFailure, file: REGISTRATION_FILE});
     this.reconnectPending = false;
     if (!this.isDeviceRegistered()) {
       if (Object.keys(this.callManager.getActiveCalls()).length === 0) {
@@ -868,7 +872,7 @@ export class Registration implements IRegistration {
         this.reconnectPending = true;
         log.info('Active call(s) present, deferred reconnect till call cleanup.', {
           file: REGISTRATION_FILE,
-          method: this.reconnectOnFailure.name,
+          method: METHODS.reconnectOnFailure,
         });
       }
     }

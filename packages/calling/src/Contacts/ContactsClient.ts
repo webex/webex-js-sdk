@@ -20,6 +20,7 @@ import {
   DEFAULT_GROUP_NAME,
   ENCRYPT_FILTER,
   GROUP_FILTER,
+  METHODS,
   OR,
   SCIM_ID_FILTER,
   USERS,
@@ -333,10 +334,10 @@ export class ContactsClient implements IContacts {
   public async getContacts(): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: 'getContacts',
+      method: METHODS.getContacts,
     };
 
-    log.info('Fetching contacts and groups', loggerContext);
+    log.info('invoking', loggerContext);
 
     const contactList: Contact[] = [];
     const cloudContactsMap: ContactIdContactInfo = {};
@@ -443,8 +444,10 @@ export class ContactsClient implements IContacts {
   private async createNewEncryptionKeyUrl(): Promise<string> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: this.createNewEncryptionKeyUrl.name,
+      method: METHODS.createNewEncryptionKeyUrl,
     };
+
+    log.info('invoking', loggerContext);
 
     let unboundedKeyUri = '';
 
@@ -463,6 +466,13 @@ export class ContactsClient implements IContacts {
    * @returns EncryptionKeyUrl as a Promise.
    */
   private async fetchEncryptionKeyUrl(): Promise<string> {
+    const loggerContext = {
+      file: CONTACTS_FILE,
+      method: METHODS.fetchEncryptionKeyUrl,
+    };
+
+    log.info('invoking', loggerContext);
+
     if (this.encryptionKeyUrl) {
       return this.encryptionKeyUrl;
     }
@@ -503,6 +513,13 @@ export class ContactsClient implements IContacts {
    * @returns GroupId of default group.
    */
   private async fetchDefaultGroup(): Promise<string> {
+    const loggerContext = {
+      file: CONTACTS_FILE,
+      method: METHODS.fetchDefaultGroup,
+    };
+
+    log.info('invoking', loggerContext);
+
     if (this.defaultGroupId) {
       log.log(`Using existing default group with ID: ${this.defaultGroupId}`, {
         file: CONTACTS_FILE,
@@ -563,10 +580,10 @@ export class ContactsClient implements IContacts {
   ): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: this.createContactGroup.name,
+      method: METHODS.createContactGroup,
     };
 
-    log.info(`Creating contact group ${displayName}`, loggerContext);
+    log.info(`invoking with displayName: ${displayName}`, loggerContext);
 
     const encryptionKeyUrlFinal = encryptionKeyUrl || (await this.fetchEncryptionKeyUrl());
 
@@ -643,8 +660,10 @@ export class ContactsClient implements IContacts {
   public async deleteContactGroup(groupId: string) {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: this.deleteContactGroup.name,
+      method: METHODS.deleteContactGroup,
     };
+
+    log.info(`invoking with groupId: ${groupId}`, loggerContext);
 
     try {
       log.info(`Deleting contact group: ${groupId}`, loggerContext);
@@ -692,10 +711,10 @@ export class ContactsClient implements IContacts {
   public async createContact(contactInfo: Contact): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: this.createContact.name,
+      method: METHODS.createContact,
     };
 
-    log.info(`Request to create contact: contactType: ${contactInfo.contactType}`, loggerContext);
+    log.info(`invoking with contactType: ${contactInfo.contactType}`, loggerContext);
 
     try {
       const contact = {...contactInfo};
@@ -799,8 +818,10 @@ export class ContactsClient implements IContacts {
   public async deleteContact(contactId: string): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: this.deleteContact.name,
+      method: METHODS.deleteContact,
     };
+
+    log.info(`invoking with contactId: ${contactId}`, loggerContext);
 
     try {
       log.info(`Deleting contact : ${contactId}`, loggerContext);

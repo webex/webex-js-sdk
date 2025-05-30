@@ -87,7 +87,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
           method: 'voicemailMarkAsRead',
         }
       );
-      expect(infoSpy).toHaveBeenCalledWith('Marking voicemail with ID dummy as read', {
+      expect(infoSpy).toHaveBeenCalledWith('invoking with messageId: dummy', {
         file: 'BroadworksBackendConnector',
         method: 'voicemailMarkAsRead',
       });
@@ -124,7 +124,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
           method: 'voicemailMarkAsUnread',
         }
       );
-      expect(infoSpy).toHaveBeenCalledWith('Marking voicemail with ID dummy as unread', {
+      expect(infoSpy).toHaveBeenCalledWith('invoking with messageId: dummy', {
         file: 'BroadworksBackendConnector',
         method: 'voicemailMarkAsUnread',
       });
@@ -145,7 +145,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
           method: 'deleteVoicemail',
         }
       );
-      expect(infoSpy).toHaveBeenCalledWith('Deleting voicemail with ID dummy', {
+      expect(infoSpy).toHaveBeenCalledWith('invoking with messageId: dummy', {
         file: 'BroadworksBackendConnector',
         method: 'deleteVoicemail',
       });
@@ -183,7 +183,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
           method: 'getVoicemailContent',
         }
       );
-      expect(infoSpy).toHaveBeenCalledWith('Fetching voicemail content for message ID: dummy', {
+      expect(infoSpy).toHaveBeenCalledWith('invoking with messageId: dummy', {
         file: 'BroadworksBackendConnector',
         method: 'getVoicemailContent',
       });
@@ -274,7 +274,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
         }
       );
       expect(infoSpy).toHaveBeenCalledWith(
-        'Fetching voicemail list with offset: 0, offsetLimit: 20, sort type: DESC',
+        'invoking with offset: 0, offsetLimit: 20, sort type: DESC',
         {
           file: 'BroadworksBackendConnector',
           method: 'getVoicemailList',
@@ -363,7 +363,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
         method: 'getVoicemailList',
       });
       expect(infoSpy).toHaveBeenCalledWith(
-        'Fetching voicemail list with offset: 0, offsetLimit: 20, sort type: DESC',
+        'invoking with offset: 0, offsetLimit: 20, sort type: DESC',
         {
           file: 'BroadworksBackendConnector',
           method: 'getVoicemailList',
@@ -567,7 +567,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
         `${broadworksUserInfoUrl}/${broadworksUserMessageId}/${MARK_AS_READ}`,
         {headers: {Authorization: `bearer ${bwToken}`}, method: 'PUT'}
       );
-      expect(infoSpy).toHaveBeenCalledWith(`Marking voicemail with ID ${messageId.$} as read`, {
+      expect(infoSpy).toHaveBeenCalledWith(`invoking with messageId: ${messageId.$}`, {
         file: 'BroadworksBackendConnector',
         method: 'voicemailMarkAsRead',
       });
@@ -595,7 +595,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
         `${broadworksUserInfoUrl}/${broadworksUserMessageId}/${MARK_AS_UNREAD}`,
         {headers: {Authorization: `bearer ${bwToken}`}, method: 'PUT'}
       );
-      expect(infoSpy).toHaveBeenCalledWith(`Marking voicemail with ID ${messageId.$} as unread`, {
+      expect(infoSpy).toHaveBeenCalledWith(`invoking with messageId: ${messageId.$}`, {
         file: 'BroadworksBackendConnector',
         method: 'voicemailMarkAsUnread',
       });
@@ -618,7 +618,7 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
         headers: {Authorization: `bearer ${bwToken}`},
         method: 'DELETE',
       });
-      expect(infoSpy).toHaveBeenCalledWith(`Deleting voicemail with ID ${messageId.$}`, {
+      expect(infoSpy).toHaveBeenCalledWith(`invoking with messageId: ${messageId.$}`, {
         file: 'BroadworksBackendConnector',
         method: 'deleteVoicemail',
       });
@@ -629,17 +629,30 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
     });
 
     it('verify successfully fetching voicemail transcript for the provided messageId', async () => {
-      const response = await broadworksBackendConnector.getVMTranscript(
-        '98099432-9d81-4224-bd04-00def73cd262'
-      );
+      const transcriptId = '98099432-9d81-4224-bd04-00def73cd262';
+      const response = await broadworksBackendConnector.getVMTranscript(transcriptId);
 
       expect(response).toBeNull();
+      expect(infoSpy).toHaveBeenCalledWith(`invoking with messageId: ${transcriptId}`, {
+        file: 'BroadworksBackendConnector',
+        method: 'getVMTranscript',
+      });
     });
 
     it('verify resolution of contact to null', async () => {
+      // Clear all mocks before calling the method to test
+      jest.clearAllMocks();
+
       const response = await broadworksBackendConnector.resolveContact(resolveContactArgs);
 
       expect(response).toBeNull();
+      expect(infoSpy).toHaveBeenCalledWith(
+        `invoking with Calling Party Info: ${resolveContactArgs}`,
+        {
+          file: 'BroadworksBackendConnector',
+          method: 'resolveContact',
+        }
+      );
     });
 
     it('verify fetching voicemail summary data to be null', async () => {

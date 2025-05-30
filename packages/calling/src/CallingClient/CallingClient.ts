@@ -52,6 +52,7 @@ import {
   MOBIUS_EU_PROD,
   MOBIUS_US_INT,
   MOBIUS_EU_INT,
+  METHODS,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -183,6 +184,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Register callbacks for network changes.
    */
   private async detectNetworkChange() {
+    log.info('invoking', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.detectNetworkChange,
+    });
     let retry = false;
 
     // this is a temporary logic to get registration obj
@@ -197,7 +202,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       ) {
         log.warn(`Network has flapped, waiting for mercury connection to be up`, {
           file: CALLING_CLIENT_FILE,
-          method: this.detectNetworkChange.name,
+          method: METHODS.detectNetworkChange,
         });
 
         line.registration.clearKeepaliveTimer();
@@ -219,6 +224,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Fetches countryCode and region of the client.
    */
   private async getClientRegionInfo(): Promise<RegionInfo> {
+    log.info('invoking', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.getClientRegionInfo,
+    });
     const regionInfo = {} as RegionInfo;
 
     for (const mobius of this.mobiusClusters) {
@@ -289,6 +298,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Local method for finding the mobius servers.
    */
   private async getMobiusServers() {
+    log.info('invoking', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.getMobiusServers,
+    });
     /* Following operations are performed in a synchronous way ->
 
         1. Get RegionInfo
@@ -404,12 +417,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * present on sdk are cleaned up.
    */
   private registerCallsClearedListener() {
-    const logContext = {
+    log.info('invoking', {
       file: CALLING_CLIENT_FILE,
-      method: this.registerCallsClearedListener.name,
-    };
+      method: METHODS.registerCallsClearedListener,
+    });
 
-    log.info('Registering listener for all calls cleared event', logContext);
     this.callManager.on(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED, this.callsClearedHandler);
   }
 
@@ -421,6 +433,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * calls are cleaned up.
    */
   private callsClearedHandler = async () => {
+    log.info('invoking', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.callsClearedHandler,
+    });
     // this is a temporary logic to get registration obj
     // it will change once we have proper lineId and multiple lines as well
     const {registration} = Object.values(this.lineDict)[0];
@@ -455,6 +471,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   private registerSessionsListener() {
+    log.info('invoking', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.registerSessionsListener,
+    });
     this.sdkConnector.registerListener<CallSessionEvent>(
       MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE,
       async (event?: CallSessionEvent) => {
@@ -483,6 +503,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * NOTE: currently multiple lines are not supported
    */
   private async createLine(): Promise<void> {
+    log.info('invoking', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.createLine,
+    });
     const line = new Line(
       this.webex.internal.device.userId,
       this.webex.internal.device.url,
