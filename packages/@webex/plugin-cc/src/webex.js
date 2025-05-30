@@ -36,10 +36,6 @@ const Webex = WebexCore.extend({
  * @param {Object} [attrs.config.logger] - Logging configuration.
  * @param {string} [attrs.config.logger.level='info'] - Logging level (e.g., 'debug', 'info').
  * @param {string} [attrs.config.logger.bufferLogLevel='log'] - Log buffering level for log uploads.
- * @param {Object} [attrs.config.credentials] - OAuth credentials for the Webex application.
- * @param {string} attrs.config.credentials.client_id - Client ID for the Webex application.
- * @param {string} attrs.config.credentials.client_secret - Client secret for the Webex application.
- * @param {string} attrs.config.credentials.redirect_uri - Redirect URI for OAuth authentication.
  * @param {Object} [attrs.config.cc] - Contact Center (CC) specific configurations.
  * @param {boolean} [attrs.config.cc.allowMultiLogin=false] - Whether to allow multiple logins.
  * @param {boolean} [attrs.config.cc.allowAutomatedRelogin=true] - Whether to allow automated re-login.
@@ -51,21 +47,19 @@ const Webex = WebexCore.extend({
  * @param {string} [attrs.config.cc.metrics.clientType='WebexCCSDK'] - Metrics client type.
  * @returns {Webex} A new Webex instance.
  *
- * @see {@link https://developer.webex.com/docs/sdks/browser} - Documentation on Webex SDK configuration.
- * @see {@link https://webex.github.io/webex-js-sdk/api/} - API documentation for the Webex JavaScript SDK.
+ * @see {@link https://developer.webex.com/meeting/docs/sdks/webex-meetings-sdk-web-quickstart#webex-object-attribute-reference} - Webex Object Attribute Reference for SDK Configuration.
  *
  * This configuration merges the default `webex-config` with any custom configuration provided as `attrs.config`.
  * The merged configuration governs various SDK behaviors, such as authorization, logging, and CC-specific settings.
  *
  * @example <caption>Basic Usage</caption>
- * import Webex from './webex';
+ * import Webex from '@webex/plugin-cc';
  *
  * // Initialize Webex SDK with default configuration
  * const webex = Webex.init();
- * console.log(webex.version); // Logs the SDK version
  *
  * @example <caption>Custom Configuration</caption>
- * import Webex from './webex';
+ * import Webex from '@webex/plugin-cc';
  *
  * const customConfig = {
  *   logger: {
@@ -92,9 +86,6 @@ const Webex = WebexCore.extend({
  *
  * // Initialize Webex SDK with custom configuration
  * const webex = Webex.init({ config: customConfig });
- * console.log(webex.logger.level); // Logs: 'debug'
- * console.log(webex.config.credentials.client_id); // Logs: 'your-client-id'
- * console.log(webex.config.cc.clientType); // Logs: 'WebexCCSDK'
  */
 Webex.init = function init(attrs = {}) {
   attrs.config = merge({}, config, attrs.config);
