@@ -35,10 +35,11 @@ const idleCodesDropdown = document.querySelector('#idleCodesDropdown')
 const setAgentStatusButton = document.querySelector('#setAgentStatus');
 const logoutAgentElm = document.querySelector('#logoutAgent');
 const buddyAgentsDropdownElm = document.getElementById('buddyAgentsDropdown');
-const updateAgentDeviceTypeElm = document.querySelector('#updateAgentDeviceType');
-const updateFieldsContainer = document.querySelector('#updateAgentDeviceTypeFields');
+const updateAgentProfileElm = document.querySelector('#updateAgentProfile');
+const updateFieldsContainer = document.querySelector('#updateAgentProfileFields');
 const updateLoginOptionElm = document.querySelector('#updateLoginOption');
-const updateDialNumberElm = document.querySelector('#updateDialNumber');
+const updateDialNumberElm  = document.querySelector('#updateDialNumber');
+const updateTeamDropdownElm = document.querySelector('#updateTeamDropdown');
 const incomingCallListener = document.querySelector('#incomingsection');
 const incomingDetailsElm = document.querySelector('#incoming-task');
 const answerElm = document.querySelector('#answer');
@@ -74,6 +75,7 @@ let isBundleLoaded = false; // this is just to check before loading/using engage
 const uploadLogsButton = document.getElementById('upload-logs');
 const uploadLogsResultElm = document.getElementById('upload-logs-result');
 const agentLoginError = document.getElementById('agent-login-error');
+const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProfile');
 
 deregisterBtn.style.backgroundColor = 'red';
 
@@ -768,7 +770,8 @@ function generateWebexConfig({credentials}) {
     appPlatform: 'testClient',
     fedramp: false,
     logger: {
-      level: 'info'
+      level: 'info',
+      bufferLogLevel: 'log',
     },
     credentials,
     // Any other sdk config we need
@@ -878,12 +881,25 @@ function register() {
             option.text = team.name;
             teamsDropdown.add(option);
         });
+        if (updateTeamDropdownElm) {
+          updateTeamDropdownElm.innerHTML = teamsDropdown.innerHTML;
+          updateTeamDropdownElm.value      = teamsDropdown.value;  // sync initial selection
+        }
+        // Keep both dropdowns in sync
+        teamsDropdown.addEventListener('change', () => {
+          if (updateTeamDropdownElm) {
+            updateTeamDropdownElm.value = teamsDropdown.value;
+          }
+        });
+        updateTeamDropdownElm.addEventListener('change', () => {
+          teamsDropdown.value = updateTeamDropdownElm.value;
+        });
         const loginVoiceOptions = agentProfile.loginVoiceOptions;
         populateLoginOptions(
           loginVoiceOptions.filter((o) => agentProfile.webRtcEnabled || o !== 'BROWSER')
         );
-        dialNumber.value = agentProfile.defaultDn ? agentProfile.defaultDn : '';
-        dialNumber.disabled = agentProfile.defaultDn ? false : true;
+        dialNumber.value = agentProfile.dn ?? '';
+        dialNumber.disabled = !agentProfile.dn;
         if (loginVoiceOptions.length > 0) loginAgentElm.disabled = false;
 
         if (agentProfile.isAgentLoggedIn) {
@@ -943,7 +959,7 @@ function register() {
       console.log('Agent re-login successful', data);
       loginAgentElm.disabled = true;
       logoutAgentElm.classList.remove('hidden');
-      updateAgentDeviceTypeElm.classList.remove('hidden');
+      updateAgentProfileElm.classList.remove('hidden');
 
       agentLogin.value = data.deviceType;
       agentDeviceType = data.deviceType;
@@ -962,7 +978,7 @@ function register() {
       console.log('Agent station-login success', data);
       loginAgentElm.disabled = true;
       logoutAgentElm.classList.remove('hidden');
-      updateAgentDeviceTypeElm.classList.remove('hidden');
+      updateAgentProfileElm.classList.remove('hidden');
       updateFieldsContainer.classList.add('hidden');
 
       agentLogin.value = data.deviceType;
@@ -1070,7 +1086,7 @@ function doAgentLogin() {
     console.log('Agent Logged in successfully', response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
-    updateAgentDeviceTypeElm.classList.remove('hidden');
+    updateAgentProfileElm.classList.remove('hidden');
     // Read auxCode and lastStateChangeTimestamp from login response
     const DEFAULT_CODE = '0'; // Default code when no aux code is present
     const auxCodeId = response.data.auxCodeId?.trim() !== '' ? response.data.auxCodeId : DEFAULT_CODE;
@@ -1112,7 +1128,7 @@ function logoutAgent() {
     .then((response) => {
       console.log('Agent logged out successfully', response);
       loginAgentElm.disabled = false;
-      updateAgentDeviceTypeElm.classList.add('hidden');
+      updateAgentProfileElm.classList.add('hidden');
       updateFieldsContainer.classList.add('hidden');
 
      // Clear the timer when the agent logs out.
@@ -1137,34 +1153,16 @@ function logoutAgent() {
   });
 }
 
-async function updateAgentDeviceType() {
-  const payload = {
-    loginOption: agentDeviceType,
-    dialNumber: dialNumber.value
-  };
-  try {
-    const response = await webex.cc.updateAgentDeviceType(payload);
-    console.log('Profile updated successfully', response);
-  }
-  catch (error) {
-    console.error('Profile update failed', error);
-    alert('Profile update failed');
-  }
-}
-
-function showupdateAgentDeviceTypeUI() {
-  updateFieldsContainer.classList.toggle('hidden');
-}
-
-async function applyupdateAgentDeviceType() {
+async function applyupdateAgentProfile() {
   const loginOption = updateLoginOptionElm.value;
   const newDial = loginOption === 'BROWSER' ? '' : updateDialNumberElm.value;
   const payload = {
+    teamId: updateTeamDropdownElm?.value || teamsDropdown.value,
     loginOption,
     dialNumber: newDial,
   };
   try {
-    const resp = await webex.cc.updateAgentDeviceType(payload);
+    const resp = await webex.cc.updateAgentProfile(payload);
     console.log('Profile updated', resp);
     updateFieldsContainer.classList.add('hidden');
     // Reflect new values in main UI
@@ -1177,6 +1175,14 @@ async function applyupdateAgentDeviceType() {
     console.error('Profile update failed', err);
     alert('Profile update failed');
   }
+}
+
+function showupdateAgentProfileUI() {
+  // ensure update dialog reflects current team
+  if (updateTeamDropdownElm) {
+    updateTeamDropdownElm.value = teamsDropdown.value;
+  }
+  updateFieldsContainer.classList.toggle('hidden');
 }
 
 function showAgentStatePopup(reason) {
@@ -1657,8 +1663,22 @@ function populateLoginOptions(options) {
   });
 }
 
+idleCodesDropdown.addEventListener('change', handleAgentStatus);
+
 updateLoginOptionElm.addEventListener('change', (e) => {
   updateDialNumberElm.disabled = e.target.value === 'BROWSER';
 });
 
-idleCodesDropdown.addEventListener('change', handleAgentStatus);
+function updateApplyButtonState() {
+  const team = updateTeamDropdownElm.value;
+  const loginOption = updateLoginOptionElm.value;
+  const dialRequired = loginOption !== 'BROWSER';
+  const dialValid = !dialRequired || updateDialNumberElm.value.trim() !== '';
+  applyupdateAgentProfileBtn.disabled = !(team && loginOption && dialValid);
+}
+
+updateTeamDropdownElm.addEventListener('change', updateApplyButtonState);
+updateLoginOptionElm.addEventListener('change', updateApplyButtonState);
+updateDialNumberElm.addEventListener('input', updateApplyButtonState);
+
+updateApplyButtonState();

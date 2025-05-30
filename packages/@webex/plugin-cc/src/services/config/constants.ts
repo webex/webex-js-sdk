@@ -12,6 +12,37 @@ export const DEFAULT_AUXCODE_ATTRIBUTES = [
   'workTypeCode',
   'active',
 ];
+
+// Method names for config services
+export const METHODS = {
+  // AgentConfigService methods
+  GET_AGENT_CONFIG: 'getAgentConfig',
+  GET_USER_USING_CI: 'getUserUsingCI',
+  GET_DESKTOP_PROFILE_BY_ID: 'getDesktopProfileById',
+  GET_MULTIMEDIA_PROFILE_BY_ID: 'getMultimediaProfileById',
+  GET_LIST_OF_TEAMS: 'getListOfTeams',
+  GET_ALL_TEAMS: 'getAllTeams',
+  GET_LIST_OF_AUX_CODES: 'getListOfAuxCodes',
+  GET_ALL_AUX_CODES: 'getAllAuxCodes',
+  GET_SITE_INFO: 'getSiteInfo',
+  GET_ORG_INFO: 'getOrgInfo',
+  GET_ORGANIZATION_SETTING: 'getOrganizationSetting',
+  GET_TENANT_DATA: 'getTenantData',
+  GET_URL_MAPPING: 'getURLMapping',
+  GET_DIAL_PLAN_DATA: 'getDialPlanData',
+  GET_QUEUES: 'getQueues',
+
+  // Util methods
+  PARSE_AGENT_CONFIGS: 'parseAgentConfigs',
+  GET_URL_MAPPING_UTIL: 'getUrlMapping',
+  GET_MSFT_CONFIG: 'getMsftConfig',
+  GET_WEBEX_CONFIG: 'getWebexConfig',
+  GET_DEFAULT_AGENT_DN: 'getDefaultAgentDN',
+  GET_FILTERED_DIALPLAN_ENTRIES: 'getFilteredDialplanEntries',
+  GET_FILTER_AUX_CODES: 'getFilterAuxCodes',
+  GET_DEFAULT_WRAP_UP_CODE: 'getDefaultWrapUpCode',
+};
+
 export const endPointMap = {
   userByCI: (orgId: string, agentId: string) =>
     `organization/${orgId}/user/by-ci-user-id/${agentId}`,
