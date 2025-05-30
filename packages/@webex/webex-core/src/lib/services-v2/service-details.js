@@ -9,6 +9,7 @@ const ServiceDetails = AmpState.extend({
   namespace: 'ServiceDetails',
 
   props: {
+    defaultUrl: ['string', true, undefined],
     serviceUrls: ['array', false, () => []],
     serviceName: ['string', true, undefined],
     id: ['string', true, undefined],
