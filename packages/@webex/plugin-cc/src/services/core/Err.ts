@@ -1,6 +1,11 @@
 import {WebexRequestPayload} from '../../types';
 import {Failure} from './GlobalTypes';
 
+/**
+ * Err module provides a structured way to handle errors in the Contact Center plugin.
+ * @ignore
+ */
+
 export type ErrDetails = {status: number; type: string; trackingId: string};
 
 export type AgentErrorIds =

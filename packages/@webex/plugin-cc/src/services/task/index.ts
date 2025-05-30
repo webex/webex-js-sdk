@@ -27,9 +27,15 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import {Failure} from '../core/GlobalTypes';
 
 /**
- * Task class that implements the {@link ITask} interface
+ * Task class represents a contact center task/interaction that can be managed by an agent.
+ * This class provides all the necessary methods to manage tasks in a contact center enivornment, handling various call control operations and task lifecycle management.
  * @implements {ITask}
+ * @example
+ * ```typescript
+ * const task = new Task(contact, webCallingService, taskData);
+ * ```
  */
+
 export default class Task extends EventEmitter implements ITask {
   private contact: ReturnType<typeof routingContact>;
   private localAudioStream: LocalMicrophoneStream;
@@ -38,6 +44,12 @@ export default class Task extends EventEmitter implements ITask {
   private metricsManager: MetricsManager;
   public webCallMap: Record<TaskId, CallId>;
 
+  /**
+   * Creates a new Task instance
+   * @param contact - The routing contact service instance
+   * @param webCallingService - The web calling service instance
+   * @param data - Initial task data
+   */
   constructor(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
@@ -52,14 +64,25 @@ export default class Task extends EventEmitter implements ITask {
     this.registerWebCallListeners();
   }
 
+  /**
+   * @ignore
+   * @private
+   */
   private handleRemoteMedia = (track: MediaStreamTrack) => {
     this.emit(TASK_EVENTS.TASK_MEDIA, track);
   };
 
+  /**
+   * @ignore
+   * @private
+   */
   private registerWebCallListeners() {
     this.webCallingService.on(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleRemoteMedia);
   }
 
+  /**
+   * @ignore
+   */
   public unregisterWebCallListeners() {
     this.webCallingService.off(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleRemoteMedia);
   }
@@ -83,7 +106,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used for incoming task accept by agent.
+   * Agent accepts the incoming task.
    *
    * @returns Promise<TaskResponse>
    * @throws Error
@@ -150,8 +173,8 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used for the placing the call in mute or unmute by the agent.
-   *
+   * Agent can mute/unmute the webrtc task.
+   * @returns Promise<void> - Resolves when mute/unmute operation completes
    * @throws Error
    * @example
    * ```typescript
@@ -170,7 +193,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used for the incoming task decline by agent.
+   * Declines the incoming webrtc task.
    *
    * @returns Promise<TaskResponse>
    * @throws Error
@@ -212,7 +235,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to hold the task.
+   * Puts the current task/interaction on hold.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -260,7 +283,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to resume the task.
+   * Resumes the task/interaction that was previously put on hold.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -314,7 +337,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to end the task.
+   * Ends the task/interaction with the customer.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -355,10 +378,10 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to wrap up the task.
-   * @param wrapupPayload - WrapupPayLoad
+   * Wraps up the task/interaction with the customer.
+   * @param wrapupPayload - WrapupPayLoad containing auxCodeId and wrapUpReason
    * @returns Promise<TaskResponse>
-   * @throws Error
+   * @throws Error - Throws if task data is unavailable, auxCodeId is missing, or wrapUpReason is missing
    * @example
    * ```typescript
    * task.wrapup(wrapupPayload).then(()=>{}).catch(()=>{})
@@ -415,7 +438,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to pause the call recording
+   * Pauses the recording for the current voice task.
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -458,8 +481,8 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to pause the call recording
-   * @param resumeRecordingPayload
+   * Resumes the recording for the voice task that was previously paused.
+   * @param resumeRecordingPayload - Configuration for resuming recording, defaults to {autoResumed: false}
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -509,8 +532,8 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to consult the task
-   * @param consultPayload
+   * Consults another agent or queue on an onngoing task for further assistance.
+   * @param consultPayload - ConsultPayload containing destination and destinationType
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -564,7 +587,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to end the consult
+   * Ends the consult session in progress for a task.
    * @param consultEndPayload
    * @returns Promise<TaskResponse>
    * @throws Error
@@ -615,8 +638,8 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to blind transfer or vTeam transfer the task
-   * @param transferPayload
+   * Transfer the task to an agent dierctly or to the queue.
+   * @param transferPayload - Transfer configuration containing destination and destination type
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -680,15 +703,15 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used to consult transfer the task
-   * @param consultTransferPayload
+   * Transfer the task to the consulted agent or queue.
+   * @param consultTransferPayload - Consult transfer configuration containing destination and destinationType
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
    * ```typescript
    * const consultTransferPayload = {
-   * destination: 'anotherAgentId',
-   * destinationType: 'agent',
+   * destination: 'anotherAgentId | queueId',
+   * destinationType: 'agent | queue',
    * }
    * task.consultTransfer(consultTransferPayload).then(()=>{}).catch(()=>{});
    * ```
