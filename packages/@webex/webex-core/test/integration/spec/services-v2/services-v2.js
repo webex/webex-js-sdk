@@ -13,7 +13,7 @@ import sinon from 'sinon';
 
 // /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
-  describe('Services', () => {
+  describe('ServicesV2', () => {
     let webexUser;
     let webexUserEU;
     let webex;
@@ -317,58 +317,58 @@ describe('webex-core', () => {
     //       });
     //     });
 
-    // describe('#initConfig()', () => {
-    //   it('should set the discovery catalog based on the provided links', () => {
-    //     const key = 'test';
-    //     const url = 'http://www.test.com/';
+    describe('#initConfig()', () => {
+      // it('should set the discovery catalog based on the provided links', () => {
+      //   const key = 'test';
+      //   const url = 'http://www.test.com/';
 
-    //     webex.config.services.discovery[key] = url;
+      //   webex.config.services.discovery[key] = url;
 
-    //     services.initConfig();
+      //   services.initConfig();
 
-    //     assert.equal(services.get(key), url);
-    //   });
+      //   assert.equal(services.get(key), url);
+      // });
 
-    //   it('should set the override catalog based on the provided links', () => {
-    //     const key = 'testOverride';
-    //     const url = 'http://www.test-override.com/';
+      // it('should set the override catalog based on the provided links', () => {
+      //   const key = 'testOverride';
+      //   const url = 'http://www.test-override.com/';
 
-    //     webex.config.services.override = {};
-    //     webex.config.services.override[key] = url;
+      //   webex.config.services.override = {};
+      //   webex.config.services.override[key] = url;
 
-    //     services.initConfig();
+      //   services.initConfig();
 
-    //     assert.equal(services.get(key), url);
-    //   });
+      //   assert.equal(services.get(key), url);
+      // });
 
-    //   it('should set validate domains to true when provided true', () => {
-    //     webex.config.services.validateDomains = true;
+      it('should set validate domains to true when provided true', () => {
+        webex.config.services.validateDomains = true;
 
-    //     services.initConfig();
+        services.initConfig();
 
-    //     assert.isTrue(services.validateDomains);
-    //   });
+        assert.isTrue(services.validateDomains);
+      });
 
-    //   it('should set validate domains to false when provided false', () => {
-    //     webex.config.services.validateDomains = false;
+      it('should set validate domains to false when provided false', () => {
+        webex.config.services.validateDomains = false;
 
-    //     services.initConfig();
+        services.initConfig();
 
-    //     assert.isFalse(services.validateDomains);
-    //   });
+        assert.isFalse(services.validateDomains);
+      });
 
-    //   it('should set the allowed domains based on the provided domains', () => {
-    //     const allowedDomains = ['domain'];
+      it('should set the allowed domains based on the provided domains', () => {
+        const allowedDomains = ['domain'];
 
-    //     webex.config.services.allowedDomains = allowedDomains;
+        webex.config.services.allowedDomains = allowedDomains;
 
-    //     services.initConfig();
+        services.initConfig();
 
-    //     const expectedResult = [...allowedDomains, ...serviceConstants.COMMERCIAL_ALLOWED_DOMAINS];
+        const expectedResult = [...allowedDomains, ...serviceConstants.COMMERCIAL_ALLOWED_DOMAINS];
 
-    //     assert.deepEqual(expectedResult, services._getCatalog().allowedDomains);
-    //   });
-    // });
+        assert.deepEqual(expectedResult, services._getCatalog().allowedDomains);
+      });
+    });
 
     //     describe('#initialize()', () => {
     //       it('should create a catalog', () =>
