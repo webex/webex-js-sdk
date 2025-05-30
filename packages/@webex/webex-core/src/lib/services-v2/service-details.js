@@ -2,7 +2,6 @@ import Url from 'url';
 
 import AmpState from 'ampersand-state';
 
-/* eslint-disable no-underscore-dangle */
 /**
  * @class
  */
@@ -22,7 +21,7 @@ const ServiceDetails = AmpState.extend({
    * @returns {string}
    */
   _generateHostUrl(serviceUrl) {
-    const url = Url.parse(serviceUrl.baseUrl);
+    const url = new Url(serviceUrl.baseUrl);
 
     // setting url.hostname will not apply during Url.format(), set host via
     // a string literal instead.
@@ -37,6 +36,7 @@ const ServiceDetails = AmpState.extend({
    * @returns {string} - The priority host url.
    */
   _getPriorityHostUrl() {
+    // format of catalog ensures that array is sorted by highest priority
     let priorityServiceUrl = this.serviceUrls.find((url) => url.priority > 0 && !url.failed);
 
     if (!priorityServiceUrl) {
@@ -53,14 +53,14 @@ const ServiceDetails = AmpState.extend({
   },
 
   /**
-   * Attempt to mark a host from this `Service` as failed and return true
+   * Attempt to mark a host from this `ServiceDetail` as failed and return true
    * if the provided url has a host that could be successfully marked as failed.
    *
    * @param {string} url
    * @returns {boolean}
    */
   failHost(url) {
-    const failedUrl = Url.parse(url);
+    const failedUrl = new Url(url);
 
     const foundHost = this.serviceUrls.find((serviceUrl) => serviceUrl.host === failedUrl.host);
 
@@ -72,7 +72,7 @@ const ServiceDetails = AmpState.extend({
   },
 
   /**
-   * Get the current `defaultUrl` or generate a url using the host with the
+   * Generate a url using the host with the
    * highest priority via host rendering.
    *
    * @returns {string} - The full service url.
@@ -81,6 +81,5 @@ const ServiceDetails = AmpState.extend({
     return this._getPriorityHostUrl();
   },
 });
-/* eslint-enable no-underscore-dangle */
 
 export default ServiceDetails;

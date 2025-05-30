@@ -7,7 +7,6 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import {ServicesV2, ServiceDetails} from '@webex/webex-core';
 import {formattedServiceHostmapEntryConv} from '../../../fixtures/host-catalog-v2';
 
-/* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
   describe('ServiceDetails', () => {
     let webex;
@@ -16,7 +15,6 @@ describe('webex-core', () => {
 
     beforeEach(() => {
       webex = new MockWebex();
-      /* eslint-disable-next-line no-unused-vars */
       new ServicesV2(undefined, {parent: webex});
 
       template = formattedServiceHostmapEntryConv;
@@ -130,4 +128,3 @@ describe('webex-core', () => {
     });
   });
 });
-/* eslint-enable no-underscore-dangle */
