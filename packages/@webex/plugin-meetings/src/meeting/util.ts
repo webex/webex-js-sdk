@@ -583,6 +583,8 @@ const MeetingUtil = {
     displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD) &&
     !!policies[SELF_POLICY.SUPPORT_WHITEBOARD],
 
+  canMoveToLobby: (displayHints) => displayHints.includes(DISPLAY_HINTS.MOVE_TO_LOBBY),
+
   /**
    * Adds the current locus sequence information to a request body
    * @param {Object} meeting The meeting object
@@ -811,24 +813,6 @@ const MeetingUtil = {
         errorCode: 1100,
       },
     ];
-  },
-
-  /**
-   * Creates a proxy object to mark an error as handled by the SDK.
-   * @param {Error} error original error
-   * @returns {Proxy} proxy object with handledBySdk property
-   */
-  markErrorAsHandledBySdk: (error) => {
-    return new Proxy(error, {
-      // eslint-disable-next-line require-jsdoc
-      get(target, prop) {
-        if (prop === 'handledBySdk') {
-          return true;
-        }
-
-        return Reflect.get(target, prop);
-      },
-    });
   },
 };
 

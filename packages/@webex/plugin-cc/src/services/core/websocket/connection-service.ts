@@ -6,6 +6,7 @@ import {
   LOST_CONNECTION_RECOVERY_TIMEOUT,
   WS_DISCONNECT_ALLOWED,
   CONNECTIVITY_CHECK_INTERVAL,
+  METHODS,
 } from '../constants';
 import {CONNECTION_SERVICE_FILE} from '../../../constants';
 import {SubscribeRequest} from '../../../types';
@@ -53,9 +54,9 @@ export class ConnectionService extends EventEmitter {
       isKeepAlive: this.isKeepAlive,
     };
     this.webSocketManager.handleConnectionLost(event);
-    LoggerProxy.log(`Dispatching connection event`, {
+    LoggerProxy.info(`Dispatching connection event`, {
       module: CONNECTION_SERVICE_FILE,
-      method: 'dispatchConnectionEvent',
+      method: METHODS.DISPATCH_CONNECTION_EVENT,
     });
     this.emit('connectionLost', event);
   }
@@ -119,7 +120,7 @@ export class ConnectionService extends EventEmitter {
   private handleSocketClose = async (): Promise<void> => {
     LoggerProxy.info(`event=socketConnectionRetry | Trying to reconnect to websocket`, {
       module: CONNECTION_SERVICE_FILE,
-      method: 'handleSocketClose',
+      method: METHODS.HANDLE_SOCKET_CLOSE,
     });
     const onlineStatus = navigator.onLine;
     if (onlineStatus) {

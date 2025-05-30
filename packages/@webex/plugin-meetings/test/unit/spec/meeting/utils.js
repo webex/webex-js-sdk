@@ -789,10 +789,14 @@ describe('plugin-meetings', () => {
           }),
           false
         );
-        assert.deepEqual(
-          MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD'], undefined),
-          false
-        );
+        assert.deepEqual(MeetingUtil.canShareWhiteBoard(['SHARE_WHITEBOARD'], undefined), false);
+      });
+    });
+
+    describe('canMoveToLobby', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canMoveToLobby(['MOVE_TO_LOBBY']), true);
+        assert.deepEqual(MeetingUtil.canMoveToLobby([]), false);
       });
     });
 
@@ -1183,14 +1187,6 @@ describe('plugin-meetings', () => {
           assert.equal(MeetingUtil.getIpVersion(webex), undefined);
         });
       });
-    });
-
-    describe('markErrorAsHandledBySdk', () => {
-      it('should set the error as handled', () => {
-        const error = MeetingUtil.markErrorAsHandledBySdk(new Error('Test error'));
-
-        assert.isTrue(error.handledBySdk);
-      })
     });
 
     describe('getChangeMeetingFloorErrorPayload', () => {

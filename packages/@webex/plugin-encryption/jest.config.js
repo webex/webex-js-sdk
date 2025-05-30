@@ -2,7 +2,9 @@ const config = require('@webex/jest-config-legacy');
 
 const jestConfig = {
   rootDir: './',
-  transformIgnorePatterns: [],
+  transformIgnorePatterns: [
+    '/node_modules/(?!(uuid)/)', // Transform `uuid` using Babel
+  ],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   testResultsProcessor: 'jest-junit',
   // Clear mocks in between tests by default

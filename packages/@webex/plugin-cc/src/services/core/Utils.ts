@@ -15,9 +15,10 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
   const failure = error.details as Failure;
   const reason = failure?.data?.reason ?? `Error while performing ${methodName}`;
   if (!(reason === 'AGENT_NOT_FOUND' && methodName === 'silentReLogin')) {
-    LoggerProxy.error(`${methodName} failed with trackingId: ${failure?.trackingId}`, {
+    LoggerProxy.error(`${methodName} failed with reason: ${reason}`, {
       module: moduleName,
       method: methodName,
+      trackingId: failure?.trackingId,
     });
     // we can add more conditions here if not needed for specific cases eg: silentReLogin
     WebexRequest.getInstance().uploadLogs({

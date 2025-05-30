@@ -1,13 +1,15 @@
 module.exports = {
-  "presets": [
+  plugins: ['@webex/babel-config-legacy/inject-package-version'],
+  presets: [
     [
-      "@babel/preset-env",
+      '@babel/preset-env',
       {
-        "targets": {
-          "node": "current"
-        }
-      }
+        targets: {
+          node: 'current',
+        },
+      },
     ],
-    "@babel/preset-typescript"
+    '@babel/preset-typescript',
   ],
-}
+  sourceMaps: true,
+};
