@@ -17,8 +17,8 @@ import {
   CALLS_CLEARED_HANDLER_UTIL,
   DEFAULT_REHOMING_INTERVAL_MAX,
   DEFAULT_REHOMING_INTERVAL_MIN,
-  FAILBACK_429_RETRY_UTIL,
   FAILBACK_UTIL,
+  FAILOVER_UTIL,
   KEEPALIVE_UTIL,
   MINUTES_TO_SEC_MFACTOR,
   REGISTRATION_FILE,
@@ -81,14 +81,21 @@ describe('Registration Tests', () => {
     body: mockPostResponse,
   });
 
-  const failurePayload429 = <WebexRequestPayload>(<unknown>{
+  const failurePayload429One = <WebexRequestPayload>(<unknown>{
     statusCode: 429,
     body: mockPostResponse,
     headers: {
-      'retry-after': 10,
+      'retry-after': 42,
     },
   });
 
+  const failurePayload429Two = <WebexRequestPayload>(<unknown>{
+    statusCode: 429,
+    body: mockPostResponse,
+    headers: {
+      'retry-after': 33,
+    },
+  });
   const successPayload = <WebexRequestPayload>(<unknown>{
     statusCode: 200,
     body: mockPostResponse,
@@ -96,9 +103,11 @@ describe('Registration Tests', () => {
 
   let reg: IRegistration;
   let restartSpy;
-  let failbackRetry429Spy;
+
   let restoreSpy;
   let postRegistrationSpy;
+  let failoverSpy;
+  let retry429Spy;
 
   const setupRegistration = (mockServiceData) => {
     const mutex = new Mutex();
@@ -106,9 +115,10 @@ describe('Registration Tests', () => {
     reg.setMobiusServers(mobiusUris.primary, mobiusUris.backup);
     jest.clearAllMocks();
     restartSpy = jest.spyOn(reg, 'restartRegistration');
-    failbackRetry429Spy = jest.spyOn(reg, FAILBACK_429_RETRY_UTIL);
     restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
     postRegistrationSpy = jest.spyOn(reg, 'postRegistration');
+    failoverSpy = jest.spyOn(reg, 'startFailoverTimer');
+    retry429Spy = jest.spyOn(reg, 'handle429Retry');
   };
 
   beforeEach(() => {
@@ -205,6 +215,129 @@ describe('Registration Tests', () => {
     expect(lineEmitter).nthCalledWith(2, LINE_EVENTS.UNREGISTERED);
     expect(lineEmitter).nthCalledWith(3, LINE_EVENTS.CONNECTING);
     expect(lineEmitter).nthCalledWith(4, LINE_EVENTS.REGISTERED, mockPostResponse);
+  });
+
+  describe('429 error tests', () => {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: FAILOVER_UTIL,
+    };
+    const logSpy = jest.spyOn(log, 'log');
+
+    it('handle 429 received during initial registration failure', async () => {
+      jest.useFakeTimers();
+      logSpy.mockClear();
+      webex.request
+        .mockRejectedValueOnce(failurePayload429One)
+        .mockRejectedValueOnce(failurePayload429Two)
+        .mockRejectedValueOnce(failurePayload);
+
+      await reg.triggerRegistration();
+      expect(webex.request).toBeCalledOnceWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(retry429Spy).toBeCalledOnceWith(
+        failurePayload429One.headers['retry-after'],
+        'triggerRegistration'
+      );
+      expect(reg.retryAfter).toEqual(failurePayload429One.headers['retry-after']);
+      expect(failoverSpy).toBeCalledOnceWith();
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in ${failurePayload429One.headers['retry-after']} seconds, number of attempts : 1`,
+        loggerContext
+      );
+
+      webex.request.mockClear();
+      retry429Spy.mockClear();
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(
+        Number(failurePayload429One.headers['retry-after']) * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      expect(webex.request).toBeCalledOnceWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).toBeCalledOnceWith(
+        failurePayload429Two.headers['retry-after'],
+        'startFailoverTimer'
+      );
+      expect(reg.retryAfter).toEqual(failurePayload429Two.headers['retry-after']);
+      expect(failoverSpy).toBeCalledOnceWith(2, failurePayload429One.headers['retry-after']);
+
+      webex.request.mockClear();
+      retry429Spy.mockClear();
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(43 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toBeCalledOnceWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).not.toBeCalled();
+      expect(reg.retryAfter).toEqual(undefined);
+      expect(failoverSpy).toBeCalledOnceWith(3, 85);
+    });
+
+    it('handle 429 received while failing over to backup server', async () => {
+      jest.useFakeTimers();
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload429One)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.triggerRegistration();
+
+      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+      expect(webex.request).toBeCalledTimes(3);
+      expect(webex.request).toBeCalledWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(webex.request).toBeCalledWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+
+      expect(retry429Spy).toBeCalledOnceWith(
+        failurePayload429One.headers['retry-after'],
+        'startFailoverTimer'
+      );
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with backup servers in ${failurePayload429One.headers['retry-after']} seconds.`,
+        loggerContext
+      );
+
+      webex.request.mockClear();
+      jest.advanceTimersByTime(
+        Number(failurePayload429One.headers['retry-after']) * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      expect(webex.request).toBeCalledOnceWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+    });
   });
 
   describe('Registration failover tests', () => {

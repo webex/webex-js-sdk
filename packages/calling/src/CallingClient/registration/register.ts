@@ -33,7 +33,7 @@ import {
   REG_RANDOM_T_FACTOR_UPPER_LIMIT,
   REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
   MINUTES_TO_SEC_MFACTOR,
-  FAILBACK_429_RETRY_UTIL,
+  REG_429_RETRY_UTIL,
   REG_FAILBACK_429_MAX_RETRIES,
   FAILBACK_UTIL,
   REGISTRATION_FILE,
@@ -41,6 +41,8 @@ import {
   DEFAULT_REHOMING_INTERVAL_MAX,
   DEFAULT_KEEPALIVE_INTERVAL,
   REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
+  FAILOVER_UTIL,
+  REGISTER_UTIL,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -78,6 +80,7 @@ export class Registration implements IRegistration {
   private jwe?: string;
   private isCCFlow = false;
   private failoverImmediately = false;
+  private retryAfter: number | undefined;
 
   /**
    */
@@ -208,29 +211,35 @@ export class Registration implements IRegistration {
   }
 
   /**
-   * When a failback request is rejected with 429, it means the
-   * request did not even land on primary mobius to know if it
-   * can handle this device registration now, in such cases this
-   * method is called to retry sooner than the rehoming timer value.
+   *
    */
-  private async scheduleFailback429Retry() {
-    if (this.failback429RetryAttempts >= REG_FAILBACK_429_MAX_RETRIES) {
-      return;
-    }
-    this.clearFailbackTimer();
-    this.failback429RetryAttempts += 1;
-    log.log(`Received 429 while rehoming, 429 retry count : ${this.failback429RetryAttempts}`, {
-      file: REGISTRATION_FILE,
-      method: FAILBACK_429_RETRY_UTIL,
-    });
-    const interval = this.getRegRetryInterval(this.failback429RetryAttempts);
+  private async handle429Retry(retryAfter: number, caller: string): Promise<boolean> {
+    let abort;
+    if (caller === FAILBACK_UTIL) {
+      if (this.failback429RetryAttempts >= REG_FAILBACK_429_MAX_RETRIES) {
+        return true;
+      }
+      console.debug('In failback 429 handling with caller: ', caller);
+      this.failback429RetryAttempts += 1;
+      log.log(`Received 429 while rehoming, 429 retry count : ${this.failback429RetryAttempts}`, {
+        file: REGISTRATION_FILE,
+        method: REG_429_RETRY_UTIL,
+      });
+      const interval = this.getRegRetryInterval(this.failback429RetryAttempts);
 
-    this.startFailbackTimer(interval);
-    const abort = await this.restorePreviousRegistration(FAILBACK_429_RETRY_UTIL);
+      this.startFailbackTimer(interval);
+      abort = await this.restorePreviousRegistration(REG_429_RETRY_UTIL);
 
-    if (!abort && !this.isDeviceRegistered()) {
-      await this.restartRegistration(FAILBACK_429_RETRY_UTIL);
+      if (!abort && !this.isDeviceRegistered()) {
+        await this.restartRegistration(REG_429_RETRY_UTIL);
+      }
+    } else {
+      console.debug('In normal 429 handling with caller: ', caller);
+      this.retryAfter = retryAfter;
+      abort = false;
     }
+
+    return abort;
   }
 
   /**
@@ -259,9 +268,10 @@ export class Registration implements IRegistration {
    *
    */
   private async startFailoverTimer(attempt = 1, timeElapsed = 0) {
+    console.debug('failover timer started');
     const loggerContext = {
       file: REGISTRATION_FILE,
-      method: this.startFailoverTimer.name,
+      method: FAILOVER_UTIL,
     };
 
     let interval = this.getRegRetryInterval(attempt);
@@ -277,16 +287,23 @@ export class Registration implements IRegistration {
     }
 
     let abort;
-
     if (interval > BASE_REG_RETRY_TIMER_VAL_IN_SEC && !this.failoverImmediately) {
       const scheduledTime = Math.floor(Date.now() / 1000);
 
+      console.debug('timers value:', interval, this.retryAfter);
+      if (this.retryAfter != null) {
+        interval = interval < this.retryAfter ? this.retryAfter : interval;
+      }
+      console.debug('final interval', interval);
+
       setTimeout(async () => {
         await this.mutex.runExclusive(async () => {
-          abort = await this.attemptRegistrationWithServers(this.startFailoverTimer.name);
+          console.debug('Set time out for primary retries');
+          abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL);
           const currentTime = Math.floor(Date.now() / 1000);
 
           if (!abort && !this.isDeviceRegistered()) {
+            console.debug('starting failover timer again with abort received as', abort);
             await this.startFailoverTimer(attempt + 1, timeElapsed + (currentTime - scheduledTime));
           }
         });
@@ -298,18 +315,19 @@ export class Registration implements IRegistration {
     } else if (this.backupMobiusUris.length) {
       log.log('Failing over to backup servers.', loggerContext);
       this.failoverImmediately = false;
-      abort = await this.attemptRegistrationWithServers(
-        this.startFailoverTimer.name,
-        this.backupMobiusUris
-      );
+      console.debug('Failing over to backup servers');
+      abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL, this.backupMobiusUris);
       if (!abort && !this.isDeviceRegistered()) {
         interval = this.getRegRetryInterval();
+        console.debug('in backup flow timers value:', interval, this.retryAfter);
+        if (this.retryAfter != null) {
+          interval = interval < this.retryAfter ? this.retryAfter : interval;
+        }
+        console.debug('backup flow final interval', interval);
         setTimeout(async () => {
           await this.mutex.runExclusive(async () => {
-            abort = await this.attemptRegistrationWithServers(
-              this.startFailoverTimer.name,
-              this.backupMobiusUris
-            );
+            console.debug('second attempt with backup servers');
+            abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL, this.backupMobiusUris);
             if (!abort && !this.isDeviceRegistered()) {
               emitFinalFailure((clientError: LineError) => {
                 this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
@@ -333,6 +351,13 @@ export class Registration implements IRegistration {
     if (this.failbackTimer) {
       clearTimeout(this.failbackTimer);
       this.failbackTimer = undefined;
+    }
+  }
+
+  private clearPrimaryRetryTimers() {
+    if (this.primaryRetryTimer) {
+      clearTimeout(this.primaryRetryTimer);
+      this.primaryRetryTimer = undefined;
     }
   }
 
@@ -599,6 +624,7 @@ export class Registration implements IRegistration {
     servers: string[] = this.primaryMobiusUris
   ): Promise<boolean> {
     let abort = false;
+    this.retryAfter = undefined;
 
     if (this.failoverImmediately) {
       return abort;
@@ -607,7 +633,7 @@ export class Registration implements IRegistration {
     if (this.isDeviceRegistered()) {
       log.log(`[${caller}] : Device already registered with : ${this.activeMobiusUrl}`, {
         file: REGISTRATION_FILE,
-        method: this.attemptRegistrationWithServers.name,
+        method: REGISTER_UTIL,
       });
 
       return abort;
@@ -660,7 +686,8 @@ export class Registration implements IRegistration {
               clientError
             );
           },
-          {method: this.attemptRegistrationWithServers.name, file: REGISTRATION_FILE},
+          {method: REGISTER_UTIL, file: REGISTRATION_FILE},
+          // (retryAfter: number, retryCaller: string) => this.handle429Retry(retryAfter, retryCaller),
           this.restoreRegistrationCallBack()
         );
         if (this.registrationStatus === RegistrationStatus.ACTIVE) {
@@ -676,21 +703,23 @@ export class Registration implements IRegistration {
         if (abort) {
           this.setStatus(RegistrationStatus.INACTIVE);
           break;
-        } else if (caller === this.executeFailback.name) {
-          const error = body.statusCode;
-
-          if (error === ERROR_CODE.TOO_MANY_REQUESTS && body.headers) {
+        } else if (body.statusCode === ERROR_CODE.TOO_MANY_REQUESTS) {
+          console.debug(
+            `[${caller}] : Received 429 Too Many Requests, scheduling retry later, failover logic shouldn't run.`
+          );
+          if (body.headers) {
             const retryAfter = Number(body.headers['retry-after']);
+            console.debug('pkesari_set timeout for 429 retry with value: ', retryAfter);
             // eslint-disable-next-line no-await-in-loop
-            setTimeout(async () => {
-              await this.scheduleFailback429Retry();
-            }, retryAfter * 1000);
-            abort = true;
-            break;
+            abort = await this.handle429Retry(retryAfter, caller);
           }
+
+          break;
         }
       }
     }
+
+    console.debug('abort set to: ', abort);
 
     return abort;
   }

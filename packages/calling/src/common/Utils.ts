@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
 import ExtendedError from 'Errors/catalog/ExtendedError';
-import {restoreRegistrationCallBack} from '../CallingClient/registration/types';
+import {restoreRegistrationCallBack, retry429CallBack} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
 import {
@@ -337,6 +337,30 @@ export async function handleRegistrationErrors(
       break;
     }
 
+    case ERROR_CODE.DEVICE_NOT_FOUND: {
+      finalError = true;
+      log.warn(`404 Device Not Found`, loggerContext);
+
+      updateLineErrorContext(
+        loggerContext,
+        ERROR_TYPE.NOT_FOUND,
+        'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
+        RegistrationStatus.INACTIVE,
+        lineError
+      );
+      emitterCb(lineError, finalError);
+      break;
+    }
+
+    // case ERROR_CODE.TOO_MANY_REQUESTS: {
+    //   const caller = loggerContext.method || 'handleErrors';
+    //   if (err.headers) {
+    //     const retryAfter = Number(err.headers['retry-after']);
+    //     console.log('pkesari_set timeout for 429 retry with value: ', retryAfter);
+    //     retry429Cb(retryAfter, caller);
+    //   }
+    // }
+
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
       log.warn(`500 Internal Server Error`, loggerContext);
       updateLineErrorContext(
@@ -438,20 +462,6 @@ export async function handleRegistrationErrors(
           emitterCb(lineError, finalError);
         }
       }
-      break;
-    }
-    case ERROR_CODE.DEVICE_NOT_FOUND: {
-      finalError = true;
-      log.warn(`404 Device Not Found`, loggerContext);
-
-      updateLineErrorContext(
-        loggerContext,
-        ERROR_TYPE.NOT_FOUND,
-        'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
-        RegistrationStatus.INACTIVE,
-        lineError
-      );
-      emitterCb(lineError, finalError);
       break;
     }
 
