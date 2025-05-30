@@ -66,6 +66,11 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
+      
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching user data using CI', {
+        module: CONFIG_FILE_NAME,
+        method: 'getUserUsingCI',
+      });
       expect(LoggerProxy.log).toHaveBeenCalledWith('getUserUsingCI api success.', {
         module: CONFIG_FILE_NAME,
         method: 'getUserUsingCI',
@@ -119,6 +124,11 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
+      
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching desktop profile', {
+        module: CONFIG_FILE_NAME,
+        method: 'getDesktopProfileById',
+      });
       expect(LoggerProxy.log).toHaveBeenCalledWith('getDesktopProfileById api success.', {
         module: CONFIG_FILE_NAME,
         method: 'getDesktopProfileById',
@@ -178,6 +188,11 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
+      
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching list of teams', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfTeams',
+      });
       expect(LoggerProxy.log).toHaveBeenCalledWith('getListOfTeams api success.', {
         module: CONFIG_FILE_NAME,
         method: 'getListOfTeams',
@@ -257,6 +272,11 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
+      
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching list of aux codes', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfAuxCodes',
+      });
       expect(LoggerProxy.log).toHaveBeenCalledWith('getListOfAuxCodes api success.', {
         module: CONFIG_FILE_NAME,
         method: 'getListOfAuxCodes',
@@ -754,7 +774,7 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched user data', {
+      expect(LoggerProxy.info).toHaveBeenCalledWith(`Fetched user data, userId: ${mockUserConfig.ciUserId}`, {
         module: CONFIG_FILE_NAME,
         method: 'getAgentConfig',
       });
@@ -891,7 +911,7 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched user data', {
+      expect(LoggerProxy.info).toHaveBeenCalledWith(`Fetched user data, userId: ${mockUserConfig.ciUserId}`, {
         module: CONFIG_FILE_NAME,
         method: 'getAgentConfig',
       });
@@ -966,6 +986,11 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockQueues);
+      
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queue list', {
+        module: CONFIG_FILE_NAME,
+        method: 'getQueues',
+      });
       expect(LoggerProxy.log).toHaveBeenCalledWith('getQueues API success.', {
         module: CONFIG_FILE_NAME,
         method: 'getQueues',

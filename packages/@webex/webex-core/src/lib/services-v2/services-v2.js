@@ -1,12 +1,12 @@
 import sha256 from 'crypto-js/sha256';
 
-import {union} from 'lodash';
+import {union, unionBy} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
-import METRICS from '../services/metrics';
-import ServiceCatalog from '../services/service-catalog';
-import fedRampServices from '../services/service-fed-ramp';
-import {COMMERCIAL_ALLOWED_DOMAINS} from '../services/constants';
+import METRICS from './metrics';
+import ServiceCatalog from './service-catalog';
+import fedRampServices from './service-fed-ramp';
+import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
@@ -33,9 +33,9 @@ const Services = WebexPlugin.extend({
 
   _catalogs: new WeakMap(),
 
-  _serviceUrls: {},
+  _activeServices: {},
 
-  _hostCatalog: {},
+  _services: [],
 
   /**
    * @private
@@ -106,20 +106,20 @@ const Services = WebexPlugin.extend({
 
   /**
    * saves all the services from the pre and post catalog service
-   * @param {Object} serviceUrls
+   * @param {Object} activeServices
    * @returns {void}
    */
-  _updateServiceUrls(serviceUrls) {
-    this._serviceUrls = {...this._serviceUrls, ...serviceUrls};
+  _updateActiveServices(activeServices) {
+    this._activeServices = {...this._activeServices, ...activeServices};
   },
 
   /**
    * saves the hostCatalog object
-   * @param {Object} hostCatalog
+   * @param {Object} services
    * @returns {void}
    */
-  _updateHostCatalog(hostCatalog) {
-    this._hostCatalog = {...this._hostCatalog, ...hostCatalog};
+  _updateServices(services) {
+    this._services = unionBy(services, this._services, 'id');
   },
 
   /**
@@ -587,7 +587,7 @@ const Services = WebexPlugin.extend({
     );
 
     if (fetchFromServiceUrl) {
-      return Promise.resolve(this._serviceUrls[name]);
+      return Promise.resolve(this._activeServices[name]);
     }
 
     const priorityUrl = this.get(name, true);
@@ -643,7 +643,7 @@ const Services = WebexPlugin.extend({
    */
   replaceHostFromHostmap(uri) {
     const url = new URL(uri);
-    const hostCatalog = this._hostCatalog;
+    const hostCatalog = this._services;
 
     if (!hostCatalog) {
       return uri;
@@ -670,22 +670,20 @@ const Services = WebexPlugin.extend({
    * @returns {object}
    */
   _formatReceivedHostmap({services, activeServices}) {
-    const formattedHostmap = {};
-
-    services.forEach(({id, serviceName, serviceUrls}) => {
+    const formattedHostmap = services.map(({id, serviceName, serviceUrls}) => {
       const formattedServiceUrls = serviceUrls.map((serviceUrl) => ({
         host: new URL(serviceUrl.baseUrl).host,
         ...serviceUrl,
       }));
 
-      formattedHostmap[id] = {
+      return {
         id,
         serviceName,
         serviceUrls: formattedServiceUrls,
       };
     });
-    this._updateServiceUrls(activeServices);
-    this._updateHostCatalog(formattedHostmap);
+    this._updateActiveServices(activeServices);
+    this._updateServices(services);
 
     return formattedHostmap;
   },

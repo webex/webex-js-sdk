@@ -137,9 +137,9 @@ export const formattedServiceHostmapEntryConv = {
   ],
 };
 
-export const formattedServiceHostmapV2 = {
-  'urn:TEAM:us-east-2_a:conversation': formattedServiceHostmapEntryConv,
-  'urn:TEAM:me-central-1_d:conversation': {
+export const formattedServiceHostmapV2 = [
+  formattedServiceHostmapEntryConv,
+  {
     id: 'urn:TEAM:me-central-1_d:conversation',
     serviceName: 'conversation',
     serviceUrls: [
@@ -155,7 +155,7 @@ export const formattedServiceHostmapV2 = {
       },
     ],
   },
-  'urn:TEAM:us-east-2_a:idbroker': {
+  {
     id: 'urn:TEAM:us-east-2_a:idbroker',
     serviceName: 'idbroker',
     serviceUrls: [
@@ -171,7 +171,7 @@ export const formattedServiceHostmapV2 = {
       },
     ],
   },
-  'urn:TEAM:me-central-1_d:idbroker': {
+  {
     id: 'urn:TEAM:me-central-1_d:idbroker',
     serviceName: 'idbroker',
     serviceUrls: [
@@ -187,7 +187,7 @@ export const formattedServiceHostmapV2 = {
       },
     ],
   },
-  'urn:TEAM:us-east-2_a:locus': {
+  {
     id: 'urn:TEAM:us-east-2_a:locus',
     serviceName: 'locus',
     serviceUrls: [
@@ -203,7 +203,7 @@ export const formattedServiceHostmapV2 = {
       },
     ],
   },
-  'urn:TEAM:me-central-1_d:locus': {
+  {
     id: 'urn:TEAM:me-central-1_d:locus',
     serviceName: 'locus',
     serviceUrls: [
@@ -219,7 +219,7 @@ export const formattedServiceHostmapV2 = {
       },
     ],
   },
-  'urn:TEAM:us-east-2_a:mercury': {
+  {
     id: 'urn:TEAM:us-east-2_a:mercury',
     serviceName: 'mercury',
     serviceUrls: [
@@ -230,7 +230,7 @@ export const formattedServiceHostmapV2 = {
       },
     ],
   },
-  'urn:TEAM:me-central-1_d:mercury': {
+  {
     id: 'urn:TEAM:me-central-1_d:mercury',
     serviceName: 'mercury',
     serviceUrls: [
@@ -246,4 +246,4 @@ export const formattedServiceHostmapV2 = {
       },
     ],
   },
-};
+];

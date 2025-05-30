@@ -95,6 +95,13 @@ export class BrbState {
     return this.sendLocalBrbStateToServer(sendSlotManager)
       .then(() => {
         this.state.syncToServerInProgress = false;
+
+        // This is a workaround for the fact that the server does not send the brb state
+        // in the locus update when a user joins from multiple devices but not all devices are requested brb.
+        // In the future, this could be improved with a new brb locus update handler
+        // https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-655626
+        this.handleServerBrbUpdate(this.state.client.enabled);
+
         LoggerProxy.logger.info(
           `Meeting:brbState#applyClientStateToServer: sync with server completed`
         );
