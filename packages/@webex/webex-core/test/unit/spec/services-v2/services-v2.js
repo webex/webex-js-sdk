@@ -456,11 +456,11 @@ describe('webex-core', () => {
         serviceHostmap = serviceHostmapV2;
       });
 
-      it('creates a formmatted host map that contains the same amount of entries as the original received hostmap', () => {
+      it('creates a formmatted hostmap that contains the same amount of entries as the original received hostmap', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         assert(
-          serviceHostmap.services.length >= Object.values(formattedHM).length,
+          serviceHostmap.services.length >= formattedHM.length,
           'length is not equal or less than'
         );
       });
@@ -468,7 +468,7 @@ describe('webex-core', () => {
       it('has all keys in host map hosts', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        Object.values(formattedHM).forEach((service) => {
+        formattedHM.forEach((service) => {
           assert.hasAllKeys(
             service,
             ['id', 'serviceName', 'serviceUrls'],
@@ -487,7 +487,7 @@ describe('webex-core', () => {
       it('creates a formmated host map containing all received host map service entries', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        Object.values(formattedHM).forEach((service) => {
+        formattedHM.forEach((service) => {
           const foundServiceKey = Object.keys(serviceHostmap.activeServices).find(
             (key) => service.serviceName === key
           );
@@ -503,9 +503,16 @@ describe('webex-core', () => {
       });
 
       it('has hostCatalog updated', () => {
+        services._services = [
+          {id: 'urn:TEAM:us-east-2_a:conversation'},
+          {id: 'test-left-over-services'},
+        ];
         services._formatReceivedHostmap(serviceHostmap);
 
-        assert.deepStrictEqual(services._hostCatalog, formattedServiceHostmapV2);
+        assert.deepStrictEqual(services._services, [
+          ...serviceHostmapV2.services,
+          {id: 'test-left-over-services'},
+        ]);
       });
     });
 
