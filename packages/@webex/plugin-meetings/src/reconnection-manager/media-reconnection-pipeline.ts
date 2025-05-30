@@ -1,10 +1,10 @@
 import LoggerProxy from '../common/logs/logger-proxy';
 import ReconnectionPipeline from './reconnection-pipeline';
 
+/**
+ * MediaReconnectionPipeline class extends ReconnectionPipeline
+ */
 export default class MediaReconnectionPipeline extends ReconnectionPipeline {
-  constructor(webex, meeting) {
-    super(webex, meeting);
-  }
   /**
    * Starts the media reconnection pipeline.
    *

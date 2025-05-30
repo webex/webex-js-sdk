@@ -1,19 +1,13 @@
 import {Defer} from '@webex/common';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
-import {
-  EVENT_TRIGGERS,
-  RECONNECTION,
-  SHARE_STATUS,
-  SHARE_STOPPED_REASON,
-  _CALL_,
-  _LEFT_,
-  _ID_,
-  RECONNECTION_STATE,
-} from '../constants';
-import {NeedsRejoinError, NeedsRetryError} from '.';
+import {EVENT_TRIGGERS, SHARE_STATUS, _CALL_, _LEFT_, _ID_} from '../constants';
+import {NeedsRejoinError, NeedsRetryError} from './types';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
 
+/**
+ * ReconnectionPipeline class implements the logic for handling the reconnection process
+ */
 export default class ReconnectionPipeline {
   webex: any;
   meeting: any;
@@ -21,6 +15,11 @@ export default class ReconnectionPipeline {
   reconnectionPromise?: Promise<void>;
   wasSharing: boolean;
 
+  /**
+   * Creates an instance of ReconnectionPipeline.
+   * @param {Object} webex - The Webex instance.
+   * @param {Object} meeting - The meeting instance.
+   */
   constructor(webex: any, meeting: any) {
     this.webex = webex;
     this.meeting = meeting;
@@ -29,13 +28,25 @@ export default class ReconnectionPipeline {
     this.wasSharing = false;
   }
 
+  /**
+   * Initiates the reconnection process for the meeting.
+   *
+   * @returns {Promise<void>}
+   */
   protected async initializeReconnection(): Promise<void> {
-    this.meeting.mediaProperties.webrtcMediaConnection.reconnect(this.iceServersDefer.promise);
+    this.reconnectionPromise = this.meeting.mediaProperties.webrtcMediaConnection.reconnect(
+      this.iceServersDefer.promise
+    );
 
     return Promise.resolve();
   }
 
-  protected async startReachabilityCheck() {
+  /**
+   * Initiates the reachability check for the meeting.
+   *
+   * @returns {Promise<void>}
+   */
+  protected async startReachabilityCheck(): Promise<void> {
     try {
       await this.webex.meetings.startReachability('reconnection');
     } catch (err) {
@@ -46,7 +57,12 @@ export default class ReconnectionPipeline {
     }
   }
 
-  protected async maybeStopLocalShareStream() {
+  /**
+   * Stops the local share stream if it was active before the reconnection.
+   *
+   * @returns {Promise<void>}
+   */
+  protected async maybeStopLocalShareStream(): Promise<void> {
     try {
       this.wasSharing = this.meeting.shareStatus === SHARE_STATUS.LOCAL_SHARE_ACTIVE;
 
@@ -65,7 +81,14 @@ export default class ReconnectionPipeline {
     }
   }
 
-  protected async maybeReconnectMercuryWebSocket(networkDisconnect: boolean) {
+  /**
+   * Attempts to reconnect the Mercury WebSocket connection
+   *
+   * @param {boolean} networkDisconnect - Indicates if the reconnection is due to a network disconnect.
+   *
+   * @returns {Promise<void>}
+   */
+  protected async maybeReconnectMercuryWebSocket(networkDisconnect: boolean): Promise<void> {
     if (!networkDisconnect) {
       return;
     }
@@ -123,9 +146,11 @@ export default class ReconnectionPipeline {
   }
 
   /**
-   * Syncs meetings after a reconnection.
+   * Syncs meetings before media reconnection.
+   *
+   * @returns {Promise<void>}
    */
-  protected async syncMeetings() {
+  protected async syncMeetings(): Promise<void> {
     try {
       LoggerProxy.logger.info(
         'ReconnectionPipeline#syncMeetings --> Updating meeting data from server.'
@@ -144,8 +169,11 @@ export default class ReconnectionPipeline {
 
   /**
    * Verifies the current state of the meeting before proceeding with reconnection.
+   *
+   * @throws {Error} If the meeting is in a state that cannot be reconnected to, such as LEFT or if it has been deleted.
+   * @returns {Promise<void>}
    */
-  protected async verifyMeetingState() {
+  protected async verifyMeetingState(): Promise<void> {
     if (!this.meeting || !this.webex.meetings.getMeetingByType(_ID_, this.meeting.id)) {
       LoggerProxy.logger.info(
         'ReconnectionPipeline#executeReconnection --> Meeting got deleted due to inactivity or ended remotely.'
@@ -153,10 +181,6 @@ export default class ReconnectionPipeline {
 
       throw new Error('Unable to rejoin a meeting already ended or inactive.');
     }
-
-    LoggerProxy.logger.info(
-      `ReconnectionPipeline#executeReconnection --> Current state of meeting is ${this.meeting.state}`
-    );
 
     // If the meeting state was left, no longer reconnect media
     if (this.meeting.state === _LEFT_) {
@@ -168,7 +192,12 @@ export default class ReconnectionPipeline {
     }
   }
 
-  protected async doTurnDiscovery() {
+  /**
+   * Performs TURN server discovery to get the latest TURN server information.
+   *
+   * @returns {Promise<RTCIceServer[]>}
+   */
+  protected async doTurnDiscovery(): Promise<RTCIceServer[]> {
     LoggerProxy.logger.log('ReconnectionPipeline#reconnectMedia --> do turn discovery');
 
     // do the TURN server discovery again and ignore reachability results since the TURN server might change
@@ -187,7 +216,13 @@ export default class ReconnectionPipeline {
     return Promise.resolve(iceServers);
   }
 
-  protected async waitForMediaReconnection(iceServers: any[]) {
+  /**
+   * Waits for media reconnection to complete.
+   *
+   * @param {RTCIceServer[]} iceServers - The ICE servers to use for the reconnection.
+   * @returns {Promise<void>}
+   */
+  protected async waitForMediaReconnection(iceServers: RTCIceServer[]): Promise<void> {
     this.iceServersDefer.resolve(iceServers);
 
     await this.meeting.waitForRemoteSDPAnswer();
@@ -207,6 +242,11 @@ export default class ReconnectionPipeline {
     });
   }
 
+  /**
+   * Resend media requests if the meeting is multistream.
+   *
+   * @returns {Promise<void>}
+   */
   protected async maybeResendMediaRequest() {
     if (this.meeting.isMultistream) {
       LoggerProxy.logger.log(
@@ -222,6 +262,15 @@ export default class ReconnectionPipeline {
     }
   }
 
+  /**
+   * Triggers an event in the meeting context.
+   *
+   * @param {string} func - The function name that is triggering the event.
+   * @param {string} event - The event name to trigger.
+   * @param {any | undefined} payload - The payload to send with the event.
+   *
+   * @returns {void}
+   */
   protected triggerEvent(func: string, event: string, payload?: any) {
     Trigger.trigger(
       this.meeting,

@@ -6,85 +6,45 @@
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
-import {
-  EVENT_TRIGGERS,
-  RECONNECTION,
-  SHARE_STATUS,
-  SHARE_STOPPED_REASON,
-  _CALL_,
-  _LEFT_,
-  _ID_,
-  RECONNECTION_STATE,
-} from '../constants';
+import {EVENT_TRIGGERS, RECONNECTION} from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ReconnectionError from '../common/errors/reconnection';
 import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
 import Metrics from '../metrics';
 import Meeting from '../meeting';
-import {MediaRequestManager} from '../multistream/mediaRequestManager';
-import {Defer} from '@webex/common';
-import ReconnectionPipeline from './reconnection-pipeline';
 import MediaReconnectionPipeline from './media-reconnection-pipeline';
 import MeetingReconnectionPipeline from './meeting-reconnection-pipeline';
+import {NeedsRetryError, NeedsRejoinError} from './types';
 
-/**
- * Used to indicate that the reconnect logic needs to be retried.
- *
- * @class NeedsRetryError
- * @extends {Error}
- */
-export class NeedsRetryError extends Error {}
-
-/**
- * Used to indicate that the meeting needs to be rejoined, not just media reconnected
- *
- * @class NeedsRejoinError
- * @extends {Error}
- */
-export class NeedsRejoinError extends Error {
-  wasSharing: any;
-
-  /**
-   * Creates an instance of NeedsRejoinError.
-   * @param {Object} params
-   * @param {boolean} params.wasSharing
-   * @param {Error} params.error
-   * @memberof NeedsRejoinError
-   */
-  constructor({
-    wasSharing,
-    error = new Error('Meeting needs to be rejoined'),
-  }: {
-    wasSharing?: boolean;
-    error?: Error;
-  }) {
-    // @ts-ignore
-    super(error);
-
-    this.wasSharing = wasSharing;
-  }
-}
+export type ReconnectionManagerOptions = {
+  isReconnectionEnabled: boolean;
+  autoRejoinEnabled: boolean;
+  maxRejoinAttempts: number;
+};
 
 /**
  * @export
  * @class ReconnectionManager
  */
 export default class ReconnectionManager {
-  autoRejoinEnabled: any;
+  options: ReconnectionManagerOptions;
   iceState: any;
-  maxRejoinAttempts: any;
   meeting: any;
-  rejoinAttempts: any;
-  shareStatus: any;
   status: any;
   webex: any;
-  iceServersDefer?: Defer;
-  reconnectionPromise?: Promise<void>;
 
   /**
    * @param {Meeting} meeting
+   * @param {ReconnectionManagerOptions} options
    */
-  constructor(meeting: Meeting) {
+  constructor(
+    meeting: Meeting,
+    options: ReconnectionManagerOptions = {
+      isReconnectionEnabled: true,
+      autoRejoinEnabled: true,
+      maxRejoinAttempts: 3,
+    } // Default options
+  ) {
     /**
      * Stores ICE reconnection state data.
      *
@@ -128,11 +88,7 @@ export default class ReconnectionManager {
     // try moving this to meetings collection
     this.meeting = meeting;
 
-    // @ts-ignore
-    this.maxRejoinAttempts = meeting.config.reconnection.maxRejoinAttempts;
-    this.rejoinAttempts = 0;
-    // @ts-ignore
-    this.autoRejoinEnabled = meeting.config.reconnection.autoRejoin;
+    this.options = options;
 
     // Make sure reconnection state is in default
     this.reset();
@@ -216,8 +172,6 @@ export default class ReconnectionManager {
    */
   public reset() {
     this.status = RECONNECTION.STATE.DEFAULT_STATUS;
-    this.rejoinAttempts = 0;
-    this.iceServersDefer = undefined;
   }
 
   /**
@@ -227,32 +181,6 @@ export default class ReconnectionManager {
    */
   public cleanUp() {
     this.reset();
-  }
-
-  /**
-   * Stop the local share stream.
-   *
-   * @param {string} reason a {@link SHARE_STOPPED_REASON}
-   * @returns {undefined}
-   * @private
-   * @memberof ReconnectionManager
-   */
-  private async stopLocalShareStream(reason: string) {
-    await this.meeting.unpublishStreams([
-      this.meeting.mediaProperties.shareVideoStream,
-      this.meeting.mediaProperties.shareAudioStream,
-    ]);
-    Trigger.trigger(
-      this.meeting,
-      {
-        file: 'reconnection-manager/index',
-        function: 'stopLocalShareStream',
-      },
-      EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
-      {
-        reason,
-      }
-    );
   }
 
   /**
@@ -271,7 +199,7 @@ export default class ReconnectionManager {
    * @memberof ReconnectionManager
    */
   private canStartReconnection() {
-    if (this.meeting.config.reconnection.enabled) {
+    if (this.options.isReconnectionEnabled) {
       if (this.status === RECONNECTION.STATE.DEFAULT_STATUS) {
         return true;
       }
@@ -350,24 +278,33 @@ export default class ReconnectionManager {
 
   /**
    * Processes the reconnection logic when a network disconnect occurs.
+   *
+   * @param {boolean} networkDisconnect - Indicates if the reconnection is due to a network disconnect.
+   *
+   * @returns {Promise<void>}
    */
-  private async processReconnection(networkDisconnect: boolean) {
-    const meetingRejoinAttempts = 0;
-
+  private async processReconnection(networkDisconnect: boolean): Promise<void> {
     try {
       await this.executeMediaReconnectionPipeline(networkDisconnect);
     } catch (reconnectError) {
-      if (reconnectError instanceof NeedsRejoinError && this.autoRejoinEnabled) {
+      if (reconnectError instanceof NeedsRejoinError && this.options.autoRejoinEnabled) {
         await this.executeMeetingReconnectionPipeline();
+      } else {
+        throw reconnectError;
       }
-
-      throw reconnectError;
     }
   }
 
+  /**
+   * Executes the media reconnection pipeline for the meeting.
+   *
+   * @param {boolean} networkDisconnect - Indicates if the reconnection is due to a network disconnect.
+   *
+   * @returns {Promise<void>}
+   */
   private async executeMediaReconnectionPipeline(networkDisconnect: boolean) {
     try {
-      const reconnectionPipeline = new MediaReconnectionPipeline(this.meeting, this.webex);
+      const reconnectionPipeline = new MediaReconnectionPipeline(this.webex, this.meeting);
 
       await reconnectionPipeline.startMediaReconnection({
         networkDisconnect,
@@ -388,11 +325,41 @@ export default class ReconnectionManager {
     }
   }
 
-  private async executeMeetingReconnectionPipeline() {
+  /**
+   * Executes the meeting reconnection pipeline for the meeting.
+   * @param {number} attempt The number of attempts made to reconnect.
+   *
+   * @returns {Promise<void>}
+   */
+  private async executeMeetingReconnectionPipeline(attempt = 0): Promise<void> {
     try {
-      const reconnectionPipeline = new MeetingReconnectionPipeline(this.meeting, this.webex);
+      const reconnectionPipeline = new MeetingReconnectionPipeline(this.webex, this.meeting);
 
       await reconnectionPipeline.startMeetingReconnection();
-    } catch (reconnectError) {}
+    } catch (joinError) {
+      if (attempt > this.options.maxRejoinAttempts) {
+        LoggerProxy.logger.error(
+          'ReconnectionManager:index#rejoinMeeting --> Unable to rejoin meeting after max attempts.',
+          joinError
+        );
+
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_MAX_REJOIN_FAILURE, {
+          locus_id: this.meeting.locusUrl.split('/').pop(),
+          reason: joinError.message,
+          stack: joinError.stack,
+        });
+
+        this.status = RECONNECTION.STATE.FAILURE;
+
+        throw joinError;
+      } else {
+        LoggerProxy.logger.info(
+          `ReconnectionManager:index#rejoinMeeting --> Unable to rejoin meeting, attempt #${attempt}, retrying.`,
+          joinError
+        );
+
+        this.executeMeetingReconnectionPipeline(attempt + 1);
+      }
+    }
   }
 }

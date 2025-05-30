@@ -1,10 +1,10 @@
 import LoggerProxy from '../common/logs/logger-proxy';
 import ReconnectionPipeline from './reconnection-pipeline';
 
+/**
+ * MediaReconnectionPipeline class extends ReconnectionPipeline
+ */
 export default class MeetingReconnectionPipeline extends ReconnectionPipeline {
-  constructor(webex, meeting) {
-    super(webex, meeting);
-  }
   /**
    * Starts the media reconnection pipeline.
    *
@@ -12,7 +12,7 @@ export default class MeetingReconnectionPipeline extends ReconnectionPipeline {
    * @param {boolean} options.networkDisconnect - Indicates if the reconnection is due to a network disconnect.
    * @returns {Promise<void>}
    */
-  startMeetingReconnection(options = {networkDisconnect: false}): Promise<void> {
+  startMeetingReconnection(): Promise<void> {
     return this.initializeReconnection()
       .then(() => this.rejoinMeeting())
       .then(() => this.maybeStopLocalShareStream())
@@ -31,6 +31,11 @@ export default class MeetingReconnectionPipeline extends ReconnectionPipeline {
       });
   }
 
+  /**
+   * Attempts to rejoin the meeting.
+   *
+   * @returns {Promise<void>}
+   */
   private async rejoinMeeting(): Promise<void> {
     LoggerProxy.logger.info(
       'MeetingReconnectionPipeline#rejoinMeeting --> attempt to rejoin meeting'
