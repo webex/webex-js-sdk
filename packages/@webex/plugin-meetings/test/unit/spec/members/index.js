@@ -157,6 +157,17 @@ describe('plugin-meetings', () => {
 
         assert.isRejected(members.addMember({email: 'test@cisco.com'}));
       });
+
+      it('should accept valid SIP email addresses', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: 'sip:test@cisco.com'});
+        
+        assert.calledOnce(MembersUtil.isInvalidInvitee);
+        assert.isFalse(MembersUtil.isInvalidInvitee({email: 'sip:test@cisco.com'}), 'SIP email should be valid');
+      });
     });
 
     describe('#admitMembers', () => {
@@ -339,6 +350,17 @@ describe('plugin-meetings', () => {
         const members = createMembers({url: false});
 
         assert.isRejected(members.cancelPhoneInvite({phoneNumber: '+18578675309'}));
+      });
+
+      it('should accept valid SIP email addresses', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: 'sip:test@cisco.com'});
+        
+        assert.calledOnce(MembersUtil.isInvalidInvitee);
+        assert.isFalse(MembersUtil.isInvalidInvitee({email: 'sip:test@cisco.com'}), 'SIP email should be valid');
       });
     });
 

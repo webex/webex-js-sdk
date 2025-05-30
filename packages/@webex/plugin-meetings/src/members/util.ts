@@ -110,7 +110,10 @@ const MembersUtil = {
       return !DIALER_REGEX.E164_FORMAT.test(invitee.phoneNumber);
     }
 
-    return !VALID_EMAIL_ADDRESS.test(invitee.email || invitee.emailAddress);
+    return !(
+      VALID_EMAIL_ADDRESS.test(invitee.email || invitee.emailAddress) ||
+      DIALER_REGEX.SIP_ADDRESS.test(invitee.email || invitee.emailAddress)
+    );
   },
 
   getRemoveMemberRequestParams: (options) => {
