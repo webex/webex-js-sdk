@@ -36,6 +36,7 @@ import {
 /**
  * The AgentConfigService class provides methods to fetch agent configuration data.
  * @public
+ * @ignore
  */
 export default class AgentConfigService {
   private webexReq: WebexRequest;
@@ -50,6 +51,7 @@ export default class AgentConfigService {
    * @returns {Promise<Profile>} - A promise that resolves to the agent configuration profile.
    * @throws {Error} - Throws an error if any API call fails or if the response status is not 200.
    * @public
+   * @ignore
    */
   public async getAgentConfig(orgId: string, agentId: string): Promise<Profile> {
     try {
@@ -145,6 +147,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches the agent configuration data for the given orgId and agentId.
+   * @ignore
    * @param {string} orgId - organization ID for which the agent configuration is to be fetched.
    * @param {string} agentId - agent ID for which the configuration is to be fetched.
    * @returns {Promise<AgentResponse>} - A promise that resolves to the agent configuration response.
@@ -181,6 +184,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches the desktop profile data for the given orgId and desktopProfileId.
+   * @ignore
    * @param {string} orgId - organization ID for which the desktop profile is to be fetched.
    * @param {string} desktopProfileId - desktop profile ID for which the data is to be fetched.
    * @returns {Promise<DesktopProfileResponse>} - A promise that resolves to the desktop profile response.
@@ -220,6 +224,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches the multimedia profile data for the given orgId and multimediaProfileId.
+   * @ignore
    * @param {string} orgId - organization ID for which the multimedia profile is to be fetched.
    * @param {string} multimediaProfileId - multimedia profile ID for which the data is to be fetched.
    * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
@@ -259,6 +264,7 @@ export default class AgentConfigService {
 
   /**
    * fetches the list of teams for the given orgId.
+   * @ignore
    * @param {string} orgId - organization ID for which the teams are to be fetched.
    * @param {number} page - the page number to fetch.
    * @param {number} pageSize - the number of teams to fetch per page.
@@ -303,6 +309,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches all teams from all pages for the given orgId
+   * @ignore
    * @param {string} orgId - organization ID for which the teams are to be fetched.
    * @param {number} pageSize - the number of teams to fetch per page.
    * @param {string[]} filter - optional filter criteria for the teams.
@@ -340,6 +347,7 @@ export default class AgentConfigService {
 
   /**
    *  fetches the list of aux codes for the given orgId.
+   * @ignore
    * @param {string} orgId - organization ID for which the aux codes are to be fetched.
    * @param {number} page - the page number to fetch.
    * @param {number} pageSize - the number of aux codes to fetch per page.
@@ -385,6 +393,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches all aux codes from all pages for the given orgId
+   * @ignore
    * @param {string} orgId - organization ID for which the aux codes are to be fetched.
    * @param {number} pageSize - the number of aux codes to fetch per page.
    * @param {string[]} filter - optional filter criteria for the aux codes.
@@ -430,6 +439,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches the site data for the given orgId and siteId.
+   * @ignore
    * @param {string} orgId - organization ID for which the site info is to be fetched.
    * @param {string} siteId - site ID for which the data is to be fetched.
    * @returns {Promise<SiteInfo>} - A promise that resolves to the site info response.
@@ -466,6 +476,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches the organization info for the given orgId.
+   * @ignore
    * @param {string} orgId - organization ID for which the organization info is to be fetched.
    * @returns {Promise<OrgInfo>} - A promise that resolves to the organization info response.
    * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
@@ -498,6 +509,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches the organization settings for the given orgId.
+   * @ignore
    * @param {string} orgId - organization ID for which the organization settings are to be fetched.
    * @returns {Promise<OrgSettings>} - A promise that resolves to the organization settings response.
    * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
@@ -533,6 +545,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches the tenant data for the given orgId.
+   * @ignore
    * @param {string} orgId - organization ID for which the tenant data is to be fetched.
    * @returns {Promise<TenantData>} - A promise that resolves to the tenant data response.
    * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
@@ -568,6 +581,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches the URL mapping data for the given orgId.
+   * @ignore
    * @param {string} orgId - organization ID for which the URL mapping is to be fetched.
    * @returns {Promise<URLMapping[]>} - A promise that resolves to the URL mapping response.
    * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
@@ -603,6 +617,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches the dial plan data for the given orgId.
+   * @ignore
    * @param {string} orgId - organization ID for which the dial plan data is to be fetched.
    * @returns {Promise<DialPlanEntity[]>} - A promise that resolves to the dial plan data response.
    * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
@@ -638,6 +653,7 @@ export default class AgentConfigService {
 
   /**
    * Fetches the list of queues for the given orgId.
+   * @ignore
    * @param {string} orgId - organization ID for which the queues are to be fetched.
    * @param {number} page - the page number to fetch.
    * @param {number} pageSize - the number of queues to fetch per page.

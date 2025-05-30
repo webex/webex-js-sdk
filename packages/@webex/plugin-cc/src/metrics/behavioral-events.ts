@@ -9,7 +9,7 @@ import {PRODUCT_NAME} from '../constants';
 
 /**
  * Represents the taxonomy for a behavioral event in the metrics system.
- *
+ * @ignore
  * @typedef BehavioralEventTaxonomy
  * @property {MetricEventProduct} product - The product associated with the behavioral event.
  * @property {MetricEventAgent} agent - The agent responsible for the behavioral event.
@@ -30,6 +30,7 @@ const product: MetricEventProduct = PRODUCT_NAME;
 
 // Adding new metrics? Please add them to the Cypher CC metrics wiki
 /**
+ * @ignore
  * @typedoc
  * A mapping between metric event names and their corresponding behavioral event taxonomy definitions.
  *
@@ -320,7 +321,7 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
 
 /**
  * Get the taxonomy information for a given behavioral event name.
- *
+ * @ignore
  * @param name - The name of the metric event to look up.
  * @returns The corresponding {@link BehavioralEventTaxonomy} if found, otherwise `undefined`.
  *
