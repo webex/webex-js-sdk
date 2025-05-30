@@ -186,7 +186,7 @@ describe('Call Tests', () => {
     call.sendDigit(tone);
 
     // Expect log.info to be called with the digit being sent
-    expect(infoSpy).toHaveBeenCalledWith(`Sending digit : ${tone}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`invoking with: ${tone}`, {
       file: 'call',
       method: 'sendDigit',
     });
@@ -230,16 +230,26 @@ describe('Call Tests', () => {
 
     const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
+    const infoSpy = jest.spyOn(log, 'info');
+
     expect(call).toBeTruthy();
     /* After creation , call manager should have 1 record */
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
     call.mute(localAudioStream);
     expect(call.isMuted()).toEqual(true);
     expect(mockStream.setUserMuted).toBeCalledOnceWith(true);
+    expect(infoSpy).toHaveBeenCalledWith('invoking with: user mute', {
+      file: 'call',
+      method: 'mute',
+    });
     call.mute(localAudioStream);
     expect(mockStream.setUserMuted).toBeCalledWith(false);
     expect(call.isMuted()).toEqual(false);
     call.end();
+    expect(infoSpy).toHaveBeenCalledWith('invoking', {
+      file: 'call',
+      method: 'end',
+    });
     await waitForMsecs(50); // Need to add a small delay for Promise and callback to finish.
     expect(parseMediaQualityStatisticsMock).toHaveBeenCalledTimes(1);
     expect(webex.request.mock.calls[0][0].body.metrics).toStrictEqual(disconnectStats);
@@ -706,6 +716,7 @@ describe('Call Tests', () => {
   it('update media with invalid stream', () => {
     const callManager = getCallManager(webex, defaultServiceIndicator);
     const warnSpy = jest.spyOn(log, 'warn');
+    const infoSpy = jest.spyOn(log, 'info');
 
     const mockStream = {
       outputStream: {
@@ -735,10 +746,14 @@ describe('Call Tests', () => {
     call.updateMedia(localAudioStream2);
 
     expect(call['mediaConnection'].updateLocalTracks).not.toBeCalled();
-    expect(warnSpy).toBeCalledOnceWith(
+    expect(warnSpy).toHaveBeenCalledWith(
       `Did not find a local track while updating media for call ${call.getCorrelationId()}. Will not update media`,
       {file: 'call', method: 'updateMedia'}
     );
+    expect(infoSpy).toHaveBeenCalledWith('invoking with stream', {
+      file: 'call',
+      method: 'dial',
+    });
   });
 
   it('test system mute and user mute different scnearios', async () => {
@@ -778,10 +793,13 @@ describe('Call Tests', () => {
     call.mute(localAudioStream, MUTE_TYPE.USER);
     expect(call.isMuted()).toEqual(true);
     expect(mockStream.setUserMuted).not.toBeCalledOnceWith(true);
-    expect(logSpy).toBeCalledOnceWith(`Call is muted on the system - ${call.getCorrelationId()}.`, {
-      file: 'call',
-      method: 'mute',
-    });
+    expect(logSpy).toHaveBeenCalledWith(
+      `Call is muted on the system - ${call.getCorrelationId()}.`,
+      {
+        file: 'call',
+        method: 'mute',
+      }
+    );
 
     /* System mute is being triggered, mute state within call object should update to false */
     mockStream.systemMuted = false;
@@ -799,7 +817,7 @@ describe('Call Tests', () => {
     mockStream.systemMuted = true;
     call.mute(localAudioStream, MUTE_TYPE.SYSTEM);
     expect(call.isMuted()).toEqual(true);
-    expect(logSpy).toBeCalledOnceWith(
+    expect(logSpy).toHaveBeenCalledWith(
       `Call is muted by the user already - ${call.getCorrelationId()}.`,
       {
         file: 'call',
@@ -949,7 +967,7 @@ describe('State Machine handler tests', () => {
       file: 'call',
       method: 'handleCallEstablished',
     });
-    expect(logSpy).toHaveBeenCalledWith(`handleCallEstablished: ${call.getCorrelationId()}  `, {
+    expect(logSpy).toHaveBeenCalledWith(`invoking with: ${call.getCorrelationId()}`, {
       file: 'call',
       method: 'handleCallEstablished',
     });
@@ -1342,10 +1360,17 @@ describe('State Machine handler tests', () => {
     };
 
     webex.request.mockRejectedValueOnce(statusPayload);
+    const errorSpy = jest.spyOn(log, 'error');
+    const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogsSilently');
 
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     await flushPromises(3);
     expect(call['callStateMachine'].state.value).toBe('S_UNKNOWN');
+    expect(errorSpy).toHaveBeenCalled();
+    expect(uploadLogsSpy).toHaveBeenCalledWith({
+      correlationId: call.getCorrelationId(),
+      callId: call.getCallId(),
+    });
   });
 
   it('state changes during unsuccessful outgoing call due to error in media ok', async () => {
@@ -1365,6 +1390,8 @@ describe('State Machine handler tests', () => {
     call['earlyMedia'] = true;
     call['mediaStateMachine'].state.value = 'S_RECV_ROAP_ANSWER';
     webex.request.mockRejectedValue(statusPayload);
+    const warnSpy = jest.spyOn(log, 'warn');
+    const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogsSilently').mockResolvedValue();
 
     await call['handleRoapEstablished']({} as MediaContext, dummyEvent as RoapEvent);
     await flushPromises(2);
@@ -1372,6 +1399,14 @@ describe('State Machine handler tests', () => {
 
     expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_ERROR');
     expect(call['callStateMachine'].state.value).toBe('S_UNKNOWN');
+    expect(warnSpy).toHaveBeenCalledWith('Failed to process MediaOk request', {
+      file: 'call',
+      method: 'handleRoapEstablished',
+    });
+    expect(uploadLogsSpy).toHaveBeenCalledWith({
+      correlationId: call.getCorrelationId(),
+      callId: call.getCallId(),
+    });
   });
 
   it('state changes during unsuccessful outgoing call since no sdp in offer', async () => {
@@ -2113,7 +2148,7 @@ describe('State Machine handler tests', () => {
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_CALL_HOLD');
 
-    expect(infoSpy).toHaveBeenLastCalledWith(`handleCallHold: ${call.getCorrelationId()}  `, {
+    expect(infoSpy).toHaveBeenLastCalledWith(`invoking with: ${call.getCorrelationId()}`, {
       file: 'call',
       method: 'handleCallHold',
     });
