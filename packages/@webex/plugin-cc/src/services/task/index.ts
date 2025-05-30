@@ -6,7 +6,7 @@ import {LoginOption} from '../../types';
 import {CC_FILE} from '../../constants';
 import routingContact from './contact';
 import {
-  ITask,
+  IOldTask,
   TaskResponse,
   TaskData,
   TaskId,
@@ -26,7 +26,7 @@ import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import {Failure} from '../core/GlobalTypes';
 
-export default class Task extends EventEmitter implements ITask {
+export default class Task extends EventEmitter implements IOldTask {
   private contact: ReturnType<typeof routingContact>;
   private localAudioStream: LocalMicrophoneStream;
   private webCallingService: WebCallingService;

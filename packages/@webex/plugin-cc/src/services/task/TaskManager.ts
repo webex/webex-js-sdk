@@ -3,14 +3,15 @@ import {ICall, LINE_EVENTS} from '@webex/calling';
 import {WebSocketManager} from '../core/websocket/WebSocketManager';
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
-import {ITask, MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
+import {MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId, ITask} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
-import {LoginOption} from '../../types';
+import {ConfigFlags, LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
-import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
+import TaskFactory from './TaskFactory';
+import WebRTC from './voice/WebRTC';
 
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -19,13 +20,9 @@ export default class TaskManager extends EventEmitter {
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
   private metricsManager: MetricsManager;
-  private static taskManager;
+  private static taskManager: TaskManager;
+  private configFlags?: ConfigFlags;
 
-  /**
-   * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
-   * @param webCallingService - Webrtc Service Layer
-   * @param webSocketManager - Websocket Manager to maintain websocket connection and keepalives
-   */
   constructor(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
@@ -33,17 +30,18 @@ export default class TaskManager extends EventEmitter {
   ) {
     super();
     this.contact = contact;
-    this.taskCollection = {};
     this.webCallingService = webCallingService;
     this.webSocketManager = webSocketManager;
+    this.taskCollection = {};
     this.metricsManager = MetricsManager.getInstance();
+
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
   }
 
   private handleIncomingWebCall = (call: ICall) => {
     const currentTask = Object.values(this.taskCollection).find(
-      (task) => task.data.interaction.mediaType === 'telephony'
+      (t) => t.data.interaction.mediaType === MEDIA_CHANNEL.TELEPHONY
     );
 
     if (currentTask) {
@@ -57,6 +55,13 @@ export default class TaskManager extends EventEmitter {
     this.call = call;
   };
 
+  /**
+   * Inject agent profile after instantiation
+   */
+  public setConfigFlags(configFlags: ConfigFlags): void {
+    this.configFlags = configFlags;
+  }
+
   public registerIncomingCallEvent() {
     this.webCallingService.on(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
   }
@@ -66,42 +71,40 @@ export default class TaskManager extends EventEmitter {
   }
 
   private registerTaskListeners() {
-    this.webSocketManager.on('message', (event) => {
+    this.webSocketManager.on('message', (event: string) => {
       const payload = JSON.parse(event);
-      // Re-emit the task events to the task object
       let task: ITask;
+
       if (payload.data?.type) {
+        // for events emitted on existing tasks
         if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
           task = this.taskCollection[payload.data.interactionId];
         }
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
-            task = new Task(this.contact, this.webCallingService, {
-              ...payload.data,
-              wrapUpRequired:
-                payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp || false,
-            });
             this.taskCollection[payload.data.interactionId] = task;
             this.emit(TASK_EVENTS.TASK_HYDRATE, task);
             break;
+
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            task = new Task(this.contact, this.webCallingService, {
-              ...payload.data,
-              isConsulted: false,
-            }); // Ensure isConsulted prop exists
+            task = TaskFactory.createTask(
+              this.contact,
+              this.webCallingService,
+              {...payload.data, isConsulted: false},
+              this.configFlags
+            );
             this.taskCollection[payload.data.interactionId] = task;
+            // for telephony in-browser we wait for incoming call, else fire immediately
             if (
               this.webCallingService.loginOption !== LoginOption.BROWSER ||
-              task.data.interaction.mediaType !== MEDIA_CHANNEL.TELEPHONY // for digital channels
+              task.data.interaction.mediaType !== MEDIA_CHANNEL.TELEPHONY ||
+              this.call
             ) {
-              this.emit(TASK_EVENTS.TASK_INCOMING, task);
-            } else if (this.call) {
               this.emit(TASK_EVENTS.TASK_INCOMING, task);
             }
             break;
           case CC_EVENTS.AGENT_OFFER_CONTACT:
-            // We don't have to emit any event here since this will be result of promise.
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             LoggerProxy.log('Agent offer contact', {
               module: TASK_MANAGER_FILE,
               method: 'registerTaskListeners',
@@ -109,7 +112,6 @@ export default class TaskManager extends EventEmitter {
             this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, task);
             break;
           case CC_EVENTS.AGENT_OUTBOUND_FAILED:
-            // We don't have to emit any event here since this will be result of promise.
             if (task.data) {
               this.removeTaskFromCollection(task);
             }
@@ -119,18 +121,18 @@ export default class TaskManager extends EventEmitter {
             });
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_ASSIGNED, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
-            task = this.updateTaskData(task, {
+            this.updateTaskData(task, {
               ...payload.data,
               wrapUpRequired: true,
             });
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             this.metricsManager.trackEvent(
               METRIC_EVENT_NAMES.AGENT_RONA,
               {
@@ -145,7 +147,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.CONTACT_ENDED:
           case CC_EVENTS.AGENT_INVITE_FAILED:
-            task = this.updateTaskData(task, {
+            this.updateTaskData(task, {
               ...payload.data,
               wrapUpRequired: payload.data.interaction.state !== 'new',
             });
@@ -155,28 +157,28 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
             // As soon as the main interaction is held, we need to emit TASK_HOLD
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_HOLD, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_UNHELD:
             // As soon as the main interaction is unheld, we need to emit TASK_RESUME
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RESUME, task);
             break;
           case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
-            task = this.updateTaskData(task, {
+            this.updateTaskData(task, {
               ...payload.data,
               wrapUpRequired: true,
             });
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED, task);
             break;
           case CC_EVENTS.AGENT_CONSULT_CREATED:
             // Received when self agent initiates a consult
-            task = this.updateTaskData(task, {
+            this.updateTaskData(task, {
               ...payload.data,
               isConsulted: false, // This ensures that the task consult status is always reset
             });
@@ -184,7 +186,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_OFFER_CONSULT:
             // Received when other agent sends us a consult offer
-            task = this.updateTaskData(task, {
+            this.updateTaskData(task, {
               ...payload.data,
               isConsulted: true, // This ensures that the task is marked as us being requested for a consult
             });
@@ -192,7 +194,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONSULTING:
             // Received when agent is in an active consult state
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             if (task.data.isConsulted) {
               // Fire only if you are the agent who received the consult request
               task.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, task);
@@ -204,10 +206,10 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONSULT_FAILED:
             // This can only be received by the agent who initiated the consult.
             // We need not emit any event here since this will be result of promise
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             break;
           case CC_EVENTS.AGENT_CONSULT_ENDED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             if (task.data.isConsulted) {
               // This will be the end state of the task as soon as we end the consult in case of
               // us being offered a consult
@@ -217,30 +219,30 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CTQ_CANCELLED:
             // This event is received when the consult using queue is cancelled using API
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED, task);
             break;
           case CC_EVENTS.AGENT_WRAPUP:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
             this.removeTaskFromCollection(task);
             task.emit(TASK_EVENTS.TASK_WRAPPEDUP, task);
             break;
           case CC_EVENTS.CONTACT_RECORDING_PAUSED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RECORDING_PAUSED, task);
             break;
           case CC_EVENTS.CONTACT_RECORDING_PAUSE_FAILED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED, task);
             break;
           case CC_EVENTS.CONTACT_RECORDING_RESUMED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RECORDING_RESUMED, task);
             break;
           case CC_EVENTS.CONTACT_RECORDING_RESUME_FAILED:
-            task = this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, task);
             break;
           default:
@@ -253,47 +255,28 @@ export default class TaskManager extends EventEmitter {
     });
   }
 
-  private updateTaskData(task: ITask, taskData: TaskData): ITask {
+  private updateTaskData(task: ITask, taskData: TaskData) {
     if (!task) {
-      return undefined;
+      throw new Error('Task not found for update');
     }
 
-    if (!taskData?.interactionId) {
-      LoggerProxy.warn('Received task update with missing interactionId', {
-        module: TASK_MANAGER_FILE,
-        method: 'updateTaskData',
-      });
-    }
-
-    try {
-      const currentTask = task.updateTaskData(taskData);
-      this.taskCollection[taskData.interactionId] = currentTask;
-
-      return currentTask;
-    } catch (error) {
-      LoggerProxy.error(`Failed to update task ${taskData.interactionId}`, {
-        module: TASK_MANAGER_FILE,
-        method: 'updateTaskData',
-      });
-
-      return task;
-    }
+    task.updateTaskData(taskData);
+    this.taskCollection[taskData.interactionId] = task;
   }
 
   private removeTaskFromCollection(task: ITask) {
-    if (task?.data?.interactionId) {
-      delete this.taskCollection[task.data.interactionId];
-      LoggerProxy.info(`Task removed from collection: ${task.data.interactionId}`, {
-        module: TASK_MANAGER_FILE,
-        method: 'removeTaskFromCollection',
-      });
-    }
+    delete this.taskCollection[task.data.interactionId];
+    LoggerProxy.info(`Task removed: ${task.data.interactionId}`, {
+      module: TASK_MANAGER_FILE,
+      method: 'removeTaskFromCollection',
+    });
   }
 
   private handleTaskCleanup(task: ITask) {
     if (
       this.webCallingService.loginOption === LoginOption.BROWSER &&
-      task.data.interaction.mediaType === 'telephony'
+      task.data.interaction.mediaType === MEDIA_CHANNEL.TELEPHONY &&
+      task instanceof WebRTC
     ) {
       task.unregisterWebCallListeners();
       this.webCallingService.cleanUpCall();
@@ -305,34 +288,23 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
-  /**
-   * @param taskId - Unique identifier for each task
-   */
-  public getTask = (taskId: string) => {
+  public getTask(taskId: TaskId): ITask {
     return this.taskCollection[taskId];
-  };
+  }
 
-  /**
-   * @param taskId - Unique identifier for each task
-   */
-  public getAllTasks = (): Record<TaskId, ITask> => {
-    return this.taskCollection;
-  };
+  public getAllTasks(): Record<TaskId, ITask> {
+    return {...this.taskCollection};
+  }
 
-  /**
-   * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
-   * @param webCallingService - Webrtc Service Layer
-   * @param webSocketManager - Websocket Manager to maintain websocket connection and keepalives
-   */
-  public static getTaskManager = (
+  public static getTaskManager(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     webSocketManager: WebSocketManager
-  ): TaskManager => {
-    if (!this.taskManager) {
-      this.taskManager = new TaskManager(contact, webCallingService, webSocketManager);
+  ): TaskManager {
+    if (!TaskManager.taskManager) {
+      TaskManager.taskManager = new TaskManager(contact, webCallingService, webSocketManager);
     }
 
-    return this.taskManager;
-  };
+    return TaskManager.taskManager;
+  }
 }

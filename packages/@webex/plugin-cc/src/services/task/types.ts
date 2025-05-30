@@ -416,10 +416,8 @@ export type ContactCleanupData = {
  */
 export type TaskResponse = AgentContact | Error | void;
 
-/**
- * Represents an interface for managing task related operations.
- */
-export interface ITask extends EventEmitter {
+// TODO: Remove this interface when we have a proper refactor of the Task com,pleted
+export interface IOldTask extends EventEmitter {
   /**
    * Event data received in the CC events
    */
@@ -435,7 +433,7 @@ export interface ITask extends EventEmitter {
   /**
    * Used to update the task when the data received on each event
    */
-  updateTaskData(newData: TaskData): ITask;
+  updateTaskData(newData: TaskData): IOldTask;
   /**
    * Answers/accepts the incoming task
    *
@@ -510,4 +508,197 @@ export interface ITask extends EventEmitter {
    * ```
    */
   resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse>;
+}
+
+/**
+ * Represents an interface for managing general task operations.
+ * Extends IOldTask with UI controls and core task actions.
+ */
+export interface ITask extends EventEmitter {
+  /**
+   * Event data received in the CC events
+   */
+  data: TaskData;
+  /**
+   * Map of task with call
+   */
+  webCallMap: Record<TaskId, CallId>;
+  /**
+   * Object which holds the task UI controls (buttons visibility and enabled/disabled state)
+   */
+  taskUiControls: TaskUIControls;
+  /**
+   *
+   * @param newData - TaskData
+   * @returns void
+   */
+  updateTaskData(newData: TaskData);
+  /**
+   * Answers/accepts the incoming task
+   *
+   * @example
+   * ```
+   * task.accept();
+   * ```
+   */
+  accept(): Promise<TaskResponse>;
+  /**
+   * This is used to end the task.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.end();
+   * ```
+   */
+  end(): Promise<TaskResponse>;
+  /**
+   * This is used to transfer the task.
+   * @param transferPayload
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.transfer(data);
+   * ```
+   */
+  transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>;
+  /**
+   * This is used to wrap up the task.
+   * @param wrapupPayload
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.wrapup(data);
+   * ```
+   */
+  wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse>;
+}
+
+/**
+ * Represents an interface for voice-specific tasks.
+ * Extends ITask with methods for hold, resume, and consult.
+ */
+export interface IVoice extends ITask {
+  /**
+   * This is used to hold the task.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.hold();
+   * ```
+   */
+  hold(): Promise<TaskResponse>;
+  /**
+   * This is used to resume the task.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.resume();
+   * ```
+   */
+  resume(): Promise<TaskResponse>;
+  /**
+   * This is used to consult the task.
+   * @param consultPayload
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.consult(data);
+   * ```
+   */
+  consult(consultPayload: ConsultPayload): Promise<TaskResponse>;
+}
+
+/**
+ * Represents a digital task interface.
+ * Alias for ITask to indicate digital-only tasks.
+ */
+export type IDigital = ITask;
+
+/**
+ * Represents an interface for WebRTC tasks.
+ * Extends IVoice with methods for mute, decline, and unregister web call listeners.
+ */
+export interface IWebRTC extends IVoice {
+  /**
+   * This method is used to mute/unmute the call.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * task.toggleMute();
+   * ```
+   */
+  toggleMute(): Promise<TaskResponse>;
+  /**
+   * Decline the incoming task for Browser Login
+   *
+   * @example
+   * ```
+   * task.decline();
+   * ```
+   */
+  decline(): Promise<TaskResponse>;
+  /**
+   * This method is used to unregister the web call listeners.
+   * @returns void
+   * @example
+   * ```typescript
+   * task.unregisterWebCallListeners();
+   * ```
+   */
+  unregisterWebCallListeners(): void;
+}
+
+/**
+ * Represents the class which holds the task button controls.
+ */
+export class TaskButtonControl {
+  public visible: boolean;
+  public enabled: boolean;
+  constructor(visible = false, enabled = true) {
+    this.visible = visible;
+    this.enabled = enabled;
+  }
+
+  /**
+   * Shows the button control.
+   */
+  show() {
+    this.visible = true;
+  }
+
+  /**
+   * Hides the button control.
+   */
+  hide() {
+    this.visible = false;
+  }
+
+  /**
+   * Enables the button control.
+   */
+  enable() {
+    this.enabled = true;
+  }
+
+  /**
+   * Disables the button control.
+   */
+  disable() {
+    this.enabled = false;
+  }
+}
+
+export interface TaskUIControls {
+  accept: TaskButtonControl;
+  decline: TaskButtonControl;
+  hold: TaskButtonControl;
+  mute: TaskButtonControl;
+  transfer: TaskButtonControl;
+  consult: TaskButtonControl;
+  consultTransfer: TaskButtonControl;
+  recording: TaskButtonControl;
+  end: TaskButtonControl;
+  conference: TaskButtonControl;
+  endConsult: TaskButtonControl;
+  wrapup: TaskButtonControl;
 }

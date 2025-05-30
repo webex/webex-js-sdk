@@ -18,6 +18,7 @@ import {
   UploadLogsResponse,
   UpdateDeviceTypeResponse,
   GenericError,
+  ConfigFlags,
 } from './types';
 import {
   READY,
@@ -46,7 +47,7 @@ import {
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
-import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
+import {TASK_EVENTS, TaskResponse, DialerPayload, ITask} from './services/task/types';
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
@@ -131,6 +132,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.setupEventListeners();
 
       const resp = await this.connectWebsocket();
+      const configFlags: ConfigFlags = {
+        isEndCallEnabled: this.agentConfig.isEndCallEnabled,
+        isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
+        webRtcEnabled: this.agentConfig.webRtcEnabled,
+        autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
+      };
+      this.taskManager.setConfigFlags(configFlags);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
         {

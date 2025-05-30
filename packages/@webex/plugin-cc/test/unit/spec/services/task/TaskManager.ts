@@ -5,11 +5,13 @@ import {CALL_EVENT_KEYS, CallingClientConfig, LINE_EVENTS} from '@webex/calling'
 import {CC_AGENT_EVENTS, CC_EVENTS} from '../../../../../src/services/config/types';
 import TaskManager from '../../../../../src/services/task/TaskManager';
 import * as contact from '../../../../../src/services/task/contact';
-import Task from '../../../../../src/services/task';
 import {TASK_EVENTS} from '../../../../../src/services/task/types';
+import WebRTC from '../../../../../src/services/task/voice/WebRTC';
+import {Profile} from '../../../../../src/services/config/types';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import config from '../../../../../src/config';
 import {CC_TASK_EVENTS} from '../../../../../src/services/config/types';
+import TaskFactory from '../../../../../src/services/task/TaskFactory';
 
 describe('TaskManager', () => {
   let mockCall;
@@ -75,6 +77,8 @@ describe('TaskManager', () => {
     offSpy = jest.spyOn(webCallingService, 'off');
 
     taskManager = new TaskManager(contactMock, webCallingService, webSocketManagerMock);
+    taskManager.setConfigFlags({} as Profile);
+
     taskManager.taskCollection[taskId] = {
       emit: jest.fn(),
       accept: jest.fn(),
@@ -83,6 +87,22 @@ describe('TaskManager', () => {
       data: taskDataMock,
     };
     taskManager.call = mockCall;
+
+    jest.spyOn(TaskFactory, 'createTask').mockImplementation((contact, webCallingService, data, configFlags) => {
+    const task: any = {
+      emit: jest.fn(),
+      accept: jest.fn(),
+      decline: jest.fn(),
+      updateTaskData: jest.fn().mockImplementation((newData) => {
+        task.data = {...task.data, ...newData};
+        return task;
+      }),
+      unregisterWebCallListeners: jest.fn(),
+      data,
+    };
+
+    return task;
+  });
   });
 
   afterEach(() => {
@@ -307,45 +327,67 @@ describe('TaskManager', () => {
     expect(allTasks).toHaveProperty(taskId2, mockTask2);
   });
 
-  it('test call listeners being switched off on call end', () => {
+  it('test call listeners being switched off on call end for webRTC task', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
-    const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
-    const webCallListenerSpy = jest.spyOn(taskManager.getTask(taskId), 'unregisterWebCallListeners');
+    const webrtcTask = new WebRTC(
+      contactMock,
+      webCallingService,
+      taskDataMock,
+      {isEndCallEnabled: true, isEndConsultEnabled: true}
+    );
+    (taskManager as any).taskCollection[taskId] = webrtcTask;
+
+    const task = taskManager.getTask(taskId)!;
+    const originalEmit = task.emit;
+    const taskEmitSpy = jest.spyOn(task, 'emit').mockImplementation((event, arg) => {
+      if (event === CC_EVENTS.CONTACT_ENDED) {
+        return;
+      }
+      return originalEmit.call(task, event, arg);
+    });
+
+    const webCallListenerSpy = jest.spyOn(task, 'unregisterWebCallListeners');
     const callOffSpy = jest.spyOn(mockCall, 'off');
+
     const payload = {
       data: {
         type: CC_EVENTS.CONTACT_ENDED,
-        agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
-        eventTime: 1733211616959,
-        eventType: 'RoutingMessage',
+        agentId: taskDataMock.agentId,
+        eventTime: taskDataMock.eventTime,
+        eventType: taskDataMock.eventType,
         interaction: {state: 'new', mediaType: 'telephony'},
         interactionId: taskId,
-        orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
-        trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
-        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
-        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
-        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
-        queueMgr: 'aqm',
+        orgId: taskDataMock.orgId,
+        trackingId: taskDataMock.trackingId,
+        mediaResourceId: taskDataMock.mediaResourceId,
+        destAgentId: taskDataMock.destAgentId,
+        owner: taskDataMock.owner,
+        queueMgr: taskDataMock.queueMgr,
       },
     };
 
-    taskManager.getTask(taskId).data = payload.data;
-    const task = taskManager.getTask(taskId)
+    task.data = payload.data;
     webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(taskEmitSpy).toHaveBeenCalledTimes(2);
     expect(taskEmitSpy).toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_END, task
+      TASK_EVENTS.TASK_END,
+      task
     );
-    expect(webCallListenerSpy).toHaveBeenCalledWith();
+
+    expect(webCallListenerSpy).toHaveBeenCalled();
     expect(callOffSpy).toHaveBeenCalledWith(
       CALL_EVENT_KEYS.REMOTE_MEDIA,
       callOffSpy.mock.calls[0][1]
     );
 
     taskManager.unregisterIncomingCallEvent();
-    expect(offSpy.mock.calls.length).toBe(2); // 1 for incoming call and 1 for remote media
-    expect(offSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, offSpy.mock.calls[0][1]);
-    expect(offSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, offSpy.mock.calls[1][1]);
+    expect(offSpy).toHaveBeenCalledTimes(2);
+    expect(offSpy).toHaveBeenCalledWith(
+      LINE_EVENTS.INCOMING_CALL,
+      offSpy.mock.calls[1][1]
+    );
   });
 
   it('should emit TASK_END event with wrapupRequired on regular call end', () => {
@@ -801,25 +843,30 @@ describe('TaskManager', () => {
   it('should handle default case', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
+    const task = taskManager.getTask(taskId)!;
+    task.emit.mockClear();
+    task.updateTaskData.mockClear();
+
     const payload = {
       data: {
         type: 'UNKNOWN_EVENT',
-        agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
-        eventTime: 1733211616959,
-        eventType: 'RoutingMessage',
+        agentId: taskDataMock.agentId,
+        eventTime: taskDataMock.eventTime,
+        eventType: taskDataMock.eventType,
         interaction: {},
         interactionId: taskId,
-        orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
-        trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
-        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
-        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
-        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
-        queueMgr: 'aqm',
+        orgId: taskDataMock.orgId,
+        trackingId: taskDataMock.trackingId,
+        mediaResourceId: taskDataMock.mediaResourceId,
+        destAgentId: taskDataMock.destAgentId,
+        owner: taskDataMock.owner,
+        queueMgr: taskDataMock.queueMgr,
       },
     };
 
-    const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
-    const taskUpdateTaskDataSpy = jest.spyOn(taskManager.getTask(taskId), 'updateTaskData');
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const taskUpdateTaskDataSpy = jest.spyOn(task, 'updateTaskData');
+
     webSocketManagerMock.emit('message', JSON.stringify(payload));
     expect(taskEmitSpy).not.toHaveBeenCalled();
     expect(taskUpdateTaskDataSpy).not.toHaveBeenCalled();
