@@ -13,22 +13,10 @@ export {default as ContactCenter} from './cc';
 
 // Service exports
 /**
- * TaskManager handles Contact Center task operations
+ * Task class represents a contact center task that can be managed by an agent
  * @category Services
  */
-export {default as TaskManager} from './services/task/TaskManager';
-
-/**
- * AgentConfigService handles agent configuration and profiles
- * @category Services
- */
-export {default as AgentConfigService} from './services/config';
-
-/**
- * WebCallingService handles web-based calling functionality
- * @category Services
- */
-export {default as WebCallingService} from './services/WebCallingService';
+export {default as Task} from './services/task';
 
 /**
  * Agent routing service for Contact Center operations
@@ -117,12 +105,20 @@ export type {
 
 /** Task related types */
 export type {
+  AgentContact,
   /** Task interface */
   ITask,
+  TaskData,
   /** Task response */
   TaskResponse,
+  ConsultPayload,
+  ConsultEndPayload,
+  ConsultTransferPayLoad,
   /** Dialer payload */
   DialerPayload,
+  TransferPayLoad,
+  ResumeRecordingPayload,
+  WrapupPayLoad,
 } from './services/task/types';
 
 /** Agent related types */
