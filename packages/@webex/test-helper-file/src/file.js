@@ -18,13 +18,13 @@ export const fetchWithoutMagic = (filename) =>
 
         return;
       }
-      resolve({...data, name: filename});
+      resolve({...data, name: filename, filepath});
     });
   });
 
 export const fetch = (filename) =>
   fetchWithoutMagic(filename)
-    .then((data) => Promise.all([fromFile(data), data]))
+    .then((data) => Promise.all([fromFile(data.filepath), data]))
     // .then(([{mime: type}, data]) => {
     //   console.error(data, type);
 
