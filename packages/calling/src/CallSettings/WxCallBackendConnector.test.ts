@@ -14,9 +14,9 @@ import {
   SERVICES_ENDPOINT,
   SUCCESS_MESSAGE,
   XSI_ACTION_ENDPOINT_ORG_URL_PARAM,
+  WEBEX_CALLING_CONNECTOR_FILE,
 } from '../common/constants';
 import {
-  CALL_SETTINGS_FILE,
   CALL_WAITING_ENDPOINT,
   CF_ENDPOINT,
   DND_ENDPOINT,
@@ -106,7 +106,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
       expect(webex.request).not.toBeCalled();
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe(SUCCESS_MESSAGE);
-      expect(toggleSetting.enabled).toBe(true);
+      expect(toggleSetting.enabled).toStrictEqual(true);
       expect(global.fetch).toBeCalledOnceWith(callWaitingUrl, {
         method: HTTP_METHODS.GET,
         headers: {
@@ -115,13 +115,13 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
       });
 
       expect(infoSpy).toHaveBeenCalledWith('invoking', {
-        file: CALL_SETTINGS_FILE,
+        file: WEBEX_CALLING_CONNECTOR_FILE,
         method: 'getCallWaitingSetting',
       });
       expect(logSpy).toHaveBeenCalledWith(
         `Successfully got Call Waiting settings, personId: ${personId}`,
         {
-          file: CALL_SETTINGS_FILE,
+          file: WEBEX_CALLING_CONNECTOR_FILE,
           method: 'getCallWaitingSetting',
         }
       );
@@ -175,13 +175,13 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
           statusCode: 403,
         },
         {
-          file: CALL_SETTINGS_FILE,
+          file: WEBEX_CALLING_CONNECTOR_FILE,
           method: 'getCallWaitingSetting',
         }
       );
 
       expect(infoSpy).toHaveBeenCalledWith('invoking', {
-        file: CALL_SETTINGS_FILE,
+        file: WEBEX_CALLING_CONNECTOR_FILE,
         method: 'getCallWaitingSetting',
       });
       expect(errorSpy).toHaveBeenCalled();
@@ -207,7 +207,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
           statusCode: 422,
         },
         {
-          file: CALL_SETTINGS_FILE,
+          file: WEBEX_CALLING_CONNECTOR_FILE,
           method: 'getCallWaitingSetting',
         }
       );
@@ -256,19 +256,19 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe(SUCCESS_MESSAGE);
       expect(toggleSetting.enabled).toBe(true);
-      expect(webex.request).toHaveBeenCalledWith({
+      expect(webex.request).toBeCalledOnceWith({
         method: HTTP_METHODS.GET,
         uri,
       });
 
       expect(infoSpy).toHaveBeenCalledWith('invoking', {
-        file: CALL_SETTINGS_FILE,
+        file: WEBEX_CALLING_CONNECTOR_FILE,
         method: 'getDoNotDisturbSetting',
       });
       expect(logSpy).toHaveBeenCalledWith(
         `Successfully got Do Not Disturb settings, personId: ${personId}`,
         {
-          file: CALL_SETTINGS_FILE,
+          file: WEBEX_CALLING_CONNECTOR_FILE,
           method: 'getDoNotDisturbSetting',
         }
       );
@@ -296,7 +296,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
           statusCode: 400,
         },
         {
-          file: CALL_SETTINGS_FILE,
+          file: WEBEX_CALLING_CONNECTOR_FILE,
           method: 'setDoNotDisturbSetting',
         }
       );
@@ -308,7 +308,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
 
       expect(response.statusCode).toBe(403);
       expect(response.message).toBe(FAILURE_MESSAGE);
-      expect(webex.request).toHaveBeenCalledWith({
+      expect(webex.request).toBeCalledOnceWith({
         method: HTTP_METHODS.GET,
         uri,
       });
@@ -317,13 +317,13 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
           statusCode: 403,
         },
         {
-          file: CALL_SETTINGS_FILE,
+          file: WEBEX_CALLING_CONNECTOR_FILE,
           method: 'getDoNotDisturbSetting',
         }
       );
 
       expect(infoSpy).toHaveBeenCalledWith('invoking', {
-        file: CALL_SETTINGS_FILE,
+        file: WEBEX_CALLING_CONNECTOR_FILE,
         method: 'getDoNotDisturbSetting',
       });
       expect(errorSpy).toHaveBeenCalled();
@@ -387,7 +387,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
           statusCode: 400,
         },
         {
-          file: CALL_SETTINGS_FILE,
+          file: WEBEX_CALLING_CONNECTOR_FILE,
           method: 'setCallForwardSetting',
         }
       );
@@ -408,7 +408,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
           statusCode: 403,
         },
         {
-          file: CALL_SETTINGS_FILE,
+          file: WEBEX_CALLING_CONNECTOR_FILE,
           method: 'getCallForwardSetting',
         }
       );
@@ -472,7 +472,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
           statusCode: 400,
         },
         {
-          file: CALL_SETTINGS_FILE,
+          file: WEBEX_CALLING_CONNECTOR_FILE,
           method: 'setVoicemailSetting',
         }
       );
@@ -493,7 +493,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
           statusCode: 403,
         },
         {
-          file: CALL_SETTINGS_FILE,
+          file: WEBEX_CALLING_CONNECTOR_FILE,
           method: 'getVoicemailSetting',
         }
       );
@@ -557,12 +557,12 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
 
       expect(warnSpy).toBeCalledTimes(2);
       expect(warnSpy).toBeCalledWith('503 Unable to establish a connection with the server', {
-        file: CALL_SETTINGS_FILE,
+        file: WEBEX_CALLING_CONNECTOR_FILE,
         method: callSettingsClient.getVoicemailSetting.name,
       });
 
       expect(warnSpy).toBeCalledWith('Unable to retrieve voicemail settings.', {
-        file: CALL_SETTINGS_FILE,
+        file: WEBEX_CALLING_CONNECTOR_FILE,
         method: callSettingsClient.getCallForwardAlwaysSetting.name,
       });
     });

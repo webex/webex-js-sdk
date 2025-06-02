@@ -70,9 +70,9 @@ describe('Voicemail webex call Backend Connector Test case', () => {
     });
 
     afterEach(() => {
-      expect(getSortedVoicemailListSpy).not.toHaveBeenCalled();
-      expect(storeVoicemailListSpy).not.toHaveBeenCalled();
-      expect(fetchVoicemailListSpy).not.toHaveBeenCalled();
+      expect(getSortedVoicemailListSpy).not.toBeCalled();
+      expect(storeVoicemailListSpy).not.toBeCalled();
+      expect(fetchVoicemailListSpy).not.toBeCalled();
     });
 
     it('verify failure voicemail listing when bad request occur', async () => {
@@ -88,7 +88,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         data: {error: '400 Bad request'},
         message: FAILURE,
       };
-      expect(response).toEqual(responseDetails);
+      expect(response).toStrictEqual(responseDetails);
       expect(response.message).toBe(FAILURE);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
@@ -417,13 +417,13 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         message: FAILURE,
       };
 
-      expect(webex.request).toHaveBeenCalledWith({
+      expect(webex.request).toBeCalledOnceWith({
         method: HTTP_METHODS.GET,
         uri: voicemailSummaryUrl,
         headers: {},
       });
 
-      expect(response).toEqual(responseDetails);
+      expect(response).toStrictEqual(responseDetails);
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 400,
@@ -507,12 +507,12 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         statusCode: 200,
       };
 
-      expect(webex.request).toHaveBeenCalledWith({
+      expect(webex.request).toBeCalledOnceWith({
         method: HTTP_METHODS.GET,
         uri: voicemailSummaryUrl,
         headers: {},
       });
-      expect(response).toEqual(responseDetails);
+      expect(response).toStrictEqual(responseDetails);
       expect(infoSpy).toHaveBeenCalledWith('invoking', {
         file: 'WxCallBackendConnector',
         method: 'getVoicemailSummary',

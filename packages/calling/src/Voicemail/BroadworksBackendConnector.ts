@@ -572,9 +572,6 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
 
     log.info(`invoking with messageId: ${messageId}`, loggerContext);
 
-    // Using 'this' to fix TypeScript warning about not using 'this' in a class method
-    this.xsiEndpoint = this.xsiEndpoint || '';
-
     return Promise.resolve(null);
   }
 

@@ -20,7 +20,6 @@ import {
   WEBEX_CALLING_CONNECTOR_FILE,
 } from '../common/constants';
 import {
-  CALL_SETTINGS_FILE,
   CALL_WAITING_ENDPOINT,
   CF_ENDPOINT,
   DND_ENDPOINT,
@@ -81,7 +80,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getCallWaitingSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: METHODS.GET_CALL_WAITING_SETTING,
     };
 
@@ -151,7 +150,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getDoNotDisturbSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: METHODS.GET_DO_NOT_DISTURB_SETTING,
     };
 
@@ -196,7 +195,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async setDoNotDisturbSetting(enabled: boolean): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: METHODS.SET_DO_NOT_DISTURB_SETTING,
     };
 
@@ -247,7 +246,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getCallForwardSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: METHODS.GET_CALL_FORWARD_SETTING,
     };
 
@@ -291,7 +290,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
     callForwardingRequest: CallForwardSetting
   ): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: METHODS.SET_CALL_FORWARD_SETTING,
     };
 
@@ -334,7 +333,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getVoicemailSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: METHODS.GET_VOICEMAIL_SETTING,
     };
 
@@ -376,7 +375,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
     voicemailRequest: VoicemailSetting
   ): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: METHODS.SET_VOICEMAIL_SETTING,
     };
 
@@ -420,7 +419,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getCallForwardAlwaysSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
+      file: WEBEX_CALLING_CONNECTOR_FILE,
       method: METHODS.GET_CALL_FORWARD_ALWAYS_SETTING,
     };
 

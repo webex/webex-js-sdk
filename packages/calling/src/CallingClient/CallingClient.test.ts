@@ -416,17 +416,12 @@ describe('CallingClient Tests', () => {
 
       expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
 
-      log.info('Updating region and country from the SDK config', {
+      expect(infoSpy).toHaveBeenCalledWith('invoking', {
         file: 'CallingClient',
         method: 'getMobiusServers',
       });
 
-      expect(infoSpy).toHaveBeenCalledWith('Updating region and country from the SDK config', {
-        file: 'CallingClient',
-        method: 'getMobiusServers',
-      });
-
-      expect(webex.request).toHaveBeenCalledWith({
+      expect(webex.request).toBeCalledOnceWith({
         ...getMockRequestTemplate(),
         uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
         method: 'GET',
@@ -518,7 +513,7 @@ describe('CallingClient Tests', () => {
       jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
 
       /* We should be detecting the network flap */
-      expect(warnSpy).toHaveBeenCalledWith(
+      expect(warnSpy).toBeCalledOnceWith(
         'Network has flapped, waiting for mercury connection to be up',
         {file: CALLING_CLIENT_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
       );
@@ -576,7 +571,7 @@ describe('CallingClient Tests', () => {
       jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
 
       /* We should be detecting the network flap */
-      expect(warnSpy).toHaveBeenCalledWith(
+      expect(warnSpy).toBeCalledWith(
         'Network has flapped, waiting for mercury connection to be up',
         {file: CALLING_CLIENT_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
       );
@@ -596,7 +591,7 @@ describe('CallingClient Tests', () => {
       });
 
       /* We should be detecting the network recovery */
-      expect(logSpy).toHaveBeenCalledWith(
+      expect(logSpy).toBeCalledWith(
         'Mercury connection is up again, re-registering with Webex Calling if needed',
         {
           file: REGISTRATION_FILE,

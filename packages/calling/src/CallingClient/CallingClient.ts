@@ -104,6 +104,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
+      if (config?.logger?.level && webex.logger.config) {
+        webex.logger.config.level = config.logger.level; // override the webex logger level
+      }
+      log.setWebexLogger(webex.logger);
     }
     this.mutex = new Mutex();
     this.webex = this.sdkConnector.getWebex();

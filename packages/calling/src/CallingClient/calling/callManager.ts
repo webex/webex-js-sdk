@@ -89,7 +89,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
           this.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
           log.log('All calls have been cleared', {
             file: CALL_MANAGER_FILE,
-            method: 'createCall',
+            method: METHODS.createCall,
           });
         }
       },

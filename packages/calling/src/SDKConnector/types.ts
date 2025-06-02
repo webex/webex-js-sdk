@@ -51,6 +51,10 @@ export type ClientRegionInfo = {
 };
 
 export type Logger = {
+  config?: {
+    level: string;
+    bufferLogLevel: string;
+  };
   log: (payload: string) => void;
   error: (payload: string) => void;
   warn: (payload: string) => void;

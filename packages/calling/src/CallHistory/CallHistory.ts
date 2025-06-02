@@ -300,8 +300,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const orgId = this.webex.internal.device.orgId;
     const linesURIForUCM = `${vgEndpoint}/${VERSION_1}/${UNIFIED_COMMUNICATIONS}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
 
-    log.info(`invoking`, loggerContext);
-    log.info(`Fetching UCM lines from URL: ${linesURIForUCM}`, loggerContext);
+    log.info(`invoking with URL: ${linesURIForUCM}`, loggerContext);
     try {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${linesURIForUCM}`,

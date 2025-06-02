@@ -1,7 +1,7 @@
 import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
 import {ERROR_CODE} from '../../Errors/types';
-import {emitFinalFailure, handleRegistrationErrors} from '../../common';
+import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
 
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
@@ -316,6 +316,7 @@ export class Registration implements IRegistration {
               this.backupMobiusUris
             );
             if (!abort && !this.isDeviceRegistered()) {
+              await uploadLogs();
               emitFinalFailure((clientError: LineError) => {
                 this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
               }, loggerContext);
@@ -325,6 +326,7 @@ export class Registration implements IRegistration {
         log.info(`Scheduled retry with backup servers in ${interval} seconds.`, loggerContext);
       }
     } else {
+      await uploadLogs();
       emitFinalFailure((clientError: LineError) => {
         this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
       }, loggerContext);

@@ -372,7 +372,6 @@ describe('Call Tests', () => {
       expect.any(Function)
     );
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
-    // Check that the log function was called, but don't be specific about the exact parameters
     expect(logSpy).toHaveBeenCalled();
 
     expect(bnrMetricSpy).toBeCalledOnceWith(
@@ -436,7 +435,6 @@ describe('Call Tests', () => {
       file: 'call',
       method: 'answer',
     });
-    // Log info gets called but with different parameters than expected
     expect(infoSpy).toHaveBeenCalled();
 
     /* Now change the state and recall to check for correct flow */

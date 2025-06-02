@@ -40,7 +40,7 @@ const logSpy = jest.spyOn(log, 'log');
 const infoSpy = jest.spyOn(log, 'info');
 const warnSpy = jest.spyOn(log, 'warn');
 const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
-
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
 describe('Registration Tests', () => {
   const originalProcessNextTick = process.nextTick;
   function flushPromises() {
