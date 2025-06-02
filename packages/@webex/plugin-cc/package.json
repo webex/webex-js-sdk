@@ -29,6 +29,7 @@
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
     "build": " yarn workspace @webex/calling run build:src && yarn run -T tsc --declaration true --declarationDir ./dist/types",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
+    "build:docs": "typedoc --out ../../../docs/wxcc",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "prebuild": "rimraf dist",
     "test": "yarn test:style && yarn test:unit",
@@ -69,7 +70,7 @@
     "jest": "27.5.1",
     "jest-junit": "13.0.0",
     "prettier": "2.5.1",
-    "typedoc": "0.23.26",
+    "typedoc": "^0.25.0",
     "typescript": "4.9.5"
   }
 }
