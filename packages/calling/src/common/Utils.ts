@@ -360,6 +360,8 @@ export async function handleRegistrationErrors(
         const retryAfter = Number(err.headers['retry-after']);
         retry429CB(retryAfter, caller);
       }
+
+      break;
     }
 
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
