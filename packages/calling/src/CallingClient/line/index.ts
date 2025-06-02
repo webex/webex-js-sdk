@@ -132,7 +132,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   public async register() {
     log.info('invoking', {
       file: LINE_FILE,
-      method: METHODS.register,
+      method: METHODS.REGISTER,
     });
     await this.#mutex.runExclusive(async () => {
       this.emit(LINE_EVENTS.CONNECTING);
@@ -151,7 +151,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   public async deregister() {
     log.info('invoking', {
       file: LINE_FILE,
-      method: METHODS.deregister,
+      method: METHODS.DEREGISTER,
     });
     await this.registration.deregister();
     this.registration.setStatus(RegistrationStatus.IDLE);
@@ -189,7 +189,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   public lineEmitter = (event: LINE_EVENTS, deviceInfo?: IDeviceInfo, lineError?: LineError) => {
     log.info('invoking', {
       file: LINE_FILE,
-      method: METHODS.lineEmitter,
+      method: METHODS.LINE_EMITTER,
     });
     switch (event) {
       case LINE_EVENTS.REGISTERED:
@@ -245,7 +245,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   public makeCall = (dest?: CallDetails): ICall | undefined => {
     log.info('invoking', {
       file: LINE_FILE,
-      method: METHODS.makeCall,
+      method: METHODS.MAKE_CALL,
     });
     let call;
 
@@ -270,12 +270,12 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
         );
         log.log(`New call created, callId: ${call?.getCallId()}`, {
           file: LINE_FILE,
-          method: METHODS.makeCall,
+          method: METHODS.MAKE_CALL,
         });
       } else {
         log.warn('Invalid phone number detected', {
           file: LINE_FILE,
-          method: METHODS.makeCall,
+          method: METHODS.MAKE_CALL,
         });
 
         const err = new LineError(
@@ -298,7 +298,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       );
       log.info(`New guest call created, callId: ${call?.getCallId()}`, {
         file: LINE_FILE,
-        method: METHODS.makeCall,
+        method: METHODS.MAKE_CALL,
       });
 
       return call;
@@ -313,11 +313,11 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   private incomingCallListener() {
     log.info('invoking', {
       file: LINE_FILE,
-      method: METHODS.incomingCallListener,
+      method: METHODS.INCOMING_CALL_LISTENER,
     });
     log.info('Listening for incoming calls... ', {
       file: LINE_FILE,
-      method: METHODS.incomingCallListener,
+      method: METHODS.INCOMING_CALL_LISTENER,
     });
     this.callManager.on(LINE_EVENT_KEYS.INCOMING_CALL, (callObj: ICall) => {
       this.emit(LINE_EVENTS.INCOMING_CALL, callObj);

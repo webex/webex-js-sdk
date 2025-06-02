@@ -49,4 +49,5 @@ export const METHODS = {
   INITIALIZE_BACKEND_CONNECTOR: 'initializeBackendConnector',
   SUBMIT_METRIC: 'submitMetric',
   GET_AUTH_HEADERS: 'getAuthHeaders',
+  SET_UCM_VOICE_MESSAGE_BASE_URI: 'setUcmVoiceMessageBaseURI',
 };

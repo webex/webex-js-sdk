@@ -262,7 +262,7 @@ export interface SCIMListResponse {
 
 export type LogsMetaData = {
   callId?: string;
-  feedbackId: string;
+  feedbackId?: string;
   correlationId?: string;
 };
 

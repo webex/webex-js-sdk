@@ -67,7 +67,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
   ): ICall => {
     log.info(`invoking with ${direction}, ${deviceId} and ${lineId}`, {
       file: CALL_MANAGER_FILE,
-      method: METHODS.createCall,
+      method: METHODS.CREATE_CALL,
     });
     log.log('Creating call object', {});
     const newCall = createCall(
@@ -89,7 +89,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
           this.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
           log.log('All calls have been cleared', {
             file: CALL_MANAGER_FILE,
-            method: METHODS.createCall,
+            method: METHODS.CREATE_CALL,
           });
         }
       },
@@ -118,7 +118,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
     this.activeMobiusUrl = url;
     log.log(`Successfully updated active Mobius URL to: ${url}`, {
       file: CALL_MANAGER_FILE,
-      method: 'updateActiveMobius',
+      method: METHODS.UPDATE_ACTIVE_MOBIUS,
     });
   }
 
@@ -131,7 +131,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
     });
     log.log('Successfully registered listener for Mobius events', {
       file: CALL_MANAGER_FILE,
-      method: 'listenForWsEvents',
+      method: METHODS.REGISTER_SESSIONS_LISTENER,
     });
   }
 
@@ -145,7 +145,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
   private dequeueWsEvents(event: unknown) {
     log.info(`invoking with event ${event}`, {
       file: CALL_MANAGER_FILE,
-      method: METHODS.dequeueWsEvents,
+      method: METHODS.DEQUEUE_WS_EVENTS,
     });
     const mobiusEvent = event as MobiusCallEvent;
     const {callId, correlationId} = mobiusEvent.data;
@@ -154,7 +154,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
       case MobiusEventType.CALL_SETUP: {
         log.log(`Received call Setup message for call: ${callId}`, {
           file: CALL_MANAGER_FILE,
-          method: 'dequeueWsEvents',
+          method: METHODS.DEQUEUE_WS_EVENTS,
         });
         /* Check whether MidCall or not */
         if (mobiusEvent.data.midCallService) {
@@ -168,7 +168,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
                 `Dropping midcall event of type: ${midCallEvent.eventType} as it doesn't match with any existing call`,
                 {
                   file: CALL_MANAGER_FILE,
-                  method: 'dequeueWsEvents',
+                  method: METHODS.DEQUEUE_WS_EVENTS,
                 }
               );
             }
@@ -201,7 +201,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
             `New incoming call created with correlationId from Call Setup message: ${newCall.getCorrelationId()}`,
             {
               file: CALL_MANAGER_FILE,
-              method: 'dequeueWsEvents',
+              method: METHODS.DEQUEUE_WS_EVENTS,
             }
           );
           newCall.setCallId(callId);
@@ -210,7 +210,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
               `Found broadworksCorrelationInfo: ${mobiusEvent.data.broadworksCorrelationInfo}`,
               {
                 file: CALL_MANAGER_FILE,
-                method: 'dequeueWsEvents',
+                method: METHODS.DEQUEUE_WS_EVENTS,
               }
             );
             newCall.setBroadworksCorrelationInfo(mobiusEvent.data.broadworksCorrelationInfo);
@@ -220,7 +220,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
             `Found the call Object with a matching callId: ${callId} from our records with correlationId: ${newId}`,
             {
               file: CALL_MANAGER_FILE,
-              method: 'dequeueWsEvents',
+              method: METHODS.DEQUEUE_WS_EVENTS,
             }
           );
           newCall = this.getCall(newId);
@@ -229,7 +229,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
         if (mobiusEvent.data.callerId) {
           log.info('Processing Caller-Id data', {
             file: CALL_MANAGER_FILE,
-            method: 'dequeueWsEvents',
+            method: METHODS.DEQUEUE_WS_EVENTS,
           });
           newCall.startCallerIdResolution(mobiusEvent.data.callerId);
         }
@@ -244,7 +244,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
       case MobiusEventType.CALL_PROGRESS: {
         log.log(`Received call progress mobiusEvent for call: ${correlationId}`, {
           file: CALL_MANAGER_FILE,
-          method: 'dequeueWsEvents',
+          method: METHODS.DEQUEUE_WS_EVENTS,
         });
         const call = this.getCall(correlationId);
 
@@ -254,7 +254,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
       case MobiusEventType.CALL_MEDIA: {
         log.log(`Received call media mobiusEvent for call: ${correlationId}`, {
           file: CALL_MANAGER_FILE,
-          method: 'dequeueWsEvents',
+          method: METHODS.DEQUEUE_WS_EVENTS,
         });
 
         let activeCall: ICall;
@@ -279,7 +279,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
               `Found the call Object with a matching callId: ${callId} from our records with correlationId: ${newId}`,
               {
                 file: CALL_MANAGER_FILE,
-                method: 'dequeueWsEvents',
+                method: METHODS.DEQUEUE_WS_EVENTS,
               }
             );
             activeCall = this.getCall(newId);
@@ -297,7 +297,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
               `New incoming call created with correlationId from ROAP Message: ${activeCall.getCorrelationId()}`,
               {
                 file: CALL_MANAGER_FILE,
-                method: 'dequeueWsEvents',
+                method: METHODS.DEQUEUE_WS_EVENTS,
               }
             );
             activeCall.setCallId(callId);
@@ -309,13 +309,13 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
 
           log.info(`SDP from mobius ${mobiusEvent.data.message?.sdp}`, {
             file: CALL_MANAGER_FILE,
-            method: 'dequeueWsEvents',
+            method: METHODS.DEQUEUE_WS_EVENTS,
           });
           log.log(
             `ROAP message from mobius with type:  ${mobiusEvent.data.message?.messageType}, seq: ${mobiusEvent.data.message?.seq} , version: ${mobiusEvent.data.message?.version}`,
             {
               file: CALL_MANAGER_FILE,
-              method: 'dequeueWsEvents',
+              method: METHODS.DEQUEUE_WS_EVENTS,
             }
           );
           const mediaState = mobiusEvent.data.message?.messageType;
@@ -324,7 +324,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
             case MediaState.OFFER: {
               log.log('Received OFFER', {
                 file: CALL_MANAGER_FILE,
-                method: 'dequeueWsEvents',
+                method: METHODS.DEQUEUE_WS_EVENTS,
               });
               activeCall.sendMediaStateMachineEvt({
                 type: 'E_RECV_ROAP_OFFER',
@@ -335,7 +335,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
             case MediaState.ANSWER: {
               log.log('Received ANSWER', {
                 file: CALL_MANAGER_FILE,
-                method: 'dequeueWsEvents',
+                method: METHODS.DEQUEUE_WS_EVENTS,
               });
               activeCall.sendMediaStateMachineEvt({
                 type: 'E_RECV_ROAP_ANSWER',
@@ -346,7 +346,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
             case MediaState.OFFER_REQUEST: {
               log.log('Received OFFER_REQUEST', {
                 file: CALL_MANAGER_FILE,
-                method: 'dequeueWsEvents',
+                method: METHODS.DEQUEUE_WS_EVENTS,
               });
               activeCall.sendMediaStateMachineEvt({
                 type: 'E_RECV_ROAP_OFFER_REQUEST',
@@ -357,7 +357,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
             case MediaState.OK: {
               log.log('Received OK', {
                 file: CALL_MANAGER_FILE,
-                method: 'dequeueWsEvents',
+                method: METHODS.DEQUEUE_WS_EVENTS,
               });
               const mediaOk = {
                 received: true,
@@ -373,21 +373,21 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
             case MediaState.ERROR: {
               log.log('Received Error...', {
                 file: CALL_MANAGER_FILE,
-                method: 'dequeueWsEvents',
+                method: METHODS.DEQUEUE_WS_EVENTS,
               });
               break;
             }
             default: {
               log.log(`Unknown Media mobiusEvent: ${mediaState} `, {
                 file: CALL_MANAGER_FILE,
-                method: 'dequeueWsEvents',
+                method: METHODS.DEQUEUE_WS_EVENTS,
               });
             }
           }
         } else {
           log.info(`CorrelationId: ${correlationId} doesn't exist , discarding..`, {
             file: CALL_MANAGER_FILE,
-            method: 'dequeueWsEvents',
+            method: METHODS.DEQUEUE_WS_EVENTS,
           });
           // TODO: Maybe add a queue  for these mobiusEvents per callID and handle them once the call is setup ?
         }
@@ -396,7 +396,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
       case MobiusEventType.CALL_CONNECTED: {
         log.log(`Received call connect for call: ${correlationId}`, {
           file: CALL_MANAGER_FILE,
-          method: 'dequeueWsEvents',
+          method: METHODS.DEQUEUE_WS_EVENTS,
         });
         const call = this.getCall(correlationId);
 
@@ -407,7 +407,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
       case MobiusEventType.CALL_DISCONNECTED: {
         log.log(`Received call disconnect for call: ${correlationId}`, {
           file: CALL_MANAGER_FILE,
-          method: 'dequeueWsEvents',
+          method: METHODS.DEQUEUE_WS_EVENTS,
         });
         const call = this.getCall(correlationId);
 
@@ -419,7 +419,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
       default: {
         log.log(`Unknown Call Event mobiusEvent: ${mobiusEvent.data.eventType}`, {
           file: CALL_MANAGER_FILE,
-          method: 'dequeueWsEvents',
+          method: METHODS.DEQUEUE_WS_EVENTS,
         });
       }
     }
@@ -446,7 +446,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
     this.lineDict[deviceId] = line;
     log.log(`Successfully updated line for deviceId: ${deviceId}`, {
       file: CALL_MANAGER_FILE,
-      method: 'updateLine',
+      method: METHODS.UPDATE_LINE,
     });
   }
 
