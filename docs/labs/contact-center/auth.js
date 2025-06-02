@@ -50,6 +50,7 @@ export async function initWithAccessToken(accessToken) {
         const onReady = () => {
             webex.off('ready', onReady);
             webex.off('ready.authorization', onReady);
+            clearTimeout(timeout);
             resolve(webex);
         };
 
@@ -58,6 +59,8 @@ export async function initWithAccessToken(accessToken) {
 
         // Add timeout
         const timeout = setTimeout(() => {
+             webex.off('ready', onReady);
+webex.off('ready.authorization', onReady);
             reject(new Error('Initialization timed out'));
         }, 10000);
     });

@@ -173,7 +173,6 @@ async function handleRegister() {
         const response = await register(window.webex);
         console.log('✅ Agent registered successfully');
 
-    try {
         // Set up all event listeners
         setupTaskEventListeners(window.webex);
         setupStateEventListeners(window.webex);
@@ -188,9 +187,6 @@ async function handleRegister() {
                 document.getElementById('btn-set-state').disabled = false;
             }
         }
-    } catch (error) {
-        console.error('Failed to setup event listeners:', error);
-    }
 
         // Handle registration response and enable controls
         handleRegistrationResponse(response);
@@ -212,6 +208,7 @@ async function handleDeregister() {
         disableControls();
     } catch (e) {
         console.error('❌ Deregistration failed:', e);
+        alert(`Registration failed: ${e.message || 'Unknown error'}`);
     }
 }
 
