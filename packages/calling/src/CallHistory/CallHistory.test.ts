@@ -248,7 +248,7 @@ describe('Call history tests', () => {
       }));
       expect(response.statusCode).toEqual(200);
       expect(response).toEqual(MOCK_UPDATE_MISSED_CALL_RESPONSE);
-      expect(global.fetch).toHaveBeenCalledWith(janusSetReadStateUrl, {
+      expect(global.fetch).toBeCalledOnceWith(janusSetReadStateUrl, {
         method: HTTP_METHODS.POST,
         headers: {
           [CONTENT_TYPE]: APPLICATION_JSON,
@@ -283,7 +283,7 @@ describe('Call history tests', () => {
         ...session,
         endTime: new Date(session.endTime).getTime(),
       }));
-      expect(response).toEqual(ERROR_DETAILS_400);
+      expect(response).toStrictEqual(ERROR_DETAILS_400);
       expect(response.statusCode).toBe(400);
       expect(global.fetch).toBeCalledOnceWith(janusSetReadStateUrl, {
         method: HTTP_METHODS.POST,
@@ -293,7 +293,7 @@ describe('Call history tests', () => {
         },
         body: JSON.stringify({endTimeSessionIds: convertedEndTimeSessionIds}),
       });
-      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 400,
         },
@@ -317,7 +317,7 @@ describe('Call history tests', () => {
         ...session,
         endTime: new Date(session.endTime).getTime(),
       }));
-      expect(response).toEqual(ERROR_DETAILS_401);
+      expect(response).toStrictEqual(ERROR_DETAILS_401);
       expect(response.statusCode).toBe(401);
       expect(global.fetch).toBeCalledOnceWith(janusSetReadStateUrl, {
         method: HTTP_METHODS.POST,
@@ -508,7 +508,7 @@ describe('Call history tests', () => {
       }));
       expect(response.statusCode).toEqual(200);
       expect(response).toEqual(MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE);
-      expect(global.fetch).toHaveBeenCalledWith(janusMarkAsDeletedUrl, {
+      expect(global.fetch).toBeCalledOnceWith(janusMarkAsDeletedUrl, {
         method: HTTP_METHODS.POST,
         headers: {
           [CONTENT_TYPE]: APPLICATION_JSON,
