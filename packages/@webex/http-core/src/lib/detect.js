@@ -4,6 +4,7 @@
 
 import {fromBuffer} from 'file-type';
 
+const {Blob} = require('node-fetch');
 /**
  * Determine mimeType for the specified buffer;
  * @param {Buffer|Uint8Array|ArrayBuffer} buffer
