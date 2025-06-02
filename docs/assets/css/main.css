@@ -1,0 +1,108 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #f8f9fa;
+  color: #333;
+  padding-top: 70px;
+  /* Account for fixed navbar */
+}
+
+.navbar-default {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e7e7e7;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.navbar-default .navbar-brand {
+  color: #337ab7;
+  font-weight: bold;
+}
+
+.navbar-default .navbar-nav>li>a {
+  color: #555;
+  font-weight: 500;
+}
+
+.navbar-default .navbar-nav>li>a:hover,
+.navbar-default .navbar-nav>li>a:focus {
+  color: #337ab7;
+}
+
+main>.container {
+  padding-top: 30px;
+  padding-bottom: 30px;
+}
+
+.col-md-3 {
+  /* Style for each content column to look like a card */
+  background-color: #fff;
+  padding: 25px;
+  margin-bottom: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.col-md-3:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.page-header {
+  /* General styling for all headers */
+  border-bottom: 2px solid #337ab7;
+  padding-bottom: 10px;
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-size: 22px;
+  font-weight: 600;
+  color: #333;
+}
+
+.list-group-item {
+  border-color: #e9ecef;
+  border-radius: 4px !important;
+  /* Override Bootstrap's default for consistency */
+  margin-bottom: 8px;
+  font-size: 15px;
+  transition: all 0.2s ease-in-out;
+}
+
+.list-group-item:last-child {
+  margin-bottom: 0;
+}
+
+.list-group-item:hover {
+  background-color: #e9ecef;
+  color: #0056b3;
+  transform: translateX(5px);
+  border-left: 3px solid #337ab7;
+}
+
+.btn-primary {
+  background-color: #337ab7;
+  border-color: #2e6da4;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 5px;
+  transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: #286090;
+  border-color: #204d74;
+  transform: translateY(-2px);
+}
+
+footer {
+  margin-top: 40px;
+  padding: 30px 0;
+  background-color: #343a40;
+  color: #f8f9fa;
+  text-align: center;
+}
+
+footer .copyright {
+  font-size: 14px;
+}
