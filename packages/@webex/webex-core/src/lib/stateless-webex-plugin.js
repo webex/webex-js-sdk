@@ -30,7 +30,7 @@ export default class StatelessWebexPlugin {
    * @type {Logger}
    */
   get logger() {
-    return this.webex.logger;
+    return this.webex?.logger;
   }
 
   /**
