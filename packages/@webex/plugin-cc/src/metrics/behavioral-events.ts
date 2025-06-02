@@ -7,6 +7,18 @@ import {
 import {METRIC_EVENT_NAMES} from './constants';
 import {PRODUCT_NAME} from '../constants';
 
+/**
+ * Represents the taxonomy for a behavioral event in the metrics system.
+ * @ignore
+ * @typedef BehavioralEventTaxonomy
+ * @property {MetricEventProduct} product - The product associated with the behavioral event.
+ * @property {MetricEventAgent} agent - The agent responsible for the behavioral event.
+ * @property {string} target - The target entity of the behavioral event.
+ * @property {MetricEventVerb} verb - The action or verb describing the behavioral event.
+ *
+ * @category Metrics
+ * @type BehavioralEvents
+ */
 export type BehavioralEventTaxonomy = {
   product: MetricEventProduct;
   agent: MetricEventAgent;
@@ -17,7 +29,27 @@ export type BehavioralEventTaxonomy = {
 const product: MetricEventProduct = PRODUCT_NAME;
 
 // Adding new metrics? Please add them to the Cypher CC metrics wiki
-
+/**
+ * @ignore
+ * @typedoc
+ * A mapping between metric event names and their corresponding behavioral event taxonomy definitions.
+ *
+ * This map is used to associate each event (such as login, logout, task actions, etc.)
+ * with a structured taxonomy object that describes the product, agent, target, and verb
+ * for behavioral analytics and metrics reporting.
+ *
+ * The keys are string constants from `METRIC_EVENT_NAMES`, and the values are
+ * `BehavioralEventTaxonomy` objects that define the event's context.
+ *
+ * @example
+ * ```typescript
+ * const taxonomy = eventTaxonomyMap[METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS];
+ * // taxonomy = { product, agent: 'user', target: 'station_login', verb: 'complete' }
+ * ```
+ *
+ * @see BehavioralEventTaxonomy
+ * @see METRIC_EVENT_NAMES
+ */
 const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
   [METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS]: {
     product,
@@ -287,6 +319,14 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
   },
 };
 
+/**
+ * Get the taxonomy information for a given behavioral event name.
+ * @ignore
+ * @param name - The name of the metric event to look up.
+ * @returns The corresponding {@link BehavioralEventTaxonomy} if found, otherwise `undefined`.
+ *
+ * @typedoc
+ */
 export function getEventTaxonomy(name: METRIC_EVENT_NAMES): BehavioralEventTaxonomy | undefined {
   return eventTaxonomyMap[name];
 }

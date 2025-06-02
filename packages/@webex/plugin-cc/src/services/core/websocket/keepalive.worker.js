@@ -16,7 +16,7 @@ const resetOfflineHandler = function () {
 const checkOnlineStatus = function () {
   const onlineStatus = navigator.onLine;
   console.log(
-    \`[WebSocketStatus] event=checkOnlineStatus | timestamp=${new Date()}, UTC=${new Date().toUTCString()} | online status=\`,
+    \`[WebSocketStatus] event=checkOnlineStatus | online status=\`,
     onlineStatus
   );
   return onlineStatus;
