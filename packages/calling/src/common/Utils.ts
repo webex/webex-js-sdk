@@ -297,7 +297,7 @@ export async function handleRegistrationErrors(
   err: WebexRequestPayload,
   emitterCb: LineErrorEmitterCallback,
   loggerContext: LogContext,
-  retry429CB: retry429CallBack,
+  retry429CB?: retry429CallBack,
   restoreRegCb?: restoreRegistrationCallBack
 ): Promise<boolean> {
   const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
@@ -356,7 +356,7 @@ export async function handleRegistrationErrors(
     case ERROR_CODE.TOO_MANY_REQUESTS: {
       const caller = loggerContext.method || 'handleErrors';
 
-      if (err.headers) {
+      if (retry429CB && err.headers) {
         const retryAfter = Number(err.headers['retry-after']);
         retry429CB(retryAfter, caller);
       }
