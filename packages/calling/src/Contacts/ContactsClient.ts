@@ -334,7 +334,7 @@ export class ContactsClient implements IContacts {
   public async getContacts(): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: METHODS.getContacts,
+      method: METHODS.GET_CONTACTS,
     };
 
     log.info('invoking', loggerContext);
@@ -444,7 +444,7 @@ export class ContactsClient implements IContacts {
   private async createNewEncryptionKeyUrl(): Promise<string> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: METHODS.createNewEncryptionKeyUrl,
+      method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
     };
 
     log.info('invoking', loggerContext);
@@ -468,7 +468,7 @@ export class ContactsClient implements IContacts {
   private async fetchEncryptionKeyUrl(): Promise<string> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: METHODS.fetchEncryptionKeyUrl,
+      method: METHODS.FETCH_ENCRYPTION_KEY_URL,
     };
 
     log.info('invoking', loggerContext);
@@ -515,7 +515,7 @@ export class ContactsClient implements IContacts {
   private async fetchDefaultGroup(): Promise<string> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: METHODS.fetchDefaultGroup,
+      method: METHODS.FETCH_DEFAULT_GROUP,
     };
 
     log.info('invoking', loggerContext);
@@ -580,7 +580,7 @@ export class ContactsClient implements IContacts {
   ): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: METHODS.createContactGroup,
+      method: METHODS.CREATE_CONTACT_GROUP,
     };
 
     log.info(`invoking with displayName: ${displayName}`, loggerContext);
@@ -660,7 +660,7 @@ export class ContactsClient implements IContacts {
   public async deleteContactGroup(groupId: string) {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: METHODS.deleteContactGroup,
+      method: METHODS.DELETE_CONTACT_GROUP,
     };
 
     log.info(`invoking with groupId: ${groupId}`, loggerContext);
@@ -711,7 +711,7 @@ export class ContactsClient implements IContacts {
   public async createContact(contactInfo: Contact): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: METHODS.createContact,
+      method: METHODS.CREATE_CONTACT,
     };
 
     log.info(`invoking with contactType: ${contactInfo.contactType}`, loggerContext);
@@ -818,7 +818,7 @@ export class ContactsClient implements IContacts {
   public async deleteContact(contactId: string): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: METHODS.deleteContact,
+      method: METHODS.DELETE_CONTACT,
     };
 
     log.info(`invoking with contactId: ${contactId}`, loggerContext);

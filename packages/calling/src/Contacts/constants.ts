@@ -22,12 +22,12 @@ export enum encryptedFields {
 }
 
 export const METHODS = {
-  getContacts: 'getContacts',
-  createNewEncryptionKeyUrl: 'createNewEncryptionKeyUrl',
-  fetchEncryptionKeyUrl: 'fetchEncryptionKeyUrl',
-  fetchDefaultGroup: 'fetchDefaultGroup',
-  createContactGroup: 'createContactGroup',
-  deleteContactGroup: 'deleteContactGroup',
-  createContact: 'createContact',
-  deleteContact: 'deleteContact',
+  GET_CONTACTS: 'getContacts',
+  CREATE_NEW_ENCRYPTION_KEY_URL: 'createNewEncryptionKeyUrl',
+  FETCH_ENCRYPTION_KEY_URL: 'fetchEncryptionKeyUrl',
+  FETCH_DEFAULT_GROUP: 'fetchDefaultGroup',
+  CREATE_CONTACT_GROUP: 'createContactGroup',
+  DELETE_CONTACT_GROUP: 'deleteContactGroup',
+  CREATE_CONTACT: 'createContact',
+  DELETE_CONTACT: 'deleteContact',
 };
