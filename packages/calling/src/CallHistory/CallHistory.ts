@@ -47,7 +47,13 @@ import {
   SET_DELETE_CALL_RECORDS_INVALID_DATE_FORMAT_MESSAGE,
   METHODS,
 } from './constants';
-import {FAILURE_MESSAGE, STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
+import {
+  FAILURE_MESSAGE,
+  METHOD_START_MESSAGE,
+  STATUS_CODE,
+  SUCCESS_MESSAGE,
+  USER_SESSIONS,
+} from '../common/constants';
 import {
   COMMON_EVENT_KEYS,
   CallHistoryEventTypes,
@@ -127,7 +133,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const sortParam = Object.values(SORT).includes(sort) ? sort : SORT.DEFAULT;
 
     log.info(
-      `invoking with days=${days}, limit=${limit}, sort=${sortParam}, sortBy=${sortByParam}`,
+      `${METHOD_START_MESSAGE} with days=${days}, limit=${limit}, sort=${sortParam}, sortBy=${sortByParam}`,
       this.loggerContext
     );
 
@@ -242,7 +248,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       endTimeSessionIds: santizedSessionIds,
     };
 
-    log.info(`invoking with sessions: ${JSON.stringify(santizedSessionIds)}`, loggerContext);
+    log.info(
+      `${METHOD_START_MESSAGE} with sessions: ${JSON.stringify(santizedSessionIds)}`,
+      loggerContext
+    );
     try {
       const updateMissedCallContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${UPDATE_MISSED_CALLS_ENDPOINT}`;
       // Make a POST request to update missed calls
@@ -300,7 +309,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const orgId = this.webex.internal.device.orgId;
     const linesURIForUCM = `${vgEndpoint}/${VERSION_1}/${UNIFIED_COMMUNICATIONS}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
 
-    log.info(`invoking with URL: ${linesURIForUCM}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with URL: ${linesURIForUCM}`, loggerContext);
     try {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${linesURIForUCM}`,
@@ -348,7 +357,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       Number.isNaN(new Date(session.endTime).getTime())
     );
 
-    log.info(`invoking with sessions: ${JSON.stringify(deleteSessionIds)}`, loggerContext);
+    log.info(
+      `${METHOD_START_MESSAGE} with sessions: ${JSON.stringify(deleteSessionIds)}`,
+      loggerContext
+    );
 
     if (invalidSessions.length > 0) {
       // If there are invalid sessions, return an error with details

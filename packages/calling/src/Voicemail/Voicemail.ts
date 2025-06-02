@@ -2,6 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable valid-jsdoc */
 import ExtendedError from 'Errors/catalog/ExtendedError';
+import {METHOD_START_MESSAGE} from '../common/constants';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {IVoicemail, VoicemailResponseEvent, LoggerInterface, CallingPartyInfo} from './types';
@@ -60,7 +61,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    */
   public async init() {
     try {
-      log.info('invoking', {
+      log.info(METHOD_START_MESSAGE, {
         file: VOICEMAIL_FILE,
         method: METHODS.INIT,
       });
@@ -90,7 +91,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * Setup and initialize the voicemail backend connector class object.
    */
   private initializeBackendConnector() {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: VOICEMAIL_FILE,
       method: METHODS.INITIALIZE_BACKEND_CONNECTOR,
     });
@@ -163,7 +164,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   ): Promise<VoicemailResponseEvent> {
     try {
       log.info(
-        `invoking with: offset=${offset}, limit=${offsetLimit}, sort=${sort}, refresh=${refresh}`,
+        `${METHOD_START_MESSAGE} with: offset=${offset}, limit=${offsetLimit}, sort=${sort}, refresh=${refresh}`,
         {
           file: VOICEMAIL_FILE,
           method: METHODS.GET_VOICEMAIL_LIST,
@@ -204,7 +205,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param messageId - The identifier of the voicemail message.
    */
   public async getVoicemailContent(messageId: string): Promise<VoicemailResponseEvent> {
-    log.info(`invoking with: messageId=${messageId}`, {
+    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, {
       file: VOICEMAIL_FILE,
       method: METHODS.GET_VOICEMAIL_CONTENT,
     });
@@ -229,7 +230,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    *
    */
   public async getVoicemailSummary(): Promise<VoicemailResponseEvent | null> {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: VOICEMAIL_FILE,
       method: METHODS.GET_VOICEMAIL_SUMMARY,
     });
@@ -255,7 +256,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param messageId -string result from the voicemail list.
    */
   public async voicemailMarkAsRead(messageId: string): Promise<VoicemailResponseEvent> {
-    log.info(`invoking with: messageId=${messageId}`, {
+    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, {
       file: VOICEMAIL_FILE,
       method: METHODS.VOICEMAIL_MARK_AS_READ,
     });
@@ -281,7 +282,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param messageId -string result from the voicemail list.
    */
   public async voicemailMarkAsUnread(messageId: string): Promise<VoicemailResponseEvent> {
-    log.info(`invoking with: messageId=${messageId}`, {
+    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, {
       file: VOICEMAIL_FILE,
       method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
     });
@@ -307,7 +308,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param messageId -string result from the voicemail list.
    */
   public async deleteVoicemail(messageId: string): Promise<VoicemailResponseEvent> {
-    log.info(`invoking with: messageId=${messageId}`, {
+    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, {
       file: VOICEMAIL_FILE,
       method: METHODS.DELETE_VOICEMAIL,
     });
@@ -333,7 +334,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param messageId - MessageId for which we need the transcript.
    */
   public async getVMTranscript(messageId: string): Promise<VoicemailResponseEvent | null> {
-    log.info(`invoking with: messageId=${messageId}`, {
+    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, {
       file: VOICEMAIL_FILE,
       method: METHODS.GET_VM_TRANSCRIPT,
     });
@@ -361,7 +362,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param callingPartyInfo - Calling Party Info.
    */
   public resolveContact(callingPartyInfo: CallingPartyInfo): Promise<DisplayInformation | null> {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: VOICEMAIL_FILE,
       method: METHODS.RESOLVE_CONTACT,
     });

@@ -1,5 +1,6 @@
 /* eslint-disable dot-notation */
 /* eslint-disable valid-jsdoc */
+import {METHOD_START_MESSAGE} from '../../common/constants';
 import {CALL_MANAGER_FILE, METHODS} from '../constants';
 import {CALLING_CLIENT_EVENT_KEYS, CallEventTypes, LINE_EVENT_KEYS} from '../../Events/types';
 import {Eventing} from '../../Events/impl';
@@ -65,7 +66,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
     lineId: string,
     destination?: CallDetails
   ): ICall => {
-    log.info(`invoking with ${direction}, ${deviceId} and ${lineId}`, {
+    log.info(`${METHOD_START_MESSAGE} with ${direction}, ${deviceId} and ${lineId}`, {
       file: CALL_MANAGER_FILE,
       method: METHODS.CREATE_CALL,
     });
@@ -143,7 +144,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    * @param event - Mobius Events.
    */
   private dequeueWsEvents(event: unknown) {
-    log.info(`invoking with event ${event}`, {
+    log.info(`${METHOD_START_MESSAGE} with event ${event}`, {
       file: CALL_MANAGER_FILE,
       method: METHODS.DEQUEUE_WS_EVENTS,
     });

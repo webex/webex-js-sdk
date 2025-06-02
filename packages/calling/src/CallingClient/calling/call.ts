@@ -95,7 +95,7 @@ import {ICallerId} from './CallerId/types';
 import {createCallerId} from './CallerId';
 import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_ACTION} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
-import {SERVICES_ENDPOINT} from '../../common/constants';
+import {METHOD_START_MESSAGE, SERVICES_ENDPOINT} from '../../common/constants';
 
 /**
  *
@@ -946,7 +946,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleIncomingCallSetup(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_INCOMING_CALL_SETUP,
     });
@@ -962,7 +962,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Call Events.
    */
   private async handleOutgoingCallSetup(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_OUTGOING_CALL_SETUP,
     });
@@ -1022,7 +1022,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleCallHold(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_CALL_HOLD,
     });
@@ -1097,7 +1097,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleCallResume(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_CALL_RESUME,
     });
@@ -1171,7 +1171,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Call Events.
    */
   private handleIncomingCallProgress(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_INCOMING_CALL_PROGRESS,
     });
@@ -1207,7 +1207,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private handleIncomingRoapOfferRequest(context: MediaContext, event: RoapEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_INCOMING_ROAP_OFFER_REQUEST,
     });
@@ -1247,7 +1247,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallAlerting(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_OUTGOING_CALL_ALERTING,
     });
@@ -1296,7 +1296,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleIncomingCallConnect(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_INCOMING_CALL_CONNECT,
     });
@@ -1318,7 +1318,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallConnect(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
     });
@@ -1381,7 +1381,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleIncomingCallDisconnect(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
     });
@@ -1434,7 +1434,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallDisconnect(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
     });
@@ -1490,7 +1490,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleCallEstablished(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_CALL_ESTABLISHED,
     });
@@ -1568,7 +1568,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Call Events.
    */
   private async handleUnknownState(event: CallEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_UNKNOWN_STATE,
     });
@@ -1673,7 +1673,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private async handleRoapEstablished(context: MediaContext, event: RoapEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_ROAP_ESTABLISHED,
     });
@@ -1779,7 +1779,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private async handleRoapError(context: MediaContext, event: RoapEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_ROAP_ERROR,
     });
@@ -1844,7 +1844,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private async handleOutgoingRoapOffer(context: MediaContext, event: RoapEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
     });
@@ -1908,7 +1908,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private async handleOutgoingRoapAnswer(context: MediaContext, event: RoapEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_OUTGOING_ROAP_ANSWER,
     });
@@ -1961,7 +1961,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private handleIncomingRoapOffer(context: MediaContext, event: RoapEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_INCOMING_ROAP_OFFER,
     });
@@ -2006,7 +2006,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private handleIncomingRoapAnswer(context: MediaContext, event: RoapEvent) {
-    log.info(`invoking with: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_INCOMING_ROAP_ANSWER,
     });
@@ -2170,7 +2170,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioStream - The local audio stream for the call.
    */
   public async answer(localAudioStream: LocalMicrophoneStream) {
-    log.info(`invoking with stream`, {
+    log.info(`${METHOD_START_MESSAGE} with stream`, {
       file: CALL_FILE,
       method: METHODS.ANSWER,
     });
@@ -2213,7 +2213,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.localAudioTrack
    */
   public async dial(localAudioStream: LocalMicrophoneStream) {
-    log.info(`invoking with stream`, {
+    log.info(`${METHOD_START_MESSAGE} with stream`, {
       file: CALL_FILE,
       method: METHODS.DIAL,
     });
@@ -2887,7 +2887,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    *
    */
   public end = (): void => {
-    log.info(`invoking`, {
+    log.info(`${METHOD_START_MESSAGE}`, {
       file: CALL_FILE,
       method: METHODS.END,
     });
@@ -2921,7 +2921,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param tone - DTMF tones.
    */
   public sendDigit(tone: string) {
-    log.info(`invoking with: ${tone}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${tone}`, {
       file: CALL_FILE,
       method: METHODS.SEND_DIGIT,
     });
@@ -2949,7 +2949,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * ```
    */
   public mute = (localAudioStream: LocalMicrophoneStream, muteType?: MUTE_TYPE): void => {
-    log.info(`invoking with: ${muteType || 'user mute'}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${muteType || 'user mute'}`, {
       file: CALL_FILE,
       method: METHODS.MUTE,
     });

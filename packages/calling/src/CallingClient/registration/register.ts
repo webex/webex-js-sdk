@@ -1,5 +1,6 @@
 import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
+import {METHOD_START_MESSAGE} from '../../common/constants';
 import {ERROR_CODE} from '../../Errors/types';
 import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
 
@@ -119,7 +120,7 @@ export class Registration implements IRegistration {
   }
 
   public setActiveMobiusUrl(url: string) {
-    log.info(`invoking with ${url}`, {
+    log.info(`${METHOD_START_MESSAGE} with ${url}`, {
       method: METHODS.UPDATE_ACTIVE_MOBIUS,
       file: REGISTRATION_FILE,
     });
@@ -128,7 +129,7 @@ export class Registration implements IRegistration {
   }
 
   public setMobiusServers(primaryMobiusUris: string[], backupMobiusUris: string[]) {
-    log.log('invoking', {method: METHODS.SET_MOBIUS_SERVERS, file: REGISTRATION_FILE});
+    log.log(METHOD_START_MESSAGE, {method: METHODS.SET_MOBIUS_SERVERS, file: REGISTRATION_FILE});
     this.primaryMobiusUris = primaryMobiusUris;
     this.backupMobiusUris = backupMobiusUris;
   }
@@ -507,7 +508,10 @@ export class Registration implements IRegistration {
    *
    */
   public async handleConnectionRestoration(retry: boolean): Promise<boolean> {
-    log.info('invoking', {method: METHODS.HANDLE_CONNECTION_RESTORATION, file: REGISTRATION_FILE});
+    log.info(METHOD_START_MESSAGE, {
+      method: METHODS.HANDLE_CONNECTION_RESTORATION,
+      file: REGISTRATION_FILE,
+    });
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
@@ -864,7 +868,7 @@ export class Registration implements IRegistration {
    *
    */
   public async reconnectOnFailure(caller: string) {
-    log.info('invoking', {method: METHODS.RECONNECT_ON_FAILURE, file: REGISTRATION_FILE});
+    log.info(METHOD_START_MESSAGE, {method: METHODS.RECONNECT_ON_FAILURE, file: REGISTRATION_FILE});
     this.reconnectPending = false;
     if (!this.isDeviceRegistered()) {
       if (Object.keys(this.callManager.getActiveCalls()).length === 0) {

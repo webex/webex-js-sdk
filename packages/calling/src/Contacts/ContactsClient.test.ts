@@ -6,6 +6,7 @@ import {createContactsClient} from './ContactsClient';
 import {
   FAILURE_MESSAGE,
   IDENTITY_ENDPOINT_RESOURCE,
+  METHOD_START_MESSAGE,
   SCIM_ENDPOINT_RESOURCE,
   SCIM_USER_FILTER,
   SUCCESS_MESSAGE,
@@ -259,7 +260,7 @@ describe('ContactClient Tests', () => {
         });
       }
 
-      expect(log.info).toHaveBeenCalledWith('invoking', {
+      expect(log.info).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
         file: CONTACTS_FILE,
         method: METHODS.GET_CONTACTS,
       });
@@ -278,7 +279,7 @@ describe('ContactClient Tests', () => {
         method: HTTP_METHODS.GET,
       });
 
-      expect(log.info).toHaveBeenCalledWith('invoking', {
+      expect(log.info).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
         file: CONTACTS_FILE,
         method: METHODS.GET_CONTACTS,
       });
@@ -353,11 +354,14 @@ describe('ContactClient Tests', () => {
     expect(contactClient['groups'].length).toEqual(2);
     expect(contactClient['groups'][1].displayName).toEqual('Top Contacts');
 
-    expect(log.info).toHaveBeenCalledWith(`invoking with displayName: Top Contacts`, {
-      file: CONTACTS_FILE,
-      method: METHODS.CREATE_CONTACT_GROUP,
-    });
-    expect(log.info).toHaveBeenCalledWith('invoking', {
+    expect(log.info).toHaveBeenCalledWith(
+      `${METHOD_START_MESSAGE} with displayName: Top Contacts`,
+      {
+        file: CONTACTS_FILE,
+        method: METHODS.CREATE_CONTACT_GROUP,
+      }
+    );
+    expect(log.info).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
       file: CONTACTS_FILE,
       method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
     });
@@ -390,7 +394,7 @@ describe('ContactClient Tests', () => {
 
     expect(contactsResponse.statusCode).toEqual(201);
     expect(contactsResponse.data.group?.groupId).toBe(mockGroupResponse.groupId);
-    expect(infoSpy).toBeCalledWith(`invoking with displayName: Top Contacts`, {
+    expect(infoSpy).toBeCalledWith(`${METHOD_START_MESSAGE} with displayName: Top Contacts`, {
       file: CONTACTS_FILE,
       method: METHODS.CREATE_CONTACT_GROUP,
     });
@@ -398,7 +402,7 @@ describe('ContactClient Tests', () => {
       file: CONTACTS_FILE,
       method: METHODS.CREATE_CONTACT_GROUP,
     });
-    expect(infoSpy).not.toBeCalledWith('invoking', {
+    expect(infoSpy).not.toBeCalledWith(METHOD_START_MESSAGE, {
       file: CONTACTS_FILE,
       method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
     });
@@ -434,10 +438,13 @@ describe('ContactClient Tests', () => {
         method: METHODS.CREATE_CONTACT_GROUP,
       }
     );
-    expect(log.info).toBeCalledWith(`invoking with displayName: ${mockGroupResponse.displayName}`, {
-      file: CONTACTS_FILE,
-      method: METHODS.CREATE_CONTACT_GROUP,
-    });
+    expect(log.info).toBeCalledWith(
+      `${METHOD_START_MESSAGE} with displayName: ${mockGroupResponse.displayName}`,
+      {
+        file: CONTACTS_FILE,
+        method: METHODS.CREATE_CONTACT_GROUP,
+      }
+    );
     expect(contactClient['groups']).toEqual(mockContactResponseBodyOne.groups);
   });
 
@@ -468,7 +475,10 @@ describe('ContactClient Tests', () => {
         schemas: 'urn:cisco:codev:identity:contact:core:1.0',
       },
     });
-    expect(log.info).toBeCalledWith(`invoking with displayName: New group`, loggerContext);
+    expect(log.info).toBeCalledWith(
+      `${METHOD_START_MESSAGE} with displayName: New group`,
+      loggerContext
+    );
     expect(warnSpy).toBeCalledTimes(1);
     expect(warnSpy).toHaveBeenNthCalledWith(
       1,
@@ -506,7 +516,7 @@ describe('ContactClient Tests', () => {
       uri: `${contactServiceGroupUrl}/${mockGroupResponse.groupId}`,
     });
     expect(log.info).toBeCalledWith(
-      `invoking with groupId: ${mockGroupResponse.groupId}`,
+      `${METHOD_START_MESSAGE} with groupId: ${mockGroupResponse.groupId}`,
       loggerContext
     );
     expect(log.info).toBeCalledWith(
@@ -588,10 +598,13 @@ describe('ContactClient Tests', () => {
 
     expect(res.statusCode).toEqual(201);
     expect(res.data.contact?.contactId).toBe(mockContactResponse.contactId);
-    expect(infoSpy).toBeCalledWith(`invoking with contactType: ${contact.contactType}`, {
-      file: CONTACTS_FILE,
-      method: METHODS.CREATE_CONTACT,
-    });
+    expect(infoSpy).toBeCalledWith(
+      `${METHOD_START_MESSAGE} with contactType: ${contact.contactType}`,
+      {
+        file: CONTACTS_FILE,
+        method: METHODS.CREATE_CONTACT,
+      }
+    );
     expect(logSpy).toBeCalledWith(`Contact successfully created`, {
       file: CONTACTS_FILE,
       method: METHODS.CREATE_CONTACT,
@@ -695,11 +708,11 @@ describe('ContactClient Tests', () => {
     });
     expect(res.data.contact?.contactId).toBe(mockContactResponse.contactId);
 
-    expect(log.info).toBeCalledWith(`invoking with contactType: CUSTOM`, {
+    expect(log.info).toBeCalledWith(`${METHOD_START_MESSAGE} with contactType: CUSTOM`, {
       file: CONTACTS_FILE,
       method: METHODS.CREATE_CONTACT,
     });
-    expect(log.info).toBeCalledWith('invoking', {
+    expect(log.info).toBeCalledWith(METHOD_START_MESSAGE, {
       file: CONTACTS_FILE,
       method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
     });
@@ -748,7 +761,7 @@ describe('ContactClient Tests', () => {
 
     expect(res.statusCode).toEqual(400);
     expect(res.data.error).toEqual('contactId is required for contactType:CLOUD.');
-    expect(log.info).toBeCalledWith(`invoking with contactType: CLOUD`, {
+    expect(log.info).toBeCalledWith(`${METHOD_START_MESSAGE} with contactType: CLOUD`, {
       file: CONTACTS_FILE,
       method: METHODS.CREATE_CONTACT,
     });
@@ -825,7 +838,7 @@ describe('ContactClient Tests', () => {
     });
     expect(res.statusCode).toEqual(503);
 
-    expect(log.info).toBeCalledWith(`invoking with contactType: CLOUD`, {
+    expect(log.info).toBeCalledWith(`${METHOD_START_MESSAGE} with contactType: CLOUD`, {
       file: CONTACTS_FILE,
       method: METHODS.CREATE_CONTACT,
     });
@@ -851,10 +864,13 @@ describe('ContactClient Tests', () => {
     });
     expect(contactClient['contacts']).toEqual([]);
 
-    expect(log.info).toBeCalledWith(`invoking with contactId: ${mockContactListOne[0].contactId}`, {
-      file: CONTACTS_FILE,
-      method: METHODS.DELETE_CONTACT,
-    });
+    expect(log.info).toBeCalledWith(
+      `${METHOD_START_MESSAGE} with contactId: ${mockContactListOne[0].contactId}`,
+      {
+        file: CONTACTS_FILE,
+        method: METHODS.DELETE_CONTACT,
+      }
+    );
     expect(log.info).toBeCalledWith(`Deleting contact : ${mockContactListOne[0].contactId}`, {
       file: CONTACTS_FILE,
       method: METHODS.DELETE_CONTACT,
@@ -880,10 +896,13 @@ describe('ContactClient Tests', () => {
 
     expect(contactClient['contacts']).toEqual(mockContactListOne);
 
-    expect(log.info).toBeCalledWith(`invoking with contactId: ${mockContactListOne[0].contactId}`, {
-      file: CONTACTS_FILE,
-      method: METHODS.DELETE_CONTACT,
-    });
+    expect(log.info).toBeCalledWith(
+      `${METHOD_START_MESSAGE} with contactId: ${mockContactListOne[0].contactId}`,
+      {
+        file: CONTACTS_FILE,
+        method: METHODS.DELETE_CONTACT,
+      }
+    );
     expect(log.info).toBeCalledWith(`Deleting contact : ${mockContactListOne[0].contactId}`, {
       file: CONTACTS_FILE,
       method: METHODS.DELETE_CONTACT,
@@ -1002,7 +1021,7 @@ describe('ContactClient Tests', () => {
       file: 'Contacts',
       method: METHODS.GET_CONTACTS,
     });
-    expect(infoSpy).toBeCalledWith('invoking', {
+    expect(infoSpy).toBeCalledWith(METHOD_START_MESSAGE, {
       file: CONTACTS_FILE,
       method: METHODS.GET_CONTACTS,
     });

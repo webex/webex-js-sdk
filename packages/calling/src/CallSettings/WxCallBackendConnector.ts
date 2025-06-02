@@ -18,6 +18,7 @@ import {
   SUCCESS_MESSAGE,
   XML_TYPE,
   WEBEX_CALLING_CONNECTOR_FILE,
+  METHOD_START_MESSAGE,
 } from '../common/constants';
 import {
   CALL_WAITING_ENDPOINT,
@@ -84,7 +85,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.GET_CALL_WAITING_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       if (!this.xsiEndpoint) {
@@ -154,7 +155,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.GET_DO_NOT_DISTURB_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -199,7 +200,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.SET_DO_NOT_DISTURB_SETTING,
     };
 
-    log.info('invoking with', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const dndRequestBody: ToggleSetting = {
@@ -250,7 +251,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.GET_CALL_FORWARD_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -294,7 +295,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.SET_CALL_FORWARD_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -337,7 +338,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.GET_VOICEMAIL_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -379,7 +380,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.SET_VOICEMAIL_SETTING,
     };
 
-    log.info('invoking with', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -423,7 +424,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.GET_CALL_FORWARD_ALWAYS_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
     const cfResponse = await this.getCallForwardSetting();
 
     if (cfResponse.statusCode === 200) {

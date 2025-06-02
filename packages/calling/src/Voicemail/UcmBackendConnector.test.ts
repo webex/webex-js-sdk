@@ -19,6 +19,7 @@ import * as utils from '../common/Utils';
 import {
   CONTENT,
   FAILURE_MESSAGE,
+  METHOD_START_MESSAGE,
   SUCCESS_MESSAGE,
   UNPROCESSABLE_CONTENT_CODE,
 } from '../common/constants';
@@ -140,7 +141,7 @@ describe('Voicemail UCM Backend Connector Test case', () => {
       method: HTTP_METHODS.GET,
       uri: `${ucmBackendInfoUrl}/${messageId}/${CONTENT}`,
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.GET_VOICEMAIL_CONTENT,
     });
@@ -170,7 +171,7 @@ describe('Voicemail UCM Backend Connector Test case', () => {
         read: 'true',
       },
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.VOICEMAIL_MARK_AS_READ,
     });
@@ -197,7 +198,7 @@ describe('Voicemail UCM Backend Connector Test case', () => {
         read: 'false',
       },
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
     });
@@ -220,7 +221,7 @@ describe('Voicemail UCM Backend Connector Test case', () => {
         orgId,
       },
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.DELETE_VOICEMAIL,
     });
@@ -340,7 +341,7 @@ describe('Voicemail failure tests for UCM', () => {
       method: HTTP_METHODS.GET,
       uri: `${ucmBackendInfoUrl}/${messageId}/${CONTENT}`,
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.GET_VOICEMAIL_CONTENT,
     });
@@ -381,7 +382,7 @@ describe('Voicemail failure tests for UCM', () => {
       method: HTTP_METHODS.GET,
       uri: `${ucmBackendInfoUrl}/${messageId}/${CONTENT}`,
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.GET_VOICEMAIL_CONTENT,
     });
@@ -412,7 +413,7 @@ describe('Voicemail failure tests for UCM', () => {
         read: 'true',
       },
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.VOICEMAIL_MARK_AS_READ,
     });
@@ -444,7 +445,7 @@ describe('Voicemail failure tests for UCM', () => {
         read: 'false',
       },
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
     });
@@ -474,7 +475,7 @@ describe('Voicemail failure tests for UCM', () => {
         orgId,
       },
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.DELETE_VOICEMAIL,
     });
@@ -538,7 +539,7 @@ describe('Voicemail failure tests for UCM', () => {
         read: 'true',
       },
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.VOICEMAIL_MARK_AS_READ,
     });
@@ -572,7 +573,7 @@ describe('Voicemail failure tests for UCM', () => {
         read: 'false',
       },
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
     });
@@ -603,7 +604,7 @@ describe('Voicemail failure tests for UCM', () => {
         orgId,
       },
     });
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with Message ID: ${messageId}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with Message ID: ${messageId}`, {
       file: 'UcmBackendConnector',
       method: METHODS.DELETE_VOICEMAIL,
     });

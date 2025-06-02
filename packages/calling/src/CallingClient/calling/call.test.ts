@@ -27,6 +27,7 @@ import {getCallManager} from './callManager';
 import {waitForMsecs} from '../../common/Utils';
 import log from '../../Logger';
 import {CallError} from '../../Errors';
+import {METHOD_START_MESSAGE} from '../../common/constants';
 
 jest.mock('@webex/internal-media-core');
 
@@ -188,7 +189,7 @@ describe('Call Tests', () => {
     call.sendDigit(tone);
 
     // Expect log.info to be called with the digit being sent
-    expect(infoSpy).toHaveBeenCalledWith(`invoking with: ${tone}`, {
+    expect(infoSpy).toHaveBeenCalledWith(`${METHOD_START_MESSAGE} with: ${tone}`, {
       file: 'call',
       method: 'sendDigit',
     });
@@ -248,7 +249,7 @@ describe('Call Tests', () => {
     expect(mockStream.setUserMuted).toBeCalledWith(false);
     expect(call.isMuted()).toEqual(false);
     call.end();
-    expect(infoSpy).toHaveBeenCalledWith('invoking', {
+    expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
       file: 'call',
       method: 'end',
     });
@@ -967,10 +968,13 @@ describe('State Machine handler tests', () => {
       file: 'call',
       method: 'handleCallEstablished',
     });
-    expect(logSpy).toHaveBeenCalledWith(`invoking with: ${call.getCorrelationId()}`, {
-      file: 'call',
-      method: 'handleCallEstablished',
-    });
+    expect(logSpy).toHaveBeenCalledWith(
+      `${METHOD_START_MESSAGE} with: ${call.getCorrelationId()}`,
+      {
+        file: 'call',
+        method: 'handleCallEstablished',
+      }
+    );
   });
 
   it('session refresh failure', async () => {
@@ -2147,10 +2151,13 @@ describe('State Machine handler tests', () => {
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_CALL_HOLD');
 
-    expect(infoSpy).toHaveBeenLastCalledWith(`invoking with: ${call.getCorrelationId()}`, {
-      file: 'call',
-      method: 'handleCallHold',
-    });
+    expect(infoSpy).toHaveBeenLastCalledWith(
+      `${METHOD_START_MESSAGE} with: ${call.getCorrelationId()}`,
+      {
+        file: 'call',
+        method: 'handleCallHold',
+      }
+    );
   });
 
   describe('Call event timers tests', () => {

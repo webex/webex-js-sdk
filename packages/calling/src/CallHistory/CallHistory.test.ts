@@ -35,6 +35,7 @@ import {
 import {APPLICATION_JSON, CALL_HISTORY_FILE, CONTENT_TYPE, METHODS} from './constants';
 import * as utils from '../common/Utils';
 import log from '../Logger';
+import {METHOD_START_MESSAGE} from '../common/constants';
 
 const webex = getTestUtilsWebex();
 let serviceErrorCodeHandlerSpy: jest.SpyInstance;
@@ -258,7 +259,7 @@ describe('Call history tests', () => {
 
       // Verify logs were called with correct information
       expect(infoSpy).toHaveBeenCalledWith(
-        `invoking with sessions: ${JSON.stringify(convertedEndTimeSessionIds)}`,
+        `${METHOD_START_MESSAGE} with sessions: ${JSON.stringify(convertedEndTimeSessionIds)}`,
         methodDetails
       );
       expect(logSpy).toHaveBeenCalledWith(
@@ -387,7 +388,7 @@ describe('Call history tests', () => {
 
       // Verify logs were called with correct information
       expect(infoSpy).toHaveBeenCalledWith(
-        `invoking with URL: https://gw.telemetry.int-ucmgmt.cisco.com/v1/uc/config/people/8a67806f-fc4d-446b-a131-31e71ea5b0e9/lines?orgId=1704d30d-a131-4bc7-9449-948487643793`,
+        `${METHOD_START_MESSAGE} with URL: https://gw.telemetry.int-ucmgmt.cisco.com/v1/uc/config/people/8a67806f-fc4d-446b-a131-31e71ea5b0e9/lines?orgId=1704d30d-a131-4bc7-9449-948487643793`,
         {
           file: CALL_HISTORY_FILE,
           method: METHODS.FETCH_UCM_LINES_DATA,
@@ -518,7 +519,7 @@ describe('Call history tests', () => {
 
       // Verify logs were called with correct information
       expect(infoSpy).toHaveBeenCalledWith(
-        `invoking with sessions: ${JSON.stringify(deleteSessionIds)}`,
+        `${METHOD_START_MESSAGE} with sessions: ${JSON.stringify(deleteSessionIds)}`,
         methodDetails
       );
       expect(logSpy).toHaveBeenCalledWith(

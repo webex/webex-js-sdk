@@ -49,6 +49,7 @@ import {filterMobiusUris} from '../common/Utils';
 import {URL} from './registration/registerFixtures';
 import {ICall} from './calling/types';
 import {ServiceHost} from '../SDKConnector/types';
+import {METHOD_START_MESSAGE} from '../common/constants';
 
 global.crypto = {
   randomUUID: () => '12345678-1234-5678-1234-567812345678',
@@ -416,7 +417,7 @@ describe('CallingClient Tests', () => {
 
       expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
 
-      expect(infoSpy).toHaveBeenCalledWith('invoking', {
+      expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
         file: 'CallingClient',
         method: 'getMobiusServers',
       });

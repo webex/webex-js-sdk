@@ -4,6 +4,7 @@
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
 import ExtendedError from 'Errors/catalog/ExtendedError';
+import {METHOD_START_MESSAGE} from '../common/constants';
 import {
   filterMobiusUris,
   handleCallingClientErrors,
@@ -188,7 +189,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Register callbacks for network changes.
    */
   private async detectNetworkChange() {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.DETECT_NETWORK_CHANGE,
     });
@@ -228,7 +229,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Fetches countryCode and region of the client.
    */
   private async getClientRegionInfo(): Promise<RegionInfo> {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.GET_CLIENT_REGION_INFO,
     });
@@ -302,7 +303,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Local method for finding the mobius servers.
    */
   private async getMobiusServers() {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.GET_MOBIUS_SERVERS,
     });
@@ -421,7 +422,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * present on sdk are cleaned up.
    */
   private registerCallsClearedListener() {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.REGISTER_CALLS_CLEARED_LISTENER,
     });
@@ -437,7 +438,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * calls are cleaned up.
    */
   private callsClearedHandler = async () => {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.CALLS_CLEARED_HANDLER,
     });
@@ -475,7 +476,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   private registerSessionsListener() {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.REGISTER_SESSIONS_LISTENER,
     });
@@ -507,7 +508,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * NOTE: currently multiple lines are not supported
    */
   private async createLine(): Promise<void> {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.CREATE_LINE,
     });

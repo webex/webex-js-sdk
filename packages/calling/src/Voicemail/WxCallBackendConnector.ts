@@ -11,6 +11,7 @@ import {
   XML_TYPE,
   BW_XSI_ENDPOINT_VERSION,
   WEBEX_CALLING_CONNECTOR_FILE,
+  METHOD_START_MESSAGE,
 } from '../common/constants';
 import {
   serviceErrorCodeHandler,
@@ -105,7 +106,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.INIT,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
     const response = this.setXsiVoiceMessageURI();
 
     return response as unknown as VoicemailResponseEvent;
@@ -130,7 +131,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.SET_XSI_VOICE_MESSAGE_URI,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
     this.xsiEndpoint = await getXsiActionEndpoint(this.webex, loggerContext, CALLING_BACKEND.WXC);
     log.log(`XsiEndpoint is ${this.xsiEndpoint}`, loggerContext);
     if (this.userId) {
@@ -167,7 +168,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
     };
 
     log.info(
-      `invoking with Offset: ${offset} Offset limit: ${offsetLimit} Sort type:${sort}`,
+      `${METHOD_START_MESSAGE} with Offset: ${offset} Offset limit: ${offsetLimit} Sort type:${sort}`,
       loggerContext
     );
 
@@ -249,7 +250,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.GET_VOICEMAIL_CONTENT,
     };
 
-    log.info(`invoking with messageId: ${messageId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with messageId: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}`;
@@ -303,7 +304,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.GET_VOICEMAIL_SUMMARY,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const voicemailSummaryUrl = `${this.xsiEndpoint}/${BW_XSI_ENDPOINT_VERSION}/${USER}/${this.userId}/${CALLS}/${MESSAGE_SUMMARY}`;
@@ -362,7 +363,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.VOICEMAIL_MARK_AS_READ,
     };
 
-    log.info(`invoking with messageId: ${messageId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with messageId: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${MARK_AS_READ}`;
@@ -404,7 +405,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
     };
 
-    log.info(`invoking with messageId: ${messageId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with messageId: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${MARK_AS_UNREAD}`;
@@ -448,7 +449,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.DELETE_VOICEMAIL,
     };
 
-    log.info(`invoking with messageId: ${messageId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with messageId: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}`;
@@ -491,7 +492,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       method: METHODS.GET_VM_TRANSCRIPT,
     };
 
-    log.info(`invoking with messageId: ${messageId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with messageId: ${messageId}`, loggerContext);
 
     try {
       const voicemailContentUrl = `${this.xsiEndpoint}${messageId}/${TRANSCRIPT}`;

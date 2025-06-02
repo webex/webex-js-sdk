@@ -1,4 +1,5 @@
 /* eslint-disable valid-jsdoc */
+import {METHOD_START_MESSAGE} from '../common/constants';
 import {getCallingBackEnd} from '../common/Utils';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
@@ -57,7 +58,7 @@ export class CallSettings implements ICallSettings {
    */
   private initializeBackendConnector(logger: LoggerInterface, useProdWebexApis?: boolean) {
     this.callingBackend = getCallingBackEnd(this.webex);
-    log.info(`invoking with ${this.callingBackend} backend`, {
+    log.info(`${METHOD_START_MESSAGE} with ${this.callingBackend} backend`, {
       file: CALL_SETTINGS_FILE,
       method: METHODS.INITIALIZE_BACKEND_CONNECTOR,
     });
@@ -81,7 +82,7 @@ export class CallSettings implements ICallSettings {
    * Reads call waiting setting in Webex.
    */
   public async getCallWaitingSetting() {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALL_SETTINGS_FILE,
       method: METHODS.GET_CALL_WAITING_SETTING,
     });
@@ -93,7 +94,7 @@ export class CallSettings implements ICallSettings {
    * Reads DND setting in Webex.
    */
   public async getDoNotDisturbSetting(): Promise<CallSettingResponse> {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALL_SETTINGS_FILE,
       method: METHODS.GET_DO_NOT_DISTURB_SETTING,
     });
@@ -106,7 +107,7 @@ export class CallSettings implements ICallSettings {
    * @param enabled - true to enable DND, false to disable DND.
    */
   public async setDoNotDisturbSetting(enabled: boolean): Promise<CallSettingResponse> {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALL_SETTINGS_FILE,
       method: METHODS.SET_DO_NOT_DISTURB_SETTING,
     });
@@ -119,7 +120,7 @@ export class CallSettings implements ICallSettings {
    *
    */
   public async getCallForwardSetting(): Promise<CallSettingResponse> {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALL_SETTINGS_FILE,
       method: METHODS.GET_CALL_FORWARD_SETTING,
     });
@@ -134,7 +135,7 @@ export class CallSettings implements ICallSettings {
   public async setCallForwardSetting(
     callForwardingRequest: CallForwardSetting
   ): Promise<CallSettingResponse> {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALL_SETTINGS_FILE,
       method: METHODS.SET_CALL_FORWARD_SETTING,
     });
@@ -146,7 +147,7 @@ export class CallSettings implements ICallSettings {
    * Reads Voicemail setting in Webex.
    */
   public async getVoicemailSetting(): Promise<CallSettingResponse> {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALL_SETTINGS_FILE,
       method: METHODS.GET_VOICEMAIL_SETTING,
     });
@@ -161,7 +162,7 @@ export class CallSettings implements ICallSettings {
   public async setVoicemailSetting(
     voicemailRequest: VoicemailSetting
   ): Promise<CallSettingResponse> {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALL_SETTINGS_FILE,
       method: METHODS.SET_VOICEMAIL_SETTING,
     });
@@ -176,7 +177,7 @@ export class CallSettings implements ICallSettings {
    * @param directoryNumber - Directory number of the user.
    */
   public async getCallForwardAlwaysSetting(directoryNumber?: string): Promise<CallSettingResponse> {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: CALL_SETTINGS_FILE,
       method: METHODS.GET_CALL_FORWARD_ALWAYS_SETTING,
     });

@@ -5,6 +5,7 @@ import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {serviceErrorCodeHandler, uploadLogs} from '../common/Utils';
 import {
   FAILURE_MESSAGE,
+  METHOD_START_MESSAGE,
   STATUS_CODE,
   SUCCESS_MESSAGE,
   UCM_CONNECTOR_FILE,
@@ -63,7 +64,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: METHODS.GET_CALL_WAITING_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     return this.getMethodNotSupportedResponse();
   }
@@ -77,7 +78,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: METHODS.GET_DO_NOT_DISTURB_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     return this.getMethodNotSupportedResponse();
   }
@@ -91,7 +92,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: METHODS.SET_DO_NOT_DISTURB_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     return this.getMethodNotSupportedResponse();
   }
@@ -105,7 +106,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: METHODS.GET_CALL_FORWARD_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     return this.getMethodNotSupportedResponse();
   }
@@ -119,7 +120,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: METHODS.SET_CALL_FORWARD_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     return this.getMethodNotSupportedResponse();
   }
@@ -133,7 +134,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: METHODS.GET_VOICEMAIL_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     return this.getMethodNotSupportedResponse();
   }
@@ -147,7 +148,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: METHODS.SET_VOICEMAIL_SETTING,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     return this.getMethodNotSupportedResponse();
   }
@@ -161,7 +162,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: METHODS.GET_METHOD_NOT_SUPPORTED_RESPONSE,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     const response = serviceErrorCodeHandler({statusCode: 501}, loggerContext);
 
@@ -182,7 +183,10 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: METHODS.GET_CALL_FORWARD_ALWAYS_SETTING,
     };
 
-    log.info(directoryNumber ? `invoking with ${directoryNumber}` : 'invoking', loggerContext);
+    log.info(
+      directoryNumber ? `${METHOD_START_MESSAGE} with ${directoryNumber}` : METHOD_START_MESSAGE,
+      loggerContext
+    );
 
     const webexApisUrl = this.useProdWebexApis
       ? WEBEX_API_CONFIG_PROD_URL

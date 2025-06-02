@@ -15,6 +15,7 @@ import {
   SUCCESS_MESSAGE,
   XSI_ACTION_ENDPOINT_ORG_URL_PARAM,
   WEBEX_CALLING_CONNECTOR_FILE,
+  METHOD_START_MESSAGE,
 } from '../common/constants';
 import {
   CALL_WAITING_ENDPOINT,
@@ -114,7 +115,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         },
       });
 
-      expect(infoSpy).toHaveBeenCalledWith('invoking', {
+      expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
         file: WEBEX_CALLING_CONNECTOR_FILE,
         method: 'getCallWaitingSetting',
       });
@@ -180,7 +181,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         }
       );
 
-      expect(infoSpy).toHaveBeenCalledWith('invoking', {
+      expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
         file: WEBEX_CALLING_CONNECTOR_FILE,
         method: 'getCallWaitingSetting',
       });
@@ -261,7 +262,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         uri,
       });
 
-      expect(infoSpy).toHaveBeenCalledWith('invoking', {
+      expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
         file: WEBEX_CALLING_CONNECTOR_FILE,
         method: 'getDoNotDisturbSetting',
       });
@@ -322,7 +323,7 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         }
       );
 
-      expect(infoSpy).toHaveBeenCalledWith('invoking', {
+      expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
         file: WEBEX_CALLING_CONNECTOR_FILE,
         method: 'getDoNotDisturbSetting',
       });

@@ -1,5 +1,6 @@
 import {Mutex} from 'async-mutex';
 import {v4 as uuid} from 'uuid';
+import {METHOD_START_MESSAGE} from '../../common/constants';
 import {
   CallDetails,
   CallDirection,
@@ -130,7 +131,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * Wrapper to for device registration.
    */
   public async register() {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: LINE_FILE,
       method: METHODS.REGISTER,
     });
@@ -149,7 +150,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * Wrapper to for device  deregister.
    */
   public async deregister() {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: LINE_FILE,
       method: METHODS.DEREGISTER,
     });
@@ -187,7 +188,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * Line events emitter
    */
   public lineEmitter = (event: LINE_EVENTS, deviceInfo?: IDeviceInfo, lineError?: LineError) => {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: LINE_FILE,
       method: METHODS.LINE_EMITTER,
     });
@@ -243,7 +244,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * @param dest - The call details including destination information.
    */
   public makeCall = (dest?: CallDetails): ICall | undefined => {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: LINE_FILE,
       method: METHODS.MAKE_CALL,
     });
@@ -311,7 +312,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * An Incoming Call listener.
    */
   private incomingCallListener() {
-    log.info('invoking', {
+    log.info(METHOD_START_MESSAGE, {
       file: LINE_FILE,
       method: METHODS.INCOMING_CALL_LISTENER,
     });

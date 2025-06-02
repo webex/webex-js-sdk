@@ -2,6 +2,7 @@
 import ExtendedError from 'Errors/catalog/ExtendedError';
 import {
   FAILURE_MESSAGE,
+  METHOD_START_MESSAGE,
   SCIM_ENTERPRISE_USER,
   SCIM_WEBEXIDENTITY_USER,
   STATUS_CODE,
@@ -337,7 +338,7 @@ export class ContactsClient implements IContacts {
       method: METHODS.GET_CONTACTS,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     const contactList: Contact[] = [];
     const cloudContactsMap: ContactIdContactInfo = {};
@@ -447,7 +448,7 @@ export class ContactsClient implements IContacts {
       method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     let unboundedKeyUri = '';
 
@@ -471,7 +472,7 @@ export class ContactsClient implements IContacts {
       method: METHODS.FETCH_ENCRYPTION_KEY_URL,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     if (this.encryptionKeyUrl) {
       return this.encryptionKeyUrl;
@@ -518,7 +519,7 @@ export class ContactsClient implements IContacts {
       method: METHODS.FETCH_DEFAULT_GROUP,
     };
 
-    log.info('invoking', loggerContext);
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     if (this.defaultGroupId) {
       log.log(`Using existing default group with ID: ${this.defaultGroupId}`, {
@@ -583,7 +584,7 @@ export class ContactsClient implements IContacts {
       method: METHODS.CREATE_CONTACT_GROUP,
     };
 
-    log.info(`invoking with displayName: ${displayName}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with displayName: ${displayName}`, loggerContext);
 
     const encryptionKeyUrlFinal = encryptionKeyUrl || (await this.fetchEncryptionKeyUrl());
 
@@ -663,7 +664,7 @@ export class ContactsClient implements IContacts {
       method: METHODS.DELETE_CONTACT_GROUP,
     };
 
-    log.info(`invoking with groupId: ${groupId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with groupId: ${groupId}`, loggerContext);
 
     try {
       log.info(`Deleting contact group: ${groupId}`, loggerContext);
@@ -714,7 +715,7 @@ export class ContactsClient implements IContacts {
       method: METHODS.CREATE_CONTACT,
     };
 
-    log.info(`invoking with contactType: ${contactInfo.contactType}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with contactType: ${contactInfo.contactType}`, loggerContext);
 
     try {
       const contact = {...contactInfo};
@@ -821,7 +822,7 @@ export class ContactsClient implements IContacts {
       method: METHODS.DELETE_CONTACT,
     };
 
-    log.info(`invoking with contactId: ${contactId}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with contactId: ${contactId}`, loggerContext);
 
     try {
       log.info(`Deleting contact : ${contactId}`, loggerContext);
