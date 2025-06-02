@@ -5,10 +5,28 @@ import {TASK_MESSAGE_TYPE, TASK_API} from './constants';
 import * as Contact from './types';
 import AqmReqs from '../core/aqm-reqs';
 
+/**
+ * Returns an object with AQM dialer functions used for outbound contact handling.
+ *
+ * @param {AqmReqs} aqm - An instance of AQM request handler.
+ * @returns {{
+ *   startOutdial: (params: {data: Contact.DialerPayload}) => Promise<any>
+ * }} Object containing methods for outbound dialing.
+ * @ignore
+ */
 export default function aqmDialer(aqm: AqmReqs) {
   return {
-    /*
-     * Make outbound request.
+    /**
+     * Initiates an outbound contact (outdial) request.
+     *
+     * @param {Object} p - Parameters object.
+     * @param {Contact.DialerPayload} p.data - Payload for the outbound call.
+     * @returns {Promise<any>} A promise that resolves or rejects based on the outbound call response.
+     *
+     * Emits:
+     * - `CC_EVENTS.AGENT_OFFER_CONTACT` on success
+     * - `CC_EVENTS.AGENT_OUTBOUND_FAILED` on failure
+     * @ignore
      */
     startOutdial: aqm.req((p: {data: Contact.DialerPayload}) => ({
       url: `${TASK_API}`,
