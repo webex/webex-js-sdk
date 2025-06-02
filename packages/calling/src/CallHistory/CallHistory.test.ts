@@ -285,7 +285,7 @@ describe('Call history tests', () => {
       }));
       expect(response).toEqual(ERROR_DETAILS_400);
       expect(response.statusCode).toBe(400);
-      expect(global.fetch).toHaveBeenCalledWith(janusSetReadStateUrl, {
+      expect(global.fetch).toBeCalledOnceWith(janusSetReadStateUrl, {
         method: HTTP_METHODS.POST,
         headers: {
           [CONTENT_TYPE]: APPLICATION_JSON,
@@ -319,7 +319,7 @@ describe('Call history tests', () => {
       }));
       expect(response).toEqual(ERROR_DETAILS_401);
       expect(response.statusCode).toBe(401);
-      expect(global.fetch).toHaveBeenCalledWith(janusSetReadStateUrl, {
+      expect(global.fetch).toBeCalledOnceWith(janusSetReadStateUrl, {
         method: HTTP_METHODS.POST,
         headers: {
           [CONTENT_TYPE]: APPLICATION_JSON,
@@ -327,7 +327,7 @@ describe('Call history tests', () => {
         },
         body: JSON.stringify({endTimeSessionIds: convertedEndTimeSessionIds}),
       });
-      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         {
           statusCode: 401,
         },
