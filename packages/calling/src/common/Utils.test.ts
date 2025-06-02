@@ -62,6 +62,7 @@ import SDKConnector from '../SDKConnector';
 const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
 const mockRestoreCb = jest.fn();
+const mock429RetryCb = jest.fn();
 
 const webex = getTestUtilsWebex();
 SDKConnector.setWebex(webex);
@@ -241,6 +242,19 @@ describe('Registration Tests', () => {
       logMsg: '401 Unauthorized',
     },
     {
+      name: 'verify 400 error response',
+      statusCode: ERROR_CODE.BAD_REQUEST,
+      deviceErrorCode: 0,
+      retryAfter: 0,
+      message:
+        'Invalid input. Please verify the required parameters,  sign out and then sign back in with the valid data',
+      errorType: ERROR_TYPE.SERVER_ERROR,
+      emitterCbExpected: true,
+      finalError: true,
+      restoreCbExpected: false,
+      logMsg: '400 Bad Request',
+    },
+    {
       name: 'verify unknown error response',
       statusCode: 206,
       deviceErrorCode: 0,
@@ -305,7 +319,7 @@ describe('Registration Tests', () => {
       RegistrationStatus.ACTIVE
     );
 
-    handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, mockRestoreCb);
+    handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, mock429RetryCb, mockRestoreCb);
     if (codeObj.emitterCbExpected) {
       expect(mockEmitterCb).toBeCalledOnceWith(callClientError, codeObj.finalError);
     }
