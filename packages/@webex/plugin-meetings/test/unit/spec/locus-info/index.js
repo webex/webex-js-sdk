@@ -836,7 +836,7 @@ describe('plugin-meetings', () => {
           selfWithBrbChanged.controls.brb = enabled;
 
           locusInfo.emitScoped = sinon.stub();
-          locusInfo.updateSelf(selfWithBrbChanged, []);
+          locusInfo.updateSelf(selfWithBrbChanged);
 
           assert.calledWith(
             locusInfo.emitScoped,
@@ -857,14 +857,14 @@ describe('plugin-meetings', () => {
           const selfWithBrbChanged = cloneDeep(self);
           selfWithBrbChanged.controls.brb = value;
 
-          locusInfo.updateSelf(selfWithBrbChanged, []);
+          locusInfo.updateSelf(selfWithBrbChanged);
 
           locusInfo.emitScoped = sinon.stub();
 
           const newSelf = cloneDeep(self);
           newSelf.controls.brb = value;
 
-          locusInfo.updateSelf(newSelf, []);
+          locusInfo.updateSelf(newSelf);
 
           assert.neverCalledWith(
             locusInfo.emitScoped,
@@ -881,14 +881,14 @@ describe('plugin-meetings', () => {
       it('should not trigger SELF_MEETING_BRB_CHANGED when brb state is undefined', () => {
         const selfWithBrbChanged = cloneDeep(self);
         selfWithBrbChanged.controls.brb = false;
-        locusInfo.updateSelf(selfWithBrbChanged, []);
+        locusInfo.updateSelf(selfWithBrbChanged);
 
         locusInfo.emitScoped = sinon.stub();
 
         const newSelf = cloneDeep(self);
         newSelf.controls.brb = undefined;
 
-        locusInfo.updateSelf(newSelf, []);
+        locusInfo.updateSelf(newSelf);
 
         assert.neverCalledWith(
           locusInfo.emitScoped,
@@ -911,7 +911,7 @@ describe('plugin-meetings', () => {
         ];
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(selfWithLayoutChanged, []);
+        locusInfo.updateSelf(selfWithLayoutChanged);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -937,11 +937,11 @@ describe('plugin-meetings', () => {
         ];
 
         // Set the layout prior to stubbing to validate it does not change.
-        locusInfo.updateSelf(selfWithLayoutChanged, []);
+        locusInfo.updateSelf(selfWithLayoutChanged);
 
         locusInfo.emitScoped = sinon.stub();
 
-        locusInfo.updateSelf(selfWithLayoutChanged, []);
+        locusInfo.updateSelf(selfWithLayoutChanged);
 
         assert.neverCalledWith(
           locusInfo.emitScoped,
@@ -956,10 +956,10 @@ describe('plugin-meetings', () => {
 
       it('should trigger MEDIA_INACTIVITY on server media inactivity', () => {
         locusInfo.webex.internal.device.url = selfWithInactivity.deviceUrl;
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(selfWithInactivity, []);
+        locusInfo.updateSelf(selfWithInactivity);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -981,7 +981,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.webex.internal.device.url = self.deviceUrl;
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(selfWithMutedByOthers, []);
+        locusInfo.updateSelf(selfWithMutedByOthers);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -994,10 +994,10 @@ describe('plugin-meetings', () => {
         );
 
         // but sometimes "previous self" is defined, but without controls.audio.muted, so we test this here:
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         locusInfo.self.controls.audio = {};
 
-        locusInfo.updateSelf(selfWithMutedByOthers, []);
+        locusInfo.updateSelf(selfWithMutedByOthers);
         assert.calledWith(
           locusInfo.emitScoped,
           {
@@ -1017,7 +1017,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.webex.internal.device.url = self.deviceUrl;
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(selfWithMutedByOthersFalse, []);
+        locusInfo.updateSelf(selfWithMutedByOthersFalse);
 
         // we might get some calls to emitScoped, but we need to check that none of them are for SELF_REMOTE_MUTE_STATUS_UPDATED
         locusInfo.emitScoped.getCalls().forEach((x) => {
@@ -1031,7 +1031,7 @@ describe('plugin-meetings', () => {
 
         selfWithMutedByOthers.controls.audio.muted = true;
 
-        locusInfo.updateSelf(selfWithMutedByOthers, []);
+        locusInfo.updateSelf(selfWithMutedByOthers);
 
         // when user gets removed from meeting we receive a Locus DTO without any self.controls
         const selfWithoutControls = cloneDeep(self);
@@ -1039,7 +1039,7 @@ describe('plugin-meetings', () => {
         selfWithoutControls.controls = undefined;
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(selfWithoutControls, []);
+        locusInfo.updateSelf(selfWithoutControls);
 
         // we might get some calls to emitScoped, but we need to check that none of them are for SELF_REMOTE_MUTE_STATUS_UPDATED
         locusInfo.emitScoped.getCalls().forEach((x) => {
@@ -1049,13 +1049,13 @@ describe('plugin-meetings', () => {
 
       it('should trigger SELF_REMOTE_MUTE_STATUS_UPDATED on othersMuted', () => {
         locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         const selfWithMutedByOthers = cloneDeep(self);
 
         selfWithMutedByOthers.controls.audio.muted = true;
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(selfWithMutedByOthers, []);
+        locusInfo.updateSelf(selfWithMutedByOthers);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -1079,7 +1079,7 @@ describe('plugin-meetings', () => {
 
           locusInfo.webex.internal.device.url = self.deviceUrl;
           locusInfo.emitScoped = sinon.stub();
-          locusInfo.updateSelf(selfWithMutedByOthers, []);
+          locusInfo.updateSelf(selfWithMutedByOthers);
 
           assert.calledWith(
             locusInfo.emitScoped,
@@ -1092,10 +1092,10 @@ describe('plugin-meetings', () => {
           );
 
           // but sometimes "previous self" is defined, but without controls.audio.muted, so we test this here:
-          locusInfo.updateSelf(self, []);
+          locusInfo.updateSelf(self);
           locusInfo.self.controls.video = {};
 
-          locusInfo.updateSelf(selfWithMutedByOthers, []);
+          locusInfo.updateSelf(selfWithMutedByOthers);
           assert.calledWith(
             locusInfo.emitScoped,
             {
@@ -1115,7 +1115,7 @@ describe('plugin-meetings', () => {
 
           locusInfo.webex.internal.device.url = self.deviceUrl;
           locusInfo.emitScoped = sinon.stub();
-          locusInfo.updateSelf(selfWithMutedByOthersFalse, []);
+          locusInfo.updateSelf(selfWithMutedByOthersFalse);
 
           // we might get some calls to emitScoped, but we need to check that none of them are for SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED
           locusInfo.emitScoped.getCalls().forEach((x) => {
@@ -1125,13 +1125,13 @@ describe('plugin-meetings', () => {
 
         it('should emit event when remoteVideoMuted changed', () => {
           locusInfo.webex.internal.device.url = self.deviceUrl;
-          locusInfo.updateSelf(self, []);
+          locusInfo.updateSelf(self);
           const selfWithMutedByOthers = cloneDeep(self);
 
           selfWithMutedByOthers.controls.video.muted = true;
 
           locusInfo.emitScoped = sinon.stub();
-          locusInfo.updateSelf(selfWithMutedByOthers, []);
+          locusInfo.updateSelf(selfWithMutedByOthers);
 
           assert.calledWith(
             locusInfo.emitScoped,
@@ -1146,13 +1146,13 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger SELF_MEETING_BREAKOUTS_CHANGED when breakouts changed', () => {
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         const selfWithBreakoutsChanged = cloneDeep(self);
 
         selfWithBreakoutsChanged.controls.breakout.sessions.active[0].name = 'new name';
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(selfWithBreakoutsChanged, []);
+        locusInfo.updateSelf(selfWithBreakoutsChanged);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -1186,7 +1186,7 @@ describe('plugin-meetings', () => {
 
       it('should trigger SELF_REMOTE_MUTE_STATUS_UPDATED if muted and disallowUnmute changed', () => {
         locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         const selfWithMutedByOthersAndDissalowUnmute = cloneDeep(self);
 
         // first simulate remote mute
@@ -1194,7 +1194,7 @@ describe('plugin-meetings', () => {
         selfWithMutedByOthersAndDissalowUnmute.controls.audio.disallowUnmute = true;
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(selfWithMutedByOthersAndDissalowUnmute, []);
+        locusInfo.updateSelf(selfWithMutedByOthersAndDissalowUnmute);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -1212,7 +1212,7 @@ describe('plugin-meetings', () => {
         selfWithMutedByOthers.controls.audio.muted = true;
         selfWithMutedByOthers.controls.audio.disallowUnmute = false;
 
-        locusInfo.updateSelf(selfWithMutedByOthers, []);
+        locusInfo.updateSelf(selfWithMutedByOthers);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -1227,14 +1227,14 @@ describe('plugin-meetings', () => {
 
       it('should trigger LOCAL_UNMUTE_REQUIRED on localAudioUnmuteRequired', () => {
         locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         const selfWithLocalUnmuteRequired = cloneDeep(self);
 
         selfWithLocalUnmuteRequired.controls.audio.muted = false;
         selfWithLocalUnmuteRequired.controls.audio.localAudioUnmuteRequired = true;
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(selfWithLocalUnmuteRequired, []);
+        locusInfo.updateSelf(selfWithLocalUnmuteRequired);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -1252,7 +1252,7 @@ describe('plugin-meetings', () => {
 
       it('should trigger LOCAL_UNMUTE_REQUESTED when receiving requestedToUnmute=true', () => {
         locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         const selfWithRequestedToUnmute = cloneDeep(self);
 
         selfWithRequestedToUnmute.controls.audio.requestedToUnmute = true;
@@ -1260,7 +1260,7 @@ describe('plugin-meetings', () => {
           '2023-06-16T19:25:04.369Z';
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(selfWithRequestedToUnmute, []);
+        locusInfo.updateSelf(selfWithRequestedToUnmute);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -1278,7 +1278,7 @@ describe('plugin-meetings', () => {
         selfWithoutRequestedToUnmute.controls.audio.requestedToUnmute = false;
 
         locusInfo.emitScoped.resetHistory();
-        locusInfo.updateSelf(selfWithoutRequestedToUnmute, []);
+        locusInfo.updateSelf(selfWithoutRequestedToUnmute);
 
         assert.neverCalledWith(
           locusInfo.emitScoped,
@@ -1293,13 +1293,13 @@ describe('plugin-meetings', () => {
 
       it('should trigger SELF_OBSERVING when moving meeting to DX', () => {
         locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         const selfInitiatedMove = cloneDeep(self);
 
         // Inital move meeting is iniated
         selfInitiatedMove.devices[0].intent.type = 'MOVE_MEDIA';
 
-        locusInfo.updateSelf(selfInitiatedMove, []);
+        locusInfo.updateSelf(selfInitiatedMove);
 
         locusInfo.emitScoped = sinon.stub();
         // When dx joined the meeting after move
@@ -1307,7 +1307,7 @@ describe('plugin-meetings', () => {
 
         selfAfterDxJoins.devices[0].intent.type = 'OBSERVE';
 
-        locusInfo.updateSelf(selfAfterDxJoins, []);
+        locusInfo.updateSelf(selfAfterDxJoins);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -1325,11 +1325,11 @@ describe('plugin-meetings', () => {
         selfClone.canNotViewTheParticipantList = false; // same
 
         // Set the layout prior to stubbing to validate it does not change.
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
 
         locusInfo.emitScoped = sinon.stub();
 
-        locusInfo.updateSelf(selfClone, []);
+        locusInfo.updateSelf(selfClone);
 
         assert.neverCalledWith(
           locusInfo.emitScoped,
@@ -1348,11 +1348,11 @@ describe('plugin-meetings', () => {
         selfClone.canNotViewTheParticipantList = true; // different
 
         // Set the layout prior to stubbing to validate it does not change.
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
 
         locusInfo.emitScoped = sinon.stub();
 
-        locusInfo.updateSelf(selfClone, []);
+        locusInfo.updateSelf(selfClone);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -1371,11 +1371,11 @@ describe('plugin-meetings', () => {
         selfClone.isSharingBlocked = false; // same
 
         // Set the layout prior to stubbing to validate it does not change.
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
 
         locusInfo.emitScoped = sinon.stub();
 
-        locusInfo.updateSelf(selfClone, []);
+        locusInfo.updateSelf(selfClone);
 
         assert.neverCalledWith(
           locusInfo.emitScoped,
@@ -1394,11 +1394,11 @@ describe('plugin-meetings', () => {
         selfClone.isSharingBlocked = true; // different
 
         // Set the layout prior to stubbing to validate it does not change.
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
 
         locusInfo.emitScoped = sinon.stub();
 
-        locusInfo.updateSelf(selfClone, []);
+        locusInfo.updateSelf(selfClone);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -1412,12 +1412,12 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger SELF_ROLES_CHANGED if self roles changed', () => {
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         locusInfo.emitScoped = sinon.stub();
         const sampleNewSelf = cloneDeep(self);
         sampleNewSelf.controls.role.roles = [{type: 'COHOST', hasRole: true}];
 
-        locusInfo.updateSelf(sampleNewSelf, []);
+        locusInfo.updateSelf(sampleNewSelf);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -1431,12 +1431,12 @@ describe('plugin-meetings', () => {
       });
 
       it('should not trigger SELF_ROLES_CHANGED if self roles not changed', () => {
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         locusInfo.emitScoped = sinon.stub();
         const sampleNewSelf = cloneDeep(self);
         sampleNewSelf.controls.role.roles = [{type: 'PRESENTER', hasRole: true}];
 
-        locusInfo.updateSelf(sampleNewSelf, []);
+        locusInfo.updateSelf(sampleNewSelf);
 
         assert.neverCalledWith(
           locusInfo.emitScoped,
@@ -1450,12 +1450,12 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger SELF_MEETING_INTERPRETATION_CHANGED if self interpretation info changed', () => {
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         locusInfo.emitScoped = sinon.stub();
         const sampleNewSelf = cloneDeep(self);
         sampleNewSelf.controls.interpretation.targetLanguage = 'it';
 
-        locusInfo.updateSelf(sampleNewSelf, []);
+        locusInfo.updateSelf(sampleNewSelf);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -1472,12 +1472,12 @@ describe('plugin-meetings', () => {
       });
 
       it('should not trigger SELF_MEETING_INTERPRETATION_CHANGED if self interpretation info not changed', () => {
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         locusInfo.emitScoped = sinon.stub();
         const sampleNewSelf = cloneDeep(self);
         sampleNewSelf.controls.interpretation.targetLanguage = 'cn'; // same with previous one
 
-        locusInfo.updateSelf(sampleNewSelf, []);
+        locusInfo.updateSelf(sampleNewSelf);
 
         assert.neverCalledWith(
           locusInfo.emitScoped,
@@ -1494,12 +1494,12 @@ describe('plugin-meetings', () => {
       });
 
       it('should not trigger any events if controls is undefined', () => {
-        locusInfo.updateSelf(self, []);
+        locusInfo.updateSelf(self);
         locusInfo.emitScoped = sinon.stub();
         const newSelf = cloneDeep(self);
         newSelf.controls = undefined;
 
-        locusInfo.updateSelf(newSelf, []);
+        locusInfo.updateSelf(newSelf);
 
         const eventsSet = new Set([
           LOCUSINFO.EVENTS.CONTROLS_MEETING_LAYOUT_UPDATED,
@@ -1529,7 +1529,7 @@ describe('plugin-meetings', () => {
         locusInfo.parsedLocus.self = {id: 'fake parsed locus self id'};
 
         const parsedLocusSelf = locusInfo.parsedLocus.self; // need to store it before it's updated in updateSelf
-        locusInfo.updateSelf(self, [{id: '3'}]);
+        locusInfo.updateSelf(self);
 
         assert.calledWith(
           getSelvesStub,
