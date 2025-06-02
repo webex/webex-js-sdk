@@ -38,6 +38,7 @@ let logSpy;
 let infoSpy;
 let warnSpy;
 let errorSpy;
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
 
 describe('Voicemail UCM Backend Connector Test case', () => {
   const responseDetails = {

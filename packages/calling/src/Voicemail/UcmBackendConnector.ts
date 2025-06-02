@@ -11,7 +11,7 @@ import {
   DisplayInformation,
   CALLING_BACKEND,
 } from '../common/types';
-import {getVgActionEndpoint, serviceErrorCodeHandler, uploadLogsSilently} from '../common/Utils';
+import {getVgActionEndpoint, serviceErrorCodeHandler, uploadLogs} from '../common/Utils';
 import {
   SUCCESS_MESSAGE,
   USERS,
@@ -185,7 +185,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       const extendedError = new Error(`Failed to get voicemail list: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
 
-      await uploadLogsSilently();
+      await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -218,7 +218,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       const extendedError = new Error(`Failed to get voicemail content: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
 
-      await uploadLogsSilently();
+      await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -364,7 +364,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       const extendedError = new Error(`Failed to mark voicemail as read: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
 
-      await uploadLogsSilently();
+      await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -412,7 +412,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       ) as ExtendedError;
       log.error(extendedError, loggerContext);
 
-      await uploadLogsSilently();
+      await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -455,7 +455,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       const extendedError = new Error(`Failed to delete voicemail: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
 
-      await uploadLogsSilently();
+      await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);

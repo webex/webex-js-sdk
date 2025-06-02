@@ -65,7 +65,7 @@ describe('ContactClient Tests', () => {
   // eslint-disable-next-line no-underscore-dangle
   const contactServiceGroupUrl = `${webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}`;
   const serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
-  const uploadLogsSpy = jest.spyOn(utils, 'uploadLogsSilently').mockResolvedValue();
+  const uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
   const failureResponsePayload = <WebexRequestPayload>{
     statusCode: 503,
     body: {},

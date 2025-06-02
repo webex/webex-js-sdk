@@ -15,7 +15,7 @@ import {
   modifySdpForIPv4,
   parseMediaQualityStatistics,
   serviceErrorCodeHandler,
-  uploadLogsSilently,
+  uploadLogs,
 } from '../../common/Utils';
 import {
   ALLOWED_SERVICES,
@@ -1008,7 +1008,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      await uploadLogsSilently({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1083,7 +1083,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      await uploadLogsSilently({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1158,7 +1158,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      await uploadLogsSilently({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1282,7 +1282,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      await uploadLogsSilently({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1367,7 +1367,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      await uploadLogsSilently({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1554,7 +1554,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        await uploadLogsSilently({
+        await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -1738,7 +1738,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        await uploadLogsSilently({
+        await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -1818,7 +1818,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        await uploadLogsSilently({
+        await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -1894,7 +1894,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      await uploadLogsSilently({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1947,7 +1947,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      await uploadLogsSilently({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -2045,7 +2045,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       log.error(errorLog, loggerContext);
 
-      await uploadLogsSilently({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -2458,7 +2458,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        await uploadLogsSilently({
+        await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -2508,7 +2508,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        await uploadLogsSilently({
+        await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
         });

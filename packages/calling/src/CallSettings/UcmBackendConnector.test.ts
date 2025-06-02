@@ -13,6 +13,8 @@ import {UcmBackendConnector} from './UcmBackendConnector';
 import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT} from './constants';
 import {CallForwardAlwaysSetting, CallForwardingSettingsUCM, IUcmBackendConnector} from './types';
 
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
+
 describe('Call Settings Client Tests for UcmBackendConnector', () => {
   const webex = getTestUtilsWebex();
 

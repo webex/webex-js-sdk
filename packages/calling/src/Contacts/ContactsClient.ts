@@ -37,7 +37,7 @@ import {
   GroupType,
 } from './types';
 
-import {scimQuery, serviceErrorCodeHandler, uploadLogsSilently} from '../common/Utils';
+import {scimQuery, serviceErrorCodeHandler, uploadLogs} from '../common/Utils';
 
 /**
  * `ContactsClient` module is designed to offer a set of APIs for retrieving and updating contacts and groups from the contacts-service.
@@ -430,7 +430,7 @@ export class ContactsClient implements IContacts {
       const extendedError = new Error(`Error fetching contacts: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
 
       return errorStatus;
     }
@@ -647,7 +647,7 @@ export class ContactsClient implements IContacts {
       const extendedError = new Error(`Unable to create contact group: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
 
       return errorStatus;
     }
@@ -698,7 +698,7 @@ export class ContactsClient implements IContacts {
       ) as ExtendedError;
       log.error(extendedError, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
 
       return errorStatus;
     }
@@ -805,7 +805,7 @@ export class ContactsClient implements IContacts {
       const extendedError = new Error(`Failed to create contact: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
 
       return errorStatus;
     }
@@ -855,7 +855,7 @@ export class ContactsClient implements IContacts {
       ) as ExtendedError;
       log.error(extendedError, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
 
       return errorStatus;
     }

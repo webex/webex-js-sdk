@@ -23,6 +23,8 @@ import {
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import * as utils from '../common/Utils';
 
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
+
 describe('Voicemail webex call Backend Connector Test case', () => {
   let wxCallBackendConnector: IWxCallBackendConnector;
   const webex = getTestUtilsWebex();

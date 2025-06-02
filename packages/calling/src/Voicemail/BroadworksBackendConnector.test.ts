@@ -30,6 +30,8 @@ import * as utils from '../common/Utils';
 import {FAILURE_MESSAGE, UNPROCESSABLE_CONTENT_CODE} from '../common/constants';
 import log from '../Logger';
 
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
+
 const webex = getTestUtilsWebex();
 
 describe('Voicemail Broadworks Backend Connector Test case', () => {

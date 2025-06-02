@@ -497,7 +497,7 @@ export async function handleCallingClientErrors(
       emitterCb(clientError, finalError);
     }
   }
-  await uploadLogsSilently();
+  await uploadLogs();
 
   return finalError;
 }
@@ -1556,10 +1556,14 @@ export function modifySdpForIPv4(sdp: string): string {
 /**
  * Uploads logs to backend.
  *
- * @param webex - Webex object to get service urls.
- * @param data - Data to be uploaded.
+ * @param metaData - Metadata to be uploaded.
+ * @param throwError - Whether to throw exception on failure (default: false).
+ * @returns Promise containing upload response if successful.
  */
-export async function uploadLogs(metaData: LogsMetaData = {}): Promise<UploadLogsResponse> {
+export async function uploadLogs(
+  metaData: LogsMetaData = {},
+  throwError = false
+): Promise<UploadLogsResponse | void> {
   const webex = SDKConnector.getWebex();
   const feedbackId = crypto.randomUUID();
   try {
@@ -1604,23 +1608,11 @@ export async function uploadLogs(metaData: LogsMetaData = {}): Promise<UploadLog
       metaData?.correlationId,
       errorLog.message
     );
-    throw error;
-  }
-}
 
-/**
- * Uploads logs to backend silently.
- *
- * @param metaData - Metadata to be uploaded.
- */
-export async function uploadLogsSilently(metaData: LogsMetaData = {}) {
-  try {
-    await uploadLogs(metaData);
-  } catch (error) {
-    const errorLog = new Error(`Failed to upload logs ${error}`) as ExtendedError;
-    log.error(errorLog, {
-      file: UTILS_FILE,
-      method: 'uploadLogs',
-    });
+    if (throwError) {
+      throw error;
+    }
+
+    return Promise.resolve();
   }
 }

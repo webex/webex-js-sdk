@@ -21,7 +21,7 @@ import {
   getSortedVoicemailList,
   storeVoicemailList,
   fetchVoicemailList,
-  uploadLogsSilently,
+  uploadLogs,
 } from '../common/Utils';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
@@ -152,7 +152,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
 
       const extendedError = new Error(`Failed to get userId: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
 
       return serviceErrorCodeHandler(errorInfo, loggerContext);
     }
@@ -184,7 +184,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         file: BROADWORKS_VOICEMAIL_FILE,
         method: METHODS.GET_BW_TOKEN,
       });
-      await uploadLogsSilently();
+      await uploadLogs();
     }
   }
 
@@ -291,7 +291,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
 
         const extendedError = new Error(`Failed to get voicemail list: ${err}`) as ExtendedError;
         log.error(extendedError, loggerContext);
-        await uploadLogsSilently();
+        await uploadLogs();
 
         const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -378,7 +378,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
 
       const extendedError = new Error(`Failed to get voicemail content: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -440,7 +440,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
 
       const extendedError = new Error(`Failed to mark voicemail as read: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -496,7 +496,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         `Failed to mark voicemail as unread: ${err}`
       ) as ExtendedError;
       log.error(extendedError, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -550,7 +550,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
 
       const extendedError = new Error(`Failed to delete voicemail: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 

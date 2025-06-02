@@ -24,7 +24,7 @@ import {
   serviceErrorCodeHandler,
   getVgActionEndpoint,
   getCallingBackEnd,
-  uploadLogsSilently,
+  uploadLogs,
 } from '../common/Utils';
 import {
   APPLICATION_JSON,
@@ -212,7 +212,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     } catch (err: unknown) {
       const extendedError = new Error(`Failed to get call history: ${err}`) as ExtendedError;
       log.error(extendedError, {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA});
-      await uploadLogsSilently();
+      await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, this.loggerContext);
@@ -274,7 +274,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     } catch (err: unknown) {
       const extendedError = new Error(`Failed to update missed calls: ${err}`) as ExtendedError;
       log.error(extendedError, {file: CALL_HISTORY_FILE, method: METHODS.UPDATE_MISSED_CALLS});
-      await uploadLogsSilently();
+      await uploadLogs();
 
       // Catch the 401 error from try block, return the error object to user
       const errorInfo = {
@@ -322,7 +322,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     } catch (err: unknown) {
       const extendedError = new Error(`Failed to fetch UCM lines data: ${err}`) as ExtendedError;
       log.error(extendedError, {file: CALL_HISTORY_FILE, method: METHODS.FETCH_UCM_LINES_DATA});
-      await uploadLogsSilently();
+      await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -415,7 +415,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         file: CALL_HISTORY_FILE,
         method: METHODS.DELETE_CALL_HISTORY_RECORDS,
       });
-      await uploadLogsSilently();
+      await uploadLogs();
 
       // Catch the 401 error from try block, return the error object to user
       const errorInfo = {

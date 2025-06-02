@@ -30,6 +30,8 @@ import {CallError} from '../../Errors';
 
 jest.mock('@webex/internal-media-core');
 
+const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogs').mockResolvedValue(undefined);
+
 const webex = getTestUtilsWebex();
 
 const mockInternalMediaCoreModule = InternalMediaCoreModule as jest.Mocked<
@@ -1131,7 +1133,7 @@ describe('State Machine handler tests', () => {
     expect(call['callStateMachine'].state.value).toBe('S_UNKNOWN');
     expect(stateMachineSpy).toBeCalledTimes(3);
     expect(warnSpy).toBeCalledTimes(3);
-    expect(errorSpy).toBeCalledTimes(2);
+    expect(errorSpy).toBeCalledTimes(1);
   });
 
   it('state changes during successful outgoing call', async () => {
@@ -1361,7 +1363,6 @@ describe('State Machine handler tests', () => {
 
     webex.request.mockRejectedValueOnce(statusPayload);
     const errorSpy = jest.spyOn(log, 'error');
-    const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogsSilently');
 
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     await flushPromises(3);
@@ -1391,7 +1392,7 @@ describe('State Machine handler tests', () => {
     call['mediaStateMachine'].state.value = 'S_RECV_ROAP_ANSWER';
     webex.request.mockRejectedValue(statusPayload);
     const warnSpy = jest.spyOn(log, 'warn');
-    const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogsSilently').mockResolvedValue();
+    jest.spyOn(Utils, 'uploadLogs').mockResolvedValue(undefined);
 
     await call['handleRoapEstablished']({} as MediaContext, dummyEvent as RoapEvent);
     await flushPromises(2);
@@ -2890,7 +2891,7 @@ describe('Supplementary Services tests', () => {
 
     /* A spy on handleCallErrors to check whether it is being invoked or not depending on tests */
     const handleErrorSpy = jest.spyOn(Utils, 'handleCallErrors');
-    const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogsSilently');
+    const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogs');
     const transferLoggingContext = {
       file: 'call',
       method: 'completeTransfer',

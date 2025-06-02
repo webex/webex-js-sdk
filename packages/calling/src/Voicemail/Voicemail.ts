@@ -7,7 +7,7 @@ import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {IVoicemail, VoicemailResponseEvent, LoggerInterface, CallingPartyInfo} from './types';
 import {CALLING_BACKEND, DisplayInformation, SORT} from '../common/types';
 import log from '../Logger';
-import {getCallingBackEnd, uploadLogsSilently} from '../common/Utils';
+import {getCallingBackEnd, uploadLogs} from '../common/Utils';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import {BroadworksBackendConnector} from './BroadworksBackendConnector';
 import {VoicemailEventTypes} from '../Events/types';
@@ -80,7 +80,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
         method: METHODS.INIT,
       });
 
-      await uploadLogsSilently();
+      await uploadLogs();
 
       throw err;
     }
@@ -192,7 +192,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
         method: METHODS.GET_VOICEMAIL_LIST,
       });
 
-      await uploadLogsSilently();
+      await uploadLogs();
 
       throw err;
     }

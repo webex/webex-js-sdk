@@ -19,7 +19,7 @@ import {
   resolveContact,
   storeVoicemailList,
   fetchVoicemailList,
-  uploadLogsSilently,
+  uploadLogs,
 } from '../common/Utils';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
@@ -210,7 +210,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         const errorInfo = err as WebexRequestPayload;
         const extendedError = new Error(`Failed to get voicemail list: ${err}`) as ExtendedError;
         log.error(extendedError, loggerContext);
-        await uploadLogsSilently();
+        await uploadLogs();
         const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
         return errorStatus;
@@ -285,7 +285,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const errorInfo = err as WebexRequestPayload;
       const extendedError = new Error(`Failed to get voicemail content: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;
@@ -343,7 +343,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const errorInfo = err as WebexRequestPayload;
       const extendedError = new Error(`Failed to get voicemail summary: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;
@@ -385,7 +385,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const errorInfo = err as WebexRequestPayload;
       const extendedError = new Error(`Failed to mark voicemail as read: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;
@@ -429,7 +429,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         `Failed to mark voicemail as unread: ${err}`
       ) as ExtendedError;
       log.error(extendedError, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;
@@ -472,7 +472,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const errorInfo = err as WebexRequestPayload;
       const extendedError = new Error(`Failed to delete voicemail: ${err}`) as ExtendedError;
       log.error(extendedError, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;
@@ -524,7 +524,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         `Failed to get voicemail transcript: ${err}`
       ) as ExtendedError;
       log.error(extendedError, loggerContext);
-      await uploadLogsSilently();
+      await uploadLogs();
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;

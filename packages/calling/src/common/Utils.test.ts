@@ -1588,7 +1588,7 @@ describe('uploadLogs', () => {
     const mockMetaData = {correlationId: 'test-correlation'};
     const logSpy = jest.spyOn(log, 'info');
 
-    const result = await uploadLogs(mockMetaData);
+    const result = await uploadLogs(mockMetaData, true);
 
     expect(result).toEqual({trackingid: '1234', feedbackId: 'mocked-uuid-12345'});
     expect(logSpy).toHaveBeenCalledWith(
@@ -1631,7 +1631,7 @@ describe('uploadLogs', () => {
     const logSpy = jest.spyOn(log, 'error');
 
     try {
-      await uploadLogs(mockMetaData);
+      await uploadLogs(mockMetaData, true);
       // If we get here, the test should fail since we expected an exception
       expect(true).toBe(false); // This will fail the test if no exception is thrown
     } catch (error) {
@@ -1663,5 +1663,45 @@ describe('uploadLogs', () => {
         }
       );
     }
+  });
+
+  it('should log error and not throw an error if the upload fails with throw exception false', async () => {
+    const mockMetaData = {correlationId: 'test-correlation'};
+    const mockError = new Error('Upload failed');
+
+    // Mock the submitLogs to fail
+    submitLogsMock.mockRejectedValueOnce(mockError);
+
+    const logSpy = jest.spyOn(log, 'error');
+
+    const result = await uploadLogs(mockMetaData, false);
+    expect(result).toBeUndefined();
+
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('Failed to upload Logs'),
+      }),
+      {
+        file: UTILS_FILE,
+        method: 'uploadLogs',
+      }
+    );
+    expect(mockSubmitRegistrationMetric).toHaveBeenCalledWith(
+      'web-calling-sdk-upload-logs-failed',
+      {
+        fields: {
+          call_id: undefined,
+          calling_sdk_version: 'unknown',
+          correlation_id: 'Failed to upload Logs Error: Upload failed',
+          device_url: undefined,
+          error: undefined,
+          feedback_id: 'test-correlation',
+          mobius_url: undefined,
+          tracking_id: 'mocked-uuid-12345',
+        },
+        tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
+        type: 'behavioral',
+      }
+    );
   });
 });

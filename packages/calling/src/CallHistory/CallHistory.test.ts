@@ -38,7 +38,7 @@ import log from '../Logger';
 
 const webex = getTestUtilsWebex();
 let serviceErrorCodeHandlerSpy: jest.SpyInstance;
-let uploadLogsSilentlySpy: jest.SpyInstance;
+let uploadLogsSpy: jest.SpyInstance;
 
 describe('Call history tests', () => {
   let callHistory: ICallHistory;
@@ -48,7 +48,7 @@ describe('Call history tests', () => {
 
   beforeAll(() => {
     callHistory = new CallHistory(webex, {level: LOGGER.INFO});
-    uploadLogsSilentlySpy = jest.spyOn(utils, 'uploadLogsSilently').mockResolvedValue();
+    uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
   });
 
   it('verify successful call history case', async () => {
@@ -75,7 +75,7 @@ describe('Call history tests', () => {
       {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
     );
     expect(errorSpy).not.toHaveBeenCalled();
-    expect(uploadLogsSilentlySpy).not.toHaveBeenCalled();
+    expect(uploadLogsSpy).not.toHaveBeenCalled();
   });
 
   it('verify bad request failed call history case', async () => {
@@ -96,7 +96,7 @@ describe('Call history tests', () => {
       {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
     );
     expect(errorSpy).toHaveBeenCalled();
-    expect(uploadLogsSilentlySpy).toHaveBeenCalledTimes(1);
+    expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
   });
 
   it('verify device not found call history case', async () => {
@@ -117,7 +117,7 @@ describe('Call history tests', () => {
       {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
     );
     expect(errorSpy).toHaveBeenCalled();
-    expect(uploadLogsSilentlySpy).toHaveBeenCalledTimes(1);
+    expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
   });
 
   describe('sorting  user session response data by sortby', () => {
@@ -228,7 +228,7 @@ describe('Call history tests', () => {
     });
     beforeEach(async () => {
       serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
-      uploadLogsSilentlySpy = jest.spyOn(utils, 'uploadLogsSilently').mockResolvedValue();
+      uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
       global.fetch = jest.fn(() =>
         Promise.resolve({
           status: 200,
@@ -266,7 +266,7 @@ describe('Call history tests', () => {
         methodDetails
       );
       expect(errorSpy).not.toHaveBeenCalled();
-      expect(uploadLogsSilentlySpy).not.toHaveBeenCalled();
+      expect(uploadLogsSpy).not.toHaveBeenCalled();
     });
 
     it('Error: updateMissedCalls throw 400 error', async () => {
@@ -299,7 +299,7 @@ describe('Call history tests', () => {
         methodDetails
       );
       expect(errorSpy).toHaveBeenCalled();
-      expect(uploadLogsSilentlySpy).toHaveBeenCalledTimes(1);
+      expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
 
     it('Error: updateMissedCalls throw 401 error', async () => {
@@ -333,13 +333,13 @@ describe('Call history tests', () => {
         methodDetails
       );
       expect(errorSpy).toHaveBeenCalled();
-      expect(uploadLogsSilentlySpy).toHaveBeenCalledTimes(1);
+      expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('fetchUCMLinesData test', () => {
     beforeEach(() => {
-      uploadLogsSilentlySpy = jest.spyOn(utils, 'uploadLogsSilently').mockResolvedValue();
+      uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
     });
 
     it('verify successful UCM lines API case', async () => {
@@ -361,7 +361,7 @@ describe('Call history tests', () => {
         method: METHODS.FETCH_UCM_LINES_DATA,
       });
       expect(errorSpy).not.toHaveBeenCalled();
-      expect(uploadLogsSilentlySpy).not.toHaveBeenCalled();
+      expect(uploadLogsSpy).not.toHaveBeenCalled();
     });
 
     it('verify bad request failed UCM lines API case', async () => {
@@ -388,7 +388,7 @@ describe('Call history tests', () => {
         method: METHODS.FETCH_UCM_LINES_DATA,
       });
       expect(errorSpy).toHaveBeenCalled();
-      expect(uploadLogsSilentlySpy).toHaveBeenCalledTimes(1);
+      expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should call fetchUCMLinesData when calling backend is UCM and userSessions contain valid cucmDN', async () => {
@@ -482,7 +482,7 @@ describe('Call history tests', () => {
 
     beforeEach(async () => {
       serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
-      uploadLogsSilentlySpy = jest.spyOn(utils, 'uploadLogsSilently').mockResolvedValue();
+      uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
       global.fetch = jest.fn(() =>
         Promise.resolve({
           status: 200,
@@ -520,7 +520,7 @@ describe('Call history tests', () => {
         methodDetails
       );
       expect(errorSpy).not.toHaveBeenCalled();
-      expect(uploadLogsSilentlySpy).not.toHaveBeenCalled();
+      expect(uploadLogsSpy).not.toHaveBeenCalled();
     });
 
     it('Error: deleteCallHistoryRecords throw 400 error', async () => {
@@ -553,7 +553,7 @@ describe('Call history tests', () => {
         methodDetails
       );
       expect(errorSpy).toHaveBeenCalled();
-      expect(uploadLogsSilentlySpy).toHaveBeenCalledTimes(1);
+      expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
 
     it('Error: deleteCallHistoryRecords throw 401 error', async () => {
@@ -590,7 +590,7 @@ describe('Call history tests', () => {
         file: CALL_HISTORY_FILE,
         method: METHODS.DELETE_CALL_HISTORY_RECORDS,
       });
-      expect(uploadLogsSilentlySpy).toHaveBeenCalledTimes(1);
+      expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
 
     it('handles invalid date formats gracefully', async () => {
@@ -614,7 +614,7 @@ describe('Call history tests', () => {
         expect.stringContaining('The provided date is malformed or invalid'),
         methodDetails
       );
-      expect(uploadLogsSilentlySpy).not.toHaveBeenCalled();
+      expect(uploadLogsSpy).not.toHaveBeenCalled();
     });
   });
 });

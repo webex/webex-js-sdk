@@ -273,7 +273,7 @@ describe('Call Manager Tests with respect to calls', () => {
 
     const errorSpy = jest.spyOn(log, 'error');
     const logSpy = jest.spyOn(log, 'log');
-    const uploadLogsSpy = jest.spyOn(utils, 'uploadLogsSilently').mockResolvedValue();
+    const uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
 
     await callManager['dequeueWsEvents'](mediaEvent);
     await waitForMsecs(50);

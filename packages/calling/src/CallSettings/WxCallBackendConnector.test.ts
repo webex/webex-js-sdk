@@ -32,6 +32,8 @@ import {WxCallBackendConnector} from './WxCallBackendConnector';
 import Logger from '../Logger';
 import {callForwardPayload, xsiEndpointUrlResponse, voicemailPayload} from './testFixtures';
 
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
+
 describe('Call Settings Client Tests for WxCallBackendConnector', () => {
   const warnSpy = jest.spyOn(Logger, 'warn');
   const logSpy = jest.spyOn(Logger, 'log');

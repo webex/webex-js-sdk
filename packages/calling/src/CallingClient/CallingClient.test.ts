@@ -50,6 +50,22 @@ import {URL} from './registration/registerFixtures';
 import {ICall} from './calling/types';
 import {ServiceHost} from '../SDKConnector/types';
 
+global.crypto = {
+  randomUUID: () => '12345678-1234-5678-1234-567812345678',
+} as unknown as Crypto;
+
+jest.mock('../common/Utils', () => {
+  const originalModule = jest.requireActual('../common/Utils');
+
+  return {
+    ...originalModule,
+    uploadLogs: jest.fn().mockImplementation(() => Promise.resolve(undefined)),
+    handleCallingClientErrors: jest.fn(),
+  };
+});
+
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
+
 describe('CallingClient Tests', () => {
   // Common initializers
 
