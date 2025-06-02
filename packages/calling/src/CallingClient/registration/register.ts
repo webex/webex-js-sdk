@@ -1,6 +1,5 @@
 import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
-import {ERROR_CODE} from '../../Errors/types';
 import {emitFinalFailure, handleRegistrationErrors} from '../../common';
 
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../../Metrics/types';
@@ -81,6 +80,7 @@ export class Registration implements IRegistration {
   private isCCFlow = false;
   private failoverImmediately = false;
   private retryAfter: number | undefined;
+  private scheduled429Retry = false;
 
   /**
    */
@@ -213,13 +213,13 @@ export class Registration implements IRegistration {
   /**
    *
    */
-  private async handle429Retry(retryAfter: number, caller: string): Promise<boolean> {
-    let abort;
+  private async handle429Retry(retryAfter: number, caller: string): Promise<void> {
     if (caller === FAILBACK_UTIL) {
       if (this.failback429RetryAttempts >= REG_FAILBACK_429_MAX_RETRIES) {
-        return true;
+        return;
       }
-      console.debug('In failback 429 handling with caller: ', caller);
+      this.scheduled429Retry = true;
+      this.clearFailbackTimer();
       this.failback429RetryAttempts += 1;
       log.log(`Received 429 while rehoming, 429 retry count : ${this.failback429RetryAttempts}`, {
         file: REGISTRATION_FILE,
@@ -228,18 +228,14 @@ export class Registration implements IRegistration {
       const interval = this.getRegRetryInterval(this.failback429RetryAttempts);
 
       this.startFailbackTimer(interval);
-      abort = await this.restorePreviousRegistration(REG_429_RETRY_UTIL);
+      const abort = await this.restorePreviousRegistration(REG_429_RETRY_UTIL);
 
       if (!abort && !this.isDeviceRegistered()) {
         await this.restartRegistration(REG_429_RETRY_UTIL);
       }
     } else {
-      console.debug('In normal 429 handling with caller: ', caller);
       this.retryAfter = retryAfter;
-      abort = false;
     }
-
-    return abort;
   }
 
   /**
@@ -268,7 +264,6 @@ export class Registration implements IRegistration {
    *
    */
   private async startFailoverTimer(attempt = 1, timeElapsed = 0) {
-    console.debug('failover timer started');
     const loggerContext = {
       file: REGISTRATION_FILE,
       method: FAILOVER_UTIL,
@@ -290,20 +285,16 @@ export class Registration implements IRegistration {
     if (interval > BASE_REG_RETRY_TIMER_VAL_IN_SEC && !this.failoverImmediately) {
       const scheduledTime = Math.floor(Date.now() / 1000);
 
-      console.debug('timers value:', interval, this.retryAfter);
       if (this.retryAfter != null) {
         interval = interval < this.retryAfter ? this.retryAfter : interval;
       }
-      console.debug('final interval', interval);
 
       setTimeout(async () => {
         await this.mutex.runExclusive(async () => {
-          console.debug('Set time out for primary retries');
           abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL);
           const currentTime = Math.floor(Date.now() / 1000);
 
           if (!abort && !this.isDeviceRegistered()) {
-            console.debug('starting failover timer again with abort received as', abort);
             await this.startFailoverTimer(attempt + 1, timeElapsed + (currentTime - scheduledTime));
           }
         });
@@ -315,18 +306,16 @@ export class Registration implements IRegistration {
     } else if (this.backupMobiusUris.length) {
       log.log('Failing over to backup servers.', loggerContext);
       this.failoverImmediately = false;
-      console.debug('Failing over to backup servers');
       abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL, this.backupMobiusUris);
       if (!abort && !this.isDeviceRegistered()) {
         interval = this.getRegRetryInterval();
-        console.debug('in backup flow timers value:', interval, this.retryAfter);
+
         if (this.retryAfter != null) {
           interval = interval < this.retryAfter ? this.retryAfter : interval;
         }
-        console.debug('backup flow final interval', interval);
+
         setTimeout(async () => {
           await this.mutex.runExclusive(async () => {
-            console.debug('second attempt with backup servers');
             abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL, this.backupMobiusUris);
             if (!abort && !this.isDeviceRegistered()) {
               emitFinalFailure((clientError: LineError) => {
@@ -351,13 +340,6 @@ export class Registration implements IRegistration {
     if (this.failbackTimer) {
       clearTimeout(this.failbackTimer);
       this.failbackTimer = undefined;
-    }
-  }
-
-  private clearPrimaryRetryTimers() {
-    if (this.primaryRetryTimer) {
-      clearTimeout(this.primaryRetryTimer);
-      this.primaryRetryTimer = undefined;
     }
   }
 
@@ -426,20 +408,22 @@ export class Registration implements IRegistration {
           });
           await this.deregister();
           const abort = await this.attemptRegistrationWithServers(FAILBACK_UTIL);
-          if (!abort && !this.isDeviceRegistered()) {
-            const abortNew = await this.restorePreviousRegistration(FAILBACK_UTIL);
+          if (!this.scheduled429Retry) {
+            if (!abort && !this.isDeviceRegistered()) {
+              const abortNew = await this.restorePreviousRegistration(FAILBACK_UTIL);
 
-            if (abortNew) {
-              this.clearFailbackTimer();
+              if (abortNew) {
+                this.clearFailbackTimer();
 
-              return;
-            }
+                return;
+              }
 
-            if (!this.isDeviceRegistered()) {
-              await this.restartRegistration(this.executeFailback.name);
-            } else {
-              this.failbackTimer = undefined;
-              this.initiateFailback();
+              if (!this.isDeviceRegistered()) {
+                await this.restartRegistration(this.executeFailback.name);
+              } else {
+                this.failbackTimer = undefined;
+                this.initiateFailback();
+              }
             }
           }
         } else {
@@ -686,8 +670,8 @@ export class Registration implements IRegistration {
               clientError
             );
           },
-          {method: REGISTER_UTIL, file: REGISTRATION_FILE},
-          // (retryAfter: number, retryCaller: string) => this.handle429Retry(retryAfter, retryCaller),
+          {method: caller, file: REGISTRATION_FILE},
+          (retryAfter: number, retryCaller: string) => this.handle429Retry(retryAfter, retryCaller),
           this.restoreRegistrationCallBack()
         );
         if (this.registrationStatus === RegistrationStatus.ACTIVE) {
@@ -703,23 +687,9 @@ export class Registration implements IRegistration {
         if (abort) {
           this.setStatus(RegistrationStatus.INACTIVE);
           break;
-        } else if (body.statusCode === ERROR_CODE.TOO_MANY_REQUESTS) {
-          console.debug(
-            `[${caller}] : Received 429 Too Many Requests, scheduling retry later, failover logic shouldn't run.`
-          );
-          if (body.headers) {
-            const retryAfter = Number(body.headers['retry-after']);
-            console.debug('pkesari_set timeout for 429 retry with value: ', retryAfter);
-            // eslint-disable-next-line no-await-in-loop
-            abort = await this.handle429Retry(retryAfter, caller);
-          }
-
-          break;
         }
       }
     }
-
-    console.debug('abort set to: ', abort);
 
     return abort;
   }

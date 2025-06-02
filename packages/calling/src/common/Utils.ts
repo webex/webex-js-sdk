@@ -297,6 +297,7 @@ export async function handleRegistrationErrors(
   err: WebexRequestPayload,
   emitterCb: LineErrorEmitterCallback,
   loggerContext: LogContext,
+  retry429CB: retry429CallBack,
   restoreRegCb?: restoreRegistrationCallBack
 ): Promise<boolean> {
   const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
@@ -352,14 +353,14 @@ export async function handleRegistrationErrors(
       break;
     }
 
-    // case ERROR_CODE.TOO_MANY_REQUESTS: {
-    //   const caller = loggerContext.method || 'handleErrors';
-    //   if (err.headers) {
-    //     const retryAfter = Number(err.headers['retry-after']);
-    //     console.log('pkesari_set timeout for 429 retry with value: ', retryAfter);
-    //     retry429Cb(retryAfter, caller);
-    //   }
-    // }
+    case ERROR_CODE.TOO_MANY_REQUESTS: {
+      const caller = loggerContext.method || 'handleErrors';
+
+      if (err.headers) {
+        const retryAfter = Number(err.headers['retry-after']);
+        retry429CB(retryAfter, caller);
+      }
+    }
 
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
       log.warn(`500 Internal Server Error`, loggerContext);

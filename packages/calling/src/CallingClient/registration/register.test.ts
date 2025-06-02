@@ -22,6 +22,7 @@ import {
   KEEPALIVE_UTIL,
   MINUTES_TO_SEC_MFACTOR,
   REGISTRATION_FILE,
+  REG_429_RETRY_UTIL,
   REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
   REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
   SEC_TO_MSEC_MFACTOR,
@@ -295,6 +296,7 @@ describe('Registration Tests', () => {
       webex.request
         .mockRejectedValueOnce(failurePayload)
         .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
         .mockRejectedValueOnce(failurePayload429One)
         .mockResolvedValueOnce(successPayload);
 
@@ -302,7 +304,7 @@ describe('Registration Tests', () => {
 
       jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
-      expect(webex.request).toBeCalledTimes(3);
+      expect(webex.request).toBeCalledTimes(4);
       expect(webex.request).toBeCalledWith({
         ...mockResponse,
         method: 'POST',
@@ -472,7 +474,7 @@ describe('Registration Tests', () => {
       // delete should be successful
       global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
 
-      postRegistrationSpy.mockRejectedValue(failurePayload429);
+      postRegistrationSpy.mockRejectedValue(failurePayload429Two);
 
       /* Wait for failback to be triggered. */
       jest.advanceTimersByTime(
@@ -488,11 +490,14 @@ describe('Registration Tests', () => {
       jest.advanceTimersByTime(10000);
       await flushPromises();
 
-      expect(failbackRetry429Spy).toBeCalledOnceWith();
+      expect(retry429Spy).toBeCalledWith(
+        failurePayload429Two.headers['retry-after'],
+        'executeFailback'
+      );
       expect(reg.failback429RetryAttempts).toBe(0);
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(restoreSpy).toBeCalledOnceWith(FAILBACK_429_RETRY_UTIL);
-      expect(restartSpy).toBeCalledOnceWith(FAILBACK_429_RETRY_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(REG_429_RETRY_UTIL);
+      expect(restartSpy).toBeCalledOnceWith(REG_429_RETRY_UTIL);
       expect(reg.failbackTimer).toBe(undefined);
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
       expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
