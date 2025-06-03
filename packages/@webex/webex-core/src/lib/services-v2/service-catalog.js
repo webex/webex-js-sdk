@@ -56,13 +56,13 @@ const ServiceCatalog = AmpState.extend({
 
   /**
    * @private
-   * Search the service url array to locate a `ServiceDetails`
+   * Search the service details array to locate a `ServiceDetails`
    * class object based on its name.
-   * @param {string} name
+   * @param {string} id
    * @param {string} [serviceGroup]
    * @returns {ServiceDetails}
    */
-  _getUrl(name, serviceGroup) {
+  _getServiceDetails(id, serviceGroup) {
     const serviceUrls =
       typeof serviceGroup === 'string'
         ? this.serviceGroups[serviceGroup] || []
@@ -74,7 +74,7 @@ const ServiceCatalog = AmpState.extend({
             ...this.serviceGroups.discovery,
           ];
 
-    return serviceUrls.find((serviceUrl) => serviceUrl.name === name);
+    return serviceUrls.find((serviceUrl) => serviceUrl.id === id);
   },
 
   /**
@@ -97,15 +97,15 @@ const ServiceCatalog = AmpState.extend({
    * @private
    * Safely load one or more `ServiceDetails`s into this `Services` instance.
    * @param {string} serviceGroup
-   * @param  {Array<ServiceDetails>} services
+   * @param  {Array<ServiceDetails>} serviceDetails
    * @returns {Services}
    */
-  _loadServiceUrls(serviceGroup, services) {
+  _loadServiceDetails(serviceGroup, serviceDetails) {
     // declare namespaces outside of loop
     let existingService;
 
-    services.forEach((service) => {
-      existingService = this._getUrl(service.name, serviceGroup);
+    serviceDetails.forEach((service) => {
+      existingService = this._getServiceDetails(service.id, serviceGroup);
 
       if (!existingService) {
         this.serviceGroups[serviceGroup].push(service);
@@ -119,15 +119,15 @@ const ServiceCatalog = AmpState.extend({
    * @private
    * Safely unload one or more `ServiceDetails`s into this `Services` instance
    * @param {string} serviceGroup
-   * @param  {Array<ServiceDetails>} services
+   * @param  {Array<ServiceDetails>} serviceDetails
    * @returns {Services}
    */
-  _unloadServiceUrls(serviceGroup, services) {
+  _unloadServiceDetails(serviceGroup, serviceDetails) {
     // declare namespaces outside of loop
     let existingService;
 
-    services.forEach((service) => {
-      existingService = this._getUrl(service.name, serviceGroup);
+    serviceDetails.forEach((service) => {
+      existingService = this._getServiceDetails(service.id, serviceGroup);
 
       if (existingService) {
         this.serviceGroups[serviceGroup].splice(
@@ -291,7 +291,7 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string}
    */
   get(name, priorityHost, serviceGroup) {
-    const serviceUrl = this._getUrl(name, serviceGroup);
+    const serviceUrl = this._getServiceDetails(name, serviceGroup);
 
     return serviceUrl ? serviceUrl.get(priorityHost) : undefined;
   },
@@ -349,8 +349,8 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string}
    */
   markFailedUrl(url, noPriorityHosts) {
-    const serviceUrl = this._getUrl(
-      Object.keys(this.list()).find((key) => this._getUrl(key).failHost(url))
+    const serviceUrl = this._getServiceDetails(
+      Object.keys(this.list()).find((key) => this._getServiceDetails(key).failHost(url))
     );
 
     if (!serviceUrl) {
@@ -388,27 +388,22 @@ const ServiceCatalog = AmpState.extend({
    * @param {object} serviceHostmap
    * @returns {Services}
    */
-  updateServiceUrls(serviceGroup, serviceHostmap) {
-    const currentServiceUrls = this.serviceGroups[serviceGroup];
+  updateServiceGroups(serviceGroup, serviceHostmap) {
+    const currentServiceDetails = this.serviceGroups[serviceGroup];
 
-    const unusedUrls = currentServiceUrls.filter((serviceUrl) =>
-      serviceHostmap.every((item) => item.name !== serviceUrl.name)
+    const unusedServicesDetails = currentServiceDetails.filter((serviceDetails) =>
+      serviceHostmap.every((item) => item.id !== serviceDetails.id)
     );
 
-    this._unloadServiceUrls(serviceGroup, unusedUrls);
+    this._unloadServiceDetails(serviceGroup, unusedServicesDetails);
 
     serviceHostmap.forEach((serviceObj) => {
-      const service = this._getUrl(serviceObj.name, serviceGroup);
+      const service = this._getServiceDetails(serviceObj.id, serviceGroup);
 
       if (service) {
-        service.defaultUrl = serviceObj.defaultUrl;
-        service.hosts = serviceObj.hosts || [];
+        service.serviceUrls = serviceObj.serviceUrls || [];
       } else {
-        this._loadServiceUrls(serviceGroup, [
-          new ServiceDetails({
-            ...serviceObj,
-          }),
-        ]);
+        this._loadServiceDetails(serviceGroup, [new ServiceDetails(serviceObj)]);
       }
     });
 
