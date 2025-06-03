@@ -288,48 +288,6 @@ describe('webex-core', () => {
     //   });
     // });
 
-    // describe('#list()', () => {
-    //   it('retreives priority host urls base on priorityHost parameter', () => {
-    //     const serviceList = catalog.list(true);
-
-    //     const foundPriorityValues = catalog.serviceGroups.postauth.some((serviceUrl) =>
-    //       serviceUrl.hosts.some(({host}) =>
-    //         Object.keys(serviceList).some((key) => serviceList[key].includes(host))
-    //       )
-    //     );
-
-    //     assert.isTrue(foundPriorityValues);
-    //   });
-
-    //   it('returns an object of based on serviceGroup parameter', () => {
-    //     let serviceList = catalog.list(true, 'discovery');
-
-    //     assert.equal(Object.keys(serviceList).length, catalog.serviceGroups.discovery.length);
-
-    //     serviceList = catalog.list(true, 'preauth');
-
-    //     assert.equal(Object.keys(serviceList).length, catalog.serviceGroups.preauth.length);
-
-    //     serviceList = catalog.list(true, 'postauth');
-
-    //     assert.isAtLeast(Object.keys(serviceList).length, catalog.serviceGroups.postauth.length);
-    //   });
-
-    //   it('matches the values in serviceUrl', () => {
-    //     let serviceList = catalog.list();
-
-    //     Object.keys(serviceList).forEach((key) => {
-    //       assert.equal(serviceList[key], catalog._getUrl(key).get());
-    //     });
-
-    //     serviceList = catalog.list(true, 'postauth');
-
-    //     Object.keys(serviceList).forEach((key) => {
-    //       assert.equal(serviceList[key], catalog._getUrl(key, 'postauth').get(true));
-    //     });
-    //   });
-    // });
-
     // describe('#get()', () => {
     //   let testDetailsTemplate;
     //   let testDetails;
@@ -378,56 +336,37 @@ describe('webex-core', () => {
     //   });
     // });
 
-    // describe('#markFailedUrl()', () => {
-    //   let testDetailsTemplate;
-    //   let testDetails;
+    describe('#markFailedServiceUrl()', () => {
+      let testDetailsTemplate;
+      let testDetails;
 
-    //   beforeEach('load test url', () => {
-    //     testDetailsTemplate = {
-    //       defaultUrl: 'https://www.example.com/api/v1',
-    //       hosts: [
-    //         {
-    //           host: 'www.example-p5.com',
-    //           ttl: -1,
-    //           priority: 5,
-    //           id: '0:0:0:exampleValid',
-    //           homeCluster: true,
-    //         },
-    //         {
-    //           host: 'www.example-p3.com',
-    //           ttl: -1,
-    //           priority: 3,
-    //           id: '0:0:0:exampleValid',
-    //           homeCluster: true,
-    //         },
-    //       ],
-    //       name: 'exampleValid',
-    //     };
-    //     testDetails = new ServiceUrl({...testDetailsTemplate});
-    //     catalog._loadServiceDetails('preauth', [testDetails]);
-    //   });
+      beforeEach('load test url', () => {
+        testDetailsTemplate = formattedServiceHostmapEntryConv;
+        testDetails = new ServiceDetails(testDetailsTemplate);
+        catalog._loadServiceDetails('preauth', [testDetails]);
+      });
 
-    //   afterEach('unload test url', () => {
-    //     catalog._unloadServiceDetails('preauth', [testDetails]);
-    //   });
+      afterEach('unload test url', () => {
+        catalog._unloadServiceDetails('preauth', [testDetails]);
+      });
 
-    //   it('marks a host as failed', () => {
-    //     const priorityUrl = catalog.get(testDetailsTemplate.name, true);
+      // it('marks a host as failed', () => {
+      //   const priorityUrl = catalog.get(testDetailsTemplate.name, true);
 
-    //     catalog.markFailedUrl(priorityUrl);
+      //   catalog.markFailedUrl(priorityUrl);
 
-    //     const failedHost = testDetails.hosts.find((host) => host.failed);
+      //   const failedHost = testDetails.hosts.find((host) => host.failed);
 
-    //     assert.isDefined(failedHost);
-    //   });
+      //   assert.isDefined(failedHost);
+      // });
 
-    //   it('returns the next priority url', () => {
-    //     const priorityUrl = catalog.get(testDetailsTemplate.name, true);
-    //     const nextPriorityUrl = catalog.markFailedUrl(priorityUrl);
+      // it('returns the next priority url', () => {
+      //   const priorityUrl = catalog.get(testDetailsTemplate.name, true);
+      //   const nextPriorityUrl = catalog.markFailedUrl(priorityUrl);
 
-    //     assert.notEqual(priorityUrl, nextPriorityUrl);
-    //   });
-    // });
+      //   assert.notEqual(priorityUrl, nextPriorityUrl);
+      // });
+    });
 
     describe('#_loadServiceDetails()', () => {
       let testDetailsTemplate;

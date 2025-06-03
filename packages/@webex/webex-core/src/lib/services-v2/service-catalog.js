@@ -5,7 +5,6 @@ import AmpState from 'ampersand-state';
 import {union} from 'lodash';
 import ServiceDetails from './service-details';
 
-/* eslint-disable no-underscore-dangle */
 /**
  * @class
  */
@@ -56,14 +55,12 @@ const ServiceCatalog = AmpState.extend({
 
   /**
    * @private
-   * Search the service details array to locate a `ServiceDetails`
-   * class object based on its name.
-   * @param {string} id
-   * @param {string} [serviceGroup]
-   * @returns {ServiceDetails}
+   * Get all service details for a given service group or return all details if no group is specified.
+   * @param {string} serviceGroup - The name of the service group to retrieve details for.
+   * @returns {Array<ServiceDetails>} - An array of service details.
    */
-  _getServiceDetails(id, serviceGroup) {
-    const serviceUrls =
+  _getAllServiceDetails(serviceGroup) {
+    const serviceDetails =
       typeof serviceGroup === 'string'
         ? this.serviceGroups[serviceGroup] || []
         : [
@@ -74,23 +71,21 @@ const ServiceCatalog = AmpState.extend({
             ...this.serviceGroups.discovery,
           ];
 
-    return serviceUrls.find((serviceUrl) => serviceUrl.id === id);
+    return serviceDetails;
   },
 
   /**
    * @private
-   * Generate an array of `ServiceDetails`s that is organized from highest auth
-   * level to lowest auth level.
-   * @returns {Array<ServiceDetails>} - array of `ServiceDetails`s
+   * Search the service details array to locate a `ServiceDetails`
+   * class object based on its name.
+   * @param {string} id
+   * @param {string} [serviceGroup]
+   * @returns {ServiceDetails}
    */
-  _listServiceUrls() {
-    return [
-      ...this.serviceGroups.override,
-      ...this.serviceGroups.postauth,
-      ...this.serviceGroups.signin,
-      ...this.serviceGroups.preauth,
-      ...this.serviceGroups.discovery,
-    ];
+  _getServiceDetails(id, serviceGroup) {
+    const serviceDetails = this._getAllServiceDetails(serviceGroup);
+
+    return serviceDetails.find((serviceUrl) => serviceUrl.id === id);
   },
 
   /**
@@ -206,18 +201,9 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string} service.url
    */
   findServiceFromClusterId({clusterId, priorityHost = true, serviceGroup} = {}) {
-    const serviceUrls =
-      typeof serviceGroup === 'string'
-        ? this.serviceGroups[serviceGroup] || []
-        : [
-            ...this.serviceGroups.override,
-            ...this.serviceGroups.postauth,
-            ...this.serviceGroups.signin,
-            ...this.serviceGroups.preauth,
-            ...this.serviceGroups.discovery,
-          ];
+    const serviceDetails = this._getAllServiceDetails(serviceGroup);
 
-    const identifiedServiceUrl = serviceUrls.find((serviceUrl) =>
+    const identifiedServiceUrl = serviceDetails.find((serviceUrl) =>
       serviceUrl.hosts.find((host) => host.id === clusterId)
     );
 
@@ -237,15 +223,9 @@ const ServiceCatalog = AmpState.extend({
    * @returns {ServiceDetails} - ServiceDetails assocated with provided url
    */
   findServiceUrlFromUrl(url) {
-    const serviceUrls = [
-      ...this.serviceGroups.discovery,
-      ...this.serviceGroups.preauth,
-      ...this.serviceGroups.signin,
-      ...this.serviceGroups.postauth,
-      ...this.serviceGroups.override,
-    ];
+    const serviceDetails = this._getAllServiceDetails();
 
-    return serviceUrls.find((serviceUrl) => {
+    return serviceDetails.find((serviceUrl) => {
       // Check to see if the URL we are checking starts with the default URL
       if (url.startsWith(serviceUrl.defaultUrl)) {
         return true;
@@ -306,36 +286,6 @@ const ServiceCatalog = AmpState.extend({
   },
 
   /**
-   * Creates an object where the keys are the service names
-   * and the values are the service urls.
-   * @param {boolean} priorityHost - use the highest priority if set to `true`
-   * @param {string} [serviceGroup]
-   * @returns {Record<string, string>}
-   */
-  list(priorityHost, serviceGroup) {
-    const output = {};
-
-    const serviceUrls =
-      typeof serviceGroup === 'string'
-        ? this.serviceGroups[serviceGroup] || []
-        : [
-            ...this.serviceGroups.discovery,
-            ...this.serviceGroups.preauth,
-            ...this.serviceGroups.signin,
-            ...this.serviceGroups.postauth,
-            ...this.serviceGroups.override,
-          ];
-
-    if (serviceUrls) {
-      serviceUrls.forEach((serviceUrl) => {
-        output[serviceUrl.name] = serviceUrl.get(priorityHost);
-      });
-    }
-
-    return output;
-  },
-
-  /**
    * Mark a priority host service url as failed.
    * This will mark the host associated with the
    * `ServiceDetails` to be removed from the its
@@ -345,19 +295,19 @@ const ServiceCatalog = AmpState.extend({
    * hosts are available, or if `noPriorityHosts` is set to
    * `true`.
    * @param {string} url
-   * @param {boolean} noPriorityHosts
    * @returns {string}
    */
-  markFailedUrl(url, noPriorityHosts) {
-    const serviceUrl = this._getServiceDetails(
-      Object.keys(this.list()).find((key) => this._getServiceDetails(key).failHost(url))
-    );
+  markFailedServiceUrl(url) {
+    const serviceDetails = this._getAllServiceDetails();
 
-    if (!serviceUrl) {
+    const serviceDetailWithFailedHost = serviceDetails.find((service) => service.failHost(url));
+
+    // if we couldn't find the url we wanted to fail, return undefined
+    if (!serviceDetailWithFailedHost) {
       return undefined;
     }
 
-    return noPriorityHosts ? serviceUrl.get(false) : serviceUrl.get(true);
+    return serviceDetailWithFailedHost.get();
   },
 
   /**
@@ -445,6 +395,5 @@ const ServiceCatalog = AmpState.extend({
     });
   },
 });
-/* eslint-enable no-underscore-dangle */
 
 export default ServiceCatalog;

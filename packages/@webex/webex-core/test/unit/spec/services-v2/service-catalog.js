@@ -4,7 +4,8 @@
 
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {Services} from '@webex/webex-core';
+import {ServicesV2} from '@webex/webex-core';
+import {formattedServiceHostmapV2} from '../../../fixtures/host-catalog-v2';
 
 describe('webex-core', () => {
   describe('ServiceCatalogV2', () => {
@@ -14,7 +15,7 @@ describe('webex-core', () => {
 
     beforeEach(() => {
       webex = new MockWebex();
-      services = new Services(undefined, {parent: webex});
+      services = new ServicesV2(undefined, {parent: webex});
       catalog = services._getCatalog();
     });
 
@@ -136,25 +137,6 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#list()', () => {
-      let serviceList;
-
-      beforeEach(() => {
-        serviceList = catalog.list();
-      });
-
-      it('must return an object', () => {
-        assert.typeOf(serviceList, 'object');
-      });
-
-      it('returned list must be of shape {Record<string, string>}', () => {
-        Object.keys(serviceList).forEach((key) => {
-          assert.typeOf(key, 'string');
-          assert.typeOf(serviceList[key], 'string');
-        });
-      });
-    });
-
     describe('#setAllowedDomains()', () => {
       const domains = [];
 
@@ -198,6 +180,66 @@ describe('webex-core', () => {
         const list = catalog.getAllowedDomains();
 
         assert.match(['example-a', 'example-b', 'example-c', 'example-e', 'example-f'], list);
+      });
+    });
+
+    describe('#markFailedServiceUrl()', () => {
+      afterEach(() => {
+        catalog._getServiceDetails(
+          'urn:TEAM:us-east-2_a:conversation'
+        ).serviceUrls[0].failed = false;
+      });
+
+      it('marks service url failed, and retrieves next highest priority', () => {
+        catalog.updateServiceGroups('postauth', formattedServiceHostmapV2);
+
+        const currentHighest = catalog
+          ._getServiceDetails('urn:TEAM:us-east-2_a:conversation')
+          .get();
+
+        assert.equal(currentHighest, 'https://prod-achm-message.svc.webex.com/conversation/api/v1');
+
+        const nextHighest = catalog.markFailedServiceUrl(
+          'https://prod-achm-message.svc.webex.com/conversation/api/v1'
+        );
+
+        assert.equal(nextHighest, 'https://conv-a.wbx2.com/conversation/api/v1');
+      });
+
+      it('returns undefined if url does not exist', () => {
+        catalog.updateServiceGroups('postauth', formattedServiceHostmapV2);
+
+        const currentHighest = catalog
+          ._getServiceDetails('urn:TEAM:us-east-2_a:conversation')
+          .get();
+
+        assert.equal(currentHighest, 'https://prod-achm-message.svc.webex.com/conversation/api/v1');
+
+        const nextHighest = catalog.markFailedServiceUrl(
+          'https://doesnotexist.com/conversation/api/v1'
+        );
+
+        assert.equal(nextHighest, undefined);
+      });
+
+      it('returns original highest priority url if all urls in service were already marked as failure', () => {
+        catalog.updateServiceGroups('postauth', formattedServiceHostmapV2);
+
+        const currentHighest = catalog
+          ._getServiceDetails('urn:TEAM:us-east-2_a:conversation')
+          .get();
+
+        assert.equal(currentHighest, 'https://prod-achm-message.svc.webex.com/conversation/api/v1');
+
+        catalog
+          ._getServiceDetails('urn:TEAM:us-east-2_a:conversation')
+          .serviceUrls.forEach((url) => (url.failed = true));
+
+        const nextHighest = catalog.markFailedServiceUrl(
+          'https://prod-achm-message.svc.webex.com/conversation/api/v1'
+        );
+
+        assert.equal(nextHighest, 'https://prod-achm-message.svc.webex.com/conversation/api/v1');
       });
     });
 
