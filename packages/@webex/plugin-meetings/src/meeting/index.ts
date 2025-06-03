@@ -262,7 +262,10 @@ type FetchMeetingInfoParams = {
   sendCAevents?: boolean;
 };
 
-type MediaReachabilityMetrics = ReachabilityMetrics & {isSubnetReachable: boolean};
+type MediaReachabilityMetrics = ReachabilityMetrics & {
+  isSubnetReachable: boolean;
+  selectedCluster: string | null;
+};
 
 /**
  * MediaDirection
@@ -9663,9 +9666,12 @@ export default class Meeting extends StatelessWebexPlugin {
       isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(this.mediaServerIp);
     }
 
+    const selectedCluster = this.mediaConnections[0]?.mediaAgentCluster || null;
+
     return {
       ...reachabilityMetrics,
       isSubnetReachable,
+      selectedCluster,
     };
   }
 }
