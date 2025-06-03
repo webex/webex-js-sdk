@@ -185,7 +185,7 @@ describe('webex-core', () => {
 
     describe('#markFailedServiceUrl()', () => {
       afterEach(() => {
-        catalog._getServiceDetails(
+        catalog._getServiceDetail(
           'urn:TEAM:us-east-2_a:conversation'
         ).serviceUrls[0].failed = false;
       });
@@ -193,9 +193,7 @@ describe('webex-core', () => {
       it('marks service url failed, and retrieves next highest priority', () => {
         catalog.updateServiceGroups('postauth', formattedServiceHostmapV2);
 
-        const currentHighest = catalog
-          ._getServiceDetails('urn:TEAM:us-east-2_a:conversation')
-          .get();
+        const currentHighest = catalog._getServiceDetail('urn:TEAM:us-east-2_a:conversation').get();
 
         assert.equal(currentHighest, 'https://prod-achm-message.svc.webex.com/conversation/api/v1');
 
@@ -209,9 +207,7 @@ describe('webex-core', () => {
       it('returns undefined if url does not exist', () => {
         catalog.updateServiceGroups('postauth', formattedServiceHostmapV2);
 
-        const currentHighest = catalog
-          ._getServiceDetails('urn:TEAM:us-east-2_a:conversation')
-          .get();
+        const currentHighest = catalog._getServiceDetail('urn:TEAM:us-east-2_a:conversation').get();
 
         assert.equal(currentHighest, 'https://prod-achm-message.svc.webex.com/conversation/api/v1');
 
@@ -225,14 +221,12 @@ describe('webex-core', () => {
       it('returns original highest priority url if all urls in service were already marked as failure', () => {
         catalog.updateServiceGroups('postauth', formattedServiceHostmapV2);
 
-        const currentHighest = catalog
-          ._getServiceDetails('urn:TEAM:us-east-2_a:conversation')
-          .get();
+        const currentHighest = catalog._getServiceDetail('urn:TEAM:us-east-2_a:conversation').get();
 
         assert.equal(currentHighest, 'https://prod-achm-message.svc.webex.com/conversation/api/v1');
 
         catalog
-          ._getServiceDetails('urn:TEAM:us-east-2_a:conversation')
+          ._getServiceDetail('urn:TEAM:us-east-2_a:conversation')
           .serviceUrls.forEach((url) => (url.failed = true));
 
         const nextHighest = catalog.markFailedServiceUrl(
