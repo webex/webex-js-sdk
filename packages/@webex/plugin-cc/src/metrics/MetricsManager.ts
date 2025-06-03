@@ -25,27 +25,91 @@ type GenericEvent = {
 export type MetricsType = 'behavioral' | 'operational' | 'business';
 
 const PRODUCT_NAME_UPPER = PRODUCT_NAME.toUpperCase();
+/**
+ * @class MetricsManager
+ * @classdesc Manages the collection, batching, and submission of behavioral, operational, and business metrics for the Webex SDK.
+ * Implements a singleton pattern to ensure a single instance throughout the application lifecycle.
+ *
+ * @remarks
+ * This class is responsible for tracking, batching, and submitting various types of metric events.
+ * It also provides utility methods for extracting common tracking fields from AQM responses.
+ * @ignore
+ */
 export default class MetricsManager {
+  /**
+   * The Webex SDK instance used for submitting metrics.
+   * @private
+   */
   private webex: WebexSDK;
+
+  /**
+   * Stores currently running timed events.
+   * @private
+   */
   private readonly runningEvents: Record<string, {startTime: number; keys: Set<string>}> = {};
+
+  /**
+   * Queue for pending behavioral events.
+   * @private
+   */
   private pendingBehavioralEvents: BehavioralEvent[] = [];
+
+  /**
+   * Queue for pending operational events.
+   * @private
+   */
   private pendingOperationalEvents: GenericEvent[] = [];
+
+  /**
+   * Queue for pending business events.
+   * @private
+   */
   private pendingBusinessEvents: GenericEvent[] = [];
+
+  /**
+   * Indicates if the manager is ready to submit events.
+   * @private
+   */
   private readyToSubmitEvents = false;
+
+  /**
+   * Lock to prevent concurrent submissions.
+   * @private
+   */
   private submittingEvents = false; // Add a lock for submitting events
 
-  // eslint-disable-next-line no-use-before-define
+  /**
+   * Singleton instance of MetricsManager.
+   * @private
+   */
   private static instance: MetricsManager;
+
+  /**
+   * Flag to disable metrics collection.
+   * @private
+   */
   private metricsDisabled = false; // TODO: SPARK-637285
 
+  /**
+   * Private constructor to enforce singleton pattern.
+   * @private
+   */
   // eslint-disable-next-line no-useless-constructor
   private constructor() {}
 
+  /**
+   * Marks the manager as ready to submit events and triggers submission.
+   * @private
+   */
   private setReadyToSubmitEvents() {
     this.readyToSubmitEvents = true;
     this.submitPendingEvents();
   }
 
+  /**
+   * Submits all pending events if not already submitting.
+   * @private
+   */
   private async submitPendingEvents() {
     if (this.submittingEvents) {
       return;
@@ -60,6 +124,10 @@ export default class MetricsManager {
     }
   }
 
+  /**
+   * Submits all pending behavioral events if ready.
+   * @private
+   */
   private async submitPendingBehavioralEvents() {
     if (this.pendingBehavioralEvents.length === 0) {
       return;
@@ -79,6 +147,10 @@ export default class MetricsManager {
     }
   }
 
+  /**
+   * Submits all pending operational events if ready.
+   * @private
+   */
   private async submitPendingOperationalEvents() {
     if (this.pendingOperationalEvents.length === 0) {
       return;
@@ -95,6 +167,10 @@ export default class MetricsManager {
     }
   }
 
+  /**
+   * Submits all pending business events if ready.
+   * @private
+   */
   private async submitPendingBusinessEvents() {
     if (this.pendingBusinessEvents.length === 0) {
       return;
@@ -114,6 +190,13 @@ export default class MetricsManager {
     }
   }
 
+  /**
+   * Adds a duration property to the event payload if the event was timed.
+   * @param eventName - The name of the event.
+   * @param options - Optional event payload.
+   * @returns The event payload with duration if applicable.
+   * @private
+   */
   private addDurationIfTimed(eventName: string, options?: EventPayload): EventPayload {
     const durationKey = 'duration_ms';
     for (const [genericKey, timing] of Object.entries(this.runningEvents)) {
@@ -131,10 +214,24 @@ export default class MetricsManager {
     return options || {};
   }
 
+  /**
+   * Converts spaces in a string to underscores.
+   * @param str - The input string.
+   * @returns The string with spaces replaced by underscores.
+   * @public
+   * @example
+   * MetricsManager.spacesToUnderscore('my event name'); // 'my_event_name'
+   */
   static spacesToUnderscore(str: string): string {
     return str.replace(/ /g, '_');
   }
 
+  /**
+   * Prepares the event payload by removing empty or undefined fields and adding common metadata.
+   * @param obj - The original event payload.
+   * @returns The cleaned and enriched event payload.
+   * @private
+   */
   private static preparePayload(obj: EventPayload): EventPayload {
     const payload: EventPayload = {};
 
@@ -160,11 +257,23 @@ export default class MetricsManager {
     return payloadWithCommonMetadata;
   }
 
+  /**
+   * Checks if metrics collection is currently disabled.
+   * @returns True if metrics are disabled, false otherwise.
+   * @private
+   */
   private isMetricsDisabled(): boolean {
     // TODO: SPARK-637285 Need to return true if in development mode to avoid sending metrics to the server
     return this.metricsDisabled;
   }
 
+  /**
+   * Enables or disables metrics collection. Clears pending events if disabled.
+   * @param disabled - Whether to disable metrics.
+   * @public
+   * @example
+   * MetricsManager.getInstance().setMetricsDisabled(true);
+   */
   public setMetricsDisabled(disabled: boolean) {
     this.metricsDisabled = disabled;
     if (disabled) {
@@ -172,12 +281,24 @@ export default class MetricsManager {
     }
   }
 
+  /**
+   * Clears all pending events from the queues.
+   * @private
+   */
   private clearPendingEvents() {
     this.pendingBehavioralEvents.length = 0;
     this.pendingOperationalEvents.length = 0;
     this.pendingBusinessEvents.length = 0;
   }
 
+  /**
+   * Tracks a behavioral event and submits it if possible.
+   * @param name - The metric event name.
+   * @param options - Optional event payload.
+   * @public
+   * @example
+   * MetricsManager.getInstance().trackBehavioralEvent('AGENT_LOGIN', {agentId: '123'});
+   */
   public trackBehavioralEvent(name: METRIC_EVENT_NAMES, options?: EventPayload) {
     if (this.isMetricsDisabled()) {
       return;
@@ -191,6 +312,14 @@ export default class MetricsManager {
     this.submitPendingBehavioralEvents();
   }
 
+  /**
+   * Tracks an operational event and submits it if possible.
+   * @param name - The metric event name.
+   * @param options - Optional event payload.
+   * @public
+   * @example
+   * MetricsManager.getInstance().trackOperationalEvent('AGENT_LOGOUT', {agentId: '123'});
+   */
   public trackOperationalEvent(name: METRIC_EVENT_NAMES, options?: EventPayload) {
     if (this.isMetricsDisabled()) {
       return;
@@ -204,6 +333,14 @@ export default class MetricsManager {
     this.submitPendingOperationalEvents();
   }
 
+  /**
+   * Tracks a business event and submits it if possible.
+   * @param name - The metric event name.
+   * @param options - Optional event payload.
+   * @public
+   * @example
+   * MetricsManager.getInstance().trackBusinessEvent('AGENT_TRANSFER', {agentId: '123'});
+   */
   public trackBusinessEvent(name: METRIC_EVENT_NAMES, options?: EventPayload) {
     if (this.isMetricsDisabled()) {
       return;
@@ -217,6 +354,15 @@ export default class MetricsManager {
     this.submitPendingBusinessEvents();
   }
 
+  /**
+   * Tracks an event across one or more metric services.
+   * @param name - The metric event name.
+   * @param payload - Optional event payload.
+   * @param metricServices - Array of metric types to track (default: ['behavioral']).
+   * @public
+   * @example
+   * MetricsManager.getInstance().trackEvent('AGENT_LOGIN', {agentId: '123'}, ['behavioral', 'operational']);
+   */
   public trackEvent(
     name: METRIC_EVENT_NAMES,
     payload?: EventPayload,
@@ -243,6 +389,14 @@ export default class MetricsManager {
     }
   }
 
+  /**
+   * Starts timing for one or more event keys.
+   * @param keys - A string or array of strings representing event keys.
+   * @public
+   * @example
+   * MetricsManager.getInstance().timeEvent('AGENT_LOGIN');
+   * MetricsManager.getInstance().timeEvent(['AGENT_LOGIN', 'AGENT_LOGOUT']);
+   */
   public timeEvent(keys: string | string[]) {
     if (this.isMetricsDisabled()) {
       return;
@@ -258,6 +412,11 @@ export default class MetricsManager {
     this.runningEvents[genericKey] = {startTime: Date.now(), keys: new Set(keyArray)};
   }
 
+  /**
+   * Sets the Webex SDK instance and marks the manager as ready when the SDK is ready.
+   * @param webex - The Webex SDK instance.
+   * @private
+   */
   private setWebex(webex: WebexSDK) {
     this.webex = webex;
     if (this.webex.ready) {
@@ -268,7 +427,14 @@ export default class MetricsManager {
     });
   }
 
-  // Make the class a singleton
+  /**
+   * Returns the singleton instance of MetricsManager, initializing it if necessary.
+   * @param options - Optional object containing the Webex SDK instance.
+   * @returns The singleton MetricsManager instance.
+   * @public
+   * @example
+   * const metrics = MetricsManager.getInstance({webex});
+   */
   public static getInstance(options?: {webex: WebexSDK}): MetricsManager {
     if (!MetricsManager.instance) {
       MetricsManager.instance = new MetricsManager();
@@ -281,10 +447,24 @@ export default class MetricsManager {
     return MetricsManager.instance;
   }
 
+  /**
+   * Resets the singleton instance of MetricsManager. Useful for testing.
+   * @public
+   * @example
+   * MetricsManager.resetInstance();
+   */
   public static resetInstance() {
     MetricsManager.instance = undefined;
   }
 
+  /**
+   * Extracts common tracking fields from an AQM response object.
+   * @param response - The AQM response object.
+   * @returns An object containing common tracking fields.
+   * @public
+   * @example
+   * const fields = MetricsManager.getCommonTrackingFieldForAQMResponse(response);
+   */
   public static getCommonTrackingFieldForAQMResponse(response: any): Record<string, any> {
     // This method is used to extract common tracking fields from the AQM response
     // and return them as an object. The fields are extracted from the response
@@ -303,6 +483,14 @@ export default class MetricsManager {
     return fields;
   }
 
+  /**
+   * Extracts common tracking fields from an AQM failure response object.
+   * @param failureResponse - The AQM failure response object.
+   * @returns An object containing common tracking fields for failures.
+   * @public
+   * @example
+   * const fields = MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failureResponse);
+   */
   public static getCommonTrackingFieldForAQMResponseFailed(
     failureResponse: Failure
   ): Record<string, any> {
