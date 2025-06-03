@@ -1370,7 +1370,7 @@ export default class LocusInfo extends EventsScope {
         this.parsedLocus.self,
         self,
         this.webex.internal.device.url,
-        this.participants
+        this.participants // using this.participants instead of locus.participants here, because with delta DTOs locus.participants will only contain a small subset of participants
       );
 
       this.updateMeeting(parsedSelves.current);
