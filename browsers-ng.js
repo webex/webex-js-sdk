@@ -86,231 +86,231 @@ module.exports = function (packageName, argv) {
     );
   }
 
-  if (process.env.SC_TUNNEL_IDENTIFIER || process.env.SAUCE) {
-    browsers = {
-      ...(!argv.browsers && !argv.os
-        ? {
-            // Reminder: the first item in this object is used by pipeline builds
-            sl_chrome_latest_macOS_Catalina: {
-              base: 'SauceLabs',
-              platform: 'macOS 10.15',
-              browserName: 'Chrome',
-              version: 'latest',
-              extendedDebugging: true,
-            },
-            sl_chrome_latest_win10: {
-              base: 'SauceLabs',
-              platform: 'Windows 10',
-              browserName: 'Chrome',
-              version: 'latest',
-              extendedDebugging: true,
-            },
-            sl_firefox_latest_macOS_Catalina: {
-              base: 'SauceLabs',
-              platform: 'macOS 10.15',
-              browserName: 'Firefox',
-              version: 'latest',
-              extendedDebugging: true,
-              'moz:firefoxOptions': {
-                args: ['-start-debugger-server', '9222'],
-                prefs: {
-                  'devtools.chrome.enabled': true,
-                  'devtools.debugger.prompt-connection': false,
-                  'devtools.debugger.remote-enabled': true,
-                  'dom.webnotifications.enabled': false,
-                  'media.webrtc.hw.h264.enabled': true,
-                  'media.getusermedia.screensharing.enabled': true,
-                  'media.navigator.permission.disabled': true,
-                  'media.navigator.streams.fake': true,
-                  'media.peerconnection.video.h264_enabled': true,
-                },
-              },
-            },
-            sl_firefox_latest_win10: {
-              base: 'SauceLabs',
-              platform: 'Windows 10',
-              browserName: 'Firefox',
-              version: 'latest',
-              extendedDebugging: true,
-              'moz:firefoxOptions': {
-                args: ['-start-debugger-server', '9222'],
-                prefs: {
-                  'devtools.chrome.enabled': true,
-                  'devtools.debugger.prompt-connection': false,
-                  'devtools.debugger.remote-enabled': true,
-                },
-              },
-            },
-            sl_edge_latest_win10: {
-              base: 'SauceLabs',
-              platform: 'Windows 10',
-              browserName: 'MicrosoftEdge',
-              version: 'latest',
-            },
-            sl_safari_latest_macOS_Catalina: {
-              base: 'SauceLabs',
-              platform: 'macOS 10.15',
-              browserName: 'Safari',
-              version: 'latest',
-            },
-            // sl_firefox_latest_linux: {
-            //   base: 'SauceLabs',
-            //   platform: 'Linux',
-            //   browserName: 'Firefox',
-            //   version: 'latest'
-            // }
-          }
-        : {
-            ...((!argv.browsers ||
-              argv.browsers.includes('chrome') ||
-              argv.browsers.includes('defaults') ||
-              argv.browsers.includes('default')) && {
-              // If "mac" is specified or nothing is specified
-              ...((!argv.os || argv.os.includes('mac')) && {
-                sl_chrome_latest_macOS_Catalina: {
-                  base: 'SauceLabs',
-                  platform: 'macOS 10.15',
-                  browserName: 'Chrome',
-                  version: 'latest',
-                  extendedDebugging: true,
-                },
-              }),
-              // If "windows" is specified or nothing is specified
-              ...((!argv.os || argv.os.includes('win') || argv.os.includes('windows')) && {
-                sl_chrome_latest_win10: {
-                  base: 'SauceLabs',
-                  platform: 'Windows 10',
-                  browserName: 'Chrome',
-                  version: 'latest',
-                  extendedDebugging: true,
-                },
-              }),
-            }),
+  // if (process.env.SC_TUNNEL_IDENTIFIER || process.env.SAUCE) {
+  //   browsers = {
+  //     ...(!argv.browsers && !argv.os
+  //       ? {
+  //           // Reminder: the first item in this object is used by pipeline builds
+  //           sl_chrome_latest_macOS_Catalina: {
+  //             base: 'SauceLabs',
+  //             platform: 'macOS 10.15',
+  //             browserName: 'Chrome',
+  //             version: 'latest',
+  //             extendedDebugging: true,
+  //           },
+  //           sl_chrome_latest_win10: {
+  //             base: 'SauceLabs',
+  //             platform: 'Windows 10',
+  //             browserName: 'Chrome',
+  //             version: 'latest',
+  //             extendedDebugging: true,
+  //           },
+  //           sl_firefox_latest_macOS_Catalina: {
+  //             base: 'SauceLabs',
+  //             platform: 'macOS 10.15',
+  //             browserName: 'Firefox',
+  //             version: 'latest',
+  //             extendedDebugging: true,
+  //             'moz:firefoxOptions': {
+  //               args: ['-start-debugger-server', '9222'],
+  //               prefs: {
+  //                 'devtools.chrome.enabled': true,
+  //                 'devtools.debugger.prompt-connection': false,
+  //                 'devtools.debugger.remote-enabled': true,
+  //                 'dom.webnotifications.enabled': false,
+  //                 'media.webrtc.hw.h264.enabled': true,
+  //                 'media.getusermedia.screensharing.enabled': true,
+  //                 'media.navigator.permission.disabled': true,
+  //                 'media.navigator.streams.fake': true,
+  //                 'media.peerconnection.video.h264_enabled': true,
+  //               },
+  //             },
+  //           },
+  //           sl_firefox_latest_win10: {
+  //             base: 'SauceLabs',
+  //             platform: 'Windows 10',
+  //             browserName: 'Firefox',
+  //             version: 'latest',
+  //             extendedDebugging: true,
+  //             'moz:firefoxOptions': {
+  //               args: ['-start-debugger-server', '9222'],
+  //               prefs: {
+  //                 'devtools.chrome.enabled': true,
+  //                 'devtools.debugger.prompt-connection': false,
+  //                 'devtools.debugger.remote-enabled': true,
+  //               },
+  //             },
+  //           },
+  //           sl_edge_latest_win10: {
+  //             base: 'SauceLabs',
+  //             platform: 'Windows 10',
+  //             browserName: 'MicrosoftEdge',
+  //             version: 'latest',
+  //           },
+  //           sl_safari_latest_macOS_Catalina: {
+  //             base: 'SauceLabs',
+  //             platform: 'macOS 10.15',
+  //             browserName: 'Safari',
+  //             version: 'latest',
+  //           },
+  //           // sl_firefox_latest_linux: {
+  //           //   base: 'SauceLabs',
+  //           //   platform: 'Linux',
+  //           //   browserName: 'Firefox',
+  //           //   version: 'latest'
+  //           // }
+  //         }
+  //       : {
+  //           ...((!argv.browsers ||
+  //             argv.browsers.includes('chrome') ||
+  //             argv.browsers.includes('defaults') ||
+  //             argv.browsers.includes('default')) && {
+  //             // If "mac" is specified or nothing is specified
+  //             ...((!argv.os || argv.os.includes('mac')) && {
+  //               sl_chrome_latest_macOS_Catalina: {
+  //                 base: 'SauceLabs',
+  //                 platform: 'macOS 10.15',
+  //                 browserName: 'Chrome',
+  //                 version: 'latest',
+  //                 extendedDebugging: true,
+  //               },
+  //             }),
+  //             // If "windows" is specified or nothing is specified
+  //             ...((!argv.os || argv.os.includes('win') || argv.os.includes('windows')) && {
+  //               sl_chrome_latest_win10: {
+  //                 base: 'SauceLabs',
+  //                 platform: 'Windows 10',
+  //                 browserName: 'Chrome',
+  //                 version: 'latest',
+  //                 extendedDebugging: true,
+  //               },
+  //             }),
+  //           }),
 
-            // Firefox or defaults is specified
-            ...((!argv.browsers ||
-              argv.browsers.includes('firefox') ||
-              argv.browsers.includes('defaults') ||
-              argv.browsers.includes('default')) && {
-              ...((!argv.os || argv.os.includes('mac')) && {
-                sl_firefox_latest_macOS_Catalina: {
-                  base: 'SauceLabs',
-                  platform: 'macOS 10.15',
-                  browserName: 'Firefox',
-                  version: 'latest',
-                  extendedDebugging: true,
-                  'moz:firefoxOptions': {
-                    args: ['-start-debugger-server', '9222'],
-                    prefs: {
-                      'devtools.chrome.enabled': true,
-                      'devtools.debugger.prompt-connection': false,
-                      'devtools.debugger.remote-enabled': true,
-                    },
-                  },
-                },
-              }),
-              ...((!argv.os || argv.os.includes('win') || argv.os.includes('windows')) && {
-                sl_firefox_latest_win10: {
-                  base: 'SauceLabs',
-                  platform: 'Windows 10',
-                  browserName: 'Firefox',
-                  version: 'latest',
-                  extendedDebugging: true,
-                  'moz:firefoxOptions': {
-                    args: ['-start-debugger-server', '9222'],
-                    prefs: {
-                      'devtools.chrome.enabled': true,
-                      'devtools.debugger.prompt-connection': false,
-                      'devtools.debugger.remote-enabled': true,
-                    },
-                  },
-                },
-              }),
-            }),
+  //           // Firefox or defaults is specified
+  //           ...((!argv.browsers ||
+  //             argv.browsers.includes('firefox') ||
+  //             argv.browsers.includes('defaults') ||
+  //             argv.browsers.includes('default')) && {
+  //             ...((!argv.os || argv.os.includes('mac')) && {
+  //               sl_firefox_latest_macOS_Catalina: {
+  //                 base: 'SauceLabs',
+  //                 platform: 'macOS 10.15',
+  //                 browserName: 'Firefox',
+  //                 version: 'latest',
+  //                 extendedDebugging: true,
+  //                 'moz:firefoxOptions': {
+  //                   args: ['-start-debugger-server', '9222'],
+  //                   prefs: {
+  //                     'devtools.chrome.enabled': true,
+  //                     'devtools.debugger.prompt-connection': false,
+  //                     'devtools.debugger.remote-enabled': true,
+  //                   },
+  //                 },
+  //               },
+  //             }),
+  //             ...((!argv.os || argv.os.includes('win') || argv.os.includes('windows')) && {
+  //               sl_firefox_latest_win10: {
+  //                 base: 'SauceLabs',
+  //                 platform: 'Windows 10',
+  //                 browserName: 'Firefox',
+  //                 version: 'latest',
+  //                 extendedDebugging: true,
+  //                 'moz:firefoxOptions': {
+  //                   args: ['-start-debugger-server', '9222'],
+  //                   prefs: {
+  //                     'devtools.chrome.enabled': true,
+  //                     'devtools.debugger.prompt-connection': false,
+  //                     'devtools.debugger.remote-enabled': true,
+  //                   },
+  //                 },
+  //               },
+  //             }),
+  //           }),
 
-            // If Safari is specified or "mac" is specified or no argv.os is specified
-            ...(((argv.os && argv.os.includes('mac')) ||
-              (argv.browsers && argv.browsers.includes('safari'))) && {
-              sl_safari_latest_macOS_Catalina: {
-                base: 'SauceLabs',
-                platform: 'macOS 10.15',
-                browserName: 'Safari',
-                version: 'latest',
-              },
-            }),
+  //           // If Safari is specified or "mac" is specified or no argv.os is specified
+  //           ...(((argv.os && argv.os.includes('mac')) ||
+  //             (argv.browsers && argv.browsers.includes('safari'))) && {
+  //             sl_safari_latest_macOS_Catalina: {
+  //               base: 'SauceLabs',
+  //               platform: 'macOS 10.15',
+  //               browserName: 'Safari',
+  //               version: 'latest',
+  //             },
+  //           }),
 
-            ...(((argv.os && (argv.os.includes('win') || argv.os.includes('windows'))) ||
-              (argv.browsers && argv.browsers.includes('edge'))) && {
-              sl_edge_latest_win10: {
-                base: 'SauceLabs',
-                platform: 'Windows 10',
-                browserName: 'MicrosoftEdge',
-                version: 'latest',
-              },
-            }),
+  //           ...(((argv.os && (argv.os.includes('win') || argv.os.includes('windows'))) ||
+  //             (argv.browsers && argv.browsers.includes('edge'))) && {
+  //             sl_edge_latest_win10: {
+  //               base: 'SauceLabs',
+  //               platform: 'Windows 10',
+  //               browserName: 'MicrosoftEdge',
+  //               version: 'latest',
+  //             },
+  //           }),
 
-            ...(((argv.os && (argv.os.includes('win') || argv.os.includes('windows'))) ||
-              (argv.browsers &&
-                (argv.browsers.includes('ie') || argv.browsers.includes('internet explorer')))) && {
-              sl_ie_latest_win7: {
-                base: 'SauceLabs',
-                platform: 'Windows 7',
-                browserName: 'Internet Explorer',
-                version: 'latest',
-              },
-            }),
+  //           ...(((argv.os && (argv.os.includes('win') || argv.os.includes('windows'))) ||
+  //             (argv.browsers &&
+  //               (argv.browsers.includes('ie') || argv.browsers.includes('internet explorer')))) && {
+  //             sl_ie_latest_win7: {
+  //               base: 'SauceLabs',
+  //               platform: 'Windows 7',
+  //               browserName: 'Internet Explorer',
+  //               version: 'latest',
+  //             },
+  //           }),
 
-            ...(argv.os &&
-              argv.browsers &&
-              argv.os.includes('linux') &&
-              argv.browsers.includes('firefox') && {
-                sl_firefox_latest_linux: {
-                  base: 'SauceLabs',
-                  platform: 'Linux',
-                  browserName: 'Firefox',
-                  version: 'latest',
-                },
-              }),
-          }),
-    };
+  //           ...(argv.os &&
+  //             argv.browsers &&
+  //             argv.os.includes('linux') &&
+  //             argv.browsers.includes('firefox') && {
+  //               sl_firefox_latest_linux: {
+  //                 base: 'SauceLabs',
+  //                 platform: 'Linux',
+  //                 browserName: 'Firefox',
+  //                 version: 'latest',
+  //               },
+  //             }),
+  //         }),
+  //   };
 
-    try {
-      // Check if the package generated a browsers package dynamically. This is
-      // necessary when the package needs to e.g. use FirefoxProfile to manipulate
-      // the browser environment
-      browsers = require('./packages/' + packageName + '/browsers.processed.js')(browsers);
-    } catch (error) {
-      if (error.code !== `MODULE_NOT_FOUND`) {
-        throw error;
-      }
-      try {
-        browsers = require('./packages/' + packageName + '/browsers.js')(browsers);
-      } catch (error2) {
-        if (error2.code !== `MODULE_NOT_FOUND`) {
-          throw error2;
-        }
-        // ignore
-      }
-    }
+  //   try {
+  //     // Check if the package generated a browsers package dynamically. This is
+  //     // necessary when the package needs to e.g. use FirefoxProfile to manipulate
+  //     // the browser environment
+  //     browsers = require('./packages/' + packageName + '/browsers.processed.js')(browsers);
+  //   } catch (error) {
+  //     if (error.code !== `MODULE_NOT_FOUND`) {
+  //       throw error;
+  //     }
+  //     try {
+  //       browsers = require('./packages/' + packageName + '/browsers.js')(browsers);
+  //     } catch (error2) {
+  //       if (error2.code !== `MODULE_NOT_FOUND`) {
+  //         throw error2;
+  //       }
+  //       // ignore
+  //     }
+  //   }
 
-    // Filters out extra browsers that aren't specified by the user
-    // `--mac` includes [chrome, firefox, safari]
-    // If use wants chrome and firefox only on mac it filters out safari
-    if (argv.os && argv.browsers) {
-      Object.keys(browsers).forEach((browser) =>
-        argv.browsers.some((item) => browser.includes(item)) ? browser : delete browsers[browser]
-      );
-    }
+  //   // Filters out extra browsers that aren't specified by the user
+  //   // `--mac` includes [chrome, firefox, safari]
+  //   // If use wants chrome and firefox only on mac it filters out safari
+  //   if (argv.os && argv.browsers) {
+  //     Object.keys(browsers).forEach((browser) =>
+  //       argv.browsers.some((item) => browser.includes(item)) ? browser : delete browsers[browser]
+  //     );
+  //   }
 
-    // Remove unspecified browsers
-    if (argv.browsers && !argv.browsers.includes('defaults')) {
-      Object.keys(browsers).forEach(
-        (browser) =>
-          !argv.browsers.includes(browsers[browser].browserName.toLowerCase()) &&
-          delete browsers[browser]
-      );
-    }
-  }
+  //   // Remove unspecified browsers
+  //   if (argv.browsers && !argv.browsers.includes('defaults')) {
+  //     Object.keys(browsers).forEach(
+  //       (browser) =>
+  //         !argv.browsers.includes(browsers[browser].browserName.toLowerCase()) &&
+  //         delete browsers[browser]
+  //     );
+  //   }
+  // }
 
   if (!argv.browsers) {
     try {
