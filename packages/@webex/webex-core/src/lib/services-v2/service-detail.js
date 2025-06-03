@@ -3,8 +3,8 @@ import AmpState from 'ampersand-state';
 /**
  * @class
  */
-const ServiceDetails = AmpState.extend({
-  namespace: 'ServiceDetails',
+const ServiceDetail = AmpState.extend({
+  namespace: 'ServiceDetail',
 
   props: {
     serviceUrls: ['array', false, () => []],
@@ -80,4 +80,4 @@ const ServiceDetails = AmpState.extend({
   },
 });
 
-export default ServiceDetails;
+export default ServiceDetail;
