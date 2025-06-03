@@ -13,9 +13,15 @@ import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
+/** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
   private contact: ReturnType<typeof routingContact>;
+  /**
+   * Collection of tasks indexed by TaskId
+   * @type {Record<TaskId, ITask>}
+   * @private
+   */
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
@@ -170,7 +176,7 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT_UNHELD:
             // As soon as the main interaction is unheld, we need to emit TASK_RESUME
             task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_RESUME, task);
+            task.emit(TASK_EVENTS.TASK_UNHOLD, task);
             break;
           case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
             task = this.updateTaskData(task, {

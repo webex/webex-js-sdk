@@ -8,6 +8,12 @@ import workerScript from './keepalive.worker';
 import {KEEPALIVE_WORKER_INTERVAL, CLOSE_SOCKET_TIMEOUT, METHODS} from '../constants';
 import {WEB_SOCKET_MANAGER_FILE} from '../../../constants';
 
+/**
+ * WebSocketManager handles the WebSocket connection for Contact Center operations.
+ * It manages the connection lifecycle, including registration, reconnection, and message handling.
+ * It also utilizes a Web Worker to manage keepalive messages and socket closure.
+ * @ignore
+ */
 export class WebSocketManager extends EventEmitter {
   private websocket: WebSocket;
   shouldReconnect: boolean;
