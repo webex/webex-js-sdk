@@ -45,6 +45,8 @@ const Breakouts = WebexPlugin.extend({
     intervalID: 'number',
     meetingId: 'string',
     canManageBreakouts: 'boolean', // appear the ability to manage breakouts
+    mainGroupId: 'string', // appears from the moment you enable breakouts
+    mainSessionId: 'string', // appears from the moment you enable breakouts
   },
   children: {
     currentBreakoutSession: Breakout,
@@ -545,6 +547,28 @@ const Breakouts = WebexPlugin.extend({
   },
 
   /**
+   * set main group id
+   * @param {Object} breakoutInfo -- breakout groups
+   * @returns {void}
+   */
+  _setMainGroupId(breakoutInfo) {
+    if (breakoutInfo?.body?.mainGroupId) {
+      this.set('mainGroupId', breakoutInfo.body.mainGroupId);
+    }
+  },
+
+  /**
+   * set main session id
+   * @param {Object} breakoutInfo -- breakout groups
+   * @returns {void}
+   */
+  _setMainSessionId(breakoutInfo) {
+    if (breakoutInfo?.body?.mainSessionId) {
+      this.set('mainSessionId', breakoutInfo.body.mainSessionId);
+    }
+  },
+
+  /**
    * Create new breakout sessions
    * @param {object} params -- breakout session group
    * @returns {Promise}
@@ -567,6 +591,8 @@ const Breakouts = WebexPlugin.extend({
       });
 
     this._setManageGroups(breakoutInfo);
+    this._setMainGroupId(breakoutInfo);
+    this._setMainSessionId(breakoutInfo);
 
     // clear edit lock info after save breakout session info
     this._clearEditLockInfo();
@@ -630,6 +656,8 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this._setManageGroups(breakoutInfo);
+    this._setMainGroupId(breakoutInfo);
+    this._setMainSessionId(breakoutInfo);
 
     return breakoutInfo;
   },
@@ -665,6 +693,8 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this._setManageGroups(breakoutInfo);
+    this._setMainGroupId(breakoutInfo);
+    this._setMainSessionId(breakoutInfo);
 
     return breakoutInfo;
   },
@@ -718,6 +748,9 @@ const Breakouts = WebexPlugin.extend({
     });
 
     this._setManageGroups(breakout);
+    this._setMainGroupId(breakout);
+    this._setMainSessionId(breakout);
+
     if (editlock && breakout.body?.editlock?.token) {
       this.set('editLock', breakout.body.editlock);
       this.keepEditLockAlive();
@@ -909,6 +942,36 @@ const Breakouts = WebexPlugin.extend({
     if (this.editLock && this.editLock.token) {
       body.editlock = this.editLock;
     }
+
+    return this.request({
+      method: HTTP_VERBS.PUT,
+      uri: `${this.url}/dynamicAssign`,
+      body,
+    });
+  },
+  /**
+   * move participant to main session lobby,
+   * @param {Array} sessions
+   * @returns {void}
+   */
+  moveToLobby(sessions: any[]) {
+    const updatedSessions = sessions.map((item) => {
+      return {
+        id: this.mainSessionId,
+        participants: item.participants,
+        targetState: 'LOBBY',
+      };
+    });
+
+    const body = {
+      groups: [
+        {
+          id: this.mainGroupId,
+          sessions: updatedSessions,
+        },
+      ],
+      editlock: null,
+    };
 
     return this.request({
       method: HTTP_VERBS.PUT,
