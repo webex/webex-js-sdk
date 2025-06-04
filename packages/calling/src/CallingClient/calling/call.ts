@@ -899,10 +899,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.callStateMachine = interpret(callMachine)
       .onTransition((state, event) => {
-        log.log(
-          `Call StateMachine:- state=${state.value}, event=${JSON.stringify(event.type)}`,
-          {}
-        );
+        log.log(`Call StateMachine:- state=${state.value}, event=${JSON.stringify(event.type)}`, {
+          file: CALL_FILE,
+          method: METHODS.CONSTRUCTOR,
+        });
         if (state.value !== 'S_UNKNOWN') {
           this.metricManager.submitCallMetric(
             METRIC_EVENT.CALL,
@@ -918,10 +918,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.mediaStateMachine = interpret(mediaMachine)
       .onTransition((state, event) => {
-        log.log(
-          `Media StateMachine:- state=${state.value}, event=${JSON.stringify(event.type)}`,
-          {}
-        );
+        log.log(`Media StateMachine:- state=${state.value}, event=${JSON.stringify(event.type)}`, {
+          file: CALL_FILE,
+          method: METHODS.CONSTRUCTOR,
+        });
         if (state.value !== 'S_ROAP_ERROR') {
           this.metricManager.submitMediaMetric(
             METRIC_EVENT.MEDIA,
@@ -2587,7 +2587,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         log.info(
           `ROAP message to send (rcv from MEDIA-SDK) :
           \n type:  ${event.roapMessage?.messageType}, seq: ${event.roapMessage.seq} , version: ${event.roapMessage.version}`,
-          {}
+          {file: CALL_FILE, method: METHODS.MEDIA_ROAP_EVENTS_LISTENER}
         );
 
         log.info(`SDP message to send : \n ${event.roapMessage?.sdp}`, {
