@@ -102,7 +102,23 @@ const webex = Webex.init({
         credentials: {
             client_id: 'YOUR_PUBLIC_CLIENT_ID', // Provided by your Webex integration (developer.webex.com/my-apps)
             redirect_uri: 'YOUR_APP_REDIRECT_URI', // Your app's callback URL (must be registered in the integration)
-            scope: 'cjp:config_read cjp:user spark:webrtc_calling ...' // Required permissions
+            // Required Contact Center and Calling scopes:
+            scope: [
+                // Contact Center mandatory scopes
+                "cjp:config_read",   // Read configuration
+                "cjp:config_write",  // Modify configuration  
+                "cjp:config",        // General configuration access
+                "cjp:user",          // User operations
+
+                // WebRTC Calling scopes
+                "spark:webrtc_calling", // Browser calling
+                "spark:calls_read",     // Read call data
+                "spark:calls_write",    // Modify call state
+                "spark:xsi",            // Extended services
+
+                // Additional scopes
+                "spark:kms"             // Required for encryption 
+            ].join(' ')
         }
     }
 });
@@ -291,7 +307,7 @@ await window.webex.cc.stationLogout({ logoutReason: 'User Initiated', deviceId: 
         <pre><code class="javascript">// How it works (simplified from state-change.js and index.js):
 // Inputs:
 // - 'webex' object (from Step 1).
-// - 'state': The desired primary state (e.g., "Available", "Idle").
+// - 'state': The desired primary state, either 'Available' or 'Idle', and nothing else.
 // - 'auxCodeId': The ID of the auxiliary code, especially for "Idle" states.
 //   Both are derived from the selection in the "Choose State" dropdown (id="sel-state").
 //   This dropdown was populated using agentProfile.agentStates/idleCodes from Step 2.
@@ -351,7 +367,7 @@ webex.cc.on('agent:stateChange', (eventData) => {
     <section id="tasks">
         <h2>Step 5: Task Management - Receiving Tasks</h2>
         <p>
-            When an agent is in an available state, the Contact Center can offer them tasks (e.g., calls, chats).
+            When an agent is in the Avaliable state, the Contact Center can offer them tasks (e.g., calls, chats).
             The SDK uses event listeners to notify the application about task-related events.
             The most important initial event is <code>task:incoming</code>, which provides a <code>task</code> object.
             This <code>task</code> object is the key to managing that specific interaction.
@@ -397,17 +413,17 @@ function setupTaskEventListeners(webex) { // webex is window.webex
 }
 
 // Setting up listeners for events on a specific task instance:
-function setupTaskSpecificEventHandlers(taskInstance) { // taskInstance is the object from 'task:incoming' or 'task:hydrate'
+function setupTaskSpecificEventHandlers(currentTask) { // currentTask is the object from 'task:incoming' or 'task:hydrate'
     
     // Event: Task has been successfully assigned to the agent (e.g., after agent accepts).
-    taskInstance.on('task:assigned', (data) => {
-        console.log('Task assigned to agent:', taskInstance.data.interactionId);
+    currentTask.on('task:assigned', (data) => {
+        console.log('Task assigned to agent:', currentTask.data.interactionId);
         // UI can now update to show active task details.
     });
     
     // Event: For voice calls, this event provides the audio media stream.
-    taskInstance.on('task:media', (track) => { // 'track' is a MediaStreamTrack
-        console.log('Media track received for voice call:', taskInstance.data.interactionId);
+    currentTask.on('task:media', (track) => { // 'track' is a MediaStreamTrack
+        console.log('Media track received for voice call:', currentTask.data.interactionId);
         // This 'track' needs to be connected to an HTML <audio> element to play the call audio.
         const audioElement = document.getElementById('remote-audio');
         if (audioElement) {
@@ -416,10 +432,19 @@ function setupTaskSpecificEventHandlers(taskInstance) { // taskInstance is the o
     });
 
     // Other task events to listen for:
-    taskInstance.on('task:hold', () => console.log('Call placed on hold'));
-    taskInstance.on('task:resume', () => console.log('Call resumed from hold'));
-    taskInstance.on('task:consultCreated', () => console.log('Consult initiated'));
-    // ... and many more for different interaction states.
+currentTask.on('task:hold', () => console.log('Call placed on hold'));
+currentTask.on('task:resume', () => console.log('Call resumed from hold'));
+currentTask.on('task:consultCreated', () => console.log('Consult initiated'));
+// ... and many more for different interaction states.
+// For a full list of task events, refer to:
+// https://webex.github.io/webex-js-sdk/wxcc/enums/TASK_EVENTS.html
+
+// Listen for task ended event
+currentTask.on('task:end', (data) => {
+    if (data.wrapUpRequired) {
+        setupWrapupEvents(currentTask);
+    }
+});
 }
 </code></pre>
         <p><strong>Output of this step:</strong> When a task is offered, a <code>task</code> object is received. This
@@ -484,7 +509,7 @@ async function toggleHoldCall(currentTask) {
 }
 
 // Recording Controls:
-async function toggleCallRecording(currentTask, autoResumed = false) {
+async function toggleCallRecording(currentTask) {
     // Set up event listeners for recording state changes
     currentTask.on('task:recordingPaused', () => {
         console.log('Recording pause event received');
@@ -501,7 +526,7 @@ async function toggleCallRecording(currentTask, autoResumed = false) {
         // Update recording UI to active state
     });
 
-    taskInstance.on('task:recordingResumeFailed', () => {
+    currentTask.on('task:recordingResumeFailed', () => {
         console.log('Recording resume failed event received');
         // Show error in UI
     });
@@ -513,7 +538,7 @@ async function toggleCallRecording(currentTask, autoResumed = false) {
             console.log('Pause recording command sent successfully');
         } else {
             // Promise-based approach
-            await currentTask.resumeRecording({ autoResumed });
+            await currentTask.resumeRecording();
             console.log('Resume recording command sent successfully');
         }
     } catch (error) {
@@ -533,8 +558,8 @@ async function endCurrentTask(currentTask) {
 }
 
     // Event: Task has ended
-    taskInstance.on('task:end', () => {
-        console.log('Task ended:', taskInstance.data.interactionId);
+    currentTask.on('task:end', () => {
+        console.log('Task ended:', currentTask.data.interactionId);
         // Clean up UI related to this task
     });
 
@@ -558,10 +583,6 @@ async function endCurrentTask(currentTask) {
             <!--<button id="btn-consult-transfer" disabled>Complete Transfer</button>-->
             <button id="pause-resume-recording" disabled>Pause Recording</button>
             <button id="btn-end" disabled>End Call</button>
-            <div class="recording-controls">
-                <input type="checkbox" id="auto-resume-checkbox" disabled>
-                <label for="auto-resume-checkbox">Auto Resume Recording</label>
-            </div>
         </div>
         <p><strong>Relevant JS functions:</strong>
         <ul>
@@ -592,14 +613,14 @@ async function endCurrentTask(currentTask) {
         </p>
         <pre><code class="javascript">// How it works (simplified from task-manager.js's submitWrapup):
 // Inputs:
-// - 'taskToEndAndWrapup': The specific task object that has ended and requires wrapup (this is the same 'task' object from Step 5 & 6).
+    // - 'currentTask': The specific task object that has ended and requires wrapup (this is the same 'task' object from Step 5 & 6).
 // - 'selectedWrapupCodeId': The ID of the wrapup code selected from the "Choose Wrapup Code" dropdown (id="wrapup-codes").
 //                           This dropdown was populated using agentProfile.wrapupCodes from Step 2.
 
 // First, set up wrap-up event listeners
-function setupWrapupEvents(taskInstance) {
+function setupWrapupEvents(currentTask) {
     // Triggered when task enters wrap-up state
-    taskInstance.on('task:wrapup', (task) => {
+    currentTask.on('task:wrapup', (task) => {
         console.log('Task entered wrap-up state:', task.data.interactionId);
         // Enable wrap-up UI
         // Show wrap-up form with codes
@@ -608,7 +629,7 @@ function setupWrapupEvents(taskInstance) {
     });
 
     // Triggered when wrap-up is completed
-    taskInstance.on('task:wrappedup', (task) => {
+    currentTask.on('task:wrappedup', (task) => {
         console.log('Task wrap-up completed:', task.data.interactionId);
         // Clean up wrap-up UI
         document.getElementById('wrapup-codes').disabled = true;
@@ -618,12 +639,11 @@ function setupWrapupEvents(taskInstance) {
 }
 
 // Then handle the wrap-up operation
-async function completeTaskWrapup(taskToEndAndWrapup, selectedWrapupCodeId) {
+async function completeTaskWrapup(currentTask, selectedWrapupCodeId) {
     try {
         // Promise-based approach to submit wrap-up
-        await taskToEndAndWrapup.wrapup({
+        await currentTask.wrapup({
             auxCodeId: selectedWrapupCodeId, // ID from wrapup-codes dropdown
-            // wrapUpReason: "Optional text reason"
         });
         console.log('Wrap-up submitted successfully');
         
@@ -637,9 +657,9 @@ async function completeTaskWrapup(taskToEndAndWrapup, selectedWrapupCodeId) {
 
 // Usage example:
 // 1. When task ends, check if wrap-up is required
-taskInstance.on('task:end', (data) => {
+currentTask.on('task:end', (data) => {
     if (data.wrapUpRequired) {
-        setupWrapupEvents(taskInstance);
+        setupWrapupEvents(currentTask);
         // task:wrapup event will be triggered by the system
     }
 });
@@ -710,10 +730,15 @@ async function cleanup() {
     <!-- Audio Elements -->
     <audio id="remote-audio" autoplay></audio>
 
-    <!-- Console Log -->
-    <section id="log-section">
-        <h2>Console Log</h2>
-        <div id="log"></div>
+    <!-- Log Upload -->
+    <section id="log-upload">
+        <h2>Log Upload</h2>
+        <pre><code class="javascript">// To upload logs for troubleshooting:
+await webex.cc.uploadLogs({
+    description: 'Brief description of the issue'
+});
+
+// The response will include a logId that can be referenced in support tickets</code></pre>
     </section>
     <script>
         // Initialize syntax highlighting

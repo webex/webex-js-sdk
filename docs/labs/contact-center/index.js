@@ -35,10 +35,8 @@ const taskHandlers = {
     },
     onDecline: async (task) => {
         try {
-            if (task?.decline) {
-                await task.decline();
-                console.log('Task declined successfully');
-            }
+            declineTask(task);
+            console.log('Task declined successfully');
         } catch (error) {
             console.error('Failed to decline task:', error);
         }
@@ -61,12 +59,8 @@ const taskHandlers = {
     },
     onWrapup: async (task) => {
         try {
-            if (task?.wrapup) {
-                const wrapupEl = document.getElementById('wrapup-codes');
-                const wrapupCode = wrapupEl?.value || '';
-                await task.wrapup({ wrapUpReason: wrapupCode });
-                console.log('Wrapup successful');
-            }
+         submitWrapup(task);
+            console.log('Wrapup successful');
         } catch (error) {
             console.error('Wrapup failed:', error);
         }
@@ -74,23 +68,8 @@ const taskHandlers = {
 };
 import { setupCleanupHandlers } from './cleanup.js';
 
-// Initialize event logging
-function initializeLogging() {
-    ['log', 'warn', 'error', 'info'].forEach(level => {
-        const orig = console[level];
-        console[`ui_${level}`] = (...args) => {
-            const logDiv = document.getElementById('log');
-            if (logDiv) {
-                logDiv.innerHTML = `${args.join(' ')}\n${logDiv.innerHTML}`;
-            }
-            orig.apply(console, args);
-        };
-    });
-}
-
 // Main initialization
 async function init() {
-    initializeLogging();
     console.log('Initializing Contact Center SDK Lab...');
 
     // Initialize task UI with handlers
@@ -215,7 +194,6 @@ async function handleDeregister() {
 // UI Helpers
 function enablePostAuthControls() {
     document.getElementById('btn-register').disabled = false;
-    document.getElementById('btn-listen-tasks').disabled = false;
 }
 
 function disableControls() {

@@ -57,11 +57,4 @@ export function setupCleanupHandlers(webex, deviceId) {
 
         await performCleanup(webex, deviceId);
     });
-
-    // Handle tab visibility change
-    document.addEventListener('visibilitychange', async () => {
-        if (document.visibilityState === 'hidden') {
-            await performCleanup(webex, deviceId);
-        }
-    });
 }

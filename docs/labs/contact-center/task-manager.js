@@ -48,7 +48,6 @@ let isHold = false;         // Is call on hold
 let isMuted = false;        // Is call muted
 let wrapupCodes = [];       // Available wrapup codes
 let isRecordingPaused = false;  // Is recording paused
-let autoResumeEnabled = false;  // Should recording auto-resume
 
 //--------------------------------------------------
 // INITIALIZATION
@@ -90,7 +89,6 @@ function resetState() {
     isHold = false;
     isMuted = false;
     isRecordingPaused = false;
-    autoResumeEnabled = false;
 }
 
 /**
@@ -108,7 +106,6 @@ function getUIElements() {
         wrapupCodes: document.getElementById('wrapup-codes'),
         transfer: document.getElementById('btn-transfer'),
         pauseResumeRecording: document.getElementById('pause-resume-recording'),
-        autoResumeCheckbox: document.getElementById('auto-resume-checkbox'),
         taskList: document.getElementById('taskList'),
         remoteAudio: document.getElementById('remote-audio'),
         taskIndicator: document.getElementById('active-task-indicator')
@@ -216,11 +213,6 @@ function setupRecordingControls(elements) {
         });
     }
     
-    if (elements.autoResumeCheckbox) {
-        elements.autoResumeCheckbox.addEventListener('change', (event) => {
-            autoResumeEnabled = event.target.checked;
-        });
-    }
 }
 
 //--------------------------------------------------
@@ -479,12 +471,6 @@ function handleRecordingResumed() {
     console.log('Recording resumed');
     isRecordingPaused = false;
     updateRecordingControl();
-    
-    // Disable auto-resume checkbox after resuming
-    const autoResumeCheckbox = document.getElementById('auto-resume-checkbox');
-    if (autoResumeCheckbox) {
-        autoResumeCheckbox.disabled = true;
-    }
 }
 
 /**
@@ -633,27 +619,13 @@ export async function toggleRecordingPause(task = currentTask) {
 
     try {
         if (isRecordingPaused) {
-            // If auto resume is enabled, include that parameter
-            const resumeParams = autoResumeEnabled ? { autoResumed: true } : undefined;
-            await task.resumeRecording(resumeParams);
+            await task.resumeRecording();
             console.info('Recording resumed successfully');
             isRecordingPaused = false;
-            
-            // Disable auto-resume checkbox after resuming
-            const autoResumeCheckbox = document.getElementById('auto-resume-checkbox');
-            if (autoResumeCheckbox) {
-                autoResumeCheckbox.disabled = true;
-            }
         } else {
             await task.pauseRecording();
             console.info('Recording paused successfully');
             isRecordingPaused = true;
-            
-            // Enable auto-resume checkbox when paused
-            const autoResumeCheckbox = document.getElementById('auto-resume-checkbox');
-            if (autoResumeCheckbox) {
-                autoResumeCheckbox.disabled = false;
-            }
         }
     } catch (error) {
         console.error('❌ Recording control failed:', error);
@@ -758,7 +730,6 @@ function clearCurrentTask() {
     isHold = false;
     isMuted = false;
     isRecordingPaused = false;
-    autoResumeEnabled = false;
     resetCallControls();
     resetConsultControls();
 }
@@ -904,8 +875,7 @@ function disableCallControls() {
         'btn-mute',
         'btn-transfer',
         'pause-resume-recording',
-        'btn-end',
-        'auto-resume-checkbox'
+        'btn-end'
     ];
     
     controls.forEach(id => {
