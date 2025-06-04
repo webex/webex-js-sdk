@@ -185,9 +185,8 @@ describe('webex-core', () => {
 
     describe('#markFailedServiceUrl()', () => {
       afterEach(() => {
-        catalog._getServiceDetail(
-          'urn:TEAM:us-east-2_a:conversation'
-        ).serviceUrls[0].failed = false;
+        catalog._getServiceDetail('urn:TEAM:us-east-2_a:conversation').serviceUrls[0].failed =
+          false;
       });
 
       it('marks service url failed, and retrieves next highest priority', () => {
@@ -237,10 +236,12 @@ describe('webex-core', () => {
       });
     });
 
-    describe('findServiceUrlFromUrl()', () => {
+    describe('findServiceDetailFromUrl()', () => {
       const otherService = {
-        defaultUrl: 'https://example.com/differentresource',
-        hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
+        serviceUrls: [
+          {baseUrl: 'https://example.com/differentresource'},
+          {baseUrl: 'https://example.com/differentresource'},
+        ],
       };
 
       it.each(['discovery', 'preauth', 'signin', 'postauth', 'override'])(
@@ -249,13 +250,15 @@ describe('webex-core', () => {
           const url = 'https://example.com/resource/id';
 
           const exampleService = {
-            defaultUrl: 'https://example.com/resource',
-            hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
+            serviceUrls: [
+              {baseUrl: 'https://example.com/resource'},
+              {baseUrl: 'https://example2.com/resource'},
+            ],
           };
 
           catalog.serviceGroups[serviceGroup].push(otherService, exampleService);
 
-          const service = catalog.findServiceUrlFromUrl(url);
+          const service = catalog.findServiceDetailFromUrl(url);
 
           assert.equal(service, exampleService);
         }
@@ -267,13 +270,15 @@ describe('webex-core', () => {
           const url = 'https://example2.com/resource/id';
 
           const exampleService = {
-            defaultUrl: 'https://example.com/resource',
-            hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
+            serviceUrls: [
+              {baseUrl: 'https://example.com/resource'},
+              {baseUrl: 'https://example2.com/resource'},
+            ],
           };
 
           catalog.serviceGroups[serviceGroup].push(otherService, exampleService);
 
-          const service = catalog.findServiceUrlFromUrl(url);
+          const service = catalog.findServiceDetailFromUrl(url);
 
           assert.equal(service, exampleService);
         }

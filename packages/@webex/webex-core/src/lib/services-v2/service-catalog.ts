@@ -2,6 +2,7 @@ import AmpState from 'ampersand-state';
 
 import {union} from 'lodash';
 import ServiceDetail from './service-detail';
+import {IServiceDetail} from './types';
 
 /**
  * @class
@@ -55,9 +56,9 @@ const ServiceCatalog = AmpState.extend({
    * @private
    * Get all service details for a given service group or return all details if no group is specified.
    * @param {string} serviceGroup - The name of the service group to retrieve details for.
-   * @returns {Array<ServiceDetail>} - An array of service details.
+   * @returns {Array<IServiceDetail>} - An array of service details.
    */
-  _getAllServiceDetails(serviceGroup) {
+  _getAllServiceDetails(serviceGroup: string): Array<IServiceDetail> {
     const serviceDetails =
       typeof serviceGroup === 'string'
         ? this.serviceGroups[serviceGroup] || []
@@ -78,12 +79,12 @@ const ServiceCatalog = AmpState.extend({
    * class object based on its name.
    * @param {string} clusterId
    * @param {string} [serviceGroup]
-   * @returns {ServiceDetail}
+   * @returns {IServiceDetail}
    */
-  _getServiceDetail(clusterId, serviceGroup) {
+  _getServiceDetail(clusterId: string, serviceGroup: string): IServiceDetail | undefined {
     const serviceDetails = this._getAllServiceDetails(serviceGroup);
 
-    return serviceDetails.find((serviceUrl) => serviceUrl.id === clusterId);
+    return serviceDetails.find((serviceDetail: IServiceDetail) => serviceDetail.id === clusterId);
   },
 
   /**
@@ -91,11 +92,11 @@ const ServiceCatalog = AmpState.extend({
    * Safely load one or more `ServiceDetail`s into this `Services` instance.
    * @param {string} serviceGroup
    * @param  {Array<ServiceDetail>} serviceDetails
-   * @returns {Services}
+   * @returns {Array<IServiceDetail>}
    */
-  _loadServiceDetails(serviceGroup, serviceDetails) {
+  _loadServiceDetails(serviceGroup: string, serviceDetails: Array<IServiceDetail>) {
     // declare namespaces outside of loop
-    let existingService;
+    let existingService: IServiceDetail | undefined;
 
     serviceDetails.forEach((service) => {
       existingService = this._getServiceDetail(service.id, serviceGroup);
@@ -104,8 +105,6 @@ const ServiceCatalog = AmpState.extend({
         this.serviceGroups[serviceGroup].push(service);
       }
     });
-
-    return this;
   },
 
   /**
@@ -113,11 +112,11 @@ const ServiceCatalog = AmpState.extend({
    * Safely unload one or more `ServiceDetail`s into this `Services` instance
    * @param {string} serviceGroup
    * @param  {Array<ServiceDetail>} serviceDetails
-   * @returns {Services}
+   * @returns {void}
    */
-  _unloadServiceDetails(serviceGroup, serviceDetails) {
+  _unloadServiceDetails(serviceGroup: string, serviceDetails: Array<IServiceDetail>): void {
     // declare namespaces outside of loop
-    let existingService;
+    let existingService: IServiceDetail | undefined;
 
     serviceDetails.forEach((service) => {
       existingService = this._getServiceDetail(service.id, serviceGroup);
@@ -129,8 +128,6 @@ const ServiceCatalog = AmpState.extend({
         );
       }
     });
-
-    return this;
   },
 
   /**
@@ -138,7 +135,7 @@ const ServiceCatalog = AmpState.extend({
    *
    * @returns {void}
    */
-  clean() {
+  clean(): void {
     this.serviceGroups.preauth.length = 0;
     this.serviceGroups.signin.length = 0;
     this.serviceGroups.postauth.length = 0;
@@ -151,14 +148,14 @@ const ServiceCatalog = AmpState.extend({
    * Search over all service groups to find a cluster id based
    * on a given url.
    * @param {string} url - Must be parsable by `Url`
-   * @returns {string} - ClusterId of a given url
+   * @returns {string | undefined} - ClusterId of a given url
    */
-  findClusterId(url) {
+  findClusterId(url: string): string | undefined {
     const incomingUrlObj = new URL(url);
     const allServiceDetails = this._getAllServiceDetails();
 
-    return allServiceDetails.find((serviceDetail) =>
-      serviceDetail.serviceUrls.find((serviceUrl) => serviceUrl.host === incomingUrlObj.host)
+    return allServiceDetails.find((serviceDetail: IServiceDetail) =>
+      serviceDetail.serviceUrls.find(({host}) => host === incomingUrlObj.host)
     )?.id;
   },
 
@@ -175,7 +172,7 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string} service.name
    * @returns {string} service.url
    */
-  findServiceFromClusterId({clusterId, serviceGroup} = {}) {
+  findServiceFromClusterId({clusterId, serviceGroup}): {name: string; url: string} | undefined {
     const serviceDetails = this._getServiceDetail(clusterId, serviceGroup);
 
     if (serviceDetails) {
@@ -191,9 +188,9 @@ const ServiceCatalog = AmpState.extend({
   /**
    * Find a service based on the provided url.
    * @param {string} url - Must be parsable by `Url`
-   * @returns {ServiceDetail} - ServiceDetail assocated with provided url
+   * @returns {IServiceDetail} - ServiceDetail assocated with provided url
    */
-  findServiceDetailFromUrl(url) {
+  findServiceDetailFromUrl(url: string): IServiceDetail | undefined {
     const serviceDetails = this._getAllServiceDetails();
 
     return serviceDetails.find(({serviceUrls}) => {
@@ -213,7 +210,7 @@ const ServiceCatalog = AmpState.extend({
    * @param {string} url - The url to match the allowed domains against.
    * @returns {string} - The matching allowed domain.
    */
-  findAllowedDomain(url) {
+  findAllowedDomain(url: string): string {
     const urlObj = new URL(url);
 
     if (!urlObj.host) {
@@ -229,7 +226,7 @@ const ServiceCatalog = AmpState.extend({
    * @param {string} serviceGroup
    * @returns {string}
    */
-  get(clusterId, serviceGroup) {
+  get(clusterId: string, serviceGroup: string): string | undefined {
     const serviceDetail = this._getServiceDetail(clusterId, serviceGroup);
 
     return serviceDetail ? serviceDetail.get() : undefined;
@@ -240,7 +237,7 @@ const ServiceCatalog = AmpState.extend({
    *
    * @returns {Array<string>} - the current allowed domains list.
    */
-  getAllowedDomains() {
+  getAllowedDomains(): Array<string> {
     return [...this.allowedDomains];
   },
 
@@ -256,10 +253,12 @@ const ServiceCatalog = AmpState.extend({
    * @param {string} url
    * @returns {string}
    */
-  markFailedServiceUrl(url) {
+  markFailedServiceUrl(url: string): string | undefined {
     const serviceDetails = this._getAllServiceDetails();
 
-    const serviceDetailWithFailedHost = serviceDetails.find((service) => service.failHost(url));
+    const serviceDetailWithFailedHost = serviceDetails.find((serviceDetail: IServiceDetail) =>
+      serviceDetail.failHost(url)
+    );
 
     // if we couldn't find the url we wanted to fail, return undefined
     if (!serviceDetailWithFailedHost) {
@@ -275,7 +274,7 @@ const ServiceCatalog = AmpState.extend({
    * @param {Array<string>} allowedDomains - allowed domains to be assigned.
    * @returns {void}
    */
-  setAllowedDomains(allowedDomains) {
+  setAllowedDomains(allowedDomains: Array<string>): void {
     this.allowedDomains = [...allowedDomains];
   },
 
@@ -284,7 +283,7 @@ const ServiceCatalog = AmpState.extend({
    * @param {Array<string>} newAllowedDomains - new allowed domains to add to existing set of allowed domains
    * @returns {void}
    */
-  addAllowedDomains(newAllowedDomains) {
+  addAllowedDomains(newAllowedDomains: Array<string>): void {
     this.allowedDomains = union(this.allowedDomains, newAllowedDomains);
   },
 
@@ -294,23 +293,23 @@ const ServiceCatalog = AmpState.extend({
    * @emits ServiceCatalog#preauthorized
    * @emits ServiceCatalog#postauthorized
    * @param {string} serviceGroup
-   * @param {object} serviceHostmap
-   * @returns {Services}
+   * @param {Array<IServiceDetail>} serviceDetails
+   * @returns {void}
    */
-  updateServiceGroups(serviceGroup, serviceHostmap) {
+  updateServiceGroups(serviceGroup: string, serviceDetails: Array<IServiceDetail>) {
     const currentServiceDetails = this.serviceGroups[serviceGroup];
 
     const unusedServicesDetails = currentServiceDetails.filter((serviceDetail) =>
-      serviceHostmap.every((item) => item.id !== serviceDetail.id)
+      serviceDetails.every(({id}) => id !== serviceDetail.id)
     );
 
     this._unloadServiceDetails(serviceGroup, unusedServicesDetails);
 
-    serviceHostmap.forEach((serviceObj) => {
-      const service = this._getServiceDetail(serviceObj.id, serviceGroup);
+    serviceDetails.forEach((serviceObj) => {
+      const serviceDetail = this._getServiceDetail(serviceObj.id, serviceGroup);
 
-      if (service) {
-        service.serviceUrls = serviceObj.serviceUrls || [];
+      if (serviceDetail) {
+        serviceDetail.serviceUrls = serviceObj.serviceUrls || [];
       } else {
         this._loadServiceDetails(serviceGroup, [new ServiceDetail(serviceObj)]);
       }
@@ -318,8 +317,6 @@ const ServiceCatalog = AmpState.extend({
 
     this.status[serviceGroup].ready = true;
     this.trigger(serviceGroup);
-
-    return this;
   },
 
   /**
@@ -329,8 +326,8 @@ const ServiceCatalog = AmpState.extend({
    * @param {number} [timeout] - in seconds
    * @returns {Promise<void>}
    */
-  waitForCatalog(serviceGroup, timeout) {
-    return new Promise((resolve, reject) => {
+  waitForCatalog(serviceGroup: string, timeout: number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
       if (this.status[serviceGroup].ready) {
         resolve();
       }

@@ -1,4 +1,5 @@
 import AmpState from 'ampersand-state';
+import {ServiceUrl} from './types';
 
 /**
  * @class
@@ -15,10 +16,10 @@ const ServiceDetail = AmpState.extend({
   /**
    * Generate a host url based on the host
    * uri provided.
-   * @param {string} serviceUrl
+   * @param {ServiceUrl} serviceUrl
    * @returns {string}
    */
-  _generateHostUrl(serviceUrl) {
+  _generateHostUrl(serviceUrl: ServiceUrl): string {
     const url = new URL(serviceUrl.baseUrl);
 
     // setting url.hostname will not apply during Url.format(), set host via
@@ -33,7 +34,7 @@ const ServiceDetail = AmpState.extend({
    * `homeCluster` value set to `true`.
    * @returns {string} - The priority host url.
    */
-  _getPriorityHostUrl() {
+  _getPriorityHostUrl(): string {
     // format of catalog ensures that array is sorted by highest priority
     let priorityServiceUrl = this.serviceUrls.find((url) => url.priority > 0 && !url.failed);
 
@@ -57,7 +58,7 @@ const ServiceDetail = AmpState.extend({
    * @param {string} url
    * @returns {boolean}
    */
-  failHost(url) {
+  failHost(url: string): boolean {
     const failedUrl = new URL(url);
 
     const foundHost = this.serviceUrls.find((serviceUrl) => serviceUrl.host === failedUrl.host);
@@ -75,7 +76,7 @@ const ServiceDetail = AmpState.extend({
    *
    * @returns {string} - The full service url.
    */
-  get() {
+  get(): string {
     return this._getPriorityHostUrl();
   },
 });
