@@ -1704,6 +1704,28 @@ describe('webex.cc', () => {
         expect(emitSpy).toHaveBeenCalledWith(constant, sample);
       });
     });
+
+    it('should call webCallingService.setLoginOption with correct deviceType on AGENT_STATION_LOGIN_SUCCESS', () => {
+      const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
+      const deviceType = LoginOption.EXTENSION;
+      const payload = {
+        trackingId: 'track-123',
+        data: {
+          agentId: 'agent-id',
+          teamId: 'team-id',
+          siteId: 'site-id',
+          roles: ['role1', 'role2'],
+          channelsMap: { chat: [], email: [], social: [], telephony: [] },
+          deviceType,
+          type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+        },
+        type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+      };
+
+      messageCallback(JSON.stringify(payload));
+
+      expect(setLoginOptionSpy).toHaveBeenCalledWith(deviceType);
+    });
   });
 
   describe('updateAgentProfile', () => {
