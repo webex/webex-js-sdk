@@ -372,6 +372,7 @@ export class MediaRequestManager {
       }
     });
 
+    // TODO: Should we do something with this?
     //! IMPORTANT: this is only a temporary fix. This will soon be done in the jmp layer (@webex/json-multistream)
     // https://jira-eng-gpk2.cisco.com/jira/browse/WEBEX-326713
     if (!this.checkIsNewRequestsEqualToPrev(streamRequests)) {
