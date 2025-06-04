@@ -193,7 +193,7 @@ const ServiceCatalog = AmpState.extend({
    * @param {string} url - Must be parsable by `Url`
    * @returns {ServiceDetail} - ServiceDetail assocated with provided url
    */
-  findServiceUrlFromUrl(url) {
+  findServiceDetailFromUrl(url) {
     const serviceDetails = this._getAllServiceDetails();
 
     return serviceDetails.find(({serviceUrls}) => {

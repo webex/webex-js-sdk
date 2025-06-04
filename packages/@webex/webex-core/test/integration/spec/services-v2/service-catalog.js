@@ -6,10 +6,11 @@ import '@webex/internal-plugin-device';
 
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import WebexCore, {ServiceDetails} from '@webex/webex-core';
+import WebexCore, {ServiceDetail} from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import {
   formattedServiceHostmapEntryConv,
+  formattedServiceHostmapV2,
   serviceHostmapV2,
 } from '../../../fixtures/host-catalog-v2';
 
@@ -45,528 +46,376 @@ describe('webex-core', () => {
         )
     );
 
-    // describe('#status()', () => {
-    //   it('updates ready when services ready', () => {
-    //     assert.equal(catalog.status.postauth.ready, true);
-    //   });
-    // });
+    describe('#status()', () => {
+      it('updates ready when services ready', () => {
+        assert.equal(catalog.status.postauth.ready, true);
+      });
+    });
 
     describe('#_getUrl()', () => {
-      let testDetailsTemplate;
-      let testDetails;
+      let testDetailTemplate;
+      let testDetail;
 
       beforeEach('load test url', () => {
-        testDetailsTemplate = formattedServiceHostmapEntryConv;
-        testDetails = new ServiceDetails(testDetailsTemplate);
-        catalog._loadServiceDetails('preauth', [testDetails]);
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
       });
 
       afterEach('unload test url', () => {
-        catalog._unloadServiceDetails('preauth', [testDetails]);
+        catalog._unloadServiceDetails('preauth', [testDetail]);
       });
 
       it('returns a ServiceUrl from a specific serviceGroup', () => {
-        const serviceDetails = catalog._getUrl(testDetailsTemplate.id, 'preauth');
+        const serviceDetail = catalog._getUrl(testDetailTemplate.id, 'preauth');
 
-        assert.equal(serviceDetails.serviceUrls, testDetailsTemplate.serviceUrls);
-        assert.equal(serviceDetails.id, testDetailsTemplate.id);
-        assert.equal(serviceDetails.serviceName, testDetailsTemplate.serviceName);
+        assert.equal(serviceDetail.serviceUrls, testDetailTemplate.serviceUrls);
+        assert.equal(serviceDetail.id, testDetailTemplate.id);
+        assert.equal(serviceDetail.serviceName, testDetailTemplate.serviceName);
       });
 
       it("returns undefined if url doesn't exist", () => {
-        const serviceDetails = catalog._getUrl('invalidUrl');
+        const serviceDetail = catalog._getUrl('invalidUrl');
 
-        assert.typeOf(serviceDetails, 'undefined');
+        assert.typeOf(serviceDetail, 'undefined');
       });
 
       it("returns undefined if url doesn't exist in serviceGroup", () => {
-        const serviceDetails = catalog._getUrl(testDetailsTemplate.id, 'Discovery');
+        const serviceDetail = catalog._getUrl(testDetailTemplate.id, 'Discovery');
 
-        assert.typeOf(serviceDetails, 'undefined');
+        assert.typeOf(serviceDetail, 'undefined');
       });
     });
 
-    // describe('#findClusterId()', () => {
-    //   let testDetailsTemplate;
-    //   let testDetails;
-
-    //   beforeEach('load test url', () => {
-    //     testDetailsTemplate = {
-    //       defaultUrl: 'https://www.example.com/api/v1',
-    //       hosts: [
-    //         {
-    //           host: 'www.example-p5.com',
-    //           ttl: -1,
-    //           priority: 5,
-    //           homeCluster: false,
-    //           id: '0:0:0:exampleClusterIdFind',
-    //         },
-    //         {
-    //           host: 'www.example-p3.com',
-    //           ttl: -1,
-    //           priority: 3,
-    //           homeCluster: true,
-    //           id: '0:0:0:exampleClusterIdFind',
-    //         },
-    //         {
-    //           host: 'www.example-p6.com',
-    //           ttl: -1,
-    //           priority: 6,
-    //           homeCluster: true,
-    //           id: '0:0:2:exampleClusterIdFind',
-    //         },
-    //       ],
-    //       name: 'exampleClusterIdFind',
-    //     };
-    //     testDetails = new ServiceUrl({...testDetailsTemplate});
-    //     catalog._loadServiceDetails('preauth', [testDetails]);
-    //   });
-
-    //   afterEach('unload test url', () => {
-    //     catalog._unloadServiceDetails('preauth', [testDetails]);
-    //   });
-
-    //   it('returns a home cluster clusterId when found with default url', () => {
-    //     assert.equal(
-    //       catalog.findClusterId(testDetailsTemplate.defaultUrl),
-    //       testDetailsTemplate.hosts[1].id
-    //     );
-    //   });
-
-    //   it('returns a clusterId when found with priority host url', () => {
-    //     assert.equal(catalog.findClusterId(testDetails.get(true)), testDetailsTemplate.hosts[0].id);
-    //   });
-
-    //   it('returns a clusterId when found with resource-appended url', () => {
-    //     assert.equal(
-    //       catalog.findClusterId(`${testDetails.get()}example/resource/value`),
-    //       testDetailsTemplate.hosts[0].id
-    //     );
-    //   });
-
-    //   it("returns undefined when the url doesn't exist in catalog", () => {
-    //     assert.isUndefined(catalog.findClusterId('http://not-a-known-url.com/'));
-    //   });
-
-    //   it("returns undefined when the string isn't a url", () => {
-    //     assert.isUndefined(catalog.findClusterId('not a url'));
-    //   });
-    // });
-
-    // describe('#findServiceFromClusterId()', () => {
-    //   let testDetailsTemplate;
-    //   let testDetails;
-
-    //   beforeEach('load test url', () => {
-    //     testDetailsTemplate = {
-    //       defaultUrl: 'https://www.example.com/api/v1',
-    //       hosts: [
-    //         {
-    //           homeCluster: true,
-    //           host: 'www.example-p5.com',
-    //           ttl: -1,
-    //           priority: 5,
-    //           id: '0:0:clusterA:example-test',
-    //         },
-    //         {
-    //           host: 'www.example-p3.com',
-    //           ttl: -1,
-    //           priority: 3,
-    //           id: '0:0:clusterB:example-test',
-    //         },
-    //       ],
-    //       name: 'example-test',
-    //     };
-    //     testDetails = new ServiceUrl({...testDetailsTemplate});
-    //     catalog._loadServiceDetails('preauth', [testDetails]);
-    //   });
-
-    //   afterEach('unload test url', () => {
-    //     catalog._unloadServiceDetails('preauth', [testDetails]);
-    //   });
-
-    //   it('finds a valid service url from only a clusterId', () => {
-    //     const serviceFound = catalog.findServiceFromClusterId({
-    //       clusterId: testDetailsTemplate.hosts[0].id,
-    //       priorityHost: false,
-    //     });
-
-    //     assert.equal(serviceFound.name, testDetails.name);
-    //     assert.equal(serviceFound.url, testDetails.defaultUrl);
-    //   });
-
-    //   it('finds a valid priority service url', () => {
-    //     const serviceFound = catalog.findServiceFromClusterId({
-    //       clusterId: testDetailsTemplate.hosts[0].id,
-    //       priorityHost: true,
-    //     });
-
-    //     assert.equal(serviceFound.name, testDetails.name);
-    //     assert.equal(serviceFound.url, catalog.get(testDetails.name, true));
-    //   });
-
-    //   it('finds a valid service when a service group is defined', () => {
-    //     const serviceFound = catalog.findServiceFromClusterId({
-    //       clusterId: testDetailsTemplate.hosts[0].id,
-    //       priorityHost: false,
-    //       serviceGroup: 'preauth',
-    //     });
-
-    //     assert.equal(serviceFound.name, testDetails.name);
-    //     assert.equal(serviceFound.url, testDetails.defaultUrl);
-    //   });
-
-    //   it("fails to find a valid service when it's not in a group", () => {
-    //     assert.isUndefined(
-    //       catalog.findServiceFromClusterId({
-    //         clusterId: testDetailsTemplate.hosts[0].id,
-    //         serviceGroup: 'signin',
-    //       })
-    //     );
-    //   });
-
-    //   it("returns undefined when service doesn't exist", () => {
-    //     assert.isUndefined(catalog.findServiceFromClusterId({clusterId: 'not a clusterId'}));
-    //   });
-
-    //   it('should return a remote cluster url with a remote clusterId', () => {
-    //     const serviceFound = catalog.findServiceFromClusterId({
-    //       clusterId: testDetailsTemplate.hosts[1].id,
-    //     });
-
-    //     assert.equal(serviceFound.name, testDetails.name);
-    //     assert.isTrue(serviceFound.url.includes(testDetailsTemplate.hosts[1].host));
-    //   });
-    // });
-
-    // describe('#findServiceUrlFromUrl()', () => {
-    //   let testDetailsTemplate;
-    //   let testDetails;
-
-    //   beforeEach('load test url', () => {
-    //     testDetailsTemplate = {
-    //       defaultUrl: 'https://www.example.com/api/v1',
-    //       hosts: [
-    //         {
-    //           homeCluster: true,
-    //           host: 'www.example-p5.com',
-    //           ttl: -1,
-    //           priority: 5,
-    //           id: 'exampleClusterId',
-    //         },
-    //         {
-    //           host: 'www.example-p3.com',
-    //           ttl: -1,
-    //           priority: 3,
-    //           id: 'exampleClusterId',
-    //         },
-    //       ],
-    //       name: 'exampleValid',
-    //     };
-    //     testDetails = new ServiceUrl({...testDetailsTemplate});
-    //     catalog._loadServiceDetails('preauth', [testDetails]);
-    //   });
-
-    //   afterEach('unload test url', () => {
-    //     catalog._unloadServiceDetails('preauth', [testDetails]);
-    //   });
-
-    //   it('finds a service if it exists', () => {
-    //     assert.equal(catalog.findServiceUrlFromUrl(testDetailsTemplate.defaultUrl), testDetails);
-    //   });
-
-    //   it('finds a service if its a priority host url', () => {
-    //     assert.equal(catalog.findServiceUrlFromUrl(testDetails.get(true)).name, testDetails.name);
-    //   });
-
-    //   it("returns undefined if the url doesn't exist", () => {
-    //     assert.isUndefined(catalog.findServiceUrlFromUrl('https://na.com/'));
-    //   });
-
-    //   it('returns undefined if the param is not a url', () => {
-    //     assert.isUndefined(catalog.findServiceUrlFromUrl('not a url'));
-    //   });
-    // });
-
-    // describe('#get()', () => {
-    //   let testDetailsTemplate;
-    //   let testDetails;
-
-    //   beforeEach('load test url', () => {
-    //     testDetailsTemplate = {
-    //       defaultUrl: 'https://www.example.com/api/v1',
-    //       hosts: [],
-    //       name: 'exampleValid',
-    //     };
-    //     testDetails = new ServiceUrl({...testDetailsTemplate});
-    //     catalog._loadServiceDetails('preauth', [testDetails]);
-    //   });
-
-    //   afterEach('unload test url', () => {
-    //     catalog._unloadServiceDetails('preauth', [testDetails]);
-    //   });
-
-    //   it('returns a valid string when name is specified', () => {
-    //     const url = catalog.get(testDetailsTemplate.name);
-
-    //     assert.typeOf(url, 'string');
-    //     assert.equal(url, testDetailsTemplate.defaultUrl);
-    //   });
-
-    //   it("returns undefined if url doesn't exist", () => {
-    //     const s = catalog.get('invalidUrl');
-
-    //     assert.typeOf(s, 'undefined');
-    //   });
-
-    //   it('calls _getUrl', () => {
-    //     sinon.spy(catalog, '_getUrl');
-
-    //     catalog.get();
-
-    //     assert.called(catalog._getUrl);
-    //   });
-
-    //   it('gets a service from a specific serviceGroup', () => {
-    //     assert.isDefined(catalog.get(testDetailsTemplate.name, false, 'preauth'));
-    //   });
-
-    //   it("fails to get a service if serviceGroup isn't accurate", () => {
-    //     assert.isUndefined(catalog.get(testDetailsTemplate.name, false, 'discovery'));
-    //   });
-    // });
-
-    describe('#markFailedServiceUrl()', () => {
-      let testDetailsTemplate;
-      let testDetails;
+    describe('#findClusterId()', () => {
+      let testDetailTemplate;
+      let testDetail;
 
       beforeEach('load test url', () => {
-        testDetailsTemplate = formattedServiceHostmapEntryConv;
-        testDetails = new ServiceDetails(testDetailsTemplate);
-        catalog._loadServiceDetails('preauth', [testDetails]);
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
       });
 
       afterEach('unload test url', () => {
-        catalog._unloadServiceDetails('preauth', [testDetails]);
+        catalog._unloadServiceDetails('preauth', [testDetail]);
       });
 
-      // it('marks a host as failed', () => {
-      //   const priorityUrl = catalog.get(testDetailsTemplate.name, true);
+      it('returns a home cluster clusterId when found with default url', () => {
+        assert.equal(
+          catalog.findClusterId(testDetailTemplate.serviceUrls[0].baseUrl),
+          testDetailTemplate.id
+        );
+      });
 
-      //   catalog.markFailedUrl(priorityUrl);
+      it('returns a clusterId when found with priority host url', () => {
+        assert.equal(catalog.findClusterId(testDetail.get()), testDetailTemplate.id);
+      });
 
-      //   const failedHost = testDetails.hosts.find((host) => host.failed);
+      it('returns a clusterId when found with resource-appended url', () => {
+        assert.equal(
+          catalog.findClusterId(`${testDetail.get()}example/resource/value`),
+          testDetailTemplate.id
+        );
+      });
 
-      //   assert.isDefined(failedHost);
+      it("returns undefined when the url doesn't exist in catalog", () => {
+        assert.isUndefined(catalog.findClusterId('http://not-a-known-url.com/'));
+      });
+
+      it("returns undefined when the string isn't a url", () => {
+        assert.isUndefined(catalog.findClusterId('not a url'));
+      });
+    });
+
+    describe('#findServiceFromClusterId()', () => {
+      let testDetailTemplate;
+      let testDetail;
+
+      beforeEach('load test url', () => {
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
+      });
+
+      afterEach('unload test url', () => {
+        catalog._unloadServiceDetails('preauth', [testDetail]);
+      });
+
+      it('finds a valid service url from only a clusterId', () => {
+        const serviceFound = catalog.findServiceFromClusterId({
+          clusterId: testDetailTemplate.id,
+        });
+
+        assert.equal(serviceFound.name, testDetail.serviceName);
+        assert.equal(serviceFound.url, testDetail.get());
+      });
+
+      it('finds a valid service when a service group is defined', () => {
+        const serviceFound = catalog.findServiceFromClusterId({
+          clusterId: testDetailTemplate.id,
+          serviceGroup: 'preauth',
+        });
+
+        assert.equal(serviceFound.name, testDetail.serviceName);
+        assert.equal(serviceFound.url, testDetail.get());
+      });
+
+      it("fails to find a valid service when it's not in a group", () => {
+        assert.isUndefined(
+          catalog.findServiceFromClusterId({
+            clusterId: testDetailTemplate.id,
+            serviceGroup: 'signin',
+          })
+        );
+      });
+
+      it("returns undefined when service doesn't exist", () => {
+        assert.isUndefined(catalog.findServiceFromClusterId({clusterId: 'not a clusterId'}));
+      });
+
+      describe('#findServiceDetailFromUrl()', () => {
+        let testDetailTemplate;
+        let testDetail;
+
+        beforeEach('load test url', () => {
+          testDetailTemplate = formattedServiceHostmapEntryConv;
+          testDetail = new ServiceDetail(testDetailTemplate);
+          catalog._loadServiceDetails('preauth', [testDetail]);
+        });
+
+        afterEach('unload test url', () => {
+          catalog._unloadServiceDetails('preauth', [testDetail]);
+        });
+
+        it('finds a service if it exists', () => {
+          assert.equal(
+            catalog.findServiceDetailFromUrl(testDetailTemplate.serviceUrls[1].baseUrl),
+            testDetail
+          );
+        });
+
+        it('finds a service if its a priority host url', () => {
+          assert.equal(catalog.findServiceDetailFromUrl(testDetail.get()), testDetail);
+        });
+
+        it("returns undefined if the url doesn't exist", () => {
+          assert.isUndefined(catalog.findServiceDetailFromUrl('https://na.com/'));
+        });
+
+        it('returns undefined if the param is not a url', () => {
+          assert.isUndefined(catalog.findServiceDetailFromUrl('not a url'));
+        });
+      });
+
+      describe('#get()', () => {
+        let testDetailTemplate;
+        let testDetail;
+
+        beforeEach('load test url', () => {
+          testDetailTemplate = formattedServiceHostmapEntryConv;
+          testDetail = new ServiceDetail(testDetailTemplate);
+          catalog._loadServiceDetails('preauth', [testDetail]);
+        });
+
+        afterEach('unload test url', () => {
+          catalog._unloadServiceDetails('preauth', [testDetail]);
+        });
+
+        it('returns a valid string when name is specified', () => {
+          const url = catalog.get(testDetailTemplate.id);
+
+          assert.typeOf(url, 'string');
+          assert.equal(url, testDetailTemplate.serviceUrls[0].baseUrl);
+        });
+
+        it("returns undefined if url doesn't exist", () => {
+          const s = catalog.get('invalidUrl');
+
+          assert.typeOf(s, 'undefined');
+        });
+
+        it('calls _getServiceDetail', () => {
+          sinon.spy(catalog, '_getServiceDetail');
+
+          catalog.get();
+
+          assert.called(catalog._getServiceDetail);
+        });
+
+        it('gets a service from a specific serviceGroup', () => {
+          assert.isDefined(catalog.get(testDetailTemplate.id, 'preauth'));
+        });
+
+        it("fails to get a service if serviceGroup isn't accurate", () => {
+          assert.isUndefined(catalog.get(testDetailTemplate.id, 'discovery'));
+        });
+      });
+
+      describe('#markFailedServiceUrl()', () => {
+        let testDetailTemplate;
+        let testDetail;
+
+        beforeEach('load test url', () => {
+          testDetailTemplate = formattedServiceHostmapEntryConv;
+          testDetail = new ServiceDetail(testDetailTemplate);
+          catalog._loadServiceDetails('preauth', [testDetail]);
+        });
+
+        afterEach('unload test url', () => {
+          catalog._unloadServiceDetails('preauth', [testDetail]);
+        });
+
+        it('marks a host as failed', () => {
+          const priorityUrl = catalog.get(testDetailTemplate.id, true);
+
+          catalog.markFailedUrl(priorityUrl);
+
+          const failedHost = testDetail.hosts.find((host) => host.failed);
+
+          assert.isDefined(failedHost);
+        });
+
+        it('returns the next priority url', () => {
+          const priorityUrl = catalog.get(testDetailTemplate.id, true);
+          const nextPriorityUrl = catalog.markFailedUrl(priorityUrl);
+
+          assert.notEqual(priorityUrl, nextPriorityUrl);
+        });
+      });
+
+      describe('#_loadServiceDetails()', () => {
+        let testDetailTemplate;
+        let testDetail;
+
+        beforeEach('init test url', () => {
+          testDetailTemplate = formattedServiceHostmapEntryConv;
+          testDetail = new ServiceDetail(testDetailTemplate);
+        });
+
+        it('appends services to different service groups', () => {
+          catalog._loadServiceDetails('postauth', [testDetail]);
+          catalog._loadServiceDetails('preauth', [testDetail]);
+          catalog._loadServiceDetails('discovery', [testDetail]);
+
+          catalog.serviceGroups.postauth.includes(testDetail);
+          catalog.serviceGroups.preauth.includes(testDetail);
+          catalog.serviceGroups.discovery.includes(testDetail);
+
+          catalog._unloadServiceDetails('postauth', [testDetail]);
+          catalog._unloadServiceDetails('preauth', [testDetail]);
+          catalog._unloadServiceDetails('discovery', [testDetail]);
+        });
+      });
+
+      describe('#_unloadServiceDetails()', () => {
+        let testDetailTemplate;
+        let testDetail;
+
+        beforeEach('init test url', () => {
+          testDetailTemplate = formattedServiceHostmapEntryConv;
+          testDetail = new ServiceDetail(testDetailTemplate);
+        });
+
+        it('appends services to different service groups', () => {
+          catalog._loadServiceDetails('postauth', [testDetail]);
+          catalog._loadServiceDetails('preauth', [testDetail]);
+          catalog._loadServiceDetails('discovery', [testDetail]);
+
+          const oBaseLength = catalog.serviceGroups.postauth.length;
+          const oLimitedLength = catalog.serviceGroups.preauth.length;
+          const oDiscoveryLength = catalog.serviceGroups.discovery.length;
+
+          catalog._unloadServiceDetails('postauth', [testDetail]);
+          catalog._unloadServiceDetails('preauth', [testDetail]);
+          catalog._unloadServiceDetails('discovery', [testDetail]);
+
+          assert.isAbove(oBaseLength, catalog.serviceGroups.postauth.length);
+          assert.isAbove(oLimitedLength, catalog.serviceGroups.preauth.length);
+          assert.isAbove(oDiscoveryLength, catalog.serviceGroups.discovery.length);
+        });
+      });
+
+      // describe('#_fetchNewServiceHostmap()', () => {
+      //   let fullRemoteHM;
+      //   let limitedRemoteHM;
+
+      //   beforeEach(() =>
+      //     Promise.all([
+      //       services._fetchNewServiceHostmap(),
+      //       services._fetchNewServiceHostmap({
+      //         from: 'limited',
+      //         query: {userId: webexUser.id},
+      //       }),
+      //     ]).then(([fRHM, lRHM]) => {
+      //       fullRemoteHM = fRHM;
+      //       limitedRemoteHM = lRHM;
+
+      //       return Promise.resolve();
+      //     })
+      //   );
+
+      //   it('resolves to an authed u2c hostmap when no params specified', () => {
+      //     assert.typeOf(fullRemoteHM, 'array');
+      //     assert.isAbove(fullRemoteHM.length, 0);
+      //   });
+
+      //   it('resolves to a limited u2c hostmap when params specified', () => {
+      //     assert.typeOf(limitedRemoteHM, 'array');
+      //     assert.isAbove(limitedRemoteHM.length, 0);
+      //   });
+
+      //   it('rejects if the params provided are invalid', () =>
+      //     services
+      //       ._fetchNewServiceHostmap({
+      //         from: 'limited',
+      //         query: {userId: 'notValid'},
+      //       })
+      //       .then(() => {
+      //         assert.isTrue(false, 'should have rejected');
+
+      //         return Promise.reject();
+      //       })
+      //       .catch((e) => {
+      //         assert.typeOf(e, 'Error');
+
+      //         return Promise.resolve();
+      //       }));
       // });
-
-      // it('returns the next priority url', () => {
-      //   const priorityUrl = catalog.get(testDetailsTemplate.name, true);
-      //   const nextPriorityUrl = catalog.markFailedUrl(priorityUrl);
-
-      //   assert.notEqual(priorityUrl, nextPriorityUrl);
-      // });
     });
 
-    describe('#_loadServiceDetails()', () => {
-      let testDetailsTemplate;
-      let testDetails;
+    describe('#waitForCatalog()', () => {
+      let promise;
+      let serviceHostmap;
+      let formattedHM;
 
-      beforeEach('init test url', () => {
-        testDetailsTemplate = formattedServiceHostmapEntryConv;
-        testDetails = new ServiceDetails(testDetailsTemplate);
+      beforeEach(() => {
+        serviceHostmap = formattedServiceHostmapV2;
+        formattedHM = services._formatReceivedHostmap(serviceHostmap);
+
+        promise = catalog.waitForCatalog('preauth', 1);
       });
 
-      it('appends services to different service groups', () => {
-        catalog._loadServiceDetails('postauth', [testDetails]);
-        catalog._loadServiceDetails('preauth', [testDetails]);
-        catalog._loadServiceDetails('discovery', [testDetails]);
-
-        catalog.serviceGroups.postauth.includes(testDetails);
-        catalog.serviceGroups.preauth.includes(testDetails);
-        catalog.serviceGroups.discovery.includes(testDetails);
-
-        catalog._unloadServiceDetails('postauth', [testDetails]);
-        catalog._unloadServiceDetails('preauth', [testDetails]);
-        catalog._unloadServiceDetails('discovery', [testDetails]);
-      });
-    });
-
-    describe('#_unloadServiceDetails()', () => {
-      let testDetailsTemplate;
-      let testDetails;
-
-      beforeEach('init test url', () => {
-        testDetailsTemplate = formattedServiceHostmapEntryConv;
-        testDetails = new ServiceDetails(testDetailsTemplate);
+      it('returns a promise', () => {
+        assert.typeOf(promise, 'promise');
       });
 
-      it('appends services to different service groups', () => {
-        catalog._loadServiceDetails('postauth', [testDetails]);
-        catalog._loadServiceDetails('preauth', [testDetails]);
-        catalog._loadServiceDetails('discovery', [testDetails]);
+      it('returns a rejected promise if timeout is reached', () =>
+        promise.catch(() => {
+          assert(true, 'promise rejected');
 
-        const oBaseLength = catalog.serviceGroups.postauth.length;
-        const oLimitedLength = catalog.serviceGroups.preauth.length;
-        const oDiscoveryLength = catalog.serviceGroups.discovery.length;
+          return Promise.resolve();
+        }));
 
-        catalog._unloadServiceDetails('postauth', [testDetails]);
-        catalog._unloadServiceDetails('preauth', [testDetails]);
-        catalog._unloadServiceDetails('discovery', [testDetails]);
+      it('returns a resolved promise once ready', () => {
+        catalog.waitForCatalog('postauth', 1).then(() => {
+          assert(true, 'promise resolved');
+        });
 
-        assert.isAbove(oBaseLength, catalog.serviceGroups.postauth.length);
-        assert.isAbove(oLimitedLength, catalog.serviceGroups.preauth.length);
-        assert.isAbove(oDiscoveryLength, catalog.serviceGroups.discovery.length);
+        catalog.updateServiceGroups('postauth', formattedHM);
       });
     });
-
-    // describe('#_fetchNewServiceHostmap()', () => {
-    //   let fullRemoteHM;
-    //   let limitedRemoteHM;
-
-    //   beforeEach(() =>
-    //     Promise.all([
-    //       services._fetchNewServiceHostmap(),
-    //       services._fetchNewServiceHostmap({
-    //         from: 'limited',
-    //         query: {userId: webexUser.id},
-    //       }),
-    //     ]).then(([fRHM, lRHM]) => {
-    //       fullRemoteHM = fRHM;
-    //       limitedRemoteHM = lRHM;
-
-    //       return Promise.resolve();
-    //     })
-    //   );
-
-    //   it('resolves to an authed u2c hostmap when no params specified', () => {
-    //     assert.typeOf(fullRemoteHM, 'array');
-    //     assert.isAbove(fullRemoteHM.length, 0);
-    //   });
-
-    //   it('resolves to a limited u2c hostmap when params specified', () => {
-    //     assert.typeOf(limitedRemoteHM, 'array');
-    //     assert.isAbove(limitedRemoteHM.length, 0);
-    //   });
-
-    //   it('rejects if the params provided are invalid', () =>
-    //     services
-    //       ._fetchNewServiceHostmap({
-    //         from: 'limited',
-    //         query: {userId: 'notValid'},
-    //       })
-    //       .then(() => {
-    //         assert.isTrue(false, 'should have rejected');
-
-    //         return Promise.reject();
-    //       })
-    //       .catch((e) => {
-    //         assert.typeOf(e, 'Error');
-
-    //         return Promise.resolve();
-    //       }));
-    // });
-
-    // describe('#waitForCatalog()', () => {
-    //   let promise;
-    //   let serviceHostmap;
-    //   let formattedHM;
-
-    //   beforeEach(() => {
-    //     serviceHostmap = {
-    //       serviceLinks: {
-    //         'example-a': 'https://example-a.com/api/v1',
-    //         'example-b': 'https://example-b.com/api/v1',
-    //         'example-c': 'https://example-c.com/api/v1',
-    //       },
-    //       hostCatalog: {
-    //         'example-a.com': [
-    //           {
-    //             host: 'example-a-1.com',
-    //             ttl: -1,
-    //             priority: 5,
-    //             id: '0:0:0:example-a',
-    //           },
-    //           {
-    //             host: 'example-a-2.com',
-    //             ttl: -1,
-    //             priority: 3,
-    //             id: '0:0:0:example-a',
-    //           },
-    //           {
-    //             host: 'example-a-3.com',
-    //             ttl: -1,
-    //             priority: 1,
-    //             id: '0:0:0:example-a',
-    //           },
-    //         ],
-    //         'example-b.com': [
-    //           {
-    //             host: 'example-b-1.com',
-    //             ttl: -1,
-    //             priority: 5,
-    //             id: '0:0:0:example-b',
-    //           },
-    //           {
-    //             host: 'example-b-2.com',
-    //             ttl: -1,
-    //             priority: 3,
-    //             id: '0:0:0:example-b',
-    //           },
-    //           {
-    //             host: 'example-b-3.com',
-    //             ttl: -1,
-    //             priority: 1,
-    //             id: '0:0:0:example-b',
-    //           },
-    //         ],
-    //         'example-c.com': [
-    //           {
-    //             host: 'example-c-1.com',
-    //             ttl: -1,
-    //             priority: 5,
-    //             id: '0:0:0:example-c',
-    //           },
-    //           {
-    //             host: 'example-c-2.com',
-    //             ttl: -1,
-    //             priority: 3,
-    //             id: '0:0:0:example-c',
-    //           },
-    //           {
-    //             host: 'example-c-3.com',
-    //             ttl: -1,
-    //             priority: 1,
-    //             id: '0:0:0:example-c',
-    //           },
-    //         ],
-    //       },
-    //       format: 'hostmap',
-    //     };
-    //     formattedHM = services._formatReceivedHostmap(serviceHostmap);
-
-    //     promise = catalog.waitForCatalog('preauth', 1);
-    //   });
-
-    //   it('returns a promise', () => {
-    //     assert.typeOf(promise, 'promise');
-    //   });
-
-    //   it('returns a rejected promise if timeout is reached', () =>
-    //     promise.catch(() => {
-    //       assert(true, 'promise rejected');
-
-    //       return Promise.resolve();
-    //     }));
-
-    //   it('returns a resolved promise once ready', () => {
-    //     catalog.waitForCatalog('postauth', 1).then(() => {
-    //       assert(true, 'promise resolved');
-    //     });
-
-    //     catalog.updateServiceGroups('postauth', formattedHM);
-    //   });
-    // });
 
     describe('#updateServiceGroups()', () => {
       let serviceHostmap;
@@ -593,40 +442,53 @@ describe('webex-core', () => {
         assert.equal(catalog.serviceGroups.preauth.length, formattedHM.length);
       });
 
-      // it('updates any existing ServiceUrls', () => {
-      //   const newServiceHM = {
-      //     activeServices: {
-      //       'example-a': 'https://e-a.com/api/v1',
-      //       'example-b': 'https://e-b.com/api/v1',
-      //       'example-c': 'https://e-c.com/api/v1',
-      //     },
-      //     hostCatalog: {
-      //       'e-a.com': [],
-      //       'e-b.com': [],
-      //       'e-c.com': [],
-      //     },
-      //   };
+      it('updates any existing ServiceUrls', () => {
+        const newServiceHM = {
+          activeServices: {
+            'example-a': 'urn:TEAM:us-east-2_a:a',
+            'example-b': 'urn:TEAM:us-east-2_a:b',
+            'example-c': 'urn:TEAM:us-east-2_a:c',
+          },
+          services: [
+            {
+              id: 'urn:TEAM:us-east-2_a:a',
+              serviceName: 'example-a',
+              serviceUrls: [],
+            },
+            {
+              id: 'urn:TEAM:us-east-2_a:b',
+              serviceName: 'example-b',
+              serviceUrls: [],
+            },
+            {
+              id: 'urn:TEAM:us-east-2_a:c',
+              serviceName: 'example-c',
+              serviceUrls: [],
+            },
+          ],
+        };
 
-      //   const newFormattedHM = services._formatReceivedHostmap(newServiceHM);
+        const newFormattedHM = services._formatReceivedHostmap(newServiceHM);
 
-      //   catalog.updateServiceGroups('preauth', formattedHM);
+        catalog.updateServiceGroups('preauth', formattedHM);
 
-      //   const oServicesB = catalog.list(false, 'preauth');
-      //   const oServicesH = catalog.list(true, 'preauth');
+        const oldServiceDetails = catalog._getAllServiceDetails('preauth');
 
-      //   catalog.updateServiceGroups('preauth', newFormattedHM);
+        catalog.updateServiceGroups('preauth', newFormattedHM);
 
-      //   const nServicesB = catalog.list(false, 'preauth');
-      //   const nServicesH = catalog.list(true, 'preauth');
+        oldServiceDetails.forEach((serviceDetail) =>
+          assert.isTrue(!!formattedHM.find((service) => service.id === serviceDetail.id))
+        );
 
-      //   Object.keys(nServicesB).forEach((key) => {
-      //     assert.notEqual(nServicesB[key], oServicesB[key]);
-      //   });
+        const newServiceDetails = catalog._getAllServiceDetails('preauth');
 
-      //   Object.keys(nServicesH).forEach((key) => {
-      //     assert.notEqual(nServicesH[key], oServicesH[key]);
-      //   });
-      // });
+        oldServiceDetails.forEach((serviceDetail) =>
+          assert.isUndefined(formattedHM.find((service) => service.id === serviceDetail.id))
+        );
+        newServiceDetails.forEach((serviceDetail) =>
+          assert.isTrue(!!newFormattedHM.find((service) => service.id === serviceDetail.id))
+        );
+      });
 
       it('creates an array of equal length of services', () => {
         assert.equal(Object.keys(serviceHostmap.activeServices).length, formattedHM.length);
