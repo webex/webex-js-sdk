@@ -762,6 +762,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           },
           notifsTrackingId: eventData.trackingId,
         };
+        this.webCallingService.setLoginOption(loginData.deviceType as LoginOption);
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
         break;
