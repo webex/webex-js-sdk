@@ -1,5 +1,5 @@
 import * as Err from './Err';
-import {WebexRequestPayload} from '../../types';
+import {LoginOption, WebexRequestPayload} from '../../types';
 import {Failure} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
@@ -18,10 +18,21 @@ export const isValidDialNumber = (input: string): boolean => {
   return regexForDn.test(input);
 };
 
-export const getStationLoginErrorDetails = (failure: Failure) => {
+export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOption) => {
+  let duplicateLocationMessage = 'This value is already in use';
+
+  if (loginOption === LoginOption.EXTENSION) {
+    duplicateLocationMessage = 'This extension is already in use';
+  }
+
+  if (loginOption === LoginOption.AGENT_DN) {
+    duplicateLocationMessage =
+      'Dial number is in use. Try a different one. For help, reach out to your administrator or support team.';
+  }
+
   const errorCodeMessageMap = {
     DUPLICATE_LOCATION: {
-      message: 'This extension is already in use',
+      message: duplicateLocationMessage,
       fieldName: 'input',
     },
     INVALID_DIAL_NUMBER: {
@@ -43,7 +54,7 @@ export const getStationLoginErrorDetails = (failure: Failure) => {
 };
 
 export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
-  let moreDetails = {};
+  let errData = {message: '', fieldName: ''};
 
   const failure = error.details as Failure;
   const reason = failure?.data?.reason ?? `Error while performing ${methodName}`;
@@ -61,13 +72,25 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
   }
 
   if (methodName === 'stationLogin') {
-    moreDetails = getStationLoginErrorDetails(failure);
+    errData = getStationLoginErrorData(failure, error.loginOption);
+
+    LoggerProxy.error(
+      `${methodName} failed with reason: ${reason}, message: ${errData.message}, fieldName: ${errData.fieldName}`,
+      {
+        module: moduleName,
+        method: methodName,
+        trackingId: failure?.trackingId,
+      }
+    );
   }
 
+  const err = new Error(reason ?? `Error while performing ${methodName}`);
+  // @ts-ignore - add custom property to the error object for backward compatibility
+  err.data = errData;
+
   return {
-    error: new Error(reason ?? `Error while performing ${methodName}`),
+    error: err,
     reason,
-    moreDetails,
   };
 };
 

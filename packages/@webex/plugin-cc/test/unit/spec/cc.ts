@@ -796,11 +796,7 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.agent, 'stationLogin').mockRejectedValue(error);
 
-      try {
-        await webex.cc.stationLogin(options);
-      } catch (err) {
-        expect(err.reason).toEqual(error.details.data.reason);
-      }
+      await expect(webex.cc.stationLogin(options)).rejects.toThrow(error.details.data.reason);
 
       expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station login', {
         module: CC_FILE,

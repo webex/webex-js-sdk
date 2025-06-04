@@ -455,7 +455,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
         ['behavioral', 'business', 'operational']
       );
-      const detailedError = getErrorDetails(error, METHODS.STATION_LOGIN, CC_FILE);
+      error.loginOption = data.loginOption;
+      const {error: detailedError} = getErrorDetails(error, METHODS.STATION_LOGIN, CC_FILE);
 
       throw detailedError;
     }

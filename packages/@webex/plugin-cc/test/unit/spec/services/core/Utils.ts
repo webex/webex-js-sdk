@@ -1,7 +1,7 @@
 import * as Utils from '../../../../../src/services/core/Utils';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import WebexRequest from '../../../../../src/services/core/WebexRequest';
-import {WebexRequestPayload} from '../../../../../src/types';
+import {LoginOption, WebexRequestPayload} from '../../../../../src/types';
 import {Failure} from '../../../../../src/services/core/GlobalTypes';
 
 // Mock dependencies
@@ -66,7 +66,6 @@ describe('Utils', () => {
       expect(result).toEqual({
         error: new Error('Test reason'),
         reason: 'Test reason',
-        moreDetails: {},
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `${methodName} failed with reason: ${error.details.data.reason}`,
@@ -87,7 +86,6 @@ describe('Utils', () => {
       expect(result).toEqual({
         error: new Error(`Error while performing ${methodName}`),
         reason: `Error while performing ${methodName}`,
-        moreDetails: {},
       });
     });
 
@@ -154,7 +152,6 @@ describe('Utils', () => {
       expect(result).toEqual({
         error: new Error(`Error while performing ${methodName}`),
         reason: `Error while performing ${methodName}`,
-        moreDetails: {},
       });
 
       // Should not throw when accessing properties with optional chaining
@@ -222,19 +219,29 @@ describe('Utils', () => {
     });
   });
 
-  describe('getStationLoginErrorDetails', () => {
-    it('should return DUPLICATE_LOCATION message and fieldName', () => {
+  describe('getStationLoginErrorData', () => {
+    it('should return DUPLICATE_LOCATION message and fieldName for extension', () => {
       const failure = {data: {reason: 'DUPLICATE_LOCATION'}} as Failure;
-      const result = Utils.getStationLoginErrorDetails(failure);
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.EXTENSION);
       expect(result).toEqual({
         message: 'This extension is already in use',
         fieldName: 'input',
       });
     });
 
+    it('should return DUPLICATE_LOCATION message and fieldName for DN number', () => {
+      const failure = {data: {reason: 'DUPLICATE_LOCATION'}} as Failure;
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.AGENT_DN);
+      expect(result).toEqual({
+        message:
+          'Dial number is in use. Try a different one. For help, reach out to your administrator or support team.',
+        fieldName: 'input',
+      });
+    });
+
     it('should return INVALID_DIAL_NUMBER message and fieldName', () => {
       const failure = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
-      const result = Utils.getStationLoginErrorDetails(failure);
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.AGENT_DN);
       expect(result).toEqual({
         message:
           'Enter a valid US dial number. For help, reach out to your administrator or support team.',
@@ -244,7 +251,7 @@ describe('Utils', () => {
 
     it('should return default message and fieldName for empty reason', () => {
       const failure = {data: {reason: ''}} as Failure;
-      const result = Utils.getStationLoginErrorDetails(failure);
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.EXTENSION);
       expect(result).toEqual({
         message: 'An error occurred while logging in to the station',
         fieldName: 'generic',
@@ -253,7 +260,7 @@ describe('Utils', () => {
 
     it('should return default message and fieldName for missing reason', () => {
       const failure = {data: {}} as Failure;
-      const result = Utils.getStationLoginErrorDetails(failure);
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.EXTENSION);
       expect(result).toEqual({
         message: 'An error occurred while logging in to the station',
         fieldName: 'generic',
@@ -262,7 +269,7 @@ describe('Utils', () => {
 
     it('should return default message and fieldName for unknown reason', () => {
       const failure = {data: {reason: 'UNKNOWN_REASON'}} as Failure;
-      const result = Utils.getStationLoginErrorDetails(failure);
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.EXTENSION);
       expect(result).toEqual({
         message: 'An error occurred while logging in to the station',
         fieldName: 'generic',
