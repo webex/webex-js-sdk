@@ -1,14 +1,12 @@
 import sha256 from 'crypto-js/sha256';
 
-import {union, forEach} from 'lodash';
+import {union, unionBy} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
-import METRICS from '../services/metrics';
-import ServiceCatalog from '../services/service-catalog';
-import ServiceRegistry from '../services/service-registry';
-import ServiceState from '../services/service-state';
-import fedRampServices from '../services/service-fed-ramp';
-import {COMMERCIAL_ALLOWED_DOMAINS} from '../services/constants';
+import METRICS from './metrics';
+import ServiceCatalog from './service-catalog';
+import fedRampServices from './service-fed-ramp';
+import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
@@ -24,33 +22,9 @@ const DEFAULT_CLUSTER_IDENTIFIER =
 /* eslint-disable no-underscore-dangle */
 /**
  * @class
- * This is the v2 implementation of the Services plugin. Used to manage DNSSec enabled users
- * Use this at your own risk! This service will be updated continuously and may not be backwards compatible.
  */
 const Services = WebexPlugin.extend({
   namespace: 'Services',
-
-  /**
-   * The {@link WeakMap} of {@link ServiceRegistry} class instances that are
-   * keyed with WebexCore instances.
-   *
-   * @instance
-   * @type {WeakMap<WebexCore, ServiceRegistry>}
-   * @private
-   * @memberof Services
-   */
-  registries: new WeakMap(),
-
-  /**
-   * The {@link WeakMap} of {@link ServiceState} class instances that are
-   * keyed with WebexCore instances.
-   *
-   * @instance
-   * @type {WeakMap<WebexCore, ServiceState>}
-   * @private
-   * @memberof Services
-   */
-  states: new WeakMap(),
 
   props: {
     validateDomains: ['boolean', false, true],
@@ -59,9 +33,9 @@ const Services = WebexPlugin.extend({
 
   _catalogs: new WeakMap(),
 
-  _serviceUrls: {},
+  _activeServices: {},
 
-  _hostCatalog: {},
+  _services: [],
 
   /**
    * @private
@@ -132,20 +106,20 @@ const Services = WebexPlugin.extend({
 
   /**
    * saves all the services from the pre and post catalog service
-   * @param {Object} serviceUrls
+   * @param {Object} activeServices
    * @returns {void}
    */
-  _updateServiceUrls(serviceUrls) {
-    this._serviceUrls = {...this._serviceUrls, ...serviceUrls};
+  _updateActiveServices(activeServices) {
+    this._activeServices = {...this._activeServices, ...activeServices};
   },
 
   /**
    * saves the hostCatalog object
-   * @param {Object} hostCatalog
+   * @param {Object} services
    * @returns {void}
    */
-  _updateHostCatalog(hostCatalog) {
-    this._hostCatalog = {...this._hostCatalog, ...hostCatalog};
+  _updateServices(services) {
+    this._services = unionBy(services, this._services, 'id');
   },
 
   /**
@@ -613,7 +587,7 @@ const Services = WebexPlugin.extend({
     );
 
     if (fetchFromServiceUrl) {
-      return Promise.resolve(this._serviceUrls[name]);
+      return Promise.resolve(this._activeServices[name]);
     }
 
     const priorityUrl = this.get(name, true);
@@ -669,7 +643,7 @@ const Services = WebexPlugin.extend({
    */
   replaceHostFromHostmap(uri) {
     const url = new URL(uri);
-    const hostCatalog = this._hostCatalog;
+    const hostCatalog = this._services;
 
     if (!hostCatalog) {
       return uri;
@@ -691,86 +665,25 @@ const Services = WebexPlugin.extend({
   /**
    * @private
    * Organize a received hostmap from a service
-   * catalog endpoint.
    * @param {object} serviceHostmap
+   * catalog endpoint.
    * @returns {object}
    */
-  _formatReceivedHostmap(serviceHostmap) {
-    this._updateHostCatalog(serviceHostmap.hostCatalog);
+  _formatReceivedHostmap({services, activeServices}) {
+    const formattedHostmap = services.map(({id, serviceName, serviceUrls}) => {
+      const formattedServiceUrls = serviceUrls.map((serviceUrl) => ({
+        host: new URL(serviceUrl.baseUrl).host,
+        ...serviceUrl,
+      }));
 
-    const extractId = (entry) => entry.id.split(':')[3];
-
-    const formattedHostmap = [];
-
-    // for each of the services in the serviceLinks, find the matching host in the catalog
-    Object.keys(serviceHostmap.serviceLinks).forEach((serviceName) => {
-      const serviceUrl = serviceHostmap.serviceLinks[serviceName];
-
-      let host;
-      try {
-        host = new URL(serviceUrl).host;
-      } catch (e) {
-        return;
-      }
-
-      const matchingCatalogEntry = serviceHostmap.hostCatalog[host];
-
-      const formattedHost = {
-        name: serviceName,
-        defaultUrl: serviceUrl,
-        defaultHost: host,
-        hosts: [],
+      return {
+        id,
+        serviceName,
+        serviceUrls: formattedServiceUrls,
       };
-
-      formattedHostmap.push(formattedHost);
-
-      // If the catalog does not have any hosts we will be unable to find the service ID
-      // so can't search for other hosts
-      if (!matchingCatalogEntry || !matchingCatalogEntry[0]) {
-        return;
-      }
-
-      const serviceId = extractId(matchingCatalogEntry[0]);
-
-      forEach(matchingCatalogEntry, (entry) => {
-        // The ids for all hosts within a hostCatalog entry should be the same
-        // but for safety, only add host entries that have the same id as the first one
-        if (extractId(entry) === serviceId) {
-          formattedHost.hosts.push({
-            ...entry,
-            homeCluster: true,
-          });
-        }
-      });
-
-      const otherHosts = [];
-
-      // find the services in the host catalog that have the same id
-      // and add them to the otherHosts
-      forEach(serviceHostmap.hostCatalog, (entry) => {
-        // exclude the matching catalog entry as we have already added that
-        if (entry === matchingCatalogEntry) {
-          return;
-        }
-
-        forEach(entry, (entryHost) => {
-          // only add hosts that have the correct id
-          if (extractId(entryHost) === serviceId) {
-            otherHosts.push({
-              ...entryHost,
-              homeCluster: false,
-            });
-          }
-        });
-      });
-
-      formattedHost.hosts.push(...otherHosts);
     });
-
-    // update all the service urls in the host catalog
-
-    this._updateServiceUrls(serviceHostmap.serviceLinks);
-    this._updateHostCatalog(serviceHostmap.hostCatalog);
+    this._updateActiveServices(activeServices);
+    this._updateServices(services);
 
     return formattedHostmap;
   },
@@ -1017,12 +930,7 @@ const Services = WebexPlugin.extend({
    */
   initialize() {
     const catalog = new ServiceCatalog();
-    const registry = new ServiceRegistry();
-    const state = new ServiceState();
-
     this._catalogs.set(this.webex, catalog);
-    this.registries.set(this.webex, registry);
-    this.states.set(this.webex, state);
 
     // Listen for configuration changes once.
     this.listenToOnce(this.webex, 'change:config', () => {

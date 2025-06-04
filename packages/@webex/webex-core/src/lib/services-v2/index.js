@@ -20,7 +20,4 @@ export {default as ServiceInterceptorV2} from './interceptors/service';
 export {default as ServerErrorInterceptorV2} from './interceptors/server-error';
 export {default as HostMapInterceptorV2} from './interceptors/hostmap';
 export {default as ServiceCatalogV2} from './service-catalog';
-export {default as ServiceRegistryV2} from './service-registry';
-export {default as ServiceStateV2} from './service-state';
-export {default as ServiceHostV2} from './service-host';
 export {default as ServiceUrlV2} from './service-url';
