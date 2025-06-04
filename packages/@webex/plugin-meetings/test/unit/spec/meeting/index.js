@@ -2172,6 +2172,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
               isSubnetReachable: null,
+              selectedCluster: null,
               numTransports: 1,
               iceCandidatesCount: 0,
             }
@@ -2219,6 +2220,7 @@ describe('plugin-meetings', () => {
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
               isSubnetReachable: null,
+              selectedCluster: null,
             })
           );
 
@@ -2285,6 +2287,7 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               iceCandidatesCount: 0,
               isSubnetReachable: null,
+              selectedCluster: null,
             }
           );
         });
@@ -2343,6 +2346,7 @@ describe('plugin-meetings', () => {
               connectionState: 'connecting',
               iceConnectionState: 'checking',
               isSubnetReachable: null,
+              selectedCluster: null,
             })
           );
 
@@ -2401,6 +2405,7 @@ describe('plugin-meetings', () => {
               connectionState: 'connecting',
               iceConnectionState: 'checking',
               isSubnetReachable: null,
+              selectedCluster: null,
             })
           );
 
@@ -2923,6 +2928,7 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               iceCandidatesCount: 0,
               isSubnetReachable: null,
+              selectedCluster: null,
             },
           ]);
 
@@ -3130,6 +3136,7 @@ describe('plugin-meetings', () => {
               isJoinWithMediaRetry: false,
               iceCandidatesCount: 0,
               isSubnetReachable: null,
+              selectedCluster: null,
             },
           ]);
           meeting.roap.doTurnDiscovery;
@@ -3260,6 +3267,11 @@ describe('plugin-meetings', () => {
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(true),
           };
+          meeting.mediaConnections = [
+            {
+              mediaAgentCluster: 'some.cluster',
+            }
+          ]
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
           meeting.iceCandidateErrors.set('701_turn_host_lookup_received_error', 1);
@@ -3288,6 +3300,7 @@ describe('plugin-meetings', () => {
               '701_error': 3,
               '701_turn_host_lookup_received_error': 1,
               isSubnetReachable: null,
+              selectedCluster: 'some.cluster',
             }
           );
 
@@ -3351,6 +3364,7 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               isSubnetReachable: null,
+              selectedCluster: null,
               iceCandidatesCount: 0,
             }
           );
@@ -3413,6 +3427,7 @@ describe('plugin-meetings', () => {
               '701_error': 2,
               '701_turn_host_lookup_received_error': 1,
               isSubnetReachable: null,
+              selectedCluster: null,
               iceCandidatesCount: 0,
             }
           );
@@ -3462,6 +3477,7 @@ describe('plugin-meetings', () => {
             iceCandidatesCount: 0,
             reachability_public_udp_success: 5,
             isSubnetReachable: false,
+            selectedCluster: null,
           });
         });
 
@@ -3523,6 +3539,7 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               reachability_public_udp_success: 5,
               isSubnetReachable: true,
+              selectedCluster: null,
               iceCandidatesCount: 0,
             }
           );
