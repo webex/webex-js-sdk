@@ -29,6 +29,16 @@ export {
 } from './lib/services';
 
 export {
+  constants as serviceConstantsV2,
+  ServiceCatalogV2,
+  ServiceInterceptorV2,
+  ServerErrorInterceptorV2,
+  ServicesV2,
+  ServiceUrlV2,
+  HostMapInterceptorV2,
+} from './lib/services-v2';
+
+export {
   makeWebexStore,
   makeWebexPluginStore,
   MemoryStoreAdapter,

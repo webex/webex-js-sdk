@@ -5,6 +5,7 @@ import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
 import {ITask, MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
+import {METHODS} from './constants';
 import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
 import {LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
@@ -12,9 +13,15 @@ import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
+/** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
   private contact: ReturnType<typeof routingContact>;
+  /**
+   * Collection of tasks indexed by TaskId
+   * @type {Record<TaskId, ITask>}
+   * @private
+   */
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
@@ -48,9 +55,10 @@ export default class TaskManager extends EventEmitter {
 
     if (currentTask) {
       this.webCallingService.mapCallToTask(call.getCallId(), currentTask.data.interactionId);
-      LoggerProxy.log('Call mapped to task', {
+      LoggerProxy.log(`Call mapped to task`, {
         module: TASK_MANAGER_FILE,
-        method: 'handleIncomingWebCall',
+        method: METHODS.HANDLE_INCOMING_WEB_CALL,
+        interactionId: currentTask.data.interactionId,
       });
       this.emit(TASK_EVENTS.TASK_INCOMING, currentTask);
     }
@@ -74,6 +82,11 @@ export default class TaskManager extends EventEmitter {
         if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
           task = this.taskCollection[payload.data.interactionId];
         }
+        LoggerProxy.info(`Handling task event ${payload.data?.type}`, {
+          module: TASK_MANAGER_FILE,
+          method: METHODS.REGISTER_TASK_LISTENERS,
+          interactionId: payload.data?.interactionId,
+        });
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
             task = new Task(this.contact, this.webCallingService, {
@@ -102,9 +115,10 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_OFFER_CONTACT:
             // We don't have to emit any event here since this will be result of promise.
             task = this.updateTaskData(task, payload.data);
-            LoggerProxy.log('Agent offer contact', {
+            LoggerProxy.log(`Agent offer contact received for task`, {
               module: TASK_MANAGER_FILE,
-              method: 'registerTaskListeners',
+              method: METHODS.REGISTER_TASK_LISTENERS,
+              interactionId: payload.data?.interactionId,
             });
             this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, task);
             break;
@@ -113,9 +127,10 @@ export default class TaskManager extends EventEmitter {
             if (task.data) {
               this.removeTaskFromCollection(task);
             }
-            LoggerProxy.log('Agent outbound failed', {
+            LoggerProxy.log(`Agent outbound failed for task`, {
               module: TASK_MANAGER_FILE,
-              method: 'registerTaskListeners',
+              method: METHODS.REGISTER_TASK_LISTENERS,
+              interactionId: payload.data?.interactionId,
             });
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
@@ -161,7 +176,7 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT_UNHELD:
             // As soon as the main interaction is unheld, we need to emit TASK_RESUME
             task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_RESUME, task);
+            task.emit(TASK_EVENTS.TASK_UNHOLD, task);
             break;
           case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
             task = this.updateTaskData(task, {
@@ -261,7 +276,7 @@ export default class TaskManager extends EventEmitter {
     if (!taskData?.interactionId) {
       LoggerProxy.warn('Received task update with missing interactionId', {
         module: TASK_MANAGER_FILE,
-        method: 'updateTaskData',
+        method: METHODS.UPDATE_TASK_DATA,
       });
     }
 
@@ -271,9 +286,10 @@ export default class TaskManager extends EventEmitter {
 
       return currentTask;
     } catch (error) {
-      LoggerProxy.error(`Failed to update task ${taskData.interactionId}`, {
+      LoggerProxy.error(`Failed to update task`, {
         module: TASK_MANAGER_FILE,
-        method: 'updateTaskData',
+        method: METHODS.UPDATE_TASK_DATA,
+        interactionId: taskData.interactionId,
       });
 
       return task;
@@ -283,9 +299,10 @@ export default class TaskManager extends EventEmitter {
   private removeTaskFromCollection(task: ITask) {
     if (task?.data?.interactionId) {
       delete this.taskCollection[task.data.interactionId];
-      LoggerProxy.info(`Task removed from collection: ${task.data.interactionId}`, {
+      LoggerProxy.info(`Task removed from collection`, {
         module: TASK_MANAGER_FILE,
-        method: 'removeTaskFromCollection',
+        method: METHODS.REMOVE_TASK_FROM_COLLECTION,
+        interactionId: task.data.interactionId,
       });
     }
   }
