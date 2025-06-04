@@ -17,6 +17,8 @@ export const PresetCameraConstraints: {[key: string]: VideoDeviceConstraints} = 
 
   '720p': {frameRate: 30, width: 1280, height: 720},
 
+  '540p': {frameRate: 30, width: 960, height: 540},
+
   '480p': {frameRate: 30, width: 640, height: 480},
 
   '360p': {frameRate: 30, width: 640, height: 360},

@@ -15,14 +15,15 @@ export type RemoteVideoResolution =
   | 'thumbnail' // the smallest possible resolution, 90p or less
   | 'very small' // 180p or less
   | 'small' // 360p or less
-  | 'medium' // 720p or less
-  | 'large' // 1080p or less
-  | 'best'; // highest possible resolution
+  | 'medium' // 540p or less
+  | 'large' // 720p or less
+  | 'best'; // 1080p or less
 
 const MAX_FS_VALUES = {
   '90p': 60,
   '180p': 240,
   '360p': 920,
+  '540p': 2040,
   '720p': 3600,
   '1080p': 8192,
 };
@@ -46,13 +47,13 @@ export function getMaxFs(paneSize: RemoteVideoResolution): number {
       maxFs = MAX_FS_VALUES['360p'];
       break;
     case 'medium':
-      maxFs = MAX_FS_VALUES['720p'];
+      maxFs = MAX_FS_VALUES['540p'];
       break;
     case 'large':
-      maxFs = MAX_FS_VALUES['1080p'];
+      maxFs = MAX_FS_VALUES['720p'];
       break;
     case 'best':
-      maxFs = MAX_FS_VALUES['1080p']; // for now 'best' is 1080p, so same as 'large'
+      maxFs = MAX_FS_VALUES['1080p'];
       break;
     default:
       LoggerProxy.logger.warn(
@@ -136,6 +137,8 @@ export class RemoteMedia extends EventsScope {
       fs = MAX_FS_VALUES['180p'];
     } else if (height < getThresholdHeight(360)) {
       fs = MAX_FS_VALUES['360p'];
+    } else if (height <= getThresholdHeight(540)) {
+      fs = MAX_FS_VALUES['540p'];
     } else if (height <= 720) {
       fs = MAX_FS_VALUES['720p'];
     } else {

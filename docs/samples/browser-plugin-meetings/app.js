@@ -1293,6 +1293,7 @@ function sendDtmfTones() {
 const localVideoQuality = {
   '360p': '360p',
   '480p': '480p',
+  '540p': '540p',
   '720p': '720p',
   '1080p': '1080p'
 };
@@ -1306,6 +1307,7 @@ const localMedia = {
   videoConstraints: {
     [localVideoQuality["360p"]]: { width: 640, height: 360 },
     [localVideoQuality["480p"]]: { width: 640, height: 480 },
+    [localVideoQuality["540p"]]: { width: 960, height: 540 },
     [localVideoQuality["720p"]]: { width: 1280, height: 720 },
     [localVideoQuality["1080p"]]: { width: 1920, height: 1080 },
   }
@@ -2734,7 +2736,7 @@ function enableMultistreamControls(enable) {
 }
 
 function addMediaOptionsLocal(elementId) {
-  const mediaOptions = ['360p', '480p', '720p', '1080p'];
+  const mediaOptions = ['360p', '480p', '540p', '720p', '1080p'];
   const element = document.getElementById(elementId);
   const optionElements = mediaOptions.reduce((acc, resolution) => {
     acc += `<option value="${resolution}" ${resolution === '720p' && 'selected'}>${resolution}</option>`;

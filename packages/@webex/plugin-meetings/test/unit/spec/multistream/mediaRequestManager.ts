@@ -36,12 +36,15 @@ describe('MediaRequestManager', () => {
   const CROSS_POLICY_DUPLICATION = true;
   const MAX_FPS = 3000;
   const MAX_FS_360p = 920;
+  const MAX_FS_540p = 2040;
   const MAX_FS_720p = 3600;
   const MAX_FS_1080p = 8192;
   const MAX_MBPS_360p = 27600;
+  const MAX_MBPS_540p = 61200;
   const MAX_MBPS_720p = 108000;
   const MAX_MBPS_1080p = 245760;
   const MAX_PAYLOADBITSPS_360p = 640000;
+  const MAX_PAYLOADBITSPS_540p = 1417500;
   const MAX_PAYLOADBITSPS_720p = 2500000;
   const MAX_PAYLOADBITSPS_1080p = 4000000;
 
@@ -82,7 +85,14 @@ describe('MediaRequestManager', () => {
   });
 
   // helper function for adding an active speaker request
-  const addActiveSpeakerRequest = (priority, receiveSlots, maxFs, commit = false, preferLiveVideo = true, namedMediaGroups = undefined) =>
+  const addActiveSpeakerRequest = (
+    priority,
+    receiveSlots,
+    maxFs,
+    commit = false,
+    preferLiveVideo = true,
+    namedMediaGroups = undefined
+  ) =>
     mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -125,10 +135,8 @@ describe('MediaRequestManager', () => {
   // addActiveSpeakerRequest() or addReceiverSelectedRequest(), because of some
   // hardcoded values used in them
   const checkMediaRequestsSent = (
-    expectedRequests: ExpectedRequest[], {
-      isCodecInfoDefined = true,
-      preferLiveVideo = true,
-    } = {}
+    expectedRequests: ExpectedRequest[],
+    {isCodecInfoDefined = true, preferLiveVideo = true} = {}
   ) => {
     assert.calledOnce(sendMediaRequestsCallback);
     assert.calledWith(
@@ -225,6 +233,22 @@ describe('MediaRequestManager', () => {
         receiveSlots: [fakeReceiveSlots[3]],
         codecInfo: {
           codec: 'h264',
+          maxFs: MAX_FS_540p,
+          maxFps: MAX_FPS,
+          maxMbps: MAX_MBPS_540p,
+        },
+      },
+      false
+    );
+    mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'receiver-selected',
+          csi: 123,
+        },
+        receiveSlots: [fakeReceiveSlots[4]],
+        codecInfo: {
+          codec: 'h264',
           maxFs: MAX_FS_720p,
           maxFps: MAX_FPS,
           maxMbps: MAX_MBPS_720p,
@@ -240,7 +264,7 @@ describe('MediaRequestManager', () => {
           policy: 'receiver-selected',
           csi: 123,
         },
-        receiveSlots: [fakeReceiveSlots[4]],
+        receiveSlots: [fakeReceiveSlots[5]],
         codecInfo: {
           codec: 'h264',
           maxFs: MAX_FS_1080p,
@@ -281,6 +305,24 @@ describe('MediaRequestManager', () => {
           csi: 123,
         }),
         receiveSlots: [fakeWcmeSlots[3]],
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_540p,
+        codecInfos: [
+          sinon.match({
+            payloadType: 0x80,
+            h264: sinon.match({
+              maxFs: MAX_FS_540p,
+              maxFps: MAX_FPS,
+              maxMbps: MAX_MBPS_540p,
+            }),
+          }),
+        ],
+      }),
+      sinon.match({
+        policy: 'receiver-selected',
+        policySpecificInfo: sinon.match({
+          csi: 123,
+        }),
+        receiveSlots: [fakeWcmeSlots[4]],
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
         codecInfos: [
           sinon.match({
@@ -298,7 +340,7 @@ describe('MediaRequestManager', () => {
         policySpecificInfo: sinon.match({
           csi: 123,
         }),
-        receiveSlots: [fakeWcmeSlots[4]],
+        receiveSlots: [fakeWcmeSlots[5]],
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
         codecInfos: [
           sinon.match({
