@@ -247,7 +247,7 @@ describe('Registration Tests', () => {
       deviceErrorCode: 0,
       retryAfter: 0,
       message:
-        'Invalid input. Please verify the required parameters,  sign out and then sign back in with the valid data',
+        'Invalid input. Please verify the required parameters, sign out and then sign back in with the valid data',
       errorType: ERROR_TYPE.SERVER_ERROR,
       emitterCbExpected: true,
       finalError: true,

@@ -297,7 +297,7 @@ export async function handleRegistrationErrors(
   err: WebexRequestPayload,
   emitterCb: LineErrorEmitterCallback,
   loggerContext: LogContext,
-  retry429CB?: retry429CallBack,
+  retry429Cb?: retry429CallBack,
   restoreRegCb?: restoreRegistrationCallBack
 ): Promise<boolean> {
   const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
@@ -313,7 +313,7 @@ export async function handleRegistrationErrors(
       updateLineErrorContext(
         loggerContext,
         ERROR_TYPE.SERVER_ERROR,
-        'Invalid input. Please verify the required parameters,  sign out and then sign back in with the valid data',
+        'Invalid input. Please verify the required parameters, sign out and then sign back in with the valid data',
         RegistrationStatus.INACTIVE,
         lineError
       );
@@ -356,9 +356,9 @@ export async function handleRegistrationErrors(
     case ERROR_CODE.TOO_MANY_REQUESTS: {
       const caller = loggerContext.method || 'handleErrors';
 
-      if (retry429CB && err.headers) {
+      if (retry429Cb && err.headers) {
         const retryAfter = Number(err.headers['retry-after']);
-        retry429CB(retryAfter, caller);
+        retry429Cb(retryAfter, caller);
       }
 
       break;

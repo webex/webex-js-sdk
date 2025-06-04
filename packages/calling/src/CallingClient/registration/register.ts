@@ -408,22 +408,21 @@ export class Registration implements IRegistration {
           });
           await this.deregister();
           const abort = await this.attemptRegistrationWithServers(FAILBACK_UTIL);
-          if (!this.scheduled429Retry) {
-            if (!abort && !this.isDeviceRegistered()) {
-              const abortNew = await this.restorePreviousRegistration(FAILBACK_UTIL);
 
-              if (abortNew) {
-                this.clearFailbackTimer();
+          if (!this.scheduled429Retry && !abort && !this.isDeviceRegistered()) {
+            const abortNew = await this.restorePreviousRegistration(FAILBACK_UTIL);
 
-                return;
-              }
+            if (abortNew) {
+              this.clearFailbackTimer();
 
-              if (!this.isDeviceRegistered()) {
-                await this.restartRegistration(this.executeFailback.name);
-              } else {
-                this.failbackTimer = undefined;
-                this.initiateFailback();
-              }
+              return;
+            }
+
+            if (!this.isDeviceRegistered()) {
+              await this.restartRegistration(this.executeFailback.name);
+            } else {
+              this.failbackTimer = undefined;
+              this.initiateFailback();
             }
           }
         } else {

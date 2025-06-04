@@ -104,7 +104,6 @@ describe('Registration Tests', () => {
 
   let reg: IRegistration;
   let restartSpy;
-
   let restoreSpy;
   let postRegistrationSpy;
   let failoverSpy;
