@@ -9666,7 +9666,10 @@ export default class Meeting extends StatelessWebexPlugin {
       isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(this.mediaServerIp);
     }
 
-    const selectedCluster = this.mediaConnections[0]?.mediaAgentCluster || null;
+    let selectedCluster = null;
+    if (this.mediaConnections && this.mediaConnections.length > 0) {
+      selectedCluster = this.mediaConnections[0].mediaAgentCluster;
+    }
 
     return {
       ...reachabilityMetrics,
