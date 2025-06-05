@@ -1100,7 +1100,7 @@ function doAgentLogin() {
     
   }).catch((error) => {
     console.log('Agent Login failed', error);
-    if(error.data.fieldName === 'input')  {
+    if(['EXTENSION', 'AGENT_DN'].includes(error.data.fieldName))  {
       agentLoginInputError.innerText = error.data.message;
       agentLoginInputError.style.display = 'block';
     } else {
