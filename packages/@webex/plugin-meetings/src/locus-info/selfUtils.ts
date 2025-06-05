@@ -24,11 +24,17 @@ const SelfUtils = {
    * parses the relevant values for self: muted, guest, moderator, mediaStatus, state, joinedWith, pstnDevices, creator, id
    * @param {Object} self
    * @param {String} deviceId
+   * @param {Array} participants
    * @returns {undefined}
    */
-  parse: (self: any, deviceId: string) => {
+  parse: (self: any, deviceId: string, participants: Array<any>) => {
     if (self) {
       const joinedWith = self.devices.find((device) => deviceId === device.url);
+      const pairedWith =
+        joinedWith?.intent?.type === _OBSERVE_ &&
+        participants?.find((participant) => participant.url === joinedWith?.intent?.associatedWith)
+          ?.devices[0];
+
       const pstnDevices = self.devices.filter((device) => PSTN_DEVICE_TYPE === device.deviceType);
 
       return {
@@ -50,6 +56,7 @@ const SelfUtils = {
         // TODO: give a proper name . With same device as login or different login`
         // Some times we might have joined with both mobile and web
         joinedWith,
+        pairedWith,
         pstnDevices,
         // current media stats is for the current device who has joined
         currentMediaStatus: SelfUtils.getMediaStatus(joinedWith?.mediaSessions),
@@ -59,7 +66,7 @@ const SelfUtils = {
         selfUrl: self.url,
         removed: self.removed,
         roles: SelfUtils.getRoles(self),
-        isUserUnadmitted: self.state === _IDLE_ && joinedWith?.intent?.type === _WAIT_,
+        isUserUnadmitted: SelfUtils.isLocusUserUnadmitted(self?.state, joinedWith, pairedWith),
         layout: SelfUtils.getLayout(self),
         canNotViewTheParticipantList: SelfUtils.canNotViewTheParticipantList(self),
         isSharingBlocked: SelfUtils.isSharingBlocked(self),
@@ -94,13 +101,13 @@ const SelfUtils = {
 
   isSharingBlocked: (self) => !!self?.isSharingBlocked,
 
-  getSelves: (oldSelf, newSelf, deviceId) => {
-    const previous = oldSelf && SelfUtils.parse(oldSelf, deviceId);
-    const current = newSelf && SelfUtils.parse(newSelf, deviceId);
+  getSelves: (oldParsedSelf, newSelf, deviceId, participants: Array<any>) => {
+    const previous = oldParsedSelf;
+    const current = newSelf && SelfUtils.parse(newSelf, deviceId, participants);
     const updates: any = {};
 
-    updates.isUserUnadmitted = SelfUtils.isUserUnadmitted(previous, current);
-    updates.isUserAdmitted = SelfUtils.isUserAdmitted(previous, current);
+    updates.hasUserEnteredLobby = SelfUtils.hasUserEnteredLobby(previous, current);
+    updates.hasUserBeenAdmitted = SelfUtils.hasUserBeenAdmitted(previous, current);
     updates.isVideoMutedByOthersChanged = SelfUtils.videoMutedByOthersChanged(previous, current);
     updates.isMutedByOthersChanged = SelfUtils.mutedByOthersChanged(previous, current);
     updates.localAudioUnmuteRequestedByServer = SelfUtils.localAudioUnmuteRequestedByServer(
@@ -316,37 +323,68 @@ const SelfUtils = {
       changedSelf.joinedWith.reason === MEETING_END_REASON.MEDIA_RELEASED),
 
   /**
-   * @param {Object} check
-   * @returns {Boolean}
+   * @param {String | undefined} state meeting state
+   * @param {any} joinedWith device that user has joined with
+   * @param {any} pairedWith device that user is paired with
+   * @returns {Boolean | undefined} true if user is in lobby, false if not, undefined if it cannot be determined
    */
-  isLocusUserUnadmitted: (check: any) =>
-    check && check.joinedWith?.intent?.type === _WAIT_ && check.state === _IDLE_,
+  isLocusUserUnadmitted: (state?: string, joinedWith?: any, pairedWith?: any) => {
+    if (state === undefined) {
+      return undefined;
+    }
+    if (joinedWith?.intent?.type === _OBSERVE_ && pairedWith) {
+      // we are paired with a device, so need to check the lobby state for that device
+      return pairedWith.intent?.type === _WAIT_ && state === _IDLE_;
+    }
+
+    return joinedWith?.intent?.type === _WAIT_ && state === _IDLE_;
+  },
 
   /**
-   * @param {Object} check
+   * @param {String | undefined} state meeting state
+   * @param {any} joinedWith device that user has joined with
+   * @param {any} pairedWith device that user is paired with
    * @returns {Boolean}
    */
-  isLocusUserAdmitted: (check: any) =>
-    check && check.joinedWith?.intent?.type !== _WAIT_ && check.state === _JOINED_,
+  isLocusUserAdmitted: (state?: string, joinedWith?: any, pairedWith?: any) => {
+    if (state === undefined) {
+      return undefined;
+    }
+
+    if (joinedWith?.intent?.type === _OBSERVE_ && pairedWith) {
+      // we are paired with a device, so need to check the lobby state for that device
+      return pairedWith.intent?.type !== _WAIT_ && state === _JOINED_;
+    }
+
+    return joinedWith?.intent?.type !== _WAIT_ && state === _JOINED_;
+  },
 
   /**
    * @param {Object} oldSelf
    * @param {Object} changedSelf
-   * @returns {Boolean}
+   * @returns {Boolean} true if user has just been placed in the lobby
    * @throws {Error} when self is undefined
    */
-  isUserUnadmitted: (oldSelf: any, changedSelf: any) => {
+  hasUserEnteredLobby: (oldSelf: any, changedSelf: any) => {
     if (!changedSelf) {
       throw new ParameterError(
         'changedSelf must be defined to determine if self is unadmitted as guest.'
       );
     }
 
-    if (SelfUtils.isLocusUserUnadmitted(oldSelf)) {
-      return false;
-    }
+    const wasInLobby = SelfUtils.isLocusUserUnadmitted(
+      oldSelf?.state,
+      oldSelf?.joinedWith,
+      oldSelf?.pairedWith
+    );
 
-    return SelfUtils.isLocusUserUnadmitted(changedSelf);
+    const isInLobby = SelfUtils.isLocusUserUnadmitted(
+      changedSelf?.state,
+      changedSelf?.joinedWith,
+      changedSelf?.pairedWith
+    );
+
+    return !wasInLobby && isInLobby;
   },
 
   moderatorChanged: (oldSelf, changedSelf) => {
@@ -391,10 +429,10 @@ const SelfUtils = {
   /**
    * @param {Object} oldSelf
    * @param {Object} changedSelf
-   * @returns {Boolean}
+   * @returns {Boolean} true if the user has just been admitted from lobby into the meeting
    * @throws {Error} if changed self was undefined
    */
-  isUserAdmitted: (oldSelf: object, changedSelf: object) => {
+  hasUserBeenAdmitted: (oldSelf: any, changedSelf: any) => {
     if (!oldSelf) {
       // if there was no previous locus, it couldn't have been admitted yet
       return false;
@@ -405,7 +443,19 @@ const SelfUtils = {
       );
     }
 
-    return SelfUtils.isLocusUserUnadmitted(oldSelf) && SelfUtils.isLocusUserAdmitted(changedSelf);
+    const wasInLobby = SelfUtils.isLocusUserUnadmitted(
+      oldSelf?.state,
+      oldSelf?.joinedWith,
+      oldSelf?.pairedWith
+    );
+
+    const isAdmitted = SelfUtils.isLocusUserAdmitted(
+      changedSelf?.state,
+      changedSelf?.joinedWith,
+      changedSelf?.pairedWith
+    );
+
+    return wasInLobby && isAdmitted && isAdmitted !== undefined;
   },
 
   videoMutedByOthersChanged: (oldSelf, changedSelf) => {
