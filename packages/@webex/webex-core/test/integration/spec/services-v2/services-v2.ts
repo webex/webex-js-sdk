@@ -6,10 +6,11 @@ import '@webex/internal-plugin-device';
 
 import {assert} from '@webex/test-helper-chai';
 import {flaky} from '@webex/test-helper-mocha';
-import WebexCore, {ServiceCatalog, ServiceUrl, serviceConstants} from '@webex/webex-core';
+import WebexCore, {ServiceCatalog, ServiceDetail, serviceConstants} from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
 import sinon from 'sinon';
+import {formattedServiceHostmapEntryConv} from '../../../fixtures/host-catalog-v2';
 
 // /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
@@ -33,7 +34,7 @@ describe('webex-core', () => {
         }),
       ]).then(
         ([[user], [userEU]]) =>
-          new Promise((resolve) => {
+          new Promise<void>((resolve) => {
             setTimeout(() => {
               webexUser = user;
               webexUserEU = userEU;
@@ -43,7 +44,7 @@ describe('webex-core', () => {
       )
     );
 
-    beforeEach('create webex instance', () => {
+    beforeEach(() => {
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
       webexEU = new WebexCore({credentials: {supertoken: webexUserEU.token}});
       services = webex.internal.services;
@@ -61,130 +62,89 @@ describe('webex-core', () => {
       );
     });
 
-    //     describe('#_getCatalog()', () => {
-    //       it('returns a catalog', () => {
-    //         const localCatalog = services._getCatalog();
+    describe('#_getCatalog()', () => {
+      it('returns a catalog', () => {
+        const localCatalog = services._getCatalog();
 
-    //         assert.equal(localCatalog.namespace, 'ServiceCatalog');
-    //       });
-    //     });
+        assert.equal(localCatalog.namespace, 'ServiceCatalog');
+      });
+    });
 
-    //     describe('#list()', () => {
-    //       it('matches the values in serviceUrl', () => {
-    //         let serviceList = services.list();
+    describe('#get()', () => {
+      let testDetailTemplate;
+      let testDetail;
 
-    //         Object.keys(serviceList).forEach((key) => {
-    //           assert.equal(serviceList[key], catalog._getUrl(key).get());
-    //         });
+      beforeEach(() => {
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
+        services._activeServices = {
+          [testDetailTemplate.serviceName]: testDetailTemplate.id,
+        };
+      });
 
-    //         serviceList = services.list(true);
-    //         Object.keys(serviceList).forEach((key) => {
-    //           assert.equal(serviceList[key], catalog._getUrl(key).get(true));
-    //         });
-    //       });
-    //     });
+      afterEach(() => {
+        catalog._unloadServiceUrls('preauth', [testDetail]);
+      });
 
-    //     describe('#get()', () => {
-    //       let testUrlTemplate;
-    //       let testUrl;
+      it('returns a valid string when name is specified', () => {
+        const url = services.get(testDetailTemplate.serviceName);
 
-    //       beforeEach('load test url', () => {
-    //         testUrlTemplate = {
-    //           defaultUrl: 'https://www.example.com/api/v1',
-    //           hosts: [],
-    //           name: 'exampleValid',
-    //         };
-    //         testUrl = new ServiceUrl(testUrlTemplate);
-    //         catalog._loadServiceUrls('preauth', [testUrl]);
-    //       });
+        assert.typeOf(url, 'string');
+        assert.equal(url, testDetail.get());
+      });
 
-    //       afterEach('unload test url', () => {
-    //         catalog._unloadServiceUrls('preauth', [testUrl]);
-    //       });
+      it("returns undefined if url doesn't exist", () => {
+        const s = services.get('invalidUrl');
 
-    //       it('returns a valid string when name is specified', () => {
-    //         const url = services.get(testUrlTemplate.name);
+        assert.typeOf(s, 'undefined');
+      });
 
-    //         assert.typeOf(url, 'string');
-    //         assert.equal(url, testUrlTemplate.defaultUrl);
-    //       });
+      it('gets a service from a specific serviceGroup', () => {
+        assert.isDefined(services.get(testDetailTemplate.serviceName, 'preauth'));
+      });
 
-    //       it("returns undefined if url doesn't exist", () => {
-    //         const s = services.get('invalidUrl');
+      it("fails to get a service if serviceGroup isn't accurate", () => {
+        assert.isUndefined(services.get(testDetailTemplate.serviceName, 'discovery'));
+      });
+    });
 
-    //         assert.typeOf(s, 'undefined');
-    //       });
+    describe('#getClusterId()', () => {
+      let testDetailTemplate;
+      let testDetail;
 
-    //       it('gets a service from a specific serviceGroup', () => {
-    //         assert.isDefined(services.get(testUrlTemplate.name, false, 'preauth'));
-    //       });
+      beforeEach(() => {
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
+      });
 
-    //       it("fails to get a service if serviceGroup isn't accurate", () => {
-    //         assert.isUndefined(services.get(testUrlTemplate.name, false, 'discovery'));
-    //       });
-    //     });
+      it('returns a clusterId when found with url', () => {
+        assert.equal(services.getClusterId(testDetail.get()), testDetail.id);
+      });
 
-    //     describe('#getClusterId()', () => {
-    //       let testUrlTemplate;
-    //       let testUrl;
+      it('returns a clusterId when found with resource-appended url', () => {
+        assert.equal(
+          services.getClusterId(`${testDetail.get()}example/resource/value`),
+          testDetail.id
+        );
+      });
 
-    //       beforeEach('load test url', () => {
-    //         testUrlTemplate = {
-    //           defaultUrl: 'https://www.example.com/api/v1',
-    //           hosts: [
-    //             {
-    //               homeCluster: true,
-    //               host: 'www.example-p5.com',
-    //               ttl: -1,
-    //               priority: 5,
-    //               id: 'exampleClusterId',
-    //             },
-    //             {
-    //               host: 'www.example-p3.com',
-    //               ttl: -1,
-    //               priority: 3,
-    //               id: 'exampleClusterId',
-    //             },
-    //           ],
-    //           name: 'exampleValid',
-    //         };
-    //         testUrl = new ServiceUrl(testUrlTemplate);
-    //         catalog._loadServiceUrls('preauth', [testUrl]);
-    //       });
+      it("returns undefined when the url doesn't exist in catalog", () => {
+        assert.isUndefined(services.getClusterId('http://not-a-known-url.com/'));
+      });
 
-    //       it('returns a clusterId when found with default url', () => {
-    //         assert.equal(
-    //           services.getClusterId(testUrlTemplate.defaultUrl),
-    //           testUrlTemplate.hosts[0].id
-    //         );
-    //       });
-
-    //       it('returns a clusterId when found with priority host url', () => {
-    //         assert.equal(services.getClusterId(testUrl.get(true)), testUrlTemplate.hosts[0].id);
-    //       });
-
-    //       it('returns a clusterId when found with resource-appended url', () => {
-    //         assert.equal(
-    //           services.getClusterId(`${testUrl.get()}example/resource/value`),
-    //           testUrlTemplate.hosts[0].id
-    //         );
-    //       });
-
-    //       it("returns undefined when the url doesn't exist in catalog", () => {
-    //         assert.isUndefined(services.getClusterId('http://not-a-known-url.com/'));
-    //       });
-
-    //       it("returns undefined when the string isn't a url", () => {
-    //         assert.isUndefined(services.getClusterId('not a url'));
-    //       });
-    //     });
+      it("returns undefined when the string isn't a url", () => {
+        assert.isUndefined(services.getClusterId('not a url'));
+      });
+    });
 
     //     describe('#getServiceFromClusterId()', () => {
-    //       let testUrlTemplate;
-    //       let testUrl;
+    //       let testDetailTemplate;
+    //       let testDetail;
 
     //       beforeEach('load test url', () => {
-    //         testUrlTemplate = {
+    //         testDetailTemplate = {
     //           defaultUrl: 'https://www.example.com/api/v1',
     //           hosts: [
     //             {
@@ -203,49 +163,49 @@ describe('webex-core', () => {
     //           ],
     //           name: 'exampleValid',
     //         };
-    //         testUrl = new ServiceUrl(testUrlTemplate);
-    //         catalog._loadServiceUrls('preauth', [testUrl]);
+    //         testDetail = new ServiceDetail(testDetailTemplate);
+    //         catalog._loadServiceDetails('preauth', [testDetail]);
     //       });
 
     //       it('finds a valid service url from only a clusterId', () => {
     //         const serviceFound = services.getServiceFromClusterId({
-    //           clusterId: testUrlTemplate.hosts[0].id,
+    //           clusterId: testDetailTemplate.hosts[0].id,
     //           priorityHost: false,
     //         });
 
-    //         assert.equal(serviceFound.name, testUrl.name);
-    //         assert.equal(serviceFound.url, testUrl.defaultUrl);
+    //         assert.equal(serviceFound.name, testDetail.name);
+    //         assert.equal(serviceFound.url, testDetail.defaultUrl);
     //       });
 
     //       it('finds a valid priority service url', () => {
     //         const serviceFound = services.getServiceFromClusterId({
-    //           clusterId: testUrlTemplate.hosts[0].id,
+    //           clusterId: testDetailTemplate.hosts[0].id,
     //           priorityHost: true,
     //         });
 
-    //         assert.equal(serviceFound.name, testUrl.name);
+    //         assert.equal(serviceFound.name, testDetail.name);
     //         assert.isTrue(
-    //           serviceFound.url.includes(testUrlTemplate.hosts[0].host),
-    //           `'${serviceFound.url}' is not host '${testUrlTemplate.hosts[0].host}'`
+    //           serviceFound.url.includes(testDetailTemplate.hosts[0].host),
+    //           `'${serviceFound.url}' is not host '${testDetailTemplate.hosts[0].host}'`
     //         );
     //         // assert.equal(serviceFound.url, catalog.get('exampleValid', true));
     //       });
 
     //       it('finds a valid service when a service group is defined', () => {
     //         const serviceFound = catalog.findServiceFromClusterId({
-    //           clusterId: testUrlTemplate.hosts[0].id,
+    //           clusterId: testDetailTemplate.hosts[0].id,
     //           priorityHost: false,
     //           serviceGroup: 'preauth',
     //         });
 
-    //         assert.equal(serviceFound.name, testUrl.name);
-    //         assert.equal(serviceFound.url, testUrl.defaultUrl);
+    //         assert.equal(serviceFound.name, testDetail.name);
+    //         assert.equal(serviceFound.url, testDetail.defaultUrl);
     //       });
 
     //       it("fails to find a valid service when it's not in a group", () => {
     //         assert.isUndefined(
     //           services.getServiceFromClusterId({
-    //             clusterId: testUrlTemplate.hosts[0].id,
+    //             clusterId: testDetailTemplate.hosts[0].id,
     //             serviceGroup: 'signin',
     //           })
     //         );
@@ -257,11 +217,11 @@ describe('webex-core', () => {
     //     });
 
     //     describe('#getServiceFromUrl()', () => {
-    //       let testUrlTemplate;
-    //       let testUrl;
+    //       let testDetailTemplate;
+    //       let testDetail;
 
     //       beforeEach('load test url', () => {
-    //         testUrlTemplate = {
+    //         testDetailTemplate = {
     //           defaultUrl: 'https://www.example.com/api/v1',
     //           hosts: [
     //             {
@@ -279,23 +239,23 @@ describe('webex-core', () => {
     //           ],
     //           name: 'exampleValid',
     //         };
-    //         testUrl = new ServiceUrl(testUrlTemplate);
-    //         catalog._loadServiceUrls('preauth', [testUrl]);
+    //         testDetail = new ServiceDetail(testDetailTemplate);
+    //         catalog._loadServiceDetails('preauth', [testDetail]);
     //       });
 
     //       afterEach('unload test url', () => {
-    //         catalog._unloadServiceUrls('preauth', [testUrl]);
+    //         catalog._unloadServiceUrls('preauth', [testDetail]);
     //       });
 
     //       it('gets a valid service object from an existing service', () => {
-    //         const serviceObject = services.getServiceFromUrl(testUrlTemplate.defaultUrl);
+    //         const serviceObject = services.getServiceFromUrl(testDetailTemplate.defaultUrl);
 
     //         assert.isDefined(serviceObject);
     //         assert.hasAllKeys(serviceObject, ['name', 'defaultUrl', 'priorityUrl']);
 
-    //         assert.equal(testUrlTemplate.name, serviceObject.name);
-    //         assert.equal(testUrlTemplate.defaultUrl, serviceObject.defaultUrl);
-    //         assert.equal(testUrl.get(true), serviceObject.priorityUrl);
+    //         assert.equal(testDetailTemplate.name, serviceObject.name);
+    //         assert.equal(testDetailTemplate.defaultUrl, serviceObject.defaultUrl);
+    //         assert.equal(testDetail.get(true), serviceObject.priorityUrl);
     //       });
 
     //       it("returns undefined when the service url doesn't exist", () => {
@@ -465,11 +425,11 @@ describe('webex-core', () => {
     //     });
 
     //     describe('#isServiceUrl()', () => {
-    //       let testUrlTemplate;
-    //       let testUrl;
+    //       let testDetailTemplate;
+    //       let testDetail;
 
     //       beforeEach('load test url', () => {
-    //         testUrlTemplate = {
+    //         testDetailTemplate = {
     //           defaultUrl: 'https://www.example.com/api/v1',
     //           hosts: [
     //             {
@@ -488,16 +448,16 @@ describe('webex-core', () => {
     //           ],
     //           name: 'exampleValid',
     //         };
-    //         testUrl = new ServiceUrl(testUrlTemplate);
-    //         catalog._loadServiceUrls('preauth', [testUrl]);
+    //         testDetail = new ServiceDetail(testDetailTemplate);
+    //         catalog._loadServiceDetails('preauth', [testDetail]);
     //       });
 
     //       it('returns true if url is a service url', () => {
-    //         assert.isTrue(services.isServiceUrl(testUrlTemplate.defaultUrl));
+    //         assert.isTrue(services.isServiceUrl(testDetailTemplate.defaultUrl));
     //       });
 
     //       it('returns true for priority host urls', () => {
-    //         assert.isTrue(services.isServiceUrl(testUrl.get(true)));
+    //         assert.isTrue(services.isServiceUrl(testDetail.get(true)));
     //       });
 
     //       it("returns undefined if the url doesn't exist", () => {
@@ -532,11 +492,11 @@ describe('webex-core', () => {
     //     });
 
     //     describe('#convertUrlToPriorityUrl', () => {
-    //       let testUrl;
-    //       let testUrlTemplate;
+    //       let testDetail;
+    //       let testDetailTemplate;
 
     //       beforeEach('load test url', () => {
-    //         testUrlTemplate = {
+    //         testDetailTemplate = {
     //           defaultUrl: 'https://www.example.com/api/v1',
     //           hosts: [
     //             {
@@ -555,18 +515,18 @@ describe('webex-core', () => {
     //           ],
     //           name: 'exampleValid',
     //         };
-    //         testUrl = new ServiceUrl(testUrlTemplate);
-    //         catalog._loadServiceUrls('preauth', [testUrl]);
+    //         testDetail = new ServiceDetail(testDetailTemplate);
+    //         catalog._loadServiceDetails('preauth', [testDetail]);
     //       });
 
     //       it('converts the url to a priority host url', () => {
     //         const resource = 'path/to/resource';
-    //         const url = `${testUrlTemplate.defaultUrl}/${resource}`;
+    //         const url = `${testDetailTemplate.defaultUrl}/${resource}`;
 
     //         const convertUrl = services.convertUrlToPriorityHostUrl(url);
 
     //         assert.isDefined(convertUrl);
-    //         assert.isTrue(convertUrl.includes(testUrlTemplate.hosts[0].host));
+    //         assert.isTrue(convertUrl.includes(testDetailTemplate.hosts[0].host));
     //       });
 
     //       it('throws an exception if not a valid service', () => {
@@ -579,18 +539,18 @@ describe('webex-core', () => {
     //       });
 
     //       afterEach('unload test url', () => {
-    //         catalog._unloadServiceUrls('preauth', [testUrl]);
+    //         catalog._unloadServiceUrls('preauth', [testDetail]);
     //       });
     //     });
 
     //     describe('#markFailedUrl()', () => {
-    //       let testUrlTemplate;
-    //       let testUrl;
+    //       let testDetailTemplate;
+    //       let testDetail;
 
     //       beforeEach('load test url', () => {
     //         catalog.clean();
 
-    //         testUrlTemplate = {
+    //         testDetailTemplate = {
     //           defaultUrl: 'https://www.example-phr.com/api/v1',
     //           hosts: [
     //             {
@@ -608,16 +568,16 @@ describe('webex-core', () => {
     //           ],
     //           name: 'exampleValid-phr',
     //         };
-    //         testUrl = new ServiceUrl(testUrlTemplate);
-    //         catalog._loadServiceUrls('preauth', [testUrl]);
+    //         testDetail = new ServiceDetail(testDetailTemplate);
+    //         catalog._loadServiceDetails('preauth', [testDetail]);
     //       });
 
     //       afterEach('unload test url', () => {
-    //         catalog._unloadServiceUrls('preauth', [testUrl]);
+    //         catalog._unloadServiceUrls('preauth', [testDetail]);
     //       });
 
     //       it('marks a host as failed', () => {
-    //         const priorityServiceUrl = catalog._getUrl(testUrlTemplate.name);
+    //         const priorityServiceUrl = catalog._getUrl(testDetailTemplate.name);
     //         const priorityUrl = priorityServiceUrl._getPriorityHostUrl();
 
     //         services.markFailedUrl(priorityUrl);
@@ -628,7 +588,7 @@ describe('webex-core', () => {
     //       });
 
     //       it('returns the next priority url', () => {
-    //         const priorityUrl = services.get(testUrlTemplate.name, true);
+    //         const priorityUrl = services.get(testDetailTemplate.name, true);
 
     //         const nextPriorityUrl = services.markFailedUrl(priorityUrl);
 
@@ -636,7 +596,7 @@ describe('webex-core', () => {
     //       });
 
     //       it('should reset hosts once all hosts have been marked failed', () => {
-    //         const priorityServiceUrl = catalog._getUrl(testUrlTemplate.name);
+    //         const priorityServiceUrl = catalog._getUrl(testDetailTemplate.name);
     //         const firstPriorityUrl = priorityServiceUrl._getPriorityHostUrl();
 
     //         priorityServiceUrl.hosts.forEach(() => {
