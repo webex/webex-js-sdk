@@ -101,6 +101,13 @@ describe('webex-core', () => {
         assert.equal(priorityHost, serviceDetail.serviceUrls[0].baseUrl);
         assert.isTrue(serviceDetail.serviceUrls.every((serviceUrl) => !serviceUrl.failed));
       });
+      it('should return empty string if no available hosts', () => {
+        serviceDetail.serviceUrls = [{priority: -1}];
+
+        const priorityHost = serviceDetail.get();
+
+        assert.equal(priorityHost, '');
+      });
     });
 
     describe('#get', () => {

@@ -48,7 +48,7 @@ const ServiceDetail = AmpState.extend({
       priorityServiceUrl = this._searchForValidPriorityHost();
     }
 
-    return this._generateHostUrl(priorityServiceUrl);
+    return priorityServiceUrl ? this._generateHostUrl(priorityServiceUrl) : '';
   },
 
   /**
