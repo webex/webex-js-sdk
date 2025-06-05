@@ -36,7 +36,7 @@ const ServiceDetail = AmpState.extend({
    */
   _getPriorityHostUrl(): string {
     // format of catalog ensures that array is sorted by highest priority
-    let priorityServiceUrl = this.serviceUrls.find((url) => url.priority > 0 && !url.failed);
+    let priorityServiceUrl = this._searchForValidPriorityHost();
 
     if (!priorityServiceUrl) {
       this.serviceUrls = this.serviceUrls.map((serviceUrl) => {
@@ -45,10 +45,18 @@ const ServiceDetail = AmpState.extend({
         return serviceUrl;
       });
 
-      priorityServiceUrl = this.serviceUrls.find((url) => url.priority > 0 && !url.failed);
+      priorityServiceUrl = this._searchForValidPriorityHost();
     }
 
     return this._generateHostUrl(priorityServiceUrl);
+  },
+
+  /**
+   * Searches for a valid service URL with a priority greater than 0 that has not failed.
+   * @returns {ServiceUrl | undefined} - The first valid service URL found, or undefined if none exist.
+   */
+  _searchForValidPriorityHost(): ServiceUrl | undefined {
+    return this.serviceUrls.find((serviceUrl) => serviceUrl.priority > 0 && !serviceUrl.failed);
   },
 
   /**
@@ -77,6 +85,11 @@ const ServiceDetail = AmpState.extend({
    * @returns {string} - The full service url.
    */
   get(): string {
+    // return empty string to indicate that no service url is available
+    if (!this.serviceUrls || this.serviceUrls.length === 0) {
+      return '';
+    }
+
     return this._getPriorityHostUrl();
   },
 });

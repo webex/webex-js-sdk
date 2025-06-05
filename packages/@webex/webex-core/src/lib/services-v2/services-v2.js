@@ -663,6 +663,28 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Formats a host map entry for use in service catalog.
+   *
+   * @param {Object} entry - The host map entry to format.
+   * @param {string} entry.serviceName - i.e. conversation, identity, etc.
+   * @param {string} entry.id - The unique identifier for the service, usually clusterId.
+   * @param {Array<IServiceDetail>} entry.serviceUrls - The group to which the service belongs.
+   * @returns {Object} - The formatted host map entry.
+   */
+  _formatHostMapEntry({id, serviceName, serviceUrls}) {
+    const formattedServiceUrls = serviceUrls.map((serviceUrl) => ({
+      host: new URL(serviceUrl.baseUrl).host,
+      ...serviceUrl,
+    }));
+
+    return {
+      id,
+      serviceName,
+      serviceUrls: formattedServiceUrls,
+    };
+  },
+
+  /**
    * @private
    * Organize a received hostmap from a service
    * @param {object} serviceHostmap
@@ -670,18 +692,7 @@ const Services = WebexPlugin.extend({
    * @returns {object}
    */
   _formatReceivedHostmap({services, activeServices}) {
-    const formattedHostmap = services.map(({id, serviceName, serviceUrls}) => {
-      const formattedServiceUrls = serviceUrls.map((serviceUrl) => ({
-        host: new URL(serviceUrl.baseUrl).host,
-        ...serviceUrl,
-      }));
-
-      return {
-        id,
-        serviceName,
-        serviceUrls: formattedServiceUrls,
-      };
-    });
+    const formattedHostmap = services.map((service) => this._formatHostMapEntry(service));
     this._updateActiveServices(activeServices);
     this._updateServices(services);
 
@@ -850,15 +861,13 @@ const Services = WebexPlugin.extend({
       // Check for discovery services.
       if (services.discovery) {
         // Format the discovery configuration into an injectable array.
-        const formattedDiscoveryServices = Object.keys(services.discovery).map((key) => {
-          const url = new URL(services.discovery[key]);
-
-          return {
+        const formattedDiscoveryServices = Object.keys(services.discovery).map((key) =>
+          this._formatHostMapEntry({
             id: key,
             serviceName: key,
-            serviceUrls: [{baseUrl: url, host: url.host, priority: 1}],
-          };
-        });
+            serviceUrls: [{baseUrl: services.discovery[key], priority: 1}],
+          })
+        );
 
         // Inject formatted discovery services into services catalog.
         catalog.updateServiceGroups('discovery', formattedDiscoveryServices);
@@ -866,15 +875,13 @@ const Services = WebexPlugin.extend({
 
       if (services.override) {
         // Format the override configuration into an injectable array.
-        const formattedOverrideServices = Object.keys(services.override).map((key) => {
-          const url = new URL(services.override[key]);
-
-          return {
+        const formattedOverrideServices = Object.keys(services.override).map((key) =>
+          this._formatHostMapEntry({
             id: key,
             serviceName: key,
-            serviceUrls: [{baseUrl: url, host: url.host, priority: 1}],
-          };
-        });
+            serviceUrls: [{baseUrl: services.override[key], priority: 1}],
+          })
+        );
 
         // Inject formatted override services into services catalog.
         catalog.updateServiceGroups('override', formattedOverrideServices);
