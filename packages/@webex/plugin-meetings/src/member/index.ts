@@ -1,18 +1,19 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_} from '../constants';
+import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_, _OBSERVE_} from '../constants';
 import {IExternalRoles, IMediaStatus, ParticipantWithBrb, ParticipantWithRoles} from './types';
 
 import MemberUtil from './util';
 
+export type MemberId = string;
 /**
  * @class Member
  */
 export default class Member {
-  associatedUser: any;
+  associatedUsers: Set<MemberId>; // users associated with this device, empty if this member is not a device
   canReclaimHost: boolean;
-  id: any;
+  id: MemberId;
   isAudioMuted: any;
   isContentSharing: any;
   isDevice: any;
@@ -29,6 +30,7 @@ export default class Member {
   isRecording: any;
   isRemovable: any;
   isSelf: any;
+  isPairedWithSelf: boolean; // true for a device that we are paired with
   isBrb: boolean;
   isUser: any;
   isVideoMuted: any;
@@ -42,6 +44,10 @@ export default class Member {
   supportLiveAnnotation: boolean;
   type: any;
   namespace = MEETINGS;
+  pairedWith: {
+    participantUrl?: string;
+    memberId?: string;
+  };
 
   /**
    * @param {Object} participant - the locus participant
@@ -207,7 +213,7 @@ export default class Member {
      * @public
      * @memberof Member
      */
-    this.associatedUser = null;
+    this.associatedUsers = new Set<MemberId>();
     /**
      * @instance
      * @type {Boolean}
@@ -268,12 +274,24 @@ export default class Member {
 
     /**
      * @instance
+     * @type {Boolean}
+     * @public
+     * @memberof Member
+     */
+    this.isPairedWithSelf = false;
+
+    /**
+     * @instance
      * @type {IExternalRoles}
      * @public
      * @memberof Member
      */
     this.roles = null;
 
+    this.pairedWith = {
+      participantUrl: undefined,
+      memberId: undefined,
+    };
     /**
      * @instance
      * @type {IMediaStatus}
@@ -302,6 +320,7 @@ export default class Member {
   private processParticipant(participant: object) {
     this.participant = participant;
     if (participant) {
+      this.processPairedDevice(participant);
       this.canReclaimHost = MemberUtil.canReclaimHost(participant);
       this.id = MemberUtil.extractId(participant);
       this.name = MemberUtil.extractName(participant);
@@ -325,6 +344,18 @@ export default class Member {
       // must be done last
       this.isNotAdmitted = MemberUtil.isNotAdmitted(participant, this.isGuest, this.status);
     }
+  }
+
+  /**
+   * Checks if the participant is paired with another device
+   *
+   * @param {any} participant the locus participant object
+   * @returns {void}
+   */
+  processPairedDevice(participant: any) {
+    // we can't populate this.pairedWith.memberId here because the member for that device might not yet exist
+    // so only populating the participantUrl and memberId will be set later
+    this.pairedWith.participantUrl = MemberUtil.extractPairedWithParticipantUrl(participant);
   }
 
   /**
@@ -443,8 +474,6 @@ export default class Member {
   public processIsContentSharing(participant: object, sharingId: string) {
     if (MemberUtil.isUser(participant)) {
       this.isContentSharing = MemberUtil.isSame(participant, sharingId);
-    } else if (MemberUtil.isDevice(participant)) {
-      this.isContentSharing = MemberUtil.isAssociatedSame(participant, sharingId);
     }
   }
 
@@ -471,9 +500,6 @@ export default class Member {
   private processIsSelf(participant: object, selfId: string) {
     if (MemberUtil.isUser(participant)) {
       this.isSelf = MemberUtil.isSame(participant, selfId);
-    } else if (MemberUtil.isDevice(participant)) {
-      this.isSelf = MemberUtil.isAssociatedSame(participant, selfId);
-      this.associatedUser = selfId;
     }
   }
 
@@ -488,8 +514,6 @@ export default class Member {
   private processIsHost(participant: object, hostId: string) {
     if (MemberUtil.isUser(participant)) {
       this.isHost = MemberUtil.isSame(participant, hostId);
-    } else if (MemberUtil.isDevice(participant)) {
-      this.isHost = MemberUtil.isAssociatedSame(participant, hostId);
     }
   }
 

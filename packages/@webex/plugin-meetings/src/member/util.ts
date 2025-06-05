@@ -139,20 +139,6 @@ const MemberUtil = {
     participant && (participant.id === id || (participant.person && participant.person.id === id)),
 
   /**
-   * checks to see if the participant id is the same as the passed id for associated devices
-   * there are multiple ids that can be used
-   * @param {Object} participant - The locus participant object.
-   * @param {String} id
-   * @returns {Boolean}
-   */
-  isAssociatedSame: (participant: any, id: string) =>
-    participant &&
-    participant.associatedUsers &&
-    participant.associatedUsers.some(
-      (user) => user.id === id || (user.person && user.person.id === id)
-    ),
-
-  /**
    * @param {Object} participant - The locus participant object.
    * @param {Boolean} isGuest
    * @param {String} status
@@ -405,6 +391,24 @@ const MemberUtil = {
     }
 
     return null;
+  },
+
+  /**
+   * @param {Object} participant - The locus participant object.
+   * @returns {String}
+   */
+  extractPairedWithParticipantUrl: (participant: any): string => {
+    let participantUrl;
+
+    participant?.devices?.forEach((device: any) => {
+      device?.intents?.forEach((intent: any) => {
+        if (intent?.type === _OBSERVE_ && intent?.associatedWith) {
+          participantUrl = intent.associatedWith;
+        }
+      });
+    });
+
+    return participantUrl;
   },
 };
 export default MemberUtil;
