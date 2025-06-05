@@ -4,11 +4,11 @@
 
 import {inBrowser} from '@webex/common';
 import {assert} from '@webex/test-helper-chai';
+import file from '@webex/test-helper-file';
 import {HttpError, request} from '@webex/http-core';
 import makeLocalUrl from '@webex/test-helper-make-local-url';
 import sinon from 'sinon';
 import {flaky, nodeOnly} from '@webex/test-helper-mocha';
-const file = require('@webex/test-helper-file');
 
 describe('http-core', function () {
   this.timeout(30000);
@@ -269,21 +269,20 @@ describe('http-core', function () {
           }));
 
         it('submits files', () =>
-          file.fetch('/sample-image-small-one.png').then((f) => {
-              request({
-                method,
-                uri: makeLocalUrl('/files/reflect'),
-                body: f,
-                json: true,
-                // Note: setting response type so the `reflect()ed` response is in
-                // a form we can use, this is not needed for normal file uploads.
-                responseType: 'blob',
-              }).then((res) => {
-                assert.equal(res.body.type, f.type);
+          file.fetch('/sample-image-small-one.png').then((f) =>
+            request({
+              method,
+              uri: makeLocalUrl('/files/reflect'),
+              body: f,
+              json: false,
+              // Note: setting response type so the `reflect()ed` response is in
+              // a form we can use, this is not needed for normal file uploads.
+              responseType: 'blob',
+            }).then((res) => {
+              assert.equal(res.body.type, f.type);
 
-                return file.isMatchingFile(res.body, f).then((result) => assert.isTrue(result));
-              })
-          }
+              return file.isMatchingFile(res.body, f).then((result) => assert.isTrue(result));
+            })
           ));
 
         (inBrowser ? it : it.skip)('emits upload progress events', () =>
