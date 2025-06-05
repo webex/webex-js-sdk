@@ -3,7 +3,6 @@
  */
 
 import {fromBuffer} from 'file-type';
-import {Blob} from 'node:buffer';
 
 /**
  * Determine mimeType for the specified buffer;

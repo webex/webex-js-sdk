@@ -55,6 +55,16 @@ describe('http-core', () => {
             assert.equal(result, response);
           });
         });
+        it('rejects when appapi redirect is not intended', () => {
+          const response = {
+            statusCode: 404,
+            body: {
+              errorCode: 404101,
+            },
+          };
+
+          assert.isRejected(interceptor.onResponse({}, response));
+        });
       });
     });
   });
