@@ -109,7 +109,15 @@ export default class RedirectInterceptor extends Interceptor {
       options = clone(options);
 
       this.webex.logger.warn('redirect: url redirects needed from', options.uri);
+      if (response.options && response.options.qs) {
+        // for POST requests
+        const newUrl = response.body.data.siteFullUrl.split('?');
 
+        options.uri = newUrl[0]; // params are already present in the qs
+      } else {
+        // for GET requests
+        options.uri = response.body.data.siteFullUrl;
+      }
       options.uri = options.uri.replace(/(?<=https:\/\/)[^/]+/, response.body.data.siteFullUrl);
 
       this.webex.logger.warn('redirect: url redirects needed to', options.uri);

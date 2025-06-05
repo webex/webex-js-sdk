@@ -112,7 +112,60 @@ describe('webex-core', () => {
           interceptor.onResponse({$redirectCount: 0, uri: 'https://test.webex.com/meet/v1/join'}, response);
           sinon.assert.calledWith(webex.request, {
             $redirectCount: 1,
-            uri: 'https://newlocus.example.com/meet/v1/join',
+            uri: 'newlocus.example.com',
+          });
+        });
+        it('returns when appapi redirect is not encountered', () => {
+          const response = {
+            statusCode: 404,
+            headers: {},
+            body: {
+              code: 404101,
+              data: {
+                siteFullUrl: 'http://newlocus.example.com?alternate=true'
+              },
+            },
+          };
+
+          assert.equal(interceptor.onResponse({$redirectCount: 5}, response), response);
+        });
+        it('does not redirect on reaching max redirects', () => {
+          const response = {
+            statusCode: 404,
+            headers: {},
+            body: {
+              code: 404100,
+              data: {
+                siteFullUrl: 'http://newlocus.example.com?alternate=true'
+              },
+            },
+            options: {
+              qs: true,
+            },
+          };
+
+          assert.isRejected(interceptor.onResponse({$redirectCount: 5}, response));
+        });
+
+        it('redirects POST requests to new url on appapi redirect error', () => {
+          const response = {
+            statusCode: 404,
+            headers: {},
+            body: {
+              code: 404100,
+              data: {
+                siteFullUrl: 'http://newlocus.example.com?alternate=true'
+              },
+            },
+            options: {
+              qs: true,
+            },
+          };
+
+          interceptor.onResponse({$redirectCount: 4}, response);
+          sinon.assert.calledWith(webex.request, {
+            $redirectCount: 5,
+            uri: 'http://newlocus.example.com',
           });
         });
       });
