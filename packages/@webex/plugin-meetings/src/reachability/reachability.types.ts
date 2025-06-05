@@ -81,7 +81,7 @@ export type ReachabilityReportV1 = {
 };
 
 export interface ClientMediaPreferences {
-  ipver: IP_VERSION;
+  ipver?: IP_VERSION;
   joinCookie: any;
   preferTranscoding: boolean;
   reachability?: ReachabilityReportV1; // only present when using Orpheus API version 1

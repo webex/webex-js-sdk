@@ -64,7 +64,7 @@ export default class Reachability extends EventsScope {
 
   expectedResultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
   resultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
-  startTime = undefined;
+  startTime?: number;
   totalDuration = undefined;
   natType = NatType.Unknown;
 
@@ -659,7 +659,9 @@ export default class Reachability extends EventsScope {
    * @returns {void}
    */
   private resolveReachabilityPromise(checkMinRequiredClusters = true) {
-    this.totalDuration = performance.now() - this.startTime;
+    if (this.startTime) {
+      this.totalDuration = performance.now() - this.startTime;
+    }
 
     this.clearTimer('vmnTimer');
     this.clearTimer('publicCloudTimer');

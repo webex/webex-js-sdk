@@ -377,33 +377,6 @@ const MeetingUtil = {
     return meeting.meetingRequest.buildLeaveMeetingRequestOptions(leaveOptions);
   },
 
-  getTrack: (stream) => {
-    let audioTrack = null;
-    let videoTrack = null;
-    let audioTracks = null;
-    let videoTracks = null;
-
-    if (!stream) {
-      return {audioTrack: null, videoTrack: null};
-    }
-    if (stream.getAudioTracks) {
-      audioTracks = stream.getAudioTracks();
-    }
-    if (stream.getVideoTracks) {
-      videoTracks = stream.getVideoTracks();
-    }
-
-    if (audioTracks && audioTracks.length > 0) {
-      [audioTrack] = audioTracks;
-    }
-
-    if (videoTracks && videoTracks.length > 0) {
-      [videoTrack] = videoTracks;
-    }
-
-    return {audioTrack, videoTrack};
-  },
-
   getModeratorFromLocusInfo: (locusInfo) =>
     locusInfo &&
     locusInfo.parsedLocus &&

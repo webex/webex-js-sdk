@@ -74,6 +74,8 @@ const engageElm = document.querySelector('#engageWidget');
 let isBundleLoaded = false; // this is just to check before loading/using engage widgets
 const uploadLogsButton = document.getElementById('upload-logs');
 const uploadLogsResultElm = document.getElementById('upload-logs-result');
+const agentLoginGenericError = document.getElementById('agent-login-generic-error');
+const agentLoginInputError = document.getElementById('agent-login-input-error');
 const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProfile');
 
 deregisterBtn.style.backgroundColor = 'red';
@@ -1074,6 +1076,9 @@ async function handleAgentLogin(e) {
 }
 
 function doAgentLogin() {
+  agentLoginInputError.style.display = 'none';
+  agentLoginGenericError.style.display = 'none';
+  
   webex.cc.stationLogin({
     teamId: teamsDropdown.value,
     loginOption: agentDeviceType,
@@ -1095,6 +1100,13 @@ function doAgentLogin() {
     
   }).catch((error) => {
     console.log('Agent Login failed', error);
+    if(error.data.fieldName === 'input')  {
+      agentLoginInputError.innerText = error.data.message;
+      agentLoginInputError.style.display = 'block';
+    } else {
+      agentLoginGenericError.innerText = error.data.message;
+      agentLoginGenericError.style.display = 'block';
+    }
   });
 }
 
