@@ -172,7 +172,9 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string} service.name
    * @returns {string} service.url
    */
-  findServiceFromClusterId({clusterId, serviceGroup}): {name: string; url: string} | undefined {
+  findServiceFromClusterId(
+    {clusterId, serviceGroup} = {} as {clusterId: string; serviceGroup: string}
+  ): {name: string; url: string} | undefined {
     const serviceDetails = this._getServiceDetail(clusterId, serviceGroup);
 
     if (serviceDetails) {
