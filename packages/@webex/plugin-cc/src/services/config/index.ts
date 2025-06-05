@@ -1,3 +1,8 @@
+/**
+ * @packageDocumentation
+ * @module AgentConfigService
+ */
+
 import {HTTP_METHODS} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import {
@@ -29,9 +34,11 @@ import {
   METHODS,
 } from './constants';
 
-/*
-The AgentConfigService class provides methods to fetch agent configuration data.
-*/
+/**
+ * The AgentConfigService class provides methods to fetch agent configuration data.
+ * @private
+ * @ignore
+ */
 export default class AgentConfigService {
   private webexReq: WebexRequest;
   constructor() {
@@ -40,9 +47,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the agent configuration data for the given orgId and agentId.
-   * @param {string} orgId
-   * @param {string} agentId
-   *  @returns {Promise<Profile>}
+   * @param {string} orgId - organization ID for which the agent configuration is to be fetched.
+   * @param {string} agentId - agent ID for which the configuration is to be fetched.
+   * @returns {Promise<Profile>} - A promise that resolves to the agent configuration profile.
+   * @throws {Error} - Throws an error if any API call fails or if the response status is not 200.
+   * @public
    */
   public async getAgentConfig(orgId: string, agentId: string): Promise<Profile> {
     try {
@@ -120,7 +129,6 @@ export default class AgentConfigService {
         multimediaProfileId,
       });
 
-      // replace CONFIG_FILE_NAME with CONFIG_FILE_NAME
       LoggerProxy.info('Parsing completed for agent-config', {
         module: CONFIG_FILE_NAME,
         method: METHODS.GET_AGENT_CONFIG,
@@ -142,9 +150,12 @@ export default class AgentConfigService {
 
   /**
    * Fetches the agent configuration data for the given orgId and agentId.
-   * @param {string} orgId
-   * @param {string} agentId
-   * @returns {Promise<AgentResponse>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the agent configuration is to be fetched.
+   * @param {string} agentId - agent ID for which the configuration is to be fetched.
+   * @returns {Promise<AgentResponse>} - A promise that resolves to the agent configuration response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentResponse> {
     LoggerProxy.info('Fetching user data using CI', {
@@ -181,9 +192,12 @@ export default class AgentConfigService {
 
   /**
    * Fetches the desktop profile data for the given orgId and desktopProfileId.
-   * @param {string} orgId
-   * @param {string} desktopProfileId
-   * @returns {Promise<DesktopProfileResponse>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the desktop profile is to be fetched.
+   * @param {string} desktopProfileId - desktop profile ID for which the data is to be fetched.
+   * @returns {Promise<DesktopProfileResponse>} - A promise that resolves to the desktop profile response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getDesktopProfileById(
     orgId: string,
@@ -223,9 +237,12 @@ export default class AgentConfigService {
 
   /**
    * Fetches the multimedia profile data for the given orgId and multimediaProfileId.
-   * @param {string} orgId
-   * @param {string} multimediaProfileId
-   * @returns {Promise<MultimediaProfileResponse>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the multimedia profile is to be fetched.
+   * @param {string} multimediaProfileId - multimedia profile ID for which the data is to be fetched.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @returns {Promise<MultimediaProfileResponse>} - A promise that resolves to the multimedia profile response.
+   * @private
    */
   public async getMultimediaProfileById(
     orgId: string,
@@ -265,12 +282,15 @@ export default class AgentConfigService {
 
   /**
    * fetches the list of teams for the given orgId.
-   * @param {string} orgId
-   *  @param {number} page
-   * @param {number} pageSize
-   * @param {string[]} filter
-   * @param {string[]} attributes
-   * @returns {Promise<ListTeamsResponse>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the teams are to be fetched.
+   * @param {number} page - the page number to fetch.
+   * @param {number} pageSize - the number of teams to fetch per page.
+   * @param {string[]} filter - optional filter criteria for the teams.
+   * @param {string[]} attributes - optional attributes to include in the response.
+   * @returns {Promise<ListTeamsResponse>} - A promise that resolves to the list of teams response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getListOfTeams(
     orgId: string,
@@ -312,11 +332,14 @@ export default class AgentConfigService {
 
   /**
    * Fetches all teams from all pages for the given orgId
-   * @param {string} orgId
-   * @param {number} pageSize
-   * @param {string[]} filter
-   * @param {string[]} attributes
-   * @returns {Promise<TeamList[]>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the teams are to be fetched.
+   * @param {number} pageSize - the number of teams to fetch per page.
+   * @param {string[]} filter - optional filter criteria for the teams.
+   * @param {string[]} attributes - optional attributes to include in the response.
+   * @returns {Promise<TeamList[]>} - A promise that resolves to the list of teams.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getAllTeams(orgId: string, pageSize: number, filter: string[]): Promise<TeamList[]> {
     try {
@@ -346,13 +369,16 @@ export default class AgentConfigService {
   }
 
   /**
-   *   fetches the list of aux codes for the given orgId.
-   * @param {string} orgId
-   * @param {number} page
-   * @param {number} pageSize
-   * @param {string[]} filter
-   * @param {string[]} attributes
-   * @returns {Promise<ListAuxCodesResponse>}
+   *  fetches the list of aux codes for the given orgId.
+   * @ignore
+   * @param {string} orgId - organization ID for which the aux codes are to be fetched.
+   * @param {number} page - the page number to fetch.
+   * @param {number} pageSize - the number of aux codes to fetch per page.
+   * @param {string[]} filter - optional filter criteria for the aux codes.
+   * @param {string[]} attributes - optional attributes to include in the response.
+   * @returns {Promise<ListAuxCodesResponse>} - A promise that resolves to the list of aux codes response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getListOfAuxCodes(
     orgId: string,
@@ -395,11 +421,14 @@ export default class AgentConfigService {
 
   /**
    * Fetches all aux codes from all pages for the given orgId
-   * @param {string} orgId
-   * @param {number} pageSize
-   * @param {string[]} filter
-   * @param {string[]} attributes
-   * @returns {Promise<AuxCode[]>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the aux codes are to be fetched.
+   * @param {number} pageSize - the number of aux codes to fetch per page.
+   * @param {string[]} filter - optional filter criteria for the aux codes.
+   * @param {string[]} attributes - optional attributes to include in the response.
+   * @returns {Promise<AuxCode[]>} - A promise that resolves to the list of aux codes.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getAllAuxCodes(
     orgId: string,
@@ -438,9 +467,12 @@ export default class AgentConfigService {
 
   /**
    * Fetches the site data for the given orgId and siteId.
-   * @param {string} orgId
-   * @param {string} siteId
-   * @returns {Promise<SiteInfo>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the site info is to be fetched.
+   * @param {string} siteId - site ID for which the data is to be fetched.
+   * @returns {Promise<SiteInfo>} - A promise that resolves to the site info response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getSiteInfo(orgId: string, siteId: string): Promise<SiteInfo> {
     LoggerProxy.info('Fetching site information', {
@@ -476,8 +508,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the organization info for the given orgId.
-   * @param {string} orgId
-   * @returns {Promise<OrgInfo>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the organization info is to be fetched.
+   * @returns {Promise<OrgInfo>} - A promise that resolves to the organization info response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getOrgInfo(orgId: string): Promise<OrgInfo> {
     try {
@@ -509,8 +544,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the organization settings for the given orgId.
-   * @param {string} orgId
-   * @returns {Promise<OrgSettings>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the organization settings are to be fetched.
+   * @returns {Promise<OrgSettings>} - A promise that resolves to the organization settings response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getOrganizationSetting(orgId: string): Promise<OrgSettings> {
     try {
@@ -542,8 +580,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the tenant data for the given orgId.
-   * @param {string} orgId
-   * @returns {Promise<TenantData>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the tenant data is to be fetched.
+   * @returns {Promise<TenantData>} - A promise that resolves to the tenant data response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getTenantData(orgId: string): Promise<TenantData> {
     try {
@@ -575,8 +616,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the URL mapping data for the given orgId.
-   * @param {string} orgId
-   * @returns {Promise<URLMapping[]>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the URL mapping is to be fetched.
+   * @returns {Promise<URLMapping[]>} - A promise that resolves to the URL mapping response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getURLMapping(orgId: string): Promise<URLMapping[]> {
     try {
@@ -608,8 +652,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the dial plan data for the given orgId.
-   * @param {string} orgId
-   * @returns {Promise<DialPlanEntity[]>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the dial plan data is to be fetched.
+   * @returns {Promise<DialPlanEntity[]>} - A promise that resolves to the dial plan data response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getDialPlanData(orgId: string): Promise<DialPlanEntity[]> {
     try {
@@ -641,12 +688,15 @@ export default class AgentConfigService {
 
   /**
    * Fetches the list of queues for the given orgId.
-   * @param {string} orgId
-   * @param {number} page
-   * @param {number} pageSize
+   * @ignore
+   * @param {string} orgId - organization ID for which the queues are to be fetched.
+   * @param {number} page - the page number to fetch.
+   * @param {number} pageSize - the number of queues to fetch per page.
    * @param {string} search - optional search string
    * @param {string} filter - optional filter string
-   * @returns Promise<ContactServiceQueue[]>
+   * @returns Promise<ContactServiceQueue[]> - A promise that resolves to the list of contact service queues.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getQueues(
     orgId: string,

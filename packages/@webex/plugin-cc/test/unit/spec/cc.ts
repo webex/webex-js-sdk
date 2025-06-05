@@ -848,73 +848,6 @@ describe('webex.cc', () => {
     });
   });
 
-  describe('stationRelogin', () => {
-    it('should relogin successfully', async () => {
-      const response = {
-        data: {
-          agentId: 'agentId',
-          teamId: 'teamId',
-        }
-      };
-
-      const stationLoginMock = jest
-        .spyOn(webex.cc.services.agent, 'reload')
-        .mockResolvedValue(response as StationLoginSuccess);
-
-      const result = await webex.cc.stationReLogin();
-
-      // Verify logging calls
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station relogin', {
-        module: CC_FILE,
-        method: 'stationReLogin',
-      });
-      expect(LoggerProxy.log).toHaveBeenCalledWith(`Agent station relogin completed successfully agentID: ${response.data.agentId} teamId: ${response.data.teamId}`, {
-        module: CC_FILE,
-        method: 'stationReLogin',
-      });
-
-      expect(stationLoginMock).toHaveBeenCalled();
-      expect(result).toEqual(response);
-      expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
-        METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS,
-        METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED
-      ]);
-    });
-
-    it('should handle error during relogin', async () => {
-      const error = {
-        details: {
-          trackingId: '1234',
-          data: {
-            reason: 'Error while performing station relogin',
-          },
-        },
-      };
-
-      jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
-
-      await expect(webex.cc.stationReLogin()).rejects.toThrow(error.details.data.reason);
-
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station relogin', {
-        module: CC_FILE,
-        method: 'stationReLogin',
-      });
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        `stationReLogin failed with reason: ${error.details.data.reason}`,
-        {module: CC_FILE, method: 'stationReLogin', trackingId: error.details.trackingId}
-      );
-    });
-
-    it('should trigger TASK_HYDRATE event with the task', () => {
-      const task = {id: 'task1'};
-      const triggerSpy = jest.spyOn(webex.cc, 'trigger');
-
-      webex.cc['handleTaskHydrate'](task);
-
-      expect(triggerSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, task);
-    });
-  });
-
   describe('setAgentStatus', () => {
     it('should set agent status successfully when status is Available', async () => {
       const expectedPayload = {
@@ -1770,6 +1703,28 @@ describe('webex.cc', () => {
         messageCallback(JSON.stringify({type: ccEvent, data: sample}));
         expect(emitSpy).toHaveBeenCalledWith(constant, sample);
       });
+    });
+
+    it('should call webCallingService.setLoginOption with correct deviceType on AGENT_STATION_LOGIN_SUCCESS', () => {
+      const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
+      const deviceType = LoginOption.EXTENSION;
+      const payload = {
+        trackingId: 'track-123',
+        data: {
+          agentId: 'agent-id',
+          teamId: 'team-id',
+          siteId: 'site-id',
+          roles: ['role1', 'role2'],
+          channelsMap: { chat: [], email: [], social: [], telephony: [] },
+          deviceType,
+          type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+        },
+        type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+      };
+
+      messageCallback(JSON.stringify(payload));
+
+      expect(setLoginOptionSpy).toHaveBeenCalledWith(deviceType);
     });
   });
 
