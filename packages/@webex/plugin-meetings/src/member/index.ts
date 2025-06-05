@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_} from '../constants';
-import {IExternalRoles, IMediaStatus, ParticipantWithRoles} from './types';
+import {IExternalRoles, IMediaStatus, ParticipantWithBrb, ParticipantWithRoles} from './types';
 
 import MemberUtil from './util';
 
@@ -312,7 +312,7 @@ export default class Member {
       this.supportsInterpretation = MemberUtil.isInterpretationSupported(participant);
       this.supportLiveAnnotation = MemberUtil.isLiveAnnotationSupported(participant);
       this.isGuest = MemberUtil.isGuest(participant);
-      this.isBrb = MemberUtil.isBrb(participant);
+      this.isBrb = MemberUtil.isBrb(participant as ParticipantWithBrb);
       this.isUser = MemberUtil.isUser(participant);
       this.isDevice = MemberUtil.isDevice(participant);
       this.isModerator = MemberUtil.isModerator(participant);
