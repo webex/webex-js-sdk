@@ -656,8 +656,8 @@ const Services = WebexPlugin.extend({
       service.serviceUrls.find((serviceUrl) => serviceUrl.host === url.host)
     );
 
-    if (host && host[0]) {
-      const newHost = host[0].host;
+    if (host && host.serviceUrls?.[0]) {
+      const newHost = host.serviceUrls[0].host;
 
       url.host = newHost;
 
