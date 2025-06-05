@@ -7700,10 +7700,10 @@ export default class Meeting extends StatelessWebexPlugin {
       receiveAudio: rawReceiveAudio,
     } = options;
 
-    const sendVideo = videoEnabled ? rawSendVideo ?? videoEnabled : false;
-    const receiveVideo = videoEnabled ? rawReceiveVideo ?? videoEnabled : false;
-    const sendAudio = audioEnabled ? rawSendAudio ?? audioEnabled : false;
-    const receiveAudio = audioEnabled ? rawReceiveAudio ?? audioEnabled : false;
+    const sendVideo = videoEnabled && (rawSendVideo ?? true);
+    const receiveVideo = videoEnabled && (rawReceiveVideo ?? true);
+    const sendAudio = audioEnabled && (rawSendAudio ?? true);
+    const receiveAudio = audioEnabled && (rawReceiveAudio ?? true);
 
     this.allowMediaInLobby = options?.allowMediaInLobby;
 
