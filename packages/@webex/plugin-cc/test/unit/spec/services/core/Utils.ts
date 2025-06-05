@@ -225,7 +225,7 @@ describe('Utils', () => {
       const result = Utils.getStationLoginErrorData(failure, LoginOption.EXTENSION);
       expect(result).toEqual({
         message: 'This extension is already in use',
-        fieldName: 'input',
+        fieldName: LoginOption.EXTENSION,
       });
     });
 
@@ -235,7 +235,7 @@ describe('Utils', () => {
       expect(result).toEqual({
         message:
           'Dial number is in use. Try a different one. For help, reach out to your administrator or support team.',
-        fieldName: 'input',
+        fieldName: LoginOption.AGENT_DN,
       });
     });
 
@@ -245,7 +245,7 @@ describe('Utils', () => {
       expect(result).toEqual({
         message:
           'Enter a valid US dial number. For help, reach out to your administrator or support team.',
-        fieldName: 'input',
+        fieldName: LoginOption.AGENT_DN,
       });
     });
 

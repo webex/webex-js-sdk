@@ -41,12 +41,12 @@ export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOpt
   const errorCodeMessageMap = {
     DUPLICATE_LOCATION: {
       message: duplicateLocationMessage,
-      fieldName: 'input',
+      fieldName: loginOption,
     },
     INVALID_DIAL_NUMBER: {
       message:
         'Enter a valid US dial number. For help, reach out to your administrator or support team.',
-      fieldName: 'input',
+      fieldName: loginOption,
     },
   };
 
