@@ -950,11 +950,18 @@ const Breakouts = WebexPlugin.extend({
     });
   },
   /**
-   * move participant to main session lobby,
+   * Move participants to main session lobby
    * @param {Array} sessions
+   * @param {string} sessions[].participants - Participant IDs to move
    * @returns {void}
    */
-  moveToLobby(sessions: any[]) {
+  moveToLobby(sessions: Array<{participants: string[]}>) {
+    if (!this.mainGroupId || !this.mainSessionId) {
+      throw new Error(
+        'Main group ID and session ID must be available to move participants to lobby'
+      );
+    }
+
     const updatedSessions = sessions.map((item) => {
       return {
         id: this.mainSessionId,
@@ -970,7 +977,6 @@ const Breakouts = WebexPlugin.extend({
           sessions: updatedSessions,
         },
       ],
-      editlock: null,
     };
 
     return this.request({
