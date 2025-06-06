@@ -60,55 +60,57 @@ import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
 
 /**
+ * The main Contact Center plugin class that enables integration with Webex Contact Center.
+ *
  * @class ContactCenter
  * @extends WebexPlugin
  * @implements IContactCenter
  * @description
- * Event Reference:
- * - agent:stateChange - Agent's state has changed (Available, Idle, etc.)
- * - agent:stateChangeSuccess - Agent state change was successful
- * - agent:stateChangeFailed - Agent state change failed
- * - agent:stationLoginSuccess - Agent login was successful
- * - agent:stationLoginFailed - Agent login failed
- * - agent:logoutSuccess - Agent logout was successful
- * - agent:logoutFailed - Agent logout failed
- * - task:incoming - New task is being offered
- * - task:hydrate - Task data has been updated
- * - task:established - Task/call has been connected
- * - task:ended - Task/call has ended
- * - task:error - An error occurred during task handling
+ * Features:
  *
- * The main Contact Center plugin class that enables integration with Webex Contact Center.
- * Provides a comprehensive set of features for agent and task management:
+ * 1. Session Management:
+ *   - {@link register} - Initialize and register SDK with contact center
+ *   - {@link deregister} - Cleanup and disconnect SDK resources
  *
- * Agent Management:
- * - Registration and initialization ({@link register})
- * - Login/logout with various device types ({@link stationLogin}, {@link stationLogout})
- * - State management (Available/Idle) ({@link setAgentState})
- * - Profile and device updates ({@link updateAgentProfile})
+ * 2. Agent Login/Logout:
+ *   - {@link stationLogin} - Login with browser or desk phone
+ *   - {@link stationLogout} - Logout from current station
+ *   - {@link updateAgentProfile} - Update device type and settings
  *
- * Task Handling:
- * - Inbound call management
- * - Outbound dialing ({@link startOutdial})
- * - Queue management ({@link getQueues})
- * - Task events and lifecycle
+ * 3. Agent State Control:
+ *   - {@link setAgentState} - Change agent state (Available/Idle)
  *
- * Call Controls:
- * - Mute/Unmute
- * - Hold/Resume
- * - Recording controls
- * - Transfer and consultation
- * - Multi-party calls
+ * 4. Task Management:
+ *   - Inbound task handling via events
+ *   - {@link startOutdial} - Make outbound calls
  *
- * Team Collaboration:
- * - Buddy agent management ({@link getBuddyAgents})
- * - Queue-based routing
- * - Team state synchronization
+ * 5. Routing & Distribution:
+ *   - {@link getQueues} - Get available queues for routing
+ *   - {@link getBuddyAgents} - Get available buddy agents
  *
- * Diagnostic Tools:
- * - Log management ({@link uploadLogs})
- * - Connection monitoring
- * - Event tracking
+ * 6. Diagnostics:
+ *   - {@link uploadLogs} - Upload logs for troubleshooting
+ *
+ *  * Key Events:
+ * - Agent State Events:
+ *   - `agent:stateChange` - Agent's state has changed (Available, Idle, etc.)
+ *   - `agent:stateChangeSuccess` - Agent state change was successful
+ *   - `agent:stateChangeFailed` - Agent state change failed
+ *
+ * - Session Events:
+ *   - `agent:stationLoginSuccess` - Agent login was successful
+ *   - `agent:stationLoginFailed` - Agent login failed
+ *   - `agent:logoutSuccess` - Agent logout was successful
+ *   - `agent:logoutFailed` - Agent logout failed
+ *
+ * - Task Events:
+ *   - `task:incoming` - New task is being offered
+ *   - `task:hydrate` - Task data has been updated
+ *   - `task:established` - Task/call has been connected
+ *   - `task:ended` - Task/call has ended
+ *   - `task:error` - An error occurred during task handling
+ *
+ * @public
  *
  * @example
  * ```typescript

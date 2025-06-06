@@ -33,18 +33,57 @@ import {Failure} from '../core/GlobalTypes';
  * This class provides all the necessary methods to manage tasks in a contact center environment,
  * handling various call control operations and task lifecycle management.
  *
- * Key events emitted by Task instances that you can listen for:
- * - task:incoming - New task is being offered
- * - task:assigned - Task has been assigned to agent
- * - task:media - Voice call media track received
- * - task:hold - Task placed on hold
- * - task:unhold - Task resumed from hold
- * - task:end - Task has ended
- * - task:wrapup - Task entered wrap-up state
- * - task:wrappedup - Task wrap-up completed
- * - task:consultCreated - Consultation initiated
- * - task:recordingPaused - Recording paused
- * - task:recordingResumed - Recording resumed
+ * - Task Lifecycle Management:
+ *   - {@link accept} - Accept incoming task
+ *   - {@link decline} - Decline incoming task
+ *   - {@link end} - End active task
+ * - Media Controls:
+ *   - {@link toggleMute} - Mute/unmute microphone for voice tasks
+ *   - {@link hold} - Place task on hold
+ *   - {@link resume} - Resume held task
+ * - Recording Controls:
+ *   - {@link pauseRecording} - Pause task recording
+ *   - {@link resumeRecording} - Resume paused recording
+ * - Task Transfer & Consultation:
+ *   - {@link consult} - Initiate consultation with another agent/queue
+ *   - {@link endConsult} - End ongoing consultation
+ *   - {@link transfer} - Transfer task to another agent/queue
+ *   - {@link consultTransfer} - Transfer after consultation
+ * - Task Completion:
+ *   - {@link wrapup} - Complete task wrap-up
+ *
+ * Key events emitted by Task instances (see {@link TASK_EVENTS} for details):
+ *
+ * - Task Lifecycle:
+ *   - task:incoming — New task is being offered
+ *   - task:assigned — Task assigned to agent
+ *   - task:unassigned — Task unassigned from agent
+ *   - task:end — Task has ended
+ *   - task:wrapup — Task entered wrap-up state
+ *   - task:wrappedup — Task wrap-up completed
+ *   - task:rejected — Task was rejected/unanswered
+ *   - task:hydrate — Task data populated
+ *
+ * - Media & Controls:
+ *   - task:media — Voice call media track received
+ *   - task:hold — Task placed on hold
+ *   - task:unhold — Task resumed from hold
+ *
+ * - Consultation & Transfer:
+ *   - task:consultCreated — Consultation initiated
+ *   - task:consulting — Consultation in progress
+ *   - task:consultAccepted — Consultation accepted
+ *   - task:consultEnd — Consultation ended
+ *   - task:consultQueueCancelled — Queue consultation cancelled
+ *   - task:consultQueueFailed — Queue consultation failed
+ *   - task:offerConsult — Consultation offered
+ *   - task:offerContact — New contact offered
+ *
+ * - Recording:
+ *   - task:recordingPaused — Recording paused
+ *   - task:recordingPauseFailed — Recording pause failed
+ *   - task:recordingResumed — Recording resumed
+ *   - task:recordingResumeFailed — Recording resume failed
  *
  * @implements {ITask}
  * @example
@@ -94,7 +133,7 @@ export default class Task extends EventEmitter implements ITask {
   public webCallMap: Record<TaskId, CallId>;
 
   /**
-   * Creates a new Task instance
+   * Creates a new Task instance which provides the following features:
    * @param contact - The routing contact service instance
    * @param webCallingService - The web calling service instance
    * @param data - Initial task data
