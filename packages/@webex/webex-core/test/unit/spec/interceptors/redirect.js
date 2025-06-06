@@ -112,7 +112,7 @@ describe('webex-core', () => {
           interceptor.onResponse({$redirectCount: 0, uri: 'https://test.webex.com/meet/v1/join'}, response);
           sinon.assert.calledWith(webex.request, {
             $redirectCount: 1,
-            uri: 'newlocus.example.com',
+            uri: 'https://newlocus.example.com/meet/v1/join',
           });
         });
         it('returns when appapi redirect is not encountered', () => {

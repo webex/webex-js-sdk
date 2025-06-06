@@ -116,9 +116,8 @@ export default class RedirectInterceptor extends Interceptor {
         options.uri = newUrl[0]; // params are already present in the qs
       } else {
         // for GET requests
-        options.uri = response.body.data.siteFullUrl;
+        options.uri = options.uri.replace(/(?<=https:\/\/)[^/]+/, response.body.data.siteFullUrl);
       }
-      options.uri = options.uri.replace(/(?<=https:\/\/)[^/]+/, response.body.data.siteFullUrl);
 
       this.webex.logger.warn('redirect: url redirects needed to', options.uri);
       options.$redirectCount += 1;
