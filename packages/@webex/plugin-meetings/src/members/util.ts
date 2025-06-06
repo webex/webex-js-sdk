@@ -367,6 +367,29 @@ const MembersUtil = {
 
     return requestParams;
   },
+
+  cancelSIPInviteOptions: (invitee, locusUrl) => ({
+    invitee,
+    locusUrl,
+  }),
+
+  generateCancelSIPInviteRequestParams: (options) => {
+    const body = {
+      actionType: _REMOVE_,
+      invitees: [
+        {
+          address: options.invitee.memberId,
+        },
+      ],
+    };
+    const requestParams = {
+      method: HTTP_VERBS.PUT,
+      uri: options.locusUrl,
+      body,
+    };
+
+    return requestParams;
+  },
 };
 
 export default MembersUtil;

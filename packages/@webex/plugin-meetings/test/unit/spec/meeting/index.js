@@ -614,6 +614,22 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.members.cancelPhoneInvite, uuid1);
         });
       });
+      describe('#cancelSIPInvite', () => {
+        it('should have #cancelSIPInvite', () => {
+          assert.exists(meeting.cancelSIPInvite);
+        });
+        beforeEach(() => {
+          meeting.members.cancelSIPInvite = sinon.stub().returns(Promise.resolve(test1));
+        });
+        it('should proxy members #cancelSIPInvite and return a promise', async () => {
+          const cancel = meeting.cancelSIPInvite({memberId: uuid1});
+
+          assert.exists(cancel.then);
+          await cancel;
+          assert.calledOnce(meeting.members.cancelSIPInvite);
+          assert.calledWith(meeting.members.cancelSIPInvite, {memberId: uuid1});
+        });
+      });
       describe('#admit', () => {
         it('should have #admit', () => {
           assert.exists(meeting.admit);

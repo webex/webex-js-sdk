@@ -221,6 +221,29 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#cancelSIPInvite', () => {
+      const memberId = uuid.v4();
+      it('sends a PUT to the locus endpoint', async () => {
+        const options = {
+          invitee: {
+            memberId,
+          },
+          locusUrl: url1,
+        };
+
+        await membersRequest.cancelSIPInvite(options);
+
+        checkRequest({
+          method: 'PUT',
+          uri: url1,
+          body: {
+            actionType: 'REMOVE',
+            invitees: [{address: memberId}],
+          },
+        });
+      });
+    });
+
     describe('#assignRolesMember', () => {
       it('sends a assignRolesMember PATCH to the locus endpoint', async () => {
         const locusUrl = url1;
