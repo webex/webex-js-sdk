@@ -60,65 +60,195 @@ import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
 
 /**
+ * The main Contact Center plugin class that enables integration with Webex Contact Center.
+ *
  * @class ContactCenter
  * @extends WebexPlugin
  * @implements IContactCenter
  * @description
- Contact Center Plugin main class which provides functionality for agent management
- * in Webex Contact Center. This includes capabilities for:
- * - Agent login/logout
- * - State management
- * - Task handling
- * - Call Controls
- *     - Mute/Unmute Call
- *     - Hold/Resume Call
- *     - Pause/Resume Call Recording
- *     - Transfer Task
- *     - Consult & Transfer Call
- * - Outdial
+ * Features:
+ *
+ * 1. Session Management:
+ *   - {@link register} - Initialize and register SDK with contact center
+ *   - {@link deregister} - Cleanup and disconnect SDK resources
+ *
+ * 2. Agent Login/Logout:
+ *   - {@link stationLogin} - Login with browser or desk phone
+ *   - {@link stationLogout} - Logout from current station
+ *   - {@link updateAgentProfile} - Update device type and settings
+ *
+ * 3. Agent State Control:
+ *   - {@link setAgentState} - Change agent state (Available/Idle)
+ *
+ * 4. Task Management:
+ *   - Inbound task handling via events
+ *   - {@link startOutdial} - Make outbound calls
+ *
+ * 5. Routing & Distribution:
+ *   - {@link getQueues} - Get available queues for routing
+ *   - {@link getBuddyAgents} - Get available buddy agents
+ *
+ * 6. Diagnostics:
+ *   - {@link uploadLogs} - Upload logs for troubleshooting
+ *
+ *  * Key Events:
+ * - Agent State Events:
+ *   - `agent:stateChange` - Agent's state has changed (Available, Idle, etc.)
+ *   - `agent:stateChangeSuccess` - Agent state change was successful
+ *   - `agent:stateChangeFailed` - Agent state change failed
+ *
+ * - Session Events:
+ *   - `agent:stationLoginSuccess` - Agent login was successful
+ *   - `agent:stationLoginFailed` - Agent login failed
+ *   - `agent:logoutSuccess` - Agent logout was successful
+ *   - `agent:logoutFailed` - Agent logout failed
+ *
+ * - Task Events:
+ *   - `task:incoming` - New task is being offered
+ *   - `task:hydrate` - Task data has been updated
+ *   - `task:established` - Task/call has been connected
+ *   - `task:ended` - Task/call has ended
+ *   - `task:error` - An error occurred during task handling
+ *
+ * @public
  *
  * @example
  * ```typescript
+ * import Webex from 'webex';
+ *
+ * // Initialize SDK with access token
+ * const webex = new Webex({
+ *   credentials: 'YOUR_ACCESS_TOKEN'
+ * });
+ *
+ * // Get Contact Center plugin instance
  * const cc = webex.cc;
- * await cc.register();
- * await cc.stationLogin({ teamId: 'team123', loginOption: 'AGENT_DN', dialNumber: '+1234567890' });
- * await cc.setAgentState({ state: 'Available' });
+ *
+ * // Setup event handlers
+ * cc.on('agent:stateChange', (event) => {
+ *   console.log('Agent state changed:', event.state);
+ * });
+ *
+ * cc.on('task:incoming', (task) => {
+ *   console.log('New task received:', task.interactionId);
+ * });
+ *
+ * // Initialize agent session
+ * async function initializeAgent() {
+ *   try {
+ *     // Register with contact center
+ *     const profile = await cc.register();
+ *
+ *     // Login with browser-based calling
+ *     await cc.stationLogin({
+ *       teamId: profile.teams[0].teamId,
+ *       loginOption: 'BROWSER'
+ *     });
+ *
+ *     // Set agent to Available state
+ *     await cc.setAgentState({
+ *       state: 'Available',
+ *       auxCodeId: '0'
+ *     });
+ *
+ *     console.log('Agent initialized and ready');
+ *   } catch (error) {
+ *     console.error('Initialization failed:', error);
+ *     await cc.uploadLogs();  // Upload logs for troubleshooting
+ *   }
+ * }
+ *
+ * initializeAgent();
  * ```
  *
  * @public
  */
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
-  /** Plugin namespace identifier */
+  /**
+   * The plugin's unique namespace identifier in the Webex SDK.
+   * Used to access the plugin via webex.cc
+   * @type {string}
+   * @public
+   */
   namespace = 'cc';
 
-  /** Plugin configuration */
+  /**
+   * Plugin configuration settings including connection and authentication options
+   * @type {CCPluginConfig}
+   * @private
+   */
   private $config: CCPluginConfig;
 
-  /** Reference to the Webex SDK instance */
+  /**
+   * Reference to the parent Webex SDK instance
+   * Used to access core Webex functionality and credentials
+   * @type {WebexSDK}
+   * @private
+   */
   private $webex: WebexSDK;
 
-  /** Event emitter for handling plugin events */
+  /**
+   * Event emitter for handling internal plugin events
+   * Manages event subscriptions and notifications
+   * @type {EventEmitter}
+   * @private
+   */
   private eventEmitter: EventEmitter;
 
-  /** Agent configuration and profile information */
+  /**
+   * Agent's profile and configuration data
+   * Includes capabilities, teams, settings, and current state
+   * @type {Profile}
+   * @private
+   */
   private agentConfig: Profile;
 
-  /** Service for handling web-based calling functionality */
+  /**
+   * Service for managing browser-based calling (WebRTC)
+   * Handles audio/video streaming and device management
+   * @type {WebCallingService}
+   * @private
+   */
   private webCallingService: WebCallingService;
 
-  /** Core services for Contact Center operations */
+  /**
+   * Core service managers for Contact Center operations
+   * Includes agent, connection, and configuration services
+   * @type {Services}
+   * @private
+   */
   private services: Services;
 
-  /** Service for handling Webex API requests */
+  /**
+   * Service for making authenticated HTTP requests to Webex APIs
+   * Handles request/response lifecycle and error handling
+   * @type {WebexRequest}
+   * @private
+   */
   private webexRequest: WebexRequest;
 
-  /** Manager for handling contact center tasks */
+  /**
+   * Manager for handling contact center tasks (calls, chats, etc.)
+   * Coordinates task lifecycle events and state
+   * @type {TaskManager}
+   * @private
+   */
   private taskManager: TaskManager;
 
-  /** Manager for handling metrics and analytics */
+  /**
+   * Manager for tracking and reporting SDK metrics and analytics
+   * Monitors performance, errors, and usage patterns
+   * @type {MetricsManager}
+   * @private
+   */
   private metricsManager: MetricsManager;
 
-  /** Logger for the Contact Center plugin */
+  /**
+   * Logger utility for Contact Center plugin
+   * Provides consistent logging across the plugin
+   * @type {LoggerProxy}
+   * @public
+   */
   public LoggerProxy = LoggerProxy;
 
   /**
@@ -194,15 +324,39 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Initializes the Contact Center SDK by setting up the web socket connections
-   * @returns {Promise<Profile>} Agent profile information after successful registration
-   * @throws {Error} If registration fails
+   * Initializes the Contact Center SDK by setting up the web socket connections.
+   * This method must be called before performing any agent operations such as login, state change, or handling tasks.
+   *
+   * @returns {Promise<Profile>} Agent profile information after successful registration.
+   * The returned `Profile` object contains details such as:
+   * - `agentId`: The unique identifier for the agent.
+   * - `defaultDn`: The default dial number associated with the agent.
+   * - `teams`: Array of teams the agent belongs to.
+   * - `webRtcEnabled`: Indicates if WebRTC (browser calling) is enabled.
+   * - `loginVoiceOptions`: Supported login options for the agent (e.g., BROWSER, EXTENSION).
+   * - ...and other agent configuration details.
+   *
+   * @throws {Error} If registration fails.
+   *
    * @public
    * @example
    * ```typescript
+   * import Webex from 'webex';
+   *
+   * const webex = Webex.init({ credentials: 'YOUR_ACCESS_TOKEN' });
    * const cc = webex.cc;
-   * await cc.register();
-   * // After registration, you can perform operations like login, state change, etc.
+   *
+   * // Register the SDK and fetch agent profile
+   * const profile = await cc.register();
+   *
+   * console.log('Agent ID:', profile.agentId);
+   * console.log('Default DN:', profile.defaultDn);
+   * console.log('Teams:', profile.teams.map(t => t.teamId));
+   * console.log('WebRTC Enabled:', profile.webRtcEnabled);
+   * console.log('Supported Login Options:', profile.loginVoiceOptions);
+   *
+   * // Now you can proceed with station login, state changes, etc.
+   * await cc.stationLogin({ teamId: profile.teams[0].teamId, loginOption: 'BROWSER' });
    * ```
    */
   public async register(): Promise<Profile> {
@@ -256,19 +410,35 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Unregisters the Contact Center SDK by closing all the web socket connections and removing event listeners
+   * Unregisters the Contact Center SDK by closing all web socket connections, removing event listeners,
+   * and cleaning up internal state.
+   *
    * @remarks
-   * This method does not do a station signout.
-   * @returns {Promise<void>} Resolves when deregistration is complete
-   * @throws {Error} If deregistration fails
+   * This method only disconnects the SDK from the backend and cleans up resources. It does NOT perform a station logout
+   * (i.e., the agent remains logged in to the contact center unless you explicitly call {@link stationLogout}).
+   * Use this when you want to fully tear down the SDK instance, such as during application shutdown or user sign-out.
+   *
+   * @returns {Promise<void>} Resolves when deregistration and cleanup are complete.
+   * @throws {Error} If deregistration fails.
+   *
    * @public
    * @example
-   * ```typescript
+   * // Typical usage: clean up SDK before application exit or user logout
+   * import Webex from 'webex';
+   *
+   * const webex = Webex.init({ credentials: 'YOUR_ACCESS_TOKEN' });
    * const cc = webex.cc;
+   *
    * await cc.register();
-   * // Perform operations like login, state change, etc.
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   * // ... perform agent operations ...
+   *
+   * // If you want to log out the agent as well, call:
+   * // await cc.stationLogout({ logoutReason: 'User signed out' });
+   * // On application shutdown or user sign-out:
    * await cc.deregister();
-   * ```
+   *
+
    */
   public async deregister(): Promise<void> {
     try {
@@ -341,10 +511,32 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws {Error} If fetching buddy agents fails
    * @example
    * ```typescript
+   * // Get list of available agents for consultation or transfer
    * const cc = webex.cc;
+   *
+   * // First ensure you're registered and logged in
    * await cc.register();
    * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
-   * await cc.getBuddyAgents({state: 'Available', mediaType: 'telephony'});
+   *
+   * // Get buddy agents filtered by state and media type
+   * const response = await cc.getBuddyAgents({
+   *   state: 'Available',     // Filter by agent state ('Available', 'Idle', etc.)
+   *   mediaType: 'telephony'  // Filter by media type ('telephony', 'chat', 'email', 'social')
+   * });
+   *
+   * // Process the buddy agents list
+   * if (response.data.agentList.length > 0) {
+   *   const buddyAgents = response.data.agentList;
+   *   console.log(`Found ${buddyAgents.length} available agents`);
+   *
+   *   // Access agent details
+   *   buddyAgents.forEach(agent => {
+   *     console.log(`Agent ID: ${agent.agentId}`);
+   *     console.log(`Name: ${agent.firstName} ${agent.lastName}`);
+   *     console.log(`State: ${agent.state}`);
+   *     console.log(`Team: ${agent.teamName}`);
+   *   });
+   * }
    * ```
    */
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
@@ -469,12 +661,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```typescript
    * const cc = webex.cc;
    * await cc.register();
-   * await cc.stationLogin({
-   *  teamId: 'team123',
-   *  loginOption: 'EXTENSION',
-   *  dialNumber: '1002'
-   * });
-   * // After successful login, you can perform operations like state change, task handling, etc.
+   *
+   * // Primary usage: using Promise response
+   * try {
+   *   const response = await cc.stationLogin({
+   *     teamId: 'team123',
+   *     loginOption: 'EXTENSION',
+   *     dialNumber: '1002'
+   *   });
+   *   console.log('Login successful:', response);
+   * } catch (error) {
+   *   console.error('Login failed:', error);
+   * }
+   *
+   * // Optional: Also listen for events elsewhere in your application
+   * // cc.on('agent:stationLoginSuccess', (data) => { ... });
+   * // cc.on('agent:stationLoginFailed', (error) => { ... });
    * ```
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
@@ -574,10 +776,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Performs a station logout operation for the agent
    * @remarks
    * A logout operation cannot happen if the agent is in an interaction or haven't logged in yet.
-   * @param {Logout} data Logout parameters
+   * @param {Logout} data Logout parameters with logoutReason - a string explaining why the agent is logging out
    * @returns {Promise<StationLogoutResponse>} Response indicating logout status
    * @throws {Error} If logout fails
    * @public
+   * @example
+   * ```typescript
+   * // Basic logout
+   * try {
+   *   await cc.stationLogout({
+   *     logoutReason: 'End of shift'
+   *   });
+   *   console.log('Logged out successfully');
+   * } catch (error) {
+   *   console.error('Logout failed:', error);
+   * }
+   * ```
    */
   public async stationLogout(data: Logout): Promise<StationLogoutResponse> {
     LoggerProxy.info('Starting agent station logout', {
@@ -646,7 +860,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Sets the state of the agent to Available or any of the Idle states
+   * Sets the state of the agent to Available or any of the Idle states.
+   * After a state change attempt, one of the following events will be emitted:
+   * - agent:stateChange: Emitted when agent's state changes (triggered for both local and remote changes)
+   * - agent:stateChangeSuccess: Emitted when agent state change is successful
+   * - agent:stateChangeFailed: Emitted when agent state change attempt fails
+   *
    * @param {StateChange} data State change parameters including the new state
    * @returns {Promise<SetStateResponse>} Response with updated state information
    * @throws {Error} If state change fails
@@ -656,11 +875,31 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * const cc = webex.cc;
    * await cc.register();
    * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
-   * await cc.setAgentState({
-   *    state: 'Available',
-   *    auxCodeId: '12345',
-   *    lastStateChangeReason: 'Manual state change',
-   *    agentId: 'agent123',
+   *
+   * // Using promise-based approach
+   * try {
+   *   await cc.setAgentState({
+   *     state: 'Available',
+   *     auxCodeId: '12345',
+   *     lastStateChangeReason: 'Manual state change',
+   *     agentId: 'agent123',
+   *   });
+   * } catch (error) {
+   *   console.error('State change failed:', error);
+   * }
+   *
+   * // Optionally, listen for events
+   * cc.on('agent:stateChange', (eventData) => {
+   *   // Triggered for both local and remote state changes
+   *   console.log('State changed:', eventData);
+   * });
+   *
+   * cc.on('agent:stateChangeSuccess', (eventData) => {
+   *   console.log('State change succeeded:', eventData);
+   * });
+   *
+   * cc.on('agent:stateChangeFailed', (error) => {
+   *   console.error('State change failed:', error);
    * });
    * ```
    */
@@ -994,20 +1233,111 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * This is used for making the outdial call.
-   * @param destination - The destination number to dial
-   * @returns Promise<TaskResponse> Resolves with the outdial task response
-   * @throws Error If the outdial operation fails
+   * Makes an outbound call to a specified phone number.
+   *
+   * @param {string} destination - The phone number to dial (e.g., '+1234567890').
+   * Should include country code and be in E.164 format.
+   * @returns {Promise<TaskResponse>} Resolves with the task response containing:
+   *   - interactionId: Unique identifier for the outbound call
+   *   - taskId: Identifier for the task instance
+   *   - data: Task details including state, queue info, and media properties
+   * @throws {Error} If the outdial operation fails:
+   *   - "Agent not configured for outbound calls" if isOutboundEnabledForAgent is false
+   *   - "Invalid phone number format" if destination is not in E.164 format
+   *   - "Agent not in Available state" if agent's state is not Available
    * @public
    * @example
    * ```typescript
-   * const destination = '+1234567890';
+   * // Initialize and prepare agent
    * const cc = webex.cc;
    * await cc.register();
-   * const task = await cc.startOutdial(destination);
-   * // Can do task operations like accept, reject, etc.
+   * await cc.stationLogin({
+   *   teamId: 'team123',
+   *   loginOption: 'BROWSER'
+   * });
+   *
+   * // Set Available state before outbound call
+   * await cc.setAgentState({
+   *   state: 'Available',
+   *   auxCodeId: '0'
+   * });
+   *
+   * // Make outbound call with full error handling
+   * try {
+   *   // Verify agent is properly configured for outdial
+   *   if (!cc.agentConfig.isOutboundEnabledForAgent) {
+   *     throw new Error('Agent not configured for outbound calls');
+   *   }
+   *
+   *   // Start the outbound call
+   *   const destination = '+1234567890';
+   *   const task = await cc.startOutdial(destination);
+   *
+   *   // Listen for all relevant task events
+   *   task.on('task:ringing', () => {
+   *     console.log('Call is ringing');
+   *     updateCallStatus('Ringing...');
+   *   });
+   *
+   *   task.on('task:established', () => {
+   *     console.log('Call connected');
+   *     updateCallStatus('Connected');
+   *     enableCallControls(); // Show mute, hold, transfer buttons
+   *   });
+   *
+   *   task.on('task:hold', () => {
+   *     console.log('Call placed on hold');
+   *     updateCallStatus('On Hold');
+   *   });
+   *
+   *   task.on('task:error', (error) => {
+   *     console.error('Call error:', error);
+   *     updateCallStatus('Error');
+   *     showErrorDialog(error.message);
+   *   });
+   *
+   *   task.on('task:ended', () => {
+   *     console.log('Call ended');
+   *     updateCallStatus('Call Ended');
+   *     resetCallControls();
+   *
+   *     // Handle wrap-up if required
+   *     if (task.data.wrapUpRequired) {
+   *       showWrapupForm();
+   *     }
+   *   });
+   *
+   *   // Example call control usage
+   *   function handleMuteToggle() {
+   *     await task.toggleMute();
+   *   }
+   *
+   *   function handleHoldToggle() {
+   *     if (task.data.isOnHold) {
+   *       await task.resume();
+   *     } else {
+   *       await task.hold();
+   *     }
+   *   }
+   *
+   *   async function handleTransfer() {
+   *     // Get available queues for transfer
+   *     const queues = await cc.getQueues();
+   *
+   *     // Transfer to first available queue
+   *     if (queues.length > 0) {
+   *       await task.transfer({
+   *         to: queues[0].queueId,
+   *         destinationType: 'QUEUE'
+   *       });
+   *     }
+   *   }
+   *
+   * } catch (error) {
+   *   console.error('Outdial failed:', error);
+   *   showErrorNotification('Failed to place call: ' + error.message);
+   * }
    * ```
-   * Refer to {@link ITask | ITask interface} for more details.
    */
   public async startOutdial(destination: string): Promise<TaskResponse> {
     LoggerProxy.info('Starting outbound dial', {
@@ -1068,10 +1398,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * This is used for getting the list of queues to which a task can be consulted or transferred.
-   * @param search - optional search string
-   * @param filter - optional filter string
-   * @param page - page number (default is 0)
-   * @param pageSize - number of items per page (default is 100)
+   * @param {string} [search] - Optional search string to filter queues by name
+   * @param {string} [filter] - Optional OData filter expression (e.g., 'teamId eq "team123"')
+   * @param {number} [page=0] - Page number for paginated results, starting at 0
+   * @param {number} [pageSize=100] - Number of queues to return per page
    * @returns Promise<ContactServiceQueue[]> Resolves with the list of queues
    * @throws Error If the operation fails
    * @public
@@ -1080,7 +1410,31 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * const cc = webex.cc;
    * await cc.register();
    * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
-   * const queues = await cc.getQueues();
+   *
+   * // Basic usage - get all queues
+   * const allQueues = await cc.getQueues();
+   *
+   * // Search for specific queues
+   * const salesQueues = await cc.getQueues('sales'); // Search for 'sales' in queue names
+   *
+   * // Use filtering and pagination
+   * const filteredQueues = await cc.getQueues(
+   *   '', // No search term
+   *   'teamId eq "team123"', // Filter by team
+   *   0,  // First page
+   *   50  // 50 items per page
+   * );
+   *
+   * // Process queue results
+   * queues.forEach(queue => {
+   *   console.log('Queue:', {
+   *     id: queue.queueId,
+   *     name: queue.queueName,
+   *     channelType: queue.channelType,
+   *     isActive: queue.isActive,
+   *     description: queue.description
+   *   });
+   * });
    * ```
    */
   public async getQueues(
@@ -1129,11 +1483,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```typescript
    * const cc = webex.cc;
    * try {
-   *    await cc.register();
-   * }
-   * catch (error) {
-   *    console.error('Error during registration:', error);
-   *    cc.uploadLogs();
+   *   await cc.register();
+   * } catch (error) {
+   *   console.error('Error:', error);
+   *   const result = await cc.uploadLogs();
+   *   console.log('Logs uploaded. Tracking ID:', result.trackingId);
    * }
    * ```
    */
@@ -1142,24 +1496,29 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Updates the agent device type.
-   * This method allows the agent to change their device type (e.g., from BROWSER to EXTENSION or anything else).
-   * It will also throw an error if the new device type is the same as the current one.
-   * @param data type is AgentDeviceUpdate - The data required to update the agent device type, including the new login option and dial number.
+   * Updates the agent device type and login configuration.
+   * Use this method to change how an agent connects to the contact center system (e.g., switching from browser-based calling to a desk phone extension).
+   *
+   * @param {AgentDeviceUpdate} data Configuration containing:
+   *   - loginOption: New device type ('BROWSER', 'EXTENSION', 'AGENT_DN')
+   *   - dialNumber: Required phone number when using EXTENSION or AGENT_DN
+   *   - teamId: Optional team ID (defaults to current team if not specified)
    * @returns Promise<UpdateDeviceTypeResponse> Resolves with the device type update response
    * @throws Error If the update fails
    * @example
    * ```typescript
-   * const data = {
-   *   loginOption: 'EXTENSION',
-   *   dialNumber: '1234567890',
-   *   teamId: 'team-id-if-needed', // Optional, if not provided, current team ID will be used
-   * };
-   * const result = await webex.cc.updateAgentProfile(data);
    * const cc = webex.cc;
-   * await cc.register();
-   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
-   * await cc.updateAgentDeviceType(data);
+   *
+   * // Switch from browser to extension
+   * try {
+   *   await cc.updateAgentProfile({
+   *     loginOption: 'EXTENSION',
+   *     dialNumber: '1234',      // Required for EXTENSION
+   *     teamId: 'currentTeam'    // Optional: uses current team if not specified
+   *   });
+   * } catch (error) {
+   *   console.error('Failed to update device:', error.message);
+   * }
    * ```
    * @public
    */

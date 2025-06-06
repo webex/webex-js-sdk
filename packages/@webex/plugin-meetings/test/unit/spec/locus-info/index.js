@@ -825,6 +825,32 @@ describe('plugin-meetings', () => {
 
         assert.isTrue(locusInfo.deltaParticipants.length === 0);
       });
+
+      it('should call with participant display name', () => {
+        const failureParticipant = [
+          {
+            person: {
+              id: 5678,
+              primaryDisplayString: 'Test User',
+            },
+            reason: 'FAILURE',
+          },
+        ];
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateParticipants(failureParticipant);
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateParticipants',
+          },
+          LOCUSINFO.EVENTS.PARTICIPANT_REASON_CHANGED,
+          {
+            displayName: 'Test User',
+          }
+        );
+      })
     });
 
     describe('#updateSelf', () => {
