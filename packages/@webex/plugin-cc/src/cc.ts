@@ -43,7 +43,7 @@ import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
-import {getErrorDetails} from './services/core/Utils';
+import {getErrorDetails, isValidDialNumber} from './services/core/Utils';
 import {Profile, WelcomeEvent, CC_EVENTS, ContactServiceQueue} from './services/config/types';
 import {
   AGENT_STATE_AVAILABLE,
@@ -487,6 +487,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
         METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
       ]);
+
+      if (data.loginOption === LoginOption.AGENT_DN && !isValidDialNumber(data.dialNumber)) {
+        const error = new Error('INVALID_DIAL_NUMBER');
+        // @ts-ignore - adding custom key to the error object
+        error.details = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
+
+        throw error;
+      }
+
       const loginResponse = this.services.agent.stationLogin({
         data: {
           dialNumber:
@@ -554,7 +563,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
         ['behavioral', 'business', 'operational']
       );
+      error.loginOption = data.loginOption;
       const {error: detailedError} = getErrorDetails(error, METHODS.STATION_LOGIN, CC_FILE);
+
       throw detailedError;
     }
   }
