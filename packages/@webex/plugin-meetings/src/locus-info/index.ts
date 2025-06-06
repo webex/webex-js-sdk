@@ -1,4 +1,4 @@
-import {isEqual, assignWith, cloneDeep, isEmpty} from 'lodash';
+import {isEqual, assignWith, cloneDeep, isEmpty, forEach} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -784,6 +784,23 @@ export default class LocusInfo extends EventsScope {
         isReplace,
       }
     );
+
+    if (participants && Array.isArray(participants) && participants.length > 0) {
+      for (const participant of participants) {
+        if (participant && participant?.reason === 'FAILURE') {
+          this.emitScoped(
+            {
+              file: 'locus-info',
+              function: 'updateParticipants',
+            },
+            LOCUSINFO.EVENTS.PARTICIPANT_REASON_CHANGED,
+            {
+              displayName: participant?.person?.primaryDisplayString,
+            }
+          );
+        }
+      }
+    }
   }
 
   /**
