@@ -234,7 +234,6 @@ export type LogsMetaData = {
  * @public
  * @example
  * const response: UploadLogsResponse = { trackingid: 'track123', url: 'https://...', userId: 'user1' };
- * @ignore
  */
 export type UploadLogsResponse = {
   /** Tracking ID for the upload request */
@@ -487,7 +486,6 @@ export type Team = {
  * @public
  * @example
  * const login: AgentLogin = { dialNumber: '1234', teamId: 'team1', loginOption: LoginOption.AGENT_DN };
- * @ignore
  */
 export type AgentLogin = {
   /**
@@ -514,7 +512,6 @@ export type AgentLogin = {
  * @public
  * @example
  * const update: AgentProfileUpdate = { loginOption: LoginOption.BROWSER, dialNumber: '5678' };
- * @ignore
  */
 export type AgentProfileUpdate = Pick<AgentLogin, 'loginOption' | 'dialNumber' | 'teamId'>;
 
@@ -591,7 +588,6 @@ export interface GenericError extends Error {
  * @public
  * @example
  * function handleLogin(resp: StationLoginResponse) { ... }
- * @ignore
  */
 export type StationLoginResponse = Agent.StationLoginSuccessResponse | Error;
 
@@ -601,7 +597,6 @@ export type StationLoginResponse = Agent.StationLoginSuccessResponse | Error;
  * @public
  * @example
  * function handleLogout(resp: StationLogoutResponse) { ... }
- * @ignore
  */
 export type StationLogoutResponse = Agent.LogoutSuccess | Error;
 
@@ -631,7 +626,6 @@ export type SetStateResponse = Agent.StateChangeSuccess | Error;
  * @public
  * @example
  * function handleBuddyAgents(resp: BuddyAgentsResponse) { ... }
- * @ignore
  */
 export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
 
@@ -641,6 +635,5 @@ export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
  * @public
  * @example
  * function handleUpdateDeviceType(resp: UpdateDeviceTypeResponse) { ... }
- * @ignore
  */
 export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;
