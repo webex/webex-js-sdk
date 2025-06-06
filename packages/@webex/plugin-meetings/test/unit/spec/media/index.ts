@@ -4,6 +4,7 @@ import Media from '@webex/plugin-meetings/src/media/index';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import StaticConfig from '@webex/plugin-meetings/src/common/config';
+import { BrowserInfo } from '@webex/web-capabilities';
 
 describe('createMediaConnection', () => {
   let clock;
@@ -197,7 +198,68 @@ describe('createMediaConnection', () => {
 
     sendMetricsInQueueCallback();
     assert.calledOnce(rtcMetrics.sendMetricsInQueue);
+  });
 
+  it('multistream non-firefox does not care about stopIceGatheringAfterFirstRelayCandidate', () => {
+    const multistreamRoapMediaConnectionConstructorStub = sinon
+      .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
+      .returns(fakeRoapMediaConnection);
+
+    Media.createMediaConnection(true, 'some debug id', 'meeting id', {
+      stopIceGatheringAfterFirstRelayCandidate: true,
+    });
+    assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
+    assert.calledWith(
+      multistreamRoapMediaConnectionConstructorStub,
+      {
+        iceServers: []
+      },
+      'meeting id'
+    );
+  });
+
+  it('multistream firefox stops gathering after first relay if stopIceGatheringAfterFirstRelayCandidate is true', () => {
+    const multistreamRoapMediaConnectionConstructorStub = sinon
+      .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
+      .returns(fakeRoapMediaConnection);
+
+    sinon.stub(BrowserInfo, 'isFirefox').returns(true);
+
+    Media.createMediaConnection(true, 'some debug id', 'meeting id', {
+      stopIceGatheringAfterFirstRelayCandidate: true,
+    });
+    assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
+    assert.calledWith(
+      multistreamRoapMediaConnectionConstructorStub,
+      {
+        iceServers: [],
+        doFullIce: true,
+        stopIceGatheringAfterFirstRelayCandidate: true,
+      },
+      'meeting id'
+    );
+  });
+
+  it('multistream firefox continues gathering if stopIceGatheringAfterFirstRelayCandidate is false', () => {
+    const multistreamRoapMediaConnectionConstructorStub = sinon
+      .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
+      .returns(fakeRoapMediaConnection);
+
+    sinon.stub(BrowserInfo, 'isFirefox').returns(true);
+
+    Media.createMediaConnection(true, 'some debug id', 'meeting id', {
+      stopIceGatheringAfterFirstRelayCandidate: false,
+    });
+    assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
+    assert.calledWith(
+      multistreamRoapMediaConnectionConstructorStub,
+      {
+        iceServers: [],
+        doFullIce: true,
+        stopIceGatheringAfterFirstRelayCandidate: false,
+      },
+      'meeting id'
+    );
   });
 
   [

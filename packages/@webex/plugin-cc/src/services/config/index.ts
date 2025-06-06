@@ -1,3 +1,8 @@
+/**
+ * @packageDocumentation
+ * @module AgentConfigService
+ */
+
 import {HTTP_METHODS} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import {
@@ -26,11 +31,14 @@ import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
   endPointMap,
+  METHODS,
 } from './constants';
 
-/*
-The AgentConfigService class provides methods to fetch agent configuration data.
-*/
+/**
+ * The AgentConfigService class provides methods to fetch agent configuration data.
+ * @private
+ * @ignore
+ */
 export default class AgentConfigService {
   private webexReq: WebexRequest;
   constructor() {
@@ -39,9 +47,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the agent configuration data for the given orgId and agentId.
-   * @param {string} orgId
-   * @param {string} agentId
-   *  @returns {Promise<Profile>}
+   * @param {string} orgId - organization ID for which the agent configuration is to be fetched.
+   * @param {string} agentId - agent ID for which the configuration is to be fetched.
+   * @returns {Promise<Profile>} - A promise that resolves to the agent configuration profile.
+   * @throws {Error} - Throws an error if any API call fails or if the response status is not 200.
+   * @public
    */
   public async getAgentConfig(orgId: string, agentId: string): Promise<Profile> {
     try {
@@ -58,7 +68,10 @@ export default class AgentConfigService {
       );
 
       const userConfigData = await userConfigPromise;
-      LoggerProxy.info('Fetched user data', {module: CONFIG_FILE_NAME, method: 'getAgentConfig'});
+      LoggerProxy.info(`Fetched user data, userId: ${userConfigData.ciUserId}`, {
+        module: CONFIG_FILE_NAME,
+        method: METHODS.GET_AGENT_CONFIG,
+      });
 
       const agentProfilePromise = this.getDesktopProfileById(orgId, userConfigData.agentProfileId);
       const siteInfoPromise = this.getSiteInfo(orgId, userConfigData.siteId);
@@ -100,7 +113,7 @@ export default class AgentConfigService {
 
       LoggerProxy.info('Fetched all required data', {
         module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
+        method: METHODS.GET_AGENT_CONFIG,
       });
 
       const response = parseAgentConfigs({
@@ -116,21 +129,20 @@ export default class AgentConfigService {
         multimediaProfileId,
       });
 
-      // replace CONFIG_FILE_NAME with CONFIG_FILE_NAME
       LoggerProxy.info('Parsing completed for agent-config', {
         module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
+        method: METHODS.GET_AGENT_CONFIG,
       });
       LoggerProxy.info('Fetched configuration data successfully', {
         module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
+        method: METHODS.GET_AGENT_CONFIG,
       });
 
       return response;
     } catch (error) {
       LoggerProxy.error(`getAgentConfig call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
+        method: METHODS.GET_AGENT_CONFIG,
       });
       throw error;
     }
@@ -138,11 +150,19 @@ export default class AgentConfigService {
 
   /**
    * Fetches the agent configuration data for the given orgId and agentId.
-   * @param {string} orgId
-   * @param {string} agentId
-   * @returns {Promise<AgentResponse>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the agent configuration is to be fetched.
+   * @param {string} agentId - agent ID for which the configuration is to be fetched.
+   * @returns {Promise<AgentResponse>} - A promise that resolves to the agent configuration response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentResponse> {
+    LoggerProxy.info('Fetching user data using CI', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_USER_USING_CI,
+    });
+
     try {
       const resource = endPointMap.userByCI(orgId, agentId);
       const response = await this.webexReq.request({
@@ -157,14 +177,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getUserUsingCI api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getUserUsingCI',
+        method: METHODS.GET_USER_USING_CI,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getUserUsingCI API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getUserUsingCI',
+        method: METHODS.GET_USER_USING_CI,
       });
       throw error;
     }
@@ -172,14 +192,22 @@ export default class AgentConfigService {
 
   /**
    * Fetches the desktop profile data for the given orgId and desktopProfileId.
-   * @param {string} orgId
-   * @param {string} desktopProfileId
-   * @returns {Promise<DesktopProfileResponse>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the desktop profile is to be fetched.
+   * @param {string} desktopProfileId - desktop profile ID for which the data is to be fetched.
+   * @returns {Promise<DesktopProfileResponse>} - A promise that resolves to the desktop profile response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getDesktopProfileById(
     orgId: string,
     desktopProfileId: string
   ): Promise<DesktopProfileResponse> {
+    LoggerProxy.info('Fetching desktop profile', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_DESKTOP_PROFILE_BY_ID,
+    });
+
     try {
       const resource = endPointMap.desktopProfile(orgId, desktopProfileId);
       const response = await this.webexReq.request({
@@ -194,14 +222,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getDesktopProfileById api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getDesktopProfileById',
+        method: METHODS.GET_DESKTOP_PROFILE_BY_ID,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getDesktopProfileById API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getDesktopProfileById',
+        method: METHODS.GET_DESKTOP_PROFILE_BY_ID,
       });
       throw error;
     }
@@ -209,14 +237,22 @@ export default class AgentConfigService {
 
   /**
    * Fetches the multimedia profile data for the given orgId and multimediaProfileId.
-   * @param {string} orgId
-   * @param {string} multimediaProfileId
-   * @returns {Promise<MultimediaProfileResponse>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the multimedia profile is to be fetched.
+   * @param {string} multimediaProfileId - multimedia profile ID for which the data is to be fetched.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @returns {Promise<MultimediaProfileResponse>} - A promise that resolves to the multimedia profile response.
+   * @private
    */
   public async getMultimediaProfileById(
     orgId: string,
     multimediaProfileId: string
   ): Promise<MultimediaProfileResponse> {
+    LoggerProxy.info('Fetching multimedia profile', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_MULTIMEDIA_PROFILE_BY_ID,
+    });
+
     try {
       const resource = endPointMap.multimediaProfile(orgId, multimediaProfileId);
       const response = await this.webexReq.request({
@@ -231,14 +267,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getMultimediaProfileById API success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getMultimediaProfileById',
+        method: METHODS.GET_MULTIMEDIA_PROFILE_BY_ID,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getMultimediaProfileById API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getMultimediaProfileById',
+        method: METHODS.GET_MULTIMEDIA_PROFILE_BY_ID,
       });
       throw error;
     }
@@ -246,12 +282,15 @@ export default class AgentConfigService {
 
   /**
    * fetches the list of teams for the given orgId.
-   * @param {string} orgId
-   *  @param {number} page
-   * @param {number} pageSize
-   * @param {string[]} filter
-   * @param {string[]} attributes
-   * @returns {Promise<ListTeamsResponse>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the teams are to be fetched.
+   * @param {number} page - the page number to fetch.
+   * @param {number} pageSize - the number of teams to fetch per page.
+   * @param {string[]} filter - optional filter criteria for the teams.
+   * @param {string[]} attributes - optional attributes to include in the response.
+   * @returns {Promise<ListTeamsResponse>} - A promise that resolves to the list of teams response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getListOfTeams(
     orgId: string,
@@ -259,6 +298,11 @@ export default class AgentConfigService {
     pageSize: number,
     filter: string[]
   ): Promise<ListTeamsResponse> {
+    LoggerProxy.info('Fetching list of teams', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_LIST_OF_TEAMS,
+    });
+
     try {
       const resource = endPointMap.listTeams(orgId, page, pageSize, filter);
       const response = await this.webexReq.request({
@@ -273,14 +317,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getListOfTeams api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getListOfTeams',
+        method: METHODS.GET_LIST_OF_TEAMS,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getListOfTeams API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getListOfTeams',
+        method: METHODS.GET_LIST_OF_TEAMS,
       });
       throw error;
     }
@@ -288,11 +332,14 @@ export default class AgentConfigService {
 
   /**
    * Fetches all teams from all pages for the given orgId
-   * @param {string} orgId
-   * @param {number} pageSize
-   * @param {string[]} filter
-   * @param {string[]} attributes
-   * @returns {Promise<TeamList[]>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the teams are to be fetched.
+   * @param {number} pageSize - the number of teams to fetch per page.
+   * @param {string[]} filter - optional filter criteria for the teams.
+   * @param {string[]} attributes - optional attributes to include in the response.
+   * @returns {Promise<TeamList[]>} - A promise that resolves to the list of teams.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getAllTeams(orgId: string, pageSize: number, filter: string[]): Promise<TeamList[]> {
     try {
@@ -315,20 +362,23 @@ export default class AgentConfigService {
     } catch (error) {
       LoggerProxy.error(`getAllTeams API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getAllTeams',
+        method: METHODS.GET_ALL_TEAMS,
       });
       throw error;
     }
   }
 
   /**
-   *   fetches the list of aux codes for the given orgId.
-   * @param {string} orgId
-   * @param {number} page
-   * @param {number} pageSize
-   * @param {string[]} filter
-   * @param {string[]} attributes
-   * @returns {Promise<ListAuxCodesResponse>}
+   *  fetches the list of aux codes for the given orgId.
+   * @ignore
+   * @param {string} orgId - organization ID for which the aux codes are to be fetched.
+   * @param {number} page - the page number to fetch.
+   * @param {number} pageSize - the number of aux codes to fetch per page.
+   * @param {string[]} filter - optional filter criteria for the aux codes.
+   * @param {string[]} attributes - optional attributes to include in the response.
+   * @returns {Promise<ListAuxCodesResponse>} - A promise that resolves to the list of aux codes response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getListOfAuxCodes(
     orgId: string,
@@ -337,6 +387,11 @@ export default class AgentConfigService {
     filter: string[],
     attributes: string[]
   ): Promise<ListAuxCodesResponse> {
+    LoggerProxy.info('Fetching list of aux codes', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_LIST_OF_AUX_CODES,
+    });
+
     try {
       const resource = endPointMap.listAuxCodes(orgId, page, pageSize, filter, attributes);
       const response = await this.webexReq.request({
@@ -351,14 +406,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getListOfAuxCodes api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getListOfAuxCodes',
+        method: METHODS.GET_LIST_OF_AUX_CODES,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getListOfAuxCodes API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getListOfAuxCodes',
+        method: METHODS.GET_LIST_OF_AUX_CODES,
       });
       throw error;
     }
@@ -366,11 +421,14 @@ export default class AgentConfigService {
 
   /**
    * Fetches all aux codes from all pages for the given orgId
-   * @param {string} orgId
-   * @param {number} pageSize
-   * @param {string[]} filter
-   * @param {string[]} attributes
-   * @returns {Promise<AuxCode[]>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the aux codes are to be fetched.
+   * @param {number} pageSize - the number of aux codes to fetch per page.
+   * @param {string[]} filter - optional filter criteria for the aux codes.
+   * @param {string[]} attributes - optional attributes to include in the response.
+   * @returns {Promise<AuxCode[]>} - A promise that resolves to the list of aux codes.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getAllAuxCodes(
     orgId: string,
@@ -401,7 +459,7 @@ export default class AgentConfigService {
     } catch (error) {
       LoggerProxy.error(`getAllAuxCodes API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getAllAuxCodes',
+        method: METHODS.GET_ALL_AUX_CODES,
       });
       throw error;
     }
@@ -409,11 +467,18 @@ export default class AgentConfigService {
 
   /**
    * Fetches the site data for the given orgId and siteId.
-   * @param {string} orgId
-   * @param {string} siteId
-   * @returns {Promise<SiteInfo>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the site info is to be fetched.
+   * @param {string} siteId - site ID for which the data is to be fetched.
+   * @returns {Promise<SiteInfo>} - A promise that resolves to the site info response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getSiteInfo(orgId: string, siteId: string): Promise<SiteInfo> {
+    LoggerProxy.info('Fetching site information', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_SITE_INFO,
+    });
     try {
       const resource = endPointMap.siteInfo(orgId, siteId);
       const response = await this.webexReq.request({
@@ -428,14 +493,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getSiteInfo api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getSiteInfo',
+        method: METHODS.GET_SITE_INFO,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getSiteInfo API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getSiteInfo',
+        method: METHODS.GET_SITE_INFO,
       });
       throw error;
     }
@@ -443,8 +508,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the organization info for the given orgId.
-   * @param {string} orgId
-   * @returns {Promise<OrgInfo>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the organization info is to be fetched.
+   * @returns {Promise<OrgInfo>} - A promise that resolves to the organization info response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getOrgInfo(orgId: string): Promise<OrgInfo> {
     try {
@@ -459,13 +527,16 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.log('getOrgInfo api success.', {module: CONFIG_FILE_NAME, method: 'getOrgInfo'});
+      LoggerProxy.log('getOrgInfo api success.', {
+        module: CONFIG_FILE_NAME,
+        method: METHODS.GET_ORG_INFO,
+      });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getOrgInfo API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getOrgInfo',
+        method: METHODS.GET_ORG_INFO,
       });
       throw error;
     }
@@ -473,8 +544,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the organization settings for the given orgId.
-   * @param {string} orgId
-   * @returns {Promise<OrgSettings>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the organization settings are to be fetched.
+   * @returns {Promise<OrgSettings>} - A promise that resolves to the organization settings response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getOrganizationSetting(orgId: string): Promise<OrgSettings> {
     try {
@@ -491,14 +565,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getOrganizationSetting api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getOrganizationSetting',
+        method: METHODS.GET_ORGANIZATION_SETTING,
       });
 
       return Promise.resolve(response.body.data[0]);
     } catch (error) {
       LoggerProxy.error(`getOrganizationSetting API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getOrganizationSetting',
+        method: METHODS.GET_ORGANIZATION_SETTING,
       });
       throw error;
     }
@@ -506,8 +580,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the tenant data for the given orgId.
-   * @param {string} orgId
-   * @returns {Promise<TenantData>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the tenant data is to be fetched.
+   * @returns {Promise<TenantData>} - A promise that resolves to the tenant data response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getTenantData(orgId: string): Promise<TenantData> {
     try {
@@ -524,14 +601,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getTenantData api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getTenantData',
+        method: METHODS.GET_TENANT_DATA,
       });
 
       return Promise.resolve(response.body.data[0]);
     } catch (error) {
       LoggerProxy.error(`getTenantData API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getTenantData',
+        method: METHODS.GET_TENANT_DATA,
       });
       throw error;
     }
@@ -539,8 +616,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the URL mapping data for the given orgId.
-   * @param {string} orgId
-   * @returns {Promise<URLMapping[]>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the URL mapping is to be fetched.
+   * @returns {Promise<URLMapping[]>} - A promise that resolves to the URL mapping response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getURLMapping(orgId: string): Promise<URLMapping[]> {
     try {
@@ -557,14 +637,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getURLMapping api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getURLMapping',
+        method: METHODS.GET_URL_MAPPING,
       });
 
       return Promise.resolve(response.body.data);
     } catch (error) {
       LoggerProxy.error(`getURLMapping API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getURLMapping',
+        method: METHODS.GET_URL_MAPPING,
       });
       throw error;
     }
@@ -572,8 +652,11 @@ export default class AgentConfigService {
 
   /**
    * Fetches the dial plan data for the given orgId.
-   * @param {string} orgId
-   * @returns {Promise<DialPlanEntity[]>}
+   * @ignore
+   * @param {string} orgId - organization ID for which the dial plan data is to be fetched.
+   * @returns {Promise<DialPlanEntity[]>} - A promise that resolves to the dial plan data response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getDialPlanData(orgId: string): Promise<DialPlanEntity[]> {
     try {
@@ -590,14 +673,14 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getDialPlanData api success.', {
         module: CONFIG_FILE_NAME,
-        method: 'getDialPlanData',
+        method: METHODS.GET_DIAL_PLAN_DATA,
       });
 
       return Promise.resolve(response.body);
     } catch (error) {
       LoggerProxy.error(`getDialPlanData API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getDialPlanData',
+        method: METHODS.GET_DIAL_PLAN_DATA,
       });
       throw error;
     }
@@ -605,12 +688,15 @@ export default class AgentConfigService {
 
   /**
    * Fetches the list of queues for the given orgId.
-   * @param {string} orgId
-   * @param {number} page
-   * @param {number} pageSize
+   * @ignore
+   * @param {string} orgId - organization ID for which the queues are to be fetched.
+   * @param {number} page - the page number to fetch.
+   * @param {number} pageSize - the number of queues to fetch per page.
    * @param {string} search - optional search string
    * @param {string} filter - optional filter string
-   * @returns Promise<ContactServiceQueue[]>
+   * @returns Promise<ContactServiceQueue[]> - A promise that resolves to the list of contact service queues.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
    */
   public async getQueues(
     orgId: string,
@@ -619,6 +705,11 @@ export default class AgentConfigService {
     search?: string,
     filter?: string
   ): Promise<ContactServiceQueue[]> {
+    LoggerProxy.info('Fetching queue list', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_QUEUES,
+    });
+
     try {
       let queryParams = `page=${page}&pageSize=${pageSize}&desktopProfileFilter=true`;
       if (search) queryParams += `&search=${search}`;
@@ -635,13 +726,16 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.log('getQueues API success.', {module: CONFIG_FILE_NAME, method: 'getQueues'});
+      LoggerProxy.log('getQueues API success.', {
+        module: CONFIG_FILE_NAME,
+        method: METHODS.GET_QUEUES,
+      });
 
       return response.body?.data;
     } catch (error) {
       LoggerProxy.error(`getQueues API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: 'getQueues',
+        method: METHODS.GET_QUEUES,
       });
       throw error;
     }

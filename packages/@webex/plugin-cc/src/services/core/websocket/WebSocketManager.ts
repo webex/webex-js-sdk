@@ -5,9 +5,15 @@ import {ConnectionLostDetails} from './types';
 import {CC_EVENTS, SubscribeResponse, WelcomeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import workerScript from './keepalive.worker';
-import {KEEPALIVE_WORKER_INTERVAL, CLOSE_SOCKET_TIMEOUT} from '../constants';
+import {KEEPALIVE_WORKER_INTERVAL, CLOSE_SOCKET_TIMEOUT, METHODS} from '../constants';
 import {WEB_SOCKET_MANAGER_FILE} from '../../../constants';
 
+/**
+ * WebSocketManager handles the WebSocket connection for Contact Center operations.
+ * It manages the connection lifecycle, including registration, reconnection, and message handling.
+ * It also utilizes a Web Worker to manage keepalive messages and socket closure.
+ * @ignore
+ */
 export class WebSocketManager extends EventEmitter {
   private websocket: WebSocket;
   shouldReconnect: boolean;
@@ -47,7 +53,7 @@ export class WebSocketManager extends EventEmitter {
       this.connect().catch((error) => {
         LoggerProxy.error(`[WebSocketStatus] | Error in connecting Websocket ${error}`, {
           module: WEB_SOCKET_MANAGER_FILE,
-          method: this.initWebSocket.name,
+          method: METHODS.INIT_WEB_SOCKET,
         });
         reject(error);
       });
@@ -61,7 +67,7 @@ export class WebSocketManager extends EventEmitter {
       this.keepaliveWorker.postMessage({type: 'terminate'});
       LoggerProxy.log(
         `[WebSocketStatus] | event=webSocketClose | WebSocket connection closed manually REASON: ${reason}`,
-        {module: WEB_SOCKET_MANAGER_FILE, method: this.close.name}
+        {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CLOSE}
       );
     }
   }
@@ -82,7 +88,7 @@ export class WebSocketManager extends EventEmitter {
     } catch (e) {
       LoggerProxy.error(
         `Register API Failed, Request to RoutingNotifs websocket registration API failed ${e}`,
-        {module: WEB_SOCKET_MANAGER_FILE, method: this.register.name}
+        {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.REGISTER}
       );
     }
   }
@@ -93,7 +99,7 @@ export class WebSocketManager extends EventEmitter {
     }
     LoggerProxy.log(
       `[WebSocketStatus] | event=webSocketConnecting | Connecting to WebSocket: ${this.url}`,
-      {module: WEB_SOCKET_MANAGER_FILE, method: this.connect.name}
+      {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
     );
     this.websocket = new WebSocket(this.url);
 
@@ -113,7 +119,7 @@ export class WebSocketManager extends EventEmitter {
             this.close(true, 'WebSocket did not auto close within 16 secs');
             LoggerProxy.error(
               '[webSocketTimeout] | event=webSocketTimeout | WebSocket connection closed forcefully',
-              {module: WEB_SOCKET_MANAGER_FILE, method: this.connect.name}
+              {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
             );
           }
         };
@@ -129,7 +135,7 @@ export class WebSocketManager extends EventEmitter {
       this.websocket.onerror = (event: any) => {
         LoggerProxy.error(
           `[WebSocketStatus] | event=socketConnectionFailed | WebSocket connection failed ${event}`,
-          {module: WEB_SOCKET_MANAGER_FILE, method: this.connect.name}
+          {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
         );
         reject();
       };
@@ -154,7 +160,7 @@ export class WebSocketManager extends EventEmitter {
           this.close(false, 'multiLogin');
           LoggerProxy.error(
             '[WebSocketStatus] | event=agentMultiLogin | WebSocket connection closed by agent multiLogin',
-            {module: WEB_SOCKET_MANAGER_FILE, method: this.connect.name}
+            {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
           );
         }
       };
@@ -174,7 +180,7 @@ export class WebSocketManager extends EventEmitter {
         const onlineStatus = navigator.onLine;
         LoggerProxy.info(`[WebSocketStatus] | desktop online status is ${onlineStatus}`, {
           module: WEB_SOCKET_MANAGER_FILE,
-          method: this.webSocketOnCloseHandler.name,
+          method: METHODS.WEB_SOCKET_ON_CLOSE_HANDLER,
         });
         issueReason = !onlineStatus
           ? 'network issue'
@@ -182,7 +188,7 @@ export class WebSocketManager extends EventEmitter {
       }
       LoggerProxy.error(
         `[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: ${issueReason}`,
-        {module: WEB_SOCKET_MANAGER_FILE, method: this.webSocketOnCloseHandler.name}
+        {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.WEB_SOCKET_ON_CLOSE_HANDLER}
       );
       this.forceCloseWebSocketOnTimeout = false;
     }
