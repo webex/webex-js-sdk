@@ -144,6 +144,7 @@ Media.createMediaConnection = (
     bundlePolicy?: BundlePolicy;
     iceCandidatesTimeout?: number;
     disableAudioMainDtx?: boolean;
+    disableAudioTwcc?: boolean;
     stopIceGatheringAfterFirstRelayCandidate?: boolean;
   }
 ) => {
@@ -157,6 +158,7 @@ Media.createMediaConnection = (
     bundlePolicy,
     iceCandidatesTimeout,
     disableAudioMainDtx,
+    disableAudioTwcc,
     stopIceGatheringAfterFirstRelayCandidate,
   } = options;
 
@@ -183,6 +185,10 @@ Media.createMediaConnection = (
 
     if (disableAudioMainDtx !== undefined) {
       config.disableAudioMainDtx = disableAudioMainDtx;
+    }
+
+    if (disableAudioTwcc !== undefined) {
+      config.disableAudioTwcc = disableAudioTwcc;
     }
 
     if (BrowserInfo.isFirefox()) {

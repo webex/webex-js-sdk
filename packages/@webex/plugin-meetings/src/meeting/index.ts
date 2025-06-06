@@ -7047,6 +7047,8 @@ export default class Meeting extends StatelessWebexPlugin {
         iceCandidatesTimeout: this.config.iceCandidatesGatheringTimeout,
         // @ts-ignore - config coming from registerPlugin
         disableAudioMainDtx: this.config.experimental.disableAudioMainDtx,
+        // @ts-ignore - config coming from registerPlugin
+        disableAudioTwcc: this.config.disableAudioTwccForMultistream,
         stopIceGatheringAfterFirstRelayCandidate:
           // @ts-ignore - config coming from registerPlugin
           this.config.stopIceGatheringAfterFirstRelayCandidate,

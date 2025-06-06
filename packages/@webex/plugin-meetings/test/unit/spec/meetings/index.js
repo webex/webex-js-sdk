@@ -413,6 +413,19 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_toggleDisableAudioTwccForMultistream', () => {
+      it('should have _toggleDisableAudioTwccForMultistream', () => {
+        assert.equal(typeof webex.meetings._toggleDisableAudioTwccForMultistream, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings to disable audio twcc support', () => {
+          webex.meetings._toggleDisableAudioTwccForMultistream(false);
+          assert.equal(webex.meetings.config.disableAudioTwccForMultistream, false);
+        });
+      });
+    });
+
     describe('#_toggleStopIceGatheringAfterFirstRelayCandidate', () => {
       it('should have _toggleStopIceGatheringAfterFirstRelayCandidate', () => {
         assert.equal(typeof webex.meetings._toggleStopIceGatheringAfterFirstRelayCandidate, 'function');
