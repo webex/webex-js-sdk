@@ -369,18 +369,6 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_OFFER_CONTACT = 'task:offerContact',
-
-  /**
-   * Triggered when a task is resumed
-   * @example
-   * ```typescript
-   * task.on(TASK_EVENTS.TASK_RESUME, (task: ITask) => {
-   *  console.log('Task resumed:', task.data.interactionId);
-   *  // Continue handling the resumed task
-   * });
-   * ```
-   */
-  TASK_RESUME = 'task:resume',
 }
 
 /**
