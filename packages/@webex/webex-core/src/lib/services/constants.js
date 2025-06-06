@@ -18,4 +18,13 @@ const COMMERCIAL_ALLOWED_DOMAINS = [
   'broadcloudpbx.net',
 ];
 
-export {SERVICE_CATALOGS_ENUM_TYPES, NAMESPACE, SERVICE_CATALOGS, COMMERCIAL_ALLOWED_DOMAINS};
+// The default FedRAMP domains that SDK can make requests to outside of service catalog
+const FEDRAMP_ALLOWED_DOMAINS = ['gov.ciscospark.com', 'webex.com'];
+
+export {
+  SERVICE_CATALOGS_ENUM_TYPES,
+  NAMESPACE,
+  SERVICE_CATALOGS,
+  COMMERCIAL_ALLOWED_DOMAINS,
+  FEDRAMP_ALLOWED_DOMAINS,
+};

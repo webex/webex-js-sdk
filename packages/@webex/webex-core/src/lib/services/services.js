@@ -8,7 +8,7 @@ import ServiceCatalog from './service-catalog';
 import ServiceRegistry from './service-registry';
 import ServiceState from './service-state';
 import fedRampServices from './service-fed-ramp';
-import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
+import {COMMERCIAL_ALLOWED_DOMAINS, FEDRAMP_ALLOWED_DOMAINS} from './constants';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
@@ -1002,6 +1002,8 @@ const Services = WebexPlugin.extend({
       // if not fedramp, append on the commercialAllowedDomains
       if (!fedramp) {
         services.allowedDomains = union(services.allowedDomains, COMMERCIAL_ALLOWED_DOMAINS);
+      } else {
+        services.allowedDomains = union(services.allowedDomains, FEDRAMP_ALLOWED_DOMAINS);
       }
 
       // Check for allowed host domains.
