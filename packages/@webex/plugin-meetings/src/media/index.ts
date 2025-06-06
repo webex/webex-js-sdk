@@ -177,6 +177,7 @@ Media.createMediaConnection = (
   if (isMultistream) {
     const config: MultistreamConnectionConfig = {
       iceServers,
+      disableAudioTwcc: !enableAudioTwcc,
     };
 
     if (bundlePolicy) {
@@ -185,10 +186,6 @@ Media.createMediaConnection = (
 
     if (disableAudioMainDtx !== undefined) {
       config.disableAudioMainDtx = disableAudioMainDtx;
-    }
-
-    if (enableAudioTwcc) {
-      config.disableAudioTwcc = false;
     }
 
     if (BrowserInfo.isFirefox()) {

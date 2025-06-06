@@ -229,6 +229,7 @@ describe('createMediaConnection', () => {
       multistreamRoapMediaConnectionConstructorStub,
       {
         iceServers: [],
+        disableAudioTwcc: true,
       },
       'meeting id'
     );
@@ -251,6 +252,7 @@ describe('createMediaConnection', () => {
         iceServers: [],
         doFullIce: true,
         stopIceGatheringAfterFirstRelayCandidate: true,
+        disableAudioTwcc: true,
       },
       'meeting id'
     );
@@ -273,6 +275,7 @@ describe('createMediaConnection', () => {
         iceServers: [],
         doFullIce: true,
         stopIceGatheringAfterFirstRelayCandidate: false,
+        disableAudioTwcc: true,
       },
       'meeting id'
     );
@@ -308,6 +311,7 @@ describe('createMediaConnection', () => {
         multistreamRoapMediaConnectionConstructorStub,
         {
           iceServers: [],
+          disableAudioTwcc: true,
         },
         'meeting id'
       );
@@ -337,6 +341,7 @@ describe('createMediaConnection', () => {
       multistreamRoapMediaConnectionConstructorStub,
       {
         iceServers: [],
+        disableAudioTwcc: true,
       },
       'meeting id'
     );
@@ -365,34 +370,7 @@ describe('createMediaConnection', () => {
       multistreamRoapMediaConnectionConstructorStub,
       {
         iceServers: [],
-      },
-      'meeting id'
-    );
-  });
-
-  it('does not pass disableAudioTwcc to MultistreamRoapMediaConnection if disableAudioTwcc is undefined', () => {
-    const multistreamRoapMediaConnectionConstructorStub = sinon
-      .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
-      .returns(fakeRoapMediaConnection);
-
-    Media.createMediaConnection(true, 'debug string', 'meeting id', {
-      mediaProperties: {
-        mediaDirection: {
-          sendAudio: true,
-          sendVideo: true,
-          sendShare: false,
-          receiveAudio: true,
-          receiveVideo: true,
-          receiveShare: true,
-        },
-      },
-      disableAudioTwcc: undefined,
-    });
-    assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
-    assert.calledWith(
-      multistreamRoapMediaConnectionConstructorStub,
-      {
-        iceServers: [],
+        disableAudioTwcc: true,
       },
       'meeting id'
     );
