@@ -376,6 +376,34 @@ describe('createMediaConnection', () => {
     );
   });
 
+  it('MultistreamRoapMediaConnection disable audio twcc by default', () => {
+    const multistreamRoapMediaConnectionConstructorStub = sinon
+      .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
+      .returns(fakeRoapMediaConnection);
+
+    Media.createMediaConnection(true, 'debug string', 'meeting id', {
+      mediaProperties: {
+        mediaDirection: {
+          sendAudio: true,
+          sendVideo: true,
+          sendShare: false,
+          receiveAudio: true,
+          receiveVideo: true,
+          receiveShare: true,
+        },
+      },
+    });
+    assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
+    assert.calledWith(
+      multistreamRoapMediaConnectionConstructorStub,
+      {
+        iceServers: [],
+        disableAudioTwcc: true,
+      },
+      'meeting id'
+    );
+  });
+
   [
     {testCase: 'turnServerInfo is undefined', turnServerInfo: undefined},
     {
