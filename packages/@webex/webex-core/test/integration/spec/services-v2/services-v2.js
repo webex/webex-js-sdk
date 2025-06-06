@@ -6,7 +6,7 @@ import '@webex/internal-plugin-device';
 
 import {assert} from '@webex/test-helper-chai';
 import {flaky} from '@webex/test-helper-mocha';
-import WebexCore, {ServiceCatalog, ServiceUrl, serviceConstants} from '@webex/webex-core';
+import WebexCore, {ServiceCatalogV2, ServiceDetail, serviceConstantsV2} from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
 import sinon from 'sinon';
