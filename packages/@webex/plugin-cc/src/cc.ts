@@ -965,7 +965,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    * @param {string} event The raw websocket event message
    */
-  private handleWebsocketMessage = (event: string) => {
+  private handleWebsocketMessage = async (event: string) => {
     const eventData = JSON.parse(event);
     // Re-emit all the events related to agent except keep-alives
     if (!eventData.keepalive && eventData.data && eventData.data.type) {
@@ -1013,6 +1013,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           notifsTrackingId: eventData.trackingId,
         };
         this.webCallingService.setLoginOption(loginData.deviceType as LoginOption);
+        this.agentConfig = await this.services.config.getAgentConfig(
+          loginData.orgId,
+          loginData.agentId
+        );
         // @ts-ignore
         this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
         break;

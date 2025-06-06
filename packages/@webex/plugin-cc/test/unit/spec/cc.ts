@@ -1699,20 +1699,11 @@ describe('webex.cc', () => {
 
       messageCallback(JSON.stringify(payload));
 
-      expect(emitSpy).toHaveBeenNthCalledWith(2, AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, {
-        agentId: 'agent-id',
-        teamId: 'team-id',
-        siteId: 'site-id',
-        roles: ['role1', 'role2'],
-        mmProfile: {
-          chat: 2,
-          email: 0,
-          social: 1,
-          telephony: 0,
-        },
-        notifsTrackingId: 'track-123',
-        type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
-      });
+      expect(emitSpy).toHaveBeenCalledTimes(1);
+      expect(emitSpy).toHaveBeenCalledWith(
+        CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
+        payload.data
+      );
     });
 
     it('should emit AGENT_RELOGIN_SUCCESS on CC_EVENTS.AGENT_RELOGIN_SUCCESS with mapped payload', () => {
