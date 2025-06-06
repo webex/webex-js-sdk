@@ -170,7 +170,7 @@ describe('createMediaConnection', () => {
       },
       bundlePolicy: 'max-bundle',
       disableAudioMainDtx: false,
-      disableAudioTwcc: false,
+      enableAudioTwcc: true,
     });
     assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
     assert.calledWith(

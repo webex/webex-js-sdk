@@ -835,15 +835,15 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    * @returns {undefined}
    */
-  private _toggleDisableAudioTwccForMultistream(newValue: boolean) {
+  private _toggleEnableAudioTwccForMultistream(newValue: boolean) {
     if (typeof newValue !== 'boolean') {
       return;
     }
 
     // @ts-ignore
-    if (this.config.disableAudioTwccForMultistream !== newValue) {
+    if (this.config.enableAudioTwccForMultistream !== newValue) {
       // @ts-ignore
-      this.config.disableAudioTwccForMultistream = newValue;
+      this.config.enableAudioTwccForMultistream = newValue;
     }
   }
 
