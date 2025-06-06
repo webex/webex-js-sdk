@@ -89,7 +89,7 @@ export default class Task extends EventEmitter implements IOldTask {
     this.webCallingService.off(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleRemoteMedia);
   }
 
-  public updateTaskData = (updatedData: TaskData, shouldOverwrite = false) => {
+  public updateTaskData = (updatedData: TaskData, shouldOverwrite = false): IOldTask => {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
 
     return this;

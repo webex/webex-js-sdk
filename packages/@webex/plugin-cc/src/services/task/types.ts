@@ -1003,7 +1003,7 @@ export interface IOldTask extends EventEmitter {
    * @returns Updated task instance
    * @ignore
    */
-  updateTaskData(newData: TaskData): ITask;
+  updateTaskData(newData: TaskData): IOldTask;
   /**
    * Answers or accepts an incoming task.
    * Once accepted, the task will be assigned to the agent and trigger a {@link TASK_EVENTS.TASK_ASSIGNED} event.
