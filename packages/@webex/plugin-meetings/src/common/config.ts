@@ -1,6 +1,6 @@
 const StaticConfig: any = {};
 
-StaticConfig.set = (options) => {
+StaticConfig.set = (options: any) => {
   const values = {};
 
   StaticConfig.meetings = Object.assign(values, options);

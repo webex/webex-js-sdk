@@ -2,7 +2,6 @@
 
 import bowser from 'bowser';
 import {memoize} from 'lodash';
-import window from 'global/window';
 
 const mockDetectionObject = {
   /* eslint-disable global-require */
@@ -14,14 +13,14 @@ const mockDetectionObject = {
   isBrowser: () => false,
 };
 
-const createDetectionObject = (results) => {
+const createDetectionObject = (results: any) => {
   const getOSName = () => results?.getOSName() ?? '';
   const getOSVersion = () => results?.getOSVersion() ?? '';
 
   const getBrowserName = () => results?.getBrowserName() ?? '';
   const getBrowserVersion = () => results?.getBrowserVersion() ?? '';
 
-  const isBrowser = (name) => !!results?.isBrowser(name, true);
+  const isBrowser = (name: any) => !!results?.isBrowser(name, true);
 
   return {
     getOSName,
