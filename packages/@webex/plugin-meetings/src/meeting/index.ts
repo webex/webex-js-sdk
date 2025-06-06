@@ -262,7 +262,10 @@ type FetchMeetingInfoParams = {
   sendCAevents?: boolean;
 };
 
-type MediaReachabilityMetrics = ReachabilityMetrics & {isSubnetReachable: boolean};
+type MediaReachabilityMetrics = ReachabilityMetrics & {
+  isSubnetReachable: boolean;
+  selectedCluster: string | null;
+};
 
 /**
  * MediaDirection
@@ -2637,6 +2640,19 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_PARTICIPANTS, (payload) => {
       this.members.locusParticipantsUpdate(payload);
     });
+    this.locusInfo.on(LOCUSINFO.EVENTS.PARTICIPANT_REASON_CHANGED, (payload) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusParticipantsListener',
+        },
+        EVENT_TRIGGERS.MEETING_PARTICIPANT_REASON_CHANGED,
+        {
+          payload,
+        }
+      );
+    });
   }
 
   /**
@@ -3801,6 +3817,18 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public cancelPhoneInvite(invitee: {phoneNumber: string}) {
     return this.members.cancelPhoneInvite(invitee);
+  }
+
+  /**
+   * Cancel an SIP call invitation made during a meeting
+   * @param {Object} invitee
+   * @param {String} invitee.memberId
+   * @returns {Promise} see #members.cancelSIPInvite
+   * @public
+   * @memberof Meeting
+   */
+  public cancelSIPInvite(invitee: {memberId: string}) {
+    return this.members.cancelSIPInvite(invitee);
   }
 
   /**
@@ -9666,9 +9694,15 @@ export default class Meeting extends StatelessWebexPlugin {
       isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(this.mediaServerIp);
     }
 
+    let selectedCluster = null;
+    if (this.mediaConnections && this.mediaConnections.length > 0) {
+      selectedCluster = this.mediaConnections[0].mediaAgentCluster;
+    }
+
     return {
       ...reachabilityMetrics,
       isSubnetReachable,
+      selectedCluster,
     };
   }
 }

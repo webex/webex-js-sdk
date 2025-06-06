@@ -8361,7 +8361,7 @@ __metadata:
     isomorphic-webcrypto: ^2.3.8
     lodash: ^4.17.21
     node-jose: ^2.2.0
-    node-kms: ^0.4.0
+    node-kms: ^0.4.1
     node-scr: ^0.3.0
     pkijs: ^2.1.84
     prettier: ^2.7.1
@@ -26282,16 +26282,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-kms@npm:^0.4.0":
-  version: 0.4.0
-  resolution: "node-kms@npm:0.4.0"
+"node-kms@npm:^0.4.1":
+  version: 0.4.1
+  resolution: "node-kms@npm:0.4.1"
   dependencies:
     es6-promise: ^2.0.1
     lodash.clone: ^3.0.2
     lodash.clonedeep: ^3.0.1
-    node-jose: ^2.0.0
+    node-jose: ^2.2.0
     uuid: ^2.0.1
-  checksum: 00d27958ec84c1dac786ddcaccf227e619bbd201943467620a18df4128d1e79f3a69742f9bdf1fd9a4cafe1e3a554b99b353c718c55063bf75f71b2b66af8fad
+  checksum: e68542feac20ef35e575811c4ad6255b41ae5888c9c5a5b68604fc964c956a5b9f478fe5ee587f172d697e57121b78cecd6101a0dc007bd627a9c4d23dd5707f
   languageName: node
   linkType: hard
 
