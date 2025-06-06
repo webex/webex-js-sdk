@@ -112,7 +112,10 @@ describe('webex.cc', () => {
         buddyAgents: jest.fn(),
       },
       config: {
-        getAgentConfig: jest.fn(),
+         getAgentConfig: jest.fn().mockResolvedValue({
+          agentId: 'testAgentId',
+          orgId: 'testOrgId',
+        }),
       },
       webSocketManager: mockWebSocketManager,
       connectionService: {
@@ -1699,7 +1702,7 @@ describe('webex.cc', () => {
 
       messageCallback(JSON.stringify(payload));
 
-      expect(emitSpy).toHaveBeenCalledTimes(1);
+      expect(emitSpy).toHaveBeenCalledTimes(2);
       expect(emitSpy).toHaveBeenCalledWith(
         CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS,
         payload.data
