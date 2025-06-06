@@ -6,7 +6,15 @@ import '@webex/internal-plugin-device';
 
 import {assert} from '@webex/test-helper-chai';
 import {flaky} from '@webex/test-helper-mocha';
-import WebexCore, {ServiceCatalogV2, ServiceDetail, serviceConstantsV2} from '@webex/webex-core';
+import WebexCore, {
+  ServiceCatalogV2,
+  ServiceDetail,
+  serviceConstantsV2,
+  ServicesV2,
+  registerInternalPlugin,
+  ServiceInterceptorV2,
+  ServerErrorInterceptorV2,
+} from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
 import sinon from 'sinon';
@@ -46,6 +54,14 @@ describe('webex-core', () => {
     beforeEach('create webex instance', () => {
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
       webexEU = new WebexCore({credentials: {supertoken: webexUserEU.token}});
+
+      registerInternalPlugin('services', ServicesV2, {
+        interceptors: {
+          ServiceInterceptor: ServiceInterceptorV2.create,
+          ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+        },
+      });
+
       services = webex.internal.services;
       servicesEU = webexEU.internal.services;
       catalog = services._getCatalog();
