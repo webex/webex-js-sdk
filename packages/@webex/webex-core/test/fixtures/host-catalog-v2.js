@@ -120,23 +120,25 @@ export const serviceHostmapV2 = {
   format: 'U2Cv2',
 };
 
+export const formattedServiceHostmapEntryConv = {
+  id: 'urn:TEAM:us-east-2_a:conversation',
+  serviceName: 'conversation',
+  serviceUrls: [
+    {
+      baseUrl: 'https://prod-achm-message.svc.webex.com/conversation/api/v1',
+      host: 'prod-achm-message.svc.webex.com',
+      priority: 1,
+    },
+    {
+      baseUrl: 'https://conv-a.wbx2.com/conversation/api/v1',
+      host: 'conv-a.wbx2.com',
+      priority: 2,
+    },
+  ],
+};
+
 export const formattedServiceHostmapV2 = [
-  {
-    id: 'urn:TEAM:us-east-2_a:conversation',
-    serviceName: 'conversation',
-    serviceUrls: [
-      {
-        baseUrl: 'https://prod-achm-message.svc.webex.com/conversation/api/v1',
-        host: 'prod-achm-message.svc.webex.com',
-        priority: 1,
-      },
-      {
-        baseUrl: 'https://conv-a.wbx2.com/conversation/api/v1',
-        host: 'conv-a.wbx2.com',
-        priority: 2,
-      },
-    ],
-  },
+  formattedServiceHostmapEntryConv,
   {
     id: 'urn:TEAM:me-central-1_d:conversation',
     serviceName: 'conversation',
