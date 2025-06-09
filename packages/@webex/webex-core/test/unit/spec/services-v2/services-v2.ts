@@ -358,11 +358,13 @@ describe('webex-core', () => {
       });
 
       it('returns the same uri if the hostmap does not contain the host', () => {
-        services._services = [
+        catalog.updateServiceGroups('preauth', [
           {
+            id: 'example-1',
+            serviceName: 'example-1',
             serviceUrls: [{host: 'example-1.com', baseUrl: 'http://example-1.com', priority: 1}],
           },
-        ];
+        ]);
 
         const uri = 'http://example.com';
 
@@ -370,14 +372,16 @@ describe('webex-core', () => {
       });
 
       it('returns the replaces the host in the uri with the host from the hostmap', () => {
-        services._services = [
+        catalog.updateServiceGroups('preauth', [
           {
+            id: 'example-1',
+            serviceName: 'example-1',
             serviceUrls: [
               {host: 'example-1.com', baseUrl: 'http://example-1.com', priority: 1},
               {host: 'example.com', baseUrl: 'http://example.com', priority: 2},
             ],
           },
-        ];
+        ]);
 
         const uri = 'http://example.com/somepath';
 

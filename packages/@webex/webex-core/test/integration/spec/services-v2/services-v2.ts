@@ -22,6 +22,7 @@ describe('webex-core', () => {
     let services;
     let servicesEU;
     let catalog;
+    let catalogEU;
 
     before('create users', () =>
       Promise.all([
@@ -50,6 +51,7 @@ describe('webex-core', () => {
       services = webex.internal.services;
       servicesEU = webexEU.internal.services;
       catalog = services._getCatalog();
+      catalogEU = servicesEU._getCatalog();
 
       return Promise.all([
         services.waitForCatalog('postauth', 10),
@@ -139,167 +141,104 @@ describe('webex-core', () => {
       });
     });
 
-    //     describe('#getServiceFromClusterId()', () => {
-    //       let testDetailTemplate;
-    //       let testDetail;
+    describe('#getServiceFromClusterId()', () => {
+      let testDetailTemplate;
+      let testDetail;
 
-    //       beforeEach('load test url', () => {
-    //         testDetailTemplate = {
-    //           defaultUrl: 'https://www.example.com/api/v1',
-    //           hosts: [
-    //             {
-    //               homeCluster: true,
-    //               host: 'www.example-p5.com',
-    //               ttl: -1,
-    //               priority: 5,
-    //               id: '0:0:cluster-a:exampleValid',
-    //             },
-    //             {
-    //               host: 'www.example-p3.com',
-    //               ttl: -1,
-    //               priority: 3,
-    //               id: '0:0:cluster-b:exampleValid',
-    //             },
-    //           ],
-    //           name: 'exampleValid',
-    //         };
-    //         testDetail = new ServiceDetail(testDetailTemplate);
-    //         catalog._loadServiceDetails('preauth', [testDetail]);
-    //       });
+      beforeEach(() => {
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
+      });
 
-    //       it('finds a valid service url from only a clusterId', () => {
-    //         const serviceFound = services.getServiceFromClusterId({
-    //           clusterId: testDetailTemplate.hosts[0].id,
-    //           priorityHost: false,
-    //         });
+      it('finds a valid service url from only a clusterId', () => {
+        const serviceFound = services.getServiceFromClusterId({
+          clusterId: testDetailTemplate.id,
+        });
 
-    //         assert.equal(serviceFound.name, testDetail.name);
-    //         assert.equal(serviceFound.url, testDetail.defaultUrl);
-    //       });
+        assert.equal(serviceFound.name, testDetail.name);
+        assert.equal(serviceFound.url, testDetail.get());
+      });
 
-    //       it('finds a valid priority service url', () => {
-    //         const serviceFound = services.getServiceFromClusterId({
-    //           clusterId: testDetailTemplate.hosts[0].id,
-    //           priorityHost: true,
-    //         });
+      it('finds a valid service when a service group is defined', () => {
+        const serviceFound = catalog.findServiceFromClusterId({
+          clusterId: testDetailTemplate.id,
+          serviceGroup: 'preauth',
+        });
 
-    //         assert.equal(serviceFound.name, testDetail.name);
-    //         assert.isTrue(
-    //           serviceFound.url.includes(testDetailTemplate.hosts[0].host),
-    //           `'${serviceFound.url}' is not host '${testDetailTemplate.hosts[0].host}'`
-    //         );
-    //         // assert.equal(serviceFound.url, catalog.get('exampleValid', true));
-    //       });
+        assert.equal(serviceFound.name, testDetail.name);
+        assert.equal(serviceFound.url, testDetail.defaultUrl);
+      });
 
-    //       it('finds a valid service when a service group is defined', () => {
-    //         const serviceFound = catalog.findServiceFromClusterId({
-    //           clusterId: testDetailTemplate.hosts[0].id,
-    //           priorityHost: false,
-    //           serviceGroup: 'preauth',
-    //         });
+      it("fails to find a valid service when it's not in a group", () => {
+        assert.isUndefined(
+          services.getServiceFromClusterId({
+            clusterId: testDetailTemplate.id,
+            serviceGroup: 'signin',
+          })
+        );
+      });
 
-    //         assert.equal(serviceFound.name, testDetail.name);
-    //         assert.equal(serviceFound.url, testDetail.defaultUrl);
-    //       });
+      it("returns undefined when service doesn't exist", () => {
+        assert.isUndefined(services.getServiceFromClusterId({clusterId: 'not a clusterId'}));
+      });
+    });
 
-    //       it("fails to find a valid service when it's not in a group", () => {
-    //         assert.isUndefined(
-    //           services.getServiceFromClusterId({
-    //             clusterId: testDetailTemplate.hosts[0].id,
-    //             serviceGroup: 'signin',
-    //           })
-    //         );
-    //       });
+    describe('#getServiceFromUrl()', () => {
+      let testDetailTemplate;
+      let testDetail;
 
-    //       it("returns undefined when service doesn't exist", () => {
-    //         assert.isUndefined(services.getServiceFromClusterId({clusterId: 'not a clusterId'}));
-    //       });
-    //     });
+      beforeEach(() => {
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
+      });
 
-    //     describe('#getServiceFromUrl()', () => {
-    //       let testDetailTemplate;
-    //       let testDetail;
+      afterEach(() => {
+        catalog._unloadServiceUrls('preauth', [testDetail]);
+      });
 
-    //       beforeEach('load test url', () => {
-    //         testDetailTemplate = {
-    //           defaultUrl: 'https://www.example.com/api/v1',
-    //           hosts: [
-    //             {
-    //               host: 'www.example-p5.com',
-    //               ttl: -1,
-    //               priority: 5,
-    //               id: 'exampleClusterId',
-    //             },
-    //             {
-    //               host: 'www.example-p3.com',
-    //               ttl: -1,
-    //               priority: 3,
-    //               id: 'exampleClusterId',
-    //             },
-    //           ],
-    //           name: 'exampleValid',
-    //         };
-    //         testDetail = new ServiceDetail(testDetailTemplate);
-    //         catalog._loadServiceDetails('preauth', [testDetail]);
-    //       });
+      it('gets a valid service object from an existing service', () => {
+        const serviceObject = services.getServiceFromUrl(testDetail.get());
 
-    //       afterEach('unload test url', () => {
-    //         catalog._unloadServiceUrls('preauth', [testDetail]);
-    //       });
+        assert.isDefined(serviceObject);
+        assert.hasAllKeys(serviceObject, ['name', 'defaultUrl', 'priorityUrl']);
 
-    //       it('gets a valid service object from an existing service', () => {
-    //         const serviceObject = services.getServiceFromUrl(testDetailTemplate.defaultUrl);
+        assert.equal(testDetailTemplate.serviceName, serviceObject.name);
+        assert.equal(testDetail.get(true), serviceObject.defaultUrl);
+        assert.equal(testDetail.get(true), serviceObject.priorityUrl);
+      });
 
-    //         assert.isDefined(serviceObject);
-    //         assert.hasAllKeys(serviceObject, ['name', 'defaultUrl', 'priorityUrl']);
+      it("returns undefined when the service url doesn't exist", () => {
+        const serviceObject = services.getServiceFromUrl('http://www.not-real.com/');
 
-    //         assert.equal(testDetailTemplate.name, serviceObject.name);
-    //         assert.equal(testDetailTemplate.defaultUrl, serviceObject.defaultUrl);
-    //         assert.equal(testDetail.get(true), serviceObject.priorityUrl);
-    //       });
-
-    //       it("returns undefined when the service url doesn't exist", () => {
-    //         const serviceObject = services.getServiceFromUrl('http://www.not-real.com/');
-
-    //         assert.isUndefined(serviceObject);
-    //       });
-    //     });
-
-    //     describe('#hasService()', () => {
-    //       it('returns a boolean', () => {
-    //         assert.isBoolean(services.hasService('some-url'));
-    //       });
-
-    //       it('validates that a service exists', () => {
-    //         const service = Object.keys(services.list())[0];
-
-    //         assert.isTrue(services.hasService(service));
-    //       });
-    //     });
+        assert.isUndefined(serviceObject);
+      });
+    });
 
     describe('#initConfig()', () => {
-      // it('should set the discovery catalog based on the provided links', () => {
-      //   const key = 'test';
-      //   const url = 'http://www.test.com/';
+      it('should set the discovery catalog based on the provided links', () => {
+        const key = 'test';
+        const url = 'http://www.test.com/';
 
-      //   webex.config.services.discovery[key] = url;
+        webex.config.services.discovery[key] = url;
 
-      //   services.initConfig();
+        services.initConfig();
 
-      //   assert.equal(services.get(key), url);
-      // });
+        assert.equal(services.get(key), url);
+      });
 
-      // it('should set the override catalog based on the provided links', () => {
-      //   const key = 'testOverride';
-      //   const url = 'http://www.test-override.com/';
+      it('should set the override catalog based on the provided links', () => {
+        const key = 'testOverride';
+        const url = 'http://www.test-override.com/';
 
-      //   webex.config.services.override = {};
-      //   webex.config.services.override[key] = url;
+        webex.config.services.override = {};
+        webex.config.services.override[key] = url;
 
-      //   services.initConfig();
+        services.initConfig();
 
-      //   assert.equal(services.get(key), url);
-      // });
+        assert.equal(services.get(key), url);
+      });
 
       it('should set validate domains to true when provided true', () => {
         webex.config.services.validateDomains = true;
@@ -330,105 +269,100 @@ describe('webex-core', () => {
       });
     });
 
-    //     describe('#initialize()', () => {
-    //       it('should create a catalog', () =>
-    //         assert.instanceOf(services._getCatalog(), ServiceCatalog));
+    describe('#initialize()', () => {
+      it('should create a catalog', () =>
+        assert.instanceOf(services._getCatalog(), ServiceCatalog));
 
-    //       it('should create a registry', () =>
-    //         assert.instanceOf(services.getRegistry(), ServiceRegistry));
+      it('should call services#initConfig() when webex config changes', () => {
+        services.initConfig = sinon.spy();
+        services.initialize();
+        webex.trigger('change:config');
+        assert.called(services.initConfig);
+        assert.isTrue(catalog.isReady);
+      });
 
-    //       it('should create a state', () => assert.instanceOf(services.getState(), ServiceState));
+      it('should call services#initServiceCatalogs() on webex ready', () => {
+        services.initServiceCatalogs = sinon.stub().resolves();
+        services.initialize();
+        webex.trigger('ready');
+        assert.called(services.initServiceCatalogs);
+        assert.isTrue(catalog.isReady);
+      });
 
-    //       it('should call services#initConfig() when webex config changes', () => {
-    //         services.initConfig = sinon.spy();
-    //         services.initialize();
-    //         webex.trigger('change:config');
-    //         assert.called(services.initConfig);
-    //         assert.isTrue(catalog.isReady);
-    //       });
+      it('should collect different catalogs based on OrgId region', () =>
+        assert.notDeepEqual(catalog._getAllServiceDetails(), catalogEU._getAllServiceDetails()));
 
-    //       it('should call services#initServiceCatalogs() on webex ready', () => {
-    //         services.initServiceCatalogs = sinon.stub().resolves();
-    //         services.initialize();
-    //         webex.trigger('ready');
-    //         assert.called(services.initServiceCatalogs);
-    //         assert.isTrue(catalog.isReady);
-    //       });
+      it('should not attempt to collect catalogs without authorization', (done) => {
+        const otherWebex = new WebexCore();
+        let {initServiceCatalogs} = otherWebex.internal.services;
 
-    //       it('should collect different catalogs based on OrgId region', () =>
-    //         assert.notDeepEqual(services.list(true), servicesEU.list(true)));
+        initServiceCatalogs = sinon.stub();
 
-    //       it('should not attempt to collect catalogs without authorization', (done) => {
-    //         const otherWebex = new WebexCore();
-    //         let {initServiceCatalogs} = otherWebex.internal.services;
+        setTimeout(() => {
+          assert.notCalled(initServiceCatalogs);
+          assert.isFalse(otherWebex.internal.services._getCatalog().isReady);
+          done();
+        }, 2000);
+      });
+    });
 
-    //         initServiceCatalogs = sinon.stub();
+    describe('#initServiceCatalogs()', () => {
+      it('should reject if a OrgId cannot be retrieved', () => {
+        webex.credentials.getOrgId = sinon.stub().throws();
 
-    //         setTimeout(() => {
-    //           assert.notCalled(initServiceCatalogs);
-    //           assert.isFalse(otherWebex.internal.services._getCatalog().isReady);
-    //           done();
-    //         }, 2000);
-    //       });
-    //     });
+        return assert.isRejected(services.initServiceCatalogs());
+      });
 
-    //     describe('#initServiceCatalogs()', () => {
-    //       it('should reject if a OrgId cannot be retrieved', () => {
-    //         webex.credentials.getOrgId = sinon.stub().throws();
+      it('should call services#collectPreauthCatalog with the OrgId', () => {
+        services.collectPreauthCatalog = sinon.stub().resolves();
 
-    //         return assert.isRejected(services.initServiceCatalogs());
-    //       });
+        return services.initServiceCatalogs().then(() =>
+          assert.calledWith(
+            services.collectPreauthCatalog,
+            sinon.match({
+              orgId: webex.credentials.getOrgId(),
+            })
+          )
+        );
+      });
 
-    //       it('should call services#collectPreauthCatalog with the OrgId', () => {
-    //         services.collectPreauthCatalog = sinon.stub().resolves();
+      it('should not call services#updateServices() when not authed', () => {
+        services.updateServices = sinon.stub().resolves();
 
-    //         return services.initServiceCatalogs().then(() =>
-    //           assert.calledWith(
-    //             services.collectPreauthCatalog,
-    //             sinon.match({
-    //               orgId: webex.credentials.getOrgId(),
-    //             })
-    //           )
-    //         );
-    //       });
+        // Since credentials uses AmpState, we have to set the derived
+        // properties of the dependent properties to undefined.
+        webex.credentials.supertoken.access_token = undefined;
+        webex.credentials.supertoken.refresh_token = undefined;
 
-    //       it('should not call services#updateServices() when not authed', () => {
-    //         services.updateServices = sinon.stub().resolves();
+        webex.credentials.getOrgId = sinon.stub().returns(webexUser.orgId);
 
-    //         // Since credentials uses AmpState, we have to set the derived
-    //         // properties of the dependent properties to undefined.
-    //         webex.credentials.supertoken.access_token = undefined;
-    //         webex.credentials.supertoken.refresh_token = undefined;
+        return (
+          services
+            .initServiceCatalogs()
+            // services#updateServices() gets called once by the limited catalog
+            // retrieval and should not be called again when not authorized.
+            .then(() => assert.calledOnce(services.updateServices))
+        );
+      });
 
-    //         webex.credentials.getOrgId = sinon.stub().returns(webexUser.orgId);
+      it('should call services#updateServices() when authed', () => {
+        services.updateServices = sinon.stub().resolves();
 
-    //         return (
-    //           services
-    //             .initServiceCatalogs()
-    //             // services#updateServices() gets called once by the limited catalog
-    //             // retrieval and should not be called again when not authorized.
-    //             .then(() => assert.calledOnce(services.updateServices))
-    //         );
-    //       });
-
-    //       it('should call services#updateServices() when authed', () => {
-    //         services.updateServices = sinon.stub().resolves();
-
-    //         return (
-    //           services
-    //             .initServiceCatalogs()
-    //             // services#updateServices() gets called once by the limited catalog
-    //             // retrieval and should get called again when authorized.
-    //             .then(() => assert.calledTwice(services.updateServices))
-    //         );
-    //       });
-    //     });
+        return (
+          services
+            .initServiceCatalogs()
+            // services#updateServices() gets called once by the limited catalog
+            // retrieval and should get called again when authorized.
+            .then(() => assert.calledTwice(services.updateServices))
+        );
+      });
+    });
 
     //     describe('#isServiceUrl()', () => {
     //       let testDetailTemplate;
     //       let testDetail;
 
-    //       beforeEach('load test url', () => {
+    //       beforeEach(() => {
     //         testDetailTemplate = {
     //           defaultUrl: 'https://www.example.com/api/v1',
     //           hosts: [
@@ -495,7 +429,7 @@ describe('webex-core', () => {
     //       let testDetail;
     //       let testDetailTemplate;
 
-    //       beforeEach('load test url', () => {
+    //       beforeEach(() => {
     //         testDetailTemplate = {
     //           defaultUrl: 'https://www.example.com/api/v1',
     //           hosts: [
@@ -538,7 +472,7 @@ describe('webex-core', () => {
     //         );
     //       });
 
-    //       afterEach('unload test url', () => {
+    //       afterEach(() => {
     //         catalog._unloadServiceUrls('preauth', [testDetail]);
     //       });
     //     });
@@ -547,7 +481,7 @@ describe('webex-core', () => {
     //       let testDetailTemplate;
     //       let testDetail;
 
-    //       beforeEach('load test url', () => {
+    //       beforeEach(() => {
     //         catalog.clean();
 
     //         testDetailTemplate = {
@@ -572,7 +506,7 @@ describe('webex-core', () => {
     //         catalog._loadServiceDetails('preauth', [testDetail]);
     //       });
 
-    //       afterEach('unload test url', () => {
+    //       afterEach(() => {
     //         catalog._unloadServiceUrls('preauth', [testDetail]);
     //       });
 
