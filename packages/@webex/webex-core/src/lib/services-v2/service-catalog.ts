@@ -76,7 +76,7 @@ const ServiceCatalog = AmpState.extend({
   /**
    * @private
    * Search the service details array to locate a `ServiceDetails`
-   * class object based on its name.
+   * class object based on its id.
    * @param {string} clusterId
    * @param {string} [serviceGroup]
    * @returns {IServiceDetail}
@@ -89,12 +89,12 @@ const ServiceCatalog = AmpState.extend({
 
   /**
    * @private
-   * Safely load one or more `ServiceDetail`s into this `Services` instance.
+   * Safely load one or more `ServiceDetail`s into this `ServiceCatalog` instance.
    * @param {string} serviceGroup
    * @param  {Array<ServiceDetail>} serviceDetails
-   * @returns {Array<IServiceDetail>}
+   * @returns {void}
    */
-  _loadServiceDetails(serviceGroup: string, serviceDetails: Array<IServiceDetail>) {
+  _loadServiceDetails(serviceGroup: string, serviceDetails: Array<IServiceDetail>): void {
     // declare namespaces outside of loop
     let existingService: IServiceDetail | undefined;
 
@@ -161,10 +161,7 @@ const ServiceCatalog = AmpState.extend({
 
   /**
    * Search over all service groups and return a service value from a provided
-   * clusterId. Currently, this method will return either a service name, or a
-   * service url depending on the `value` parameter. If the `value` parameter
-   * is set to `name`, it will return a service name to be utilized within the
-   * Services plugin methods.
+   * clusterId.
    * @param {object} params
    * @param {string} params.clusterId - clusterId of found service
    * @param {string} [params.serviceGroup] - specify service group
