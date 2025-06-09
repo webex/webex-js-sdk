@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Contact Center SDK Lab</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Add Highlight.js CSS -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css">
+    <style>
+        /* Make code comments more visible against dark background */
+        .hljs-comment {
+            color: #98c379 !important;
+            /* Light green color for better visibility */
+        }
+    </style>
+    <script src="https://unpkg.com/webex@3.8.0-next.88/umd/webex.min.js"></script>
+
+    <script type="module" src="./index.js"></script>
+    <!-- Add Highlight.js Script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+</head>>
+
+<body>
+    <h1>Webex Contact Center SDK Lab</h1>
+
+    <section id="introduction">
+        <p>Welcome to the Webex Contact Center SDK Lab! This lab demonstrates how to build applications using the
+            <a href="https://github.com/webex/webex-js-sdk" target="_blank">Webex JavaScript SDK</a>. For simplicity,
+            we're using a CDN version of the SDK in this lab, but in production applications, you would typically
+            install
+            it via npm (<code>@webex/plugin-cc</code> Will be renamed to @webex/contact-center soon).
+        </p>
+        <p><strong>Important Prerequisite:</strong> Before starting this lab, ensure your Webex Contact Center is set up
+            and configured. For detailed instructions on setting up your Contact Center environment, please refer to the
+            official documentation at <a href="https://webexcc.github.io/"
+                target="_blank">https://webexcc.github.io/</a> , Please make sure Lab 0 to Lab 3 is finished , we would
+            need agent credentials and the entry point phone number to dial .
+        </p>
+        <p>Follow the steps below to learn how to authenticate with the SDK, register agents, handle interactions,
+            and manage contact center tasks using the SDK's Contact Center capabilities.</p>
+    </section>
+
+    <!-- Auth Section -->
+    <section id="auth">
+        <h2>Step 1: Authentication</h2>
+        <p>
+            The first step is to initialize the Webex SDK. This can be done using a temporary Personal Access Token
+            (PAT) for development or via OAuth for production applications.
+            The initialized <code>webex</code> object is crucial as it's used for all subsequent SDK interactions.
+            This lab's <code>index.js</code> and <code>auth.js</code> handle the initialization logic.
+        </p>
+        <p><strong>Using a Personal Access Token:</strong></p>
+        <div>
+            <input type="text" id="access-token" placeholder="Paste your access token here">
+            <button id="btn-token-auth">Initialize with Token</button>
+        </div>
+        <pre><code class="javascript">// How it works (simplified from auth.js and index.js):
+// 1. User enters token in the input field and clicks "Initialize with Token".
+// 2. The token string is retrieved from the input field.
+const accessToken = document.getElementById('access-token').value;
+
+// 3. The Webex SDK is initialized with this token.
+const webex = Webex.init({
+    credentials: {
+        access_token: accessToken // Value from the input field
+    }
+});
+
+// 4. Wait for the SDK to be fully initialized
+await new Promise((resolve) => {
+    webex.once('ready', () => {
+        console.log('Webex SDK initialization complete');
+        resolve();
+    });
+});
+
+// 5. The 'webex' object is stored globally (e.g., window.webex) after successful initialization.
+//    This 'webex' instance is then used for all other SDK calls (register, stationLogin, etc.).
+//    index.js calls initWithAccessToken(token) from auth.js which returns the initialized webex object.
+</code></pre>
+        <p><strong>Using OAuth (for production):</strong></p>
+        <p>To use OAuth, you first need to create an Integration on the <a href="https://developer.webex.com/my-apps"
+                target="_blank">Webex Developer Portal</a>.
+            During the integration creation process, you will be provided with a <code>Client ID</code>. You will also
+            need to specify a <code>Redirect URI</code>.
+            This <code>Redirect URI</code> is the URL that Webex will redirect the user back to after they have
+            successfully authenticated. For this lab, if you are running it locally,
+            this would typically be <code>http://localhost:<PORT>/</code> where <code><PORT></code> is the port number
+            your local server is running on (e.g., http://localhost:8000/ if you started a simple server on port 8000).
+            Make sure this exact Redirect URI is added to your integration settings on the Webex Developer Portal.
+        </p>
+        <button id="btn-oauth">Login via OAuth</button>
+        <pre><code class="javascript">// How it works (simplified from auth.js and index.js):
+// 1. User clicks "Login via OAuth".
+// 2. SDK is initialized with OAuth 2.0 parameters (client_id, redirect_uri, scopes).
+//    - client_id: Obtain this from your Webex Integration on developer.webex.com.
+//    - redirect_uri: This must match one of the Redirect URIs configured in your Webex Integration.
+const webex = Webex.init({
+    config: {
+        credentials: {
+            client_id: 'YOUR_PUBLIC_CLIENT_ID', // Provided by your Webex integration (developer.webex.com/my-apps)
+            redirect_uri: 'YOUR_APP_REDIRECT_URI', // Your app's callback URL (must be registered in the integration)
+            // Required Contact Center and Calling scopes:
+            scope: [
+                // Contact Center mandatory scopes
+                "cjp:config_read",   // Read configuration
+                "cjp:config_write",  // Modify configuration  
+                "cjp:config",        // General configuration access
+                "cjp:user",          // User operations
+
+                // WebRTC Calling scopes
+                "spark:webrtc_calling", // Browser calling
+                "spark:calls_read",     // Read call data
+                "spark:calls_write",    // Modify call state
+                "spark:xsi",            // Extended services
+
+                // Additional scopes
+                "spark:kms"             // Required for encryption 
+            ].join(' ')
+        }
+    }
+});
+
+// 3. The OAuth 2.0 login flow is initiated.
+await webex.authorization.initiateLogin(); // This redirects the user to Webex login.
+
+// 4. After successful login and redirect back to your app:
+// - The SDK automatically exchanges the authorization code for an access token
+// - Once complete, the SDK emits the 'ready' event
+await new Promise((resolve) => {
+    webex.once('ready', () => {
+        console.log('Webex SDK initialized with OAuth token');
+        resolve();
+    });
+});
+
+// 5. The 'webex' object is now ready for use and stored globally.
+</code></pre>
+        <p><strong>Output of this step:</strong> An initialized <code>webex</code> SDK object (often stored as
+            <code>window.webex</code>), ready for Contact Center operations.
+        </p>
+        <p><strong>Relevant JS function:</strong> <code>initWithAccessToken</code> in <code>auth.js</code></p>
+    </section>
+
+    <!-- Registration Section -->
+    <section id="register">
+        <h2>Step 2: Agent Registration</h2>
+        <p>
+            Once the SDK is authenticated (<code>webex</code> object is available), the agent needs to register with the
+            Contact Center.
+            The <code>webex.cc.register()</code> method is called.
+            The response from this call, often called <code>agentProfile</code>, contains vital information used to
+            populate UI elements for subsequent steps (like selecting a team, login method, or agent state).
+            This lab's <code>registration.js</code> handles this and populates the dropdowns.
+        </p>
+        <pre><code class="javascript">// How it works (simplified from registration.js and index.js):
+// Input: The initialized 'webex' object from Step 1.
+
+async function register(webex) { // 'webex' is window.webex from Step 1
+    try {
+        const agentProfile = await webex.cc.register();
+        // 'agentProfile' is the successful response from the SDK.
+        console.log('Agent registered. Profile:', agentProfile);
+
+        // Key values from agentProfile and how they are used:
+        const teams = agentProfile.teams; // Used to populate the "Select Team" dropdown (id="teamsDropdown")
+        const loginVoiceOptions = agentProfile.loginVoiceOptions; // Used to populate the "Agent Login" dropdown (id="AgentLogin")
+        const agentStates = agentProfile.agentStates; // Used to populate the "Choose State" dropdown (id="sel-state")
+        const idleCodes = agentProfile.idleCodes; // Used to populate the "Choose State" dropdown (id="sel-state") for Idle/Aux codes
+        const wrapupCodes = agentProfile.wrapupCodes; // Used to populate the "Choose Wrapup Code" dropdown (id="wrapup-codes") for Step 7
+
+        // Example of populating teams (done in registration.js -> populateTeamsDropdown):
+        const teamsDropdown = document.getElementById('teamsDropdown');
+        teams.forEach(team => {
+            const option = document.createElement('option');
+                option.value = team.id;
+                option.text = team.name;
+                teamsDropdown.add(option);
+            });
+
+        return agentProfile; // This profile is stored or used by other functions.
+    } catch (error) {
+        console.error('Registration failed:', error);
+        throw error;
+    }
+}
+
+    // To deregister:
+    await window.webex.cc.deregister();
+</code></pre>
+        <p><strong>Output of this step:</strong> An <code>agentProfile</code> object containing agent details, teams,
+            available states, login options, and wrapup codes. These values are used to configure the UI for the next
+            steps.</p>
+        <button id="btn-register" disabled>Register Agent</button>
+        <button id="btn-deregister" disabled>Deregister Agent</button>
+        <p>Note: Contact Center SDK automatically handles reconnection and session management.</p>
+        <p><strong>Relevant JS function:</strong> <code>registerAgent</code> in <code>registration.js</code></p>
+    </section>
+
+    <!-- Station Login Section -->
+    <section id="station">
+        <h2>Step 3: Station Login</h2>
+        <p>
+            After successful registration, the agent logs into a station. This makes them available to handle
+            interactions for a specific team and using a chosen device (Browser/WebRTC, Agent DN, or Extension).
+            The <code>webex.cc.stationLogin()</code> method is used.
+            Inputs for this step come from UI selections (team, login method, dial number) which were populated based on
+            <code>agentProfile</code> from Step 2.
+            This lab's <code>station-login.js</code> handles this logic.
+        </p>
+        <pre><code class="javascript">// How it works (simplified from station-login.js and index.js):
+// Inputs:
+// - 'webex' object (from Step 1).
+// - 'teamId': Selected value from the "Select Team" dropdown (id="teamsDropdown").
+//             This dropdown was populated using agentProfile.teams from Step 2.
+// - 'loginOption': Selected value from the "Agent Login" dropdown (id="AgentLogin").
+//                  This dropdown was populated using agentProfile.loginVoiceOptions from Step 2.
+// - 'dialNumber': Value from the "Dial Number" input field (id="dialNumber"), if loginOption is AGENT_DN or EXTENSION.
+
+async function loginToStation(webex, selectedTeamId, selectedLoginOption, inputDialNumber) {
+    try {
+        const stationLoginPayload = {
+            teamId: selectedTeamId,     // e.g., "Y2lzY29zcGFyazovL3VzL1RFQU0vMWMyYj..."
+            loginOption: selectedLoginOption // e.g., "BROWSER", "AGENT_DN", "EXTENSION"
+        };
+
+        if (selectedLoginOption === 'AGENT_DN' || selectedLoginOption === 'EXTENSION') {
+            stationLoginPayload.dialNumber = inputDialNumber; // e.g., "+15551234567" or "1001"
+        }
+
+        const response = await webex.cc.stationLogin(stationLoginPayload);
+        console.log('Station login successful:', response);
+        // 'response' contains details like 'deviceId', which is important for logout.
+        // window.deviceId = response.deviceId; // Stored for later use (e.g., in stationLogout)
+
+        // After successful station login, the agent is typically ready to change their state (Step 4)
+        // and receive tasks (Step 5).
+        return response;
+    } catch (error) {
+        console.error('Station login failed:', error);
+        throw error;
+    }
+}
+
+// Optionally, you can listen for station login events:
+webex.cc.on('agent:stationLoginSuccess', (eventData) => {
+    console.log('Station login successful via event:', eventData);
+});
+
+webex.cc.on('agent:stationLoginFailed', (error) => {
+    console.log('Station login failed via event:', error);
+});
+
+// Listen for station logout events:
+webex.cc.on('agent:logoutSuccess', (eventData) => {
+    console.log('Station logout successful via event:', eventData);
+});
+
+webex.cc.on('agent:logoutFailed', (error) => {
+    console.log('Station logout failed via event:', error);
+});
+
+// To logout from station:
+await window.webex.cc.stationLogout({ logoutReason: 'User Initiated', deviceId: window.deviceId });
+</code></pre>
+        <p><strong>Output of this step:</strong> Agent is logged into a station. The response includes a
+            <code>deviceId</code>. The agent can now manage their state and handle tasks.
+        </p>
+        <div class="flex">
+            <fieldset>
+                <legend>Select Team</legend>
+                <select id="teamsDropdown" disabled>
+                    <option value="" selected>Choose Team...</option>
+                </select>
+            </fieldset>
+            <fieldset>
+                <legend>Agent Login</legend>
+                <select id="AgentLogin" onchange="window.handleAgentLogin(event)" disabled>
+                    <option value="" selected>Choose Agent Login...</option>
+                    <option value="BROWSER">Browser WebRTC</option>
+                    <option value="AGENT_DN">Agent DN</option>
+                    <option value="EXTENSION">Extension</option>
+                </select>
+                <input id="dialNumber" placeholder="Dial Number" type="text" disabled>
+                <button id="loginStation" onclick="window.handleStationLogin(window.webex)" disabled>Login</button>
+                <button id="logoutStation" onclick="window.handleStationLogout(window.webex)"
+                    class="hidden">Logout</button>
+            </fieldset>
+        </div>
+        <p><strong>Relevant JS function:</strong> <code>loginToStation</code> in <code>station-login.js</code></p>
+    </section>
+
+    <!-- State Management Section -->
+    <section id="state">
+        <h2>Step 4: Agent State Management</h2>
+        <p>
+            Once logged into a station, an agent can manage their availability state (e.g., Available, Idle/NotReady
+            with an auxiliary code like "Lunch").
+            The <code>webex.cc.setAgentState()</code> method is used.
+            The "Choose State" dropdown (<code>id="sel-state"</code>) is populated using <code>agentStates</code> and
+            <code>auxCodes</code> from the <code>agentProfile</code> obtained in Step 2.
+            The SDK also emits an <code>agent:stateChange</code> event to confirm state transitions.
+            This lab's <code>state-change.js</code> handles this.
+        </p>
+        <pre><code class="javascript">// How it works (simplified from state-change.js and index.js):
+// Inputs:
+// - 'webex' object (from Step 1).
+// - 'state': The desired primary state, either 'Available' or 'Idle', and nothing else.
+// - 'auxCodeId': The ID of the auxiliary code, especially for "Idle" states.
+//   Both are derived from the selection in the "Choose State" dropdown (id="sel-state").
+//   This dropdown was populated using agentProfile.agentStates/idleCodes from Step 2.
+
+async function changeAgentState(webex, targetState, targetAuxCodeId) {
+    // Example: User selects "Lunch" from the "Choose State" dropdown.
+    // The selected option might have:
+    // - data-state="Idle" (or a specific not-ready state name)
+    // - value="auxCodeIdForLunch" (the ID for the "Lunch" aux code)
+
+    try {
+        const response = await webex.cc.setAgentState({
+            state: targetState,          // e.g., "Idle"
+            auxCodeId: targetAuxCodeId,    // e.g., "auxCodeIdForLunch"
+            lastStateChangeReason: 'User Initiated'
+        });
+        console.log('State set successfully:', response);
+        // The agent's state is now updated on the backend.
+        return response;
+    } catch (error) {
+        console.error('Failed to set state:', error);
+        throw error;
+    }
+}
+
+// Listen for success/failure of state change attempts:
+webex.cc.on('agent:stateChangeSuccess', (eventData) => {
+    console.log('State change successful via event:', eventData);
+});
+
+webex.cc.on('agent:stateChangeFailed', (error) => {
+    console.log('State change failed via event:', error);
+});
+
+// Listen for any state changes (both local and remote):
+webex.cc.on('agent:stateChange', (eventData) => {
+   console.log('Agent state changed (local or remote):', eventData.state, 'AuxCode:', eventData.auxCodeId);
+   // This event triggers for both:
+   // 1. Local state changes made by this agent
+   // 2. Remote state changes (made by supervisor or system)
+   // Update UI to reflect eventData.state and eventData.auxCodeId.
+   // For example, re-select the correct option in the "sel-state" dropdown.
+});
+</code></pre>
+        <p><strong>Output of this step:</strong> The agent's state is changed in the Contact Center system. The
+            <code>agent:stateChange</code> event provides confirmation and the new state details.
+        </p>
+        <select id="sel-state" disabled>
+            <option value="">Choose State...</option>
+        </select>
+        <button id="btn-set-state" disabled>Set State</button>
+        <p>Note: Some states may require aux codes for additional context.</p>
+        <p><strong>Relevant JS function:</strong> <code>changeAgentState</code> in <code>state-change.js</code></p>
+    </section>
+
+    <!-- Task Management Section -->
+    <section id="tasks">
+        <h2>Step 5: Task Management - Receiving Tasks</h2>
+        <p>
+            When an agent is in the Avaliable state, the Contact Center can offer them tasks (e.g., calls, chats).
+            The SDK uses event listeners to notify the application about task-related events.
+            The most important initial event is <code>task:incoming</code>, which provides a <code>task</code> object.
+            This <code>task</code> object is the key to managing that specific interaction.
+            This lab's <code>task-manager.js</code> sets up these listeners.
+        </p>
+        <pre><code class="javascript">// How it works (simplified from task-manager.js and index.js):
+// Input: The initialized 'webex' object (from Step 1).
+
+function setupTaskEventListeners(webex) { // webex is window.webex
+    // Event: A new task is being offered to the agent.
+    webex.cc.on('task:incoming', async (task) => {
+        // When a new task arrives:
+        // 1. task object contains everything needed to handle this interaction
+        console.log('New task received! Interaction ID:', task.data.interactionId);
+        console.log('Media type:', task.data.interaction.mediaType); // e.g., "telephony", "chat"
+        
+        // 2. You can directly accept or decline the task:
+        try {
+            // To accept the task:
+            await task.accept();
+            console.log('Task accepted successfully');
+            // The task:assigned event will be triggered automatically
+            
+            // OR to decline the task:
+            // await task.decline();
+            // console.log('Task declined successfully');
+        } catch (error) {
+            console.error('Failed to handle task:', error);
+        }
+
+        // 3. Listen for task-specific events
+        setupTaskSpecificEventHandlers(task);
+    });
+    
+    // Event: Task state restored after a page refresh or reconnection.
+    webex.cc.on('task:hydrate', (task) => {
+        console.log('Task hydrated (restored):', task.data.interactionId);
+        // Similar to 'task:incoming', this 'task' object represents an active task.
+        // Store it and set up its specific event handlers.
+        // window.currentTask = task;
+        setupTaskSpecificEventHandlers(task);
+    });
+}
+
+// Setting up listeners for events on a specific task instance:
+function setupTaskSpecificEventHandlers(currentTask) { // currentTask is the object from 'task:incoming' or 'task:hydrate'
+    
+    // Event: Task has been successfully assigned to the agent (e.g., after agent accepts).
+    currentTask.on('task:assigned', (data) => {
+        console.log('Task assigned to agent:', currentTask.data.interactionId);
+        // UI can now update to show active task details.
+    });
+    
+    // Event: For voice calls, this event provides the audio media stream.
+    currentTask.on('task:media', (track) => { // 'track' is a MediaStreamTrack
+        console.log('Media track received for voice call:', currentTask.data.interactionId);
+        // This 'track' needs to be connected to an HTML <audio> element to play the call audio.
+        const audioElement = document.getElementById('remote-audio');
+        if (audioElement) {
+            audioElement.srcObject = new MediaStream([track]); // Pass the track to the audio element
+        }
+    });
+
+    // Other task events to listen for:
+currentTask.on('task:hold', () => console.log('Call placed on hold'));
+currentTask.on('task:resume', () => console.log('Call resumed from hold'));
+currentTask.on('task:consultCreated', () => console.log('Consult initiated'));
+// ... and many more for different interaction states.
+// For a full list of task events, refer to:
+// https://webex.github.io/webex-js-sdk/wxcc/enums/TASK_EVENTS.html
+
+// Listen for task ended event
+currentTask.on('task:end', (data) => {
+    if (data.wrapUpRequired) {
+        setupWrapupEvents(currentTask);
+    }
+});
+}
+</code></pre>
+        <p><strong>Output of this step:</strong> When a task is offered, a <code>task</code> object is received. This
+            object is then used for all further actions and event handling related to that specific interaction (see
+            Step 6 and 7).</p>
+        <div class="task-notification" id="task-notification" style="display: none;">
+            <span class="blink">New Incoming Task!</span>
+        </div>
+        <button id="btn-accept" class="hidden" disabled>Accept Current Task</button>
+        <button id="btn-decline" class="hidden" disabled>Decline Current Task</button>
+        <div id="active-task-indicator"
+            style="display:none; color: #fff; background: #d9534f; padding: 8px; margin-top: 10px; border-radius: 4px; font-weight: bold;">
+            Active Task: You have an ongoing interaction.
+        </div>
+        <p><strong>Relevant JS functions:</strong>
+        <ul>
+            <li><code>setupTaskEventListeners</code> in <code>task-manager.js</code></li>
+            <li><code>handleIncomingTask</code> in <code>task-manager.js</code></li>
+        </ul>
+        </p>
+    </section>
+
+    <!-- Call Controls Section -->
+    <section id="controls">
+        <h2>Step 6: Call Controls - Managing Active Tasks</h2>
+        <p>
+            Once a <code>task</code> object is received (from <code>task:incoming</code> in Step 5) and potentially
+            accepted, the agent can perform various actions on it, like accepting, declining, holding, muting, ending,
+            etc.
+            All these actions are methods called directly on the <code>task</code> object.
+            This lab's <code>task-manager.js</code> implements these control functions.
+        </p>
+        <pre><code class="javascript">// All functions below take the 'task' object (obtained in Step 5) as input.
+// Let's assume 'currentTask' holds the task object from the 'task:incoming' event.
+// Hold/Resume Controls:
+// Each operation returns a promise and also emits events
+async function toggleHoldCall(currentTask) {
+    // First, set up event listeners for hold/resume events
+    currentTask.on('task:hold', () => {
+        console.log('Hold event received - call is now on hold');
+        // Update UI to show hold state
+    });
+    
+    currentTask.on('task:unhold', () => {
+        console.log('Unhold event received - call is now active');
+        // Update UI to show active state
+    });
+
+    try {
+        if (currentTask.data.media?.isHold) {
+            // Promise-based approach
+            await currentTask.resume();
+            console.log('Resume command sent successfully');
+        } else {
+            // Promise-based approach
+            await currentTask.hold();
+            console.log('Hold command sent successfully');
+        }
+    } catch (error) {
+        console.error('Hold/resume operation failed:', error);
+    }
+}
+
+// Recording Controls:
+async function toggleCallRecording(currentTask) {
+    // Set up event listeners for recording state changes
+    currentTask.on('task:recordingPaused', () => {
+        console.log('Recording pause event received');
+        // Update recording UI to paused state
+    });
+
+    currentTask.on('task:recordingPauseFailed', () => {
+        console.log('Recording pause failed event received');
+        // Show error in UI
+    });
+
+    currentTask.on('task:recordingResumed', () => {
+        console.log('Recording resume event received');
+        // Update recording UI to active state
+    });
+
+    currentTask.on('task:recordingResumeFailed', () => {
+        console.log('Recording resume failed event received');
+        // Show error in UI
+    });
+
+    try {
+        if (currentTask.data.interaction.recording?.paused === false) {
+            // Promise-based approach
+            await currentTask.pauseRecording();
+            console.log('Pause recording command sent successfully');
+        } else {
+            // Promise-based approach
+            await currentTask.resumeRecording();
+            console.log('Resume recording command sent successfully');
+        }
+    } catch (error) {
+        console.error('Recording operation failed:', error);
+    }
+}
+
+    // End Task Controls:
+async function endCurrentTask(currentTask) {
+    try {
+        // Promise-based approach
+        await currentTask.end();
+        console.log('End task command sent successfully');
+    } catch (error) {
+        console.error('End task failed:', error);
+    }
+}
+
+    // Event: Task has ended
+    currentTask.on('task:end', () => {
+        console.log('Task ended:', currentTask.data.interactionId);
+        // Clean up UI related to this task
+    });
+
+// Consult and Transfer operations also use the 'currentTask' object:
+// await currentTask.consult({ destinationType: 'agent', to: 'agentIdOrExtension', mediaType: 'telephony' });
+// await currentTask.transfer({ destinationType: 'queue', to: 'queueId' });
+// await currentTask.endConsult({ ... });
+// await currentTask.consultTransfer();
+</code></pre>
+        <p><strong>Output of these actions:</strong> The state of the <code>currentTask</code> changes within the
+            Contact Center. Corresponding events (e.g., <code>task:hold</code>, <code>task:resume</code>,
+            <code>task:end</code>) are emitted on the <code>currentTask</code> object, allowing the UI to update.
+        </p>
+        <div class="call-controls">
+            <button id="btn-hold" disabled>Hold Call</button>
+            <button id="btn-mute" disabled>Mute Call</button>
+            <!-- Transfer/Consult functionality coming soon -->
+            <!--<button id="btn-transfer" disabled>Transfer</button>-->
+            <!--<button id="btn-consult" disabled>Consult</button>-->
+            <!--<button id="btn-end-consult" disabled>End Consult</button>-->
+            <!--<button id="btn-consult-transfer" disabled>Complete Transfer</button>-->
+            <button id="pause-resume-recording" disabled>Pause Recording</button>
+            <button id="btn-end" disabled>End Call</button>
+        </div>
+        <p><strong>Relevant JS functions:</strong>
+        <ul>
+            <li><code>acceptTask</code>, <code>endTask</code>, <code>toggleHold</code>, <code>toggleMute</code>,
+                <code>toggleRecordingPause</code> in <code>task-manager.js</code>
+            </li>
+        </ul>
+        </p>
+    </section>
+
+    <!-- Task List Section -->
+    <section id="task-list">
+        <h2>Active Tasks</h2>
+        <div id="taskList" class="task-list"></div>
+    </section>
+
+    <!-- Wrapup Section -->
+    <section id="wrapup">
+        <h2>Step 7: Task Wrapup</h2>
+        <p>
+            After a task ends (e.g., a call is disconnected), if <code>wrapUpRequired</code> was true in the
+            <code>task:end</code> event (see Step 5), the agent needs to perform wrapup.
+            This involves selecting a wrapup code and submitting it using the <code>task.wrapup()</code> method on the
+            same <code>task</code> object that just ended.
+            The "Choose Wrapup Code" dropdown (<code>id="wrapup-codes"</code>) was populated in Step 2 using
+            <code>agentProfile.wrapupCodes</code>.
+            This lab's <code>task-manager.js</code> (specifically <code>submitWrapup</code> function) handles this.
+        </p>
+        <pre><code class="javascript">// How it works (simplified from task-manager.js's submitWrapup):
+// Inputs:
+    // - 'currentTask': The specific task object that has ended and requires wrapup (this is the same 'task' object from Step 5 & 6).
+// - 'selectedWrapupCodeId': The ID of the wrapup code selected from the "Choose Wrapup Code" dropdown (id="wrapup-codes").
+//                           This dropdown was populated using agentProfile.wrapupCodes from Step 2.
+
+// First, set up wrap-up event listeners
+function setupWrapupEvents(currentTask) {
+    // Triggered when task enters wrap-up state
+    currentTask.on('task:wrapup', (task) => {
+        console.log('Task entered wrap-up state:', task.data.interactionId);
+        // Enable wrap-up UI
+        // Show wrap-up form with codes
+        document.getElementById('wrapup-codes').disabled = false;
+        document.getElementById('btn-wrapup').disabled = false;
+    });
+
+    // Triggered when wrap-up is completed
+    currentTask.on('task:wrappedup', (task) => {
+        console.log('Task wrap-up completed:', task.data.interactionId);
+        // Clean up wrap-up UI
+        document.getElementById('wrapup-codes').disabled = true;
+        document.getElementById('btn-wrapup').disabled = true;
+        // Agent may return to Available state
+    });
+}
+
+// Then handle the wrap-up operation
+async function completeTaskWrapup(currentTask, selectedWrapupCodeId) {
+    try {
+        // Promise-based approach to submit wrap-up
+        await currentTask.wrapup({
+            auxCodeId: selectedWrapupCodeId, // ID from wrapup-codes dropdown
+        });
+        console.log('Wrap-up submitted successfully');
+        
+        // The task:wrappedup event will be triggered automatically
+        // Listen for it using the events above to update UI
+    } catch (error) {
+        console.error('Wrap-up failed:', error);
+        throw error;
+    }
+}
+
+// Usage example:
+// 1. When task ends, check if wrap-up is required
+currentTask.on('task:end', (data) => {
+    if (data.wrapUpRequired) {
+        setupWrapupEvents(currentTask);
+        // task:wrapup event will be triggered by the system
+    }
+});
+</code></pre>
+        <p><strong>Output of this step:</strong> The task is formally completed with a wrapup reason. The agent is
+            typically ready for new tasks or returns to an idle state.</p>
+        <div class="wrapup-container">
+            <select id="wrapup-codes" disabled>
+                <option value="" selected>Choose Wrapup Code...</option>
+            </select>
+            <button id="btn-wrapup" disabled>Submit Wrapup</button>
+        </div>
+        <p><strong>Relevant JS function:</strong> <code>submitWrapup</code> in <code>task-manager.js</code></p>
+    </section>
+
+    <!-- Cleanup Section -->
+    <section id="cleanup">
+        <h2>Step 8: Cleanup - Logging Out and Deregistering</h2>
+        <p>
+            When ending an agent session (e.g., end of shift, application shutdown), it's important to properly clean up
+            by logging out from the station and deregistering from the Contact Center.
+        </p>
+        <pre><code class="javascript">// How to properly perform cleanup:
+async function cleanup() {
+    try {
+        // 1. First, log out from the station
+        await webex.cc.stationLogout({
+            logoutReason: 'User Initiated',
+            deviceId: window.deviceId  // Store deviceId from stationLogin response
+        });
+
+        // Station logout events you can listen for:
+        webex.cc.on('agent:logoutSuccess', (eventData) => {
+            console.log('Station logout successful via event');
+            // Clear station-related UI state
+        });
+
+        webex.cc.on('agent:logoutFailed', (error) => {
+            console.error('Station logout failed:', error);
+        });
+
+        // 2. Then deregister the SDK
+        await webex.cc.deregister();
+        console.log('SDK deregistered successfully');
+
+        // 3. Clean up application state
+        // - Clear stored deviceId
+        // - Reset UI to initial state
+        // - Clear any stored tasks or agent data
+        window.deviceId = null;
+        window.currentTask = null;
+    } catch (error) {
+        console.error('Cleanup failed:', error);
+        throw error;
+    }
+}
+</code></pre>
+        <p><strong>When to call cleanup:</strong></p>
+        <ul>
+            <li>At the end of an agent's shift</li>
+            <li>Before application shutdown</li>
+            <li>When switching to a different agent</li>
+            <li>During application cleanup</li>
+        </ul>
+        <p><strong>Relevant JS function:</strong> <code>cleanup</code> in <code>cleanup.js</code></p>
+    </section>
+
+    <!-- Audio Elements -->
+    <audio id="remote-audio" autoplay></audio>
+
+    <!-- Log Upload -->
+    <section id="log-upload">
+        <h2>Log Upload</h2>
+        <pre><code class="javascript">// To upload logs for troubleshooting:
+await webex.cc.uploadLogs({
+    description: 'Brief description of the issue'
+});
+
+// The response will include a logId that can be referenced in support tickets</code></pre>
+    </section>
+    <script>
+        // Initialize syntax highlighting
+        document.addEventListener('DOMContentLoaded', (event) => {
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+        });
+    </script>
+</body>
+
+</html>

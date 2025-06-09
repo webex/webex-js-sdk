@@ -1,5 +1,5 @@
 import * as Err from './Err';
-import {WebexRequestPayload} from '../../types';
+import {LoginOption, WebexRequestPayload} from '../../types';
 import {Failure} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
@@ -19,6 +19,48 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
   };
 };
 
+export const isValidDialNumber = (input: string): boolean => {
+  // This regex checks for a valid dial number format for only few countries such as US, Canada.
+  const regexForDn = /1[0-9]{3}[2-9][0-9]{6}([,]{1,10}[0-9]+){0,1}/;
+
+  return regexForDn.test(input);
+};
+
+export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOption) => {
+  let duplicateLocationMessage = 'This value is already in use';
+
+  if (loginOption === LoginOption.EXTENSION) {
+    duplicateLocationMessage = 'This extension is already in use';
+  }
+
+  if (loginOption === LoginOption.AGENT_DN) {
+    duplicateLocationMessage =
+      'Dial number is in use. Try a different one. For help, reach out to your administrator or support team.';
+  }
+
+  const errorCodeMessageMap = {
+    DUPLICATE_LOCATION: {
+      message: duplicateLocationMessage,
+      fieldName: loginOption,
+    },
+    INVALID_DIAL_NUMBER: {
+      message:
+        'Enter a valid US dial number. For help, reach out to your administrator or support team.',
+      fieldName: loginOption,
+    },
+  };
+
+  const defaultMessage = 'An error occurred while logging in to the station';
+  const defaultFieldName = 'generic';
+
+  const reason = failure?.data?.reason || '';
+
+  return {
+    message: errorCodeMessageMap[reason]?.message || defaultMessage,
+    fieldName: errorCodeMessageMap[reason]?.fieldName || defaultFieldName,
+  };
+};
+
 /**
  * Extracts error details and logs the error. Also uploads logs for the error unless it is a silent relogin agent not found error.
  *
@@ -33,8 +75,11 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
  * @ignore
  */
 export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
+  let errData = {message: '', fieldName: ''};
+
   const failure = error.details as Failure;
   const reason = failure?.data?.reason ?? `Error while performing ${methodName}`;
+
   if (!(reason === 'AGENT_NOT_FOUND' && methodName === 'silentReLogin')) {
     LoggerProxy.error(`${methodName} failed with reason: ${reason}`, {
       module: moduleName,
@@ -47,8 +92,25 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
     });
   }
 
+  if (methodName === 'stationLogin') {
+    errData = getStationLoginErrorData(failure, error.loginOption);
+
+    LoggerProxy.error(
+      `${methodName} failed with reason: ${reason}, message: ${errData.message}, fieldName: ${errData.fieldName}`,
+      {
+        module: moduleName,
+        method: methodName,
+        trackingId: failure?.trackingId,
+      }
+    );
+  }
+
+  const err = new Error(reason ?? `Error while performing ${methodName}`);
+  // @ts-ignore - add custom property to the error object for backward compatibility
+  err.data = errData;
+
   return {
-    error: new Error(reason ?? `Error while performing ${methodName}`),
+    error: err,
     reason,
   };
 };

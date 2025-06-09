@@ -26,7 +26,7 @@ describe('webex-core', () => {
         .create({count: 1})
         .then(
           ([user]) =>
-            new Promise((resolve) => {
+            new Promise<void>((resolve) => {
               setTimeout(() => {
                 webexUser = user;
                 webex = new WebexCore({credentials: user.token});
@@ -56,13 +56,13 @@ describe('webex-core', () => {
       let testDetailTemplate;
       let testDetail;
 
-      beforeEach('load test url', () => {
+      beforeEach(() => {
         testDetailTemplate = formattedServiceHostmapEntryConv;
         testDetail = new ServiceDetail(testDetailTemplate);
         catalog._loadServiceDetails('preauth', [testDetail]);
       });
 
-      afterEach('unload test url', () => {
+      afterEach(() => {
         catalog._unloadServiceDetails('preauth', [testDetail]);
       });
 
@@ -91,14 +91,14 @@ describe('webex-core', () => {
       let testDetailTemplate;
       let testDetail;
 
-      beforeEach('load test url', () => {
+      beforeEach(() => {
         testDetailTemplate = formattedServiceHostmapEntryConv;
 
         testDetail = new ServiceDetail(testDetailTemplate);
         catalog._loadServiceDetails('preauth', [testDetail]);
       });
 
-      afterEach('unload test url', () => {
+      afterEach(() => {
         catalog._unloadServiceDetails('preauth', [testDetail]);
       });
 
@@ -133,13 +133,13 @@ describe('webex-core', () => {
       let testDetailTemplate;
       let testDetail;
 
-      beforeEach('load test url', () => {
+      beforeEach(() => {
         testDetailTemplate = formattedServiceHostmapEntryConv;
         testDetail = new ServiceDetail(testDetailTemplate);
         catalog._loadServiceDetails('preauth', [testDetail]);
       });
 
-      afterEach('unload test url', () => {
+      afterEach(() => {
         catalog._unloadServiceDetails('preauth', [testDetail]);
       });
 
@@ -179,13 +179,13 @@ describe('webex-core', () => {
         let testDetailTemplate;
         let testDetail;
 
-        beforeEach('load test url', () => {
+        beforeEach(() => {
           testDetailTemplate = formattedServiceHostmapEntryConv;
           testDetail = new ServiceDetail(testDetailTemplate);
           catalog._loadServiceDetails('preauth', [testDetail]);
         });
 
-        afterEach('unload test url', () => {
+        afterEach(() => {
           catalog._unloadServiceDetails('preauth', [testDetail]);
         });
 
@@ -213,13 +213,13 @@ describe('webex-core', () => {
         let testDetailTemplate;
         let testDetail;
 
-        beforeEach('load test url', () => {
+        beforeEach(() => {
           testDetailTemplate = formattedServiceHostmapEntryConv;
           testDetail = new ServiceDetail(testDetailTemplate);
           catalog._loadServiceDetails('preauth', [testDetail]);
         });
 
-        afterEach('unload test url', () => {
+        afterEach(() => {
           catalog._unloadServiceDetails('preauth', [testDetail]);
         });
 
@@ -257,13 +257,13 @@ describe('webex-core', () => {
         let testDetailTemplate;
         let testDetail;
 
-        beforeEach('load test url', () => {
+        beforeEach(() => {
           testDetailTemplate = formattedServiceHostmapEntryConv;
           testDetail = new ServiceDetail(testDetailTemplate);
           catalog._loadServiceDetails('preauth', [testDetail]);
         });
 
-        afterEach('unload test url', () => {
+        afterEach(() => {
           catalog._unloadServiceDetails('preauth', [testDetail]);
         });
 
@@ -289,7 +289,7 @@ describe('webex-core', () => {
         let testDetailTemplate;
         let testDetail;
 
-        beforeEach('init test url', () => {
+        beforeEach(() => {
           testDetailTemplate = formattedServiceHostmapEntryConv;
           testDetail = new ServiceDetail(testDetailTemplate);
         });
@@ -313,7 +313,7 @@ describe('webex-core', () => {
         let testDetailTemplate;
         let testDetail;
 
-        beforeEach('init test url', () => {
+        beforeEach(() => {
           testDetailTemplate = formattedServiceHostmapEntryConv;
           testDetail = new ServiceDetail(testDetailTemplate);
         });
