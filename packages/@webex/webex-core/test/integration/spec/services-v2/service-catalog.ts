@@ -36,21 +36,23 @@ describe('webex-core', () => {
               setTimeout(() => {
                 webexUser = user;
                 webex = new WebexCore({credentials: user.token});
-
-                registerInternalPlugin('services', ServicesV2, {
-                  interceptors: {
-                    ServiceInterceptor: ServiceInterceptorV2.create,
-                    ServerErrorInterceptor: ServerErrorInterceptorV2.create,
-                  },
-                  replace: true,
-                });
-
-                services = webex.internal.services;
-                catalog = services._getCatalog();
                 resolve();
               }, 1000);
             })
         )
+        .then(() => {
+          registerInternalPlugin('services', ServicesV2, {
+            interceptors: {
+              ServiceInterceptor: ServiceInterceptorV2.create,
+              ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+            },
+            replace: true,
+          });
+        })
+        .then(() => {
+          services = webex.internal.services;
+          catalog = services._getCatalog();
+        })
         .then(() => webex.internal.device.register())
         .then(() => services.waitForCatalog('postauth', 10))
         .then(() =>
