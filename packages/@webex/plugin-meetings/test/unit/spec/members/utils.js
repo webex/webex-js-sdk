@@ -390,5 +390,47 @@ describe('plugin-meetings', () => {
         });
       });
     });
+
+    describe('#cancelSIPInviteOptions', () => {
+      it('returns the correct options', () => {
+        const locusUrl = 'TestLocusUrl';
+        const memberId = 'test';
+        const invitee = {memberId};
+
+        assert.deepEqual(
+          MembersUtil.cancelSIPInviteOptions(
+            invitee,
+            locusUrl
+          ),
+          {
+            invitee,
+            locusUrl,
+          }
+        );
+      });
+    });
+
+    describe('#generateCancelSIPInviteRequestParams', () => {
+      it('returns the correct params', () => {
+        const locusUrl = 'TestLocusUrl';
+        const memberId = 'test';
+        const options = {
+          locusUrl,
+          invitee: {memberId}
+        };
+        const body = {
+          actionType: 'REMOVE',
+          invitees: [{address: options.invitee.memberId}],
+        };
+
+        const uri = options.locusUrl;
+
+        assert.deepEqual(MembersUtil.generateCancelSIPInviteRequestParams(options), {
+          method: HTTP_VERBS.PUT,
+          uri,
+          body,
+        });
+      });
+    });
   });
 });

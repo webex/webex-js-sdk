@@ -275,7 +275,7 @@ const Services = WebexPlugin.extend({
           // Retrieve the service url from the updated catalog. This is required
           // since `WebexCore` is usually not fully initialized at the time this
           // request completes.
-          const idbrokerService = this.get('idbroker', true);
+          const idbrokerService = this.get('idbroker');
 
           // Collect the client auth token.
           return this.webex.credentials.getClientToken({
@@ -593,7 +593,7 @@ const Services = WebexPlugin.extend({
       return Promise.resolve(this._activeServices[name]);
     }
 
-    const priorityUrl = this.get(name, true);
+    const priorityUrl = this.get(name);
     const priorityUrlObj = this.getServiceFromUrl(url);
 
     if (priorityUrl || priorityUrlObj) {
@@ -620,7 +620,7 @@ const Services = WebexPlugin.extend({
         catalog
           .waitForCatalog(catalogGroup, timeout)
           .then(() => {
-            const scopedPriorityUrl = this.get(name, true);
+            const scopedPriorityUrl = this.get(name);
             const scopedPrioriryUrlObj = this.getServiceFromUrl(url);
 
             if (scopedPriorityUrl || scopedPrioriryUrlObj) {
@@ -645,26 +645,33 @@ const Services = WebexPlugin.extend({
    * @returns {string} uri with the host replaced
    */
   replaceHostFromHostmap(uri: string): string {
-    const url = new URL(uri);
-    const services = this._services;
-
-    if (!services) {
+    try {
+      return this.convertUrlToPriorityHostUrl(uri);
+    } catch {
       return uri;
     }
+  },
 
-    const host = services.find((service) =>
-      service.serviceUrls.find((serviceUrl) => serviceUrl.host === url.host)
-    );
+  /**
+   * Formats a host map entry for use in service catalog.
+   *
+   * @param {Object} entry - The host map entry to format.
+   * @param {string} entry.serviceName - i.e. conversation, identity, etc.
+   * @param {string} entry.id - The unique identifier for the service, usually clusterId.
+   * @param {Array<IServiceDetail>} entry.serviceUrls - The group to which the service belongs.
+   * @returns {Object} - The formatted host map entry.
+   */
+  _formatHostMapEntry({id, serviceName, serviceUrls}) {
+    const formattedServiceUrls = serviceUrls.map((serviceUrl) => ({
+      host: new URL(serviceUrl.baseUrl).host,
+      ...serviceUrl,
+    }));
 
-    if (host && host.serviceUrls?.[0]) {
-      const newHost = host.serviceUrls[0].host;
-
-      url.host = newHost;
-
-      return url.href;
-    }
-
-    return uri;
+    return {
+      id,
+      serviceName,
+      serviceUrls: formattedServiceUrls,
+    };
   },
 
   /**
@@ -674,19 +681,8 @@ const Services = WebexPlugin.extend({
    * catalog endpoint.
    * @returns {Array<Service>}
    */
-  _formatReceivedHostmap({services, activeServices}: ServiceHostmap): Array<Service> {
-    const formattedHostmap = services.map(({id, serviceName, serviceUrls}) => {
-      const formattedServiceUrls = serviceUrls.map((serviceUrl) => ({
-        host: new URL(serviceUrl.baseUrl).host,
-        ...serviceUrl,
-      }));
-
-      return {
-        id,
-        serviceName,
-        serviceUrls: formattedServiceUrls,
-      };
-    });
+  _formatReceivedHostmap({services, activeServices}) {
+    const formattedHostmap = services.map((service) => this._formatHostMapEntry(service));
     this._updateActiveServices(activeServices);
     this._updateServices(services);
 
@@ -754,18 +750,24 @@ const Services = WebexPlugin.extend({
    * @param {string} url - The url to be validated.
    * @returns {object} - Service object.
    * @returns {object.name} - The name of the service found.
-   * @returns {object.baseUrl} - The default url of the found service.
+   * @returns {object.priorityUrl} - The default url of the found service.
+   * @returns {object.defaultUrl} - The default url of the found service.
    */
-  getServiceFromUrl(url = '' as string): {name: string; baseUrl: string} | undefined {
+  getServiceFromUrl(
+    url = '' as string
+  ): {name: string; priorityUrl: string; defaultUrl: string} | undefined {
     const service = this._getCatalog().findServiceDetailFromUrl(url);
 
     if (!service) {
       return undefined;
     }
 
+    const urlRet = service.get();
+
     return {
       name: service.serviceName,
-      baseUrl: service.get(),
+      priorityUrl: urlRet,
+      defaultUrl: urlRet,
     };
   },
 
@@ -796,9 +798,10 @@ const Services = WebexPlugin.extend({
       throw Error(`No service associated with url: [${url}]`);
     }
 
+    const priortyHost = new URL(data.priorityUrl).host;
     const newUrl = new URL(url);
 
-    newUrl.host = data.host;
+    newUrl.host = priortyHost;
 
     return newUrl.href;
   },
@@ -867,15 +870,13 @@ const Services = WebexPlugin.extend({
       // Check for discovery services.
       if (services.discovery) {
         // Format the discovery configuration into an injectable array.
-        const formattedDiscoveryServices = Object.keys(services.discovery).map((key) => {
-          const url = new URL(services.discovery[key]);
-
-          return {
+        const formattedDiscoveryServices = Object.keys(services.discovery).map((key) =>
+          this._formatHostMapEntry({
             id: key,
             serviceName: key,
-            serviceUrls: [{baseUrl: url, host: url.host, priority: 1}],
-          };
-        });
+            serviceUrls: [{baseUrl: services.discovery[key], priority: 1}],
+          })
+        );
 
         // Inject formatted discovery services into services catalog.
         catalog.updateServiceGroups('discovery', formattedDiscoveryServices);
@@ -883,15 +884,13 @@ const Services = WebexPlugin.extend({
 
       if (services.override) {
         // Format the override configuration into an injectable array.
-        const formattedOverrideServices = Object.keys(services.override).map((key) => {
-          const url = new URL(services.override[key]);
-
-          return {
+        const formattedOverrideServices = Object.keys(services.override).map((key) =>
+          this._formatHostMapEntry({
             id: key,
             serviceName: key,
-            serviceUrls: [{baseUrl: url, host: url.host, priority: 1}],
-          };
-        });
+            serviceUrls: [{baseUrl: services.override[key], priority: 1}],
+          })
+        );
 
         // Inject formatted override services into services catalog.
         catalog.updateServiceGroups('override', formattedOverrideServices);
