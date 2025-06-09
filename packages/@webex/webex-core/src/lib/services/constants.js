@@ -19,7 +19,12 @@ const COMMERCIAL_ALLOWED_DOMAINS = [
 ];
 
 // The default FedRAMP domains that SDK can make requests to outside of service catalog
-const FEDRAMP_ALLOWED_DOMAINS = ['gov.ciscospark.com', 'webex.com'];
+const FEDRAMP_ALLOWED_DOMAINS = [
+  'gov.ciscospark.com',
+  'gov.webex.com',
+  'webexgobv.us',
+  'wxgovtest.webex.com',
+];
 
 export {
   SERVICE_CATALOGS_ENUM_TYPES,
