@@ -6,7 +6,13 @@ import '@webex/internal-plugin-device';
 
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import WebexCore, {ServiceDetail} from '@webex/webex-core';
+import WebexCore, {
+  ServiceDetail,
+  registerInternalPlugin,
+  ServicesV2,
+  ServiceInterceptorV2,
+  ServerErrorInterceptorV2,
+} from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import {
   formattedServiceHostmapEntryConv,
@@ -30,6 +36,15 @@ describe('webex-core', () => {
               setTimeout(() => {
                 webexUser = user;
                 webex = new WebexCore({credentials: user.token});
+
+                registerInternalPlugin('services', ServicesV2, {
+                  interceptors: {
+                    ServiceInterceptor: ServiceInterceptorV2.create,
+                    ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+                  },
+                  replace: true,
+                });
+
                 services = webex.internal.services;
                 catalog = services._getCatalog();
                 resolve();
@@ -52,7 +67,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#_getUrl()', () => {
+    describe('#_getServiceDetail()', () => {
       let testDetailTemplate;
       let testDetail;
 
@@ -67,7 +82,7 @@ describe('webex-core', () => {
       });
 
       it('returns a ServiceUrl from a specific serviceGroup', () => {
-        const serviceDetail = catalog._getUrl(testDetailTemplate.id, 'preauth');
+        const serviceDetail = catalog._getServiceDetail(testDetailTemplate.id, 'preauth');
 
         assert.equal(serviceDetail.serviceUrls, testDetailTemplate.serviceUrls);
         assert.equal(serviceDetail.id, testDetailTemplate.id);
@@ -75,13 +90,13 @@ describe('webex-core', () => {
       });
 
       it("returns undefined if url doesn't exist", () => {
-        const serviceDetail = catalog._getUrl('invalidUrl');
+        const serviceDetail = catalog._getServiceDetail('invalidUrl');
 
         assert.typeOf(serviceDetail, 'undefined');
       });
 
       it("returns undefined if url doesn't exist in serviceGroup", () => {
-        const serviceDetail = catalog._getUrl(testDetailTemplate.id, 'Discovery');
+        const serviceDetail = catalog._getServiceDetail(testDetailTemplate.id, 'Discovery');
 
         assert.typeOf(serviceDetail, 'undefined');
       });
