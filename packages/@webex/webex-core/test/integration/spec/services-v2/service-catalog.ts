@@ -12,6 +12,9 @@ import WebexCore, {
   ServicesV2,
   ServiceInterceptorV2,
   ServerErrorInterceptorV2,
+  ServiceInterceptor,
+  ServerErrorInterceptor,
+  Services,
 } from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import {
@@ -32,17 +35,7 @@ describe('webex-core', () => {
         ([user]) =>
           new Promise<void>((resolve) => {
             setTimeout(() => {
-              // registerInternalPlugin('services', ServicesV2, {
-              //   interceptors: {
-              //     ServiceInterceptor: ServiceInterceptorV2.create,
-              //     ServerErrorInterceptor: ServerErrorInterceptorV2.create,
-              //   },
-              //   replace: true,
-              // });
               webexUser = user;
-              // webex = new WebexCore({credentials: user.token});
-              // services = webex.internal.services;
-              // catalog = services._getCatalog();
               resolve();
             }, 1000);
           })
@@ -67,6 +60,16 @@ describe('webex-core', () => {
           query: {userId: webexUser.id},
         })
       );
+    });
+
+    after(() => {
+      registerInternalPlugin('services', Services, {
+        interceptors: {
+          ServiceInterceptor: ServiceInterceptor.create,
+          ServerErrorInterceptor: ServerErrorInterceptor.create,
+        },
+        replace: true,
+      });
     });
 
     describe('#status()', () => {

@@ -41,8 +41,7 @@ describe('webex-core', () => {
             orgId: process.env.EU_PRIMARY_ORG_ID,
           },
         }),
-      ])
-      .then(
+      ]).then(
         ([[user], [userEU]]) =>
           new Promise((resolve) => {
             setTimeout(() => {
@@ -55,13 +54,6 @@ describe('webex-core', () => {
     );
 
     beforeEach('create webex instance', () => {
-      registerInternalPlugin('services', Services, {
-        interceptors: {
-          ServiceInterceptor: ServiceInterceptor.create,
-          ServerErrorInterceptor: ServerErrorInterceptor.create,
-        },
-        replace: true,
-      });
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
       webexEU = new WebexCore({credentials: {supertoken: webexUserEU.token}});
       services = webex.internal.services;
