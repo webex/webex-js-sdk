@@ -30,200 +30,118 @@ export default class Voice extends Task implements IVoice {
     this.isEndConsultEnabled = callOptions.isEndConsultEnabled ?? true;
   }
 
+  private applyControls(
+    controls: Array<keyof typeof this.taskUiControls>,
+    actions: Array<'show' | 'hide' | 'enable' | 'disable'>
+  ): void {
+    controls.forEach((c) => actions.forEach((a) => this.taskUiControls[c][a]()));
+  }
+
   protected initialiseUIControls() {
     super.initialiseUIControls();
-    this.taskUiControls.accept.hide();
-    this.taskUiControls.accept.disable();
-    this.taskUiControls.decline.hide();
-    this.taskUiControls.decline.disable();
-
-    this.taskUiControls.hold.hide();
-    this.taskUiControls.hold.disable();
-    this.taskUiControls.transfer.hide();
-    this.taskUiControls.transfer.disable();
-    this.taskUiControls.end.hide();
-    this.taskUiControls.end.disable();
+    // batch‐hide & disable everything we start with
+    this.applyControls(['accept', 'decline', 'hold', 'transfer', 'end'], ['hide', 'disable']);
   }
 
   protected setUIControls(): void {
-    // profile disables end‐call or end‐consult
-    if (!this.isEndCallEnabled) {
-      this.taskUiControls.end.hide();
-    }
-    if (!this.isEndConsultEnabled) {
-      this.taskUiControls.endConsult.hide();
-    }
-
     const eventType = this.data.type;
-    const stateNotNew = this.data.interaction.state !== 'new';
-    const showMainControls = (): void => {
-      this.taskUiControls.hold.show();
-      this.taskUiControls.hold.enable();
-      this.taskUiControls.transfer.show();
-      this.taskUiControls.transfer.enable();
-      this.taskUiControls.consult.show();
-      this.taskUiControls.consult.enable();
-      this.taskUiControls.recording.show();
-      this.taskUiControls.recording.enable();
-    };
+    const showMainControls = () =>
+      this.applyControls(['hold', 'transfer', 'consult', 'recording'], ['show', 'enable']);
 
     switch (eventType) {
       case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-        // hide accept/decline, endConsult & wrapup
-        this.taskUiControls.accept.hide();
-        this.taskUiControls.accept.disable();
-        this.taskUiControls.decline.hide();
-        this.taskUiControls.decline.disable();
-        // show main controls
+        this.applyControls(['accept', 'decline'], ['hide', 'disable']);
         showMainControls();
-        // end‐button logic
-        if (this.isEndCallEnabled) {
-          this.taskUiControls.end.show();
-          this.taskUiControls.end.enable();
-        } else {
-          this.taskUiControls.end.hide();
-          this.taskUiControls.end.disable();
-        }
-        // hide consult‐end & wrapup
-        this.taskUiControls.endConsult.hide();
-        this.taskUiControls.wrapup.hide();
+        this.applyControls(
+          ['end'],
+          this.isEndCallEnabled ? ['show', 'enable'] : ['hide', 'disable']
+        );
+        this.applyControls(['endConsult', 'wrapup'], ['hide']);
         break;
 
       case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
-        this.taskUiControls.consultTransfer.hide();
-        this.taskUiControls.consultTransfer.disable();
-        this.taskUiControls.recording.hide();
-        this.taskUiControls.recording.disable();
-        this.taskUiControls.end.hide();
-        this.taskUiControls.end.disable();
-        this.taskUiControls.wrapup.show();
-        this.taskUiControls.wrapup.enable();
+        this.applyControls(['consultTransfer', 'recording', 'end'], ['hide', 'disable']);
+        this.applyControls(['wrapup'], ['show', 'enable']);
         break;
 
       case CC_EVENTS.CONTACT_ENDED:
       case CC_EVENTS.AGENT_INVITE_FAILED:
-        // hide everything
-        this.taskUiControls.hold.hide();
-        this.taskUiControls.transfer.hide();
-        this.taskUiControls.consult.hide();
-        this.taskUiControls.consultTransfer.hide();
-        this.taskUiControls.recording.hide();
-        this.taskUiControls.end.hide();
-        this.taskUiControls.endConsult.hide();
-        // now wrapup if applicable
-        if (stateNotNew) {
-          this.taskUiControls.wrapup.show();
-          this.taskUiControls.wrapup.enable();
+        this.applyControls(
+          ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end', 'endConsult'],
+          ['hide', 'disable']
+        );
+        if (this.data.interaction.state !== 'new') {
+          this.applyControls(['wrapup'], ['show', 'enable']);
         }
         break;
 
       case CC_EVENTS.AGENT_CONTACT_HELD:
         showMainControls();
         if (this.isEndCallEnabled) {
-          this.taskUiControls.end.show();
-          this.taskUiControls.end.disable();
+          this.applyControls(['end'], ['show', 'disable']);
         }
         break;
 
       case CC_EVENTS.AGENT_CONTACT_UNHELD:
         showMainControls();
         if (this.isEndCallEnabled) {
-          this.taskUiControls.end.show();
-          this.taskUiControls.end.enable();
+          this.applyControls(['end'], ['show', 'enable']);
         }
         break;
 
       case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
-        this.taskUiControls.hold.hide();
-        this.taskUiControls.transfer.hide();
-        this.taskUiControls.consult.hide();
-        this.taskUiControls.consultTransfer.hide();
-        this.taskUiControls.recording.hide();
-        this.taskUiControls.end.hide();
-        this.taskUiControls.wrapup.show();
-        this.taskUiControls.wrapup.enable();
+        this.applyControls(
+          ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'],
+          ['hide', 'disable']
+        );
+        this.applyControls(['wrapup'], ['show', 'enable']);
         break;
 
       case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
         showMainControls();
         if (this.isEndCallEnabled) {
-          this.taskUiControls.end.show();
-          this.taskUiControls.end.enable();
+          this.applyControls(['end'], ['show', 'enable']);
         }
         break;
 
       case CC_EVENTS.AGENT_CONSULT_CREATED:
         if (!this.data.isConsulted) {
-          this.taskUiControls.hold.hide();
-          this.taskUiControls.hold.disable();
-          this.taskUiControls.consult.hide();
-          this.taskUiControls.consult.disable();
-          this.taskUiControls.transfer.hide();
-          this.taskUiControls.transfer.disable();
-          this.taskUiControls.consultTransfer.show();
-          this.taskUiControls.consultTransfer.disable();
-          this.taskUiControls.recording.show();
-          this.taskUiControls.recording.disable();
-          if (this.isEndCallEnabled) {
-            this.taskUiControls.end.show();
-            this.taskUiControls.end.disable();
-          }
-          this.taskUiControls.endConsult.show();
-          this.taskUiControls.endConsult.enable();
+          this.applyControls(['hold', 'consult', 'transfer', 'end'], ['hide', 'disable']);
+          this.applyControls(['consultTransfer', 'recording'], ['show', 'disable']);
+          this.applyControls(['endConsult'], ['show', 'enable']);
         }
         break;
 
       case CC_EVENTS.AGENT_OFFER_CONSULT:
         if (this.isEndConsultEnabled) {
-          this.taskUiControls.endConsult.show();
-          this.taskUiControls.endConsult.enable();
+          this.applyControls(['endConsult'], ['show', 'enable']);
         }
         break;
 
       case CC_EVENTS.AGENT_CONSULTING:
-        // hide hold, transfer, consult
         if (!this.data.isConsulted) {
-          this.taskUiControls.hold.hide();
-          this.taskUiControls.hold.disable();
-          this.taskUiControls.transfer.hide();
-          this.taskUiControls.transfer.disable();
-          this.taskUiControls.consult.hide();
-          this.taskUiControls.consult.disable();
-          // show consultTransfer
-          this.taskUiControls.consultTransfer.show();
-          this.taskUiControls.consultTransfer.enable();
-          // recording paused
-          this.taskUiControls.recording.show();
-          this.taskUiControls.recording.disable();
-          // allow endConsult irrespective of profile setting
-          this.taskUiControls.endConsult.show();
-          this.taskUiControls.endConsult.enable();
-          // end-call per profile
+          this.applyControls(['hold', 'transfer', 'consult'], ['hide', 'disable']);
+          this.applyControls(['consultTransfer'], ['show', 'enable']);
+          this.applyControls(['recording'], ['show', 'disable']);
+          this.applyControls(['endConsult'], ['show', 'enable']);
           if (this.isEndCallEnabled) {
-            this.taskUiControls.end.show();
-            this.taskUiControls.end.disable();
+            this.applyControls(['end'], ['show', 'disable']);
           }
         } else if (this.isEndConsultEnabled) {
-          // allow endConsult only if flag is enabled
-          this.taskUiControls.endConsult.show();
-          this.taskUiControls.endConsult.enable();
+          this.applyControls(['endConsult'], ['show', 'enable']);
         }
         break;
 
       case CC_EVENTS.AGENT_CONSULT_FAILED:
       case CC_EVENTS.AGENT_CONSULT_ENDED:
       case CC_EVENTS.AGENT_CTQ_CANCELLED:
-        // Only reset if agent is the one who initiated the consult
         if (!this.data.isConsulted) {
           showMainControls();
           if (this.isEndCallEnabled) {
-            this.taskUiControls.end.show();
-            this.taskUiControls.end.enable();
+            this.applyControls(['end'], ['show', 'enable']);
           }
-          // wrapup stays hidden until actual task end
-          this.taskUiControls.consultTransfer.hide();
-          this.taskUiControls.consultTransfer.disable();
-          this.taskUiControls.wrapup.hide();
+          this.applyControls(['consultTransfer'], ['hide', 'disable']);
+          this.applyControls(['wrapup'], ['hide']);
         }
         break;
 
