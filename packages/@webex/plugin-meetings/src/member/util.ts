@@ -108,7 +108,7 @@ const MemberUtil = {
    */
   isUser: (participant: Participant) => participant && participant.type === _USER_,
 
-  isModerator: (participant) => participant && participant.moderator,
+  isModerator: (participant: Participant) => participant && participant.moderator,
 
   /**
    * @param {Object} participant - The locus participant object.
@@ -122,10 +122,10 @@ const MemberUtil = {
    */
   isDevice: (participant: Participant) => participant && participant.type === _RESOURCE_ROOM_,
 
-  isModeratorAssignmentProhibited: (participant) =>
+  isModeratorAssignmentProhibited: (participant: Participant) =>
     participant && participant.moderatorAssignmentNotAllowed,
 
-  isPresenterAssignmentProhibited: (participant) =>
+  isPresenterAssignmentProhibited: (participant: Participant) =>
     participant && participant.presenterAssignmentNotAllowed,
 
   /**
@@ -385,7 +385,7 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {String}
    */
-  extractName: (participant: any) => {
+  extractName: (participant: Participant) => {
     if (participant && participant.person) {
       return participant.person.name;
     }
@@ -397,7 +397,7 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {String}
    */
-  extractPairedWithParticipantUrl: (participant: Participant): ParticipantUrl => {
+  extractPairedWithParticipantUrl: (participant: Participant): ParticipantUrl | undefined => {
     let participantUrl;
 
     participant?.devices?.forEach((device) => {
