@@ -116,6 +116,9 @@ export type MetricEventVerb =
 
 export type MetricEventJoinFlowVersion = 'Other' | 'NewFTE';
 export type MetricEventMeetingJoinPhase = 'pre-join' | 'join' | 'in-meeting';
+export type EventData = {
+  isMercuryConnected: boolean;
+};
 
 export type SubmitClientEventOptions = {
   meetingId?: string;
@@ -135,6 +138,7 @@ export type SubmitClientEventOptions = {
   triggeredTime?: string;
   emailInput?: ClientEmailInput;
   userNameInput?: ClientUserNameInput;
+  eventData?: EventData;
 };
 
 export type SubmitMQEOptions = {

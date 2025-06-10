@@ -41,6 +41,7 @@ import {
   ClientSubServiceType,
   BrowserLaunchMethodType,
   DelayedClientEvent,
+  EventData,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
@@ -690,10 +691,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     name,
     options,
     errors,
+    eventData,
   }: {
     name: ClientEvent['name'];
     options?: SubmitClientEventOptions;
     errors?: ClientEventPayloadError;
+    eventData?: EventData;
   }) {
     const {
       meetingId,
@@ -739,6 +742,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       errors,
       eventData: {
         webClientDomain: window.location.hostname,
+        ...eventData,
       },
       userType: meeting.getCurUserType(),
       loginType:
@@ -782,10 +786,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     name,
     options,
     errors,
+    eventData,
   }: {
     name: ClientEvent['name'];
     options?: SubmitClientEventOptions;
     errors?: ClientEventPayloadError;
+    eventData?: EventData;
   }) {
     const {correlationId, globalMeetingId, webexConferenceIdStr, preLoginId, sessionCorrelationId} =
       options;
@@ -807,6 +813,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers,
       eventData: {
         webClientDomain: window.location.hostname,
+        ...eventData,
       },
       loginType: this.getCurLoginType(),
       // @ts-ignore
@@ -845,10 +852,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     name,
     payload,
     options,
+    eventData,
   }: {
     name: ClientEvent['name'];
     payload?: ClientEventPayload;
     options?: SubmitClientEventOptions;
+    eventData?: EventData;
   }) {
     const {meetingId, correlationId, rawError} = options;
     let clientEventObject: ClientEvent['payload'];
@@ -870,10 +879,15 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     // events that will most likely happen in join phase
     if (meetingId) {
-      clientEventObject = this.createClientEventObjectInMeeting({name, options, errors});
+      clientEventObject = this.createClientEventObjectInMeeting({name, options, errors, eventData});
     } else if (correlationId) {
       // any pre join events or events that are outside the meeting.
-      clientEventObject = this.createClientEventObjectPreMeeting({name, options, errors});
+      clientEventObject = this.createClientEventObjectPreMeeting({
+        name,
+        options,
+        errors,
+        eventData,
+      });
     } else {
       throw new Error('Not implemented');
     }
@@ -901,11 +915,13 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     payload,
     options,
     delaySubmitEvent,
+    eventData,
   }: {
     name: ClientEvent['name'];
     payload?: ClientEventPayload;
     options?: SubmitClientEventOptions;
     delaySubmitEvent?: boolean;
+    eventData?: EventData;
   }) {
     if (delaySubmitEvent) {
       // Preserve the time when the event was triggered if delaying the submission to Call Diagnostics
@@ -928,7 +944,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
       `name: ${name}`
     );
-    const diagnosticEvent = this.prepareClientEvent({name, payload, options});
+    const diagnosticEvent = this.prepareClientEvent({name, payload, options, eventData});
 
     if (options?.preLoginId) {
       return this.submitToCallDiagnosticsPreLogin(diagnosticEvent, options?.preLoginId);
