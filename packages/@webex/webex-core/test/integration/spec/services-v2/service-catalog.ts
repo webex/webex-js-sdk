@@ -30,6 +30,15 @@ describe('webex-core', () => {
     before('create users', () =>
       testUsers
         .create({count: 1})
+        .then(() => {
+          registerInternalPlugin('services', ServicesV2, {
+            interceptors: {
+              ServiceInterceptor: ServiceInterceptorV2.create,
+              ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+            },
+            replace: true,
+          });
+        })
         .then(
           ([user]) =>
             new Promise<void>((resolve) => {
@@ -40,15 +49,6 @@ describe('webex-core', () => {
               }, 1000);
             })
         )
-        .then(() => {
-          registerInternalPlugin('services', ServicesV2, {
-            interceptors: {
-              ServiceInterceptor: ServiceInterceptorV2.create,
-              ServerErrorInterceptor: ServerErrorInterceptorV2.create,
-            },
-            replace: true,
-          });
-        })
         .then(() => {
           services = webex.internal.services;
           catalog = services._getCatalog();
