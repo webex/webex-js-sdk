@@ -4,7 +4,7 @@ import {cloneDeep, defaultsDeep} from 'lodash';
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
 
 import {self} from './selfConstant';
-import {_IDLE_, _WAIT_} from '@webex/plugin-meetings/src/constants';
+import {_IDLE_, _WAIT_, _OBSERVE_, _NONE_} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings', () => {
   describe('selfUtils', () => {
@@ -269,13 +269,18 @@ describe('plugin-meetings', () => {
     });
 
     describe('getSelves', () => {
+      let parsedSelf;
+
+      beforeEach(() => {
+        parsedSelf = SelfUtils.parse(self);
+      });
       describe('canNotViewTheParticipantListChanged', () => {
         it('should return canNotViewTheParticipantListChanged = true when changed', () => {
           const clonedSelf = cloneDeep(self);
 
           clonedSelf.canNotViewTheParticipantList = true; // different
 
-          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+          const {updates} = SelfUtils.getSelves(parsedSelf, clonedSelf);
 
           assert.equal(updates.canNotViewTheParticipantListChanged, true);
         });
@@ -285,7 +290,7 @@ describe('plugin-meetings', () => {
 
           clonedSelf.canNotViewTheParticipantList = false; // same
 
-          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+          const {updates} = SelfUtils.getSelves(parsedSelf, clonedSelf);
 
           assert.equal(updates.canNotViewTheParticipantListChanged, false);
         });
@@ -295,7 +300,7 @@ describe('plugin-meetings', () => {
         it('should return localAudioUnmuteRequestedByServer = false when requestedToUnmute = false', () => {
           const clonedSelf = cloneDeep(self);
 
-          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+          const {updates} = SelfUtils.getSelves(parsedSelf, clonedSelf);
 
           assert.equal(updates.localAudioUnmuteRequestedByServer, false);
         });
@@ -307,7 +312,7 @@ describe('plugin-meetings', () => {
           clonedSelf.controls.audio.requestedToUnmute = true;
           clonedSelf.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z';
 
-          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+          const {updates} = SelfUtils.getSelves(parsedSelf, clonedSelf);
 
           assert.equal(updates.localAudioUnmuteRequestedByServer, true);
         });
@@ -321,7 +326,7 @@ describe('plugin-meetings', () => {
           clonedSelf.controls.audio.requestedToUnmute = true;
           clonedSelf.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T19:25:04.369Z';
 
-          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+          const {updates} = SelfUtils.getSelves(parsedSelf, clonedSelf);
 
           assert.equal(updates.localAudioUnmuteRequestedByServer, true);
         });
@@ -334,70 +339,139 @@ describe('plugin-meetings', () => {
           clonedSelf.controls.audio.requestedToUnmute = true;
           clonedSelf.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z';
 
-          const {updates} = SelfUtils.getSelves(self, clonedSelf);
+          const {updates} = SelfUtils.getSelves(parsedSelf, clonedSelf);
 
           assert.equal(updates.localAudioUnmuteRequestedByServer, false);
         });
       });
 
-      describe('updates.isUserUnadmitted', () => {
-        const testIsUserUnadmitted = (previousObjectDelta, currentObjectDelta, expected) => function () {
-          const previous =
-            previousObjectDelta === undefined ? undefined : defaultsDeep(previousObjectDelta, self);
-          const current = defaultsDeep(currentObjectDelta, self);
+      describe('updates.hasUserEnteredLobby', () => {
+        const testIsUserUnadmitted = (
+          previousParsedSelves,
+          currentSelfDelta,
+          participants,
+          expected
+        ) =>
+          function () {
+            const currentSelf = defaultsDeep(currentSelfDelta, self);
 
-          const {updates} = SelfUtils.getSelves(previous, current, self.devices[0].url);
+            if (previousParsedSelves === undefined) {
+              parsedSelf.state = undefined;
+            } else {
+              parsedSelf = defaultsDeep(previousParsedSelves, parsedSelf);
+            }
+            const {updates} = SelfUtils.getSelves(
+              parsedSelf,
+              currentSelf,
+              currentSelf.devices[0].url,
+              participants
+            );
 
-          assert.equal(updates.isUserUnadmitted, expected);
-        };
+            assert.equal(updates.hasUserEnteredLobby, expected);
+          };
 
         it(
           'should return true when previous is undefined and current is in lobby',
           testIsUserUnadmitted(
             undefined,
             {devices: [{intent: {type: _WAIT_}}], state: _IDLE_},
+            [],
             true
           )
         );
 
         it(
           'should return false when previous is undefined and user is not in meeting',
-          testIsUserUnadmitted(undefined, {devices: [], state: _IDLE_}, false)
+          testIsUserUnadmitted(undefined, {devices: [], state: _IDLE_}, [], false)
         );
 
         it(
           'should return false when previous is undefined and current is in meeting',
-          testIsUserUnadmitted(undefined, {}, false)
+          testIsUserUnadmitted(undefined, {}, [], false)
+        );
+
+        it(
+          'should return true when previous is undefined and current is in lobby with paired device',
+          testIsUserUnadmitted(
+            undefined,
+            {
+              devices: [{intent: {type: _OBSERVE_, associatedWith: 'pairedDeviceUrl'}}],
+              state: _IDLE_,
+            },
+            [{url: 'pairedDeviceUrl', devices: [{intent: {type: _WAIT_}}]}],
+            true
+          )
+        );
+
+        it(
+          'should return false when previous is in lobby with paired device and current is the same',
+          testIsUserUnadmitted(
+            {
+              pairedWith: {intent: {type: _WAIT_}},
+              joinedWith: {intent: {type: _OBSERVE_}},
+              state: _IDLE_,
+            },
+            {
+              devices: [{intent: {type: _OBSERVE_, associatedWith: 'pairedDeviceUrl'}}],
+              state: _IDLE_,
+            },
+            [{url: 'pairedDeviceUrl', devices: [{intent: {type: _WAIT_}}]}],
+            false
+          )
         );
 
         it(
           'should return false when previous is in lobby and current is in lobby',
           testIsUserUnadmitted(
+            {joinedWith: {intent: {type: _WAIT_}}, state: _IDLE_},
             {devices: [{intent: {type: _WAIT_}}], state: _IDLE_},
-            {devices: [{intent: {type: _WAIT_}}], state: _IDLE_},
+            [],
+            false
+          )
+        );
+
+        it(
+          'should return false when previous is in lobby with paired device and current is in the meeting',
+          testIsUserUnadmitted(
+            {
+              pairedWith: {intent: {type: _WAIT_}},
+              joinedWith: {intent: {type: _OBSERVE_}},
+              state: _IDLE_,
+            },
+            {
+              devices: [{intent: {type: _OBSERVE_, associatedWith: 'pairedDeviceUrl'}}],
+              state: _IDLE_,
+            },
+            [{url: 'pairedDeviceUrl', devices: [{intent: {type: _NONE_}}]}],
             false
           )
         );
 
         it(
           'should return false when previous is in lobby and current is in meeting',
-          testIsUserUnadmitted({devices: [{intent: {type: _WAIT_}}], state: _IDLE_}, {}, false)
+          testIsUserUnadmitted({joinedWith: {intent: {type: _WAIT_}}, state: _IDLE_}, {}, [], false)
         );
 
         it(
           'should return true when previous is in meeting and current is in lobby',
-          testIsUserUnadmitted({}, {devices: [{intent: {type: _WAIT_}}], state: _IDLE_}, true)
+          testIsUserUnadmitted({}, {devices: [{intent: {type: _WAIT_}}], state: _IDLE_}, [], true)
         );
       });
     });
 
     describe('isSharingBlocked', () => {
+      let parsedSelf;
+
+      beforeEach(() => {
+        parsedSelf = SelfUtils.parse(self);
+      });
+
       it('should return isSharingBlockedChanged = true when changed', () => {
         const clonedSelf = cloneDeep(self);
 
         clonedSelf.isSharingBlocked = true; // different
 
-        const {updates} = SelfUtils.getSelves(self, clonedSelf);
+        const {updates} = SelfUtils.getSelves(parsedSelf, clonedSelf);
 
         assert.equal(updates.isSharingBlockedChanged, true);
       });
@@ -407,7 +481,7 @@ describe('plugin-meetings', () => {
 
         clonedSelf.isSharingBlocked = false; // same
 
-        const {updates} = SelfUtils.getSelves(self, clonedSelf);
+        const {updates} = SelfUtils.getSelves(parsedSelf, clonedSelf);
 
         assert.equal(updates.isSharingBlockedChanged, false);
       });

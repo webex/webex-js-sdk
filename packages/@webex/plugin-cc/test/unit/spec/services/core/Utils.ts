@@ -1,7 +1,8 @@
 import * as Utils from '../../../../../src/services/core/Utils';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import WebexRequest from '../../../../../src/services/core/WebexRequest';
-import { WebexRequestPayload } from '../../../../../src/types';
+import {LoginOption, WebexRequestPayload} from '../../../../../src/types';
+import {Failure} from '../../../../../src/services/core/GlobalTypes';
 
 // Mock dependencies
 jest.mock('../../../../../src/logger-proxy', () => ({
@@ -34,7 +35,7 @@ jest.mock('../../../../../src/services/core/Err', () => {
         this.code = code;
         this.data = data;
       }
-    }
+    },
   };
 });
 
@@ -68,7 +69,7 @@ describe('Utils', () => {
       });
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `${methodName} failed with reason: ${error.details.data.reason}`,
-        { module: moduleName, method: methodName, trackingId: 'test-tracking-id' }
+        {module: moduleName, method: methodName, trackingId: 'test-tracking-id'}
       );
     });
 
@@ -120,7 +121,7 @@ describe('Utils', () => {
 
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `someMethod failed with reason: ${error.details.data.reason}`,
-        { module: moduleName, method: 'someMethod' , trackingId: trackingId }
+        {module: moduleName, method: 'someMethod', trackingId: trackingId}
       );
       expect(WebexRequest.getInstance().uploadLogs).toHaveBeenCalledWith({
         correlationId: trackingId,
@@ -132,7 +133,7 @@ describe('Utils', () => {
       expect(() => {
         Utils.getErrorDetails(null, methodName, moduleName);
       }).toThrow(TypeError);
-      
+
       expect(() => {
         Utils.getErrorDetails(undefined, methodName, moduleName);
       }).toThrow(TypeError);
@@ -142,7 +143,7 @@ describe('Utils', () => {
       const unexpectedError = {
         // No details property
         message: 'Unexpected error structure',
-        code: 500
+        code: 500,
       };
 
       const result = Utils.getErrorDetails(unexpectedError, methodName, moduleName);
@@ -152,18 +153,18 @@ describe('Utils', () => {
         error: new Error(`Error while performing ${methodName}`),
         reason: `Error while performing ${methodName}`,
       });
-      
+
       // Should not throw when accessing properties with optional chaining
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `${methodName} failed with reason: Error while performing ${methodName}`,
-        { module: moduleName, method: methodName, trackingId: undefined }
+        {module: moduleName, method: methodName, trackingId: undefined}
       );
     });
 
     it('should prioritize trackingId from the correct location when present in multiple places', () => {
       const detailsTrackingId = 'details-level-tracking-id';
       const dataTrackingId = 'data-level-tracking-id';
-      
+
       const error = {
         details: {
           data: {
@@ -179,9 +180,9 @@ describe('Utils', () => {
       // Check if error logging uses the trackingId from the details level
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `${methodName} failed with reason: ${error.details.data.reason}`,
-        { module: moduleName, method: methodName, trackingId: detailsTrackingId }
+        {module: moduleName, method: methodName, trackingId: detailsTrackingId}
       );
-      
+
       // Check if uploadLogs uses the trackingId from the details level
       expect(WebexRequest.getInstance().uploadLogs).toHaveBeenCalledWith({
         correlationId: detailsTrackingId,
@@ -192,8 +193,8 @@ describe('Utils', () => {
   describe('createErrDetailsObject', () => {
     it('should create error details object with correct parameters', () => {
       const errObj: WebexRequestPayload = {
-        headers: { trackingid: 'test-tracking-id' },
-        body: { message: 'Error message' },
+        headers: {trackingid: 'test-tracking-id'},
+        body: {message: 'Error message'},
       };
 
       const result = Utils.createErrDetailsObject(errObj);
@@ -201,7 +202,7 @@ describe('Utils', () => {
       expect(result.code).toBe('Service.reqs.generic.failure');
       expect(result.data).toEqual({
         trackingId: 'test-tracking-id',
-        msg: { message: 'Error message' },
+        msg: {message: 'Error message'},
       });
     });
 
@@ -214,6 +215,64 @@ describe('Utils', () => {
       expect(result.data).toEqual({
         trackingId: undefined,
         msg: undefined,
+      });
+    });
+  });
+
+  describe('getStationLoginErrorData', () => {
+    it('should return DUPLICATE_LOCATION message and fieldName for extension', () => {
+      const failure = {data: {reason: 'DUPLICATE_LOCATION'}} as Failure;
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.EXTENSION);
+      expect(result).toEqual({
+        message: 'This extension is already in use',
+        fieldName: LoginOption.EXTENSION,
+      });
+    });
+
+    it('should return DUPLICATE_LOCATION message and fieldName for DN number', () => {
+      const failure = {data: {reason: 'DUPLICATE_LOCATION'}} as Failure;
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.AGENT_DN);
+      expect(result).toEqual({
+        message:
+          'Dial number is in use. Try a different one. For help, reach out to your administrator or support team.',
+        fieldName: LoginOption.AGENT_DN,
+      });
+    });
+
+    it('should return INVALID_DIAL_NUMBER message and fieldName', () => {
+      const failure = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.AGENT_DN);
+      expect(result).toEqual({
+        message:
+          'Enter a valid US dial number. For help, reach out to your administrator or support team.',
+        fieldName: LoginOption.AGENT_DN,
+      });
+    });
+
+    it('should return default message and fieldName for empty reason', () => {
+      const failure = {data: {reason: ''}} as Failure;
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.EXTENSION);
+      expect(result).toEqual({
+        message: 'An error occurred while logging in to the station',
+        fieldName: 'generic',
+      });
+    });
+
+    it('should return default message and fieldName for missing reason', () => {
+      const failure = {data: {}} as Failure;
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.EXTENSION);
+      expect(result).toEqual({
+        message: 'An error occurred while logging in to the station',
+        fieldName: 'generic',
+      });
+    });
+
+    it('should return default message and fieldName for unknown reason', () => {
+      const failure = {data: {reason: 'UNKNOWN_REASON'}} as Failure;
+      const result = Utils.getStationLoginErrorData(failure, LoginOption.EXTENSION);
+      expect(result).toEqual({
+        message: 'An error occurred while logging in to the station',
+        fieldName: 'generic',
       });
     });
   });

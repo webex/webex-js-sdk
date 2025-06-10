@@ -774,6 +774,28 @@ export default class Members extends StatelessWebexPlugin {
   }
 
   /**
+   * Cancels an SIP call to the associated meeting
+   * @param {String} invitee
+   * @returns {Promise}
+   * @memberof Members
+   */
+  cancelSIPInvite(invitee: any) {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError('The associated locus url for this meeting object must be defined.')
+      );
+    }
+    if (!invitee?.memberId) {
+      return Promise.reject(
+        new ParameterError('The invitee must be defined with a memberId property.')
+      );
+    }
+    const options = MembersUtil.cancelSIPInviteOptions(invitee, this.locusUrl);
+
+    return this.membersRequest.cancelSIPInvite(options);
+  }
+
+  /**
    * Admits waiting members (invited guests to meeting)
    * @param {Array} memberIds
    * @param {Object} sessionLocusUrls: {authorizingLocusUrl, mainLocusUrl}
