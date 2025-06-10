@@ -2753,6 +2753,16 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     );
 
+    this.locusInfo.on(
+      LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
+      ({spokenLanguage}) => {
+        // if (this.isJoined()) {
+        // @ts-ignore
+        this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage);
+        // }
+      }
+    );
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_MANUAL_CAPTION_UPDATED, ({enable}) => {
       Trigger.trigger(
         this,

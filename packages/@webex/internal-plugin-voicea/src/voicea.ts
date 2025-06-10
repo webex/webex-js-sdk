@@ -502,6 +502,16 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
+   * In meeting Spoken Language changed event
+   * @param {string} languageCode
+   * @returns {void}
+   */
+  public onSpokenLanguageUpdate = (languageCode: string): void => {
+    // @ts-ignore
+    return this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode});
+  };
+
+  /**
    * get caption status
    * @returns {string}
    */
