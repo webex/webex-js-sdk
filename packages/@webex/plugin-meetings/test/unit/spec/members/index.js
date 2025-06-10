@@ -23,7 +23,6 @@ import {
   ReclaimHostNotAllowedError,
   ReclaimHostNotSupportedError,
 } from '../../../../src/common/errors/reclaim-host-role-errors';
-import { cloneDeep } from 'lodash';
 
 const {assert} = chai;
 
@@ -33,64 +32,7 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 describe('plugin-meetings', () => {
   let webex;
   let url1;
-  const fakeMembersCollection = {
-    test1: {
-      associatedUsers: new Set(),
-      namespace: 'Meetings',
-      participant: {
-        state: 'JOINED',
-        type: 'USER',
-        person: {
-          id: '6eb08f8b-bf69-3251-a126-b161bead2d21',
-          phoneNumber: '+18578675309',
-          isExternal: true,
-          primaryDisplayString: '+18578675309',
-        },
-        devices: [
-          {
-            url: 'https://fakeURL.com',
-            deviceType: 'SIP',
-            state: 'JOINED',
-            intents: [null],
-            correlationId: '1234',
-            provisionalUrl: 'dialout:///fake',
-            isSparkPstn: true,
-          },
-          {
-            url: 'dialout:///fakeagain',
-            deviceType: 'PROVISIONAL',
-            state: 'JOINED',
-            intents: [null],
-            correlationId: '4321',
-            isVideoCallback: false,
-            clientUrl: 'https://fakeURL',
-            provisionalType: 'DIAL_OUT_ONLY',
-            dialingStatus: 'SUCCESS',
-          },
-        ],
-        status: {
-          audioStatus: 'SENDRECV',
-          videoStatus: 'INACTIVE',
-        },
-        id: 'test1',
-        guest: true,
-        resourceGuest: false,
-        moderator: false,
-        panelist: false,
-        moveToLobbyNotAllowed: true,
-        deviceUrl: 'https://fakeDeviceurl',
-        url: 'fake participant url for test1',
-      },
-      id: 'test1',
-      status: 'IN_MEETING',
-      type: 'USER',
-      isModerator: false,
-      isHost: false,
-      isSelf: false,
-      isContentSharing: false,
-      pairedWith: {},
-    },
-  };
+  let fakeMembersCollection;
 
   describe('members', () => {
     const sandbox = sinon.createSandbox();
@@ -99,6 +41,65 @@ describe('plugin-meetings', () => {
     let membersRequestSpy;
 
     beforeEach(() => {
+      fakeMembersCollection = {
+        test1: {
+          associatedUsers: new Set(),
+          namespace: 'Meetings',
+          participant: {
+            state: 'JOINED',
+            type: 'USER',
+            person: {
+              id: '6eb08f8b-bf69-3251-a126-b161bead2d21',
+              phoneNumber: '+18578675309',
+              isExternal: true,
+              primaryDisplayString: '+18578675309',
+            },
+            devices: [
+              {
+                url: 'https://fakeURL.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                intents: [null],
+                correlationId: '1234',
+                provisionalUrl: 'dialout:///fake',
+                isSparkPstn: true,
+              },
+              {
+                url: 'dialout:///fakeagain',
+                deviceType: 'PROVISIONAL',
+                state: 'JOINED',
+                intents: [null],
+                correlationId: '4321',
+                isVideoCallback: false,
+                clientUrl: 'https://fakeURL',
+                provisionalType: 'DIAL_OUT_ONLY',
+                dialingStatus: 'SUCCESS',
+              },
+            ],
+            status: {
+              audioStatus: 'SENDRECV',
+              videoStatus: 'INACTIVE',
+            },
+            id: 'test1',
+            guest: true,
+            resourceGuest: false,
+            moderator: false,
+            panelist: false,
+            moveToLobbyNotAllowed: true,
+            deviceUrl: 'https://fakeDeviceurl',
+            url: 'fake participant url for test1',
+          },
+          id: 'test1',
+          status: 'IN_MEETING',
+          type: 'USER',
+          isModerator: false,
+          isHost: false,
+          isSelf: false,
+          isContentSharing: false,
+          pairedWith: {},
+        },
+      };
+
       webex = new MockWebex({
         children: {
           meetings: Meetings,
@@ -384,10 +385,7 @@ describe('plugin-meetings', () => {
           pairedDeviceMember = members.membersCollection.get('test2');
           assert.strictEqual(pairedDeviceMember.associatedUsers.size, 0);
 
-          assert.strictEqual(
-            pairedDeviceMember.isPairedWithSelf,
-            false
-          );
+          assert.strictEqual(pairedDeviceMember.isPairedWithSelf, false);
           assert.strictEqual(pairedDeviceMember.isHost, false);
         };
 
