@@ -224,7 +224,16 @@ describe('Registration Tests', () => {
     };
     const logSpy = jest.spyOn(log, 'log');
 
-    it('handle 429 received during initial registration failure', async () => {
+    beforeEach(() => {
+      mobiusUris.backup.pop();
+    });
+
+    afterEach(() => {
+      mobiusUris.backup.push(URL);
+      jest.clearAllMocks();
+    });
+
+    it('handle 429 received during initial registration failure and first attempt with primary', async () => {
       jest.useFakeTimers();
       logSpy.mockClear();
       webex.request
@@ -290,7 +299,14 @@ describe('Registration Tests', () => {
       expect(failoverSpy).toBeCalledOnceWith(3, 85);
     });
 
-    it('handle 429 received while failing over to backup server', async () => {
+    it('handle 429 received while the last attempt for primary', async () => {
+      reg.isCCFlow = true;
+      jest
+        .spyOn(reg as any, 'getRegRetryInterval')
+        .mockReturnValueOnce(33)
+        .mockReturnValueOnce(40)
+        .mockReturnValueOnce(47)
+        .mockReturnValueOnce(52);
       jest.useFakeTimers();
       webex.request
         .mockRejectedValueOnce(failurePayload)
@@ -301,16 +317,105 @@ describe('Registration Tests', () => {
 
       await reg.triggerRegistration();
 
-      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
-      await flushPromises();
-      expect(webex.request).toBeCalledTimes(4);
-      expect(webex.request).toBeCalledWith({
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
         ...mockResponse,
         method: 'POST',
         uri: `${mobiusUris.primary[0]}device`,
       });
 
-      expect(webex.request).toBeCalledWith({
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(retry429Spy).not.toBeCalled();
+      expect(failoverSpy).toBeCalledOnceWith();
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in 33 seconds, number of attempts : 1`,
+        loggerContext
+      );
+
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(33 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).not.toBeCalled();
+      expect(failoverSpy).toBeCalledOnceWith(2, 33);
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in 40 seconds, number of attempts : 2`,
+        loggerContext
+      );
+
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(41 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toHaveBeenNthCalledWith(3, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).not.toBeCalled();
+      expect(failoverSpy).toBeCalledOnceWith(3, 74);
+
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(47 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toHaveBeenNthCalledWith(4, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).toBeCalledOnceWith(
+        failurePayload429One.headers['retry-after'],
+        'startFailoverTimer'
+      );
+      expect(failoverSpy).toBeCalledOnceWith(4, 121);
+
+      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+
+      expect(webex.request).toHaveBeenNthCalledWith(5, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+    });
+
+    it('handle 429 received while failing over to backup server for CC flow', async () => {
+      reg.isCCFlow = true;
+      jest.useFakeTimers();
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload429One)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.triggerRegistration();
+
+      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+      expect(webex.request).toBeCalledTimes(3);
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(webex.request).toHaveBeenNthCalledWith(3, {
         ...mockResponse,
         method: 'POST',
         uri: `${mobiusUris.backup[0]}device`,

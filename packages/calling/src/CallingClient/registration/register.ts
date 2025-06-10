@@ -42,6 +42,7 @@ import {
   REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
   FAILOVER_UTIL,
   REGISTER_UTIL,
+  RETRY_TIMER_UPPER_LIMIT,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -285,7 +286,7 @@ export class Registration implements IRegistration {
     if (interval > BASE_REG_RETRY_TIMER_VAL_IN_SEC && !this.failoverImmediately) {
       const scheduledTime = Math.floor(Date.now() / 1000);
 
-      if (this.retryAfter != null) {
+      if (this.retryAfter != null && this.retryAfter < RETRY_TIMER_UPPER_LIMIT) {
         interval = interval < this.retryAfter ? this.retryAfter : interval;
       }
 
@@ -628,7 +629,7 @@ export class Registration implements IRegistration {
         this.lineEmitter(LINE_EVENTS.CONNECTING);
         log.log(`[${caller}] : Mobius url to contact: ${url}`, {
           file: REGISTRATION_FILE,
-          method: this.attemptRegistrationWithServers.name,
+          method: REGISTER_UTIL,
         });
         // eslint-disable-next-line no-await-in-loop
         const resp = await this.postRegistration(url);
