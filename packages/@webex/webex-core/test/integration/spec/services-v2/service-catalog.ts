@@ -28,40 +28,46 @@ describe('webex-core', () => {
     let catalog;
 
     before('create users', () =>
-      testUsers
-        .create({count: 1})
-        .then(() => {
-          registerInternalPlugin('services', ServicesV2, {
-            interceptors: {
-              ServiceInterceptor: ServiceInterceptorV2.create,
-              ServerErrorInterceptor: ServerErrorInterceptorV2.create,
-            },
-            replace: true,
-          });
-        })
-        .then(
-          ([user]) =>
-            new Promise<void>((resolve) => {
-              setTimeout(() => {
-                webexUser = user;
-                webex = new WebexCore({credentials: user.token});
-                resolve();
-              }, 1000);
-            })
-        )
-        .then(() => {
-          services = webex.internal.services;
-          catalog = services._getCatalog();
-        })
-        .then(() => webex.internal.device.register())
-        .then(() => services.waitForCatalog('postauth', 10))
-        .then(() =>
-          services.updateServices({
-            from: 'limited',
-            query: {userId: webexUser.id},
+      testUsers.create({count: 1}).then(
+        ([user]) =>
+          new Promise<void>((resolve) => {
+            setTimeout(() => {
+              // registerInternalPlugin('services', ServicesV2, {
+              //   interceptors: {
+              //     ServiceInterceptor: ServiceInterceptorV2.create,
+              //     ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+              //   },
+              //   replace: true,
+              // });
+              webexUser = user;
+              // webex = new WebexCore({credentials: user.token});
+              // services = webex.internal.services;
+              // catalog = services._getCatalog();
+              resolve();
+            }, 1000);
           })
-        )
+      )
     );
+
+    beforeEach(() => {
+      registerInternalPlugin('services', ServicesV2, {
+        interceptors: {
+          ServiceInterceptor: ServiceInterceptorV2.create,
+          ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+        },
+        replace: true,
+      });
+      webex = new WebexCore({credentials: {supertoken: webexUser.token}});
+      services = webex.internal.services;
+      catalog = services._getCatalog();
+
+      return services.waitForCatalog('postauth', 10).then(() =>
+        services.updateServices({
+          from: 'limited',
+          query: {userId: webexUser.id},
+        })
+      );
+    });
 
     describe('#status()', () => {
       it('updates ready when services ready', () => {
