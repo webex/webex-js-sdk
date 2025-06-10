@@ -341,6 +341,11 @@ export default class Members extends StatelessWebexPlugin {
             if (pairedMember) {
               // remove member from pairedMember's associatedUsers array
               pairedMember.associatedUsers.delete(member.id);
+
+              if (pairedMember.associatedUser === member.id) {
+                pairedMember.associatedUser = null;
+              }
+
               // reset all the props that we set on pairedMember
               pairedMember.isPairedWithSelf = false;
               pairedMember.isHost = false;
@@ -356,6 +361,12 @@ export default class Members extends StatelessWebexPlugin {
           if (pairedMember) {
             member.pairedWith.memberId = pairedMember.id;
             pairedMember.associatedUsers.add(member.id);
+
+            if (pairedMember.associatedUsers.size === 1) {
+              // associatedUser is deprecated, because it's broken - device can have multiple associated users,
+              // so for backwards compatibility we set it to the first associated user
+              pairedMember.associatedUser = member.id;
+            }
 
             pairedMember.isPairedWithSelf = member.isSelf;
             pairedMember.isHost = member.isHost;

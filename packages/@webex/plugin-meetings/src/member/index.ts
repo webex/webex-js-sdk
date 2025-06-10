@@ -11,6 +11,7 @@ export type MemberId = string;
  * @class Member
  */
 export default class Member {
+  associatedUser: MemberId | null; // deprecated, use associatedUsers instead
   associatedUsers: Set<MemberId>; // users associated with this device, empty if this member is not a device
   canReclaimHost: boolean;
   id: MemberId;
@@ -206,6 +207,16 @@ export default class Member {
      * @memberof Member
      */
     this.isUser = null;
+    /**
+     * Deprecated: use associatedUsers instead
+     * Is this member associated to another user by way of pairing (typical of devices)
+     * @instance
+     * @type {MemberId|null}
+     * @deprecated
+     * @public
+     * @memberof Member
+     */
+    this.associatedUser = null;
     /**
      * Is this member associated to another user by way of pairing (typical of devices)
      * @instance

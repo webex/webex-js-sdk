@@ -349,6 +349,7 @@ describe('plugin-meetings', () => {
 
           let pairedDeviceMember = members.membersCollection.get('test2');
           assert(pairedDeviceMember.associatedUsers.has(member.id));
+          assert.strictEqual(pairedDeviceMember.associatedUser, member.id);
           assert.strictEqual(pairedDeviceMember.associatedUsers.size, 1);
 
           assert.strictEqual(
@@ -383,6 +384,7 @@ describe('plugin-meetings', () => {
           assert.isUndefined(member.pairedWith.memberId);
 
           pairedDeviceMember = members.membersCollection.get('test2');
+          assert.strictEqual(pairedDeviceMember.associatedUser, null);
           assert.strictEqual(pairedDeviceMember.associatedUsers.size, 0);
 
           assert.strictEqual(pairedDeviceMember.isPairedWithSelf, false);
