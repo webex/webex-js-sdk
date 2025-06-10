@@ -286,7 +286,11 @@ export class Registration implements IRegistration {
     if (interval > BASE_REG_RETRY_TIMER_VAL_IN_SEC && !this.failoverImmediately) {
       const scheduledTime = Math.floor(Date.now() / 1000);
 
-      if (this.retryAfter != null && this.retryAfter < RETRY_TIMER_UPPER_LIMIT) {
+      if (this.isCCFlow) {
+        if (this.retryAfter != null && this.retryAfter < RETRY_TIMER_UPPER_LIMIT) {
+          interval = interval < this.retryAfter ? this.retryAfter : interval;
+        }
+      } else if (this.retryAfter != null) {
         interval = interval < this.retryAfter ? this.retryAfter : interval;
       }
 
@@ -311,7 +315,7 @@ export class Registration implements IRegistration {
       if (!abort && !this.isDeviceRegistered()) {
         interval = this.getRegRetryInterval();
 
-        if (this.retryAfter != null) {
+        if (this.retryAfter != null && this.retryAfter < RETRY_TIMER_UPPER_LIMIT) {
           interval = interval < this.retryAfter ? this.retryAfter : interval;
         }
 
@@ -410,21 +414,23 @@ export class Registration implements IRegistration {
           await this.deregister();
           const abort = await this.attemptRegistrationWithServers(FAILBACK_UTIL);
 
-          if (!this.scheduled429Retry && !abort && !this.isDeviceRegistered()) {
-            const abortNew = await this.restorePreviousRegistration(FAILBACK_UTIL);
+          if (this.scheduled429Retry || abort || this.isDeviceRegistered()) {
+            return;
+          }
 
-            if (abortNew) {
-              this.clearFailbackTimer();
+          const abortNew = await this.restorePreviousRegistration(FAILBACK_UTIL);
 
-              return;
-            }
+          if (abortNew) {
+            this.clearFailbackTimer();
 
-            if (!this.isDeviceRegistered()) {
-              await this.restartRegistration(this.executeFailback.name);
-            } else {
-              this.failbackTimer = undefined;
-              this.initiateFailback();
-            }
+            return;
+          }
+
+          if (!this.isDeviceRegistered()) {
+            await this.restartRegistration(this.executeFailback.name);
+          } else {
+            this.failbackTimer = undefined;
+            this.initiateFailback();
           }
         } else {
           log.info('Active calls present, deferring failback to next cycle.', {
