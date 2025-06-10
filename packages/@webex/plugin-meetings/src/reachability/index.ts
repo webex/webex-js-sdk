@@ -165,7 +165,7 @@ export default class Reachability extends EventsScope {
         let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
         for (let i = 0; i < reachedSubnetsArray.length; i += 1) {
           const subnet = reachedSubnetsArray[i];
-          const reachedSubnetFirstOctet = subnet.serverIp.split('.')[0];
+          const reachedSubnetFirstOctet = subnet.serverIps.split('.')[0];
 
           if (subnetFirstOctet === reachedSubnetFirstOctet) {
             acc.add(cluster.name);
@@ -462,7 +462,7 @@ export default class Reachability extends EventsScope {
 
       results = mapValues(allClusterResults, (clusterResult, clusterKey) => {
         const clusterReachability = this.clusterReachability[clusterKey];
-        const subnets = clusterReachability
+        const details = clusterReachability
           ? Array.from(clusterReachability.reachedSubnets || [])
           : [];
 
@@ -471,19 +471,19 @@ export default class Reachability extends EventsScope {
             ...this.mapTransportResultToBackendDataFormat(
               clusterResult.udp || {result: 'untested'}
             ),
-            subnets: subnets.filter((subnet) => subnet.protocol === 'udp'),
+            details: details.filter((subnet) => subnet.protocol === 'udp'),
           },
           tcp: {
             ...this.mapTransportResultToBackendDataFormat(
               clusterResult.tcp || {result: 'untested'}
             ),
-            subnets: subnets.filter((subnet) => subnet.protocol === 'tcp'),
+            details: details.filter((subnet) => subnet.protocol === 'tcp'),
           },
           xtls: {
             ...this.mapTransportResultToBackendDataFormat(
               clusterResult.xtls || {result: 'untested'}
             ),
-            subnets: subnets.filter((subnet) => subnet.protocol === 'xtls'),
+            details: details.filter((subnet) => subnet.protocol === 'xtls'),
           },
         };
       });

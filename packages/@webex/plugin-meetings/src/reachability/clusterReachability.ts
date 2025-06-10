@@ -49,12 +49,16 @@ export class ClusterReachability extends EventsScope {
   private srflxIceCandidates: RTCIceCandidate[] = [];
   public readonly isVideoMesh: boolean;
   public readonly name;
-  public readonly reachedSubnets: Set<{
-    protocol: string;
-    serverIp: string;
-    reachable: string;
-    latency: number;
-    port?: number;
+
+  public clusterInfo: ClusterNode;
+  public reachedSubnets: Set<{
+    serverIps: string;
+    port: number;
+    protocol?: string;
+    reachable?: string;
+    'answered-tx'?: number;
+    'lost-tx'?: number;
+    latencies: number[];
   }> = new Set();
 
   /**
@@ -65,6 +69,7 @@ export class ClusterReachability extends EventsScope {
   constructor(name: string, clusterInfo: ClusterNode) {
     super();
     this.name = name;
+    this.clusterInfo = clusterInfo;
     this.isVideoMesh = clusterInfo.isVideoMesh;
     this.numUdpUrls = clusterInfo.udp.length;
     this.numTcpUrls = clusterInfo.tcp.length;
@@ -76,12 +81,15 @@ export class ClusterReachability extends EventsScope {
     this.result = {
       udp: {
         result: 'untested',
+        minLatency: undefined,
       },
       tcp: {
         result: 'untested',
+        minLatency: undefined,
       },
       xtls: {
         result: 'untested',
+        minLatency: undefined,
       },
     };
   }
@@ -172,7 +180,7 @@ export class ClusterReachability extends EventsScope {
       this.pc.onicegatheringstatechange = null;
       this.pc.close();
     }
-    this.pc = null;
+    // this.pc = null;
   }
 
   /**
@@ -297,20 +305,35 @@ export class ClusterReachability extends EventsScope {
       this.addPublicIP(protocol, publicIp);
     }
 
-    if (serverIp) {
-      // Checking if the serverIp and port combination already exists in the reachedSubnets
-      const isDuplicate = Array.from(this.reachedSubnets).some(
+    if (serverIp && port) {
+      const subnetIndex = Array.from(this.reachedSubnets).findIndex(
         (subnet) =>
-          subnet.serverIp === serverIp && subnet.protocol === protocol && subnet.port === port
+          subnet.serverIps === serverIp && subnet.protocol === protocol && subnet.port === port
       );
 
-      if (!isDuplicate) {
+      if (subnetIndex !== -1) {
+        const subnet = Array.from(this.reachedSubnets)[subnetIndex];
+        subnet.reachable = 'true';
+        subnet['answered-tx'] = (subnet['answered-tx'] || 0) + 1;
+        subnet['lost-tx'] = subnet['lost-tx'] || 0;
+        subnet.latencies.push(latency);
+
+        // Replacing domain name with resolved IP for XTLS
+        if (protocol === 'xtls' && subnet.serverIps.includes('.public.')) {
+          subnet.serverIps = serverIp;
+        }
+
+        // Updating the minLatency for each protocol
+        this.updateMinLatency(protocol);
+      } else {
         this.reachedSubnets.add({
-          protocol,
-          serverIp,
-          reachable: 'true',
-          latency,
+          serverIps: serverIp,
           port,
+          protocol,
+          reachable: 'false', // Retain domain name for failures
+          'answered-tx': 0,
+          'lost-tx': 1,
+          latencies: [],
         });
       }
     }
@@ -378,13 +401,9 @@ export class ClusterReachability extends EventsScope {
 
             const match = (e.candidate as any).url.match(stunServerUrlRegex);
             if (match) {
-              // eslint-disable-next-line prefer-destructuring
-              serverIp = match[1];
-              // eslint-disable-next-line prefer-destructuring
-              port = match[2];
-              if (port) {
-                port = Number(port);
-              }
+              const [, extractedServerIp, portString] = match; // Destructure match array
+              serverIp = extractedServerIp;
+              port = portString ? Number(portString) : null; // Convert port to a number if it exists
             }
           }
 
@@ -398,7 +417,7 @@ export class ClusterReachability extends EventsScope {
           this.saveResult(
             protocol,
             latencyInMilliseconds,
-            null,
+            e.candidate.relatedAddress,
             e.candidate.address,
             e.candidate.port
           );
@@ -422,17 +441,65 @@ export class ClusterReachability extends EventsScope {
       return this.result;
     }
 
-    // Initialize this.result as saying that nothing is reachable.
-    // It will get updated as we go along and successfully gather ICE candidates.
-    this.result.udp = {
-      result: this.numUdpUrls > 0 ? 'unreachable' : 'untested',
-    };
-    this.result.tcp = {
-      result: this.numTcpUrls > 0 ? 'unreachable' : 'untested',
-    };
-    this.result.xtls = {
-      result: this.numXTlsUrls > 0 ? 'unreachable' : 'untested',
-    };
+    // Prepopulating reachedSubnets with all subnets from the cluster configuration
+    const udpSubnets = this.clusterInfo.udp
+      .map((url) => {
+        const match = url.match(/stun:([\d.]+):(\d+)/);
+        if (match) {
+          return {
+            serverIps: match[1],
+            port: Number(match[2]),
+            protocol: 'udp',
+            reachable: 'false', // Initially mark as not reachable
+            'answered-tx': 0,
+            'lost-tx': 1,
+            latencies: [],
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    const tcpSubnets = this.clusterInfo.tcp
+      .map((url) => {
+        const match = url.match(/stun:([\d.]+):(\d+)/);
+        if (match) {
+          return {
+            serverIps: match[1],
+            port: Number(match[2]),
+            protocol: 'tcp',
+            reachable: 'false', // Initially mark as not reachable
+            'answered-tx': 0,
+            'lost-tx': 1,
+            latencies: [],
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    const xtlsSubnets = this.clusterInfo.xtls
+      .map((url) => {
+        const match = url.match(/stun:([\w-.]+):(\d+)/); // Match domain name and port
+        if (match) {
+          return {
+            serverIps: match[1], // Store the domain name
+            port: Number(match[2]),
+            protocol: 'xtls',
+            reachable: 'false', // Initially mark as not reachable
+            'answered-tx': 0,
+            'lost-tx': 1,
+            latencies: [],
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean);
+
+    this.reachedSubnets = new Set([...udpSubnets, ...tcpSubnets, ...xtlsSubnets]);
 
     try {
       const offer = await this.pc.createOffer({offerToReceiveAudio: true});
@@ -464,5 +531,16 @@ export class ClusterReachability extends EventsScope {
     this.registerIceCandidateListener();
 
     return this.defer.promise;
+  }
+
+  private updateMinLatency(protocol: 'udp' | 'tcp' | 'xtls') {
+    if (this.reachedSubnets) {
+      const latencies = Array.from(this.reachedSubnets)
+        .filter((subnet) => subnet.protocol === protocol && subnet.latencies.length > 0)
+        .flatMap((subnet) => subnet.latencies);
+      if (latencies.length > 0) {
+        this.result[protocol].minLatency = Math.min(...latencies);
+      }
+    }
   }
 }

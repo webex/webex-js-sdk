@@ -5,6 +5,19 @@ export type TransportResult = {
   result: 'reachable' | 'unreachable' | 'untested';
   latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
   clientMediaIPs?: string[];
+  minLatency?: number;
+  details?: SubnetDetails[];
+};
+
+// New type to represent the result for each subnet IP address
+export type SubnetDetails = {
+  protocol?: 'udp' | 'tcp' | 'xtls'; // Protocol used for the test
+  serverIps: string; // IP address of the subnet being tested
+  reachable: true | false; // Result for this specific address
+  'answered-tx'?: number; // 1 if reachable, 0 otherwise
+  'lost-tx'?: number; // 1 if unreachable, 0 otherwise
+  port: number; // Port used for the test
+  latencies?: number[];
 };
 
 export enum NatType {
