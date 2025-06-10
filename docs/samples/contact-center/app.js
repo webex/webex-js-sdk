@@ -214,11 +214,20 @@ const taskEvents = new CustomEvent('task:incoming', {
 
 function updateButtonsPostEndCall() {
   disableAllCallControls();
-  if(currentTask) {
-    wrapupElm.disabled = false;
-    wrapupCodesDropdownElm.disabled = false;
-  } else {
+
+  if (currentTask) {
+    setUIControls(currentTask);
+
+    const wctrl = currentTask.taskUiControls.wrapup;
+    wrapupElm.style.display = wctrl.visible ? 'inline-block' : 'none';
+    wrapupElm.disabled = !wctrl.enabled;              // <— ensure wrapup button enabled
+    wrapupCodesDropdownElm.style.display = wctrl.visible ? 'inline-block' : 'none';
+    wrapupCodesDropdownElm.disabled = !wctrl.enabled;
+  }
+  else {
+    wrapupElm.style.display = 'none';
     wrapupElm.disabled = true;
+    wrapupCodesDropdownElm.style.display = 'none';
     wrapupCodesDropdownElm.disabled = true;
   }
 }
@@ -229,22 +238,6 @@ function showInitiateConsultDialog() {
 
 function closeConsultDialog() {
   initiateConsultDialog.close();
-}
-
-function showConsultButton() {
-  consultTabBtn.style.display = 'inline-block';
-}
-
-function hideConsultButton() {
-  consultTabBtn.style.display = 'none';
-}
-
-function showEndConsultButton() {
-  endConsultBtn.style.display = 'inline-block';
-}
-
-function hideEndConsultButton() {
-  endConsultBtn.style.display = 'none';
 }
 
 function toggleTransferOptions() {
@@ -391,11 +384,11 @@ async function initiateConsult() {
 
   try {
     await currentTask.consult(consultPayload);
+    setUIControls(currentTask);
     console.log('Consult initiated successfully');
-    // Disable the blind transfer button after initiating consult, only enable it once consult is confirmed
-    updateConsultUI();
   } catch (error) {
     console.error('Failed to initiate consult', error);
+    setUIControls(currentTask);
     alert('Failed to initiate consult');
   }
 }
@@ -416,16 +409,22 @@ async function handleQueueConsult(consultPayload) {
     alert('Failed to initiate queue consult');
     // Restore UI state
     refreshUIPostConsult();
+    setUIControls(currentTask);
     currentConsultQueueId = null;
   }
 }
 
-// Updates UI state for queue consult initiation
+// Updates UI state for queue consult initiation (have to do this as queue consult is initially UI)
 function updateConsultUI() {
   disableCallControlPostConsult();
   disableTransferControls();
-  hideConsultButton();
-  showEndConsultButton();
+  endElm.style.display = 'none';
+  endElm.disabled = true;
+  endConsultBtn.style.display = 'inline-block';
+  endConsultBtn.disabled = false;
+  consultTabBtn.style.display = 'none';
+  consultTransferBtn.style.display = 'inline-block';
+  consultTransferBtn.disabled = true;
 }
 
 // Function to initiate transfer
@@ -464,13 +463,16 @@ async function initiateConsultTransfer() {
     return;
   }
 
+  console.info("RAVI destination", destinationType);
+
   const consultTransferPayload = {
     to: consultDestination,
     destinationType: destinationType,
+    consult: true,
   };
 
   try {
-    await currentTask.consultTransfer(consultTransferPayload);
+    await currentTask.transfer(consultTransferPayload);
     console.log('Consult transfer initiated successfully');
     consultTransferBtn.disabled = true; // Disable the consult transfer button after initiating consult transfer
     consultTransferBtn.style.display = 'none'; // Hide the consult transfer button after initiating consult transfer
@@ -497,8 +499,7 @@ async function endConsult() {
   try {
     await currentTask.endConsult(consultEndPayload);
     console.log('Consult ended successfully');
-    hideEndConsultButton();
-    showConsultButton();
+    setUIControls(currentTask);
   } catch (error) {
     console.error('Failed to end consult', error);
     alert('Failed to end consult');
@@ -579,8 +580,6 @@ function enableCallControlPostConsult() {
 function refreshUIPostConsult() {
   enableCallControlPostConsult();
   enableTransferControls();
-  showConsultButton();
-  hideEndConsultButton();
 }
 
 // Register task listeners
@@ -589,6 +588,10 @@ function registerTaskListeners(task) {
     updateTaskList(); // Update the task list UI to have latest tasks
     console.info('Call has been accepted for task: ', task.data.interactionId);
     handleTaskSelect(task);
+    if (task.data.interaction.mediaType === 'telephony') {
+      setUIControls(task);
+      incomingDetailsElm.innerText = '';
+    }
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
@@ -603,7 +606,7 @@ function registerTaskListeners(task) {
       }
       else {
         console.info('Call ended successfully');
-        updateButtonsPostEndCall();
+        setUIControls(task);
       }
       updateTaskList(); // Update the task list UI to have latest tasks
       handleTaskSelect(task);
@@ -620,6 +623,9 @@ function registerTaskListeners(task) {
   // Consult flows
   task.on('task:consultCreated', (task) => {
     console.info('Consult created');
+    if (currentTask.data.interactionId === task.data.interactionId) {
+      setUIControls(task);
+    }
   });
 
   task.on('task:offerConsult', (task) => {
@@ -628,18 +634,14 @@ function registerTaskListeners(task) {
 
   task.on('task:consultAccepted', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
-      // When we accept an incoming consult
-      hideConsultButton();
-      showEndConsultButton();
-      consultTransferBtn.disabled = true; // Disable the consult transfer button since we are not yet owner of the call
+      // use UI controls for consult acceptance
+      setUIControls(task);
     }
   });
 
   task.on('task:consulting', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
-      // When we are consulting with the other agent
-      consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
-      consultTransferBtn.disabled = false; // Enable the consult transfer button
+      setUIControls(task);
     }
   });
 
@@ -647,8 +649,7 @@ function registerTaskListeners(task) {
     // When trying to consult queue fails
     if (currentTask.data.interactionId === task.data.interactionId) {
       console.error(`Received task:consultQueueFailed for task: ${task.data.interactionId}`);
-      hideEndConsultButton();
-      showConsultButton();
+      setUIControls(task);
     }
   });
 
@@ -657,26 +658,15 @@ function registerTaskListeners(task) {
       // When we manually cancel consult to queue before it is accepted by other agent
       console.log(`Received task:consultQueueCancelled for task: ${currentTask.data.interactionId}`);
       currentConsultQueueId = null;
-      hideEndConsultButton();
-      showConsultButton();
-      enableTransferControls();
-      enableCallControlPostConsult();
+      setUIControls(task);
     }
   });
 
   task.on('task:consultEnd', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
-      hideEndConsultButton();
-      showConsultButton();
-      enableTransferControls();
-      enableCallControlPostConsult();
-      consultTransferBtn.style.display = 'none';
-      consultTransferBtn.disabled = true;
-      answerElm.disabled = true;
-      declineElm.disabled = true;
+      setUIControls(task);
       currentConsultQueueId = null;
-      if(task.data.isConsulted) {
-        updateButtonsPostEndCall();
+      if (task.data.isConsulted) {
         incomingDetailsElm.innerText = '';
         task = undefined;
       }
@@ -686,6 +676,10 @@ function registerTaskListeners(task) {
   task.on('task:rejected', (reason) => {
     console.info('Task is rejected with reason:', reason);
     showAgentStatePopup(reason);
+  });
+
+  task.on('task:wrappedup', (t) => {
+    setUIControls(t);
   });
 }
 
@@ -700,30 +694,54 @@ function disableAllCallControls() {
   pauseResumeRecordingElm.disabled = true;
 }
 
+function setUIControls(task) {
+  const ctrls = task.taskUiControls;
+  const btnMap = {
+    accept: answerElm,
+    decline: declineElm,
+    hold: holdResumeElm,
+    mute: muteElm,
+    transfer: transferElm,
+    consult: consultTabBtn,
+    consultTransfer: consultTransferBtn,
+    recording: pauseResumeRecordingElm,
+    end: endElm,
+    endConsult: endConsultBtn,
+    wrapup: wrapupElm
+  };
+
+  Object.entries(btnMap).forEach(([key, el]) => {
+    const c = ctrls[key];
+    if (!c || !el) return;
+    el.style.display = c.visible ? 'inline-block' : 'none';
+    el.disabled      = !c.enabled;
+  });
+
+  // wrapup‐codes dropdown mirrors wrapup control
+  wrapupCodesDropdownElm.style.display = ctrls.wrapup.visible ? 'inline-block' : 'none';
+  wrapupCodesDropdownElm.disabled = !ctrls.wrapup.enabled;
+}
+
 function updateCallControlUI(task) {
   const { data } = task;
-  const { interaction, mediaResourceId } = data;
-  const {
-    isTerminated,
-    media,
-    participants,
-    callProcessingDetails
-  } = interaction;
-  
+  const { interaction, participants } = data.interaction
+    ? { interaction: data.interaction, participants: data.interaction.participants, callProcessingDetails: data.interaction.callProcessingDetails }
+    : {};
+  const hasParticipants = participants && Object.keys(participants).length > 1;
+  const isNew = data.interaction.state === 'new';
+  const digitalChannels = ['chat', 'email', 'social'];
 
-  if (task.data.wrapUpRequired) {
+  if (data.wrapUpRequired) {
     updateButtonsPostEndCall();
     return;
   }
+
   wrapupElm.disabled = true;
   wrapupCodesDropdownElm.disabled = true;
-  const hasParticipants = Object.keys(participants).length > 1;
-  const isNew = task.data.interaction.state === 'new';
-  const digitalChannels = ['chat', 'email', 'social'];
 
   if (isNew) {
     disableAllCallControls();
-  } else if (digitalChannels.includes(task.data.interaction.mediaType)) {
+  } else if (digitalChannels.includes(interaction.mediaType)) {
     holdResumeElm.disabled = true;
     muteElm.disabled = true;
     pauseResumeRecordingElm.disabled = true;
@@ -732,31 +750,17 @@ function updateCallControlUI(task) {
     transferElm.disabled = false;
     endElm.disabled = !hasParticipants;
     pauseResumeRecordingElm.disabled = true;
-  } else if (task?.data?.interaction?.mediaType === 'telephony') {
-    // hold/resume call
-    const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
-    holdResumeElm.disabled = isTerminated;
-    holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
-    transferElm.disabled = false;
-    muteElm.disabled = false;
-    endElm.disabled = !hasParticipants;
-    consultTabBtn.disabled = false;
-    pauseResumeRecordingElm.disabled = false;
-    pauseResumeRecordingElm.innerText = 'Pause Recording';
-    if (callProcessingDetails) {
-      const { pauseResumeEnabled, isPaused } = callProcessingDetails;
+  }
+  else if (interaction.mediaType === 'telephony') {
+    // apply UI controls driven by task.taskUiControls
+    setUIControls(task);
 
-      // pause/resume recording
-      // pauseResumeRecordingElm.disabled = !pauseResumeEnabled; // TODO: recheck after rajesh PR(https://github.com/webex/widgets/pull/427/files) and why it is undefined
-      pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
-    }
-    
-    // end consult, consult transfer buttons
+    // leave consult‐to‐queue UI unchanged
     const { consultMediaResourceId, destAgentId, destinationType } = data;
     if (consultMediaResourceId && destAgentId && destinationType) {
       const destination = participants[destAgentId];
       destinationTypeDropdown.value = destinationType;
-      consultDestinationInput.value = destination.dn; 
+      consultDestinationInput.value = destination.dn;
 
       consultTabBtn.style.display = 'none';
       endConsultBtn.style.display = 'inline-block';
@@ -1263,7 +1267,16 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   taskId = event.detail.task.data.interactionId;
 
   registerTaskListeners(currentTask);
-  enableAnswerDeclineButtons(currentTask);
+
+  if (currentTask.data.interaction.mediaType === 'telephony' && webex.cc.taskManager.webCallingService.loginOption !== 'BROWSER') {
+    console.info('ADHWAITH task incoming');
+    setUIControls(currentTask);
+  }
+  else {
+    enableAnswerDeclineButtons(currentTask);
+  }
+
+  incomingDetailsElm.innerText = `Call from ${currentTask.data.interaction.callAssociatedDetails?.ani}`;
 });
 
  async function answer() {
@@ -1407,7 +1420,6 @@ function endCall() {
   endElm.disabled = true;
   currentTask.end().then(() => {
     console.log('task ended successfully by agent');
-    updateButtonsPostEndCall();
     updateTaskList();
     updateUnregisterButtonState();
   }).catch((error) => {

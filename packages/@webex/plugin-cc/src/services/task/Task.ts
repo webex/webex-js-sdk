@@ -46,7 +46,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     return oldData;
   }
 
-  private initialiseUIControls() {
+  protected initialiseUIControls() {
     this.taskUiControls = {
       accept: new TaskButtonControl(true, true),
       decline: new TaskButtonControl(true, true),
@@ -67,6 +67,11 @@ export default abstract class Task extends EventEmitter implements ITask {
    * This method is used to set the UI controls data. Will be implemented in child classes.
    */
   protected setUIControls() {}
+
+  protected unSupportedOperationError(methodName: string) {
+    LoggerProxy.error(`Unsupported operation: ${methodName} in Task object`);
+    throw new Error(`Unsupported operation: ${methodName} in Task class`);
+  }
 
   /**
    * This method is used to update the task data.

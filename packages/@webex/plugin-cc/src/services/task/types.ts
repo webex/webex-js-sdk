@@ -807,6 +807,8 @@ export type TransferPayLoad = {
   to: string;
   /** Type of the destination (queue, agent, etc.) */
   destinationType: DestinationType;
+  /** Optional: if true, perform a consult-transfer instead of blind/vTeam */
+  consult?: boolean;
 };
 
 /**
@@ -1190,6 +1192,13 @@ export interface IVoice extends ITask {
    * ```
    */
   consult(consultPayload: ConsultPayload): Promise<TaskResponse>;
+
+  /** overload 1: standard blind/vTeam transfer */
+  transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>;
+  /** overload 2: consult-transfer when consult:true */
+  transfer(
+    transferPayload: Omit<TransferPayLoad, 'consult'> & {consult: true}
+  ): Promise<TaskResponse>;
 }
 
 /**
