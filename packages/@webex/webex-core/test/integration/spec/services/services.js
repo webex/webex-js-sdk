@@ -10,10 +10,6 @@ import WebexCore, {
   ServiceCatalog,
   ServiceRegistry,
   ServiceState,
-  Services,
-  ServiceInterceptor,
-  ServerErrorInterceptor,
-  registerInternalPlugin,
   ServiceUrl,
   serviceConstants,
 } from '@webex/webex-core';
@@ -41,17 +37,15 @@ describe('webex-core', () => {
             orgId: process.env.EU_PRIMARY_ORG_ID,
           },
         }),
-      ]).then(
-        ([[user], [userEU]]) =>
-          new Promise((resolve) => {
-            setTimeout(() => {
-              webexUser = user;
-              webexUserEU = userEU;
-              resolve();
-            }, 1000);
-          })
-      )
-    );
+      ]).then(([[user], [userEU]]) =>
+        new Promise((resolve) => {
+          setTimeout(() => {
+            webexUser = user;
+            webexUserEU = userEU;
+            resolve();
+          }, 1000)
+        })
+    ));
 
     beforeEach('create webex instance', () => {
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
