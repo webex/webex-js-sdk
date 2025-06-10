@@ -172,7 +172,6 @@ export class ClusterReachability extends EventsScope {
       this.pc.onicegatheringstatechange = null;
       this.pc.close();
     }
-    this.pc = null;
   }
 
   /**
