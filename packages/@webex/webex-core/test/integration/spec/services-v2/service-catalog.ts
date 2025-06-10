@@ -337,52 +337,52 @@ describe('webex-core', () => {
         });
       });
 
-      // describe('#_fetchNewServiceHostmap()', () => {
-      //   let fullRemoteHM;
-      //   let limitedRemoteHM;
+      describe('#_fetchNewServiceHostmap()', () => {
+        let fullRemoteHM;
+        let limitedRemoteHM;
 
-      //   beforeEach(() =>
-      //     Promise.all([
-      //       services._fetchNewServiceHostmap(),
-      //       services._fetchNewServiceHostmap({
-      //         from: 'limited',
-      //         query: {userId: webexUser.id},
-      //       }),
-      //     ]).then(([fRHM, lRHM]) => {
-      //       fullRemoteHM = fRHM;
-      //       limitedRemoteHM = lRHM;
+        beforeEach(() =>
+          Promise.all([
+            services._fetchNewServiceHostmap(),
+            services._fetchNewServiceHostmap({
+              from: 'limited',
+              query: {userId: webexUser.id},
+            }),
+          ]).then(([fRHM, lRHM]) => {
+            fullRemoteHM = fRHM;
+            limitedRemoteHM = lRHM;
 
-      //       return Promise.resolve();
-      //     })
-      //   );
+            return Promise.resolve();
+          })
+        );
 
-      //   it('resolves to an authed u2c hostmap when no params specified', () => {
-      //     assert.typeOf(fullRemoteHM, 'array');
-      //     assert.isAbove(fullRemoteHM.length, 0);
-      //   });
+        it('resolves to an authed u2c hostmap when no params specified', () => {
+          assert.typeOf(fullRemoteHM, 'array');
+          assert.isAbove(fullRemoteHM.length, 0);
+        });
 
-      //   it('resolves to a limited u2c hostmap when params specified', () => {
-      //     assert.typeOf(limitedRemoteHM, 'array');
-      //     assert.isAbove(limitedRemoteHM.length, 0);
-      //   });
+        it('resolves to a limited u2c hostmap when params specified', () => {
+          assert.typeOf(limitedRemoteHM, 'array');
+          assert.isAbove(limitedRemoteHM.length, 0);
+        });
 
-      //   it('rejects if the params provided are invalid', () =>
-      //     services
-      //       ._fetchNewServiceHostmap({
-      //         from: 'limited',
-      //         query: {userId: 'notValid'},
-      //       })
-      //       .then(() => {
-      //         assert.isTrue(false, 'should have rejected');
+        it('rejects if the params provided are invalid', () =>
+          services
+            ._fetchNewServiceHostmap({
+              from: 'limited',
+              query: {userId: 'notValid'},
+            })
+            .then(() => {
+              assert.isTrue(false, 'should have rejected');
 
-      //         return Promise.reject();
-      //       })
-      //       .catch((e) => {
-      //         assert.typeOf(e, 'Error');
+              return Promise.reject();
+            })
+            .catch((e) => {
+              assert.typeOf(e, 'Error');
 
-      //         return Promise.resolve();
-      //       }));
-      // });
+              return Promise.resolve();
+            }));
+      });
     });
 
     describe('#waitForCatalog()', () => {
