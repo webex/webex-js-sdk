@@ -296,7 +296,7 @@ describe('webex-core', () => {
         it('marks a host as failed', () => {
           const priorityUrl = catalog.get(testDetailTemplate.id, true);
 
-          catalog.markFailedUrl(priorityUrl);
+          catalog.markFailedServiceUrl(priorityUrl);
 
           const failedHost = testDetail.hosts.find((host) => host.failed);
 
@@ -305,7 +305,7 @@ describe('webex-core', () => {
 
         it('returns the next priority url', () => {
           const priorityUrl = catalog.get(testDetailTemplate.id, true);
-          const nextPriorityUrl = catalog.markFailedUrl(priorityUrl);
+          const nextPriorityUrl = catalog.markFailedServiceUrl(priorityUrl);
 
           assert.notEqual(priorityUrl, nextPriorityUrl);
         });
