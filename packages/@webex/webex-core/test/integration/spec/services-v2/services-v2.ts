@@ -358,646 +358,555 @@ describe('webex-core', () => {
       });
     });
 
-    //     describe('#isServiceUrl()', () => {
-    //       let testDetailTemplate;
-    //       let testDetail;
-
-    //       beforeEach(() => {
-    //         testDetailTemplate = {
-    //           defaultUrl: 'https://www.example.com/api/v1',
-    //           hosts: [
-    //             {
-    //               homeCluster: true,
-    //               host: 'www.example-p5.com',
-    //               ttl: -1,
-    //               priority: 5,
-    //               id: 'exampleClusterId',
-    //             },
-    //             {
-    //               host: 'www.example-p3.com',
-    //               ttl: -1,
-    //               priority: 3,
-    //               id: 'exampleClusterId',
-    //             },
-    //           ],
-    //           name: 'exampleValid',
-    //         };
-    //         testDetail = new ServiceDetail(testDetailTemplate);
-    //         catalog._loadServiceDetails('preauth', [testDetail]);
-    //       });
-
-    //       it('returns true if url is a service url', () => {
-    //         assert.isTrue(services.isServiceUrl(testDetailTemplate.defaultUrl));
-    //       });
-
-    //       it('returns true for priority host urls', () => {
-    //         assert.isTrue(services.isServiceUrl(testDetail.get(true)));
-    //       });
-
-    //       it("returns undefined if the url doesn't exist", () => {
-    //         assert.isFalse(services.isServiceUrl('https://na.com/'));
-    //       });
-
-    //       it('returns undefined if the param is not a url', () => {
-    //         assert.isFalse(services.isServiceUrl('not a url'));
-    //       });
-    //     });
-
-    //     describe('#isAllowedDomainUrl()', () => {
-    //       let list;
-
-    //       beforeEach(() => {
-    //         catalog.setAllowedDomains(['some-domain-a', 'some-domain-b']);
-
-    //         list = catalog.getAllowedDomains();
-    //       });
-
-    //       it('returns a boolean', () => {
-    //         assert.isBoolean(services.isAllowedDomainUrl(''));
-    //       });
-
-    //       it('returns true if the url contains an allowed domain', () => {
-    //         assert.isTrue(services.isAllowedDomainUrl(`https://${list[0]}/resource`));
-    //       });
-
-    //       it('returns false if the url does not contain an allowed domain', () => {
-    //         assert.isFalse(services.isAllowedDomainUrl('https://bad-domain/resource'));
-    //       });
-    //     });
-
-    //     describe('#convertUrlToPriorityUrl', () => {
-    //       let testDetail;
-    //       let testDetailTemplate;
-
-    //       beforeEach(() => {
-    //         testDetailTemplate = {
-    //           defaultUrl: 'https://www.example.com/api/v1',
-    //           hosts: [
-    //             {
-    //               homeCluster: true,
-    //               host: 'www.example-p5.com',
-    //               ttl: -1,
-    //               priority: 5,
-    //               id: '0:0:cluster-a:exampleValid',
-    //             },
-    //             {
-    //               host: 'www.example-p3.com',
-    //               ttl: -1,
-    //               priority: 3,
-    //               id: '0:0:cluster-b:exampleValid',
-    //             },
-    //           ],
-    //           name: 'exampleValid',
-    //         };
-    //         testDetail = new ServiceDetail(testDetailTemplate);
-    //         catalog._loadServiceDetails('preauth', [testDetail]);
-    //       });
-
-    //       it('converts the url to a priority host url', () => {
-    //         const resource = 'path/to/resource';
-    //         const url = `${testDetailTemplate.defaultUrl}/${resource}`;
-
-    //         const convertUrl = services.convertUrlToPriorityHostUrl(url);
-
-    //         assert.isDefined(convertUrl);
-    //         assert.isTrue(convertUrl.includes(testDetailTemplate.hosts[0].host));
-    //       });
-
-    //       it('throws an exception if not a valid service', () => {
-    //         assert.throws(services.convertUrlToPriorityHostUrl, Error);
-
-    //         assert.throws(
-    //           services.convertUrlToPriorityHostUrl.bind(services, 'not-a-valid-service'),
-    //           Error
-    //         );
-    //       });
-
-    //       afterEach(() => {
-    //         catalog._unloadServiceUrls('preauth', [testDetail]);
-    //       });
-    //     });
-
-    //     describe('#markFailedUrl()', () => {
-    //       let testDetailTemplate;
-    //       let testDetail;
-
-    //       beforeEach(() => {
-    //         catalog.clean();
-
-    //         testDetailTemplate = {
-    //           defaultUrl: 'https://www.example-phr.com/api/v1',
-    //           hosts: [
-    //             {
-    //               host: 'www.example-phr-p5.com',
-    //               ttl: -1,
-    //               priority: 5,
-    //               homeCluster: true,
-    //             },
-    //             {
-    //               host: 'www.example-phr-p3.com',
-    //               ttl: -1,
-    //               priority: 3,
-    //               homeCluster: true,
-    //             },
-    //           ],
-    //           name: 'exampleValid-phr',
-    //         };
-    //         testDetail = new ServiceDetail(testDetailTemplate);
-    //         catalog._loadServiceDetails('preauth', [testDetail]);
-    //       });
-
-    //       afterEach(() => {
-    //         catalog._unloadServiceUrls('preauth', [testDetail]);
-    //       });
-
-    //       it('marks a host as failed', () => {
-    //         const priorityServiceUrl = catalog._getUrl(testDetailTemplate.name);
-    //         const priorityUrl = priorityServiceUrl._getPriorityHostUrl();
-
-    //         services.markFailedUrl(priorityUrl);
-
-    //         const failedHost = priorityServiceUrl.hosts.find((host) => host.failed);
-
-    //         assert.isTrue(priorityUrl.includes(failedHost.host));
-    //       });
-
-    //       it('returns the next priority url', () => {
-    //         const priorityUrl = services.get(testDetailTemplate.name, true);
-
-    //         const nextPriorityUrl = services.markFailedUrl(priorityUrl);
-
-    //         assert.notEqual(priorityUrl, nextPriorityUrl);
-    //       });
-
-    //       it('should reset hosts once all hosts have been marked failed', () => {
-    //         const priorityServiceUrl = catalog._getUrl(testDetailTemplate.name);
-    //         const firstPriorityUrl = priorityServiceUrl._getPriorityHostUrl();
-
-    //         priorityServiceUrl.hosts.forEach(() => {
-    //           const priorityUrl = priorityServiceUrl._getPriorityHostUrl();
-
-    //           services.markFailedUrl(priorityUrl);
-    //         });
-
-    //         const lastPriorityUrl = priorityServiceUrl._getPriorityHostUrl();
-
-    //         assert.equal(firstPriorityUrl, lastPriorityUrl);
-    //       });
-    //     });
-
-    //     describe('#updateServices()', () => {
-    //       it('returns a Promise that and resolves on success', (done) => {
-    //         const servicesPromise = services.updateServices();
-
-    //         assert.typeOf(servicesPromise, 'Promise');
-
-    //         servicesPromise.then(() => {
-    //           Object.keys(services.list()).forEach((key) => {
-    //             assert.typeOf(key, 'string');
-    //             assert.typeOf(services.list()[key], 'string');
-    //           });
-
-    //           done();
-    //         });
-    //       });
-
-    //       it('updates the services list', (done) => {
-    //         catalog.serviceGroups.postauth = [];
-
-    //         services.updateServices().then(() => {
-    //           assert.isAbove(catalog.serviceGroups.postauth.length, 0);
-    //           done();
-    //         });
-
-    //         services.updateServices();
-    //       });
-
-    //       it('updates query.email to be emailhash-ed using SHA256', (done) => {
-    //         catalog.updateServiceUrls = sinon.stub().returns({}); // returns `this`
-    //         services._fetchNewServiceHostmap = sinon.stub().resolves();
-
-    //         services
-    //           .updateServices({
-    //             from: 'limited',
-    //             query: {email: webexUser.email},
-    //           })
-    //           .then(() => {
-    //             assert.calledWith(
-    //               services._fetchNewServiceHostmap,
-    //               sinon.match.has('query', {emailhash: sinon.match(/\b[A-Fa-f0-9]{64}\b/)})
-    //             );
-    //             done();
-    //           });
-    //       });
-
-    //       it('updates the limited catalog when email is provided', (done) => {
-    //         catalog.serviceGroups.preauth = [];
-
-    //         services
-    //           .updateServices({
-    //             from: 'limited',
-    //             query: {email: webexUser.email},
-    //           })
-    //           .then(() => {
-    //             assert.isAbove(catalog.serviceGroups.preauth.length, 0);
-    //             done();
-    //           });
-    //       });
-
-    //       it('updates the limited catalog when userId is provided', (done) => {
-    //         catalog.serviceGroups.preauth = [];
-
-    //         services
-    //           .updateServices({
-    //             from: 'limited',
-    //             query: {userId: webexUser.id},
-    //           })
-    //           .then(() => {
-    //             assert.isAbove(catalog.serviceGroups.preauth.length, 0);
-    //             done();
-    //           });
-    //       });
-
-    //       it('updates the limited catalog when orgId is provided', (done) => {
-    //         catalog.serviceGroups.preauth = [];
-
-    //         services
-    //           .updateServices({
-    //             from: 'limited',
-    //             query: {orgId: webexUser.orgId},
-    //           })
-    //           .then(() => {
-    //             assert.isAbove(catalog.serviceGroups.preauth.length, 0);
-    //             done();
-    //           });
-    //       });
-    //       it('updates the limited catalog when query param mode is provided', (done) => {
-    //         catalog.serviceGroups.preauth = [];
-
-    //         services
-    //           .updateServices({
-    //             from: 'limited',
-    //             query: {mode: 'DEFAULT_BY_PROXIMITY'},
-    //           })
-    //           .then(() => {
-    //             assert.isAbove(catalog.serviceGroups.preauth.length, 0);
-    //             done();
-    //           });
-    //       });
-    //       it('does not update the limited catalog when nothing is provided', () => {
-    //         catalog.serviceGroups.preauth = [];
-
-    //         return services
-    //           .updateServices({from: 'limited'})
-    //           .then(() => {
-    //             assert(false, 'resolved, should have thrown');
-    //           })
-    //           .catch(() => {
-    //             assert(true);
-    //           });
-    //       });
-
-    //       it('updates limited catalog and calls _fetchNewServiceHostmap with forceRefresh = true', (done) => {
-    //         const forceRefresh = true;
-    //         const fetchNewServiceHostmapSpy = sinon.spy(services, '_fetchNewServiceHostmap');
-
-    //         services
-    //           .updateServices({
-    //             from: 'limited',
-    //             query: {email: webexUser.email},
-    //             forceRefresh,
-    //           })
-    //           .then(() => {
-    //             assert.calledOnce(fetchNewServiceHostmapSpy);
-    //             assert.calledWith(
-    //               fetchNewServiceHostmapSpy,
-    //               sinon.match.has(
-    //                 'from',
-    //                 'limited',
-    //                 'query',
-    //                 {emailhash: sinon.match(/\b[A-Fa-f0-9]{64}\b/)},
-    //                 'forceFresh',
-    //                 forceRefresh
-    //               )
-    //             );
-
-    //             fetchNewServiceHostmapSpy.returnValues[0].then((res) => {
-    //               assert.isAbove(res.length, 0);
-    //             });
-    //             done();
-    //           });
-    //       });
-    //     });
-
-    //     describe('#fetchClientRegionInfo()', () => {
-    //       it('returns client region info', () =>
-    //         services.fetchClientRegionInfo().then((r) => {
-    //           assert.isDefined(r.regionCode);
-    //           assert.isDefined(r.clientAddress);
-    //         }));
-    //     });
-
-    //     describe('#validateUser()', () => {
-    //       const unauthWebex = new WebexCore();
-    //       const unauthServices = unauthWebex.internal.services;
-    //       let sandbox = null;
-
-    //       const getActivationRequest = (requestStub) => {
-    //         const requests = requestStub.args.filter(
-    //           ([request]) => request.service === 'license' && request.resource === 'users/activations'
-    //         );
-
-    //         assert.strictEqual(requests.length, 1);
-
-    //         return requests[0][0];
-    //       };
-
-    //       beforeEach(() => {
-    //         sandbox = sinon.createSandbox();
-    //       });
-
-    //       afterEach(() => {
-    //         sandbox.restore();
-    //         sandbox = null;
-    //       });
-
-    //       it('returns a rejected promise when no email is specified', () =>
-    //         unauthServices
-    //           .validateUser({})
-    //           .then(() => {
-    //             assert(false, 'resolved, should have thrown');
-    //           })
-    //           .catch(() => {
-    //             assert(true);
-    //           }));
-
-    //       it('validates an authorized user and webex instance', () =>
-    //         services.validateUser({email: webexUser.email}).then((r) => {
-    //           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-    //           assert.equal(r.activated, true);
-    //           assert.equal(r.exists, true);
-    //         }));
-
-    //       it('validates an authorized EU user and webex instance', () =>
-    //         servicesEU.validateUser({email: webexUserEU.email}).then((r) => {
-    //           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-    //           assert.equal(r.activated, true);
-    //           assert.equal(r.exists, true);
-    //         }));
-
-    //       it("returns a rejected promise if the provided email isn't valid", () =>
-    //         unauthServices
-    //           .validateUser({email: 'not an email'})
-    //           .then(() => {
-    //             assert(false, 'resolved, should have thrown');
-    //           })
-    //           .catch(() => {
-    //             assert(true);
-    //           }));
-
-    //       it('validates a non-existing user', () =>
-    //         unauthServices
-    //           .validateUser({email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`})
-    //           .then((r) => {
-    //             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-    //             assert.equal(r.activated, false);
-    //             assert.equal(r.exists, false);
-    //             assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-    //             assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-    //             assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
-    //           }));
-
-    //       it('validates new user with activationOptions suppressEmail false', () =>
-    //         unauthServices
-    //           .validateUser({
-    //             email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
-    //             activationOptions: {suppressEmail: false},
-    //           })
-    //           .then((r) => {
-    //             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-    //             assert.equal(r.activated, false);
-    //             assert.equal(r.exists, false);
-    //             assert.equal(r.user.verificationEmailTriggered, true);
-    //             assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-    //             assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-    //             assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
-    //           }));
-
-    //       it('validates new user with activationOptions suppressEmail true', () =>
-    //         unauthServices
-    //           .validateUser({
-    //             email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
-    //             activationOptions: {suppressEmail: true},
-    //           })
-    //           .then((r) => {
-    //             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-    //             assert.equal(r.activated, false);
-    //             assert.equal(r.exists, false);
-    //             assert.equal(r.user.verificationEmailTriggered, false);
-    //             assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-    //             assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-    //             assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
-    //           }));
-
-    //       it('validates an inactive user', () => {
-    //         const inactive = 'webex.web.client+nonactivated@gmail.com';
-
-    //         return unauthServices
-    //           .validateUser({email: inactive, activationOptions: {suppressEmail: true}})
-    //           .then((r) => {
-    //             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-    //             assert.equal(r.activated, false, 'activated');
-    //             assert.equal(r.exists, true, 'exists');
-    //             assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-    //             assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-    //             assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
-    //           })
-    //           .catch(() => {
-    //             assert(true);
-    //           });
-    //       });
-
-    //       it('validates an existing user', () =>
-    //         unauthServices.validateUser({email: webexUser.email}).then((r) => {
-    //           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-    //           assert.equal(r.activated, true);
-    //           assert.equal(r.exists, true);
-    //           assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-    //           assert.isAbove(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-    //           assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
-    //         }));
-
-    //       it('validates an existing EU user', () =>
-    //         unauthServices.validateUser({email: webexUserEU.email}).then((r) => {
-    //           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-    //           assert.equal(r.activated, true);
-    //           assert.equal(r.exists, true);
-    //           assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-    //           assert.isAbove(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-    //           assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
-    //         }));
-
-    //       it('sends the prelogin user id as undefined when not specified', () => {
-    //         const requestStub = sandbox.spy(unauthServices, 'request');
-
-    //         return unauthServices
-    //           .validateUser({
-    //             email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
-    //             activationOptions: {suppressEmail: true},
-    //           })
-    //           .then(() => {
-    //             assert.isUndefined(getActivationRequest(requestStub).headers['x-prelogin-userid']);
-    //           });
-    //       });
-
-    //       it('sends the prelogin user id as provided when specified', () => {
-    //         const requestStub = sandbox.spy(unauthServices, 'request');
-    //         const preloginUserId = uuid.v4();
-
-    //         return unauthServices
-    //           .validateUser({
-    //             email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
-    //             activationOptions: {suppressEmail: true},
-    //             preloginUserId,
-    //           })
-    //           .then(() => {
-    //             assert.strictEqual(
-    //               getActivationRequest(requestStub).headers['x-prelogin-userid'],
-    //               preloginUserId
-    //             );
-    //           });
-    //       });
-    //     });
-
-    //     describe('#waitForService()', () => {
-    //       let name;
-    //       let url;
-
-    //       describe('when the service exists', () => {
-    //         beforeEach('collect valid service info', () => {
-    //           name = Object.keys(services.list())[0];
-    //           url = services.list(true)[name];
-    //         });
-
-    //         describe('when using the name parameter property', () => {
-    //           it('should resolve to the appropriate url', () =>
-    //             services.waitForService({name}).then((foundUrl) => assert.equal(foundUrl, url)));
-    //         });
-
-    //         describe('when using the url parameter property', () => {
-    //           it('should resolve to the appropriate url', () =>
-    //             services.waitForService({url}).then((foundUrl) => assert.equal(foundUrl, url)));
-    //         });
-
-    //         describe('when using the url and name parameter properties', () => {
-    //           it('should resolve to the appropriate url', () =>
-    //             services.waitForService({name, url}).then((foundUrl) => assert.equal(foundUrl, url)));
-    //         });
-    //       });
-
-    //       describe('when the service does not exist', () => {
-    //         let timeout;
-
-    //         beforeEach('set up the parameters', () => {
-    //           name = 'not a service';
-    //           url = 'http://not-a-service.com/resource';
-    //           timeout = 1;
-    //         });
-
-    //         describe('when using the url parameter property', () => {
-    //           it('should return a resolve promise', () =>
-    //             // const waitForService = services.waitForService({url, timeout});
-
-    //             services.waitForService({url, timeout}).then((foundUrl) => {
-    //               assert.equal(foundUrl, url);
-    //               assert.isTrue(catalog.isReady);
-    //             }));
-    //         });
-
-    //         describe('when using the name parameter property', () => {
-    //           it('should return a rejected promise', () => {
-    //             const submitMetrics = sinon.stub(webex.internal.metrics, 'submitClientMetrics');
-    //             const waitForService = services.waitForService({name, timeout});
-
-    //             assert.called(submitMetrics);
-    //             assert.isRejected(waitForService);
-    //             assert.isTrue(catalog.isReady);
-    //           });
-    //         });
-
-    //         describe('when using the name and url parameter properties', () => {
-    //           it('should return a rejected promise', () => {
-    //             const waitForService = services.waitForService({
-    //               name,
-    //               url,
-    //               timeout,
-    //             });
-
-    //             assert.isRejected(waitForService);
-    //             assert.isTrue(catalog.isReady);
-    //           });
-    //         });
-
-    //         describe('when the service will exist', () => {
-    //           beforeEach('collect existing service and clear the catalog', () => {
-    //             name = 'metrics';
-    //             url = services.get(name, true);
-    //             catalog.clean();
-    //             catalog.isReady = false;
-    //           });
-
-    //           describe('when only the preauth (limited) catalog becomes available', () => {
-    //             describe('when using the name parameter property', () => {
-    //               it('should resolve to the appropriate url', () =>
-    //                 Promise.all([
-    //                   services.waitForService({name}),
-    //                   services.collectPreauthCatalog(),
-    //                 ]).then(([foundUrl]) => assert.equal(foundUrl, url)));
-    //             });
-
-    //             describe('when using the url parameter property', () => {
-    //               it('should resolve to the appropriate url', () =>
-    //                 Promise.all([
-    //                   services.waitForService({url}),
-    //                   services.collectPreauthCatalog(),
-    //                 ]).then(([foundUrl]) => assert.equal(foundUrl, url)));
-    //             });
-
-    //             describe('when using the name and url parameter property', () => {
-    //               it('should resolve to the appropriate url', () =>
-    //                 Promise.all([
-    //                   services.waitForService({name, url}),
-    //                   services.collectPreauthCatalog(),
-    //                 ]).then(([foundUrl]) => assert.equal(foundUrl, url)));
-    //             });
-    //           });
-
-    //           describe('when all catalogs become available', () => {
-    //             describe('when using the name parameter property', () => {
-    //               it('should resolve to the appropriate url', () =>
-    //                 Promise.all([services.waitForService({name}), services.initServiceCatalogs()]).then(
-    //                   ([foundUrl]) => assert.equal(foundUrl, url)
-    //                 ));
-    //             });
-
-    //             describe('when using the url parameter property', () => {
-    //               it('should resolve to the appropriate url', () =>
-    //                 Promise.all([services.waitForService({url}), services.initServiceCatalogs()]).then(
-    //                   ([foundUrl]) => assert.equal(foundUrl, url)
-    //                 ));
-    //             });
-
-    //             describe('when using the name and url parameter property', () => {
-    //               it('should resolve to the appropriate url', () =>
-    //                 Promise.all([
-    //                   services.waitForService({name, url}),
-    //                   services.initServiceCatalogs(),
-    //                 ]).then(([foundUrl]) => assert.equal(foundUrl, url)));
-    //             });
-    //           });
-    //         });
-    //       });
-    //     });
+    describe('#isAllowedDomainUrl()', () => {
+      let list;
+
+      beforeEach(() => {
+        catalog.setAllowedDomains(['some-domain-a', 'some-domain-b']);
+
+        list = catalog.getAllowedDomains();
+      });
+
+      it('returns a boolean', () => {
+        assert.isBoolean(services.isAllowedDomainUrl(''));
+      });
+
+      it('returns true if the url contains an allowed domain', () => {
+        assert.isTrue(services.isAllowedDomainUrl(`https://${list[0]}/resource`));
+      });
+
+      it('returns false if the url does not contain an allowed domain', () => {
+        assert.isFalse(services.isAllowedDomainUrl('https://bad-domain/resource'));
+      });
+    });
+
+    describe('#convertUrlToPriorityUrl', () => {
+      let testDetail;
+      let testDetailTemplate;
+
+      beforeEach(() => {
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
+      });
+
+      it('converts the url to a priority host url', () => {
+        const resource = 'path/to/resource';
+        const url = `${testDetailTemplate.serviceUrls[1].baseUrl}/${resource}`;
+
+        const convertUrl = services.convertUrlToPriorityHostUrl(url);
+
+        assert.isDefined(convertUrl);
+        assert.isTrue(convertUrl.includes(testDetail.get()));
+      });
+
+      it('throws an exception if not a valid service', () => {
+        assert.throws(services.convertUrlToPriorityHostUrl, Error);
+
+        assert.throws(
+          services.convertUrlToPriorityHostUrl.bind(services, 'not-a-valid-service'),
+          Error
+        );
+      });
+
+      afterEach(() => {
+        catalog._unloadServiceUrls('preauth', [testDetail]);
+      });
+    });
+
+    describe('#markFailedUrl()', () => {
+      let testDetailTemplate;
+      let testDetail;
+
+      beforeEach(() => {
+        catalog.clean();
+
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
+      });
+
+      afterEach(() => {
+        catalog._unloadServiceUrls('preauth', [testDetail]);
+      });
+
+      it('marks a host as failed', () => {
+        const priorityServiceUrl = catalog._getServiceDetail(testDetailTemplate.id);
+        const priorityUrl = priorityServiceUrl._getPriorityHostUrl();
+
+        services.markFailedUrl(priorityUrl);
+
+        const failedHost = priorityServiceUrl.serviceUrls.find((host) => host.failed);
+
+        assert.isTrue(priorityUrl.includes(failedHost.host));
+      });
+
+      it('returns the next priority url', () => {
+        const priorityUrl = services.get(testDetailTemplate.id);
+
+        const nextPriorityUrl = services.markFailedUrl(priorityUrl);
+
+        assert.notEqual(priorityUrl, nextPriorityUrl);
+      });
+
+      it('should reset hosts once all hosts have been marked failed', () => {
+        const priorityServiceUrl = catalog._getServiceDetail(testDetailTemplate.id);
+        const firstPriorityUrl = priorityServiceUrl._getPriorityHostUrl();
+
+        priorityServiceUrl.serviceUrls.forEach(() => {
+          const priorityUrl = priorityServiceUrl._getPriorityHostUrl();
+
+          services.markFailedUrl(priorityUrl);
+        });
+
+        const lastPriorityUrl = priorityServiceUrl._getPriorityHostUrl();
+
+        assert.equal(firstPriorityUrl, lastPriorityUrl);
+      });
+    });
+
+    describe('#updateServices()', () => {
+      it('returns a Promise that and resolves on success', (done) => {
+        const servicesPromise = services.updateServices();
+
+        assert.typeOf(servicesPromise, 'Promise');
+
+        servicesPromise.then(() => {
+          services._services.forEach((service) => {
+            assert.typeOf(service.serviceName, 'string');
+            assert.typeOf(service.id, 'string');
+            assert.typeOf(service.serviceUrls, 'array');
+          });
+
+          done();
+        });
+      });
+
+      it('updates the services list', (done) => {
+        catalog.serviceGroups.postauth = [];
+
+        services.updateServices().then(() => {
+          assert.isAbove(catalog.serviceGroups.postauth.length, 0);
+          done();
+        });
+
+        services.updateServices();
+      });
+
+      it('updates query.email to be emailhash-ed using SHA256', (done) => {
+        catalog.updateServiceUrls = sinon.stub().returns({}); // returns `this`
+        services._fetchNewServiceHostmap = sinon.stub().resolves();
+
+        services
+          .updateServices({
+            from: 'limited',
+            query: {email: webexUser.email},
+          })
+          .then(() => {
+            assert.calledWith(
+              services._fetchNewServiceHostmap,
+              sinon.match.has('query', {emailhash: sinon.match(/\b[A-Fa-f0-9]{64}\b/)})
+            );
+            done();
+          });
+      });
+
+      it('updates the limited catalog when email is provided', (done) => {
+        catalog.serviceGroups.preauth = [];
+
+        services
+          .updateServices({
+            from: 'limited',
+            query: {email: webexUser.email},
+          })
+          .then(() => {
+            assert.isAbove(catalog.serviceGroups.preauth.length, 0);
+            done();
+          });
+      });
+
+      it('updates the limited catalog when userId is provided', (done) => {
+        catalog.serviceGroups.preauth = [];
+
+        services
+          .updateServices({
+            from: 'limited',
+            query: {userId: webexUser.id},
+          })
+          .then(() => {
+            assert.isAbove(catalog.serviceGroups.preauth.length, 0);
+            done();
+          });
+      });
+
+      it('updates the limited catalog when orgId is provided', (done) => {
+        catalog.serviceGroups.preauth = [];
+
+        services
+          .updateServices({
+            from: 'limited',
+            query: {orgId: webexUser.orgId},
+          })
+          .then(() => {
+            assert.isAbove(catalog.serviceGroups.preauth.length, 0);
+            done();
+          });
+      });
+      it('updates the limited catalog when query param mode is provided', (done) => {
+        catalog.serviceGroups.preauth = [];
+
+        services
+          .updateServices({
+            from: 'limited',
+            query: {mode: 'DEFAULT_BY_PROXIMITY'},
+          })
+          .then(() => {
+            assert.isAbove(catalog.serviceGroups.preauth.length, 0);
+            done();
+          });
+      });
+      it('does not update the limited catalog when nothing is provided', () => {
+        catalog.serviceGroups.preauth = [];
+
+        return services
+          .updateServices({from: 'limited'})
+          .then(() => {
+            assert(false, 'resolved, should have thrown');
+          })
+          .catch(() => {
+            assert(true);
+          });
+      });
+
+      it('updates limited catalog and calls _fetchNewServiceHostmap with forceRefresh = true', (done) => {
+        const forceRefresh = true;
+        const fetchNewServiceHostmapSpy = sinon.spy(services, '_fetchNewServiceHostmap');
+
+        services
+          .updateServices({
+            from: 'limited',
+            query: {email: webexUser.email},
+            forceRefresh,
+          })
+          .then(() => {
+            assert.calledOnce(fetchNewServiceHostmapSpy);
+            assert.calledWith(
+              fetchNewServiceHostmapSpy,
+              sinon.match.has(
+                'from',
+                'limited',
+                'query',
+                {emailhash: sinon.match(/\b[A-Fa-f0-9]{64}\b/)},
+                'forceFresh',
+                forceRefresh
+              )
+            );
+
+            fetchNewServiceHostmapSpy.returnValues[0].then((res) => {
+              assert.isAbove(res.length, 0);
+            });
+            done();
+          });
+      });
+    });
+
+    describe('#fetchClientRegionInfo()', () => {
+      it('returns client region info', () =>
+        services.fetchClientRegionInfo().then((r) => {
+          assert.isDefined(r.regionCode);
+          assert.isDefined(r.clientAddress);
+        }));
+    });
+
+    describe('#validateUser()', () => {
+      const unauthWebex = new WebexCore();
+      const unauthServices = unauthWebex.internal.services;
+      let sandbox = null;
+
+      const getActivationRequest = (requestStub) => {
+        const requests = requestStub.args.filter(
+          ([request]) => request.service === 'license' && request.resource === 'users/activations'
+        );
+
+        assert.strictEqual(requests.length, 1);
+
+        return requests[0][0];
+      };
+
+      beforeEach(() => {
+        sandbox = sinon.createSandbox();
+      });
+
+      afterEach(() => {
+        sandbox.restore();
+        sandbox = null;
+      });
+
+      it('returns a rejected promise when no email is specified', () =>
+        unauthServices
+          .validateUser({})
+          .then(() => {
+            assert(false, 'resolved, should have thrown');
+          })
+          .catch(() => {
+            assert(true);
+          }));
+
+      it('validates an authorized user and webex instance', () =>
+        services.validateUser({email: webexUser.email}).then((r) => {
+          assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+          assert.equal(r.activated, true);
+          assert.equal(r.exists, true);
+        }));
+
+      it('validates an authorized EU user and webex instance', () =>
+        servicesEU.validateUser({email: webexUserEU.email}).then((r) => {
+          assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+          assert.equal(r.activated, true);
+          assert.equal(r.exists, true);
+        }));
+
+      it("returns a rejected promise if the provided email isn't valid", () =>
+        unauthServices
+          .validateUser({email: 'not an email'})
+          .then(() => {
+            assert(false, 'resolved, should have thrown');
+          })
+          .catch(() => {
+            assert(true);
+          }));
+
+      it('validates a non-existing user', () =>
+        unauthServices
+          .validateUser({email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`})
+          .then((r) => {
+            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+            assert.equal(r.activated, false);
+            assert.equal(r.exists, false);
+            assert.isAbove(Object.keys(unauthServices._services).length, 0);
+          }));
+
+      it('validates new user with activationOptions suppressEmail false', () =>
+        unauthServices
+          .validateUser({
+            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            activationOptions: {suppressEmail: false},
+          })
+          .then((r) => {
+            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+            assert.equal(r.activated, false);
+            assert.equal(r.exists, false);
+            assert.equal(r.user.verificationEmailTriggered, true);
+            assert.isAbove(Object.keys(unauthServices._services).length, 0);
+          }));
+
+      it('validates new user with activationOptions suppressEmail true', () =>
+        unauthServices
+          .validateUser({
+            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            activationOptions: {suppressEmail: true},
+          })
+          .then((r) => {
+            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+            assert.equal(r.activated, false);
+            assert.equal(r.exists, false);
+            assert.equal(r.user.verificationEmailTriggered, false);
+            assert.isAbove(Object.keys(unauthServices._services).length, 0);
+          }));
+
+      it('validates an inactive user', () => {
+        const inactive = 'webex.web.client+nonactivated@gmail.com';
+
+        return unauthServices
+          .validateUser({email: inactive, activationOptions: {suppressEmail: true}})
+          .then((r) => {
+            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+            assert.equal(r.activated, false, 'activated');
+            assert.equal(r.exists, true, 'exists');
+            assert.isAbove(Object.keys(unauthServices._services).length, 0);
+          })
+          .catch(() => {
+            assert(true);
+          });
+      });
+
+      it('validates an existing user', () =>
+        unauthServices.validateUser({email: webexUser.email}).then((r) => {
+          assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+          assert.equal(r.activated, true);
+          assert.equal(r.exists, true);
+          assert.isAbove(Object.keys(unauthServices._services).length, 0);
+        }));
+
+      it('validates an existing EU user', () =>
+        unauthServices.validateUser({email: webexUserEU.email}).then((r) => {
+          assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+          assert.equal(r.activated, true);
+          assert.equal(r.exists, true);
+          assert.isAbove(Object.keys(unauthServices._services).length, 0);
+        }));
+
+      it('sends the prelogin user id as undefined when not specified', () => {
+        const requestStub = sandbox.spy(unauthServices, 'request');
+
+        return unauthServices
+          .validateUser({
+            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            activationOptions: {suppressEmail: true},
+          })
+          .then(() => {
+            assert.isUndefined(getActivationRequest(requestStub).headers['x-prelogin-userid']);
+          });
+      });
+
+      it('sends the prelogin user id as provided when specified', () => {
+        const requestStub = sandbox.spy(unauthServices, 'request');
+        const preloginUserId = uuid.v4();
+
+        return unauthServices
+          .validateUser({
+            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            activationOptions: {suppressEmail: true},
+            preloginUserId,
+          })
+          .then(() => {
+            assert.strictEqual(
+              getActivationRequest(requestStub).headers['x-prelogin-userid'],
+              preloginUserId
+            );
+          });
+      });
+    });
+
+    describe('#waitForService()', () => {
+      let name;
+      let url;
+
+      describe('when the service exists', () => {
+        beforeEach(() => {
+          name = Object.keys(services.list())[0];
+          url = services.list(true)[name];
+        });
+
+        describe('when using the name parameter property', () => {
+          it('should resolve to the appropriate url', () =>
+            services.waitForService({name}).then((foundUrl) => assert.equal(foundUrl, url)));
+        });
+
+        describe('when using the url parameter property', () => {
+          it('should resolve to the appropriate url', () =>
+            services.waitForService({url}).then((foundUrl) => assert.equal(foundUrl, url)));
+        });
+
+        describe('when using the url and name parameter properties', () => {
+          it('should resolve to the appropriate url', () =>
+            services.waitForService({name, url}).then((foundUrl) => assert.equal(foundUrl, url)));
+        });
+      });
+
+      describe('when the service does not exist', () => {
+        let timeout;
+
+        beforeEach(() => {
+          name = 'not a service';
+          url = 'http://not-a-service.com/resource';
+          timeout = 1;
+        });
+
+        describe('when using the url parameter property', () => {
+          it('should return a resolve promise', () =>
+            // const waitForService = services.waitForService({url, timeout});
+
+            services.waitForService({url, timeout}).then((foundUrl) => {
+              assert.equal(foundUrl, url);
+              assert.isTrue(catalog.isReady);
+            }));
+        });
+
+        describe('when using the name parameter property', () => {
+          it('should return a rejected promise', () => {
+            const submitMetrics = sinon.stub(webex.internal.metrics, 'submitClientMetrics');
+            const waitForService = services.waitForService({name, timeout});
+
+            assert.called(submitMetrics);
+            assert.isRejected(waitForService);
+            assert.isTrue(catalog.isReady);
+          });
+        });
+
+        describe('when using the name and url parameter properties', () => {
+          it('should return a rejected promise', () => {
+            const waitForService = services.waitForService({
+              name,
+              url,
+              timeout,
+            });
+
+            assert.isRejected(waitForService);
+            assert.isTrue(catalog.isReady);
+          });
+        });
+
+        describe('when the service will exist', () => {
+          beforeEach(() => {
+            name = 'metrics';
+            url = services.get(name, true);
+            catalog.clean();
+            catalog.isReady = false;
+          });
+
+          describe('when only the preauth (limited) catalog becomes available', () => {
+            describe('when using the name parameter property', () => {
+              it('should resolve to the appropriate url', () =>
+                Promise.all([
+                  services.waitForService({name}),
+                  services.collectPreauthCatalog(),
+                ]).then(([foundUrl]) => assert.equal(foundUrl, url)));
+            });
+
+            describe('when using the url parameter property', () => {
+              it('should resolve to the appropriate url', () =>
+                Promise.all([
+                  services.waitForService({url}),
+                  services.collectPreauthCatalog(),
+                ]).then(([foundUrl]) => assert.equal(foundUrl, url)));
+            });
+
+            describe('when using the name and url parameter property', () => {
+              it('should resolve to the appropriate url', () =>
+                Promise.all([
+                  services.waitForService({name, url}),
+                  services.collectPreauthCatalog(),
+                ]).then(([foundUrl]) => assert.equal(foundUrl, url)));
+            });
+          });
+
+          describe('when all catalogs become available', () => {
+            describe('when using the name parameter property', () => {
+              it('should resolve to the appropriate url', () =>
+                Promise.all([services.waitForService({name}), services.initServiceCatalogs()]).then(
+                  ([foundUrl]) => assert.equal(foundUrl, url)
+                ));
+            });
+
+            describe('when using the url parameter property', () => {
+              it('should resolve to the appropriate url', () =>
+                Promise.all([services.waitForService({url}), services.initServiceCatalogs()]).then(
+                  ([foundUrl]) => assert.equal(foundUrl, url)
+                ));
+            });
+
+            describe('when using the name and url parameter property', () => {
+              it('should resolve to the appropriate url', () =>
+                Promise.all([
+                  services.waitForService({name, url}),
+                  services.initServiceCatalogs(),
+                ]).then(([foundUrl]) => assert.equal(foundUrl, url)));
+            });
+          });
+        });
+      });
+    });
 
     //     describe('#collectPreauthCatalog()', () => {
     //       const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
