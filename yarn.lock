@@ -9985,7 +9985,6 @@ __metadata:
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/http-core": "workspace:*"
-    "@webex/internal-plugin-avatar": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
