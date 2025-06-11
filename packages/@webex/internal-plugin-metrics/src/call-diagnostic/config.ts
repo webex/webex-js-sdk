@@ -223,6 +223,8 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   403037: 4104,
   // Not reach JBH, can't join meeting
   403003: 4101,
+  // Attendee email is required
+  403030: 4101,
 
   // ---- Locus ------
   // FREE_USER_MAX_PARTICIPANTS_EXCEEDED
