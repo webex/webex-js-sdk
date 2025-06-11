@@ -1314,7 +1314,7 @@ describe('Task', () => {
       expect(taskInstance.autoWrapup).toBeUndefined();
       expect(loggerInfoSpy).toHaveBeenCalledWith('Auto wrap-up is not required for this task', {
         module: TASK_FILE,
-        method: 'SETUP_AUTO_WRAPUP_TIMER',
+        method: 'setupAutoWrapupTimer',
         interactionId: taskData.interactionId,
       });
     });
@@ -1357,7 +1357,7 @@ describe('Task', () => {
       expect(clearSpy).toHaveBeenCalled();
       expect(loggerInfoSpy).toHaveBeenCalledWith('Auto wrap-up timer cancelled', {
         module: TASK_FILE,
-        method: 'CANCEL_AUTO_WRAPUP_TIMER',
+        method: 'cancelAutoWrapupTimer',
         interactionId: taskData.interactionId,
       });
     });
@@ -1380,7 +1380,7 @@ describe('Task', () => {
       expect(clearSpy).toHaveBeenCalled();
       expect(loggerInfoSpy).toHaveBeenCalledWith('Auto wrap-up timer cancelled', {
         module: TASK_FILE,
-        method: 'CANCEL_AUTO_WRAPUP_TIMER',
+        method: 'cancelAutoWrapupTimer',
         interactionId: taskData.interactionId,
       });
     });
