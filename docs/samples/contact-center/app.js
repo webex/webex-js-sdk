@@ -220,7 +220,7 @@ function updateButtonsPostEndCall() {
 
     const wctrl = currentTask.taskUiControls.wrapup;
     wrapupElm.style.display = wctrl.visible ? 'inline-block' : 'none';
-    wrapupElm.disabled = !wctrl.enabled;              // <— ensure wrapup button enabled
+    wrapupElm.disabled = !wctrl.enabled;
     wrapupCodesDropdownElm.style.display = wctrl.visible ? 'inline-block' : 'none';
     wrapupCodesDropdownElm.disabled = !wctrl.enabled;
   }
@@ -463,8 +463,6 @@ async function initiateConsultTransfer() {
     return;
   }
 
-  console.info("RAVI destination", destinationType);
-
   const consultTransferPayload = {
     to: consultDestination,
     destinationType: destinationType,
@@ -678,8 +676,8 @@ function registerTaskListeners(task) {
     showAgentStatePopup(reason);
   });
 
-  task.on('task:wrappedup', (t) => {
-    setUIControls(t);
+  task.on('task:wrappedup', (task) => {
+    setUIControls(task);
   });
 }
 
