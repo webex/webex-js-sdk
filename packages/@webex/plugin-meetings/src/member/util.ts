@@ -1,10 +1,10 @@
 import {
   IExternalRoles,
-  ParticipantWithRoles,
   ServerRoles,
   ServerRoleShape,
   IMediaStatus,
-  ParticipantWithBrb,
+  Participant,
+  ParticipantUrl,
 } from './types';
 import {
   _USER_,
@@ -46,23 +46,23 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {[ServerRoleShape]}
    */
-  getControlsRoles: (participant: ParticipantWithRoles): Array<ServerRoleShape> =>
+  getControlsRoles: (participant: Participant): Array<ServerRoleShape> =>
     participant?.controls?.role?.roles,
 
   /**
    * Checks if the participant has the brb status enabled.
    *
-   * @param {ParticipantWithBrb} participant - The locus participant object.
+   * @param {Participant} participant - The locus participant object.
    * @returns {boolean} - True if the participant has brb enabled, false otherwise.
    */
-  isBrb: (participant: ParticipantWithBrb): boolean => participant.controls?.brb?.enabled || false,
+  isBrb: (participant: Participant): boolean => participant.controls?.brb?.enabled || false,
 
   /**
    * @param {Object} participant - The locus participant object.
    * @param {ServerRoles} controlRole the search role
    * @returns {Boolean}
    */
-  hasRole: (participant: any, controlRole: ServerRoles): boolean =>
+  hasRole: (participant: Participant, controlRole: ServerRoles): boolean =>
     MemberUtil.getControlsRoles(participant)?.some(
       (role) => role.type === controlRole && role.hasRole
     ),
@@ -71,28 +71,28 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {Boolean}
    */
-  hasCohost: (participant: ParticipantWithRoles): boolean =>
+  hasCohost: (participant: Participant): boolean =>
     MemberUtil.hasRole(participant, ServerRoles.Cohost) || false,
 
   /**
    * @param {Object} participant - The locus participant object.
    * @returns {Boolean}
    */
-  hasModerator: (participant: ParticipantWithRoles): boolean =>
+  hasModerator: (participant: Participant): boolean =>
     MemberUtil.hasRole(participant, ServerRoles.Moderator) || false,
 
   /**
    * @param {Object} participant - The locus participant object.
    * @returns {Boolean}
    */
-  hasPresenter: (participant: ParticipantWithRoles): boolean =>
+  hasPresenter: (participant: Participant): boolean =>
     MemberUtil.hasRole(participant, ServerRoles.Presenter) || false,
 
   /**
    * @param {Object} participant - The locus participant object.
    * @returns {IExternalRoles}
    */
-  extractControlRoles: (participant: ParticipantWithRoles): IExternalRoles => {
+  extractControlRoles: (participant: Participant): IExternalRoles => {
     const roles = {
       cohost: MemberUtil.hasCohost(participant),
       moderator: MemberUtil.hasModerator(participant),
@@ -106,26 +106,26 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {Boolean}
    */
-  isUser: (participant: any) => participant && participant.type === _USER_,
+  isUser: (participant: Participant) => participant && participant.type === _USER_,
 
-  isModerator: (participant) => participant && participant.moderator,
-
-  /**
-   * @param {Object} participant - The locus participant object.
-   * @returns {Boolean}
-   */
-  isGuest: (participant: any) => participant && participant.guest,
+  isModerator: (participant: Participant) => participant && participant.moderator,
 
   /**
    * @param {Object} participant - The locus participant object.
    * @returns {Boolean}
    */
-  isDevice: (participant: any) => participant && participant.type === _RESOURCE_ROOM_,
+  isGuest: (participant: Participant) => participant && participant.guest,
 
-  isModeratorAssignmentProhibited: (participant) =>
+  /**
+   * @param {Object} participant - The locus participant object.
+   * @returns {Boolean}
+   */
+  isDevice: (participant: Participant) => participant && participant.type === _RESOURCE_ROOM_,
+
+  isModeratorAssignmentProhibited: (participant: Participant) =>
     participant && participant.moderatorAssignmentNotAllowed,
 
-  isPresenterAssignmentProhibited: (participant) =>
+  isPresenterAssignmentProhibited: (participant: Participant) =>
     participant && participant.presenterAssignmentNotAllowed,
 
   /**
@@ -135,22 +135,8 @@ const MemberUtil = {
    * @param {String} id
    * @returns {Boolean}
    */
-  isSame: (participant: any, id: string) =>
+  isSame: (participant: Participant, id: string) =>
     participant && (participant.id === id || (participant.person && participant.person.id === id)),
-
-  /**
-   * checks to see if the participant id is the same as the passed id for associated devices
-   * there are multiple ids that can be used
-   * @param {Object} participant - The locus participant object.
-   * @param {String} id
-   * @returns {Boolean}
-   */
-  isAssociatedSame: (participant: any, id: string) =>
-    participant &&
-    participant.associatedUsers &&
-    participant.associatedUsers.some(
-      (user) => user.id === id || (user.person && user.person.id === id)
-    ),
 
   /**
    * @param {Object} participant - The locus participant object.
@@ -158,7 +144,7 @@ const MemberUtil = {
    * @param {String} status
    * @returns {Boolean}
    */
-  isNotAdmitted: (participant: any, isGuest: boolean, status: string): boolean =>
+  isNotAdmitted: (participant: Participant, isGuest: boolean, status: string): boolean =>
     participant &&
     participant.guest &&
     ((participant.devices &&
@@ -175,7 +161,7 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {Boolean}
    */
-  isAudioMuted: (participant: any) => {
+  isAudioMuted: (participant: Participant) => {
     if (!participant) {
       throw new ParameterError('Audio could not be processed, participant is undefined.');
     }
@@ -187,7 +173,7 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {Boolean}
    */
-  isVideoMuted: (participant: any): boolean => {
+  isVideoMuted: (participant: Participant): boolean => {
     if (!participant) {
       throw new ParameterError('Video could not be processed, participant is undefined.');
     }
@@ -199,7 +185,7 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {Boolean}
    */
-  isHandRaised: (participant: any) => {
+  isHandRaised: (participant: Participant) => {
     if (!participant) {
       throw new ParameterError('Raise hand could not be processed, participant is undefined.');
     }
@@ -256,7 +242,7 @@ const MemberUtil = {
    * @param {String} controlsAccessor
    * @returns {Boolean | undefined}
    */
-  isMuted: (participant: any, statusAccessor: string, controlsAccessor: string) => {
+  isMuted: (participant: Participant, statusAccessor: string, controlsAccessor: string) => {
     // check remote mute
     const remoteMute = participant?.controls?.[controlsAccessor]?.muted;
     if (remoteMute === true) {
@@ -295,7 +281,7 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {Boolean}
    */
-  isRecording: (participant: any) => {
+  isRecording: (participant: Participant) => {
     if (!participant) {
       throw new ParameterError('Recording could not be processed, participant is undefined.');
     }
@@ -341,7 +327,7 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {String}
    */
-  extractStatus: (participant: any) => {
+  extractStatus: (participant: Participant) => {
     if (!(participant && participant.devices && participant.devices.length)) {
       return _NOT_IN_MEETING_;
     }
@@ -371,7 +357,7 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {String}
    */
-  extractId: (participant: any) => {
+  extractId: (participant: Participant) => {
     if (participant) {
       return participant.id;
     }
@@ -384,7 +370,7 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {Object}
    */
-  extractMediaStatus: (participant: any): IMediaStatus => {
+  extractMediaStatus: (participant: Participant): IMediaStatus => {
     if (!participant) {
       throw new ParameterError('Media status could not be extracted, participant is undefined.');
     }
@@ -399,12 +385,30 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {String}
    */
-  extractName: (participant: any) => {
+  extractName: (participant: Participant) => {
     if (participant && participant.person) {
       return participant.person.name;
     }
 
     return null;
+  },
+
+  /**
+   * @param {Object} participant - The locus participant object.
+   * @returns {String}
+   */
+  extractPairedWithParticipantUrl: (participant: Participant): ParticipantUrl | undefined => {
+    let participantUrl;
+
+    participant?.devices?.forEach((device) => {
+      device?.intents?.forEach((intent) => {
+        if (intent?.type === _OBSERVE_ && intent?.associatedWith) {
+          participantUrl = intent.associatedWith;
+        }
+      });
+    });
+
+    return participantUrl;
   },
 };
 export default MemberUtil;
