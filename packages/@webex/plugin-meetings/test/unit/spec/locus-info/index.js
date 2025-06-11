@@ -568,7 +568,7 @@ describe('plugin-meetings', () => {
         };
         newControls.transcribe.transcribing = false;
         newControls.transcribe.caption = true;
-        newControls.transcribe.spokenLanguage = 'fr-FR',
+        newControls.transcribe.spokenLanguage = 'fr-FR';
 
         locusInfo.updateControls(newControls);
 
