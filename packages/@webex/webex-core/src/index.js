@@ -31,13 +31,10 @@ export {
 export {
   constants as serviceConstantsV2,
   ServiceCatalogV2,
-  ServiceRegistryV2,
-  ServiceStateV2,
   ServiceInterceptorV2,
   ServerErrorInterceptorV2,
   ServicesV2,
-  ServiceHostV2,
-  ServiceUrlV2,
+  ServiceDetail,
   HostMapInterceptorV2,
 } from './lib/services-v2';
 

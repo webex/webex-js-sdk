@@ -16,6 +16,7 @@ import {
   LocalMicrophoneStream,
 } from '@webex/media-helpers';
 import {RtcMetrics} from '@webex/internal-plugin-metrics';
+import {BrowserInfo} from '@webex/web-capabilities';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
@@ -143,6 +144,8 @@ Media.createMediaConnection = (
     bundlePolicy?: BundlePolicy;
     iceCandidatesTimeout?: number;
     disableAudioMainDtx?: boolean;
+    enableAudioTwcc?: boolean;
+    stopIceGatheringAfterFirstRelayCandidate?: boolean;
   }
 ) => {
   const {
@@ -155,6 +158,8 @@ Media.createMediaConnection = (
     bundlePolicy,
     iceCandidatesTimeout,
     disableAudioMainDtx,
+    enableAudioTwcc,
+    stopIceGatheringAfterFirstRelayCandidate,
   } = options;
 
   const iceServers = [];
@@ -172,6 +177,7 @@ Media.createMediaConnection = (
   if (isMultistream) {
     const config: MultistreamConnectionConfig = {
       iceServers,
+      disableAudioTwcc: !enableAudioTwcc,
     };
 
     if (bundlePolicy) {
@@ -180,6 +186,12 @@ Media.createMediaConnection = (
 
     if (disableAudioMainDtx !== undefined) {
       config.disableAudioMainDtx = disableAudioMainDtx;
+    }
+
+    if (BrowserInfo.isFirefox()) {
+      config.doFullIce = true;
+
+      config.stopIceGatheringAfterFirstRelayCandidate = stopIceGatheringAfterFirstRelayCandidate;
     }
 
     return new MultistreamRoapMediaConnection(
