@@ -160,6 +160,16 @@ export default class Voice extends Task implements IVoice {
   }
 
   /**
+   * This method is used to decline the task.
+   * It is expected to be overridden by child classes.
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   */
+  public async decline(): Promise<TaskResponse> {
+    super.unSupportedOperationError('decline');
+  }
+
+  /**
    * This is used to hold the task.
    * @returns Promise<TaskResponse>
    * @throws Error

@@ -1267,7 +1267,6 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   registerTaskListeners(currentTask);
 
   if (currentTask.data.interaction.mediaType === 'telephony' && webex.cc.taskManager.webCallingService.loginOption !== 'BROWSER') {
-    console.info('ADHWAITH task incoming');
     setUIControls(currentTask);
   }
   else {
