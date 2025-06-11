@@ -1193,12 +1193,7 @@ export interface IVoice extends ITask {
    */
   consult(consultPayload: ConsultPayload): Promise<TaskResponse>;
 
-  /** overload 1: standard blind/vTeam transfer */
   transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>;
-  /** overload 2: consult-transfer when consult:true */
-  transfer(
-    transferPayload: Omit<TransferPayLoad, 'consult'> & {consult: true}
-  ): Promise<TaskResponse>;
 }
 
 /**
