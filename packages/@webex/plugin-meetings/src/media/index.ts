@@ -144,6 +144,7 @@ Media.createMediaConnection = (
     bundlePolicy?: BundlePolicy;
     iceCandidatesTimeout?: number;
     disableAudioMainDtx?: boolean;
+    enableAudioTwcc?: boolean;
     stopIceGatheringAfterFirstRelayCandidate?: boolean;
   }
 ) => {
@@ -157,6 +158,7 @@ Media.createMediaConnection = (
     bundlePolicy,
     iceCandidatesTimeout,
     disableAudioMainDtx,
+    enableAudioTwcc,
     stopIceGatheringAfterFirstRelayCandidate,
   } = options;
 
@@ -175,6 +177,7 @@ Media.createMediaConnection = (
   if (isMultistream) {
     const config: MultistreamConnectionConfig = {
       iceServers,
+      disableAudioTwcc: !enableAudioTwcc,
     };
 
     if (bundlePolicy) {
