@@ -68,9 +68,22 @@ export default abstract class Task extends EventEmitter implements ITask {
    */
   protected setUIControls() {}
 
+  /**
+   *
+   * @param methodName - The name of the method that is unsupported
+   * @throws Error
+   */
   protected unSupportedOperationError(methodName: string) {
     LoggerProxy.error(`Unsupported operation: ${methodName} in Task object`);
     throw new Error(`Unsupported operation: ${methodName} in Task class`);
+  }
+
+  // Helper method to apply UI controls
+  protected applyControls(
+    controls: Array<keyof typeof this.taskUiControls>,
+    actions: Array<'show' | 'hide' | 'enable' | 'disable'>
+  ): void {
+    controls.forEach((c) => actions.forEach((a) => this.taskUiControls[c][a]()));
   }
 
   /**
