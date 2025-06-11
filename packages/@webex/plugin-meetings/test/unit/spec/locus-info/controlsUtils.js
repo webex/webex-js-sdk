@@ -411,6 +411,24 @@ describe('plugin-meetings', () => {
         assert.equal(updates.hasRemoteDesktopControlChanged, true);
       });
 
+      it('returns true when spoken language changes to a different value', () => {
+        const previous = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+        const current = { transcribe: {caption: true, spokenLanguage: 'fr-FR' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, true);
+      });
+
+      it('returns false when spoken language changes to a same value', () => {
+        const previous = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+        const current = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, false);
+      });
+
       describe('videoEnabled', () => {
         const testVideoEnabled = (oldControls, newControls, updatedProperty) => {
           const result = ControlsUtils.getControls(oldControls, newControls);

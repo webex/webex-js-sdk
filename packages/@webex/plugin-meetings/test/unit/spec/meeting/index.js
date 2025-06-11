@@ -1223,6 +1223,33 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#update spoken language', () => {
+        beforeEach(() => {
+          webex.internal.voicea.onSpokenLanguageUpdate = sinon.stub();
+        });
+        it('should call voicea.onSpokenLanguageUpdate when joined', async () => {
+
+          meeting.joinedWith = {state: 'JOINED'};
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
+            {spokenLanguage: 'en-US'},
+          );
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'en-US');
+        });
+
+        it('should not call voicea.onSpokenLanguageUpdate when not joined', async () => {
+
+          meeting.joinedWith = {state: 'NOT_JOINED'};
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
+            {spokenLanguage: 'en-US'},
+          );
+          assert.notCalled(webex.internal.voicea.onSpokenLanguageUpdate);
+        });
+      });
+
       describe('#startTranscription', () => {
         beforeEach(() => {
           webex.internal.voicea.on = sinon.stub();

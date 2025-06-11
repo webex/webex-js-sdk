@@ -1020,6 +1020,17 @@ describe('plugin-voicea', () => {
         assert.equal(voiceaService.getAnnounceStatus(), "joined");
       });
     });
+
+    describe('#onSpokenLanguageUpdate', () => {
+      it('should trigger SPOKEN_LANGUAGE_UPDATE event with correct languageCode', () => {
+        const triggerSpy = sinon.spy();
+        voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
+
+        const languageCode = 'fr';
+        voiceaService.onSpokenLanguageUpdate(languageCode);
+
+        assert.calledOnceWithExactly(triggerSpy, {languageCode});
+      });
+    });
   });
 });
-
