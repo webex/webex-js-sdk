@@ -1441,20 +1441,6 @@ describe('Task', () => {
     it('should handle case when no default wrapup reason is found', () => {
       // Create a test-only mock for AutoWrapup
       let capturedCallback;
-      
-      // Temporarily override AutoWrapup to capture the callback
-      const originalAutoWrapup = global.AutoWrapup;
-      global.AutoWrapup = function(interval) {
-        this.interval = interval;
-        this.clear = jest.fn();
-        this.start = function(callback) {
-          capturedCallback = callback;
-        };
-        this.getTimeLeft = jest.fn();
-        this.isRunning = jest.fn();
-        this.getTimeLeftSeconds = jest.fn();
-        return this;
-      };
 
       // Create a task with AutoWrapup enabled but NO default wrapup reason
       const wrapupProps = {
@@ -1487,9 +1473,6 @@ describe('Task', () => {
           auxCodeId: wrapupProps.wrapUpProps.wrapUpReasonList[0].id
         });
       }
-      
-      // Restore the original AutoWrapup constructor
-      global.AutoWrapup = originalAutoWrapup;
     });
   });
 });

@@ -169,21 +169,28 @@ export default class Task extends EventEmitter implements ITask {
       if (wrapUpProps?.autoWrapup === false) {
         LoggerProxy.info(`Auto wrap-up is not required for this task`, {
           module: TASK_FILE,
-          method: 'SETUP_AUTO_WRAPUP_TIMER',
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
           interactionId: this.data.interactionId,
         });
 
         return;
       }
-      const defaultWrapupReason = wrapUpProps?.wrapUpReasonList?.find(
-        (reason) => reason.isDefault === true
-      );
+      const defaultWrapupReason =
+        wrapUpProps.wrapUpReasonList?.find((r) => r.isDefault) ?? wrapUpProps.wrapUpReasonList?.[0];
+      if (!defaultWrapupReason) {
+        LoggerProxy.error('No wrap-up reason configured', {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+        });
+
+        return;
+      }
       const intervalMs = wrapUpProps?.autoWrapupInterval || 10000;
       this.autoWrapup = new AutoWrapup(intervalMs);
       this.autoWrapup.start(async () => {
         LoggerProxy.info(`Auto wrap-up timer triggered`, {
           module: TASK_FILE,
-          method: 'SETUP_AUTO_WRAPUP_TIMER',
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
           interactionId: this.data.interactionId,
         });
         await this.wrapup({
@@ -203,7 +210,7 @@ export default class Task extends EventEmitter implements ITask {
 
     LoggerProxy.info(`Auto wrap-up timer cancelled`, {
       module: TASK_FILE,
-      method: 'CANCEL_AUTO_WRAPUP_TIMER',
+      method: METHODS.CANCEL_AUTO_WRAPUP_TIMER,
       interactionId: this.data?.interactionId,
     });
   }

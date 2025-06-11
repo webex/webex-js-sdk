@@ -3,7 +3,7 @@
  * It handles timing the wrap-up period and executing a callback when the timer completes.
  */
 export default class AutoWrapup {
-  private timer: NodeJS.Timeout | null = null;
+  private timer: ReturnType<typeof setTimeout> | null = null;
   private startTime = 0;
   private readonly interval: number;
 
