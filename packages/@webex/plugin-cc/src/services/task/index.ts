@@ -27,6 +27,8 @@ import WebCallingService from '../WebCallingService';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import {Failure} from '../core/GlobalTypes';
+import AutoWrapup from './AutoWrapup';
+import {WrapupData} from '../config/types';
 
 /**
  * Task class represents a contact center task/interaction that can be managed by an agent.
@@ -131,6 +133,8 @@ export default class Task extends EventEmitter implements ITask {
   public data: TaskData;
   private metricsManager: MetricsManager;
   public webCallMap: Record<TaskId, CallId>;
+  private wrapupProps: WrapupData;
+  public autoWrapup?: AutoWrapup;
 
   /**
    * Creates a new Task instance which provides the following features:
@@ -141,15 +145,67 @@ export default class Task extends EventEmitter implements ITask {
   public constructor(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
-    data: TaskData
+    data: TaskData,
+    wrapupProps: WrapupData
   ) {
     super();
     this.contact = contact;
     this.data = data;
     this.webCallingService = webCallingService;
     this.webCallMap = {};
+    this.wrapupProps = wrapupProps;
     this.metricsManager = MetricsManager.getInstance();
     this.registerWebCallListeners();
+    this.setupAutoWrapUpTimer();
+  }
+
+  /**
+   * Sets up the automatic wrap-up timer if wrap-up is required
+   * @private
+   */
+  private setupAutoWrapUpTimer() {
+    if (this.data && this.data.wrapUpRequired) {
+      const wrapUpProps = this.wrapupProps.wrapUpProps;
+      if (wrapUpProps?.autoWrapup === false) {
+        LoggerProxy.info(`Auto wrap-up is not required for this task`, {
+          module: TASK_FILE,
+          method: 'SETUP_AUTO_WRAPUP_TIMER',
+          interactionId: this.data.interactionId,
+        });
+
+        return;
+      }
+      const defaultWrapupReason = wrapUpProps?.wrapUpReasonList?.find(
+        (reason) => reason.isDefault === true
+      );
+      const intervalMs = wrapUpProps?.autoWrapupInterval || 10000;
+      this.autoWrapup = new AutoWrapup(intervalMs);
+      this.autoWrapup.start(async () => {
+        LoggerProxy.info(`Auto wrap-up timer triggered`, {
+          module: TASK_FILE,
+          method: 'SETUP_AUTO_WRAPUP_TIMER',
+          interactionId: this.data.interactionId,
+        });
+        await this.wrapup({
+          wrapUpReason: defaultWrapupReason.name,
+          auxCodeId: defaultWrapupReason.id,
+        });
+      });
+    }
+  }
+
+  /**
+   * Cancels the automatic wrap-up timer if it's running
+   * @public - Public so it can be called externally when needed
+   */
+  public cancelAutoWrapUpTimer() {
+    this.autoWrapup?.clear();
+
+    LoggerProxy.info(`Auto wrap-up timer cancelled`, {
+      module: TASK_FILE,
+      method: 'CANCEL_AUTO_WRAPUP_TIMER',
+      interactionId: this.data?.interactionId,
+    });
   }
 
   /**
@@ -188,6 +244,7 @@ export default class Task extends EventEmitter implements ITask {
    */
   public updateTaskData = (updatedData: TaskData, shouldOverwrite = false) => {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
+    this.setupAutoWrapUpTimer();
 
     return this;
   };
@@ -702,6 +759,7 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {
     try {
+      this.cancelAutoWrapUpTimer();
       LoggerProxy.info(`Wrapping up task`, {
         module: TASK_FILE,
         method: METHODS.WRAPUP,

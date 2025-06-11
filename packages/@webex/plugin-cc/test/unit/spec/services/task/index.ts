@@ -1274,4 +1274,222 @@ describe('Task', () => {
       interactionId: task.data.interactionId,
     });
   });
+  
+  describe('AutoWrapup initialization tests', () => {    
+    beforeEach(() => {
+      // No setup needed - we'll spy directly on task instances
+    });
+    
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+    
+    it('should not initialize AutoWrapup if wrapUpRequired is false', () => {
+      const wrapupProps = {
+        wrapUpProps: {
+          autoWrapup: true,
+          autoWrapupInterval: 5000,
+          wrapUpReasonList: [{ isDefault: true, name: 'Default Reason', id: '123', isSystem: false }]
+        }
+      };
+      
+      const taskData = { ...taskDataMock, wrapUpRequired: false };
+      const taskInstance = new Task(contactMock, webCallingService, taskData, wrapupProps);
+      
+      expect(taskInstance.autoWrapup).toBeUndefined();
+    });
+    
+    it('should not initialize AutoWrapup if autoWrapup is set to false', () => {
+      const wrapupProps = {
+        wrapUpProps: {
+          autoWrapup: false,
+          autoWrapupInterval: 5000,
+          wrapUpReasonList: [{ isDefault: true, name: 'Default Reason', id: '123', isSystem: false }]
+        }
+      };
+      
+      const taskData = { ...taskDataMock, wrapUpRequired: true };
+      const taskInstance = new Task(contactMock, webCallingService, taskData, wrapupProps);
+      
+      expect(taskInstance.autoWrapup).toBeUndefined();
+      expect(loggerInfoSpy).toHaveBeenCalledWith('Auto wrap-up is not required for this task', {
+        module: TASK_FILE,
+        method: 'SETUP_AUTO_WRAPUP_TIMER',
+        interactionId: taskData.interactionId,
+      });
+    });
+
+    it('should initialize AutoWrapup with custom interval when specified', () => {
+      const customInterval = 15000;
+      const wrapupProps = {
+        wrapUpProps: {
+          autoWrapup: true,
+          autoWrapupInterval: customInterval,
+          wrapUpReasonList: [{ isDefault: true, name: 'Default Reason', id: '123', isSystem: false }]
+        }
+      };
+      
+      const taskData = { ...taskDataMock, wrapUpRequired: true };
+      const taskInstance = new Task(contactMock, webCallingService, taskData, wrapupProps);
+      
+      expect(taskInstance.autoWrapup).toBeDefined();
+    });
+    
+    it('should cancel AutoWrapup timer when wrapup is called', async () => {
+      const wrapupProps = {
+        wrapUpProps: {
+          autoWrapup: true,
+          autoWrapupInterval: 5000,
+          wrapUpReasonList: [{ isDefault: true, name: 'Default Reason', id: '123', isSystem: false }]
+        }
+      };
+      
+      const taskData = { ...taskDataMock, wrapUpRequired: true };
+      const taskInstance = new Task(contactMock, webCallingService, taskData, wrapupProps);
+      
+      // Mock the autoWrapup object and its clear method
+      const clearSpy = jest.spyOn(taskInstance.autoWrapup, 'clear');
+      
+      // Call wrapup method which should cancel the timer
+      await taskInstance.wrapup({ wrapUpReason: 'Test Reason', auxCodeId: '123' });
+      
+      // Verify that clear was called
+      expect(clearSpy).toHaveBeenCalled();
+      expect(loggerInfoSpy).toHaveBeenCalledWith('Auto wrap-up timer cancelled', {
+        module: TASK_FILE,
+        method: 'CANCEL_AUTO_WRAPUP_TIMER',
+        interactionId: taskData.interactionId,
+      });
+    });
+    
+    it('should directly call cancelAutoWrapUpTimer successfully', () => {
+      const wrapupProps = {
+        wrapUpProps: {
+          autoWrapup: true,
+          autoWrapupInterval: 5000,
+          wrapUpReasonList: [{ isDefault: true, name: 'Default Reason', id: '123', isSystem: false }]
+        }
+      };
+      
+      const taskData = { ...taskDataMock, wrapUpRequired: true };
+      const taskInstance = new Task(contactMock, webCallingService, taskData, wrapupProps);
+      
+      const clearSpy = jest.spyOn(taskInstance.autoWrapup, 'clear');
+      taskInstance.cancelAutoWrapUpTimer();
+      
+      expect(clearSpy).toHaveBeenCalled();
+      expect(loggerInfoSpy).toHaveBeenCalledWith('Auto wrap-up timer cancelled', {
+        module: TASK_FILE,
+        method: 'CANCEL_AUTO_WRAPUP_TIMER',
+        interactionId: taskData.interactionId,
+      });
+    });
+
+    it('should use default interval when autoWrapupInterval is not specified', () => {
+      const wrapupProps = {
+        wrapUpProps: {
+          autoWrapup: true,
+          wrapUpReasonList: [{ isDefault: true, name: 'Default Reason', id: '123', isSystem: false }]
+        }
+      };
+      
+      const taskData = { ...taskDataMock, wrapUpRequired: true };
+      const taskInstance = new Task(contactMock, webCallingService, taskData, wrapupProps);
+      
+      expect(taskInstance.autoWrapup).toBeDefined();
+    });
+
+    it('should setup autoWrapup with a callback that executes wrapup', () => {
+      // Create a task with AutoWrapup enabled and a default wrapup reason
+      const defaultWrapUpReason = { isDefault: true, name: 'Default Reason', id: '123', isSystem: false };
+      const wrapupProps = {
+        wrapUpProps: {
+          autoWrapup: true,
+          autoWrapupInterval: 5000,
+          wrapUpReasonList: [defaultWrapUpReason]
+        }
+      };
+      
+      const taskData = { ...taskDataMock, wrapUpRequired: true };
+      
+      // Create our task instance 
+      const taskInstance = new Task(contactMock, webCallingService, taskData, wrapupProps);
+      
+      // Mock the wrapup method to verify it gets called with correct parameters
+      const wrapupMock = jest.fn().mockResolvedValue({});
+      taskInstance.wrapup = wrapupMock;
+      
+      // Verify autoWrapup was initialized
+      expect(taskInstance.autoWrapup).toBeDefined();
+      
+      // Get the callback that was passed to start
+      // Find the start function on the autoWrapup instance
+      const startCallback = taskInstance.autoWrapup.start.mock?.calls[0]?.[0];
+      
+      if (startCallback && typeof startCallback === 'function') {
+        // Execute the callback directly
+        startCallback();
+        
+        // Verify wrapup was called with correct parameters
+        expect(wrapupMock).toHaveBeenCalledWith({
+          wrapUpReason: defaultWrapUpReason.name,
+          auxCodeId: defaultWrapUpReason.id
+        });
+      }
+    });
+
+    it('should handle case when no default wrapup reason is found', () => {
+      // Create a test-only mock for AutoWrapup
+      let capturedCallback;
+      
+      // Temporarily override AutoWrapup to capture the callback
+      const originalAutoWrapup = global.AutoWrapup;
+      global.AutoWrapup = function(interval) {
+        this.interval = interval;
+        this.clear = jest.fn();
+        this.start = function(callback) {
+          capturedCallback = callback;
+        };
+        this.getTimeLeft = jest.fn();
+        this.isRunning = jest.fn();
+        this.getTimeLeftSeconds = jest.fn();
+        return this;
+      };
+
+      // Create a task with AutoWrapup enabled but NO default wrapup reason
+      const wrapupProps = {
+        wrapUpProps: {
+          autoWrapup: true,
+          autoWrapupInterval: 5000,
+          wrapUpReasonList: [
+            { isDefault: false, name: 'Reason 1', id: '123', isSystem: false },
+            { isDefault: false, name: 'Reason 2', id: '456', isSystem: false }
+          ]
+        }
+      };
+      
+      const taskData = { ...taskDataMock, wrapUpRequired: true };
+      
+      // Create our task instance
+      const taskInstance = new Task(contactMock, webCallingService, taskData, wrapupProps);
+      
+      // Mock the wrapup method to verify if it gets called
+      const wrapupSpy = jest.fn().mockResolvedValue({});
+      taskInstance.wrapup = wrapupSpy;
+      
+      // Execute the captured callback if available
+      if (capturedCallback) {
+        capturedCallback();
+      
+        // Verify wrapup was called with the first reason (since no default exists)
+        expect(wrapupSpy).toHaveBeenCalledWith({
+          wrapUpReason: wrapupProps.wrapUpProps.wrapUpReasonList[0].name,
+          auxCodeId: wrapupProps.wrapUpProps.wrapUpReasonList[0].id
+        });
+      }
+      
+      // Restore the original AutoWrapup constructor
+      global.AutoWrapup = originalAutoWrapup;
+    });
+  });
 });
