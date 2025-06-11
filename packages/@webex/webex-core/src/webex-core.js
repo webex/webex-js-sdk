@@ -758,6 +758,6 @@ export function registerPlugin(name, constructor, options = {}) {
  * @private
  * @returns {null}
  */
-export function registerInternalPlugin(name = 'test', constructor, options) {
+export function registerInternalPlugin(name = undefined, constructor, options) {
   WebexInternalCore.registerPlugin(name, constructor, options);
 }
