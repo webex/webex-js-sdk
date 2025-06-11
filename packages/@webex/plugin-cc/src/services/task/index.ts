@@ -487,14 +487,14 @@ export default class Task extends EventEmitter implements ITask {
 
   /**
    * Resumes the task/interaction that was previously put on hold.
-   * Emits task:unhold event when successful. For voice tasks, this restores the audio.
+   * Emits task:resume event when successful. For voice tasks, this restores the audio.
    *
    * @returns Promise<TaskResponse>
    * @throws Error if resume operation fails
    * @example
    * ```typescript
-   * // Set up unhold event handler
-   * task.on(TASK_EVENTS.TASK_UNHOLD, () => {
+   * // Set up resume event handler
+   * task.on(TASK_EVENTS.TASK_RESUME, () => {
    *   console.log('Task resumed from hold');
    *   // Update UI to show active state
    *   document.getElementById('hold-btn').disabled = false;
