@@ -6,7 +6,18 @@ import '@webex/internal-plugin-device';
 
 import {assert} from '@webex/test-helper-chai';
 import {flaky} from '@webex/test-helper-mocha';
-import WebexCore, {ServiceCatalog, ServiceDetail, serviceConstants} from '@webex/webex-core';
+import WebexCore, {
+  ServiceCatalogV2,
+  ServiceDetail,
+  serviceConstantsV2,
+  registerInternalPlugin,
+  Services,
+  ServiceInterceptor,
+  ServerErrorInterceptor,
+  ServicesV2,
+  ServiceInterceptorV2,
+  ServerErrorInterceptorV2,
+} from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
 import sinon from 'sinon';
@@ -46,6 +57,13 @@ describe('webex-core', () => {
     );
 
     beforeEach(() => {
+      registerInternalPlugin('services', ServicesV2, {
+        interceptors: {
+          ServiceInterceptor: ServiceInterceptorV2.create,
+          ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+        },
+        replace: true,
+      });
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
       webexEU = new WebexCore({credentials: {supertoken: webexUserEU.token}});
       services = webex.internal.services;
@@ -62,6 +80,16 @@ describe('webex-core', () => {
           query: {userId: webexUser.id},
         })
       );
+    });
+
+    afterEach(() => {
+      registerInternalPlugin('services', Services, {
+        interceptors: {
+          ServiceInterceptor: ServiceInterceptor.create,
+          ServerErrorInterceptor: ServerErrorInterceptor.create,
+        },
+        replace: true,
+      });
     });
 
     describe('#_getCatalog()', () => {
@@ -86,7 +114,7 @@ describe('webex-core', () => {
       });
 
       afterEach(() => {
-        catalog._unloadServiceUrls('preauth', [testDetail]);
+        catalog._unloadServiceDetails('preauth', [testDetail]);
       });
 
       it('returns a valid string when name is specified', () => {
@@ -195,7 +223,7 @@ describe('webex-core', () => {
       });
 
       afterEach(() => {
-        catalog._unloadServiceUrls('preauth', [testDetail]);
+        catalog._unloadServiceDetails('preauth', [testDetail]);
       });
 
       it('gets a valid service object from an existing service', () => {
@@ -263,7 +291,10 @@ describe('webex-core', () => {
 
         services.initConfig();
 
-        const expectedResult = [...allowedDomains, ...serviceConstants.COMMERCIAL_ALLOWED_DOMAINS];
+        const expectedResult = [
+          ...allowedDomains,
+          ...serviceConstantsV2.COMMERCIAL_ALLOWED_DOMAINS,
+        ];
 
         assert.deepEqual(expectedResult, services._getCatalog().allowedDomains);
       });
@@ -271,7 +302,7 @@ describe('webex-core', () => {
 
     describe('#initialize()', () => {
       it('should create a catalog', () =>
-        assert.instanceOf(services._getCatalog(), ServiceCatalog));
+        assert.instanceOf(services._getCatalog(), ServiceCatalogV2));
 
       it('should call services#initConfig() when webex config changes', () => {
         services.initConfig = sinon.spy();
@@ -368,7 +399,7 @@ describe('webex-core', () => {
       });
 
       it('returns a boolean', () => {
-        assert.isBoolean(services.isAllowedDomainUrl(''));
+        assert.isBoolean(services.isAllowedDomainUrl('https://not-a-domain/resource'));
       });
 
       it('returns true if the url contains an allowed domain', () => {
@@ -410,7 +441,7 @@ describe('webex-core', () => {
       });
 
       afterEach(() => {
-        catalog._unloadServiceUrls('preauth', [testDetail]);
+        catalog._unloadServiceDetails('preauth', [testDetail]);
       });
     });
 
@@ -427,7 +458,7 @@ describe('webex-core', () => {
       });
 
       afterEach(() => {
-        catalog._unloadServiceUrls('preauth', [testDetail]);
+        catalog._unloadServiceDetails('preauth', [testDetail]);
       });
 
       it('marks a host as failed', () => {
@@ -494,7 +525,7 @@ describe('webex-core', () => {
       });
 
       it('updates query.email to be emailhash-ed using SHA256', (done) => {
-        catalog.updateServiceUrls = sinon.stub().returns({}); // returns `this`
+        catalog.updateServiceGroups = sinon.stub().returns({}); // returns `this`
         services._fetchNewServiceHostmap = sinon.stub().resolves();
 
         services
@@ -683,7 +714,7 @@ describe('webex-core', () => {
             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
             assert.equal(r.activated, false);
             assert.equal(r.exists, false);
-            assert.isAbove(Object.keys(unauthServices._services).length, 0);
+            assert.isAbove(unauthServices._services.length, 0);
           }));
 
       it('validates new user with activationOptions suppressEmail false', () =>
@@ -697,7 +728,7 @@ describe('webex-core', () => {
             assert.equal(r.activated, false);
             assert.equal(r.exists, false);
             assert.equal(r.user.verificationEmailTriggered, true);
-            assert.isAbove(Object.keys(unauthServices._services).length, 0);
+            assert.isAbove(unauthServices._services.length, 0);
           }));
 
       it('validates new user with activationOptions suppressEmail true', () =>
@@ -711,7 +742,7 @@ describe('webex-core', () => {
             assert.equal(r.activated, false);
             assert.equal(r.exists, false);
             assert.equal(r.user.verificationEmailTriggered, false);
-            assert.isAbove(Object.keys(unauthServices._services).length, 0);
+            assert.isAbove(unauthServices._services.length, 0);
           }));
 
       it('validates an inactive user', () => {
@@ -723,7 +754,7 @@ describe('webex-core', () => {
             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
             assert.equal(r.activated, false, 'activated');
             assert.equal(r.exists, true, 'exists');
-            assert.isAbove(Object.keys(unauthServices._services).length, 0);
+            assert.isAbove(unauthServices._services.length, 0);
           })
           .catch(() => {
             assert(true);
@@ -735,7 +766,7 @@ describe('webex-core', () => {
           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
           assert.equal(r.activated, true);
           assert.equal(r.exists, true);
-          assert.isAbove(Object.keys(unauthServices._services).length, 0);
+          assert.isAbove(unauthServices._services.length, 0);
         }));
 
       it('validates an existing EU user', () =>
@@ -743,7 +774,7 @@ describe('webex-core', () => {
           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
           assert.equal(r.activated, true);
           assert.equal(r.exists, true);
-          assert.isAbove(Object.keys(unauthServices._services).length, 0);
+          assert.isAbove(unauthServices._services.length, 0);
         }));
 
       it('sends the prelogin user id as undefined when not specified', () => {
@@ -908,79 +939,79 @@ describe('webex-core', () => {
       });
     });
 
-    //     describe('#collectPreauthCatalog()', () => {
-    //       const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
-    //       const unauthServices = unauthWebex.internal.services;
-    //       const forceRefresh = true;
+    describe('#collectPreauthCatalog()', () => {
+      const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
+      const unauthServices = unauthWebex.internal.services;
+      const forceRefresh = true;
 
-    //       it('updates the preauth catalog without email', () =>
-    //         unauthServices.collectPreauthCatalog().then(() => {
-    //           assert.isAbove(Object.keys(unauthServices.list()).length, 0);
-    //         }));
+      it('updates the preauth catalog without email', () =>
+        unauthServices.collectPreauthCatalog().then(() => {
+          assert.isAbove(unauthServices._services.length, 0);
+        }));
 
-    //       it('updates the preauth catalog with email', () =>
-    //         unauthServices.collectPreauthCatalog({email: webexUser.email}).then(() => {
-    //           assert.isAbove(Object.keys(unauthServices.list()).length, 0);
-    //         }));
+      it('updates the preauth catalog with email', () =>
+        unauthServices.collectPreauthCatalog({email: webexUser.email}).then(() => {
+          assert.isAbove(unauthServices._services.length, 0);
+        }));
 
-    //       it('updates the preauth catalog with email along with additional timestamp to address cache control', (done) => {
-    //         const updateServiceSpy = sinon.spy(unauthServices, 'updateServices');
-    //         const fetchNewServiceHostmapSpy = sinon.spy(unauthServices, '_fetchNewServiceHostmap');
+      it('updates the preauth catalog with email along with additional timestamp to address cache control', (done) => {
+        const updateServiceSpy = sinon.spy(unauthServices, 'updateServices');
+        const fetchNewServiceHostmapSpy = sinon.spy(unauthServices, '_fetchNewServiceHostmap');
 
-    //         unauthServices.collectPreauthCatalog({email: webexUser.email}, forceRefresh).then(() => {
-    //           assert.calledOnce(updateServiceSpy);
-    //           assert.calledWith(
-    //             updateServiceSpy,
-    //             sinon.match.has(
-    //               'from',
-    //               'limited',
-    //               'query',
-    //               {emailhash: sinon.match(/\b[A-Fa-f0-9]{64}\b/)},
-    //               'forceRefresh',
-    //               forceRefresh
-    //             )
-    //           );
+        unauthServices.collectPreauthCatalog({email: webexUser.email}, forceRefresh).then(() => {
+          assert.calledOnce(updateServiceSpy);
+          assert.calledWith(
+            updateServiceSpy,
+            sinon.match.has(
+              'from',
+              'limited',
+              'query',
+              {emailhash: sinon.match(/\b[A-Fa-f0-9]{64}\b/)},
+              'forceRefresh',
+              forceRefresh
+            )
+          );
 
-    //           assert.calledOnce(fetchNewServiceHostmapSpy);
-    //           assert.calledWith(
-    //             fetchNewServiceHostmapSpy,
-    //             sinon.match.has(
-    //               'from',
-    //               'limited',
-    //               'query',
-    //               {emailhash: sinon.match(/\b[A-Fa-f0-9]{64}\b/)},
-    //               'forceRefresh',
-    //               forceRefresh
-    //             )
-    //           );
+          assert.calledOnce(fetchNewServiceHostmapSpy);
+          assert.calledWith(
+            fetchNewServiceHostmapSpy,
+            sinon.match.has(
+              'from',
+              'limited',
+              'query',
+              {emailhash: sinon.match(/\b[A-Fa-f0-9]{64}\b/)},
+              'forceRefresh',
+              forceRefresh
+            )
+          );
 
-    //           fetchNewServiceHostmapSpy.returnValues[0].then((res) => {
-    //             assert.isAbove(res.length, 0);
-    //           });
-    //           done();
-    //         });
-    //       });
-    //     });
+          fetchNewServiceHostmapSpy.returnValues[0].then((res) => {
+            assert.isAbove(res.length, 0);
+          });
+          done();
+        });
+      });
+    });
 
-    //     describe('#collectSigninCatalog()', () => {
-    //       const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
-    //       const unauthServices = unauthWebex.internal.services;
+    describe('#collectSigninCatalog()', () => {
+      const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
+      const unauthServices = unauthWebex.internal.services;
 
-    //       it('requires an email as the parameter', () =>
-    //         unauthServices.collectPreauthCatalog().catch((e) => {
-    //           assert(true, e);
-    //         }));
+      it('requires an email as the parameter', () =>
+        unauthServices.collectPreauthCatalog().catch((e) => {
+          assert(true, e);
+        }));
 
-    //       it('requires a token as the parameter', () =>
-    //         unauthServices.collectPreauthCatalog({email: 'email@website.com'}).catch((e) => {
-    //           assert(true, e);
-    //         }));
+      it('requires a token as the parameter', () =>
+        unauthServices.collectPreauthCatalog({email: 'email@website.com'}).catch((e) => {
+          assert(true, e);
+        }));
 
-    //       it('updates the preauth catalog', () =>
-    //         unauthServices.collectPreauthCatalog({email: webexUser.email}).then(() => {
-    //           assert.isAbove(Object.keys(unauthServices.list()).length, 0);
-    //         }));
-    //     });
+      it('updates the preauth catalog', () =>
+        unauthServices.collectPreauthCatalog({email: webexUser.email}).then(() => {
+          assert.isAbove(unauthServices._services.length, 0);
+        }));
+    });
 
     //     flaky(describe, process.env.SKIP_FLAKY_TESTS)('#_fetchNewServiceHostmap()', () => {
     //       let fullRemoteHM;

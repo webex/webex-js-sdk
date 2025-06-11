@@ -62,7 +62,7 @@ describe('webex-core', () => {
       );
     });
 
-    after(() => {
+    afterEach(() => {
       registerInternalPlugin('services', Services, {
         interceptors: {
           ServiceInterceptor: ServiceInterceptor.create,
@@ -535,12 +535,6 @@ describe('webex-core', () => {
             `did not find matching host data for the \`${activeServiceVal}\` active service.`
           );
         });
-      });
-
-      it('returns self', () => {
-        const returnValue = catalog.updateServiceGroups('preauth', formattedHM);
-
-        assert.equal(returnValue, catalog);
       });
 
       it('triggers authorization events', (done) => {
