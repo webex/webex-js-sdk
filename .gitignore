@@ -19,7 +19,8 @@ _site
 doc
 docker-env
 dist
-types
+**/types/**
+!docs/wxcc/types/**
 html-report
 js-bin
 local/

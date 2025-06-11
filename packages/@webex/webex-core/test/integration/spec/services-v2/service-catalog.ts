@@ -6,7 +6,16 @@ import '@webex/internal-plugin-device';
 
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import WebexCore, {ServiceDetail} from '@webex/webex-core';
+import WebexCore, {
+  ServiceDetail,
+  registerInternalPlugin,
+  ServicesV2,
+  ServiceInterceptorV2,
+  ServerErrorInterceptorV2,
+  ServiceInterceptor,
+  ServerErrorInterceptor,
+  Services,
+} from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import {
   formattedServiceHostmapEntryConv,
@@ -22,29 +31,46 @@ describe('webex-core', () => {
     let catalog;
 
     before('create users', () =>
-      testUsers
-        .create({count: 1})
-        .then(
-          ([user]) =>
-            new Promise<void>((resolve) => {
-              setTimeout(() => {
-                webexUser = user;
-                webex = new WebexCore({credentials: user.token});
-                services = webex.internal.services;
-                catalog = services._getCatalog();
-                resolve();
-              }, 1000);
-            })
-        )
-        .then(() => webex.internal.device.register())
-        .then(() => services.waitForCatalog('postauth', 10))
-        .then(() =>
-          services.updateServices({
-            from: 'limited',
-            query: {userId: webexUser.id},
+      testUsers.create({count: 1}).then(
+        ([user]) =>
+          new Promise<void>((resolve) => {
+            setTimeout(() => {
+              webexUser = user;
+              resolve();
+            }, 1000);
           })
-        )
+      )
     );
+
+    beforeEach(() => {
+      registerInternalPlugin('services', ServicesV2, {
+        interceptors: {
+          ServiceInterceptor: ServiceInterceptorV2.create,
+          ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+        },
+        replace: true,
+      });
+      webex = new WebexCore({credentials: {supertoken: webexUser.token}});
+      services = webex.internal.services;
+      catalog = services._getCatalog();
+
+      return services.waitForCatalog('postauth', 10).then(() =>
+        services.updateServices({
+          from: 'limited',
+          query: {userId: webexUser.id},
+        })
+      );
+    });
+
+    after(() => {
+      registerInternalPlugin('services', Services, {
+        interceptors: {
+          ServiceInterceptor: ServiceInterceptor.create,
+          ServerErrorInterceptor: ServerErrorInterceptor.create,
+        },
+        replace: true,
+      });
+    });
 
     describe('#status()', () => {
       it('updates ready when services ready', () => {
@@ -52,7 +78,7 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#_getUrl()', () => {
+    describe('#_getServiceDetail()', () => {
       let testDetailTemplate;
       let testDetail;
 
@@ -67,7 +93,7 @@ describe('webex-core', () => {
       });
 
       it('returns a ServiceUrl from a specific serviceGroup', () => {
-        const serviceDetail = catalog._getUrl(testDetailTemplate.id, 'preauth');
+        const serviceDetail = catalog._getServiceDetail(testDetailTemplate.id, 'preauth');
 
         assert.equal(serviceDetail.serviceUrls, testDetailTemplate.serviceUrls);
         assert.equal(serviceDetail.id, testDetailTemplate.id);
@@ -75,13 +101,13 @@ describe('webex-core', () => {
       });
 
       it("returns undefined if url doesn't exist", () => {
-        const serviceDetail = catalog._getUrl('invalidUrl');
+        const serviceDetail = catalog._getServiceDetail('invalidUrl');
 
         assert.typeOf(serviceDetail, 'undefined');
       });
 
       it("returns undefined if url doesn't exist in serviceGroup", () => {
-        const serviceDetail = catalog._getUrl(testDetailTemplate.id, 'Discovery');
+        const serviceDetail = catalog._getServiceDetail(testDetailTemplate.id, 'Discovery');
 
         assert.typeOf(serviceDetail, 'undefined');
       });
@@ -270,7 +296,7 @@ describe('webex-core', () => {
         it('marks a host as failed', () => {
           const priorityUrl = catalog.get(testDetailTemplate.id, true);
 
-          catalog.markFailedUrl(priorityUrl);
+          catalog.markFailedServiceUrl(priorityUrl);
 
           const failedHost = testDetail.hosts.find((host) => host.failed);
 
@@ -279,7 +305,7 @@ describe('webex-core', () => {
 
         it('returns the next priority url', () => {
           const priorityUrl = catalog.get(testDetailTemplate.id, true);
-          const nextPriorityUrl = catalog.markFailedUrl(priorityUrl);
+          const nextPriorityUrl = catalog.markFailedServiceUrl(priorityUrl);
 
           assert.notEqual(priorityUrl, nextPriorityUrl);
         });
