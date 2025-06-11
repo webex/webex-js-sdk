@@ -283,16 +283,16 @@ export class Registration implements IRegistration {
       interval -= excessVal;
     }
 
+    if (this.retryAfter != null && interval < this.retryAfter) {
+      this.failoverImmediately = this.retryAfter + timeElapsed > TIMER_THRESHOLD;
+    }
+
     let abort;
     if (interval > BASE_REG_RETRY_TIMER_VAL_IN_SEC && !this.failoverImmediately) {
       const scheduledTime = Math.floor(Date.now() / 1000);
 
       if (this.retryAfter != null) {
-        if (this.isCCFlow && this.retryAfter < RETRY_TIMER_UPPER_LIMIT) {
-          interval = Math.max(interval, this.retryAfter);
-        } else if (!this.isCCFlow) {
-          interval = Math.max(interval, this.retryAfter);
-        }
+        interval = Math.max(interval, this.retryAfter);
       }
 
       setTimeout(async () => {

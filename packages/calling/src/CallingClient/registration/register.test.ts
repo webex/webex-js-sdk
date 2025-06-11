@@ -102,7 +102,15 @@ describe('Registration Tests', () => {
     statusCode: 429,
     body: mockPostResponse,
     headers: {
-      'retry-after': 61,
+      'retry-after': 136,
+    },
+  });
+
+  const failurePayload429Four = <WebexRequestPayload>(<unknown>{
+    statusCode: 429,
+    body: mockPostResponse,
+    headers: {
+      'retry-after': 81,
     },
   });
 
@@ -318,6 +326,88 @@ describe('Registration Tests', () => {
       expect(failoverSpy).toBeCalledOnceWith(3, 85);
     });
 
+    it('handle 429 received with higher retryAfter than the interval when interval with elapsedTime is already reaching threshold timer so we failover immediately', async () => {
+      reg.isCCFlow = true;
+      jest
+        .spyOn(reg as any, 'getRegRetryInterval')
+        .mockReturnValueOnce(33)
+        .mockReturnValueOnce(40)
+        .mockReturnValueOnce(47)
+        .mockReturnValueOnce(52);
+      jest.useFakeTimers();
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload429One)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.triggerRegistration();
+
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(retry429Spy).not.toBeCalled();
+      expect(failoverSpy).toBeCalledOnceWith();
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in 33 seconds, number of attempts : 1`,
+        loggerContext
+      );
+
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(33 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).not.toBeCalled();
+      expect(failoverSpy).toBeCalledOnceWith(2, 33);
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in 40 seconds, number of attempts : 2`,
+        loggerContext
+      );
+
+      logSpy.mockClear();
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toHaveBeenNthCalledWith(3, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).toBeCalledOnceWith(
+        failurePayload429One.headers['retry-after'],
+        'startFailoverTimer'
+      );
+      expect(failoverSpy).toBeCalledOnceWith(3, 73);
+
+      expect(logSpy).not.toBeCalledWith(
+        `Scheduled retry with primary in ${failurePayload429One.headers['retry-after']} seconds, number of attempts : 3`,
+        loggerContext
+      );
+
+      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+
+      expect(webex.request).toHaveBeenNthCalledWith(4, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+    });
+
     it('handle 429 received while the last attempt for primary', async () => {
       reg.isCCFlow = true;
       jest
@@ -477,7 +567,7 @@ describe('Registration Tests', () => {
       expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
     });
 
-    it('checking the retry upper limit', async () => {
+    it('checking the retryAfter exceeding the threshold timers in first attempt itself', async () => {
       reg.isCCFlow = true;
       jest.useFakeTimers();
       jest.spyOn(reg as any, 'getRegRetryInterval').mockReturnValueOnce(40);
@@ -493,12 +583,56 @@ describe('Registration Tests', () => {
       expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       expect(failoverSpy).toBeCalledOnceWith();
 
-      expect(logSpy).toBeCalledWith(
+      expect(logSpy).not.toBeCalledWith(
         `Scheduled retry with primary in 40 seconds, number of attempts : 1`,
         loggerContext
       );
 
-      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      expect(logSpy).not.toBeCalledWith(
+        `Scheduled retry with primary in ${failurePayload429Three.headers['retry-after']} seconds, number of attempts : 1`,
+        loggerContext
+      );
+
+      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+    });
+
+    it('checking the retryAfter exceeding the threshold timers in later attempts', async () => {
+      reg.isCCFlow = true;
+      jest.useFakeTimers();
+      jest
+        .spyOn(reg as any, 'getRegRetryInterval')
+        .mockReturnValueOnce(39)
+        .mockReturnValueOnce(43);
+      webex.request
+        .mockRejectedValueOnce(failurePayload429One)
+        .mockRejectedValueOnce(failurePayload429Four)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.triggerRegistration();
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(failoverSpy).toBeCalledOnceWith();
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in ${failurePayload429One.headers['retry-after']} seconds, number of attempts : 1`,
+        loggerContext
+      );
+
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(
+        Number(failurePayload429One.headers['retry-after']) * SEC_TO_MSEC_MFACTOR
+      );
       await flushPromises();
 
       expect(webex.request).toHaveBeenNthCalledWith(2, {
@@ -506,6 +640,28 @@ describe('Registration Tests', () => {
         method: 'POST',
         uri: `${mobiusUris.primary[0]}device`,
       });
+      expect(failoverSpy).toBeCalledOnceWith(2, failurePayload429One.headers['retry-after']);
+
+      expect(logSpy).not.toBeCalledWith(
+        `Scheduled retry with primary in 43 seconds, number of attempts : 2`,
+        loggerContext
+      );
+
+      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+
+      expect(logSpy).not.toBeCalledWith(
+        `Scheduled retry with primary in ${failurePayload429Four.headers['retry-after']} seconds, number of attempts : 2`,
+        loggerContext
+      );
+
+      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+
+      expect(webex.request).toHaveBeenNthCalledWith(3, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
     });
   });
 
