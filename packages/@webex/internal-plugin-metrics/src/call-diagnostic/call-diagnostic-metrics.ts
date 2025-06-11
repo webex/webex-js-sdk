@@ -742,7 +742,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       errors,
       eventData: {
         webClientDomain: window.location.hostname,
-        ...eventData,
+        ...(eventData ?? {}),
       },
       userType: meeting.getCurUserType(),
       loginType:
@@ -813,7 +813,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers,
       eventData: {
         webClientDomain: window.location.hostname,
-        ...eventData,
+        ...(eventData ?? {}),
       },
       loginType: this.getCurLoginType(),
       // @ts-ignore
@@ -934,6 +934,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         name,
         payload,
         options: delayedOptions,
+        eventData,
       });
 
       return Promise.resolve();
@@ -969,10 +970,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     const promises = this.delayedClientEvents.map((delayedSubmitClientEventParams) => {
-      const {name, payload, options} = delayedSubmitClientEventParams;
+      const {name, payload, options, eventData} = delayedSubmitClientEventParams;
       const optionsWithOverrides: DelayedClientEvent['options'] = {...options, ...overrides};
 
-      return this.submitClientEvent({name, payload, options: optionsWithOverrides});
+      return this.submitClientEvent({name, payload, options: optionsWithOverrides, eventData});
     });
 
     this.delayedClientEvents = [];

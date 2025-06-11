@@ -138,7 +138,6 @@ export type SubmitClientEventOptions = {
   triggeredTime?: string;
   emailInput?: ClientEmailInput;
   userNameInput?: ClientUserNameInput;
-  eventData?: EventData;
 };
 
 export type SubmitMQEOptions = {
@@ -342,4 +341,5 @@ export interface DelayedClientEvent {
   name: ClientEvent['name'];
   payload?: RecursivePartial<ClientEvent['payload']>;
   options?: SubmitClientEventOptions;
+  eventData?: EventData;
 }
