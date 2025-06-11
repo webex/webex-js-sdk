@@ -218,7 +218,7 @@ function updateButtonsPostEndCall() {
   if(currentTask) {
     wrapupElm.disabled = false;
     wrapupCodesDropdownElm.disabled = false;
-    } else {
+  } else {
     wrapupElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
   }
