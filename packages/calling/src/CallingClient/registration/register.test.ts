@@ -373,8 +373,9 @@ describe('Registration Tests', () => {
         loggerContext
       );
 
+      logSpy.mockClear();
       failoverSpy.mockClear();
-      jest.advanceTimersByTime(41 * SEC_TO_MSEC_MFACTOR);
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
 
       expect(webex.request).toHaveBeenNthCalledWith(3, {
@@ -384,10 +385,15 @@ describe('Registration Tests', () => {
       });
 
       expect(retry429Spy).not.toBeCalled();
-      expect(failoverSpy).toBeCalledOnceWith(3, 74);
+      expect(failoverSpy).toBeCalledOnceWith(3, 73);
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in 41 seconds, number of attempts : 3`,
+        loggerContext
+      );
 
       failoverSpy.mockClear();
-      jest.advanceTimersByTime(47 * SEC_TO_MSEC_MFACTOR);
+      jest.advanceTimersByTime(41 * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
 
       expect(webex.request).toHaveBeenNthCalledWith(4, {
@@ -400,7 +406,7 @@ describe('Registration Tests', () => {
         failurePayload429One.headers['retry-after'],
         'startFailoverTimer'
       );
-      expect(failoverSpy).toBeCalledOnceWith(4, 121);
+      expect(failoverSpy).toBeCalledOnceWith(4, 114);
 
       expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 

@@ -219,7 +219,7 @@ export class Registration implements IRegistration {
       if (this.failback429RetryAttempts >= REG_FAILBACK_429_MAX_RETRIES) {
         return;
       }
-      this.scheduled429Retry = true;
+
       this.clearFailbackTimer();
       this.failback429RetryAttempts += 1;
       log.log(`Received 429 while rehoming, 429 retry count : ${this.failback429RetryAttempts}`, {
@@ -229,6 +229,7 @@ export class Registration implements IRegistration {
       const interval = this.getRegRetryInterval(this.failback429RetryAttempts);
 
       this.startFailbackTimer(interval);
+      this.scheduled429Retry = true;
       const abort = await this.restorePreviousRegistration(REG_429_RETRY_UTIL);
 
       if (!abort && !this.isDeviceRegistered()) {
