@@ -158,13 +158,13 @@ export enum TASK_EVENTS {
    * Triggered when a task is resumed from hold
    * @example
    * ```typescript
-   * task.on(TASK_EVENTS.TASK_UNHOLD, (task: ITask) => {
+   * task.on(TASK_EVENTS.TASK_RESUME, (task: ITask) => {
    *   console.log('Task resumed from hold:', task.data.interactionId);
    *   // Update UI to show active state
    * });
    * ```
    */
-  TASK_UNHOLD = 'task:unhold',
+  TASK_RESUME = 'task:resume',
 
   /**
    * Triggered when a consultation session ends

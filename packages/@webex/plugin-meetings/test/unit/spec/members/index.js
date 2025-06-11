@@ -32,58 +32,7 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 describe('plugin-meetings', () => {
   let webex;
   let url1;
-  const fakeMembersCollection = {
-    test1: {
-      namespace: 'Meetings',
-      participant: {
-        state: 'JOINED',
-        type: 'USER',
-        person: {
-          id: '6eb08f8b-bf69-3251-a126-b161bead2d21',
-          phoneNumber: '+18578675309',
-          isExternal: true,
-          primaryDisplayString: '+18578675309',
-        },
-        devices: [
-          {
-            url: 'https://fakeURL.com',
-            deviceType: 'SIP',
-            state: 'JOINED',
-            intents: [null],
-            correlationId: '1234',
-            provisionalUrl: 'dialout:///fake',
-            isSparkPstn: true,
-          },
-          {
-            url: 'dialout:///fakeagain',
-            deviceType: 'PROVISIONAL',
-            state: 'JOINED',
-            intents: [null],
-            correlationId: '4321',
-            isVideoCallback: false,
-            clientUrl: 'https://fakeURL',
-            provisionalType: 'DIAL_OUT_ONLY',
-            dialingStatus: 'SUCCESS',
-          },
-        ],
-        status: {
-          audioStatus: 'SENDRECV',
-          videoStatus: 'INACTIVE',
-        },
-        id: 'abc-123-abc-123',
-        guest: true,
-        resourceGuest: false,
-        moderator: false,
-        panelist: false,
-        moveToLobbyNotAllowed: true,
-        deviceUrl: 'https://fakeDeviceurl',
-      },
-      id: 'abc-123-abc-123',
-      status: 'IN_MEETING',
-      type: 'MEETING',
-      isModerator: false,
-    },
-  };
+  let fakeMembersCollection;
 
   describe('members', () => {
     const sandbox = sinon.createSandbox();
@@ -92,6 +41,65 @@ describe('plugin-meetings', () => {
     let membersRequestSpy;
 
     beforeEach(() => {
+      fakeMembersCollection = {
+        test1: {
+          associatedUsers: new Set(),
+          namespace: 'Meetings',
+          participant: {
+            state: 'JOINED',
+            type: 'USER',
+            person: {
+              id: '6eb08f8b-bf69-3251-a126-b161bead2d21',
+              phoneNumber: '+18578675309',
+              isExternal: true,
+              primaryDisplayString: '+18578675309',
+            },
+            devices: [
+              {
+                url: 'https://fakeURL.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                intents: [null],
+                correlationId: '1234',
+                provisionalUrl: 'dialout:///fake',
+                isSparkPstn: true,
+              },
+              {
+                url: 'dialout:///fakeagain',
+                deviceType: 'PROVISIONAL',
+                state: 'JOINED',
+                intents: [null],
+                correlationId: '4321',
+                isVideoCallback: false,
+                clientUrl: 'https://fakeURL',
+                provisionalType: 'DIAL_OUT_ONLY',
+                dialingStatus: 'SUCCESS',
+              },
+            ],
+            status: {
+              audioStatus: 'SENDRECV',
+              videoStatus: 'INACTIVE',
+            },
+            id: 'test1',
+            guest: true,
+            resourceGuest: false,
+            moderator: false,
+            panelist: false,
+            moveToLobbyNotAllowed: true,
+            deviceUrl: 'https://fakeDeviceurl',
+            url: 'fake participant url for test1',
+          },
+          id: 'test1',
+          status: 'IN_MEETING',
+          type: 'USER',
+          isModerator: false,
+          isHost: false,
+          isSelf: false,
+          isContentSharing: false,
+          pairedWith: {},
+        },
+      };
+
       webex = new MockWebex({
         children: {
           meetings: Meetings,
@@ -290,6 +298,110 @@ describe('plugin-meetings', () => {
             isReplace: true,
           }
         );
+      });
+
+      describe('handles members with paired devices correctly', () => {
+        const runCheck = (propsForUpdate, expectedPropsOnPairedMember) => {
+          const members = createMembers({url: url1});
+
+          const DEVICE_PARTICIPANT_URL = 'fake participant url for test2';
+
+          members.membersCollection.setAll(fakeMembersCollection);
+
+          // simulate a locus update with a member that has a paired device
+          members.locusParticipantsUpdate({
+            ...propsForUpdate,
+            participants: [
+              {
+                id: 'test1',
+                type: 'USER',
+                person: {},
+                devices: [
+                  {
+                    intents: [
+                      {
+                        type: 'OBSERVE',
+                        associatedWith: DEVICE_PARTICIPANT_URL,
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                id: 'test2',
+                type: 'RESOURCE_ROOM',
+                person: {},
+                devices: [
+                  {
+                    state: 'JOINED',
+                    intents: [null],
+                  },
+                ],
+                url: DEVICE_PARTICIPANT_URL,
+              },
+            ],
+          });
+
+          let member = members.membersCollection.get('test1');
+          assert.isDefined(member.pairedWith);
+          assert.strictEqual(member.pairedWith.participantUrl, DEVICE_PARTICIPANT_URL);
+          assert.strictEqual(member.pairedWith.memberId, 'test2');
+
+          let pairedDeviceMember = members.membersCollection.get('test2');
+          assert(pairedDeviceMember.associatedUsers.has(member.id));
+          assert.strictEqual(pairedDeviceMember.associatedUser, member.id);
+          assert.strictEqual(pairedDeviceMember.associatedUsers.size, 1);
+
+          assert.strictEqual(
+            pairedDeviceMember.isPairedWithSelf,
+            expectedPropsOnPairedMember.isPairedWithSelf
+          );
+          assert.strictEqual(pairedDeviceMember.isHost, expectedPropsOnPairedMember.isHost);
+
+          // now simulate the user and paired device leaving the meeting
+          members.locusParticipantsUpdate({
+            ...propsForUpdate,
+            participants: [
+              {
+                id: 'test1',
+                type: 'USER',
+                person: {},
+                devices: [],
+              },
+              {
+                id: 'test2',
+                type: 'RESOURCE_ROOM',
+                person: {},
+                devices: [],
+              },
+            ],
+          });
+
+          // and check that all the relevant properties were reset
+          member = members.membersCollection.get('test1');
+          assert.isDefined(member.pairedWith);
+          assert.isUndefined(member.pairedWith.participantUrl);
+          assert.isUndefined(member.pairedWith.memberId);
+
+          pairedDeviceMember = members.membersCollection.get('test2');
+          assert.strictEqual(pairedDeviceMember.associatedUser, null);
+          assert.strictEqual(pairedDeviceMember.associatedUsers.size, 0);
+
+          assert.strictEqual(pairedDeviceMember.isPairedWithSelf, false);
+          assert.strictEqual(pairedDeviceMember.isHost, false);
+        };
+
+        it('sets the right properties when a member has a paired device', () => {
+          runCheck({}, {isPairedWithSelf: false, isHost: false});
+        });
+
+        it('sets the right properties when a member has a paired device (isSelf)', () => {
+          runCheck({selfId: 'test1'}, {isPairedWithSelf: true, isHost: false});
+        });
+
+        it('sets the right properties when a member has a paired device (isHost)', () => {
+          runCheck({hostId: 'test1'}, {isPairedWithSelf: false, isHost: true});
+        });
       });
     });
     describe('#sendDialPadKey', () => {

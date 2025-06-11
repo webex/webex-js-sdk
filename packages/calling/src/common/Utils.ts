@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
 import ExtendedError from 'Errors/catalog/ExtendedError';
-import {restoreRegistrationCallBack} from '../CallingClient/registration/types';
+import {restoreRegistrationCallBack, retry429CallBack} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
 import {
@@ -297,6 +297,7 @@ export async function handleRegistrationErrors(
   err: WebexRequestPayload,
   emitterCb: LineErrorEmitterCallback,
   loggerContext: LogContext,
+  retry429Cb?: retry429CallBack,
   restoreRegCb?: restoreRegistrationCallBack
 ): Promise<boolean> {
   const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
@@ -305,6 +306,21 @@ export async function handleRegistrationErrors(
   let finalError = false;
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
   switch (errorCode) {
+    case ERROR_CODE.BAD_REQUEST: {
+      finalError = true;
+      log.warn(`400 Bad Request`, loggerContext);
+
+      updateLineErrorContext(
+        loggerContext,
+        ERROR_TYPE.SERVER_ERROR,
+        'Invalid input. Please verify the required parameters, sign out and then sign back in with the valid data',
+        RegistrationStatus.INACTIVE,
+        lineError
+      );
+      emitterCb(lineError, finalError);
+      break;
+    }
+
     case ERROR_CODE.UNAUTHORIZED: {
       // Return it to the Caller
       finalError = true;
@@ -319,6 +335,33 @@ export async function handleRegistrationErrors(
       );
 
       emitterCb(lineError, finalError);
+      break;
+    }
+
+    case ERROR_CODE.DEVICE_NOT_FOUND: {
+      finalError = true;
+      log.warn(`404 Device Not Found`, loggerContext);
+
+      updateLineErrorContext(
+        loggerContext,
+        ERROR_TYPE.NOT_FOUND,
+        'Webex Calling is unable to find your device. Sign out, then sign back in',
+        RegistrationStatus.INACTIVE,
+        lineError
+      );
+      emitterCb(lineError, finalError);
+      break;
+    }
+
+    case ERROR_CODE.TOO_MANY_REQUESTS: {
+      log.warn(`429 Too Many Requests`, loggerContext);
+      const caller = loggerContext.method || 'handleErrors';
+
+      if (retry429Cb && err.headers) {
+        const retryAfter = Number(err.headers['retry-after']);
+        retry429Cb(retryAfter, caller);
+      }
+
       break;
     }
 
@@ -423,20 +466,6 @@ export async function handleRegistrationErrors(
           emitterCb(lineError, finalError);
         }
       }
-      break;
-    }
-    case ERROR_CODE.DEVICE_NOT_FOUND: {
-      finalError = true;
-      log.warn(`404 Device Not Found`, loggerContext);
-
-      updateLineErrorContext(
-        loggerContext,
-        ERROR_TYPE.NOT_FOUND,
-        'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
-        RegistrationStatus.INACTIVE,
-        lineError
-      );
-      emitterCb(lineError, finalError);
       break;
     }
 

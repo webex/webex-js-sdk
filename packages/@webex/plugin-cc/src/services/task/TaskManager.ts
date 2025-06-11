@@ -176,7 +176,7 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT_UNHELD:
             // As soon as the main interaction is unheld, we need to emit TASK_RESUME
             task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_UNHOLD, task);
+            task.emit(TASK_EVENTS.TASK_RESUME, task);
             break;
           case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
             task = this.updateTaskData(task, {
