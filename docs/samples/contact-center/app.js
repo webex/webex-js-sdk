@@ -1751,24 +1751,3 @@ updateLoginOptionElm.addEventListener('change', updateApplyButtonState);
 updateDialNumberElm.addEventListener('input', updateApplyButtonState);
 
 updateApplyButtonState();
-
-// At startup, make the auto wrapup timer visible with styling
-document.addEventListener('DOMContentLoaded', function() {
-  // Style the auto wrapup timer
-  const autoWrapupTimerElm = document.getElementById('autoWrapupTimer');
-  if (autoWrapupTimerElm) {
-    autoWrapupTimerElm.style.display = 'none'; // Hidden by default
-    autoWrapupTimerElm.style.padding = '10px';
-    autoWrapupTimerElm.style.backgroundColor = '#f8d7da';
-    autoWrapupTimerElm.style.border = '1px solid #f5c6cb';
-    autoWrapupTimerElm.style.borderRadius = '4px';
-    autoWrapupTimerElm.style.marginBottom = '10px';
-    autoWrapupTimerElm.style.textAlign = 'center';
-    
-    const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
-    if (timerValueElm) {
-      timerValueElm.style.fontSize = '18px';
-      timerValueElm.style.fontWeight = 'bold';
-    }
-  }
-});
