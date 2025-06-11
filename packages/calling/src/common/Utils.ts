@@ -345,7 +345,7 @@ export async function handleRegistrationErrors(
       updateLineErrorContext(
         loggerContext,
         ERROR_TYPE.NOT_FOUND,
-        'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
+        'Webex Calling is unable to find your device. Sign out, then sign back in',
         RegistrationStatus.INACTIVE,
         lineError
       );
@@ -354,6 +354,7 @@ export async function handleRegistrationErrors(
     }
 
     case ERROR_CODE.TOO_MANY_REQUESTS: {
+      log.warn(`429 Too Many Requests`, loggerContext);
       const caller = loggerContext.method || 'handleErrors';
 
       if (retry429Cb && err.headers) {
