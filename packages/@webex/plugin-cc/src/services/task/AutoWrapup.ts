@@ -5,8 +5,6 @@
 export default class AutoWrapup {
   private timer: NodeJS.Timeout | null = null;
   private startTime = 0;
-  private remainingTime: number;
-  private onCompleteCallback: (() => void) | null = null;
   private readonly interval: number;
 
   /**
@@ -15,7 +13,6 @@ export default class AutoWrapup {
    */
   constructor(interval = 10000) {
     this.interval = interval;
-    this.remainingTime = interval;
   }
 
   /**
@@ -27,14 +24,10 @@ export default class AutoWrapup {
       this.clear();
     }
 
-    this.onCompleteCallback = onComplete;
     this.startTime = Date.now();
-    this.remainingTime = this.interval;
 
     this.timer = setTimeout(() => {
-      if (this.onCompleteCallback) {
-        this.onCompleteCallback();
-      }
+      onComplete();
       this.timer = null;
     }, this.interval);
   }
@@ -46,7 +39,6 @@ export default class AutoWrapup {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
-      this.remainingTime = this.interval;
     }
   }
 
@@ -55,10 +47,6 @@ export default class AutoWrapup {
    * @returns Time left in milliseconds
    */
   public getTimeLeft(): number {
-    if (!this.timer) {
-      return this.remainingTime;
-    }
-
     const elapsed = Date.now() - this.startTime;
 
     return Math.max(0, this.interval - elapsed);
