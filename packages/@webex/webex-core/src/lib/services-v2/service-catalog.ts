@@ -151,12 +151,17 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string | undefined} - ClusterId of a given url
    */
   findClusterId(url: string): string | undefined {
-    const incomingUrlObj = new URL(url);
-    const allServiceDetails = this._getAllServiceDetails();
+    try {
+      const incomingUrlObj = new URL(url);
+      const allServiceDetails = this._getAllServiceDetails();
 
-    return allServiceDetails.find((serviceDetail: IServiceDetail) =>
-      serviceDetail.serviceUrls.find(({host}) => host === incomingUrlObj.host)
-    )?.id;
+      return allServiceDetails.find((serviceDetail: IServiceDetail) =>
+        serviceDetail.serviceUrls.find(({host}) => host === incomingUrlObj.host)
+      )?.id;
+    } catch {
+      // If the URL is invalid or can't be found, return undefined
+      return undefined;
+    }
   },
 
   /**
@@ -169,7 +174,9 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string} service.name
    * @returns {string} service.url
    */
-  findServiceFromClusterId({clusterId, serviceGroup}): {name: string; url: string} | undefined {
+  findServiceFromClusterId(
+    {clusterId, serviceGroup} = {} as {clusterId: string; serviceGroup: string}
+  ): {name: string; url: string} | undefined {
     const serviceDetails = this._getServiceDetail(clusterId, serviceGroup);
 
     if (serviceDetails) {
@@ -208,13 +215,14 @@ const ServiceCatalog = AmpState.extend({
    * @returns {string} - The matching allowed domain.
    */
   findAllowedDomain(url: string): string {
-    const urlObj = new URL(url);
+    try {
+      const urlObj = new URL(url);
 
-    if (!urlObj.host) {
+      return this.allowedDomains.find((allowedDomain) => urlObj.host.includes(allowedDomain));
+    } catch {
+      // If the URL is invalid or can't be found, return undefined
       return undefined;
     }
-
-    return this.allowedDomains.find((allowedDomain) => urlObj.host.includes(allowedDomain));
   },
 
   /**
