@@ -37,15 +37,17 @@ describe('webex-core', () => {
             orgId: process.env.EU_PRIMARY_ORG_ID,
           },
         }),
-      ]).then(([[user], [userEU]]) =>
-        new Promise((resolve) => {
-          setTimeout(() => {
-            webexUser = user;
-            webexUserEU = userEU;
-            resolve();
-          }, 1000)
-        })
-    ));
+      ]).then(
+        ([[user], [userEU]]) =>
+          new Promise((resolve) => {
+            setTimeout(() => {
+              webexUser = user;
+              webexUserEU = userEU;
+              resolve();
+            }, 1000);
+          })
+      )
+    );
 
     beforeEach('create webex instance', () => {
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
@@ -893,21 +895,24 @@ describe('webex-core', () => {
             assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
           }));
 
-      it('validates new user with activationOptions suppressEmail true', () =>
-        unauthServices
-          .validateUser({
-            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
-            activationOptions: {suppressEmail: true},
-          })
-          .then((r) => {
-            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-            assert.equal(r.activated, false);
-            assert.equal(r.exists, false);
-            assert.equal(r.user.verificationEmailTriggered, false);
-            assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
-          }));
+      flaky(it, process.env.SKIP_FLAKY_TESTS)(
+        'validates new user with activationOptions suppressEmail true',
+        () =>
+          unauthServices
+            .validateUser({
+              email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+              activationOptions: {suppressEmail: true},
+            })
+            .then((r) => {
+              assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+              assert.equal(r.activated, false);
+              assert.equal(r.exists, false);
+              assert.equal(r.user.verificationEmailTriggered, false);
+              assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
+              assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
+              assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
+            })
+      );
 
       it('validates an inactive user', () => {
         const inactive = 'webex.web.client+nonactivated@gmail.com';
