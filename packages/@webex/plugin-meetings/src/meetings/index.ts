@@ -828,6 +828,26 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to toggle usage of audio twcc support
+   *
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleEnableAudioTwccForMultistream(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+
+    // @ts-ignore
+    if (this.config.enableAudioTwccForMultistream !== newValue) {
+      // @ts-ignore
+      this.config.enableAudioTwccForMultistream = newValue;
+    }
+  }
+
+  /**
    * API to toggle stopping ICE Candidates Gathering after first relay candidate,
    * needs to be called before webex.meetings.joinWithMedia()
    *
