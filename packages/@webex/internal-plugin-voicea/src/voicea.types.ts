@@ -23,7 +23,10 @@ type TRANSCRIPTION_TYPES =
   | 'eva_cancel'
   | 'highlight_created'
   | 'transcript_interim_results'
-  | 'transcript_final_result';
+  | 'transcript_final_result'
+  | 'manual_caption_interim_results'
+  | 'manual_caption_interim_result'
+  | 'manual_caption_final_result';
 
 /**
  * Class for an Transcription Object
