@@ -2,7 +2,9 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
-import ExtendedError from 'Errors/catalog/ExtendedError';
+import {METRIC_EVENT, METRIC_TYPE, UPLOAD_LOGS_ACTION} from '../Metrics/types';
+import ExtendedError from '../Errors/catalog/ExtendedError';
+import {getMetricManager} from '../Metrics';
 import {restoreRegistrationCallBack, retry429CallBack} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
@@ -34,12 +36,14 @@ import {
   DisplayInformation,
   HTTP_METHODS,
   IDeviceInfo,
+  LogsMetaData,
   MobiusServers,
   RegistrationStatus,
   SCIMListResponse,
   SORT,
   ServiceData,
   ServiceIndicator,
+  UploadLogsResponse,
   WebexRequestPayload,
 } from './types';
 import log from '../Logger';
@@ -522,6 +526,7 @@ export async function handleCallingClientErrors(
       emitterCb(clientError, finalError);
     }
   }
+  await uploadLogs();
 
   return finalError;
 }
@@ -1580,17 +1585,63 @@ export function modifySdpForIPv4(sdp: string): string {
 /**
  * Uploads logs to backend.
  *
- * @param webex - Webex object to get service urls.
- * @param data - Data to be uploaded.
+ * @param metaData - Metadata to be uploaded.
+ * @param throwError - Whether to throw exception on failure (default: false).
+ * @returns Promise containing upload response if successful.
  */
-export async function uploadLogs(data = {}) {
+export async function uploadLogs(
+  metaData: LogsMetaData = {},
+  throwError = false
+): Promise<UploadLogsResponse | undefined> {
+  const webex = SDKConnector.getWebex();
+  const feedbackId = crypto.randomUUID();
   try {
-    const webex = SDKConnector.getWebex();
-    await webex.internal.support.submitLogs(data);
-  } catch (error) {
-    log.error(error as ExtendedError, {
+    const response = await webex.internal.support.submitLogs(
+      {...metaData, feedbackId},
+      undefined, // we dont send logs but take from webex logger
+      {type: 'diff'} // this is to take the diff logs from previous upload
+    );
+    log.info(`Logs uploaded successfully with feedbackId: ${feedbackId}`, {
       file: UTILS_FILE,
       method: 'uploadLogs',
     });
+
+    getMetricManager().submitUploadLogsMetric(
+      METRIC_EVENT.UPLOAD_LOGS_SUCCESS,
+      UPLOAD_LOGS_ACTION,
+      METRIC_TYPE.BEHAVIORAL,
+      response?.trackingid,
+      feedbackId,
+      metaData?.correlationId
+    );
+
+    return {
+      trackingid: response.trackingid,
+      ...(response.url ? {url: response.url} : {}),
+      ...(response.userId ? {userId: response.userId} : {}),
+      ...(response.correlationId ? {correlationId: response.correlationId} : {}),
+      feedbackId,
+    };
+  } catch (error) {
+    const errorLog = new Error(`Failed to upload Logs ${error}`) as ExtendedError;
+    log.error(errorLog, {
+      file: UTILS_FILE,
+      method: 'uploadLogs',
+    });
+
+    getMetricManager().submitUploadLogsMetric(
+      METRIC_EVENT.UPLOAD_LOGS_FAILED,
+      UPLOAD_LOGS_ACTION,
+      METRIC_TYPE.BEHAVIORAL,
+      feedbackId,
+      metaData?.correlationId,
+      errorLog.message
+    );
+
+    if (throwError) {
+      throw error;
+    }
+
+    return undefined;
   }
 }

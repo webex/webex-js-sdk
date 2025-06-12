@@ -1,6 +1,7 @@
 import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
-import {emitFinalFailure, handleRegistrationErrors} from '../../common';
+import {METHOD_START_MESSAGE} from '../../common/constants';
+import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
 
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
@@ -43,6 +44,7 @@ import {
   FAILOVER_UTIL,
   REGISTER_UTIL,
   RETRY_TIMER_UPPER_LIMIT,
+  METHODS,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -122,12 +124,16 @@ export class Registration implements IRegistration {
   }
 
   public setActiveMobiusUrl(url: string) {
-    log.info(`ActiveMobiusUrl: ${url}`, {method: 'setActiveMobiusUrl', file: REGISTRATION_FILE});
+    log.info(`${METHOD_START_MESSAGE} with ${url}`, {
+      method: METHODS.UPDATE_ACTIVE_MOBIUS,
+      file: REGISTRATION_FILE,
+    });
     this.activeMobiusUrl = url;
     this.callManager.updateActiveMobius(url);
   }
 
   public setMobiusServers(primaryMobiusUris: string[], backupMobiusUris: string[]) {
+    log.log(METHOD_START_MESSAGE, {method: METHODS.SET_MOBIUS_SERVERS, file: REGISTRATION_FILE});
     this.primaryMobiusUris = primaryMobiusUris;
     this.backupMobiusUris = backupMobiusUris;
   }
@@ -165,7 +171,10 @@ export class Registration implements IRegistration {
         },
       });
     } catch (error) {
-      log.warn(`Delete failed with Mobius`, {});
+      log.warn(`Delete failed with Mobius ${error}`, {
+        file: REGISTRATION_FILE,
+        method: METHODS.DEREGISTER,
+      });
     }
 
     this.setStatus(RegistrationStatus.INACTIVE);
@@ -310,7 +319,7 @@ export class Registration implements IRegistration {
         loggerContext
       );
     } else if (this.backupMobiusUris.length) {
-      log.log('Failing over to backup servers.', loggerContext);
+      log.info('Failing over to backup servers.', loggerContext);
       this.failoverImmediately = false;
       abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL, this.backupMobiusUris);
       if (!abort && !this.isDeviceRegistered()) {
@@ -324,6 +333,7 @@ export class Registration implements IRegistration {
           await this.mutex.runExclusive(async () => {
             abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL, this.backupMobiusUris);
             if (!abort && !this.isDeviceRegistered()) {
+              await uploadLogs();
               emitFinalFailure((clientError: LineError) => {
                 this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
               }, loggerContext);
@@ -333,6 +343,7 @@ export class Registration implements IRegistration {
         log.log(`Scheduled retry with backup servers in ${interval} seconds.`, loggerContext);
       }
     } else {
+      await uploadLogs();
       emitFinalFailure((clientError: LineError) => {
         this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
       }, loggerContext);
@@ -513,10 +524,14 @@ export class Registration implements IRegistration {
    *
    */
   public async handleConnectionRestoration(retry: boolean): Promise<boolean> {
+    log.info(METHOD_START_MESSAGE, {
+      method: METHODS.HANDLE_CONNECTION_RESTORATION,
+      file: REGISTRATION_FILE,
+    });
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
-        log.info('Mercury connection is up again, re-registering with Webex Calling if needed', {
+        log.log('Mercury connection is up again, re-registering with Webex Calling if needed', {
           file: REGISTRATION_FILE,
           method: this.handleConnectionRestoration.name,
         });
@@ -622,7 +637,7 @@ export class Registration implements IRegistration {
     }
 
     if (this.isDeviceRegistered()) {
-      log.log(`[${caller}] : Device already registered with : ${this.activeMobiusUrl}`, {
+      log.info(`[${caller}] : Device already registered with : ${this.activeMobiusUrl}`, {
         file: REGISTRATION_FILE,
         method: REGISTER_UTIL,
       });
@@ -634,7 +649,7 @@ export class Registration implements IRegistration {
         abort = false;
         this.registrationStatus = RegistrationStatus.INACTIVE;
         this.lineEmitter(LINE_EVENTS.CONNECTING);
-        log.log(`[${caller}] : Mobius url to contact: ${url}`, {
+        log.info(`[${caller}] : Mobius url to contact: ${url}`, {
           file: REGISTRATION_FILE,
           method: REGISTER_UTIL,
         });
@@ -643,6 +658,13 @@ export class Registration implements IRegistration {
         this.deviceInfo = resp.body as IDeviceInfo;
         this.registrationStatus = RegistrationStatus.ACTIVE;
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
+        log.log(
+          `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId}`,
+          {
+            file: REGISTRATION_FILE,
+            method: METHODS.REGISTER,
+          }
+        );
         this.setActiveMobiusUrl(url);
         this.setIntervalValues(this.deviceInfo);
         this.metricManager.setDeviceInfo(this.deviceInfo);
@@ -719,7 +741,7 @@ export class Registration implements IRegistration {
         if (this.isDeviceRegistered() && keepAliveRetryCount < RETRY_COUNT_THRESHOLD) {
           try {
             const res = await this.postKeepAlive(url);
-            log.info(`Sent Keepalive, status: ${res.statusCode}`, logContext);
+            log.log(`Sent Keepalive, status: ${res.statusCode}`, logContext);
             if (keepAliveRetryCount > 0) {
               this.lineEmitter(LINE_EVENTS.RECONNECTED);
             }
@@ -790,8 +812,15 @@ export class Registration implements IRegistration {
         this.deviceInfo.device?.deviceId as string,
         this.deviceInfo.device?.clientDeviceUri as string
       );
+      log.log('Registration successfully deregistered', {
+        file: REGISTRATION_FILE,
+        method: METHODS.DEREGISTER,
+      });
     } catch (err) {
-      log.warn(`Delete failed with Mobius`, {});
+      log.warn(`Delete failed with Mobius: ${err}`, {
+        file: REGISTRATION_FILE,
+        method: METHODS.DEREGISTER,
+      });
     }
 
     this.clearKeepaliveTimer();
@@ -851,6 +880,7 @@ export class Registration implements IRegistration {
    *
    */
   public async reconnectOnFailure(caller: string) {
+    log.info(METHOD_START_MESSAGE, {method: METHODS.RECONNECT_ON_FAILURE, file: REGISTRATION_FILE});
     this.reconnectPending = false;
     if (!this.isDeviceRegistered()) {
       if (Object.keys(this.callManager.getActiveCalls()).length === 0) {
@@ -863,7 +893,7 @@ export class Registration implements IRegistration {
         this.reconnectPending = true;
         log.info('Active call(s) present, deferred reconnect till call cleanup.', {
           file: REGISTRATION_FILE,
-          method: this.reconnectOnFailure.name,
+          method: METHODS.RECONNECT_ON_FAILURE,
         });
       }
     }
