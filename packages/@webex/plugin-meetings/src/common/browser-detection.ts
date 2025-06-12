@@ -20,7 +20,7 @@ const createDetectionObject = (results: any) => {
   const getBrowserName = () => results?.getBrowserName() ?? '';
   const getBrowserVersion = () => results?.getBrowserVersion() ?? '';
 
-  const isBrowser = (name: any) => !!results?.isBrowser(name, true);
+  const isBrowser = (name: string) => !!results?.isBrowser(name, true);
 
   return {
     getOSName,
