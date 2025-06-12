@@ -1,6 +1,7 @@
 import {CallId} from '@webex/calling/dist/types/common/types';
 import EventEmitter from 'events';
 import {Msg} from '../core/GlobalTypes';
+import AutoWrapup from './AutoWrapup';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -990,6 +991,13 @@ export interface ITask extends EventEmitter {
    * Map associating tasks with their corresponding call identifiers.
    */
   webCallMap: Record<TaskId, CallId>;
+
+  /**
+   * Auto-wrapup timer for the task
+   * This is used to automatically wrap up tasks after a specified duration
+   * as defined in {@link AutoWrapup}
+   */
+  autoWrapup?: AutoWrapup;
 
   /**
    * Deregisters all web call event listeners
