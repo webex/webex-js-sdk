@@ -807,8 +807,6 @@ export type TransferPayLoad = {
   to: string;
   /** Type of the destination (queue, agent, etc.) */
   destinationType: DestinationType;
-  /** Optional: if true, perform a consult-transfer instead of blind/vTeam */
-  consult?: boolean;
 };
 
 /**

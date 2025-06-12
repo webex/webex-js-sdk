@@ -363,7 +363,11 @@ async function onTransferTypeSelectionChanged() {
 // Function to initiate consult
 async function initiateConsult() {
   const destinationType = destinationTypeDropdown.value;
+  // Persist selected consult destinationType across reload
+  sessionStorage.setItem('savedConsultTransferType', destinationType);
   const consultDestination = consultDestinationInput.value;
+  // Persist selected consult destination across reload
+  sessionStorage.setItem('savedConsultDestination', consultDestination);
 
   if (!consultDestination) {
     alert('Please enter a destination');
@@ -455,8 +459,8 @@ async function initiateTransfer() {
 
 // Function to initiate consult transfer
 async function initiateConsultTransfer() {
-  const destinationType = destinationTypeDropdown.value;
-  const consultDestination = consultDestinationInput.value;
+  const destinationType = destinationTypeDropdown.value ?? sessionStorage.getItem('savedConsultTransferType');
+  const consultDestination = consultDestinationInput.value ?? sessionStorage.getItem('savedConsultDestination');
 
   if (!consultDestination) {
     alert('Please enter a destination');
@@ -466,7 +470,6 @@ async function initiateConsultTransfer() {
   const consultTransferPayload = {
     to: consultDestination,
     destinationType: destinationType,
-    consult: true,
   };
 
   try {
@@ -941,6 +944,7 @@ function register() {
 
     webex.cc.on('task:hydrate', (currentTask) => {
       handleTaskHydrate(currentTask);
+      registerTaskListeners(currentTask);
     });
 
     webex.cc.on('agent:stateChange', (data) => {
@@ -1043,6 +1047,13 @@ deregisterBtn.addEventListener('click', doDeRegister);
 
 function handleTaskHydrate(task) {
   currentTask = task;
+  // Restore last consult-transfer destinationType after reload
+  const savedType = sessionStorage.getItem('savedConsultTransferType');
+  const savedDest = sessionStorage.getItem('savedConsultDestination');
+  if (savedType && savedDest) {
+    destinationTypeDropdown.value = savedType;
+    consultDestinationInput.value = savedDest;
+  }
 
   if (!currentTask || !currentTask.data || !currentTask.data.interaction) {
     console.error('task:hydrate --> No task data found.');

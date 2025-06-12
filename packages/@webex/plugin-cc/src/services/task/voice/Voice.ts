@@ -33,6 +33,34 @@ export default class Voice extends Task implements IVoice {
     this.isEndConsultEnabled = callOptions.isEndConsultEnabled ?? true;
   }
 
+  private applyTerminatedControls(): void {
+    this.applyControls(
+      ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'],
+      ['hide', 'disable']
+    );
+    this.applyControls(['wrapup'], ['show', 'enable']);
+  }
+
+  private applyConnectedControls(): void {
+    this.applyControls(['hold', 'transfer', 'consult', 'recording'], ['show', 'enable']);
+    if (this.isEndCallEnabled) {
+      this.applyControls(['end'], ['show', 'enable']);
+    }
+  }
+
+  private applyConsultingControls(): void {
+    this.applyControls(['hold', 'transfer', 'consult'], ['hide', 'disable']);
+    this.applyControls(['recording'], ['show', 'disable']);
+    if (!this.data.isConsulted) {
+      this.applyControls(['consultTransfer', 'endConsult'], ['show', 'enable']);
+      if (this.isEndCallEnabled) {
+        this.applyControls(['end'], ['show', 'disable']);
+      }
+    } else if (this.isEndConsultEnabled) {
+      this.applyControls(['endConsult'], ['show', 'enable']);
+    }
+  }
+
   protected initialiseUIControls() {
     super.initialiseUIControls();
     // batch‐hide & disable everything we start with
@@ -57,7 +85,7 @@ export default class Voice extends Task implements IVoice {
 
       case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
         this.applyControls(
-          ['consultTransfer', 'recording', 'end', 'endConsult'],
+          ['consultTransfer', 'recording', 'end', 'endConsult', 'hold', 'transfer', 'consult'],
           ['hide', 'disable']
         );
         this.applyControls(['wrapup'], ['show', 'enable']);
@@ -141,6 +169,16 @@ export default class Voice extends Task implements IVoice {
           }
           this.applyControls(['consultTransfer', 'endConsult'], ['hide', 'disable']);
           this.applyControls(['wrapup'], ['hide']);
+        }
+        break;
+
+      case CC_EVENTS.AGENT_CONTACT:
+        if (this.data.interaction.isTerminated) {
+          this.applyTerminatedControls();
+        } else if (this.data.interaction.state === 'connected' && !this.data.isConsulted) {
+          this.applyConnectedControls();
+        } else if (this.data.interaction.state === 'consulting') {
+          this.applyConsultingControls();
         }
         break;
 
@@ -553,7 +591,7 @@ export default class Voice extends Task implements IVoice {
       ]);
 
       // consult transfer path
-      if (payload.consult) {
+      if (this.data.interaction.state === 'consulting') {
         let consultPayload: ConsultTransferPayLoad = {
           to: payload.to,
           destinationType: payload.destinationType,
@@ -607,7 +645,7 @@ export default class Voice extends Task implements IVoice {
           taskId: this.data.interactionId,
           destination: payload.to,
           destinationType: payload.destinationType,
-          isConsultTransfer: !!payload.consult,
+          isConsultTransfer: this.data.interaction.state === 'consulting',
           error: err.toString(),
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(err.details || {}),
         },

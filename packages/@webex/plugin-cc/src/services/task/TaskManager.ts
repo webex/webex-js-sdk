@@ -95,7 +95,18 @@ export default class TaskManager extends EventEmitter {
         });
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
-            this.taskCollection[payload.data.interactionId] = task;
+            if (!task) {
+              // Re-create task if it does not exist
+              // This can happen when the task is created after the event is received (multi session)
+              task = TaskFactory.createTask(
+                this.contact,
+                this.webCallingService,
+                {...payload.data, isConsulted: false},
+                this.configFlags
+              );
+              this.taskCollection[payload.data.interactionId] = task;
+            }
+            this.updateTaskData(task, payload.data);
             this.emit(TASK_EVENTS.TASK_HYDRATE, task);
             break;
 
