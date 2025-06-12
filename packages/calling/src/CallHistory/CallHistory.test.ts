@@ -523,7 +523,7 @@ describe('Call history tests', () => {
         methodDetails
       );
       expect(logSpy).toHaveBeenCalledWith(
-        'Call history records are successfully deleted by the user',
+        `Successfully deleted ${deleteSessionIds.length} call history records`,
         methodDetails
       );
       expect(errorSpy).not.toHaveBeenCalled();

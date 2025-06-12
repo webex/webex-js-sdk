@@ -370,10 +370,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           `Final list of Mobius Servers, primary: ${mobiusUris.primary} and backup: ${mobiusUris.backup}`,
           '' as LogContext
         );
-        log.log('Successfully obtained and processed Mobius server information', {
-          file: CALLING_CLIENT_FILE,
-          method: this.getMobiusServers.name,
-        });
       } catch (err: unknown) {
         const extendedError = new Error(`Failed to get Mobius servers: ${err}`) as ExtendedError;
         log.error(extendedError, {

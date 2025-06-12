@@ -388,10 +388,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       deleteSessionIds: santizedSessionIds,
     };
 
-    log.info(
-      `deleteCallHistoryRecords called for sessions: ${JSON.stringify(santizedSessionIds)}`,
-      loggerContext
-    );
     try {
       const deleteCallHistoryRecordContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${DELETE_CALL_HISTORY_RECORDS_ENDPOINT}`;
       // Make a POST request to delete call history records
@@ -408,7 +404,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       }
 
       const data: DeleteCallHistoryRecordsResponse = await response.json();
-      log.log(`Call history records are successfully deleted by the user`, loggerContext);
+      log.log(
+        `Successfully deleted ${santizedSessionIds?.length} call history records`,
+        loggerContext
+      );
       const responseDetails: DeleteCallHistoryRecordsResponse = {
         statusCode: data.statusCode as number,
         data: {

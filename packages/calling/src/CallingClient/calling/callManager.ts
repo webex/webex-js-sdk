@@ -130,7 +130,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
     this.sdkConnector.registerListener('event:mobius', async (event) => {
       this.dequeueWsEvents(event);
     });
-    log.log('Successfully registered listener for Mobius events', {
+    log.info('Successfully registered listener for Mobius events', {
       file: CALL_MANAGER_FILE,
       method: METHODS.REGISTER_SESSIONS_LISTENER,
     });

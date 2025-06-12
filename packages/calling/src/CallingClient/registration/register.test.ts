@@ -139,7 +139,7 @@ describe('Registration Tests', () => {
 
     // Check that log.log was called for successful registration
     expect(logSpy).toBeCalledWith(
-      'Registration successful',
+      `Registration successful for deviceId: ${mockPostResponse.device.deviceId} userId: ${mockPostResponse.userId}`,
       expect.objectContaining({
         file: REGISTRATION_FILE,
         method: expect.any(String),

@@ -300,7 +300,7 @@ export class Registration implements IRegistration {
           }
         });
       }, interval * SEC_TO_MSEC_MFACTOR);
-      log.info(
+      log.log(
         `Scheduled retry with primary in ${interval} seconds, number of attempts : ${attempt}`,
         loggerContext
       );
@@ -327,7 +327,7 @@ export class Registration implements IRegistration {
             }
           });
         }, interval * SEC_TO_MSEC_MFACTOR);
-        log.info(`Scheduled retry with backup servers in ${interval} seconds.`, loggerContext);
+        log.log(`Scheduled retry with backup servers in ${interval} seconds.`, loggerContext);
       }
     } else {
       await uploadLogs();
@@ -392,7 +392,7 @@ export class Registration implements IRegistration {
       async () => this.executeFailback(),
       intervalInSeconds * SEC_TO_MSEC_MFACTOR
     );
-    log.info(`Failback scheduled after ${intervalInSeconds} seconds.`, {
+    log.log(`Failback scheduled after ${intervalInSeconds} seconds.`, {
       file: REGISTRATION_FILE,
       method: this.startFailbackTimer.name,
     });
@@ -641,10 +641,13 @@ export class Registration implements IRegistration {
         this.deviceInfo = resp.body as IDeviceInfo;
         this.registrationStatus = RegistrationStatus.ACTIVE;
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
-        log.log('Registration successful', {
-          file: REGISTRATION_FILE,
-          method: METHODS.REGISTER,
-        });
+        log.log(
+          `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId}`,
+          {
+            file: REGISTRATION_FILE,
+            method: METHODS.REGISTER,
+          }
+        );
         this.setActiveMobiusUrl(url);
         this.setIntervalValues(this.deviceInfo);
         this.metricManager.setDeviceInfo(this.deviceInfo);

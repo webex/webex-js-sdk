@@ -87,8 +87,17 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         uri: callForwardingUri,
       });
 
-      expect(log.info).toHaveBeenCalled();
-      expect(log.log).toHaveBeenCalled();
+      expect(log.info).toHaveBeenCalledWith('invoking with 8001', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8001',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
       expect(log.error).not.toHaveBeenCalled();
     });
 
@@ -106,8 +115,17 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         uri: callForwardingUri,
       });
 
-      expect(log.info).toHaveBeenCalled();
-      expect(log.log).toHaveBeenCalled();
+      expect(log.info).toHaveBeenCalledWith('invoking with 8002', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8002',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
       expect(log.error).not.toHaveBeenCalled();
     });
 
@@ -125,8 +143,17 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         uri: callForwardingUri,
       });
 
-      expect(log.info).toHaveBeenCalled();
-      expect(log.log).toHaveBeenCalled();
+      expect(log.info).toHaveBeenCalledWith('invoking with 8003', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8003',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
       expect(log.error).not.toHaveBeenCalled();
     });
 
@@ -144,8 +171,17 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         uri: callForwardingUri,
       });
 
-      expect(log.info).toHaveBeenCalled();
-      expect(log.log).toHaveBeenCalled();
+      expect(log.info).toHaveBeenCalledWith('invoking with 8006', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8006',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
       expect(log.error).not.toHaveBeenCalled();
     });
 
@@ -171,8 +207,17 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         method: callSettingsClient.getCallForwardAlwaysSetting.name,
       });
 
-      expect(log.info).toHaveBeenCalled();
-      expect(log.error).toHaveBeenCalled();
+      expect(log.info).toHaveBeenCalledWith('invoking with 8002', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.error).toHaveBeenCalledWith(
+        new Error('Failed to get call forward always setting: [object Object]'),
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
       expect(log.log).not.toHaveBeenCalled();
     });
 
@@ -187,7 +232,10 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         uri: callForwardingUri,
       });
 
-      expect(log.info).toHaveBeenCalled();
+      expect(log.info).toHaveBeenCalledWith('invoking with 8005', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
       expect(log.error).not.toHaveBeenCalled();
     });
 
@@ -199,7 +247,10 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.data.error).toEqual('Directory Number is mandatory for UCM backend');
       expect(webex.request).not.toBeCalled();
 
-      expect(log.info).toHaveBeenCalled();
+      expect(log.info).toHaveBeenCalledWith('invoking', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
       expect(log.error).not.toHaveBeenCalled();
     });
 
