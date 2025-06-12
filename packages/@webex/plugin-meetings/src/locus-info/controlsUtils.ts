@@ -190,7 +190,7 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
       hasTranscribeSpokenLanguageChanged:
         current?.transcribe &&
         !isEqual(previous?.transcribe?.spokenLanguage, current?.transcribe?.spokenLanguage) &&
-        (previous?.transcribe?.spokenLanguage || current?.transcribe?.spokenLanguage),
+        !!(previous?.transcribe?.spokenLanguage || current?.transcribe?.spokenLanguage),
 
       hasManualCaptionChanged:
         current?.manualCaptionControl &&
