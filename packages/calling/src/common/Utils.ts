@@ -1592,7 +1592,7 @@ export function modifySdpForIPv4(sdp: string): string {
 export async function uploadLogs(
   metaData: LogsMetaData = {},
   throwError = false
-): Promise<UploadLogsResponse | void> {
+): Promise<UploadLogsResponse | undefined> {
   const webex = SDKConnector.getWebex();
   const feedbackId = crypto.randomUUID();
   try {
@@ -1642,6 +1642,6 @@ export async function uploadLogs(
       throw error;
     }
 
-    return Promise.resolve();
+    return undefined;
   }
 }

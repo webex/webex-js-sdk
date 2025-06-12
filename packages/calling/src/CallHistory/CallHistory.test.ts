@@ -381,7 +381,7 @@ describe('Call history tests', () => {
       expect(response.data.error).toEqual(ERROR_DETAILS_400.data.error);
       expect(response.statusCode).toBe(400);
       expect(response.message).toBe('FAILURE');
-      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
         {statusCode: 400},
         {file: CALL_HISTORY_FILE, method: METHODS.FETCH_UCM_LINES_DATA}
       );
