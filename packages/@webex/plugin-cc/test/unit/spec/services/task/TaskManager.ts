@@ -485,7 +485,7 @@ describe('TaskManager', () => {
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HOLD, taskManager.getTask(taskId));
   });
 
-  it('should emit TASK_UNHOLD event on AGENT_CONTACT_UNHELD event', () => {
+  it('should emit TASK_RESUME event on AGENT_CONTACT_UNHELD event', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
     const payload = {
@@ -509,7 +509,7 @@ describe('TaskManager', () => {
     const taskUpdateTaskDataSpy = jest.spyOn(taskManager.getTask(taskId), 'updateTaskData');
     webSocketManagerMock.emit('message', JSON.stringify(payload));
     expect(taskUpdateTaskDataSpy).toHaveBeenCalledWith(payload.data);
-    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_UNHOLD, taskManager.getTask(taskId));
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_RESUME, taskManager.getTask(taskId));
   });
 
   it('handle AGENT_CONSULT_CREATED event', () => {
