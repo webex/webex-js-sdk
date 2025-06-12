@@ -408,7 +408,7 @@ describe('Registration Tests', () => {
         loggerContext
       );
 
-      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(webex.request).toHaveBeenNthCalledWith(4, {
         ...mockResponse,
@@ -508,7 +508,7 @@ describe('Registration Tests', () => {
       );
       expect(failoverSpy).toBeCalledOnceWith(4, 114);
 
-      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(webex.request).toHaveBeenNthCalledWith(5, {
         ...mockResponse,
@@ -592,6 +592,7 @@ describe('Registration Tests', () => {
 
       expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       expect(failoverSpy).toBeCalledOnceWith();
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(logSpy).not.toBeCalledWith(
         `Scheduled retry with primary in 40 seconds, number of attempts : 1`,
@@ -602,8 +603,6 @@ describe('Registration Tests', () => {
         `Scheduled retry with primary in ${failurePayload429Three.headers['retry-after']} seconds, number of attempts : 1`,
         loggerContext
       );
-
-      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(webex.request).toHaveBeenNthCalledWith(2, {
         ...mockResponse,
@@ -657,14 +656,14 @@ describe('Registration Tests', () => {
         loggerContext
       );
 
-      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(logSpy).not.toBeCalledWith(
         `Scheduled retry with primary in ${failurePayload429Four.headers['retry-after']} seconds, number of attempts : 2`,
         loggerContext
       );
 
-      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(webex.request).toHaveBeenNthCalledWith(3, {
         ...mockResponse,
@@ -1008,7 +1007,6 @@ describe('Registration Tests', () => {
       await flushPromises();
       expect(funcSpy).toBeCalledTimes(2); // should be called 2 times: first try and after the interval.
 
-      // We should now use log.log instead of log.info for important events like keepalive
       expect(logSpy).toBeCalledWith('Sent Keepalive, status: 200', logObj);
       expect(infoSpy).not.toBeCalledWith('Sent Keepalive, status: 200', logObj);
     });
