@@ -1227,6 +1227,10 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           webex.internal.voicea.onSpokenLanguageUpdate = sinon.stub();
         });
+        afterEach(() => {
+          // Restore the original methods after each test
+          sinon.restore();
+        });
         it('should call voicea.onSpokenLanguageUpdate when joined', async () => {
 
           meeting.joinedWith = {state: 'JOINED'};
