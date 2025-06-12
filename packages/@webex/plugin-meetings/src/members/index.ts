@@ -1,7 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-import {isEmpty} from 'lodash';
+import {get, isEmpty, set} from 'lodash';
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
@@ -73,6 +73,7 @@ import {ServerRoleShape} from './types';
  * @memberof Members
  */
 
+type UpdatedMembers = {added: Array<Member>; updated: Array<Member>};
 /**
  * @class Members
  */
@@ -81,7 +82,7 @@ export default class Members extends StatelessWebexPlugin {
   locusUrl: any;
   mediaShareContentId: any;
   mediaShareWhiteboardId: any;
-  membersCollection: any;
+  membersCollection: MembersCollection;
   membersRequest: any;
   receiveSlotManager: ReceiveSlotManager;
   mediaRequestManagers: {
@@ -322,6 +323,63 @@ export default class Members extends StatelessWebexPlugin {
   }
 
   /**
+   * Updates properties on members that rely on information from other members.
+   * This function MUST be called only after the membersCollection has been fully updated
+   * @param {UpdatedMembers} membersUpdate
+   * @returns {Object} membersCollection
+   * @private
+   * @memberof Members
+   */
+  private updateRelationsBetweenMembers(membersUpdate: UpdatedMembers) {
+    const updatePairedMembers = (membersList: Member[]) => {
+      membersList.forEach((member) => {
+        if (!member.pairedWith.participantUrl) {
+          // if we don't have a participantUrl set, it may be that we had it in the past and not anymore, so cleanup the rest of the data
+          if (member.pairedWith.memberId) {
+            const pairedMember = this.membersCollection.get(member.pairedWith.memberId);
+
+            if (pairedMember) {
+              // remove member from pairedMember's associatedUsers array
+              pairedMember.associatedUsers.delete(member.id);
+
+              if (pairedMember.associatedUser === member.id) {
+                pairedMember.associatedUser = null;
+              }
+
+              // reset all the props that we set on pairedMember
+              pairedMember.isPairedWithSelf = false;
+              pairedMember.isHost = false;
+            }
+          }
+          member.pairedWith.memberId = undefined;
+        } else if (member.pairedWith.memberId === undefined) {
+          // we have participantUrl set but not memberId, so find the member and set it
+          const pairedMember = Object.values(this.membersCollection.getAll()).find(
+            (m) => m.participant?.url === member.pairedWith.participantUrl
+          );
+
+          if (pairedMember) {
+            member.pairedWith.memberId = pairedMember.id;
+            pairedMember.associatedUsers.add(member.id);
+
+            if (pairedMember.associatedUsers.size === 1) {
+              // associatedUser is deprecated, because it's broken - device can have multiple associated users,
+              // so for backwards compatibility we set it to the first associated user
+              pairedMember.associatedUser = member.id;
+            }
+
+            pairedMember.isPairedWithSelf = member.isSelf;
+            pairedMember.isHost = member.isHost;
+          }
+        }
+      });
+    };
+
+    updatePairedMembers(membersUpdate.updated);
+    updatePairedMembers(membersUpdate.added);
+  }
+
+  /**
    * when new participant updates come in, both delta and full participants, update them in members collection
    * delta object in the event will have {updated, added} and full will be the full membersCollection
    * @param {Object} payload
@@ -337,6 +395,8 @@ export default class Members extends StatelessWebexPlugin {
       }
       const delta = this.handleLocusInfoUpdatedParticipants(payload);
       const full = this.handleMembersUpdate(delta); // SDK should propagate the full list for both delta and non delta updates
+
+      this.updateRelationsBetweenMembers(delta);
 
       this.receiveSlotManager?.updateMemberIds();
 
@@ -478,20 +538,14 @@ export default class Members extends StatelessWebexPlugin {
 
   /**
    * sets values in the members collection for updated and added properties from delta
-   * @param {Object} membersUpdate {updated: [], added: []}
+   * @param {UpdatedMembers} membersUpdate
    * @returns {Object} membersCollection
    * @private
    * @memberof Members
    */
-  private handleMembersUpdate(membersUpdate: any) {
-    if (membersUpdate) {
-      if (membersUpdate.updated) {
-        this.constructMembers(membersUpdate.updated);
-      }
-      if (membersUpdate.added) {
-        this.constructMembers(membersUpdate.added);
-      }
-    }
+  private handleMembersUpdate(membersUpdate: UpdatedMembers) {
+    this.constructMembers(membersUpdate.updated, true);
+    this.constructMembers(membersUpdate.added, false);
 
     return this.membersCollection.getAll();
   }
@@ -499,12 +553,30 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * set members to the member collection from each updated/added lists as passed in
    * @param {Array} list
+   * @param {boolean} isUpdate
    * @returns {undefined}
    * @private
    * @memberof Members
    */
-  private constructMembers(list: Array<any>) {
+  private constructMembers(list: Array<any>, isUpdate: boolean) {
     list.forEach((member) => {
+      if (isUpdate) {
+        // some member props are generated by SDK and need to be preserved on update,
+        // because they depend on relationships with other members so they need to be handled
+        // at the end, once all members are updated - this is done in updateRelationsBetweenMembers()
+        const propsToKeepOnUpdate = ['pairedWith.memberId'];
+
+        const existingMember = this.membersCollection.get(member.id);
+        if (existingMember) {
+          propsToKeepOnUpdate.forEach((prop) => {
+            const existingValue = get(existingMember, prop);
+
+            if (existingValue !== undefined) {
+              set(member, prop, existingValue);
+            }
+          });
+        }
+      }
       this.membersCollection.set(member.id, member);
     });
   }
@@ -512,11 +584,11 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Internal update the participants value
    * @param {Object} payload
-   * @returns {Object}
+   * @returns {UpdatedMembers}
    * @private
    * @memberof Members
    */
-  private handleLocusInfoUpdatedParticipants(payload: any) {
+  private handleLocusInfoUpdatedParticipants(payload: any): UpdatedMembers {
     this.hostId = payload.hostId || this.hostId;
     this.selfId = payload.selfId || this.selfId;
     this.recordingId = payload.recordingId;
@@ -681,12 +753,12 @@ export default class Members extends StatelessWebexPlugin {
    * Removed/left members will end up in updates
    * Each array contains only members
    * @param {Array} participants the locus participants
-   * @returns {Object} {added: {Array}, updated: {Array}}
+   * @returns {UpdatedMembers} {added: {Array}, updated: {Array}}
    * @private
    * @memberof Members
    */
-  private update(participants: Array<any>) {
-    const membersUpdate = {added: [], updated: []};
+  private update(participants: Array<any>): UpdatedMembers {
+    const membersUpdate: UpdatedMembers = {added: [], updated: []};
 
     if (participants) {
       participants.forEach((participant) => {
