@@ -62,6 +62,7 @@ import SDKConnector from '../SDKConnector';
 const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
 const mockRestoreCb = jest.fn();
+const mock429RetryCb = jest.fn();
 
 const webex = getTestUtilsWebex();
 SDKConnector.setWebex(webex);
@@ -123,54 +124,66 @@ describe('Registration Tests', () => {
     logMsg: string;
   }[] = [
     {
+      name: 'verify 429 error response',
+      statusCode: ERROR_CODE.TOO_MANY_REQUESTS,
+      deviceErrorCode: 0,
+      retryAfter: 30,
+      message: '',
+      errorType: ERROR_TYPE.REGISTRATION_ERROR,
+      emitterCbExpected: false,
+      finalError: false,
+      retry429CbExpected: true,
+      restoreCbExpected: false,
+      logMsg: '429 Too Many Requests',
+    },
+    {
       name: 'verify 404 error response',
       statusCode: ERROR_CODE.DEVICE_NOT_FOUND,
       deviceErrorCode: 0,
-      retryAfter: 0,
-      message:
-        'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
+      message: 'Webex Calling is unable to find your device. Sign out, then sign back in',
       errorType: ERROR_TYPE.NOT_FOUND,
       emitterCbExpected: true,
       finalError: true,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: '404 Device Not Found',
     },
     {
       name: 'verify 500 error response',
       statusCode: ERROR_CODE.INTERNAL_SERVER_ERROR,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message: 'An unknown error occurred while placing the request. Wait a moment and try again.',
       errorType: ERROR_TYPE.SERVICE_UNAVAILABLE,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: '500 Internal Server Error',
     },
     {
       name: 'verify 503 error response',
       statusCode: ERROR_CODE.SERVICE_UNAVAILABLE,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message:
         'An error occurred on the server while processing the request. Wait a moment and try again.',
       errorType: ERROR_TYPE.SERVICE_UNAVAILABLE,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: '503 Service Unavailable',
     },
     {
       name: 'verify 403 response with no response body',
       statusCode: ERROR_CODE.FORBIDDEN,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message:
         'An unauthorized action has been received. This action has been blocked. Please contact the administrator if this persists.',
       errorType: ERROR_TYPE.FORBIDDEN_ERROR,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: 'Error response has no body, throwing default error',
       customBodyPresent: true,
       body: undefined,
@@ -179,38 +192,38 @@ describe('Registration Tests', () => {
       name: 'verify 403 response with unknown device.errorCode',
       statusCode: ERROR_CODE.FORBIDDEN,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message:
         'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.',
       errorType: ERROR_TYPE.FORBIDDEN_ERROR,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: 'Error code found : 0',
     },
     {
       name: 'verify 403 response with code 101',
       statusCode: ERROR_CODE.FORBIDDEN,
       deviceErrorCode: DEVICE_ERROR_CODE.DEVICE_LIMIT_EXCEEDED,
-      retryAfter: 0,
       message: 'User device limit exceeded',
       errorType: ERROR_TYPE.FORBIDDEN_ERROR,
       emitterCbExpected: false,
       finalError: false,
       restoreCbExpected: true,
+      retry429CbExpected: false,
       logMsg: 'User device limit exceeded',
     },
     {
       name: 'verify 403 response with code 102',
       statusCode: ERROR_CODE.FORBIDDEN,
       deviceErrorCode: DEVICE_ERROR_CODE.DEVICE_CREATION_DISABLED,
-      retryAfter: 0,
       message:
         'User is not configured for WebRTC calling. Please contact the administrator to resolve this issue.',
       errorType: ERROR_TYPE.FORBIDDEN_ERROR,
       emitterCbExpected: true,
       finalError: true,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg:
         'User is not configured for WebRTC calling. Please contact the administrator to resolve this issue.',
     },
@@ -218,13 +231,13 @@ describe('Registration Tests', () => {
       name: 'verify 403 response with code 103',
       statusCode: ERROR_CODE.FORBIDDEN,
       deviceErrorCode: DEVICE_ERROR_CODE.DEVICE_CREATION_FAILED,
-      retryAfter: 0,
       message:
         'An unknown error occurred while provisioning the device. Wait a moment and try again.',
       errorType: ERROR_TYPE.FORBIDDEN_ERROR,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg:
         'An unknown error occurred while provisioning the device. Wait a moment and try again.',
     },
@@ -232,24 +245,37 @@ describe('Registration Tests', () => {
       name: 'verify 401 error response',
       statusCode: ERROR_CODE.UNAUTHORIZED,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message: 'User is unauthorized due to an expired token. Sign out, then sign back in.',
       errorType: ERROR_TYPE.TOKEN_ERROR,
       emitterCbExpected: true,
       finalError: true,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: '401 Unauthorized',
+    },
+    {
+      name: 'verify 400 error response',
+      statusCode: ERROR_CODE.BAD_REQUEST,
+      deviceErrorCode: 0,
+      message:
+        'Invalid input. Please verify the required parameters, sign out and then sign back in with the valid data',
+      errorType: ERROR_TYPE.SERVER_ERROR,
+      emitterCbExpected: true,
+      finalError: true,
+      restoreCbExpected: false,
+      retry429CbExpected: false,
+      logMsg: '400 Bad Request',
     },
     {
       name: 'verify unknown error response',
       statusCode: 206,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message: 'Unknown error',
       errorType: ERROR_TYPE.DEFAULT,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: 'Unknown Error',
     },
   ].map((stat) =>
@@ -271,6 +297,7 @@ describe('Registration Tests', () => {
       statusCode: codeObj.statusCode,
       headers: {
         trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
+        ...(codeObj.retryAfter && {'retry-after': codeObj.retryAfter.toString()}),
       },
       body: {
         device: {
@@ -305,7 +332,7 @@ describe('Registration Tests', () => {
       RegistrationStatus.ACTIVE
     );
 
-    handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, mockRestoreCb);
+    handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, mock429RetryCb, mockRestoreCb);
     if (codeObj.emitterCbExpected) {
       expect(mockEmitterCb).toBeCalledOnceWith(callClientError, codeObj.finalError);
     }
@@ -313,6 +340,12 @@ describe('Registration Tests', () => {
       expect(mockRestoreCb).toBeCalledOnceWith(webexPayload.body, logObj.method);
     } else {
       expect(mockRestoreCb).not.toHaveBeenCalled();
+    }
+
+    if (codeObj.retry429CbExpected) {
+      expect(mock429RetryCb).toBeCalledOnceWith(codeObj.retryAfter, logObj.method);
+    } else {
+      expect(mock429RetryCb).not.toHaveBeenCalled();
     }
 
     expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${codeObj.statusCode}`, logObj);

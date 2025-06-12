@@ -1,10 +1,11 @@
 import {MEETINGS} from '../constants';
+import Member from '../member';
 
 /**
  * @class MembersCollection
  */
 export default class MembersCollection {
-  members: any;
+  members: Record<string, Member>;
   namespace = MEETINGS;
   /**
    * @param {Object} locus
@@ -14,11 +15,11 @@ export default class MembersCollection {
     this.members = {};
   }
 
-  set(id, member) {
+  set(id: string, member: Member) {
     this.members[id] = member;
   }
 
-  setAll(members) {
+  setAll(members: Record<string, Member>) {
     this.members = members;
   }
 
