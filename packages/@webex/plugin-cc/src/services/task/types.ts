@@ -1000,6 +1000,13 @@ export interface ITask extends EventEmitter {
   autoWrapup?: AutoWrapup;
 
   /**
+   * cancels the auto-wrapup timer for the task
+   * This method stops the auto-wrapup process if it is currently active
+   * @returns void
+   */
+  cancelAutoWrapUpTimer(): void;
+
+  /**
    * Deregisters all web call event listeners
    * Used when cleaning up task resources
    * @ignore

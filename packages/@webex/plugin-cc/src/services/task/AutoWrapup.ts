@@ -1,3 +1,5 @@
+import LoggerProxy from '../../logger-proxy';
+
 /**
  * AutoWrapup class implements a timer for automatic wrap-up functionality.
  * It handles timing the wrap-up period and executing a callback when the timer completes.
@@ -6,13 +8,15 @@ export default class AutoWrapup {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private startTime = 0;
   private readonly interval: number;
+  public allowCancelAutoWrapup = false;
 
   /**
    * Creates a new AutoWrapup timer
    * @param interval - Time in milliseconds before auto wrap-up executes
    */
-  constructor(interval = 10000) {
+  constructor(interval = 10000, allowCancelAutoWrapup = false) {
     this.interval = interval;
+    this.allowCancelAutoWrapup = allowCancelAutoWrapup;
   }
 
   /**
@@ -20,6 +24,11 @@ export default class AutoWrapup {
    * @param onComplete - Callback function to execute when timer completes
    */
   public start(onComplete: () => void): void {
+    LoggerProxy.info('AutoWrapup: clear called', {
+      module: 'AutoWrapup',
+      method: 'clear',
+    });
+
     if (this.timer) {
       this.clear();
     }
@@ -36,9 +45,15 @@ export default class AutoWrapup {
    * Clears the auto wrap-up timer if it's running
    */
   public clear(): void {
+    LoggerProxy.info('AutoWrapup: clear called', {
+      module: 'AutoWrapup',
+      method: 'clear',
+    });
+
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
+      this.startTime = 0;
     }
   }
 

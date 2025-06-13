@@ -164,7 +164,7 @@ export default class Task extends EventEmitter implements ITask {
    * @private
    */
   private setupAutoWrapUpTimer() {
-    if (this.data && this.data.wrapUpRequired) {
+    if (this.data && this.data.wrapUpRequired && !this.autoWrapup) {
       const wrapUpProps = this.wrapupProps.wrapUpProps;
       if (wrapUpProps?.autoWrapup === false) {
         LoggerProxy.info(`Auto wrap-up is not required for this task`, {
@@ -186,7 +186,7 @@ export default class Task extends EventEmitter implements ITask {
         return;
       }
       const intervalMs = wrapUpProps?.autoWrapupInterval || 10000;
-      this.autoWrapup = new AutoWrapup(intervalMs);
+      this.autoWrapup = new AutoWrapup(intervalMs, wrapUpProps?.allowCancelAutoWrapup);
       this.autoWrapup.start(async () => {
         LoggerProxy.info(`Auto wrap-up timer triggered`, {
           module: TASK_FILE,
@@ -207,7 +207,7 @@ export default class Task extends EventEmitter implements ITask {
    */
   public cancelAutoWrapUpTimer() {
     this.autoWrapup?.clear();
-
+    this.autoWrapup = undefined;
     LoggerProxy.info(`Auto wrap-up timer cancelled`, {
       module: TASK_FILE,
       method: METHODS.CANCEL_AUTO_WRAPUP_TIMER,
