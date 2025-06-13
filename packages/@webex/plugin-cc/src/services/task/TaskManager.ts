@@ -249,7 +249,11 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED, task);
             break;
           case CC_EVENTS.AGENT_WRAPUP:
-            this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, {
+              ...payload.data,
+              wrapUpRequired: true,
+            });
+            task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
             this.removeTaskFromCollection(task);

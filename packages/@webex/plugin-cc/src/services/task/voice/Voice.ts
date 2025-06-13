@@ -81,6 +81,7 @@ export default class Voice extends Task implements IVoice {
         this.applyControls(['endConsult', 'wrapup'], false);
         break;
 
+      case CC_EVENTS.AGENT_WRAPUP:
       case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
         this.applyControls(
           ['consultTransfer', 'recording', 'end', 'endConsult', 'hold', 'transfer', 'consult'],
