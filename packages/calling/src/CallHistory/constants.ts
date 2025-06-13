@@ -22,3 +22,11 @@ export const USER_SESSIONS = 'userSessions';
 export const UPDATE_MISSED_CALLS_ENDPOINT = 'setReadState';
 export const UNIFIED_COMMUNICATIONS = 'uc';
 export const VERSION_1 = 'v1';
+
+// Method names
+export const METHODS = {
+  GET_CALL_HISTORY_DATA: 'getCallHistoryData',
+  UPDATE_MISSED_CALLS: 'updateMissedCalls',
+  FETCH_UCM_LINES_DATA: 'fetchUCMLinesData',
+  DELETE_CALL_HISTORY_RECORDS: 'deleteCallHistoryRecords',
+};
