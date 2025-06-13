@@ -1242,15 +1242,15 @@ describe('plugin-meetings', () => {
           assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'en-US');
         });
 
-        it('should not call voicea.onSpokenLanguageUpdate when not joined', async () => {
+        it('should also call voicea.onSpokenLanguageUpdate when not joined', async () => {
 
           meeting.joinedWith = {state: 'NOT_JOINED'};
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
             LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
-            {spokenLanguage: 'en-US'},
+            {spokenLanguage: 'fr-FR'},
           );
-          assert.notCalled(webex.internal.voicea.onSpokenLanguageUpdate);
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr-FR');
         });
       });
 
