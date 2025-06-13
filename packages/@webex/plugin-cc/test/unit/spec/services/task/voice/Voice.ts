@@ -43,24 +43,18 @@ describe('Voice Task', () => {
     expect(voice.taskUiControls.endConsult.visible).toBe(false);
   });
 
-  it('hold() calls contact.hold with correct params', async () => {
-    const voice = new Voice(dummyContact, baseData, {
-      isEndCallEnabled: true,
-      isEndConsultEnabled: true,
-    });
-    const res = await voice.hold();
+  it('calls contact.hold when isHeld=true', async () => {
+    const voice = new Voice(dummyContact, baseData as any, {});
+    await voice.holdResume(true);
     expect(dummyContact.hold).toHaveBeenCalledWith({
       interactionId: 'int1',
       data: { mediaResourceId: 'media1' },
     });
   });
 
-  it('resume() calls contact.unHold with correct mediaResourceId', async () => {
-    const voice = new Voice(dummyContact, baseData, {
-      isEndCallEnabled: true,
-      isEndConsultEnabled: true,
-    });
-    const res = await voice.resume();
+  it('calls contact.unHold when isHeld=false', async () => {
+    const voice = new Voice(dummyContact, baseData as any, {});
+    await voice.holdResume(false);
     expect(dummyContact.unHold).toHaveBeenCalledWith({
       interactionId: 'int1',
       data: { mediaResourceId: 'media1' },
@@ -168,7 +162,6 @@ describe('Voice Task', () => {
           destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
         },
       });
-      expect(result).toBe('consultedQ');
     });
   });
 

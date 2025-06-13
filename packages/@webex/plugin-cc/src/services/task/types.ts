@@ -1163,23 +1163,14 @@ export interface ITask extends EventEmitter {
  */
 export interface IVoice extends ITask {
   /**
-   * This is used to hold the task.
+   * This is used to hold or resume the task.
    * @returns Promise<TaskResponse>
    * @example
    * ```
    * task.hold();
    * ```
    */
-  hold(): Promise<TaskResponse>;
-  /**
-   * This is used to resume the task.
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```
-   * task.resume();
-   * ```
-   */
-  resume(): Promise<TaskResponse>;
+  holdResume(isHeld: boolean): Promise<TaskResponse>;
   /**
    * This is used to consult the task.
    * @param consultPayload

@@ -216,115 +216,86 @@ export default class Voice extends Task implements IVoice {
    * task.hold().then(()=>{}).catch(()=>{})
    * ```
    * */
-  public async hold(): Promise<TaskResponse> {
+  public async holdResume(isHeld: boolean): Promise<TaskResponse> {
+    const method = isHeld ? 'hold' : 'resume';
+    LoggerProxy.info(`${isHeld ? 'Holding' : 'Resuming'} task`, {
+      module: CC_FILE,
+      method,
+      interactionId: this.data.interactionId,
+    });
+    const [successEvt, failedEvt] = isHeld
+      ? [METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS, METRIC_EVENT_NAMES.TASK_HOLD_FAILED]
+      : [METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS, METRIC_EVENT_NAMES.TASK_RESUME_FAILED];
+
+    this.metricsManager.timeEvent([successEvt, failedEvt]);
+
     try {
-      LoggerProxy.info(`Holding task`, {
-        module: CC_FILE,
-        method: 'hold',
-        interactionId: this.data.interactionId,
-      });
-      this.metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS,
-        METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
-      ]);
-      const response = await this.contact.hold({
-        interactionId: this.data.interactionId,
-        data: {mediaResourceId: this.data.mediaResourceId},
-      });
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS,
-        {
-          taskId: this.data.interactionId,
-          mediaResourceId: this.data.mediaResourceId,
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-        },
-        ['operational', 'behavioral']
-      );
-      LoggerProxy.log(`Task placed on hold successfully`, {
-        module: CC_FILE,
-        method: 'hold',
-        trackingId: response.trackingId,
-        interactionId: this.data.interactionId,
-      });
+      let response: TaskResponse;
+      if (isHeld) {
+        response = await this.contact.hold({
+          interactionId: this.data.interactionId,
+          data: {mediaResourceId: this.data.mediaResourceId},
+        });
+        this.metricsManager.trackEvent(
+          successEvt,
+          {
+            taskId: this.data.interactionId,
+            mediaResourceId: this.data.mediaResourceId,
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+          },
+          ['operational', 'behavioral']
+        );
+        LoggerProxy.log(`Task placed on hold successfully`, {
+          module: CC_FILE,
+          method,
+          trackingId: (response as any).trackingId,
+          interactionId: this.data.interactionId,
+        });
+      } else {
+        const mainId = this.data.interaction.mainInteractionId!;
+        const mediaId = this.data.interaction.media[mainId].mediaResourceId;
+        response = await this.contact.unHold({
+          interactionId: this.data.interactionId,
+          data: {mediaResourceId: mediaId},
+        });
+        this.metricsManager.trackEvent(
+          successEvt,
+          {
+            taskId: this.data.interactionId,
+            mainInteractionId: mainId,
+            mediaResourceId: mediaId,
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+          },
+          ['operational', 'behavioral']
+        );
+        LoggerProxy.log(`Task resumed successfully`, {
+          module: CC_FILE,
+          method,
+          trackingId: (response as any).trackingId,
+          interactionId: this.data.interactionId,
+        });
+      }
 
       return response;
-    } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'hold', CC_FILE);
+    } catch (err: any) {
+      const {error: detErr} = getErrorDetails(err, method, CC_FILE);
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
-        {
-          taskId: this.data.interactionId,
-          mediaResourceId: this.data.mediaResourceId,
-          error: error.toString(),
-          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-        },
+        failedEvt,
+        isHeld
+          ? {
+              taskId: this.data.interactionId,
+              mediaResourceId: this.data.mediaResourceId,
+              error: err.toString(),
+              ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(err.details || {}),
+            }
+          : {
+              taskId: this.data.interactionId,
+              error: err.toString(),
+              ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(err.details || {}),
+            },
         ['operational', 'behavioral']
       );
-      throw detailedError;
-    }
-  }
-
-  /**
-   * This is used to resume the task.
-   * @returns Promise<TaskResponse>
-   * @throws Error
-   * @example
-   * ```typescript
-   * task.resume().then(()=>{}).catch(()=>{})
-   * ```
-   */
-  public async resume(): Promise<TaskResponse> {
-    try {
-      LoggerProxy.info(`Resuming task`, {
-        module: CC_FILE,
-        method: 'resume',
-        interactionId: this.data.interactionId,
-      });
-      this.metricsManager.timeEvent([
-        METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS,
-        METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
-      ]);
-      const {mainInteractionId} = this.data.interaction;
-      const {mediaResourceId} = this.data.interaction.media[mainInteractionId];
-
-      const response = await this.contact.unHold({
-        interactionId: this.data.interactionId,
-        data: {mediaResourceId},
-      });
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS,
-        {
-          taskId: this.data.interactionId,
-          mainInteractionId,
-          mediaResourceId,
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-        },
-        ['operational', 'behavioral']
-      );
-      LoggerProxy.log(`Task resumed successfully`, {
-        module: CC_FILE,
-        method: 'resume',
-        trackingId: response.trackingId,
-        interactionId: this.data.interactionId,
-      });
-
-      return response;
-    } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'resume', CC_FILE);
-      const mainInteractionId = this.data.interaction?.mainInteractionId;
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
-        {
-          taskId: this.data.interactionId,
-          mainInteractionId,
-          mediaResourceId: mainInteractionId
-            ? this.data.interaction.media[mainInteractionId].mediaResourceId
-            : '',
-          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-        },
-        ['operational', 'behavioral']
-      );
-      throw detailedError;
+      throw detErr;
     }
   }
 

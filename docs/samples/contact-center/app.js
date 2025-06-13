@@ -1362,27 +1362,18 @@ function expandAll() {
 }
 
 function holdResumeCall() {
-  if (holdResumeElm.innerText === 'Hold') {
-    holdResumeElm.disabled = true;
-    currentTask.hold().then(() => {
-      console.info('Call held successfully');
-      holdResumeElm.innerText = 'Resume';
+  const isHeld = holdResumeElm.innerText === 'Hold';
+  holdResumeElm.disabled = true;
+  currentTask.holdResume(isHeld)
+    .then(() => {
+      console.info(`Call ${isHeld ? 'held' : 'resumed'} successfully`);
+      holdResumeElm.innerText = isHeld ? 'Resume' : 'Hold';
       holdResumeElm.disabled = false;
-    }).catch((error) => {
-      console.error('Failed to hold the call', error);
-      holdResumeElm.disabled = false;
-    });
-  } else {
-    holdResumeElm.disabled = true;
-    currentTask.resume().then(() => {
-      console.info('Call resumed successfully');
-      holdResumeElm.innerText = 'Hold';
-      holdResumeElm.disabled = false;
-    }).catch((error) => {
-      console.error('Failed to resume the call', error);
+    })
+    .catch((error) => {
+      console.error(`Failed to ${isHeld ? 'hold' : 'resume'} the call`, error);
       holdResumeElm.disabled = false;
     });
-  }
 }
 
 function muteUnmute() {
