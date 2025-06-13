@@ -4223,9 +4223,11 @@ describe('plugin-meetings', () => {
             const error = new Error();
             meeting.meetingRequest.setBrb = sinon.stub().rejects(error);
         
-            const promise = meeting.beRightBack(true);
-        
-            await expect(promise).to.be.rejectedWith(error);   
+            await expect(
+              meeting.beRightBack(true)
+            ).to.be.rejectedWith(error);  
+             
+            assert.isFalse(meeting.brbState.state.syncToServerInProgress);
             assert.calledWithMatch(
               LoggerProxy.logger.warn,
               /Meeting:brbState#applyClientStateToServer: error:/
