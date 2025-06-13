@@ -9,4 +9,5 @@ export interface IServiceDetail {
   id: string;
   serviceName: string;
   serviceUrls: Array<ServiceUrl>;
+  failHost(url: string): boolean;
 }
