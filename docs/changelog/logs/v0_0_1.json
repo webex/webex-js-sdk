@@ -1,0 +1,16 @@
+{
+  "@webex/test-webex-node": {
+    "0.0.1-next.1": {
+      "published_date": 1749825946064,
+      "commits": {
+        "e63a9066d74f0fe12d29e97ee1bc82edf3c30511": "fix: remote mute is disabled when doing step away (#4342)"
+      },
+      "alongWith": {
+        "@webex/internal-plugin-voicea": "3.8.0-next.85",
+        "@webex/plugin-meetings": "3.8.0-next.85",
+        "webex": "3.8.0-next.123",
+        "webex-node": "3.8.0-next.67"
+      }
+    }
+  }
+}
