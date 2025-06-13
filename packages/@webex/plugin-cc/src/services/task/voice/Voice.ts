@@ -36,126 +36,127 @@ export default class Voice extends Task implements IVoice {
   private applyTerminatedControls(): void {
     this.applyControls(
       ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'],
-      ['hide', 'disable']
+      false,
+      false
     );
-    this.applyControls(['wrapup'], ['show', 'enable']);
+    this.applyControls(['wrapup'], true, true);
   }
 
   private applyConnectedControls(): void {
-    this.applyControls(['hold', 'transfer', 'consult', 'recording'], ['show', 'enable']);
+    this.applyControls(['hold', 'transfer', 'consult', 'recording'], true, true);
     if (this.isEndCallEnabled) {
-      this.applyControls(['end'], ['show', 'enable']);
+      this.applyControls(['end'], true, true);
     }
   }
 
   private applyConsultingControls(): void {
-    this.applyControls(['hold', 'transfer', 'consult'], ['hide', 'disable']);
-    this.applyControls(['recording'], ['show', 'disable']);
+    this.applyControls(['hold', 'transfer', 'consult'], false, false);
+    this.applyControls(['recording'], true, false);
+
     if (!this.data.isConsulted) {
-      this.applyControls(['consultTransfer', 'endConsult'], ['show', 'enable']);
+      this.applyControls(['consultTransfer', 'endConsult'], true, true);
       if (this.isEndCallEnabled) {
-        this.applyControls(['end'], ['show', 'disable']);
+        this.applyControls(['end'], true, false);
       }
     } else if (this.isEndConsultEnabled) {
-      this.applyControls(['endConsult'], ['show', 'enable']);
+      this.applyControls(['endConsult'], true, true);
     }
   }
 
   protected initialiseUIControls() {
     super.initialiseUIControls();
-    // batch‐hide & disable everything we start with
-    this.applyControls(['accept', 'decline', 'hold', 'transfer', 'end'], ['hide', 'disable']);
+    this.applyControls(['accept', 'decline', 'hold', 'transfer', 'end'], false, false);
   }
 
   protected setUIControls(): void {
     const eventType = this.data.type;
     const showMainControls = () =>
-      this.applyControls(['hold', 'transfer', 'consult', 'recording'], ['show', 'enable']);
+      this.applyControls(['hold', 'transfer', 'consult', 'recording'], true, true);
 
     switch (eventType) {
       case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-        this.applyControls(['accept', 'decline'], ['hide', 'disable']);
+        this.applyControls(['accept', 'decline'], false, false);
         showMainControls();
-        this.applyControls(
-          ['end'],
-          this.isEndCallEnabled ? ['show', 'enable'] : ['hide', 'disable']
-        );
-        this.applyControls(['endConsult', 'wrapup'], ['hide']);
+        this.applyControls(['end'], this.isEndCallEnabled, this.isEndCallEnabled);
+        this.applyControls(['endConsult', 'wrapup'], false);
         break;
 
       case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
         this.applyControls(
           ['consultTransfer', 'recording', 'end', 'endConsult', 'hold', 'transfer', 'consult'],
-          ['hide', 'disable']
+          false,
+          false
         );
-        this.applyControls(['wrapup'], ['show', 'enable']);
+        this.applyControls(['wrapup'], true, true);
         break;
 
       case CC_EVENTS.CONTACT_ENDED:
       case CC_EVENTS.AGENT_INVITE_FAILED:
         this.applyControls(
           ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end', 'endConsult'],
-          ['hide', 'disable']
+          false,
+          false
         );
         if (this.data.interaction.state !== 'new') {
-          this.applyControls(['wrapup'], ['show', 'enable']);
+          this.applyControls(['wrapup'], true, true);
         }
         break;
 
       case CC_EVENTS.AGENT_CONTACT_HELD:
         showMainControls();
         if (this.isEndCallEnabled) {
-          this.applyControls(['end'], ['show', 'disable']);
+          this.applyControls(['end'], true, false);
         }
         break;
 
       case CC_EVENTS.AGENT_CONTACT_UNHELD:
         showMainControls();
         if (this.isEndCallEnabled) {
-          this.applyControls(['end'], ['show', 'enable']);
+          this.applyControls(['end'], true, true);
         }
         break;
 
       case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
         this.applyControls(
           ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'],
-          ['hide', 'disable']
+          false,
+          false
         );
-        this.applyControls(['wrapup'], ['show', 'enable']);
+        this.applyControls(['wrapup'], true, true);
         break;
 
       case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
         showMainControls();
         if (this.isEndCallEnabled) {
-          this.applyControls(['end'], ['show', 'enable']);
+          this.applyControls(['end'], true, true);
         }
         break;
 
       case CC_EVENTS.AGENT_CONSULT_CREATED:
         if (!this.data.isConsulted) {
-          this.applyControls(['hold', 'consult', 'transfer', 'end'], ['hide', 'disable']);
-          this.applyControls(['consultTransfer', 'recording'], ['show', 'disable']);
-          this.applyControls(['endConsult'], ['show', 'enable']);
+          this.applyControls(['hold', 'consult', 'transfer', 'end'], false, false);
+          this.applyControls(['consultTransfer', 'recording'], true, false);
+          this.applyControls(['endConsult'], true, true);
         }
         break;
 
       case CC_EVENTS.AGENT_OFFER_CONSULT:
         if (this.isEndConsultEnabled) {
-          this.applyControls(['endConsult'], ['show', 'enable']);
+          this.applyControls(['endConsult'], true, true);
         }
         break;
 
       case CC_EVENTS.AGENT_CONSULTING:
         if (!this.data.isConsulted) {
-          this.applyControls(['hold', 'transfer', 'consult'], ['hide', 'disable']);
-          this.applyControls(['consultTransfer'], ['show', 'enable']);
-          this.applyControls(['recording'], ['show', 'disable']);
-          this.applyControls(['endConsult'], ['show', 'enable']);
+          this.applyControls(['hold', 'transfer', 'consult'], false, false);
+          this.applyControls(['consultTransfer'], true, true);
+          this.applyControls(['recording'], true, false);
+          this.applyControls(['endConsult'], true, true);
           if (this.isEndCallEnabled) {
-            this.applyControls(['end'], ['show', 'disable']);
+            this.applyControls(['end'], true, false);
           }
         } else if (this.isEndConsultEnabled) {
-          this.applyControls(['endConsult'], ['show', 'enable']);
+          this.applyControls(['endConsult'], true, true);
         }
         break;
 
@@ -165,10 +166,10 @@ export default class Voice extends Task implements IVoice {
         if (!this.data.isConsulted) {
           showMainControls();
           if (this.isEndCallEnabled) {
-            this.applyControls(['end'], ['show', 'enable']);
+            this.applyControls(['end'], true, true);
           }
-          this.applyControls(['consultTransfer', 'endConsult'], ['hide', 'disable']);
-          this.applyControls(['wrapup'], ['hide']);
+          this.applyControls(['consultTransfer', 'endConsult'], false, false);
+          this.applyControls(['wrapup'], false);
         }
         break;
 
@@ -208,12 +209,13 @@ export default class Voice extends Task implements IVoice {
   }
 
   /**
-   * This is used to hold the task.
+   * This is used to hold or resume the task.
+   * @param isHeld: boolean - true to hold the task, false to resume it
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
    * ```typescript
-   * task.hold().then(()=>{}).catch(()=>{})
+   * task.holdResume(isHeld: true).then(()=>{}).catch(()=>{})
    * ```
    * */
   public async holdResume(isHeld: boolean): Promise<TaskResponse> {

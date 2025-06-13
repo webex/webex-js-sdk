@@ -39,7 +39,7 @@ export default class WebRTC extends Voice implements IWebRTC {
     // TODO: This implementation will change based on the type of task. We need to modify it appropriately, we can even read from task data rather than listening to events
     switch (this.data.type) {
       case CC_EVENTS.AGENT_CONTACT_RESERVED:
-        this.taskUiControls.accept.enable();
+        this.taskUiControls.accept.setEnabled(true);
         break;
       default:
         break;

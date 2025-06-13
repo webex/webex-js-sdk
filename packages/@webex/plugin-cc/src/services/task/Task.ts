@@ -78,12 +78,20 @@ export default abstract class Task extends EventEmitter implements ITask {
     throw new Error(`Unsupported operation: ${methodName} in Task class`);
   }
 
-  // Helper method to apply UI controls
+  // Helper method to apply UI controls via boolean flags, first is for visibility and second is for enabled state
   protected applyControls(
     controls: Array<keyof typeof this.taskUiControls>,
-    actions: Array<'show' | 'hide' | 'enable' | 'disable'>
+    visible?: boolean,
+    enabled?: boolean
   ): void {
-    controls.forEach((c) => actions.forEach((a) => this.taskUiControls[c][a]()));
+    controls.forEach((c) => {
+      if (visible !== undefined) {
+        this.taskUiControls[c].setVisiblity(visible);
+      }
+      if (enabled !== undefined) {
+        this.taskUiControls[c].setEnabled(enabled);
+      }
+    });
   }
 
   /**
