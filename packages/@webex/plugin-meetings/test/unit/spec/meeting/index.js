@@ -4152,7 +4152,7 @@ describe('plugin-meetings', () => {
           meeting.deviceUrl = 'device url';
           meeting.selfId = 'self id';
           meeting.brbState = createBrbState(meeting, false);
-          meeting.brbState.enable = sinon.stub().resolves();
+          sinon.stub(meeting.brbState, 'enable').resolves();
         });
 
         afterEach(() => {
@@ -4215,6 +4215,21 @@ describe('plugin-meetings', () => {
             await meeting.beRightBack(false);
 
             assert.notCalled(meeting.audio.handleServerRemoteMuteUpdate);
+          });
+
+          it('should reject when setBrb fails', async () => {
+            meeting.brbState.enable.restore();
+
+            const error = new Error();
+            meeting.meetingRequest.setBrb = sinon.stub().rejects(error);
+        
+            const promise = meeting.beRightBack(true);
+        
+            await expect(promise).to.be.rejectedWith(error);   
+            assert.calledWithMatch(
+              LoggerProxy.logger.warn,
+              /Meeting:brbState#applyClientStateToServer: error:/
+            );     
           });
         });
       });
