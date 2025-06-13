@@ -10,7 +10,7 @@ import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {formattedServiceHostmapV2, serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
 
 const waitForAsync = () =>
-  new Promise((resolve) =>
+  new Promise<void>((resolve) =>
     setImmediate(() => {
       return resolve();
     })
