@@ -45,6 +45,9 @@ class MetricManager implements IMetricManager {
     name: METRIC_EVENT,
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
+    caller: string,
+    serverType: string | undefined,
+    keepaliveCount: number | undefined,
     clientError: LineError | CallingClientError | undefined
   ) {
     let data;
@@ -61,6 +64,7 @@ class MetricManager implements IMetricManager {
             device_url: this.deviceInfo?.device?.clientDeviceUri,
             mobius_url: this.deviceInfo?.device?.uri,
             calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            server_type: serverType,
           },
           type,
         };
@@ -79,6 +83,9 @@ class MetricManager implements IMetricManager {
               device_url: this.deviceInfo?.device?.clientDeviceUri,
               mobius_url: this.deviceInfo?.device?.uri,
               calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+              registrationSource: caller,
+              server_type: serverType,
+              keepalive_count: keepaliveCount,
               error: clientError.getError().message,
               error_type: clientError.getError().type,
             },
