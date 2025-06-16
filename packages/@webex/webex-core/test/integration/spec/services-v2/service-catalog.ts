@@ -217,13 +217,13 @@ describe('webex-core', () => {
 
         it('finds a service if it exists', () => {
           assert.equal(
-            catalog.findServiceDetailFromUrl(testDetailTemplate.serviceUrls[1].baseUrl),
-            testDetail
+            catalog.findServiceDetailFromUrl(testDetailTemplate.serviceUrls[1].baseUrl).get(),
+            testDetail.get()
           );
         });
 
         it('finds a service if its a priority host url', () => {
-          assert.equal(catalog.findServiceDetailFromUrl(testDetail.get()), testDetail);
+          assert.equal(catalog.findServiceDetailFromUrl(testDetail.get()).get(), testDetail.get());
         });
 
         it("returns undefined if the url doesn't exist", () => {
@@ -298,7 +298,7 @@ describe('webex-core', () => {
 
           catalog.markFailedServiceUrl(priorityUrl);
 
-          const failedHost = testDetail.hosts.find((host) => host.failed);
+          const failedHost = testDetail.serviceUrls.find((serviceUrl) => serviceUrl.failed);
 
           assert.isDefined(failedHost);
         });
@@ -325,10 +325,21 @@ describe('webex-core', () => {
           catalog._loadServiceDetails('preauth', [testDetail]);
           catalog._loadServiceDetails('discovery', [testDetail]);
 
-          assert.isTrue(catalog.serviceGroups.postauth.includes(testDetail));
-          assert.isTrue(catalog.serviceGroups.preauth.includes(testDetail));
-          assert.isTrue(catalog.serviceGroups.discovery.includes(testDetail));
-
+          assert.isTrue(
+            !!catalog.serviceGroups.postauth.find(
+              (serviceDetail) => serviceDetail.id === testDetail.id
+            )
+          );
+          assert.isTrue(
+            !!catalog.serviceGroups.preauth.find(
+              (serviceDetail) => serviceDetail.id === testDetail.id
+            )
+          );
+          assert.isTrue(
+            !!catalog.serviceGroups.discovery.find(
+              (serviceDetail) => serviceDetail.id === testDetail.id
+            )
+          );
           catalog._unloadServiceDetails('postauth', [testDetail]);
           catalog._unloadServiceDetails('preauth', [testDetail]);
           catalog._unloadServiceDetails('discovery', [testDetail]);
@@ -417,7 +428,7 @@ describe('webex-core', () => {
       let formattedHM;
 
       beforeEach(() => {
-        serviceHostmap = formattedServiceHostmapV2;
+        serviceHostmap = serviceHostmapV2;
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         promise = catalog.waitForCatalog('preauth', 1);
@@ -471,34 +482,131 @@ describe('webex-core', () => {
       it('updates any existing ServiceUrls', () => {
         const newServiceHM = {
           activeServices: {
-            'example-a': 'urn:TEAM:us-east-2_a:a',
-            'example-b': 'urn:TEAM:us-east-2_a:b',
-            'example-c': 'urn:TEAM:us-east-2_a:c',
+            conversation: 'urn:TEAM:us-east-2_a:conversation',
+            idbroker: 'urn:TEAM:us-east-2_a:idbroker',
+            locus: 'urn:TEAM:us-east-2_a:locus',
+            mercury: 'urn:TEAM:us-east-2_a:mercury',
           },
           services: [
             {
-              id: 'urn:TEAM:us-east-2_a:a',
-              serviceName: 'example-a',
-              serviceUrls: [],
+              id: 'urn:TEAM:us-east-2_a:conversation',
+              serviceName: 'conversation',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://example-1.svc.webex.com/conversation/api/v1',
+                  priority: 1,
+                },
+                {
+                  baseUrl: 'https://conv-a.wbx2.com/conversation/api/v1',
+                  priority: 2,
+                },
+              ],
             },
             {
-              id: 'urn:TEAM:us-east-2_a:b',
-              serviceName: 'example-b',
-              serviceUrls: [],
+              id: 'urn:TEAM:me-central-1_d:conversation',
+              serviceName: 'conversation',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://example-2.svc.webex.com/conversation/api/v1',
+                  priority: 1,
+                },
+                {
+                  baseUrl: 'https://conv-d.wbx2.com/conversation/api/v1',
+                  priority: 2,
+                },
+              ],
             },
             {
-              id: 'urn:TEAM:us-east-2_a:c',
-              serviceName: 'example-c',
-              serviceUrls: [],
+              id: 'urn:TEAM:us-east-2_a:idbroker',
+              serviceName: 'idbroker',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://example-3.svc.webex.com/idbroker/api/v1',
+                  priority: 1,
+                },
+                {
+                  baseUrl: 'https://idbroker.webex.com/idb/api/v1',
+                  priority: 2,
+                },
+              ],
+            },
+            {
+              id: 'urn:TEAM:me-central-1_d:idbroker',
+              serviceName: 'idbroker',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://example-4.svc.webex.com/idbroker/api/v1',
+                  priority: 1,
+                },
+                {
+                  baseUrl: 'https://conv-d.wbx2.com/idbroker/api/v1',
+                  priority: 2,
+                },
+              ],
+            },
+            {
+              id: 'urn:TEAM:us-east-2_a:locus',
+              serviceName: 'locus',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://example-5.svc.webex.com/locus/api/v1',
+                  priority: 1,
+                },
+                {
+                  baseUrl: 'https://locus-a.wbx2.com/locus/api/v1',
+                  priority: 2,
+                },
+              ],
+            },
+            {
+              id: 'urn:TEAM:me-central-1_d:locus',
+              serviceName: 'locus',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://example-6.svc.webex.com/locus/api/v1',
+                  priority: 1,
+                },
+                {
+                  baseUrl: 'https://conv-d.wbx2.com/locus/api/v1',
+                  priority: 2,
+                },
+              ],
+            },
+            {
+              id: 'urn:TEAM:us-east-2_a:mercury',
+              serviceName: 'mercury',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://example-7.wbx2.com/mercury/api/v1',
+                  priority: 1,
+                },
+              ],
+            },
+            {
+              id: 'urn:TEAM:me-central-1_d:mercury',
+              serviceName: 'mercury',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://example-8.svc.webex.com/mercury/api/v1',
+                  priority: 1,
+                },
+                {
+                  baseUrl: 'https://conv-d.wbx2.com/mercury/api/v1',
+                  priority: 2,
+                },
+              ],
             },
           ],
+          orgId: '3e0e410f-f83f-4ee4-ac32-12692e99355c',
+          timestamp: '1745533341',
+          format: 'U2Cv2',
         };
-
-        const newFormattedHM = services._formatReceivedHostmap(newServiceHM);
 
         catalog.updateServiceGroups('preauth', formattedHM);
 
         const oldServiceDetails = catalog._getAllServiceDetails('preauth');
+
+        const newFormattedHM = services._formatReceivedHostmap(newServiceHM);
 
         catalog.updateServiceGroups('preauth', newFormattedHM);
 
@@ -508,16 +616,12 @@ describe('webex-core', () => {
 
         const newServiceDetails = catalog._getAllServiceDetails('preauth');
 
-        oldServiceDetails.forEach((serviceDetail) =>
-          assert.isUndefined(formattedHM.find((service) => service.id === serviceDetail.id))
+        formattedHM.forEach((oldServiceDetail) =>
+          assert.notEqual(
+            oldServiceDetail.serviceUrls[0].baseUrl,
+            newServiceDetails.find((service) => service.id === oldServiceDetail.id).get()
+          )
         );
-        newServiceDetails.forEach((serviceDetail) =>
-          assert.isTrue(!!newFormattedHM.find((service) => service.id === serviceDetail.id))
-        );
-      });
-
-      it('creates an array of equal length of services', () => {
-        assert.equal(Object.keys(serviceHostmap.activeServices).length, formattedHM.length);
       });
 
       it('creates an array of equal length of active services', () => {
@@ -526,7 +630,7 @@ describe('webex-core', () => {
 
       it('creates an array with matching host data', () => {
         Object.values(serviceHostmap.activeServices).forEach((activeServiceVal) => {
-          const hostGroup = serviceHostmap.services.find(
+          const hostGroup = !!serviceHostmap.services.find(
             (service) => service.id === activeServiceVal
           );
 

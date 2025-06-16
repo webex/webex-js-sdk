@@ -1,18 +1,20 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_} from '../constants';
-import {IExternalRoles, IMediaStatus, ParticipantWithBrb, ParticipantWithRoles} from './types';
+import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_, _OBSERVE_} from '../constants';
+import {IExternalRoles, IMediaStatus, Participant, ParticipantUrl} from './types';
 
 import MemberUtil from './util';
 
+export type MemberId = string;
 /**
  * @class Member
  */
 export default class Member {
-  associatedUser: any;
+  associatedUser: MemberId | null; // deprecated, use associatedUsers instead
+  associatedUsers: Set<MemberId>; // users associated with this device, empty if this member is not a device
   canReclaimHost: boolean;
-  id: any;
+  id: MemberId;
   isAudioMuted: any;
   isContentSharing: any;
   isDevice: any;
@@ -29,6 +31,7 @@ export default class Member {
   isRecording: any;
   isRemovable: any;
   isSelf: any;
+  isPairedWithSelf: boolean; // true for a device that we are paired with
   isBrb: boolean;
   isUser: any;
   isVideoMuted: any;
@@ -42,6 +45,10 @@ export default class Member {
   supportLiveAnnotation: boolean;
   type: any;
   namespace = MEETINGS;
+  pairedWith: {
+    participantUrl?: ParticipantUrl;
+    memberId?: MemberId;
+  };
 
   /**
    * @param {Object} participant - the locus participant
@@ -54,7 +61,7 @@ export default class Member {
    * @memberof Member
    */
   constructor(
-    participant: object,
+    participant: Participant,
     options:
       | {
           selfId: string;
@@ -201,13 +208,23 @@ export default class Member {
      */
     this.isUser = null;
     /**
+     * Deprecated: use associatedUsers instead
+     * Is this member associated to another user by way of pairing (typical of devices)
+     * @instance
+     * @type {MemberId|null}
+     * @deprecated
+     * @public
+     * @memberof Member
+     */
+    this.associatedUser = null;
+    /**
      * Is this member associated to another user by way of pairing (typical of devices)
      * @instance
      * @type {String}
      * @public
      * @memberof Member
      */
-    this.associatedUser = null;
+    this.associatedUsers = new Set<MemberId>();
     /**
      * @instance
      * @type {Boolean}
@@ -268,12 +285,24 @@ export default class Member {
 
     /**
      * @instance
+     * @type {Boolean}
+     * @public
+     * @memberof Member
+     */
+    this.isPairedWithSelf = false;
+
+    /**
+     * @instance
      * @type {IExternalRoles}
      * @public
      * @memberof Member
      */
     this.roles = null;
 
+    this.pairedWith = {
+      participantUrl: undefined,
+      memberId: undefined,
+    };
     /**
      * @instance
      * @type {IMediaStatus}
@@ -299,9 +328,10 @@ export default class Member {
    * @private
    * @memberof Member
    */
-  private processParticipant(participant: object) {
+  private processParticipant(participant: Participant) {
     this.participant = participant;
     if (participant) {
+      this.processPairedDevice(participant);
       this.canReclaimHost = MemberUtil.canReclaimHost(participant);
       this.id = MemberUtil.extractId(participant);
       this.name = MemberUtil.extractName(participant);
@@ -312,7 +342,7 @@ export default class Member {
       this.supportsInterpretation = MemberUtil.isInterpretationSupported(participant);
       this.supportLiveAnnotation = MemberUtil.isLiveAnnotationSupported(participant);
       this.isGuest = MemberUtil.isGuest(participant);
-      this.isBrb = MemberUtil.isBrb(participant as ParticipantWithBrb);
+      this.isBrb = MemberUtil.isBrb(participant);
       this.isUser = MemberUtil.isUser(participant);
       this.isDevice = MemberUtil.isDevice(participant);
       this.isModerator = MemberUtil.isModerator(participant);
@@ -321,10 +351,22 @@ export default class Member {
       this.isPresenterAssignmentProhibited =
         MemberUtil.isPresenterAssignmentProhibited(participant);
       this.processStatus(participant);
-      this.processRoles(participant as ParticipantWithRoles);
+      this.processRoles(participant);
       // must be done last
       this.isNotAdmitted = MemberUtil.isNotAdmitted(participant, this.isGuest, this.status);
     }
+  }
+
+  /**
+   * Checks if the participant is paired with another device
+   *
+   * @param {any} participant the locus participant object
+   * @returns {void}
+   */
+  processPairedDevice(participant: Participant) {
+    // we can't populate this.pairedWith.memberId here because the member for that device might not yet exist
+    // so only populating the participantUrl and memberId will be set later
+    this.pairedWith.participantUrl = MemberUtil.extractPairedWithParticipantUrl(participant);
   }
 
   /**
@@ -335,7 +377,7 @@ export default class Member {
    * @private
    * @memberof Member
    */
-  private processParticipantOptions(participant: object, options: any) {
+  private processParticipantOptions(participant: Participant, options: any) {
     if (participant && options) {
       this.processIsSelf(participant, options.selfId);
       this.processIsHost(participant, options.hostId);
@@ -378,7 +420,7 @@ export default class Member {
    * @private
    * @memberof Member
    */
-  private processStatus(participant: object) {
+  private processStatus(participant: Participant) {
     this.status = MemberUtil.extractStatus(participant);
     switch (this.status) {
       case _IN_LOBBY_:
@@ -440,11 +482,9 @@ export default class Member {
    * @public
    * @memberof Member
    */
-  public processIsContentSharing(participant: object, sharingId: string) {
+  public processIsContentSharing(participant: Participant, sharingId: string) {
     if (MemberUtil.isUser(participant)) {
       this.isContentSharing = MemberUtil.isSame(participant, sharingId);
-    } else if (MemberUtil.isDevice(participant)) {
-      this.isContentSharing = MemberUtil.isAssociatedSame(participant, sharingId);
     }
   }
 
@@ -456,7 +496,7 @@ export default class Member {
    * @public
    * @memberof Member
    */
-  public processIsRecording(participant: object, recordingId: string) {
+  public processIsRecording(participant: Participant, recordingId: string) {
     this.isRecording = MemberUtil.isSame(participant, recordingId);
   }
 
@@ -468,12 +508,9 @@ export default class Member {
    * @private
    * @memberof Member
    */
-  private processIsSelf(participant: object, selfId: string) {
+  private processIsSelf(participant: Participant, selfId: string) {
     if (MemberUtil.isUser(participant)) {
       this.isSelf = MemberUtil.isSame(participant, selfId);
-    } else if (MemberUtil.isDevice(participant)) {
-      this.isSelf = MemberUtil.isAssociatedSame(participant, selfId);
-      this.associatedUser = selfId;
     }
   }
 
@@ -485,11 +522,9 @@ export default class Member {
    * @private
    * @memberof Member
    */
-  private processIsHost(participant: object, hostId: string) {
+  private processIsHost(participant: Participant, hostId: string) {
     if (MemberUtil.isUser(participant)) {
       this.isHost = MemberUtil.isSame(participant, hostId);
-    } else if (MemberUtil.isDevice(participant)) {
-      this.isHost = MemberUtil.isAssociatedSame(participant, hostId);
     }
   }
 
@@ -500,7 +535,7 @@ export default class Member {
    * @private
    * @memberof Member
    */
-  private processRoles(participant: ParticipantWithRoles) {
+  private processRoles(participant: Participant) {
     this.roles = MemberUtil.extractControlRoles(participant);
   }
 

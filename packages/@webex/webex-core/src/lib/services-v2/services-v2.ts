@@ -60,7 +60,15 @@ const Services = WebexPlugin.extend({
 
     const clusterId = this._activeServices[name];
 
-    return catalog.get(clusterId, serviceGroup) || catalog.get(name, serviceGroup);
+    const urlById = catalog.get(clusterId, serviceGroup);
+    const urlByName = catalog.get(name, serviceGroup);
+
+    // if both are undefined, then we cannot find the service
+    if (!urlById && !urlByName) {
+      return undefined;
+    }
+
+    return urlById || urlByName;
   },
 
   /**
@@ -590,7 +598,9 @@ const Services = WebexPlugin.extend({
     );
 
     if (fetchFromServiceUrl) {
-      return Promise.resolve(this._activeServices[name]);
+      const clusterId = this._activeServices[name];
+
+      return Promise.resolve(this.get(clusterId));
     }
 
     const priorityUrl = this.get(name);

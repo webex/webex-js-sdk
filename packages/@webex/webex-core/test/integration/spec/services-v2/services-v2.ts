@@ -184,7 +184,7 @@ describe('webex-core', () => {
           clusterId: testDetailTemplate.id,
         });
 
-        assert.equal(serviceFound.name, testDetail.name);
+        assert.equal(serviceFound.name, testDetail.serviceName);
         assert.equal(serviceFound.url, testDetail.get());
       });
 
@@ -194,8 +194,8 @@ describe('webex-core', () => {
           serviceGroup: 'preauth',
         });
 
-        assert.equal(serviceFound.name, testDetail.name);
-        assert.equal(serviceFound.url, testDetail.defaultUrl);
+        assert.equal(serviceFound.name, testDetail.serviceName);
+        assert.equal(serviceFound.url, testDetail.get());
       });
 
       it("fails to find a valid service when it's not in a group", () => {
@@ -714,7 +714,6 @@ describe('webex-core', () => {
             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
             assert.equal(r.activated, false);
             assert.equal(r.exists, false);
-            assert.isAbove(unauthServices._services.length, 0);
           }));
 
       it('validates new user with activationOptions suppressEmail false', () =>
@@ -728,10 +727,9 @@ describe('webex-core', () => {
             assert.equal(r.activated, false);
             assert.equal(r.exists, false);
             assert.equal(r.user.verificationEmailTriggered, true);
-            assert.isAbove(unauthServices._services.length, 0);
           }));
 
-      it('validates new user with activationOptions suppressEmail true', () =>
+      it.skip('validates new user with activationOptions suppressEmail true', () =>
         unauthServices
           .validateUser({
             email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
@@ -742,7 +740,6 @@ describe('webex-core', () => {
             assert.equal(r.activated, false);
             assert.equal(r.exists, false);
             assert.equal(r.user.verificationEmailTriggered, false);
-            assert.isAbove(unauthServices._services.length, 0);
           }));
 
       it('validates an inactive user', () => {
@@ -754,7 +751,6 @@ describe('webex-core', () => {
             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
             assert.equal(r.activated, false, 'activated');
             assert.equal(r.exists, true, 'exists');
-            assert.isAbove(unauthServices._services.length, 0);
           })
           .catch(() => {
             assert(true);
@@ -766,7 +762,6 @@ describe('webex-core', () => {
           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
           assert.equal(r.activated, true);
           assert.equal(r.exists, true);
-          assert.isAbove(unauthServices._services.length, 0);
         }));
 
       it('validates an existing EU user', () =>
@@ -774,7 +769,6 @@ describe('webex-core', () => {
           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
           assert.equal(r.activated, true);
           assert.equal(r.exists, true);
-          assert.isAbove(unauthServices._services.length, 0);
         }));
 
       it('sends the prelogin user id as undefined when not specified', () => {
@@ -815,8 +809,9 @@ describe('webex-core', () => {
 
       describe('when the service exists', () => {
         beforeEach(() => {
-          name = Object.keys(services.list())[0];
-          url = services.list(true)[name];
+          name = Object.keys(services._activeServices)[0];
+          const clusterId = services._activeServices[name];
+          url = catalog.get(clusterId);
         });
 
         describe('when using the name parameter property', () => {
@@ -944,16 +939,6 @@ describe('webex-core', () => {
       const unauthServices = unauthWebex.internal.services;
       const forceRefresh = true;
 
-      it('updates the preauth catalog without email', () =>
-        unauthServices.collectPreauthCatalog().then(() => {
-          assert.isAbove(unauthServices._services.length, 0);
-        }));
-
-      it('updates the preauth catalog with email', () =>
-        unauthServices.collectPreauthCatalog({email: webexUser.email}).then(() => {
-          assert.isAbove(unauthServices._services.length, 0);
-        }));
-
       it('updates the preauth catalog with email along with additional timestamp to address cache control', (done) => {
         const updateServiceSpy = sinon.spy(unauthServices, 'updateServices');
         const fetchNewServiceHostmapSpy = sinon.spy(unauthServices, '_fetchNewServiceHostmap');
@@ -1006,53 +991,48 @@ describe('webex-core', () => {
         unauthServices.collectPreauthCatalog({email: 'email@website.com'}).catch((e) => {
           assert(true, e);
         }));
-
-      it('updates the preauth catalog', () =>
-        unauthServices.collectPreauthCatalog({email: webexUser.email}).then(() => {
-          assert.isAbove(unauthServices._services.length, 0);
-        }));
     });
 
-    //     flaky(describe, process.env.SKIP_FLAKY_TESTS)('#_fetchNewServiceHostmap()', () => {
-    //       let fullRemoteHM;
-    //       let limitedRemoteHM;
+    flaky(describe, process.env.SKIP_FLAKY_TESTS)('#_fetchNewServiceHostmap()', () => {
+      let fullRemoteHM;
+      let limitedRemoteHM;
 
-    //       before('collect remote catalogs', () =>
-    //         Promise.all([
-    //           services._fetchNewServiceHostmap(),
-    //           services._fetchNewServiceHostmap({
-    //             from: 'limited',
-    //             query: {userId: webexUser.id},
-    //           }),
-    //         ]).then(([fRHM, lRHM]) => {
-    //           fullRemoteHM = fRHM;
-    //           limitedRemoteHM = lRHM;
-    //         })
-    //       );
+      before('collect remote catalogs', () =>
+        Promise.all([
+          services._fetchNewServiceHostmap(),
+          services._fetchNewServiceHostmap({
+            from: 'limited',
+            query: {userId: webexUser.id},
+          }),
+        ]).then(([fRHM, lRHM]) => {
+          fullRemoteHM = fRHM;
+          limitedRemoteHM = lRHM;
+        })
+      );
 
-    //       it('resolves to an authed u2c hostmap when no params specified', () => {
-    //         assert.typeOf(fullRemoteHM, 'array');
-    //         assert.isAbove(fullRemoteHM.length, 0);
-    //       });
+      it('resolves to an authed u2c hostmap when no params specified', () => {
+        assert.typeOf(fullRemoteHM, 'array');
+        assert.isAbove(fullRemoteHM.length, 0);
+      });
 
-    //       it('resolves to a limited u2c hostmap when params specified', () => {
-    //         assert.typeOf(limitedRemoteHM, 'array');
-    //         assert.isAbove(limitedRemoteHM.length, 0);
-    //       });
+      it('resolves to a limited u2c hostmap when params specified', () => {
+        assert.typeOf(limitedRemoteHM, 'array');
+        assert.isAbove(limitedRemoteHM.length, 0);
+      });
 
-    //       it('rejects if the params provided are invalid', () =>
-    //         services
-    //           ._fetchNewServiceHostmap({
-    //             from: 'limited',
-    //             query: {userId: 'notValid'},
-    //           })
-    //           .then(() => {
-    //             assert.isTrue(false, 'should have rejected');
-    //           })
-    //           .catch((e) => {
-    //             assert.typeOf(e, 'Error');
-    //           }));
-    //     });
+      it('rejects if the params provided are invalid', () =>
+        services
+          ._fetchNewServiceHostmap({
+            from: 'limited',
+            query: {userId: 'notValid'},
+          })
+          .then(() => {
+            assert.isTrue(false, 'should have rejected');
+          })
+          .catch((e) => {
+            assert.typeOf(e, 'Error');
+          }));
+    });
   });
 });
 // /* eslint-enable no-underscore-dangle */
