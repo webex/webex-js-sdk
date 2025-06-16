@@ -450,8 +450,8 @@ describe('TaskManager', () => {
       },
     };
 
-    const updateTaskDataSpy = jest.spyOn(taskManager.getTask(taskId), 'updateTaskData');
     const task = taskManager.getTask(taskId);
+    const updateTaskDataSpy = jest.spyOn(task, 'updateTaskData');
     const taskEmitSpy = jest.spyOn(task, 'emit');
 
     webSocketManagerMock.emit('message', JSON.stringify(wrapupPayload));
