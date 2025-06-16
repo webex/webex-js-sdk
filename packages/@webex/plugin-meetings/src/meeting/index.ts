@@ -231,10 +231,14 @@ export type AddMediaOptions = {
   remoteMediaManagerConfig?: RemoteMediaManagerConfiguration; // applies only to multistream meetings
   bundlePolicy?: BundlePolicy; // applies only to multistream meetings
   allowMediaInLobby?: boolean; // allows adding media when in the lobby
-  sendVideo?: boolean;
-  receiveVideo?: boolean;
-  sendAudio?: boolean;
-  receiveAudio?: boolean;
+  additionalMediaOptions?: AdditionalMediaOptions; // allows adding additional options like send/receive audio/video
+};
+
+export type AdditionalMediaOptions = {
+  sendVideo?: boolean; // if not specified, default value of videoEnabled is used
+  receiveVideo?: boolean; // if not specified, default value of videoEnabled is used
+  sendAudio?: boolean; // if not specified, default value of audioEnabled true is used
+  receiveAudio?: boolean; // if not specified, default value of audioEnabled true is used
 };
 
 export type CallStateForMetrics = {
@@ -7694,11 +7698,15 @@ export default class Meeting extends StatelessWebexPlugin {
       shareVideoEnabled = true,
       remoteMediaManagerConfig,
       bundlePolicy = 'max-bundle',
+      additionalMediaOptions,
+    } = options;
+
+    const {
       sendVideo: rawSendVideo,
       receiveVideo: rawReceiveVideo,
       sendAudio: rawSendAudio,
       receiveAudio: rawReceiveAudio,
-    } = options;
+    } = additionalMediaOptions;
 
     const sendVideo = videoEnabled && (rawSendVideo ?? true);
     const receiveVideo = videoEnabled && (rawReceiveVideo ?? true);
