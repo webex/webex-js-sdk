@@ -15,4 +15,5 @@ export interface RequestOptions {
 export interface SummarizeMeetingOptions {
   meetingInstanceId: string;
   meetingSite: string;
+  sessionId: string;
 }

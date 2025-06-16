@@ -140,8 +140,6 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.resource the URL to query
    * @param {Mixed} options.params additional params for the body of the request
    * @param {string} options.dataPath the path to get the data in the result object
-   * @param {string} [options.foundPath] the path to get the lookups of the found data
-   * @param {string} [options.notFoundPath] the path to get the lookups of the not found data
    * @returns {Promise<Object>} result Resolves with an object
    * @returns {Array} result.resultArray an array of entities found
    * @returns {Array} result.foundArray an array of the lookups of the found entities (if foundPath provided)
@@ -149,14 +147,13 @@ const AIAssistant = WebexPlugin.extend({
    * @throws {AIAssistantTimeoutError} when server does not respond in the specified timeframe
    */
   _request(options: RequestOptions): Promise<RequestResult> {
-    const {resource, params, dataPath, foundPath, notFoundPath} = options;
+    const {resource, params, dataPath} = options;
 
     const timeout = this.config.requestTimeout;
     const requestId = uuid.v4();
     const eventName = this._getResultEventName(requestId);
     const result = {};
     let expectedSeqNums: string[];
-    let notFoundArray: unknown[];
 
     return new Promise((resolve, reject) => {
       const timer = new Timer(() => {
@@ -167,18 +164,11 @@ const AIAssistant = WebexPlugin.extend({
       this.listenTo(this, eventName, (data) => {
         timer.reset();
         const resultData = get(data, dataPath, []);
-        let found;
 
-        if (foundPath) {
-          found = get(data, foundPath, []);
-        }
-        result[data.sequence] = foundPath ? {resultData, found} : {resultData};
+        result[data.sequence] = {resultData};
 
         if (data.finished) {
           expectedSeqNums = range(data.sequence + 1).map(String);
-          if (notFoundPath) {
-            notFoundArray = get(data, notFoundPath, []);
-          }
         }
 
         const done = isEqual(expectedSeqNums, Object.keys(result));
@@ -187,28 +177,18 @@ const AIAssistant = WebexPlugin.extend({
           timer.cancel();
 
           const resultArray: any[] = [];
-          const foundArray: any[] = [];
 
           expectedSeqNums.forEach((index) => {
             const seqResult = result[index];
 
             if (seqResult) {
               resultArray.push(...seqResult.resultData);
-              if (foundPath) {
-                foundArray.push(...seqResult.found);
-              }
             }
           });
           const resolveValue: RequestResult = {
             resultArray,
           };
 
-          if (foundPath) {
-            resolveValue.foundArray = foundArray;
-          }
-          if (notFoundPath) {
-            resolveValue.notFoundArray = notFoundArray;
-          }
           resolve(resolveValue);
           this.stopListening(this, eventName);
         }
@@ -227,29 +207,34 @@ const AIAssistant = WebexPlugin.extend({
   /**
    * Returns the summary of a meeting
    * @param {Object} options
-   * @param {string} options.meetingInstanceId the URL to query
-   * @param {string} options.meetingSite the URL to query
+   * @param {string} options.meetingInstanceId the meeting instance ID for the meeting from locus
+   * @param {string} options.meetingSite the name.webex.com site for the meeting
+   * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @returns {Promise<RequestResult>} Resolves with an object
    */
   summarizeMeeting(options: SummarizeMeetingOptions): Promise<RequestResult> {
     return this._request({
-      async: 'chunked',
-      locale: 'en_US',
-      content: {
-        context: {
-          resources: [
-            {
-              id: options.meetingInstanceId,
-              type: 'meeting',
-              url: options.meetingSite,
-            },
-          ],
+      resource: options.sessionId ? `sessions/${options.sessionId}/messages` : 'sessions/messages',
+      dataPath: 'response.content',
+      params: {
+        async: 'chunked',
+        locale: 'en_US',
+        content: {
+          context: {
+            resources: [
+              {
+                id: options.meetingInstanceId,
+                type: 'meeting',
+                url: options.meetingSite,
+              },
+            ],
+          },
+          parameters: {
+            lastMinutes: 15,
+          },
+          type: 'action',
+          value: 'SUMMARIZE_FOR_ME',
         },
-        parameters: {
-          lastMinutes: 15,
-        },
-        type: 'action',
-        value: 'SUMMARIZE_FOR_ME',
       },
     });
   },
