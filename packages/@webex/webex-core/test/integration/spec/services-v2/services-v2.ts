@@ -15,8 +15,6 @@ import WebexCore, {
   ServiceInterceptor,
   ServerErrorInterceptor,
   ServicesV2,
-  ServiceInterceptorV2,
-  ServerErrorInterceptorV2,
 } from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
@@ -59,8 +57,8 @@ describe('webex-core', () => {
     beforeEach(() => {
       registerInternalPlugin('services', ServicesV2, {
         interceptors: {
-          ServiceInterceptor: ServiceInterceptorV2.create,
-          ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+          ServiceInterceptor: ServiceInterceptor.create,
+          ServerErrorInterceptor: ServerErrorInterceptor.create,
         },
         replace: true,
       });
