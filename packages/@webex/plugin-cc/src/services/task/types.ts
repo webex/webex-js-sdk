@@ -1004,7 +1004,7 @@ export interface ITask extends EventEmitter {
    * This method stops the auto-wrapup process if it is currently active
    * @returns void
    */
-  cancelAutoWrapUpTimer(): void;
+  cancelAutoWrapupTimer(): void;
 
   /**
    * Deregisters all web call event listeners

@@ -253,7 +253,7 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
-            task.cancelAutoWrapUpTimer();
+            task.cancelAutoWrapupTimer();
             this.removeTaskFromCollection(task);
             task.emit(TASK_EVENTS.TASK_WRAPPEDUP, task);
             break;
