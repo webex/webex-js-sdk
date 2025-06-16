@@ -12,6 +12,7 @@ import MeetingUtil from '../meeting/util';
 import {IP_VERSION, REACHABILITY} from '../constants';
 
 import ReachabilityRequest, {ClusterList} from './request';
+import {isDomainName} from './util';
 import {
   ClusterReachabilityResult,
   TransportResult,
@@ -160,7 +161,7 @@ export default class Reachability extends EventsScope {
 
     const matchingReachedClusters = Object.values(this.clusterReachability).reduce(
       (acc, cluster) => {
-        const reachedSubnetsArray = Array.from(cluster.reachedSubnets);
+        const reachedSubnetsArray = Array.from(cluster.reachedSubnets.values());
 
         let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
         for (let i = 0; i < reachedSubnetsArray.length; i += 1) {
@@ -171,7 +172,7 @@ export default class Reachability extends EventsScope {
             acc.add(cluster.name);
           }
 
-          logMessage += `${subnet}`;
+          logMessage += `${JSON.stringify(subnet)}`;
           if (i < reachedSubnetsArray.length - 1) {
             logMessage += ',';
           }
@@ -462,8 +463,8 @@ export default class Reachability extends EventsScope {
 
       results = mapValues(allClusterResults, (clusterResult, clusterKey) => {
         const clusterReachability = this.clusterReachability[clusterKey];
-        const details = clusterReachability
-          ? Array.from(clusterReachability.reachedSubnets || [])
+        const subnets = clusterReachability
+          ? Array.from(clusterReachability.reachedSubnets.values())
           : [];
 
         return {
@@ -471,22 +472,61 @@ export default class Reachability extends EventsScope {
             ...this.mapTransportResultToBackendDataFormat(
               clusterResult.udp || {result: 'untested'}
             ),
-            details: details.filter((subnet) => subnet.protocol === 'udp'),
+            details: subnets
+              .filter((subnet) => subnet.protocol === 'udp')
+              .map((subnet) => ({
+                ...subnet,
+                protocol: 'udp' as const, // Ensure the protocol is correctly typed
+              })),
+            domainNames: [], // Add domain names for UDP if needed
           },
           tcp: {
             ...this.mapTransportResultToBackendDataFormat(
               clusterResult.tcp || {result: 'untested'}
             ),
-            details: details.filter((subnet) => subnet.protocol === 'tcp'),
+            details: subnets
+              .filter((subnet) => subnet.protocol === 'tcp')
+              .map((subnet) => ({
+                ...subnet,
+                protocol: 'tcp' as const, // Ensure the protocol is correctly typed
+              })),
+            domainNames: [], // Add domain names for TCP if needed
           },
           xtls: {
             ...this.mapTransportResultToBackendDataFormat(
               clusterResult.xtls || {result: 'untested'}
             ),
-            details: details.filter((subnet) => subnet.protocol === 'xtls'),
+            details: subnets
+              .filter((subnet) => subnet.protocol === 'xtls')
+              .map((subnet) => ({
+                ...subnet,
+                protocol: 'xtls' as const, // Ensure the protocol is correctly typed
+              })),
+            domainNames: subnets
+              .filter((subnet) => subnet.protocol === 'xtls' && isDomainName(subnet.serverIps))
+              .map((subnet) => ({
+                serverIps: subnet.serverIps,
+                port: subnet.port,
+                protocol: 'xtls' as const, // Ensure the protocol is correctly typed
+                reachable: subnet.reachable,
+                'answered-tx': subnet['answered-tx'],
+                'lost-tx': subnet['lost-tx'],
+                latencies: subnet.latencies,
+              })),
           },
         };
       });
+
+      // Clean up domain names and details before returning
+      results = this.cleanUpDomainNames(results);
+
+      // Update the cleaned-up results in local storage
+      // @ts-ignore
+      await this.webex.boundedStorage.put(
+        REACHABILITY.namespace,
+        REACHABILITY.localStorageResult,
+        JSON.stringify(results)
+      );
     } catch (e) {
       // empty storage, that's ok
       LoggerProxy.logger.warn(
@@ -496,6 +536,69 @@ export default class Reachability extends EventsScope {
     }
 
     return results;
+  }
+
+  /**
+   * Cleaning up the details array by removing domain names and ensuring they are only in the domainNames array.
+   * Also updates the minLatency for each protocol based on the cleaned-up details.
+   * @param {ReachabilityResultsForBackend} allResults - The reachability results for all clusters.
+   * @returns {ReachabilityResultsForBackend} The updated results with segregated domain names, IPs, and minLatency.
+   */
+  private cleanUpDomainNames(
+    allResults: ReachabilityResultsForBackend
+  ): ReachabilityResultsForBackend {
+    // Iterate over each cluster in the results
+    Object.keys(allResults).forEach((clusterKey) => {
+      const clusterResult = allResults[clusterKey];
+
+      // Process each protocol (udp, tcp, xtls) for the current cluster
+      ['udp', 'tcp', 'xtls'].forEach((protocol) => {
+        const protocolResult = clusterResult[protocol];
+
+        if (protocolResult && protocolResult.details) {
+          // Filter out domain names from the details array
+          const filteredDetails = protocolResult.details.filter(
+            (subnet) => !isDomainName(subnet.serverIps)
+          );
+
+          // Extract domain names from the details array
+          const domainNamesFromDetails = protocolResult.details.filter((subnet) =>
+            isDomainName(subnet.serverIps)
+          );
+
+          // Ensure domain names are unique in the domainNames array
+          const uniqueDomainNames = [
+            ...(protocolResult.domainNames || []),
+            ...domainNamesFromDetails,
+          ].filter(
+            (domain, index, self) =>
+              index ===
+              self.findIndex((d) => d.serverIps === domain.serverIps && d.port === domain.port)
+          );
+
+          // Update the protocol result with segregated details and domainNames
+          protocolResult.details = filteredDetails;
+          protocolResult.domainNames = uniqueDomainNames;
+
+          // Update minLatency based on the cleaned-up details
+          if (filteredDetails.length > 0) {
+            const latencies = filteredDetails
+              .map((subnet) => Math.min(...(subnet.latencies || [])))
+              .filter((latency) => !Number.isNaN(latency)); // Use Number.isNaN instead of isNaN
+
+            if (latencies.length > 0) {
+              protocolResult.minLatency = Math.min(...latencies);
+            } else {
+              protocolResult.minLatency = undefined; // No valid latencies
+            }
+          } else {
+            protocolResult.minLatency = undefined; // No details to calculate minLatency
+          }
+        }
+      });
+    });
+
+    return allResults;
   }
 
   /**
@@ -844,11 +947,47 @@ export default class Reachability extends EventsScope {
    * @returns {Promise<void>}
    */
   private async storeResults(results: ReachabilityResults) {
+    const resultsWithDetails = mapValues(results, (clusterResult, clusterKey) => {
+      const clusterReachability = this.clusterReachability[clusterKey];
+      const subnets = clusterReachability
+        ? Array.from(clusterReachability.reachedSubnets.values())
+        : [];
+
+      return {
+        ...clusterResult,
+        udp: {
+          ...clusterResult.udp,
+          details: subnets.filter((subnet) => subnet.protocol === 'udp'),
+          domainNames: [], // Can add domain names for UDP if needed
+        },
+        tcp: {
+          ...clusterResult.tcp,
+          details: subnets.filter((subnet) => subnet.protocol === 'tcp'),
+          domainNames: [], // Can add domain names for TCP if needed
+        },
+        xtls: {
+          ...clusterResult.xtls,
+          details: subnets.filter((subnet) => subnet.protocol === 'xtls'),
+          domainNames: subnets
+            .filter((subnet) => subnet.protocol === 'xtls' && subnet.serverIps.includes('.public.'))
+            .map((subnet) => ({
+              serverIps: subnet.serverIps,
+              port: subnet.port,
+              protocol: subnet.protocol,
+              reachable: subnet.reachable,
+              'answered-tx': subnet['answered-tx'],
+              'lost-tx': subnet['lost-tx'],
+              latencies: subnet.latencies,
+            })),
+        },
+      };
+    });
+
     // @ts-ignore
     await this.webex.boundedStorage.put(
       this.namespace,
       REACHABILITY.localStorageResult,
-      JSON.stringify(results)
+      JSON.stringify(resultsWithDetails)
     );
   }
 

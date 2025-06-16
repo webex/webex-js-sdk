@@ -2,7 +2,7 @@ import {Defer} from '@webex/common';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {ClusterNode} from './request';
-import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
+import {convertStunUrlToTurn, convertStunUrlToTurnTls, isDomainName} from './util';
 import EventsScope from '../common/events/events-scope';
 
 import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
@@ -51,15 +51,18 @@ export class ClusterReachability extends EventsScope {
   public readonly name;
 
   public clusterInfo: ClusterNode;
-  public reachedSubnets: Set<{
-    serverIps: string;
-    port: number;
-    protocol?: string;
-    reachable?: string;
-    'answered-tx'?: number;
-    'lost-tx'?: number;
-    latencies: number[];
-  }> = new Set();
+  public reachedSubnets: Map<
+    string,
+    {
+      serverIps: string;
+      port: number;
+      protocol?: string;
+      reachable?: boolean;
+      'answered-tx'?: number;
+      'lost-tx'?: number;
+      latencies: number[];
+    }
+  > = new Map();
 
   /**
    * Constructor for ClusterReachability
@@ -81,15 +84,27 @@ export class ClusterReachability extends EventsScope {
     this.result = {
       udp: {
         result: 'untested',
+        latencyInMilliseconds: undefined,
+        clientMediaIPs: [],
         minLatency: undefined,
+        domainNames: [], // Initialize domainNames as an empty array
+        details: [], // Initialize details as an empty array
       },
       tcp: {
         result: 'untested',
+        latencyInMilliseconds: undefined,
+        clientMediaIPs: [],
         minLatency: undefined,
+        domainNames: [], // Initialize domainNames as an empty array
+        details: [], // Initialize details as an empty array
       },
       xtls: {
         result: 'untested',
+        latencyInMilliseconds: undefined,
+        clientMediaIPs: [],
         minLatency: undefined,
+        domainNames: [], // Initialize domainNames as an empty array
+        details: [], // Initialize details as an empty array
       },
     };
   }
@@ -180,7 +195,6 @@ export class ClusterReachability extends EventsScope {
       this.pc.onicegatheringstatechange = null;
       this.pc.close();
     }
-    // this.pc = null;
   }
 
   /**
@@ -306,31 +320,34 @@ export class ClusterReachability extends EventsScope {
     }
 
     if (serverIp && port) {
-      const subnetIndex = Array.from(this.reachedSubnets).findIndex(
-        (subnet) =>
-          subnet.serverIps === serverIp && subnet.protocol === protocol && subnet.port === port
-      );
+      const subnetKey = `${serverIp}:${port}:${protocol}`;
+      const subnet = this.reachedSubnets.get(subnetKey);
 
-      if (subnetIndex !== -1) {
-        const subnet = Array.from(this.reachedSubnets)[subnetIndex];
-        subnet.reachable = 'true';
-        subnet['answered-tx'] = (subnet['answered-tx'] || 0) + 1;
-        subnet['lost-tx'] = subnet['lost-tx'] || 0;
+      if (subnet) {
+        subnet.reachable = true;
+        subnet['answered-tx'] = 1;
+        subnet['lost-tx'] = 0;
         subnet.latencies.push(latency);
 
-        // Replacing domain name with resolved IP for XTLS
-        if (protocol === 'xtls' && subnet.serverIps.includes('.public.')) {
+        // Avoid overwriting domain names with resolved IPs
+        if (protocol === 'xtls' && subnet.serverIps.includes('.public.') && serverIp) {
+          LoggerProxy.logger.log(
+            `Reachability:index#saveResult --> Replacing domain name ${subnet.serverIps} with resolved IP ${serverIp}`
+          );
           subnet.serverIps = serverIp;
         }
-
-        // Updating the minLatency for each protocol
-        this.updateMinLatency(protocol);
       } else {
-        this.reachedSubnets.add({
+        // Add a new subnet to the map
+        const isDomain = isDomainName(serverIp || '');
+        LoggerProxy.logger.log(
+          `Reachability:index#saveResult --> Adding new subnet: serverIp=${serverIp}, isDomain=${isDomain}`
+        );
+
+        this.reachedSubnets.set(subnetKey, {
           serverIps: serverIp,
           port,
           protocol,
-          reachable: 'false', // Retain domain name for failures
+          reachable: false, // Retain domain name for failures
           'answered-tx': 0,
           'lost-tx': 1,
           latencies: [],
@@ -432,6 +449,11 @@ export class ClusterReachability extends EventsScope {
    *
    * @returns {Promise}
    */
+  /**
+   * Starts the process of doing UDP, TCP, and XTLS reachability checks on the media cluster.
+   *
+   * @returns {Promise<ClusterReachabilityResult>} The reachability result for this cluster.
+   */
   async start(): Promise<ClusterReachabilityResult> {
     if (!this.pc) {
       LoggerProxy.logger.warn(
@@ -441,65 +463,39 @@ export class ClusterReachability extends EventsScope {
       return this.result;
     }
 
-    // Prepopulating reachedSubnets with all subnets from the cluster configuration
-    const udpSubnets = this.clusterInfo.udp
-      .map((url) => {
-        const match = url.match(/stun:([\d.]+):(\d+)/);
-        if (match) {
-          return {
-            serverIps: match[1],
-            port: Number(match[2]),
-            protocol: 'udp',
-            reachable: 'false', // Initially mark as not reachable
-            'answered-tx': 0,
-            'lost-tx': 1,
-            latencies: [],
-          };
-        }
+    // Prepopulate reachedSubnets with all subnets (both domain names and IPs)
+    const protocols: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
 
-        return null;
-      })
-      .filter(Boolean);
+    protocols.forEach((protocol) => {
+      const subnets = this.clusterInfo[protocol]
+        .map((url) => {
+          const match = url.match(/stun:([\w-.]+):(\d+)/); // Match domain name or IP and port
+          if (match) {
+            return {
+              serverIps: match[1],
+              port: Number(match[2]),
+              protocol,
+              reachable: false,
+              'answered-tx': 0,
+              'lost-tx': 1,
+              latencies: [],
+            };
+          }
 
-    const tcpSubnets = this.clusterInfo.tcp
-      .map((url) => {
-        const match = url.match(/stun:([\d.]+):(\d+)/);
-        if (match) {
-          return {
-            serverIps: match[1],
-            port: Number(match[2]),
-            protocol: 'tcp',
-            reachable: 'false', // Initially mark as not reachable
-            'answered-tx': 0,
-            'lost-tx': 1,
-            latencies: [],
-          };
-        }
+          return null;
+        })
+        .filter(Boolean);
 
-        return null;
-      })
-      .filter(Boolean);
+      subnets.forEach((subnet) => {
+        const subnetKey = `${subnet.serverIps}:${subnet.port}:${subnet.protocol}`;
+        this.reachedSubnets.set(subnetKey, subnet);
+      });
+    });
 
-    const xtlsSubnets = this.clusterInfo.xtls
-      .map((url) => {
-        const match = url.match(/stun:([\w-.]+):(\d+)/); // Match domain name and port
-        if (match) {
-          return {
-            serverIps: match[1], // Store the domain name
-            port: Number(match[2]),
-            protocol: 'xtls',
-            reachable: 'false', // Initially mark as not reachable
-            'answered-tx': 0,
-            'lost-tx': 1,
-            latencies: [],
-          };
-        }
-
-        return null;
-      })
-      .filter(Boolean);
-
-    this.reachedSubnets = new Set([...udpSubnets, ...tcpSubnets, ...xtlsSubnets]);
+    LoggerProxy.logger.log(
+      `Reachability:ClusterReachability#start --> Prepopulated subnets: `,
+      Array.from(this.reachedSubnets.values())
+    );
 
     try {
       const offer = await this.pc.createOffer({offerToReceiveAudio: true});
@@ -509,8 +505,7 @@ export class ClusterReachability extends EventsScope {
       // Set up the state change listeners before triggering the ICE gathering
       const gatherIceCandidatePromise = this.gatherIceCandidates();
 
-      // not awaiting the next call on purpose, because we're not sending the offer anywhere and there won't be any answer
-      // we just need to make this call to trigger the ICE gathering process
+      // Trigger the ICE gathering process
       this.pc.setLocalDescription(offer);
 
       await gatherIceCandidatePromise;
@@ -531,16 +526,5 @@ export class ClusterReachability extends EventsScope {
     this.registerIceCandidateListener();
 
     return this.defer.promise;
-  }
-
-  private updateMinLatency(protocol: 'udp' | 'tcp' | 'xtls') {
-    if (this.reachedSubnets) {
-      const latencies = Array.from(this.reachedSubnets)
-        .filter((subnet) => subnet.protocol === protocol && subnet.latencies.length > 0)
-        .flatMap((subnet) => subnet.latencies);
-      if (latencies.length > 0) {
-        this.result[protocol].minLatency = Math.min(...latencies);
-      }
-    }
   }
 }

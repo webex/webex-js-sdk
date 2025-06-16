@@ -43,3 +43,14 @@ export function convertStunUrlToTurnTls(stunUrl: string) {
 
   return url.toString();
 }
+
+/**
+ * Checks if the given server IP is a domain name.
+ *
+ * @param {string} serverIps - The server IP or domain name to check.
+ * @returns {boolean} true if the server IP is a domain name, false otherwise.
+ */
+export function isDomainName(serverIps: string): boolean {
+  // A domain name contains letters, dots, or hyphens and is not purely numeric
+  return /^[\w-.]+$/.test(serverIps) && !Number.isNaN(Number(serverIps.replace(/\./g, '')));
+}
