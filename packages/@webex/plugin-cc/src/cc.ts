@@ -388,8 +388,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.REGISTER,
       });
 
-      this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
-
       return resp;
     } catch (error) {
       this.metricsManager.trackEvent(
@@ -614,6 +612,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             module: CC_FILE,
             method: METHODS.CONNECT_WEBSOCKET,
           });
+          this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
 
           if (
             this.agentConfig.webRtcEnabled &&

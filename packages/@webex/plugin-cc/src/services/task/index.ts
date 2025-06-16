@@ -156,14 +156,14 @@ export default class Task extends EventEmitter implements ITask {
     this.wrapupProps = wrapupProps;
     this.metricsManager = MetricsManager.getInstance();
     this.registerWebCallListeners();
-    this.setupAutoWrapUpTimer();
+    this.setupAutoWrapupTimer();
   }
 
   /**
    * Sets up the automatic wrap-up timer if wrap-up is required
    * @private
    */
-  private setupAutoWrapUpTimer() {
+  private setupAutoWrapupTimer() {
     if (this.data && this.data.wrapUpRequired && !this.autoWrapup) {
       const wrapUpProps = this.wrapupProps.wrapUpProps;
       if (wrapUpProps?.autoWrapup === false) {
@@ -205,7 +205,7 @@ export default class Task extends EventEmitter implements ITask {
    * Cancels the automatic wrap-up timer if it's running
    * @public - Public so it can be called externally when needed
    */
-  public cancelAutoWrapUpTimer() {
+  public cancelAutoWrapupTimer() {
     this.autoWrapup?.clear();
     this.autoWrapup = undefined;
     LoggerProxy.info(`Auto wrap-up timer cancelled`, {
@@ -251,7 +251,7 @@ export default class Task extends EventEmitter implements ITask {
    */
   public updateTaskData = (updatedData: TaskData, shouldOverwrite = false) => {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
-    this.setupAutoWrapUpTimer();
+    this.setupAutoWrapupTimer();
 
     return this;
   };
