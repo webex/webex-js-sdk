@@ -46,6 +46,7 @@ describe('webex-core', () => {
         sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
       });
 
+
       describe('#onResponseError()', () => {
         describe('when the server responds with 401', () => {
           browserOnly(it)('refreshes the access token and replays the request', () => {
@@ -85,8 +86,8 @@ describe('webex-core', () => {
               assert.equal(webex.request.args[0][0].replayCount, 1);
             });
           });
-        });
       });
     });
   });
+});
 });

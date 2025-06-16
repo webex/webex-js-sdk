@@ -76,6 +76,7 @@ describe('webex-core', () => {
           });
         });
 
+
         browserOnly(it)('revokes the previous token when set', () => {
           const token = makeToken();
 

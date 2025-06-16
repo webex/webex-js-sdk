@@ -114,14 +114,11 @@ describe('webex-core', () => {
         const webex = new WebexCore({
           credentials: user.token,
         });
-        await webex.credentials
-          .refresh()
-          .then(() => {
-            assert(false, 'resolved, should have thrown');
-          })
-          .catch((err) => {
-            assert(false);
-          });
+        await webex.credentials.refresh().then(() => {
+          assert(false, 'resolved, should have thrown');
+        }).catch((err) => {
+          assert(false);
+        });
       });
 
       browserOnly(it)('refreshes with a refresh callback', () => {
