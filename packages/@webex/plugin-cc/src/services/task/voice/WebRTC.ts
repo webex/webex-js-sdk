@@ -32,16 +32,28 @@ export default class WebRTC extends Voice implements IWebRTC {
     this.emit(TASK_EVENTS.TASK_MEDIA, track);
   };
 
+  protected initialiseUIControls() {
+    super.initialiseUIControls();
+    this.applyControls(['accept', 'decline'], true, true);
+  }
+
   /**
    * This method is used to set the UI controls for the specific type of task
    */
   protected setUIControls(): void {
     // TODO: This implementation will change based on the type of task. We need to modify it appropriately, we can even read from task data rather than listening to events
     switch (this.data.type) {
-      case CC_EVENTS.AGENT_CONTACT_RESERVED:
-        this.taskUiControls.accept.setEnabled(true);
+      case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
+        super.setUIControls();
+        this.applyControls(['mute'], true, true);
         break;
+
       default:
+        // delegate to base, then hide mute when wrapup is active
+        super.setUIControls();
+        if (this.taskUiControls.wrapup.visible) {
+          this.applyControls(['mute'], false, false);
+        }
         break;
     }
   }

@@ -1,7 +1,8 @@
 import 'jsdom-global/register';
-import { LocalMicrophoneStream } from '@webex/calling';
+import { LocalMicrophoneStream, CALL_EVENT_KEYS } from '@webex/calling';
 import WebRTC from '../../../../../../src/services/task/voice/WebRTC';
-import { TaskData } from '../../../../../../src/services/task/types';
+import { TaskData, TASK_EVENTS } from '../../../../../../src/services/task/types';
+import { CC_EVENTS } from '../../../../../../src/services/config/types';
 
 jest.mock('@webex/calling', () => ({
   LocalMicrophoneStream: class {
@@ -28,7 +29,7 @@ jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
 
 describe('WebRTC Task', () => {
   const dummyContact = {} as any;
-  const data = { interactionId: 'int1', type: 'dummyType' } as unknown as TaskData;
+  const data = { interactionId: 'int1', type: 'dummyType', interaction: {state: 'connected'} } as TaskData;
   const webCallingService = {
     on: jest.fn(),
     off: jest.fn(),
@@ -72,5 +73,54 @@ describe('WebRTC Task', () => {
     (webRtc as any).localAudioStream = dummyStream;
     await webRtc.toggleMute();
     expect(webCallingService.muteUnmuteCall).toHaveBeenCalledWith(dummyStream);
+  });
+
+  describe('WebRTC internal methods', () => {
+    it('registerWebCallListeners binds remote media event', () => {
+      (webRtc as any).registerWebCallListeners();
+      expect(webCallingService.on).toHaveBeenCalledWith(
+        CALL_EVENT_KEYS.REMOTE_MEDIA,
+        (webRtc as any).handleRemoteMedia
+      );
+    });
+
+    it('handleRemoteMedia emits TASK_MEDIA event', () => {
+      const fakeTrack = {} as any;
+      jest.spyOn(webRtc, 'emit');
+      (webRtc as any).handleRemoteMedia(fakeTrack);
+      expect(webRtc.emit).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_MEDIA,
+        fakeTrack
+      );
+    });
+  });
+
+  describe('UI controls', () => {
+    let webRtc: WebRTC;
+    beforeEach(() => {
+      webRtc = new WebRTC(dummyContact, webCallingService as any, data, {
+        isEndCallEnabled: true,
+        isEndConsultEnabled: true,
+      });
+    });
+
+    it('initialiseUIControls sets accept and decline visible', () => {
+      expect(webRtc.taskUiControls.accept.visible).toBe(true);
+      expect(webRtc.taskUiControls.decline.visible).toBe(true);
+    });
+
+    it('setUIControls for AGENT_CONTACT_ASSIGNED shows mute', () => {
+      const assignedData = { ...data, type: CC_EVENTS.AGENT_CONTACT_ASSIGNED } as any;
+      webRtc.updateTaskData(assignedData);
+      expect(webRtc.taskUiControls.mute.visible).toBe(true);
+      expect(webRtc.taskUiControls.mute.enabled).toBe(true);
+    });
+
+    it('default setUIControls hides mute when wrapup visible', () => {
+      const endedData = { ...data, type: CC_EVENTS.CONTACT_ENDED } as any;
+      webRtc.updateTaskData(endedData);
+      expect(webRtc.taskUiControls.wrapup.visible).toBe(true);
+      expect(webRtc.taskUiControls.mute.visible).toBe(false);
+    });
   });
 });

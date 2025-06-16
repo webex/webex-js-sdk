@@ -715,7 +715,7 @@ function setUIControls(task) {
     const c = ctrls[key];
     if (!c || !el) return;
     el.style.display = c.visible ? 'inline-block' : 'none';
-    el.disabled      = !c.enabled;
+    el.disabled = !c.enabled;
   });
 
   // wrapup‐codes dropdown mirrors wrapup control
@@ -1277,10 +1277,9 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 
   registerTaskListeners(currentTask);
 
-  if (currentTask.data.interaction.mediaType === 'telephony' && webex.cc.taskManager.webCallingService.loginOption !== 'BROWSER') {
+  if (currentTask.data.interaction.mediaType === 'telephony') {
     setUIControls(currentTask);
-  }
-  else {
+  } else {
     enableAnswerDeclineButtons(currentTask);
   }
 
