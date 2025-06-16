@@ -451,10 +451,13 @@ describe('TaskManager', () => {
     };
 
     const updateTaskDataSpy = jest.spyOn(taskManager.getTask(taskId), 'updateTaskData');
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
 
     webSocketManagerMock.emit('message', JSON.stringify(wrapupPayload));
 
     expect(updateTaskDataSpy).toHaveBeenCalledWith(wrapupPayload.data);
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END, task);
   });
 
   it('should emit TASK_HOLD event on AGENT_CONTACT_HELD event', () => {
