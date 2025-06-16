@@ -1,3 +1,4 @@
+import ExtendedError from 'Errors/catalog/ExtendedError';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
@@ -17,19 +18,25 @@ import {
   SUCCESS_MESSAGE,
   XML_TYPE,
   WEBEX_CALLING_CONNECTOR_FILE,
+  METHOD_START_MESSAGE,
 } from '../common/constants';
 import {
-  CALL_SETTINGS_FILE,
   CALL_WAITING_ENDPOINT,
   CF_ENDPOINT,
   DND_ENDPOINT,
+  METHODS,
   ORG_ENDPOINT,
   PEOPLE_ENDPOINT,
   USER_ENDPOINT,
   VM_ENDPOINT,
   XSI_VERSION,
 } from './constants';
-import {getXsiActionEndpoint, inferIdFromUuid, serviceErrorCodeHandler} from '../common/Utils';
+import {
+  getXsiActionEndpoint,
+  inferIdFromUuid,
+  serviceErrorCodeHandler,
+  uploadLogs,
+} from '../common/Utils';
 
 /**
  * This Connector class will implement child interface of ICallSettings and
@@ -74,9 +81,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getCallWaitingSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
-      method: 'getCallWaitingSetting',
+      file: WEBEX_CALLING_CONNECTOR_FILE,
+      method: METHODS.GET_CALL_WAITING_SETTING,
     };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       if (!this.xsiEndpoint) {
@@ -118,8 +127,16 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(`Successfully got Call Waiting settings, personId: ${this.personId}`, loggerContext);
+
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to get call waiting setting: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogs();
+
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
@@ -134,9 +151,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getDoNotDisturbSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
-      method: 'getDoNotDisturbSetting',
+      file: WEBEX_CALLING_CONNECTOR_FILE,
+      method: METHODS.GET_DO_NOT_DISTURB_SETTING,
     };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -152,8 +171,19 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(
+        `Successfully got Do Not Disturb settings, personId: ${this.personId}`,
+        loggerContext
+      );
+
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to get DoNotDisturb setting: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogs();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -166,9 +196,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async setDoNotDisturbSetting(enabled: boolean): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
-      method: 'setDoNotDisturbSetting',
+      file: WEBEX_CALLING_CONNECTOR_FILE,
+      method: METHODS.SET_DO_NOT_DISTURB_SETTING,
     };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const dndRequestBody: ToggleSetting = {
@@ -190,8 +222,19 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(
+        `Successfully set Do Not Disturb settings, personId: ${this.personId}`,
+        loggerContext
+      );
+
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to set DoNotDisturb setting: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogs();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -204,9 +247,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getCallForwardSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
-      method: 'getCallForwardingSetting',
+      file: WEBEX_CALLING_CONNECTOR_FILE,
+      method: METHODS.GET_CALL_FORWARD_SETTING,
     };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -222,8 +267,16 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(`Successfully got Call Forward settings, personId: ${this.personId}`, loggerContext);
+
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to get Call Forward setting: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogs();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -238,9 +291,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
     callForwardingRequest: CallForwardSetting
   ): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
-      method: 'setCallForwardingSetting',
+      file: WEBEX_CALLING_CONNECTOR_FILE,
+      method: METHODS.SET_CALL_FORWARD_SETTING,
     };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -257,8 +312,16 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(`Successfully set Call Forward settings, personId: ${this.personId}`, loggerContext);
+
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to set Call Forward setting: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogs();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -271,9 +334,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
    */
   public async getVoicemailSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
-      method: 'getVoicemailSetting',
+      file: WEBEX_CALLING_CONNECTOR_FILE,
+      method: METHODS.GET_VOICEMAIL_SETTING,
     };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -289,8 +354,14 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(`Successfully got Voicemail settings, personId: ${this.personId}`, loggerContext);
+
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(`Failed to get Voicemail setting: ${err}`) as ExtendedError;
+      log.error(extendedError, loggerContext);
+      await uploadLogs();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -305,9 +376,11 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
     voicemailRequest: VoicemailSetting
   ): Promise<CallSettingResponse> {
     const loggerContext = {
-      file: CALL_SETTINGS_FILE,
-      method: 'setVoicemailSetting',
+      file: WEBEX_CALLING_CONNECTOR_FILE,
+      method: METHODS.SET_VOICEMAIL_SETTING,
     };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     try {
       const resp = <WebexRequestPayload>await this.webex.request({
@@ -324,8 +397,15 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(`Successfully set Voicemail settings, personId: ${this.personId}`, loggerContext);
+
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(`Failed to set Voicemail setting: ${err}`) as ExtendedError;
+
+      log.error(extendedError, loggerContext);
+      await uploadLogs();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -341,8 +421,10 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
   public async getCallForwardAlwaysSetting(): Promise<CallSettingResponse> {
     const loggerContext = {
       file: WEBEX_CALLING_CONNECTOR_FILE,
-      method: this.getCallForwardAlwaysSetting.name,
+      method: METHODS.GET_CALL_FORWARD_ALWAYS_SETTING,
     };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
     const cfResponse = await this.getCallForwardSetting();
 
     if (cfResponse.statusCode === 200) {

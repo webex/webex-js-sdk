@@ -201,8 +201,9 @@ describe('Line Tests', () => {
         expect.anything(),
         {
           file: REGISTRATION_FILE,
-          method: 'attemptRegistrationWithServers',
+          method: 'triggerRegistration',
         },
+        expect.anything(),
         expect.anything()
       );
     });
