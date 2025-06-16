@@ -766,7 +766,7 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {
     try {
-      this.cancelAutoWrapUpTimer();
+      this.cancelAutoWrapupTimer();
       LoggerProxy.info(`Wrapping up task`, {
         module: TASK_FILE,
         method: METHODS.WRAPUP,
