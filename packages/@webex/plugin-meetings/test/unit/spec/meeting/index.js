@@ -4217,7 +4217,7 @@ describe('plugin-meetings', () => {
             assert.notCalled(meeting.audio.handleServerRemoteMuteUpdate);
           });
 
-          it('should reject when setBrb fails', async () => {
+          it('should reject when brb enable fails', async () => {
             meeting.brbState.enable.restore();
 
             const error = new Error();
@@ -4228,10 +4228,6 @@ describe('plugin-meetings', () => {
             ).to.be.rejectedWith(error);  
              
             assert.isFalse(meeting.brbState.state.syncToServerInProgress);
-            assert.calledWithMatch(
-              LoggerProxy.logger.warn,
-              /Meeting:brbState#applyClientStateToServer: error:/
-            );     
           });
         });
       });

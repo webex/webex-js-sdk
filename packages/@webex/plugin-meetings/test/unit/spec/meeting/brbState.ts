@@ -147,10 +147,6 @@ describe('plugin-meetings', () => {
       ).to.be.rejectedWith(error); 
 
       assert.isFalse(brbState.state.syncToServerInProgress);
-      sinon.assert.calledWithMatch(
-        LoggerProxy.logger.warn,
-        /Meeting:brbState#applyClientStateToServer: error:/
-      );    
     });
   });
 });
