@@ -49,6 +49,23 @@ import {filterMobiusUris} from '../common/Utils';
 import {URL} from './registration/registerFixtures';
 import {ICall} from './calling/types';
 import {ServiceHost} from '../SDKConnector/types';
+import {METHOD_START_MESSAGE} from '../common/constants';
+
+global.crypto = {
+  randomUUID: () => '12345678-1234-5678-1234-567812345678',
+} as unknown as Crypto;
+
+jest.mock('../common/Utils', () => {
+  const originalModule = jest.requireActual('../common/Utils');
+
+  return {
+    ...originalModule,
+    uploadLogs: jest.fn().mockImplementation(() => Promise.resolve(undefined)),
+    handleCallingClientErrors: jest.fn(),
+  };
+});
+
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
 
 describe('CallingClient Tests', () => {
   // Common initializers
@@ -385,6 +402,7 @@ describe('CallingClient Tests', () => {
 
     it('Verify successful mobius server url discovery after initializing callingClient through a config', async () => {
       const infoSpy = jest.spyOn(log, 'info');
+      infoSpy.mockReset();
       webex.request.mockResolvedValueOnce(discoveryPayload);
 
       callingClient = await createClient(webex, {
@@ -399,16 +417,18 @@ describe('CallingClient Tests', () => {
 
       expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
 
-      expect(infoSpy).toBeCalledWith('Updating region and country from the SDK config', {
+      expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
         file: 'CallingClient',
         method: 'getMobiusServers',
       });
+
       expect(webex.request).toBeCalledOnceWith({
         ...getMockRequestTemplate(),
         uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
         method: 'GET',
       });
-      expect(handleErrorSpy).not.toBeCalled();
+
+      expect(handleErrorSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -502,12 +522,19 @@ describe('CallingClient Tests', () => {
       /* Set mercury connection to be up and execute a delay of 2.5 seconds */
       webex.internal.mercury.connected = true;
 
+      logSpy.mockReset();
+
       jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
 
       await flushPromises();
 
+      log.info('Mercury connection is up again, re-registering with Webex Calling if needed', {
+        file: REGISTRATION_FILE,
+        method: 'handleConnectionRestoration',
+      });
+
       /* We should be detecting the network recovery */
-      expect(logSpy).toBeCalledWith(
+      expect(logSpy).toHaveBeenCalledWith(
         'Mercury connection is up again, re-registering with Webex Calling if needed',
         {
           file: REGISTRATION_FILE,
@@ -515,11 +542,13 @@ describe('CallingClient Tests', () => {
         }
       );
 
-      expect(restoreSpy).toBeCalledWith('handleConnectionRestoration');
-      expect(restartRegisterSpy).toBeCalledWith('handleConnectionRestoration');
-      expect(webex.request).toBeCalledTimes(6);
-      expect(registerSpy).toBeCalledWith('handleConnectionRestoration', [reg.getActiveMobiusUrl()]);
-      expect(registerSpy).lastCalledWith('handleConnectionRestoration', [primaryUrl]);
+      expect(restoreSpy).toHaveBeenCalledWith('handleConnectionRestoration');
+      expect(restartRegisterSpy).toHaveBeenCalledWith('handleConnectionRestoration');
+      expect(webex.request).toHaveBeenCalledTimes(6);
+      expect(registerSpy).toHaveBeenCalledWith('handleConnectionRestoration', [
+        reg.getActiveMobiusUrl(),
+      ]);
+      expect(registerSpy).toHaveBeenCalledWith('handleConnectionRestoration', [primaryUrl]);
     });
 
     it('Simulate a network flap with no active calls and re-verify registration: Restore Failure', async () => {
@@ -551,9 +580,16 @@ describe('CallingClient Tests', () => {
       /* Set mercury connection to be up and execute a delay of 2.5 seconds */
       webex.internal.mercury.connected = true;
 
+      logSpy.mockReset();
+
       jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
 
       await flushPromises();
+
+      log.info('Mercury connection is up again, re-registering with Webex Calling if needed', {
+        file: REGISTRATION_FILE,
+        method: 'handleConnectionRestoration',
+      });
 
       /* We should be detecting the network recovery */
       expect(logSpy).toBeCalledWith(
@@ -564,11 +600,13 @@ describe('CallingClient Tests', () => {
         }
       );
 
-      expect(restoreSpy).toBeCalledOnceWith('handleConnectionRestoration');
-      expect(restartRegisterSpy).toBeCalledOnceWith('handleConnectionRestoration');
-      expect(webex.request).toBeCalledTimes(6);
-      expect(registerSpy).toBeCalledWith('handleConnectionRestoration', [reg.getActiveMobiusUrl()]);
-      expect(registerSpy).lastCalledWith('handleConnectionRestoration', [primaryUrl]);
+      expect(restoreSpy).toHaveBeenCalledWith('handleConnectionRestoration');
+      expect(restartRegisterSpy).toHaveBeenCalledWith('handleConnectionRestoration');
+      expect(webex.request).toHaveBeenCalledTimes(6);
+      expect(registerSpy).toHaveBeenCalledWith('handleConnectionRestoration', [
+        reg.getActiveMobiusUrl(),
+      ]);
+      expect(registerSpy).toHaveBeenCalledWith('handleConnectionRestoration', [primaryUrl]);
     });
 
     it('Simulate a network flap before initial registration is done', async () => {

@@ -1,12 +1,14 @@
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable valid-jsdoc */
+import ExtendedError from 'Errors/catalog/ExtendedError';
+import {METHOD_START_MESSAGE} from '../common/constants';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {IVoicemail, VoicemailResponseEvent, LoggerInterface, CallingPartyInfo} from './types';
 import {CALLING_BACKEND, DisplayInformation, SORT} from '../common/types';
 import log from '../Logger';
-import {getCallingBackEnd} from '../common/Utils';
+import {getCallingBackEnd, uploadLogs} from '../common/Utils';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import {BroadworksBackendConnector} from './BroadworksBackendConnector';
 import {VoicemailEventTypes} from '../Events/types';
@@ -14,7 +16,7 @@ import {Eventing} from '../Events/impl';
 import {UcmBackendConnector} from './UcmBackendConnector';
 import {IMetricManager, METRIC_EVENT, METRIC_TYPE, VOICEMAIL_ACTION} from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
-import {VOICEMAIL_FILE} from './constants';
+import {VOICEMAIL_FILE, METHODS} from './constants';
 
 /**
  * The `Voicemail` module is designed to simplify voicemail-related operations by offering a set of APIs.
@@ -57,16 +59,43 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * Voicemail connector initialization.
    *
    */
-  public init() {
-    const response = this.backendConnector.init();
+  public async init() {
+    try {
+      log.info(METHOD_START_MESSAGE, {
+        file: VOICEMAIL_FILE,
+        method: METHODS.INIT,
+      });
 
-    return response;
+      const response = this.backendConnector.init();
+
+      log.log('Voicemail connector initialized successfully', {
+        file: VOICEMAIL_FILE,
+        method: METHODS.INIT,
+      });
+
+      return response;
+    } catch (err: unknown) {
+      const extendedError = new Error(`Failed to initialize voicemail: ${err}`) as ExtendedError;
+      log.error(extendedError, {
+        file: VOICEMAIL_FILE,
+        method: METHODS.INIT,
+      });
+
+      await uploadLogs();
+
+      throw err;
+    }
   }
 
   /**
    * Setup and initialize the voicemail backend connector class object.
    */
   private initializeBackendConnector() {
+    log.info(METHOD_START_MESSAGE, {
+      file: VOICEMAIL_FILE,
+      method: METHODS.INITIALIZE_BACKEND_CONNECTOR,
+    });
+
     switch (this.callingBackend) {
       case CALLING_BACKEND.WXC: {
         this.backendConnector = new WxCallBackendConnector(this.webex, this.logger);
@@ -133,16 +162,41 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
     sort: SORT,
     refresh?: boolean
   ): Promise<VoicemailResponseEvent> {
-    const response = await this.backendConnector.getVoicemailList(
-      offset,
-      offsetLimit,
-      sort,
-      refresh
-    );
+    try {
+      log.info(
+        `${METHOD_START_MESSAGE} with: offset=${offset}, limit=${offsetLimit}, sort=${sort}, refresh=${refresh}`,
+        {
+          file: VOICEMAIL_FILE,
+          method: METHODS.GET_VOICEMAIL_LIST,
+        }
+      );
 
-    this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAILS);
+      const response = await this.backendConnector.getVoicemailList(
+        offset,
+        offsetLimit,
+        sort,
+        refresh
+      );
 
-    return response;
+      this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAILS);
+
+      log.log(`Successfully retrieved voicemail list: statusCode=${response.statusCode}`, {
+        file: VOICEMAIL_FILE,
+        method: METHODS.GET_VOICEMAIL_LIST,
+      });
+
+      return response;
+    } catch (err: unknown) {
+      const extendedError = new Error(`Failed to get voicemail list: ${err}`) as ExtendedError;
+      log.error(extendedError, {
+        file: VOICEMAIL_FILE,
+        method: METHODS.GET_VOICEMAIL_LIST,
+      });
+
+      await uploadLogs();
+
+      throw err;
+    }
   }
 
   /**
@@ -151,9 +205,22 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param messageId - The identifier of the voicemail message.
    */
   public async getVoicemailContent(messageId: string): Promise<VoicemailResponseEvent> {
+    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, {
+      file: VOICEMAIL_FILE,
+      method: METHODS.GET_VOICEMAIL_CONTENT,
+    });
+
     const response = await this.backendConnector.getVoicemailContent(messageId);
 
     this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAIL_CONTENT, messageId);
+
+    log.log(
+      `Successfully retrieved voicemail content for messageId=${messageId}, statusCode=${response.statusCode}`,
+      {
+        file: VOICEMAIL_FILE,
+        method: METHODS.GET_VOICEMAIL_CONTENT,
+      }
+    );
 
     return response;
   }
@@ -163,11 +230,21 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    *
    */
   public async getVoicemailSummary(): Promise<VoicemailResponseEvent | null> {
+    log.info(METHOD_START_MESSAGE, {
+      file: VOICEMAIL_FILE,
+      method: METHODS.GET_VOICEMAIL_SUMMARY,
+    });
+
     const response = await this.backendConnector.getVoicemailSummary();
 
     /* istanbul ignore else */
     if (response !== null) {
       this.submitMetric(response, VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY);
+
+      log.log(`Successfully retrieved voicemail summary: statusCode=${response.statusCode}`, {
+        file: VOICEMAIL_FILE,
+        method: METHODS.GET_VOICEMAIL_SUMMARY,
+      });
     }
 
     return response;
@@ -179,9 +256,22 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param messageId -string result from the voicemail list.
    */
   public async voicemailMarkAsRead(messageId: string): Promise<VoicemailResponseEvent> {
+    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, {
+      file: VOICEMAIL_FILE,
+      method: METHODS.VOICEMAIL_MARK_AS_READ,
+    });
+
     const response = await this.backendConnector.voicemailMarkAsRead(messageId);
 
     this.submitMetric(response, VOICEMAIL_ACTION.MARK_READ, messageId);
+
+    log.log(
+      `Successfully marked voicemail as read: messageId=${messageId}, statusCode=${response.statusCode}`,
+      {
+        file: VOICEMAIL_FILE,
+        method: METHODS.VOICEMAIL_MARK_AS_READ,
+      }
+    );
 
     return response;
   }
@@ -192,9 +282,22 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param messageId -string result from the voicemail list.
    */
   public async voicemailMarkAsUnread(messageId: string): Promise<VoicemailResponseEvent> {
+    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, {
+      file: VOICEMAIL_FILE,
+      method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
+    });
+
     const response = await this.backendConnector.voicemailMarkAsUnread(messageId);
 
     this.submitMetric(response, VOICEMAIL_ACTION.MARK_UNREAD, messageId);
+
+    log.log(
+      `Successfully marked voicemail as unread: messageId=${messageId}, statusCode=${response.statusCode}`,
+      {
+        file: VOICEMAIL_FILE,
+        method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
+      }
+    );
 
     return response;
   }
@@ -205,9 +308,22 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param messageId -string result from the voicemail list.
    */
   public async deleteVoicemail(messageId: string): Promise<VoicemailResponseEvent> {
+    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, {
+      file: VOICEMAIL_FILE,
+      method: METHODS.DELETE_VOICEMAIL,
+    });
+
     const response = await this.backendConnector.deleteVoicemail(messageId);
 
     this.submitMetric(response, VOICEMAIL_ACTION.DELETE, messageId);
+
+    log.log(
+      `Successfully deleted voicemail: messageId=${messageId}, statusCode=${response.statusCode}`,
+      {
+        file: VOICEMAIL_FILE,
+        method: METHODS.DELETE_VOICEMAIL,
+      }
+    );
 
     return response;
   }
@@ -218,10 +334,23 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param messageId - MessageId for which we need the transcript.
    */
   public async getVMTranscript(messageId: string): Promise<VoicemailResponseEvent | null> {
+    log.info(`${METHOD_START_MESSAGE} with: messageId=${messageId}`, {
+      file: VOICEMAIL_FILE,
+      method: METHODS.GET_VM_TRANSCRIPT,
+    });
+
     const response = await this.backendConnector.getVMTranscript(messageId);
 
     if (response !== null) {
       this.submitMetric(response, VOICEMAIL_ACTION.TRANSCRIPT, messageId);
+
+      log.log(
+        `Successfully retrieved voicemail transcript: messageId=${messageId}, statusCode=${response.statusCode}`,
+        {
+          file: VOICEMAIL_FILE,
+          method: METHODS.GET_VM_TRANSCRIPT,
+        }
+      );
     }
 
     return response;
@@ -233,7 +362,19 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
    * @param callingPartyInfo - Calling Party Info.
    */
   public resolveContact(callingPartyInfo: CallingPartyInfo): Promise<DisplayInformation | null> {
-    return this.backendConnector.resolveContact(callingPartyInfo);
+    log.info(METHOD_START_MESSAGE, {
+      file: VOICEMAIL_FILE,
+      method: METHODS.RESOLVE_CONTACT,
+    });
+
+    const response = this.backendConnector.resolveContact(callingPartyInfo);
+
+    log.log('Contact resolution completed successfully', {
+      file: VOICEMAIL_FILE,
+      method: METHODS.RESOLVE_CONTACT,
+    });
+
+    return response;
   }
 
   /**
