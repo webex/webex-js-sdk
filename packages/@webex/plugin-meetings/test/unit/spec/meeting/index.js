@@ -1226,6 +1226,7 @@ describe('plugin-meetings', () => {
       describe('#update spoken language', () => {
         beforeEach(() => {
           webex.internal.voicea.onSpokenLanguageUpdate = sinon.stub();
+          meeting.transcription = {languageOptions: {currentSpokenLanguage: 'en'}};
         });
         afterEach(() => {
           // Restore the original methods after each test
@@ -1237,9 +1238,10 @@ describe('plugin-meetings', () => {
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
             LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
-            {spokenLanguage: 'en-US'},
+            {spokenLanguage: 'fr'},
           );
-          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'en-US');
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr');
+          assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'fr');
         });
 
         it('should also call voicea.onSpokenLanguageUpdate when not joined', async () => {
@@ -1248,9 +1250,10 @@ describe('plugin-meetings', () => {
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
             LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
-            {spokenLanguage: 'fr-FR'},
+            {spokenLanguage: 'de'},
           );
-          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr-FR');
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'de');
+          assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'de');
         });
       });
 

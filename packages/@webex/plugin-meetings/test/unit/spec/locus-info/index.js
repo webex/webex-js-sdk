@@ -568,7 +568,7 @@ describe('plugin-meetings', () => {
         };
         newControls.transcribe.transcribing = false;
         newControls.transcribe.caption = true;
-        newControls.transcribe.spokenLanguage = 'fr-FR';
+        newControls.transcribe.spokenLanguage = 'fr';
 
         locusInfo.updateControls(newControls);
 
@@ -580,7 +580,7 @@ describe('plugin-meetings', () => {
           },
           LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
           {
-            spokenLanguage: 'fr-FR',
+            spokenLanguage: 'fr',
           }
         );
       });

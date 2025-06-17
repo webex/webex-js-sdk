@@ -1344,7 +1344,7 @@ export default class Meeting extends StatelessWebexPlugin {
       captions: [],
       isListening: false,
       commandText: '',
-      languageOptions: {},
+      languageOptions: {currentSpokenLanguage: 'en'},
       showCaptionBox: false,
       transcribingRequestStatus: 'INACTIVE',
       isCaptioning: false,
@@ -2756,8 +2756,11 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(
       LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
       ({spokenLanguage}) => {
-        // @ts-ignore
-        this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage);
+        if (spokenLanguage) {
+          this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
+          // @ts-ignore
+          this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage);
+        }
       }
     );
 
