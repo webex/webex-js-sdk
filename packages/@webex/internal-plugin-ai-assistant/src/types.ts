@@ -1,7 +1,6 @@
 export interface RequestResult {
-  foundArray?: any[];
-  notFoundArray?: any[];
   resultArray: any[];
+  error: string | null;
 }
 
 export interface RequestOptions {
@@ -16,4 +15,5 @@ export interface SummarizeMeetingOptions {
   meetingInstanceId: string;
   meetingSite: string;
   sessionId: string;
+  encryptionKeyUrl: string;
 }

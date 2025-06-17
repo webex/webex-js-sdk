@@ -135,6 +135,19 @@ const AIAssistant = WebexPlugin.extend({
   },
 
   /**
+   * Decrypts the encrypted value using the encryption key URL
+   * @param {Object} options
+   * @param {string} options.value the encrypted value to decrypt
+   * @param {string} options.encryptionKeyUrl the encryption key URL to use for
+   * @returns {Promise<Object>} returns a promise that resolves with the decrypted value
+   */
+  async _decryptData({value, encryptionKeyUrl}) {
+    const result = await this.webex.internal.encryption.decryptText(encryptionKeyUrl, value);
+
+    return result;
+  },
+
+  /**
    * Makes the request to the directory service
    * @param {Object} options
    * @param {string} options.resource the URL to query
@@ -155,17 +168,20 @@ const AIAssistant = WebexPlugin.extend({
     const result = {};
     let expectedSeqNums: string[];
 
+    // eslint-disable-next-line no-async-promise-executor
     return new Promise((resolve, reject) => {
       const timer = new Timer(() => {
         this.stopListening(this, eventName);
         reject(new AIAssistantTimeoutError({requestId, timeout, resource, params}));
       }, timeout);
 
-      this.listenTo(this, eventName, (data) => {
+      this.listenTo(this, eventName, async (data) => {
         timer.reset();
         const resultData = get(data, dataPath, []);
 
-        result[data.sequence] = {resultData};
+        const error = get(data, 'response.errorMessage');
+
+        result[data.sequence] = resultData;
 
         if (data.finished) {
           expectedSeqNums = range(data.sequence + 1).map(String);
@@ -176,21 +192,24 @@ const AIAssistant = WebexPlugin.extend({
         if (done) {
           timer.cancel();
 
-          const resultArray: any[] = [];
+          Promise.all(
+            expectedSeqNums.map(async (index) => {
+              const seqResult = result[index];
+              if (seqResult && seqResult.value) {
+                return this._decryptData(seqResult);
+              }
 
-          expectedSeqNums.forEach((index) => {
-            const seqResult = result[index];
-
-            if (seqResult) {
-              resultArray.push(...seqResult.resultData);
-            }
+              return undefined;
+            })
+          ).then((resultArray) => {
+            const filteredResultArray = resultArray.filter(Boolean);
+            const resolveValue: RequestResult = {
+              resultArray: filteredResultArray,
+              error,
+            };
+            resolve(resolveValue);
+            this.stopListening(this, eventName);
           });
-          const resolveValue: RequestResult = {
-            resultArray,
-          };
-
-          resolve(resolveValue);
-          this.stopListening(this, eventName);
         }
       });
       this.webex.request({
@@ -210,6 +229,7 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.meetingInstanceId the meeting instance ID for the meeting from locus
    * @param {string} options.meetingSite the name.webex.com site for the meeting
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
+   * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
    * @returns {Promise<RequestResult>} Resolves with an object
    */
   summarizeMeeting(options: SummarizeMeetingOptions): Promise<RequestResult> {
@@ -232,6 +252,7 @@ const AIAssistant = WebexPlugin.extend({
           parameters: {
             lastMinutes: 15,
           },
+          encryptionKeyUrl: options.encryptionKeyUrl,
           type: 'action',
           value: 'SUMMARIZE_FOR_ME',
         },
