@@ -33,7 +33,7 @@ describe('webex-core', () => {
     before('create users', () =>
       testUsers.create({count: 1}).then(
         ([user]) =>
-          new Promise<void>((resolve) => {
+          new Promise((resolve) => {
             setTimeout(() => {
               webexUser = user;
               resolve();
