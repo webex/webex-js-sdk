@@ -34,130 +34,123 @@ export default class Voice extends Task implements IVoice {
   }
 
   private applyTerminatedControls(): void {
-    this.applyControls(
+    this.updateTaskUiControls(
       ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'],
       false,
       false
     );
-    this.applyControls(['wrapup'], true, true);
+    this.updateTaskUiControls(['wrapup'], true, true);
   }
 
   private applyConnectedControls(): void {
-    this.applyControls(['hold', 'transfer', 'consult', 'recording'], true, true);
+    this.updateTaskUiControls(['hold', 'transfer', 'consult', 'recording'], true, true);
     if (this.isEndCallEnabled) {
-      this.applyControls(['end'], true, true);
+      this.updateTaskUiControls(['end'], true, true);
     }
   }
 
   private applyConsultingControls(): void {
-    this.applyControls(['hold', 'transfer', 'consult'], false, false);
-    this.applyControls(['recording'], true, false);
+    this.updateTaskUiControls(['hold', 'transfer', 'consult'], false, false);
+    this.updateTaskUiControls(['recording'], true, false);
 
     if (!this.data.isConsulted) {
-      this.applyControls(['consultTransfer', 'endConsult'], true, true);
+      this.updateTaskUiControls(['consultTransfer', 'endConsult'], true, true);
       if (this.isEndCallEnabled) {
-        this.applyControls(['end'], true, false);
+        this.updateTaskUiControls(['end'], true, false);
       }
     } else if (this.isEndConsultEnabled) {
-      this.applyControls(['endConsult'], true, true);
+      this.updateTaskUiControls(['endConsult'], true, true);
     }
-  }
-
-  protected initialiseUIControls() {
-    super.initialiseUIControls();
-    this.applyControls(['accept', 'decline', 'hold', 'transfer', 'end'], false, false);
   }
 
   protected setUIControls(): void {
     const eventType = this.data.type;
     const showMainControls = () =>
-      this.applyControls(['hold', 'transfer', 'consult', 'recording'], true, true);
+      this.updateTaskUiControls(['hold', 'transfer', 'consult', 'recording'], true, true);
 
     switch (eventType) {
       case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-        this.applyControls(['accept', 'decline'], false, false);
+        this.updateTaskUiControls(['accept', 'decline'], false, false);
         showMainControls();
-        this.applyControls(['end'], this.isEndCallEnabled, this.isEndCallEnabled);
-        this.applyControls(['endConsult', 'wrapup'], false);
+        this.updateTaskUiControls(['end'], this.isEndCallEnabled, this.isEndCallEnabled);
+        this.updateTaskUiControls(['endConsult', 'wrapup'], false);
         break;
 
       case CC_EVENTS.AGENT_WRAPUP:
       case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
-        this.applyControls(
+        this.updateTaskUiControls(
           ['consultTransfer', 'recording', 'end', 'endConsult', 'hold', 'transfer', 'consult'],
           false,
           false
         );
-        this.applyControls(['wrapup'], true, true);
+        this.updateTaskUiControls(['wrapup'], true, true);
         break;
 
       case CC_EVENTS.CONTACT_ENDED:
       case CC_EVENTS.AGENT_INVITE_FAILED:
-        this.applyControls(
+        this.updateTaskUiControls(
           ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end', 'endConsult'],
           false,
           false
         );
         if (this.data.interaction.state !== 'new') {
-          this.applyControls(['wrapup'], true, true);
+          this.updateTaskUiControls(['wrapup'], true, true);
         }
         break;
 
       case CC_EVENTS.AGENT_CONTACT_HELD:
         showMainControls();
-        if (this.isEndCallEnabled) {
-          this.applyControls(['end'], true, false);
-        }
+        this.updateTaskUiControls(['end'], this.isEndCallEnabled, false);
         break;
 
       case CC_EVENTS.AGENT_CONTACT_UNHELD:
         showMainControls();
-        if (this.isEndCallEnabled) {
-          this.applyControls(['end'], true, true);
-        }
+        this.updateTaskUiControls(['end'], this.isEndCallEnabled, true);
         break;
 
       case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
-        this.applyControls(
+        this.updateTaskUiControls(
           ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'],
           false,
           false
         );
-        this.applyControls(['wrapup'], true, true);
+        this.updateTaskUiControls(['wrapup'], true, true);
         break;
 
       case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
         showMainControls();
-        if (this.isEndCallEnabled) {
-          this.applyControls(['end'], true, true);
-        }
+        this.updateTaskUiControls(['end'], this.isEndCallEnabled, true);
         break;
 
       case CC_EVENTS.AGENT_CONSULT_CREATED:
         if (!this.data.isConsulted) {
-          this.applyControls(['hold', 'consult', 'transfer', 'end'], false, false);
-          this.applyControls(['consultTransfer', 'recording'], true, false);
-          this.applyControls(['endConsult'], true, true);
+          this.updateTaskUiControls(['hold', 'consult', 'transfer', 'end'], false, false);
+          this.updateTaskUiControls(['consultTransfer', 'recording'], true, false);
+          this.updateTaskUiControls(['endConsult'], true, true);
         }
         break;
 
       case CC_EVENTS.AGENT_OFFER_CONSULT:
-        if (this.isEndConsultEnabled) {
-          this.applyControls(['endConsult'], true, true);
-        }
+        this.updateTaskUiControls(
+          ['endConsult'],
+          this.isEndConsultEnabled,
+          this.isEndConsultEnabled
+        );
         break;
 
       case CC_EVENTS.AGENT_CONSULTING:
         if (!this.data.isConsulted) {
-          this.applyControls(['hold', 'transfer', 'consult'], false, false);
-          this.applyControls(['consultTransfer'], true, true);
-          this.applyControls(['recording'], true, false);
-          this.applyControls(['endConsult'], true, true);
-          if (this.isEndCallEnabled) {
-            this.applyControls(['end'], true, false);
-          }
-        } else if (this.isEndConsultEnabled) {
-          this.applyControls(['endConsult'], true, true);
+          this.updateTaskUiControls(['hold', 'transfer', 'consult'], false, false);
+          this.updateTaskUiControls(['consultTransfer'], true, true);
+          this.updateTaskUiControls(['recording'], true, false);
+          this.updateTaskUiControls(['endConsult'], true, true);
+          this.updateTaskUiControls(['end'], this.isEndCallEnabled, false);
+        } else {
+          this.updateTaskUiControls(
+            ['endConsult'],
+            this.isEndConsultEnabled,
+            this.isEndConsultEnabled
+          );
         }
         break;
 
@@ -166,11 +159,9 @@ export default class Voice extends Task implements IVoice {
       case CC_EVENTS.AGENT_CTQ_CANCELLED:
         if (!this.data.isConsulted) {
           showMainControls();
-          if (this.isEndCallEnabled) {
-            this.applyControls(['end'], true, true);
-          }
-          this.applyControls(['consultTransfer', 'endConsult'], false, false);
-          this.applyControls(['wrapup'], false);
+          this.updateTaskUiControls(['end'], this.isEndCallEnabled, this.isEndCallEnabled);
+          this.updateTaskUiControls(['consultTransfer', 'endConsult'], false, false);
+          this.updateTaskUiControls(['wrapup'], false, false);
         }
         break;
 
@@ -196,7 +187,7 @@ export default class Voice extends Task implements IVoice {
    * @throws Error
    */
   public async accept(): Promise<TaskResponse> {
-    super.unSupportedOperationError('accept');
+    super.unsupportedMethodError('accept');
   }
 
   /**
@@ -206,7 +197,7 @@ export default class Voice extends Task implements IVoice {
    * @throws Error
    */
   public async decline(): Promise<TaskResponse> {
-    super.unSupportedOperationError('decline');
+    super.unsupportedMethodError('decline');
   }
 
   /**
@@ -220,12 +211,13 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async holdResume(isHeld: boolean): Promise<TaskResponse> {
-    const method = isHeld ? 'hold' : 'resume';
     LoggerProxy.info(`${isHeld ? 'Holding' : 'Resuming'} task`, {
       module: CC_FILE,
-      method,
+      method: 'holdResume',
       interactionId: this.data.interactionId,
     });
+    // eslint-disable-next-line no-console
+    console.info('ADHWAITH', this.data);
     const [successEvt, failedEvt] = isHeld
       ? [METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS, METRIC_EVENT_NAMES.TASK_HOLD_FAILED]
       : [METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS, METRIC_EVENT_NAMES.TASK_RESUME_FAILED];
@@ -250,8 +242,8 @@ export default class Voice extends Task implements IVoice {
         );
         LoggerProxy.log(`Task placed on hold successfully`, {
           module: CC_FILE,
-          method,
-          trackingId: (response as any).trackingId,
+          method: 'holdResume',
+          trackingId: response.trackingId,
           interactionId: this.data.interactionId,
         });
       } else {
@@ -273,32 +265,32 @@ export default class Voice extends Task implements IVoice {
         );
         LoggerProxy.log(`Task resumed successfully`, {
           module: CC_FILE,
-          method,
-          trackingId: (response as any).trackingId,
+          method: 'holdResume',
+          trackingId: response.trackingId,
           interactionId: this.data.interactionId,
         });
       }
 
       return response;
-    } catch (err: any) {
-      const {error: detErr} = getErrorDetails(err, method, CC_FILE);
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, 'holdResume', CC_FILE);
       this.metricsManager.trackEvent(
         failedEvt,
         isHeld
           ? {
               taskId: this.data.interactionId,
               mediaResourceId: this.data.mediaResourceId,
-              error: err.toString(),
-              ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(err.details || {}),
+              error: error.toString(),
+              ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
             }
           : {
               taskId: this.data.interactionId,
-              error: err.toString(),
-              ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(err.details || {}),
+              error: error.toString(),
+              ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
             },
         ['operational', 'behavioral']
       );
-      throw detErr;
+      throw detailedError;
     }
   }
 
@@ -453,7 +445,7 @@ export default class Voice extends Task implements IVoice {
         },
         ['operational', 'behavioral', 'business']
       );
-      LoggerProxy.log(`Consult started successfully to ${consultPayload.to}`, {
+      LoggerProxy.log(`Consult successfullys initiated to ${consultPayload.to}`, {
         module: CC_FILE,
         method: 'consult',
         trackingId: result.trackingId,

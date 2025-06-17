@@ -46,14 +46,14 @@ export default abstract class Task extends EventEmitter implements ITask {
     return oldData;
   }
 
-  protected initialiseUIControls() {
+  private initialiseUIControls() {
     this.taskUiControls = {
-      accept: new TaskButtonControl(true, true),
-      decline: new TaskButtonControl(true, true),
+      accept: new TaskButtonControl(false, false),
+      decline: new TaskButtonControl(false, false),
       hold: new TaskButtonControl(false, false),
       mute: new TaskButtonControl(false, false),
-      end: new TaskButtonControl(true, true),
-      transfer: new TaskButtonControl(true, true),
+      end: new TaskButtonControl(false, false),
+      transfer: new TaskButtonControl(false, false),
       consult: new TaskButtonControl(false, false),
       consultTransfer: new TaskButtonControl(false, false),
       endConsult: new TaskButtonControl(false, false),
@@ -73,24 +73,23 @@ export default abstract class Task extends EventEmitter implements ITask {
    * @param methodName - The name of the method that is unsupported
    * @throws Error
    */
-  protected unSupportedOperationError(methodName: string) {
-    LoggerProxy.error(`Unsupported operation: ${methodName} in Task object`);
-    throw new Error(`Unsupported operation: ${methodName} in Task class`);
+  protected unsupportedMethodError(methodName: string) {
+    LoggerProxy.error(`Unsupported operation`, {
+      module: 'TASK',
+      method: methodName,
+    });
+    throw new Error(`Unsupported operation: ${methodName}`);
   }
 
   // Helper method to apply UI controls via boolean flags, first is for visibility and second is for enabled state
-  protected applyControls(
+  protected updateTaskUiControls(
     controls: Array<keyof typeof this.taskUiControls>,
-    visible?: boolean,
-    enabled?: boolean
+    visible = false,
+    enabled = false
   ): void {
     controls.forEach((c) => {
-      if (visible !== undefined) {
-        this.taskUiControls[c].setVisiblity(visible);
-      }
-      if (enabled !== undefined) {
-        this.taskUiControls[c].setEnabled(enabled);
-      }
+      this.taskUiControls[c].setVisiblity(visible);
+      this.taskUiControls[c].setEnabled(enabled);
     });
   }
 

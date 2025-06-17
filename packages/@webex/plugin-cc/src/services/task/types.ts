@@ -1181,8 +1181,6 @@ export interface IVoice extends ITask {
    * ```
    */
   consult(consultPayload: ConsultPayload): Promise<TaskResponse>;
-
-  transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>;
 }
 
 /**
