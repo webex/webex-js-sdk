@@ -29,4 +29,5 @@ export interface SummarizeMeetingOptions {
   meetingSite: string;
   sessionId: string;
   encryptionKeyUrl: string;
+  lastMinutes?: number;
 }

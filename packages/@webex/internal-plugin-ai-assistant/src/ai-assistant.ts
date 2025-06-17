@@ -271,7 +271,69 @@ const AIAssistant = WebexPlugin.extend({
   },
 
   /**
+   * Common method to make AI assistant requests for meeting analysis
+   * @param {Object} options
+   * @param {string} options.meetingInstanceId the meeting instance ID for the meeting from locus
+   * @param {string} options.meetingSite the name.webex.com site for the meeting
+   * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
+   * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
+   * @param {string} options.actionValue the action value to perform (e.g., 'SUMMARIZE_FOR_ME', 'WAS_MY_NAME_MENTIONED')
+   * @param {Object} options.parameters optional parameters to include in the request
+   * @returns {Promise<RequestResult>} Resolves with an object
+   */
+  _makeMeetingRequest(
+    options: SummarizeMeetingOptions & {actionValue: string; parameters?: any}
+  ): Promise<RequestResult> {
+    const content: any = {
+      context: {
+        resources: [
+          {
+            id: options.meetingInstanceId,
+            type: 'meeting',
+            url: options.meetingSite,
+          },
+        ],
+      },
+      encryptionKeyUrl: options.encryptionKeyUrl,
+      type: 'action',
+      value: options.actionValue,
+    };
+
+    if (options.parameters) {
+      content.parameters = options.parameters;
+    }
+
+    return this._request({
+      resource: options.sessionId ? `sessions/${options.sessionId}/messages` : 'sessions/messages',
+      dataPath: 'response.content',
+      params: {
+        async: 'chunked',
+        locale: 'en_US',
+        content,
+      },
+    });
+  },
+
+  /**
    * Returns the summary of a meeting
+   * @param {Object} options
+   * @param {string} options.meetingInstanceId the meeting instance ID for the meeting from locus
+   * @param {string} options.meetingSite the name.webex.com site for the meeting
+   * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
+   * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
+   * @param {number} options.lastMinutes Optional number of minutes to summarize from the end of the meeting. If not included, summarizes from the start.
+   * @returns {Promise<RequestResult>} Resolves with an object
+   */
+  summarizeMeeting(options: SummarizeMeetingOptions): Promise<RequestResult> {
+    return this._makeMeetingRequest({
+      ...options,
+      actionValue: 'SUMMARIZE_FOR_ME',
+      ...(options.lastMinutes ? {parameters: {lastMinutes: options.lastMinutes}} : {}),
+    });
+  },
+
+  /**
+   * Checks if the user's name was mentioned in a meeting
    * @param {Object} options
    * @param {string} options.meetingInstanceId the meeting instance ID for the meeting from locus
    * @param {string} options.meetingSite the name.webex.com site for the meeting
@@ -279,31 +341,26 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
    * @returns {Promise<RequestResult>} Resolves with an object
    */
-  summarizeMeeting(options: SummarizeMeetingOptions): Promise<RequestResult> {
-    return this._request({
-      resource: options.sessionId ? `sessions/${options.sessionId}/messages` : 'sessions/messages',
-      dataPath: 'response.content',
-      params: {
-        async: 'chunked',
-        locale: 'en_US',
-        content: {
-          context: {
-            resources: [
-              {
-                id: options.meetingInstanceId,
-                type: 'meeting',
-                url: options.meetingSite,
-              },
-            ],
-          },
-          parameters: {
-            lastMinutes: 15,
-          },
-          encryptionKeyUrl: options.encryptionKeyUrl,
-          type: 'action',
-          value: 'SUMMARIZE_FOR_ME',
-        },
-      },
+  wasMyNameMentioned(options: SummarizeMeetingOptions): Promise<RequestResult> {
+    return this._makeMeetingRequest({
+      ...options,
+      actionValue: 'WAS_MY_NAME_MENTIONED',
+    });
+  },
+
+  /**
+   * Returns all action items from a meeting
+   * @param {Object} options
+   * @param {string} options.meetingInstanceId the meeting instance ID for the meeting from locus
+   * @param {string} options.meetingSite the name.webex.com site for the meeting
+   * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
+   * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
+   * @returns {Promise<RequestResult>} Resolves with an object
+   */
+  showAllActionItems(options: SummarizeMeetingOptions): Promise<RequestResult> {
+    return this._makeMeetingRequest({
+      ...options,
+      actionValue: 'SHOW_ALL_ACTION_ITEMS',
     });
   },
 });
