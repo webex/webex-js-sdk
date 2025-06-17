@@ -44,6 +44,7 @@ import {
   REGISTER_UTIL,
   RETRY_TIMER_UPPER_LIMIT,
   KEEPALIVE_UTIL,
+  REGISTRATION_UTIL,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -593,7 +594,7 @@ export class Registration implements IRegistration {
   public async triggerRegistration() {
     if (this.primaryMobiusUris.length > 0) {
       const abort = await this.attemptRegistrationWithServers(
-        this.triggerRegistration.name,
+        REGISTRATION_UTIL,
         this.primaryMobiusUris
       );
 
@@ -657,6 +658,7 @@ export class Registration implements IRegistration {
           METRIC_TYPE.BEHAVIORAL,
           caller,
           serverType,
+          undefined,
           undefined
         );
         this.startKeepaliveTimer(
@@ -684,6 +686,7 @@ export class Registration implements IRegistration {
               METRIC_TYPE.BEHAVIORAL,
               caller,
               serverType,
+              undefined,
               clientError
             );
           },

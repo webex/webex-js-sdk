@@ -264,6 +264,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               METRIC_TYPE.BEHAVIORAL,
               GET_MOBIUS_SERVERS_UTIL,
               undefined,
+              undefined,
               clientError
             );
             this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
@@ -354,6 +355,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
               GET_MOBIUS_SERVERS_UTIL,
+              undefined,
               undefined,
               clientError
             );

@@ -2,7 +2,7 @@
 import {getMockDeviceInfo, getTestUtilsWebex} from '../common/testUtil';
 import {getMetricManager} from './index';
 import {METRIC_TYPE, METRIC_EVENT, REG_ACTION, VOICEMAIL_ACTION} from './types';
-import {VERSION} from '../CallingClient/constants';
+import {REGISTRATION_UTIL, VERSION} from '../CallingClient/constants';
 import {createClientError} from '../Errors/catalog/CallingDeviceError';
 import {CallErrorObject, ErrorObject, ERROR_LAYER, ERROR_TYPE} from '../Errors/types';
 import {RegistrationStatus, ServiceIndicator} from '../common/types';
@@ -58,6 +58,8 @@ describe('CALLING: Metric tests', () => {
           device_url: mockDeviceInfo.device.clientDeviceUri,
           mobius_url: mockDeviceInfo.device.uri,
           calling_sdk_version: MOCK_VERSION_NUMBER,
+          reg_source: REGISTRATION_UTIL,
+          server_type: 'primary',
         },
         type: METRIC_TYPE.BEHAVIORAL,
       };
@@ -66,6 +68,9 @@ describe('CALLING: Metric tests', () => {
         METRIC_EVENT.REGISTRATION,
         REG_ACTION.REGISTER,
         METRIC_TYPE.BEHAVIORAL,
+        REGISTRATION_UTIL,
+        'primary',
+        undefined,
         undefined
       );
       expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.REGISTRATION, expectedData);
@@ -98,6 +103,8 @@ describe('CALLING: Metric tests', () => {
           device_url: mockDeviceInfo.device.clientDeviceUri,
           mobius_url: mockDeviceInfo.device.uri,
           calling_sdk_version: MOCK_VERSION_NUMBER,
+          reg_source: REGISTRATION_UTIL,
+          server_type: 'primary',
           error: clientError.getError().message,
           error_type: clientError.getError().type,
         },
@@ -108,6 +115,9 @@ describe('CALLING: Metric tests', () => {
         METRIC_EVENT.REGISTRATION_ERROR,
         REG_ACTION.REGISTER,
         METRIC_TYPE.BEHAVIORAL,
+        REGISTRATION_UTIL,
+        'primary',
+        undefined,
         clientError
       );
       expect(mockSubmitClientMetric).toBeCalledOnceWith(
@@ -123,6 +133,9 @@ describe('CALLING: Metric tests', () => {
         'invalidMetricName' as unknown as METRIC_EVENT,
         REG_ACTION.REGISTER,
         METRIC_TYPE.OPERATIONAL,
+        REGISTRATION_UTIL,
+        'primary',
+        undefined,
         undefined
       );
 
