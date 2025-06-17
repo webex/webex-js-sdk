@@ -2921,6 +2921,15 @@ export default class Meeting extends StatelessWebexPlugin {
         {state}
       );
     });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_POLLING_QA_UPDATED,
+        {state}
+      );
+    });
   }
 
   /**
@@ -4357,6 +4366,14 @@ export default class Meeting extends StatelessWebexPlugin {
           }),
           canDisableRemoteDesktopControl: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnablePollingQA: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_POLLING_QA_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisablePollingQA: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_POLLING_QA_MEETING_OPTION],
             displayHints: this.userDisplayHints,
           }),
         }) || changed;

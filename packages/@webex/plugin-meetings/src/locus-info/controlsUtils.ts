@@ -123,6 +123,12 @@ ControlsUtils.parse = (controls: any) => {
     };
   }
 
+  if (controls?.pollingQAControl) {
+    parsedControls.pollingQAControl = {
+      enabled: controls.pollingQAControl.enabled,
+    };
+  }
+
   return parsedControls;
 };
 
@@ -229,6 +235,9 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
 
       hasRemoteDesktopControlChanged:
         current?.rdcControl?.enabled !== previous?.rdcControl?.enabled,
+
+      hasPollingQAControlChanged:
+        current?.pollingQAControl?.enabled !== previous?.pollingQAControl?.enabled,
     },
   };
 };

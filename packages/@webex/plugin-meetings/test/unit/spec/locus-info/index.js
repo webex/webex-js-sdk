@@ -305,6 +305,20 @@ describe('plugin-meetings', () => {
           {state: newControls.rdcControl}
         );
       });
+      
+      it('should trigger the CONTROLS_POLLING_QA_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        newControls.pollingQAControl = { enabled: true };
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED,
+          {state: newControls.pollingQAControl}
+        );
+      });
 
       it('should keep the recording state to `IDLE`', () => {
         locusInfo.controls = {
