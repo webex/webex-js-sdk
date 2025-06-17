@@ -3,6 +3,19 @@ export interface RequestResult {
   error: string | null;
 }
 
+export interface RequestResponse {
+  sessionId: string;
+  requestId: string;
+  streamEventName: string;
+}
+
+export interface StreamEvent {
+  message: string;
+  requestId: string;
+  finished: boolean;
+  error: string | null;
+}
+
 export interface RequestOptions {
   resource: string;
   dataPath: string;

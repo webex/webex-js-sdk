@@ -6,14 +6,15 @@
 import uuid from 'uuid';
 import {WebexPlugin} from '@webex/webex-core';
 import '@webex/internal-plugin-mercury';
-import {range, isEqual, get} from 'lodash';
+import {get} from 'lodash';
 import {Timer} from '@webex/common-timers';
 
 import {AIAssistantTimeoutError} from './ai-assistant-errors';
-import {RequestOptions, RequestResult, SummarizeMeetingOptions} from './types';
+import {RequestOptions, RequestResponse, RequestResult, SummarizeMeetingOptions} from './types';
 import {
   AI_ASSISTANT_REGISTERED,
   AI_ASSISTANT_RESULT,
+  AI_ASSISTANT_STREAM,
   AI_ASSISTANT_UNREGISTERED,
   AI_ASSITANT_SERVICE_NAME,
   ASSISTANT_API_RESPONSE_EVENT,
@@ -126,6 +127,15 @@ const AIAssistant = WebexPlugin.extend({
   },
 
   /**
+   * constructs the stream event name based on request id
+   * @param {UUID} requestId the id of the request
+   * @returns {string}
+   */
+  _getStreamEventName(requestId) {
+    return `${AI_ASSISTANT_STREAM}${requestId}`;
+  },
+
+  /**
    * Takes incoming data and triggers correct events
    * @param {Object} data the event data
    * @returns {undefined}
@@ -159,14 +169,14 @@ const AIAssistant = WebexPlugin.extend({
    * @returns {Array} result.notFoundArray an array of the lookups of the not found entities (if notFoundPath provided)
    * @throws {AIAssistantTimeoutError} when server does not respond in the specified timeframe
    */
-  _request(options: RequestOptions): Promise<RequestResult> {
+  _request(options: RequestOptions): Promise<RequestResponse> {
     const {resource, params, dataPath} = options;
 
     const timeout = this.config.requestTimeout;
     const requestId = uuid.v4();
     const eventName = this._getResultEventName(requestId);
-    const result = {};
-    let expectedSeqNums: string[];
+    const streamEventName = this._getStreamEventName(requestId);
+    let concatenatedMessage = '';
 
     // eslint-disable-next-line no-async-promise-executor
     return new Promise((resolve, reject) => {
@@ -178,48 +188,85 @@ const AIAssistant = WebexPlugin.extend({
       this.listenTo(this, eventName, async (data) => {
         timer.reset();
         const resultData = get(data, dataPath, []);
-
         const error = get(data, 'response.errorMessage');
 
-        result[data.sequence] = resultData;
-
         if (data.finished) {
-          expectedSeqNums = range(data.sequence + 1).map(String);
-        }
-
-        const done = isEqual(expectedSeqNums, Object.keys(result));
-
-        if (done) {
+          // For finished messages, decrypt and emit the final complete message
           timer.cancel();
 
-          Promise.all(
-            expectedSeqNums.map(async (index) => {
-              const seqResult = result[index];
-              if (seqResult && seqResult.value) {
-                return this._decryptData(seqResult);
-              }
+          try {
+            let decryptedMessage;
+            if (resultData && resultData.value) {
+              decryptedMessage = await this._decryptData(resultData);
+            }
 
-              return undefined;
-            })
-          ).then((resultArray) => {
-            const filteredResultArray = resultArray.filter(Boolean);
-            const resolveValue: RequestResult = {
-              resultArray: filteredResultArray,
+            // Emit the final message
+            this.trigger(streamEventName, {
+              message: decryptedMessage || '',
+              requestId,
+              finished: true,
               error,
-            };
-            resolve(resolveValue);
+            });
+
             this.stopListening(this, eventName);
-          });
+          } catch (decryptError) {
+            this.emit(streamEventName, {
+              message: concatenatedMessage,
+              requestId,
+              finished: true,
+              error: error || decryptError.message,
+            });
+          }
+        } else {
+          // For non-finished messages, concatenate and emit the accumulated message
+          try {
+            let decryptedMessage = '';
+            if (resultData && resultData.value) {
+              decryptedMessage = await this._decryptData(resultData);
+            }
+
+            concatenatedMessage += decryptedMessage;
+
+            // Emit the concatenated message so far
+            this.trigger(streamEventName, {
+              message: concatenatedMessage,
+              requestId,
+              finished: false,
+              error,
+            });
+          } catch (decryptError) {
+            // If decryption fails, we still want to continue listening for more messages
+            this.trigger(streamEventName, {
+              message: concatenatedMessage,
+              requestId,
+              finished: false,
+              error: error || decryptError.message,
+            });
+          }
         }
       });
-      this.webex.request({
-        service: AI_ASSITANT_SERVICE_NAME,
-        resource,
-        method: 'POST',
-        contentType: 'application/json',
-        body: {clientRequestId: requestId, ...params},
-      });
-      timer.start();
+
+      this.webex
+        .request({
+          service: AI_ASSITANT_SERVICE_NAME,
+          resource,
+          method: 'POST',
+          contentType: 'application/json',
+          body: {clientRequestId: requestId, ...params},
+        })
+        .catch((error) => {
+          reject(error);
+        })
+        .then(({body}) => {
+          const {sessionId} = body;
+
+          resolve({
+            requestId,
+            sessionId,
+            streamEventName,
+          });
+          timer.start();
+        });
     });
   },
 
