@@ -1,0 +1,24 @@
+{
+  "@webex/plugin-cc": {
+    "3.8.1-next.1": {
+      "published_date": 1750146915200,
+      "commits": {
+        "b1b8c4c28c5fb334f27cb6d7fe802ab581d49019": "fix(task-manager): fix-agent-extension-wrapup-issue (#4344)"
+      },
+      "alongWith": {
+        "webex": "3.8.1-next.1"
+      }
+    }
+  },
+  "webex": {
+    "3.8.1-next.1": {
+      "published_date": 1750146915201,
+      "commits": {
+        "b1b8c4c28c5fb334f27cb6d7fe802ab581d49019": "fix(task-manager): fix-agent-extension-wrapup-issue (#4344)"
+      },
+      "alongWith": {
+        "@webex/plugin-cc": "3.8.1-next.1"
+      }
+    }
+  }
+}
