@@ -658,7 +658,7 @@ export class Registration implements IRegistration {
           METRIC_TYPE.BEHAVIORAL,
           caller,
           serverType,
-          resp.headers?.trackingId ?? '',
+          resp.headers?.trackingid ?? '',
           undefined,
           undefined
         );
@@ -671,7 +671,6 @@ export class Registration implements IRegistration {
         break;
       } catch (err: unknown) {
         const body = err as WebexRequestPayload;
-
         // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-unused-vars
         abort = await handleRegistrationErrors(
           body,
@@ -687,7 +686,7 @@ export class Registration implements IRegistration {
               METRIC_TYPE.BEHAVIORAL,
               caller,
               serverType,
-              body.headers?.trackingId ?? '',
+              body.headers?.trackingid ?? '',
               undefined,
               clientError
             );
@@ -760,7 +759,7 @@ export class Registration implements IRegistration {
                   METRIC_TYPE.BEHAVIORAL,
                   KEEPALIVE_UTIL,
                   serverType,
-                  error.headers?.trackingId ?? '',
+                  error.headers?.trackingid ?? '',
                   keepAliveRetryCount,
                   clientError
                 );
