@@ -635,7 +635,7 @@ export class Registration implements IRegistration {
       const serverType =
         (this.primaryMobiusUris.includes(url) && 'primary') ||
         (this.backupMobiusUris?.includes(url) && 'backup') ||
-        undefined;
+        'unknown';
       try {
         abort = false;
         this.registrationStatus = RegistrationStatus.INACTIVE;
@@ -658,6 +658,7 @@ export class Registration implements IRegistration {
           METRIC_TYPE.BEHAVIORAL,
           caller,
           serverType,
+          resp.headers?.trackingId ?? '',
           undefined,
           undefined
         );
@@ -686,6 +687,7 @@ export class Registration implements IRegistration {
               METRIC_TYPE.BEHAVIORAL,
               caller,
               serverType,
+              body.headers?.trackingId ?? '',
               undefined,
               clientError
             );
@@ -718,7 +720,7 @@ export class Registration implements IRegistration {
    * This method sets up a timer to periodically send keep-alive requests to maintain a connection.
    * It handles retries, error handling, and re-registration attempts based on the response, ensuring continuous connectivity with the server.
    */
-  private startKeepaliveTimer(url: string, interval: number, serverType: string | undefined) {
+  private startKeepaliveTimer(url: string, interval: number, serverType: string) {
     let keepAliveRetryCount = 0;
     this.clearKeepaliveTimer();
     const RETRY_COUNT_THRESHOLD = this.isCCFlow ? 4 : 5;
@@ -758,6 +760,7 @@ export class Registration implements IRegistration {
                   METRIC_TYPE.BEHAVIORAL,
                   KEEPALIVE_UTIL,
                   serverType,
+                  error.headers?.trackingId ?? '',
                   keepAliveRetryCount,
                   clientError
                 );

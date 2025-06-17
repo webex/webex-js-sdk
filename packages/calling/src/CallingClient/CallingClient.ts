@@ -263,7 +263,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
               GET_MOBIUS_SERVERS_UTIL,
-              undefined,
+              '',
+              (err as WebexRequestPayload).headers?.trackingId ?? '',
               undefined,
               clientError
             );
@@ -355,7 +356,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
               GET_MOBIUS_SERVERS_UTIL,
-              undefined,
+              '',
+              (err as WebexRequestPayload).headers?.trackingId ?? '',
               undefined,
               clientError
             );

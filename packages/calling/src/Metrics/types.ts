@@ -48,9 +48,10 @@ export interface IMetricManager {
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
     caller: string,
-    serverType: string | undefined,
-    keeapliveCount: number | undefined,
-    error: LineError | CallingClientError | undefined
+    serverType: string,
+    trackingId: string,
+    keeapliveCount?: number,
+    error?: LineError | CallingClientError
   ) => void;
   submitBNRMetric: (
     name: METRIC_EVENT,

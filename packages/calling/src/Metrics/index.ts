@@ -46,9 +46,10 @@ class MetricManager implements IMetricManager {
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
     caller: string,
-    serverType: string | undefined,
-    keepaliveCount: number | undefined,
-    clientError: LineError | CallingClientError | undefined
+    serverType: string,
+    trackingId: string,
+    keepaliveCount?: number,
+    clientError?: LineError | CallingClientError
   ) {
     let data;
 
@@ -66,6 +67,7 @@ class MetricManager implements IMetricManager {
             calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
             reg_source: caller,
             server_type: serverType,
+            trackingId,
           },
           type,
         };
@@ -86,6 +88,7 @@ class MetricManager implements IMetricManager {
               calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
               reg_source: caller,
               server_type: serverType,
+              trackingId,
               keepalive_count: keepaliveCount,
               error: clientError.getError().message,
               error_type: clientError.getError().type,

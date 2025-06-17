@@ -60,6 +60,7 @@ describe('CALLING: Metric tests', () => {
           calling_sdk_version: MOCK_VERSION_NUMBER,
           reg_source: REGISTRATION_UTIL,
           server_type: 'primary',
+          trackingId: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
         },
         type: METRIC_TYPE.BEHAVIORAL,
       };
@@ -70,6 +71,7 @@ describe('CALLING: Metric tests', () => {
         METRIC_TYPE.BEHAVIORAL,
         REGISTRATION_UTIL,
         'primary',
+        'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
         undefined,
         undefined
       );
@@ -105,6 +107,7 @@ describe('CALLING: Metric tests', () => {
           calling_sdk_version: MOCK_VERSION_NUMBER,
           reg_source: REGISTRATION_UTIL,
           server_type: 'primary',
+          trackingId: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
           error: clientError.getError().message,
           error_type: clientError.getError().type,
         },
@@ -117,6 +120,7 @@ describe('CALLING: Metric tests', () => {
         METRIC_TYPE.BEHAVIORAL,
         REGISTRATION_UTIL,
         'primary',
+        'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
         undefined,
         clientError
       );
