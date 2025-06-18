@@ -1049,9 +1049,6 @@ describe('plugin-meetings', () => {
             options: {
               meetingId: meeting.id,
             },
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent.getCall(3), {
             name: 'client.ice.end',
@@ -1062,9 +1059,6 @@ describe('plugin-meetings', () => {
             },
             options: {
               meetingId: meeting.id,
-            },
-            eventData: {
-              isMercuryConnected: false,
             },
           });
         });
@@ -1770,9 +1764,6 @@ describe('plugin-meetings', () => {
                 pstnAudioType: 'dial-in',
               },
               options: {meetingId: meeting.id},
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
 
             assert.exists(join.then);
@@ -1825,9 +1816,6 @@ describe('plugin-meetings', () => {
               name: 'client.call.initiated',
               payload: {trigger: 'fake-join-trigger', isRoapCallEnabled: true},
               options: {meetingId: meeting.id},
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
           });
 
@@ -2113,12 +2101,14 @@ describe('plugin-meetings', () => {
           };
           meeting.mediaProperties.setMediaDirection = sinon.stub().returns(true);
           meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
-          meeting.mediaProperties.getCurrentConnectionInfo = sinon.stub().resolves({
-            connectionType: 'udp',
-            selectedCandidatePairChanges: 2,
-            numTransports: 1,
-            ipVersion: 'IPv6',
-          });
+          meeting.mediaProperties.getCurrentConnectionInfo = sinon
+            .stub()
+            .resolves({
+              connectionType: 'udp',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
+              ipVersion: 'IPv6',
+            });
           meeting.audio = muteStateStub;
           meeting.video = muteStateStub;
           sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
@@ -2553,9 +2543,6 @@ describe('plugin-meetings', () => {
               meetingId: meeting.id,
               rawError: sinon.match.instanceOf(Error),
             },
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
         });
 
@@ -2907,9 +2894,6 @@ describe('plugin-meetings', () => {
             options: {
               meetingId: meeting.id,
             },
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
           assert.calledWith(webex.internal.newMetrics.submitClientEvent.secondCall, {
             name: 'client.ice.end',
@@ -2922,9 +2906,6 @@ describe('plugin-meetings', () => {
               meetingId: meeting.id,
               rawError: error,
             },
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
           assert.calledWith(webex.internal.newMetrics.submitClientEvent.thirdCall, {
             name: 'client.ice.end',
@@ -2936,9 +2917,6 @@ describe('plugin-meetings', () => {
             options: {
               meetingId: meeting.id,
               rawError: error,
-            },
-            eventData: {
-              isMercuryConnected: false,
             },
           });
 
@@ -3133,9 +3111,6 @@ describe('plugin-meetings', () => {
             options: {
               meetingId: meeting.id,
             },
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
           assert.calledWith(webex.internal.newMetrics.submitClientEvent.secondCall, {
             name: 'client.ice.end',
@@ -3148,9 +3123,6 @@ describe('plugin-meetings', () => {
               meetingId: meeting.id,
               rawError: mediaConnectionError,
             },
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
           assert.calledWith(webex.internal.newMetrics.submitClientEvent.thirdCall, {
             name: 'client.media-engine.ready',
@@ -3159,9 +3131,6 @@ describe('plugin-meetings', () => {
             },
             options: {
               meetingId: meeting.id,
-            },
-            eventData: {
-              isMercuryConnected: false,
             },
           });
 
@@ -3357,8 +3326,8 @@ describe('plugin-meetings', () => {
           meeting.mediaConnections = [
             {
               mediaAgentCluster: 'some.cluster',
-            },
-          ];
+            }
+          ]
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
           meeting.iceCandidateErrors.set('701_turn_host_lookup_received_error', 1);
@@ -3396,9 +3365,6 @@ describe('plugin-meetings', () => {
             name: 'client.media-engine.ready',
             options: {
               meetingId: meeting.id,
-            },
-            eventData: {
-              isMercuryConnected: false,
             },
           });
         });
@@ -3688,9 +3654,6 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: meeting.id,
               },
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
           });
 
@@ -3725,9 +3688,6 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: meeting.id,
               },
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
           });
 
@@ -3743,9 +3703,6 @@ describe('plugin-meetings', () => {
               payload: {mediaType: 'video'},
               options: {
                 meetingId: meeting.id,
-              },
-              eventData: {
-                isMercuryConnected: false,
               },
             });
           });
@@ -3768,9 +3725,6 @@ describe('plugin-meetings', () => {
               payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
               options: {
                 meetingId: meeting.id,
-              },
-              eventData: {
-                isMercuryConnected: false,
               },
             });
           });
@@ -3800,9 +3754,6 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: meeting.id,
               },
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
           });
 
@@ -3818,9 +3769,6 @@ describe('plugin-meetings', () => {
               payload: {mediaType: 'audio'},
               options: {
                 meetingId: meeting.id,
-              },
-              eventData: {
-                isMercuryConnected: false,
               },
             });
           });
@@ -3850,9 +3798,6 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: meeting.id,
               },
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
 
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
@@ -3860,9 +3805,6 @@ describe('plugin-meetings', () => {
               payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
               options: {
                 meetingId: meeting.id,
-              },
-              eventData: {
-                isMercuryConnected: false,
               },
             });
           });
@@ -3898,18 +3840,12 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: meeting.id,
               },
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
             assert.neverCalledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.rx.start',
               payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
               options: {
                 meetingId: meeting.id,
-              },
-              eventData: {
-                isMercuryConnected: false,
               },
             });
           });
@@ -3927,9 +3863,6 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: meeting.id,
               },
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
 
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
@@ -3937,9 +3870,6 @@ describe('plugin-meetings', () => {
               payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
               options: {
                 meetingId: meeting.id,
-              },
-              eventData: {
-                isMercuryConnected: false,
               },
             });
           });
@@ -3962,18 +3892,12 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: meeting.id,
               },
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
             assert.neverCalledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.rx.stop',
               payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
               options: {
                 meetingId: meeting.id,
-              },
-              eventData: {
-                isMercuryConnected: false,
               },
             });
           });
@@ -4212,9 +4136,6 @@ describe('plugin-meetings', () => {
                   options: {
                     meetingId: meeting.id,
                   },
-                  eventData: {
-                    isMercuryConnected: false,
-                  },
                 },
               ]);
 
@@ -4242,9 +4163,6 @@ describe('plugin-meetings', () => {
                     rawError: {
                       iceConnected: false,
                     },
-                  },
-                  eventData: {
-                    isMercuryConnected: false,
                   },
                 },
               ]);
@@ -5921,9 +5839,6 @@ describe('plugin-meetings', () => {
               leaveReason: 'ended-by-locus',
             },
             options: {meetingId: meeting.id},
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
 
           assert(
@@ -5958,9 +5873,6 @@ describe('plugin-meetings', () => {
               ],
             },
             options: {meetingId: meeting.id},
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
 
           assert(
@@ -6010,9 +5922,6 @@ describe('plugin-meetings', () => {
             name: 'client.share.floor-grant.request',
             payload: {mediaType: 'share', shareInstanceId: '1234-5678'},
             options: {meetingId: meeting.id},
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
         });
 
@@ -6044,9 +5953,6 @@ describe('plugin-meetings', () => {
             name: 'client.share.floor-granted.local',
             payload: {mediaType: 'share', errors: 'foo', shareInstanceId: '1234-5678'},
             options: {meetingId: meeting.id},
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
         });
       });
@@ -7710,9 +7616,6 @@ describe('plugin-meetings', () => {
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.call.leave',
             options: {meetingId: meeting.id},
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
         });
       });
@@ -7843,16 +7746,10 @@ describe('plugin-meetings', () => {
               },
             },
             options: {meetingId: meeting.id},
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.call.move-media',
             options: {meetingId: meeting.id},
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
         });
 
@@ -7974,9 +7871,6 @@ describe('plugin-meetings', () => {
           assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.call.move-media',
             options: {meetingId: meeting.id},
-            eventData: {
-              isMercuryConnected: false,
-            },
           });
         });
 
@@ -8196,9 +8090,6 @@ describe('plugin-meetings', () => {
               name: 'client.share.initiated',
               payload: {mediaType: 'share', shareInstanceId: meeting.localShareInstanceId},
               options: {meetingId: meeting.id},
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
 
@@ -8216,9 +8107,6 @@ describe('plugin-meetings', () => {
               name: 'client.share.initiated',
               payload: {mediaType: 'share', shareInstanceId: meeting.localShareInstanceId},
               options: {meetingId: meeting.id},
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
 
             assert.calledWith(
@@ -8897,9 +8785,6 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: meeting.id,
               },
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
           });
         });
@@ -8933,9 +8818,6 @@ describe('plugin-meetings', () => {
                 payload: {
                   canProceed: true,
                   icePhase: expected.icePhase,
-                },
-                eventData: {
-                  isMercuryConnected: false,
                 },
               });
             } else {
@@ -9158,9 +9040,6 @@ describe('plugin-meetings', () => {
                 canProceed: false,
               },
               options: {rawError: error, meetingId: meeting.id},
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
           };
 
@@ -9300,9 +9179,6 @@ describe('plugin-meetings', () => {
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media-engine.remote-sdp-received',
               options: {meetingId: meeting.id},
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
 
             assert.calledOnce(Metrics.sendBehavioralMetric);
@@ -9331,9 +9207,6 @@ describe('plugin-meetings', () => {
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media-engine.local-sdp-generated',
               options: {meetingId: meeting.id},
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
 
             assert.notEqual(meeting.deferSDPAnswer, undefined);
@@ -9346,9 +9219,6 @@ describe('plugin-meetings', () => {
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media-engine.remote-sdp-received',
               options: {meetingId: meeting.id},
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
           });
         });
@@ -9482,9 +9352,6 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: meeting.id,
                 rawError: fakeError,
-              },
-              eventData: {
-                isMercuryConnected: false,
               },
             });
           };
@@ -12104,9 +11971,6 @@ describe('plugin-meetings', () => {
               name: 'client.share.initiated',
               payload: {mediaType: 'whiteboard'},
               options: {meetingId: meeting.id},
-              eventData: {
-                isMercuryConnected: false,
-              },
             });
           });
         });
