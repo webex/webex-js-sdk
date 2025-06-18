@@ -13,8 +13,9 @@ export default class AutoWrapup {
   /**
    * Creates a new AutoWrapup timer
    * @param interval - Time in milliseconds before auto wrap-up executes
+   *  @param allowCancelAutoWrapup - Whether to allow canceling the auto wrap-up
    */
-  constructor(interval = 10000, allowCancelAutoWrapup = false) {
+  constructor(interval: number, allowCancelAutoWrapup = false) {
     this.interval = interval;
     this.allowCancelAutoWrapup = allowCancelAutoWrapup;
   }

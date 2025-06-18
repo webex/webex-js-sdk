@@ -133,7 +133,7 @@ export default class Task extends EventEmitter implements ITask {
   public data: TaskData;
   private metricsManager: MetricsManager;
   public webCallMap: Record<TaskId, CallId>;
-  private wrapupProps: WrapupData;
+  private wrapupData: WrapupData;
   public autoWrapup?: AutoWrapup;
 
   /**
@@ -141,19 +141,20 @@ export default class Task extends EventEmitter implements ITask {
    * @param contact - The routing contact service instance
    * @param webCallingService - The web calling service instance
    * @param data - Initial task data
+   * @param wrapupData - Wrap-up configuration data
    */
   public constructor(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    wrapupProps: WrapupData
+    wrapupData: WrapupData
   ) {
     super();
     this.contact = contact;
     this.data = data;
     this.webCallingService = webCallingService;
     this.webCallMap = {};
-    this.wrapupProps = wrapupProps;
+    this.wrapupData = wrapupData;
     this.metricsManager = MetricsManager.getInstance();
     this.registerWebCallListeners();
     this.setupAutoWrapupTimer();
@@ -164,9 +165,14 @@ export default class Task extends EventEmitter implements ITask {
    * @private
    */
   private setupAutoWrapupTimer() {
-    if (this.data && this.data.wrapUpRequired && !this.autoWrapup) {
-      const wrapUpProps = this.wrapupProps.wrapUpProps;
-      if (wrapUpProps?.autoWrapup === false) {
+    if (
+      this.data.wrapUpRequired && // only when wrapup required
+      !this.autoWrapup && // if autoWrapup is not already set
+      this.wrapupData && // wrapupData is not defined
+      this.wrapupData.wrapUpProps // wrapUpProps is defined
+    ) {
+      const wrapUpProps = this.wrapupData.wrapUpProps;
+      if (!wrapUpProps || wrapUpProps.autoWrapup === false) {
         LoggerProxy.info(`Auto wrap-up is not required for this task`, {
           module: TASK_FILE,
           method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
@@ -185,8 +191,14 @@ export default class Task extends EventEmitter implements ITask {
 
         return;
       }
-      const intervalMs = wrapUpProps?.autoWrapupInterval || 10000;
-      this.autoWrapup = new AutoWrapup(intervalMs, wrapUpProps?.allowCancelAutoWrapup);
+      const intervalMs = wrapUpProps.autoWrapupInterval;
+      if (!intervalMs || intervalMs <= 0) {
+        LoggerProxy.error(`Invalid auto wrap-up interval: ${intervalMs}`, {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+        });
+      }
+      this.autoWrapup = new AutoWrapup(intervalMs, wrapUpProps.allowCancelAutoWrapup);
       this.autoWrapup.start(async () => {
         LoggerProxy.info(`Auto wrap-up timer triggered`, {
           module: TASK_FILE,

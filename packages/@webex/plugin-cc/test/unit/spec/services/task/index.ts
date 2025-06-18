@@ -1375,7 +1375,7 @@ describe('Task', () => {
       const taskInstance = new Task(contactMock, webCallingService, taskData, wrapupProps);
       
       const clearSpy = jest.spyOn(taskInstance.autoWrapup, 'clear');
-      taskInstance.cancelAutoWrapUpTimer();
+      taskInstance.cancelAutoWrapupTimer();
       
       expect(clearSpy).toHaveBeenCalled();
       expect(loggerInfoSpy).toHaveBeenCalledWith('Auto wrap-up timer cancelled', {
