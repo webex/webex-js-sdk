@@ -177,7 +177,7 @@ function initOauth() {
   webex = window.webex = Webex.init({
     config: generateWebexConfig({
       credentials: {
-        client_id: 'C70599433db154842e919ad9e18273d835945ff198251c82204b236b157b3a213',
+        client_id: 'C04ef08ffce356c3161bb66b15dbdd98d26b6c683c5ce1a1a89efad545fdadd74',
         redirect_uri: redirectUri,
         scope: requestedScopes,
       }
