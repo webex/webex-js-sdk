@@ -818,6 +818,7 @@ export default class LocusInfo extends EventsScope {
           hasRecordingPausedChanged,
           hasMeetingContainerChanged,
           hasTranscribeChanged,
+          hasTranscribeSpokenLanguageChanged,
           hasManualCaptionChanged,
           hasEntryExitToneChanged,
           hasBreakoutChanged,
@@ -952,6 +953,21 @@ export default class LocusInfo extends EventsScope {
           {
             transcribing,
             caption,
+          }
+        );
+      }
+
+      if (hasTranscribeSpokenLanguageChanged) {
+        const {spokenLanguage} = current.transcribe;
+
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+          {
+            spokenLanguage,
           }
         );
       }

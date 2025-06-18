@@ -238,6 +238,7 @@ describe('plugin-voicea', () => {
           captionLanguages: ['af', 'am'],
           spokenLanguages: ['en'],
           maxLanguages: 5,
+          currentSpokenLanguage: 'en',
         });
       });
 
@@ -246,11 +247,13 @@ describe('plugin-voicea', () => {
 
         voiceaService.on(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, spy);
         voiceaService.listenToEvents();
+        voiceaService.onSpokenLanguageUpdate('fr-FR');
         await voiceaService.processAnnouncementMessage({});
         assert.calledOnceWithExactly(spy, {
           captionLanguages: [],
           spokenLanguages: [],
           maxLanguages: 0,
+          currentSpokenLanguage: 'fr-FR',
         });
       });
     });
@@ -1020,6 +1023,17 @@ describe('plugin-voicea', () => {
         assert.equal(voiceaService.getAnnounceStatus(), "joined");
       });
     });
+
+    describe('#onSpokenLanguageUpdate', () => {
+      it('should trigger SPOKEN_LANGUAGE_UPDATE event with correct languageCode', () => {
+        const triggerSpy = sinon.spy();
+        voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
+
+        const languageCode = 'fr-FR';
+        voiceaService.onSpokenLanguageUpdate(languageCode);
+        assert.equal(voiceaService.currentSpokenLanguage, languageCode);
+        assert.calledOnceWithExactly(triggerSpy, {languageCode});
+      });
+    });
   });
 });
-
