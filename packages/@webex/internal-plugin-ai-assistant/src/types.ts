@@ -31,6 +31,7 @@ export interface ContextResource {
 }
 
 export interface SummarizeMeetingOptions {
+  asssistant?: string;
   meetingInstanceId: string;
   meetingSite: string;
   sessionId: string;
@@ -45,4 +46,5 @@ export interface MakeMeetingRequestOptions {
   contentType: 'action' | 'message';
   contentValue: string;
   parameters?: any;
+  assistant?: string;
 }

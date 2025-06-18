@@ -288,6 +288,7 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.contentType the type of content ('action' or 'message')
    * @param {string} options.contentValue the value to use (action name or message text)
    * @param {Object} options.parameters optional parameters to include in the request (for action type only)
+   * @param {Object} options.assistant optional parameter to specify the assistant to use
    * @returns {Promise<RequestResult>} Resolves with an object
    */
   async _makeMeetingRequest(options: MakeMeetingRequestOptions): Promise<RequestResult> {
@@ -320,6 +321,7 @@ const AIAssistant = WebexPlugin.extend({
         async: 'chunked',
         locale: 'en_US',
         content,
+        ...(options.assistant ? {assistant: options.assistant} : {}),
       },
     });
   },
