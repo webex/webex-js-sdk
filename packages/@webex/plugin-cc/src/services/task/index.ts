@@ -216,6 +216,7 @@ export default class Task extends EventEmitter implements ITask {
   /**
    * Cancels the automatic wrap-up timer if it's running
    * @public - Public so it can be called externally when needed
+   * Note: This is supported only in single session mode. Not supported in multi-session mode.
    */
   public cancelAutoWrapupTimer() {
     this.autoWrapup?.clear();

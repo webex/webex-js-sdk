@@ -1002,6 +1002,7 @@ export interface ITask extends EventEmitter {
   /**
    * cancels the auto-wrapup timer for the task
    * This method stops the auto-wrapup process if it is currently active
+   * Note: This is supported only in single session mode. Not supported in multi-session mode.
    * @returns void
    */
   cancelAutoWrapupTimer(): void;
