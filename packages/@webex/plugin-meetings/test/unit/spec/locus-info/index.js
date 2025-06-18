@@ -557,6 +557,34 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should update the transcribe spoken language', () => {
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.controls = {
+          transcribe: {
+            transcribing: false,
+            caption: true,
+            spokenLanguage: 'en-US',
+          },
+        };
+        newControls.transcribe.transcribing = false;
+        newControls.transcribe.caption = true;
+        newControls.transcribe.spokenLanguage = 'fr';
+
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+          {
+            spokenLanguage: 'fr',
+          }
+        );
+      });
+
       it('should update the manual caption state', () => {
         locusInfo.emitScoped = sinon.stub();
         locusInfo.controls = {
