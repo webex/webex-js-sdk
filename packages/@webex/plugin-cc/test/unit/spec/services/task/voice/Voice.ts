@@ -29,7 +29,7 @@ describe('Voice Task', () => {
     mediaResourceId: 'media1',
     interaction: {
       mainInteractionId: 'main1',
-      media: { main1: { mediaResourceId: 'media1' } },
+      media: { 'media1': { mediaResourceId: 'media1', isHold: false }},
     },
   } as unknown as TaskData;
 
@@ -43,18 +43,25 @@ describe('Voice Task', () => {
     expect(voice.taskUiControls.endConsult.visible).toBe(false);
   });
 
-  it('calls contact.hold when isHeld=true', async () => {
+  it('calls contact.hold when media is not held', async () => {
     const voice = new Voice(dummyContact, baseData as any, {});
-    await voice.holdResume(true);
+    await voice.holdResume();
     expect(dummyContact.hold).toHaveBeenCalledWith({
       interactionId: 'int1',
       data: { mediaResourceId: 'media1' },
     });
   });
 
-  it('calls contact.unHold when isHeld=false', async () => {
-    const voice = new Voice(dummyContact, baseData as any, {});
-    await voice.holdResume(false);
+  it('calls contact.unHold when media is held', async () => {
+    const heldData = {
+      ...baseData,
+      interaction: {
+        ...baseData.interaction,
+        media: { 'media1': { mediaResourceId: 'media1', isHold: true }},
+      },
+    } as any;
+    const voice = new Voice(dummyContact, heldData, {});
+    await voice.holdResume();
     expect(dummyContact.unHold).toHaveBeenCalledWith({
       interactionId: 'int1',
       data: { mediaResourceId: 'media1' },
@@ -233,21 +240,23 @@ describe('Voice Task', () => {
 
     it('CONTACT_ENDED with state new hides all and no wrapup', () => {
       const ctrl = make(CC_EVENTS.CONTACT_ENDED, { state: 'new' });
-      ['hold','transfer','consult','consultTransfer','recording','end','endConsult','wrapup']
-        .forEach(k => expect((ctrl as any)[k].visible).toBe(false));
+      ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end', 'endConsult', 'wrapup'].forEach(
+        (k) => expect((ctrl as any)[k].visible).toBe(false)
+      );
     });
 
     it('CONTACT_ENDED with state active hides all except wrapup', () => {
       const ctrl = make(CC_EVENTS.CONTACT_ENDED, { state: 'ended' });
-      ['hold','transfer','consult','consultTransfer','recording','end','endConsult']
-        .forEach(k => expect((ctrl as any)[k].visible).toBe(false));
+      ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end', 'endConsult'].forEach(
+        (k) => expect((ctrl as any)[k].visible).toBe(false)
+      );
       expect(ctrl.wrapup.visible).toBe(true);
       expect(ctrl.wrapup.enabled).toBe(true);
     });
 
     it('AGENT_CONTACT_HELD shows main controls and end disabled', () => {
       const ctrl = make(CC_EVENTS.AGENT_CONTACT_HELD);
-      ['hold','transfer','consult','recording'].forEach(k =>
+      ['hold', 'transfer', 'consult', 'recording'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(true)
       );
       expect(ctrl.end.visible).toBe(true);
@@ -256,7 +265,7 @@ describe('Voice Task', () => {
 
     it('AGENT_CONTACT_UNHELD shows main controls and end enabled', () => {
       const ctrl = make(CC_EVENTS.AGENT_CONTACT_UNHELD);
-      ['hold','transfer','consult','recording'].forEach(k =>
+      ['hold', 'transfer', 'consult', 'recording'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(true)
       );
       expect(ctrl.end.visible).toBe(true);
@@ -265,7 +274,7 @@ describe('Voice Task', () => {
 
     it('AGENT_VTEAM_TRANSFERRED hides all except wrapup', () => {
       const ctrl = make(CC_EVENTS.AGENT_VTEAM_TRANSFERRED);
-      ['hold','transfer','consult','consultTransfer','recording','end'].forEach(k =>
+      ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(false)
       );
       expect(ctrl.wrapup.visible).toBe(true);
@@ -274,7 +283,7 @@ describe('Voice Task', () => {
 
     it('AGENT_CTQ_CANCEL_FAILED shows main and end enabled', () => {
       const ctrl = make(CC_EVENTS.AGENT_CTQ_CANCEL_FAILED);
-      ['hold','transfer','consult','recording'].forEach(k =>
+      ['hold', 'transfer', 'consult', 'recording'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(true)
       );
       expect(ctrl.end.visible).toBe(true);
@@ -283,7 +292,7 @@ describe('Voice Task', () => {
 
     it('AGENT_CONSULT_CREATED when not consulted toggles correctly', () => {
       const ctrl = make(CC_EVENTS.AGENT_CONSULT_CREATED, { isConsulted: false });
-      ['hold','consult','transfer','end'].forEach(k =>
+      ['hold', 'consult', 'transfer', 'end'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(false)
       );
       expect(ctrl.consultTransfer.visible).toBe(true);
@@ -315,7 +324,7 @@ describe('Voice Task', () => {
 
     it('AGENT_CONSULTING when starting hides main and shows consultTransfer etc.', () => {
       const ctrl = make(CC_EVENTS.AGENT_CONSULTING, { isConsulted: false });
-      ['hold','transfer','consult'].forEach(k =>
+      ['hold', 'transfer', 'consult'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(false)
       );
       expect(ctrl.consultTransfer.visible).toBe(true);
@@ -336,7 +345,7 @@ describe('Voice Task', () => {
 
     it('AGENT_CONSULT_FAILED resets to main and hides transfer/wrapup', () => {
       const ctrl = make(CC_EVENTS.AGENT_CONSULT_FAILED, { isConsulted: false });
-      ['hold','transfer','consult','recording'].forEach(k =>
+      ['hold', 'transfer', 'consult', 'recording'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(true)
       );
       expect(ctrl.end.visible).toBe(true);
@@ -373,7 +382,7 @@ describe('Voice Task', () => {
 
     it('hides all and shows wrapup when terminated', () => {
       const ctrl = makeContact({ state: 'connected', isTerminated: true });
-      ['hold','transfer','consult','consultTransfer','recording','end'].forEach(k =>
+      ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(false)
       );
       expect(ctrl.wrapup.visible).toBe(true);
@@ -382,7 +391,7 @@ describe('Voice Task', () => {
 
     it('shows main and end enabled when connected (not consulted)', () => {
       const ctrl = makeContact({ state: 'connected', isConsulted: false });
-      ['hold','transfer','consult','recording'].forEach(k =>
+      ['hold', 'transfer', 'consult', 'recording'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(true)
       );
       expect(ctrl.end.visible).toBe(true);
@@ -391,7 +400,7 @@ describe('Voice Task', () => {
 
     it('consulting (not consulted) hides main, shows consultTransfer/endConsult, end disabled', () => {
       const ctrl = makeContact({ state: 'consulting', isConsulted: false, endCall: true });
-      ['hold','transfer','consult'].forEach(k =>
+      ['hold', 'transfer', 'consult'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(false)
       );
       expect(ctrl.consultTransfer.visible).toBe(true);
@@ -404,7 +413,7 @@ describe('Voice Task', () => {
 
     it('consulting (consulted) hides main and shows only endConsult when allowed', () => {
       const ctrl = makeContact({ state: 'consulting', isConsulted: true, endConsult: true });
-      ['hold','transfer','consult','consultTransfer'].forEach(k =>
+      ['hold', 'transfer', 'consult', 'consultTransfer'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(false)
       );
       expect(ctrl.recording.visible).toBe(true);

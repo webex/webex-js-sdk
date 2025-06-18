@@ -1364,7 +1364,7 @@ function expandAll() {
 function holdResumeCall() {
   const isHeld = holdResumeElm.innerText === 'Hold';
   holdResumeElm.disabled = true;
-  currentTask.holdResume(isHeld)
+  currentTask.holdResume()
     .then(() => {
       console.info(`Call ${isHeld ? 'held' : 'resumed'} successfully`);
       holdResumeElm.innerText = isHeld ? 'Resume' : 'Hold';

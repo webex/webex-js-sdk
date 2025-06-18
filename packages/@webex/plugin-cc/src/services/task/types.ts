@@ -1167,10 +1167,11 @@ export interface IVoice extends ITask {
    * @returns Promise<TaskResponse>
    * @example
    * ```
-   * task.hold();
+   * task.holdResume();
    * ```
    */
-  holdResume(isHeld: boolean): Promise<TaskResponse>;
+  holdResume(): Promise<TaskResponse>;
+
   /**
    * This is used to consult the task.
    * @param consultPayload

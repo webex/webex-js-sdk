@@ -210,15 +210,17 @@ export default class Voice extends Task implements IVoice {
    * task.holdResume(isHeld: true).then(()=>{}).catch(()=>{})
    * ```
    * */
-  public async holdResume(isHeld: boolean): Promise<TaskResponse> {
-    LoggerProxy.info(`${isHeld ? 'Holding' : 'Resuming'} task`, {
+  public async holdResume(): Promise<TaskResponse> {
+    // Determine if the task is being held or resumed based on the media resource state
+    // If the media resource is not found, default to resuming the task
+    const shouldHold = !this.data.interaction.media[this.data.mediaResourceId].isHold;
+
+    LoggerProxy.info(`${shouldHold ? 'Holding' : 'Resuming'} task`, {
       module: CC_FILE,
       method: 'holdResume',
       interactionId: this.data.interactionId,
     });
-    // eslint-disable-next-line no-console
-    console.info('ADHWAITH', this.data);
-    const [successEvt, failedEvt] = isHeld
+    const [successEvt, failedEvt] = shouldHold
       ? [METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS, METRIC_EVENT_NAMES.TASK_HOLD_FAILED]
       : [METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS, METRIC_EVENT_NAMES.TASK_RESUME_FAILED];
 
@@ -226,7 +228,7 @@ export default class Voice extends Task implements IVoice {
 
     try {
       let response: TaskResponse;
-      if (isHeld) {
+      if (shouldHold) {
         response = await this.contact.hold({
           interactionId: this.data.interactionId,
           data: {mediaResourceId: this.data.mediaResourceId},
@@ -248,17 +250,16 @@ export default class Voice extends Task implements IVoice {
         });
       } else {
         const mainId = this.data.interaction.mainInteractionId!;
-        const mediaId = this.data.interaction.media[mainId].mediaResourceId;
         response = await this.contact.unHold({
           interactionId: this.data.interactionId,
-          data: {mediaResourceId: mediaId},
+          data: {mediaResourceId: this.data.mediaResourceId},
         });
         this.metricsManager.trackEvent(
           successEvt,
           {
             taskId: this.data.interactionId,
             mainInteractionId: mainId,
-            mediaResourceId: mediaId,
+            mediaResourceId: this.data.mediaResourceId,
             ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
           },
           ['operational', 'behavioral']
@@ -276,7 +277,7 @@ export default class Voice extends Task implements IVoice {
       const {error: detailedError} = getErrorDetails(error, 'holdResume', CC_FILE);
       this.metricsManager.trackEvent(
         failedEvt,
-        isHeld
+        shouldHold
           ? {
               taskId: this.data.interactionId,
               mediaResourceId: this.data.mediaResourceId,
