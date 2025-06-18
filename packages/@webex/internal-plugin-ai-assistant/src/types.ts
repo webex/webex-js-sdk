@@ -24,10 +24,25 @@ export interface RequestOptions {
   params?: Record<string, unknown>;
 }
 
+export interface ContextResource {
+  id: string;
+  type: string;
+  url: string;
+}
+
 export interface SummarizeMeetingOptions {
   meetingInstanceId: string;
   meetingSite: string;
   sessionId: string;
   encryptionKeyUrl: string;
   lastMinutes?: number;
+}
+
+export interface MakeMeetingRequestOptions {
+  sessionId: string;
+  encryptionKeyUrl: string;
+  contextResources: ContextResource[];
+  contentType: 'action' | 'message';
+  contentValue: string;
+  parameters?: any;
 }

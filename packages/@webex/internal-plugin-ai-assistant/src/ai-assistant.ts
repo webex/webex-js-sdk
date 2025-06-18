@@ -8,7 +8,13 @@ import {get} from 'lodash';
 import {Timer} from '@webex/common-timers';
 
 import {AIAssistantTimeoutError} from './ai-assistant-errors';
-import {RequestOptions, RequestResponse, RequestResult, SummarizeMeetingOptions} from './types';
+import {
+  MakeMeetingRequestOptions,
+  RequestOptions,
+  RequestResponse,
+  RequestResult,
+  SummarizeMeetingOptions,
+} from './types';
 import {
   AI_ASSISTANT_REGISTERED,
   AI_ASSISTANT_RESULT,
@@ -186,7 +192,8 @@ const AIAssistant = WebexPlugin.extend({
       this.listenTo(this, eventName, async (data) => {
         timer.reset();
         const resultData = get(data, dataPath, []);
-        const error = get(data, 'response.errorMessage');
+        const errorMessage = get(data, 'response.errorMessage');
+        const errorCode = get(data, 'response.errorCode');
 
         if (data.finished) {
           // For finished messages, decrypt and emit the final complete message
@@ -203,7 +210,8 @@ const AIAssistant = WebexPlugin.extend({
               message: decryptedMessage || '',
               requestId,
               finished: true,
-              error,
+              errorMessage,
+              errorCode,
             });
 
             this.stopListening(this, eventName);
@@ -212,7 +220,8 @@ const AIAssistant = WebexPlugin.extend({
               message: concatenatedMessage,
               requestId,
               finished: true,
-              error: error || decryptError.message,
+              errorMessage: errorMessage || decryptError.message,
+              errorCode,
             });
           }
         } else {
@@ -230,7 +239,8 @@ const AIAssistant = WebexPlugin.extend({
               message: concatenatedMessage,
               requestId,
               finished: false,
-              error,
+              errorMessage,
+              errorCode,
             });
           } catch (decryptError) {
             // If decryption fails, we still want to continue listening for more messages
@@ -238,7 +248,8 @@ const AIAssistant = WebexPlugin.extend({
               message: concatenatedMessage,
               requestId,
               finished: false,
-              error: error || decryptError.message,
+              errorMessage: errorMessage || decryptError.message,
+              errorCode,
             });
           }
         }
@@ -271,8 +282,7 @@ const AIAssistant = WebexPlugin.extend({
   /**
    * Common method to make AI assistant requests for meeting analysis
    * @param {Object} options
-   * @param {string} options.meetingInstanceId the meeting instance ID for the meeting from locus
-   * @param {string} options.meetingSite the name.webex.com site for the meeting
+   * @param {string} options.contextResources array of context resources to include in the request
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
    * @param {string} options.contentType the type of content ('action' or 'message')
@@ -280,14 +290,7 @@ const AIAssistant = WebexPlugin.extend({
    * @param {Object} options.parameters optional parameters to include in the request (for action type only)
    * @returns {Promise<RequestResult>} Resolves with an object
    */
-  async _makeMeetingRequest(
-    options: SummarizeMeetingOptions & {
-      contentType: 'action' | 'message';
-      contentValue: string;
-      parameters?: any;
-      encryptValue?: boolean;
-    }
-  ): Promise<RequestResult> {
+  async _makeMeetingRequest(options: MakeMeetingRequestOptions): Promise<RequestResult> {
     let value = options.contentValue;
 
     if (options.contentType === 'message') {
@@ -299,13 +302,7 @@ const AIAssistant = WebexPlugin.extend({
 
     const content: any = {
       context: {
-        resources: [
-          {
-            id: options.meetingInstanceId,
-            type: 'meeting',
-            url: options.meetingSite,
-          },
-        ],
+        resources: options.contextResources,
       },
       encryptionKeyUrl: options.encryptionKeyUrl,
       type: options.contentType,
@@ -342,6 +339,13 @@ const AIAssistant = WebexPlugin.extend({
       ...options,
       contentType: 'action',
       contentValue: 'SUMMARIZE_FOR_ME',
+      contextResources: [
+        {
+          id: options.meetingInstanceId,
+          type: 'meeting',
+          url: options.meetingSite,
+        },
+      ],
       ...(options.lastMinutes ? {parameters: {lastMinutes: options.lastMinutes}} : {}),
     });
   },
@@ -358,6 +362,13 @@ const AIAssistant = WebexPlugin.extend({
   wasMyNameMentioned(options: SummarizeMeetingOptions): Promise<RequestResult> {
     return this._makeMeetingRequest({
       ...options,
+      contextResources: [
+        {
+          id: options.meetingInstanceId,
+          type: 'meeting',
+          url: options.meetingSite,
+        },
+      ],
       contentType: 'action',
       contentValue: 'WAS_MY_NAME_MENTIONED',
     });
@@ -375,6 +386,13 @@ const AIAssistant = WebexPlugin.extend({
   showAllActionItems(options: SummarizeMeetingOptions): Promise<RequestResult> {
     return this._makeMeetingRequest({
       ...options,
+      contextResources: [
+        {
+          id: options.meetingInstanceId,
+          type: 'meeting',
+          url: options.meetingSite,
+        },
+      ],
       contentType: 'action',
       contentValue: 'SHOW_ALL_ACTION_ITEMS',
     });
@@ -406,6 +424,13 @@ const AIAssistant = WebexPlugin.extend({
   askMeAnything(options: SummarizeMeetingOptions & {question: string}): Promise<RequestResult> {
     return this._makeMeetingRequest({
       ...options,
+      contextResources: [
+        {
+          id: options.meetingInstanceId,
+          type: 'meeting',
+          url: options.meetingSite,
+        },
+      ],
       contentType: 'message',
       contentValue: options.question,
     });
