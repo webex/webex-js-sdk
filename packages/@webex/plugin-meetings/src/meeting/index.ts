@@ -2754,12 +2754,22 @@ export default class Meeting extends StatelessWebexPlugin {
     );
 
     this.locusInfo.on(
-      LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
+      LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
       ({spokenLanguage}) => {
         if (spokenLanguage) {
           this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
           // @ts-ignore
           this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage);
+
+          Trigger.trigger(
+            this,
+            {
+              file: 'meeting/index',
+              function: 'setupLocusControlsListener',
+            },
+            EVENT_TRIGGERS.MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+            {spokenLanguage}
+          );
         }
       }
     );

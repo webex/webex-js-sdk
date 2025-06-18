@@ -1237,11 +1237,17 @@ describe('plugin-meetings', () => {
           meeting.joinedWith = {state: 'JOINED'};
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
-            LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
             {spokenLanguage: 'fr'},
           );
           assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr');
           assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'fr');
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED
+          );
         });
 
         it('should also call voicea.onSpokenLanguageUpdate when not joined', async () => {
@@ -1249,7 +1255,7 @@ describe('plugin-meetings', () => {
           meeting.joinedWith = {state: 'NOT_JOINED'};
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
-            LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
             {spokenLanguage: 'de'},
           );
           assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'de');

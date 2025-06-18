@@ -965,7 +965,7 @@ export default class LocusInfo extends EventsScope {
             file: 'locus-info',
             function: 'updateControls',
           },
-          LOCUSINFO.EVENTS.CONTROLS_MEETING_CAPTION_SPOKEN_LANGUAGE_UPDATED,
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
           {
             spokenLanguage,
           }
