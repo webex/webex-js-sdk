@@ -1,7 +1,7 @@
 export const AI_ASSISTANT_REGISTERED = 'aiassistant:registered';
 export const AI_ASSISTANT_UNREGISTERED = 'aiassistant:unregistered';
 export const ASSISTANT_API_RESPONSE_EVENT = 'event:assistant-api.response';
-export const AI_ASSITANT_SERVICE_NAME = 'assistant-api';
+export const AI_ASSISTANT_SERVICE_NAME = 'assistant-api';
 export const AI_ASSISTANT_RESULT = 'aiassistant:result';
 export const AI_ASSISTANT_STREAM = 'aiassistant:stream';
 
@@ -20,4 +20,19 @@ export enum AI_ASSISTANT_ERROR_CODES {
   GENERIC_ERROR = 10000,
   WAIT_PREVIOUS = 10001,
   EMPTY_SEARCH_RESULT = 10002,
+}
+
+export enum ACTION_TYPES {
+  SHOW_ALL_ACTION_ITEMS = 'SHOW_ALL_ACTION_ITEMS',
+  WAS_MY_NAME_MENTIONED = 'WAS_MY_NAME_MENTIONED',
+  SUMMARIZE_FOR_ME = 'SUMMARIZE_FOR_ME',
+}
+
+export enum CONTENT_TYPES {
+  ACTION = 'action',
+  MESSAGE = 'message',
+}
+
+export enum CONTEXT_RESOURCE_TYPES {
+  MEETING = 'meeting',
 }

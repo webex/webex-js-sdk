@@ -11,7 +11,6 @@ import {
   MakeMeetingRequestOptions,
   RequestOptions,
   RequestResponse,
-  RequestResult,
   SummarizeMeetingOptions,
 } from './types';
 import {
@@ -21,8 +20,11 @@ import {
   AI_ASSISTANT_RESULT,
   AI_ASSISTANT_STREAM,
   AI_ASSISTANT_UNREGISTERED,
-  AI_ASSITANT_SERVICE_NAME,
+  AI_ASSISTANT_SERVICE_NAME,
   ASSISTANT_API_RESPONSE_EVENT,
+  ACTION_TYPES,
+  CONTENT_TYPES,
+  CONTEXT_RESOURCE_TYPES,
 } from './constants';
 
 const AIAssistant = WebexPlugin.extend({
@@ -45,7 +47,6 @@ const AIAssistant = WebexPlugin.extend({
    */
   initialize(...args) {
     Reflect.apply(WebexPlugin.prototype.initialize, this, args);
-    this.batchers = {};
   },
 
   /**
@@ -124,19 +125,21 @@ const AIAssistant = WebexPlugin.extend({
 
   /**
    * constructs the event name based on request id
+   * This is used by the plugin to listen for the result of a particular request
    * @param {UUID} requestId the id of the request
    * @returns {string}
    */
-  _getResultEventName(requestId) {
+  _getResultEventName(requestId: string) {
     return `${AI_ASSISTANT_RESULT}:${requestId}`;
   },
 
   /**
    * constructs the stream event name based on request id
+   * This is used by the consumer to listen for the stream (i.e. the data) of a particular request
    * @param {UUID} requestId the id of the request
    * @returns {string}
    */
-  _getStreamEventName(requestId) {
+  _getStreamEventName(requestId: string) {
     return `${AI_ASSISTANT_STREAM}:${requestId}`;
   },
 
@@ -163,16 +166,12 @@ const AIAssistant = WebexPlugin.extend({
   },
 
   /**
-   * Makes the request to the directory service
+   * Makes the request to the AI assistant service
    * @param {Object} options
    * @param {string} options.resource the URL to query
    * @param {Mixed} options.params additional params for the body of the request
    * @param {string} options.dataPath the path to get the data in the result object
-   * @returns {Promise<Object>} result Resolves with an object
-   * @returns {Array} result.resultArray an array of entities found
-   * @returns {Array} result.foundArray an array of the lookups of the found entities (if foundPath provided)
-   * @returns {Array} result.notFoundArray an array of the lookups of the not found entities (if notFoundPath provided)
-   * @throws {AIAssistantTimeoutError} when server does not respond in the specified timeframe
+   * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   _request(options: RequestOptions): Promise<RequestResponse> {
     const {resource, params, dataPath} = options;
@@ -263,7 +262,7 @@ const AIAssistant = WebexPlugin.extend({
 
       this.webex
         .request({
-          service: AI_ASSITANT_SERVICE_NAME,
+          service: AI_ASSISTANT_SERVICE_NAME,
           resource,
           method: 'POST',
           contentType: 'application/json',
@@ -295,9 +294,9 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.contentValue the value to use (action name or message text)
    * @param {Object} options.parameters optional parameters to include in the request (for action type only)
    * @param {Object} options.assistant optional parameter to specify the assistant to use
-   * @returns {Promise<RequestResult>} Resolves with an object
+   * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
-  async _makeMeetingRequest(options: MakeMeetingRequestOptions): Promise<RequestResult> {
+  async _makeMeetingRequest(options: MakeMeetingRequestOptions): Promise<RequestResponse> {
     let value = options.contentValue;
 
     if (options.contentType === 'message') {
@@ -340,17 +339,17 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
    * @param {number} options.lastMinutes Optional number of minutes to summarize from the end of the meeting. If not included, summarizes from the start.
-   * @returns {Promise<RequestResult>} Resolves with an object
+   * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
-  summarizeMeeting(options: SummarizeMeetingOptions): Promise<RequestResult> {
+  summarizeMeeting(options: SummarizeMeetingOptions): Promise<RequestResponse> {
     return this._makeMeetingRequest({
       ...options,
-      contentType: 'action',
-      contentValue: 'SUMMARIZE_FOR_ME',
+      contentType: CONTENT_TYPES.ACTION,
+      contentValue: ACTION_TYPES.SUMMARIZE_FOR_ME,
       contextResources: [
         {
           id: options.meetingInstanceId,
-          type: 'meeting',
+          type: CONTEXT_RESOURCE_TYPES.MEETING,
           url: options.meetingSite,
         },
       ],
@@ -365,20 +364,20 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.meetingSite the name.webex.com site for the meeting
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
-   * @returns {Promise<RequestResult>} Resolves with an object
+   * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
-  wasMyNameMentioned(options: SummarizeMeetingOptions): Promise<RequestResult> {
+  wasMyNameMentioned(options: SummarizeMeetingOptions): Promise<RequestResponse> {
     return this._makeMeetingRequest({
       ...options,
       contextResources: [
         {
           id: options.meetingInstanceId,
-          type: 'meeting',
+          type: CONTEXT_RESOURCE_TYPES.MEETING,
           url: options.meetingSite,
         },
       ],
-      contentType: 'action',
-      contentValue: 'WAS_MY_NAME_MENTIONED',
+      contentType: CONTENT_TYPES.ACTION,
+      contentValue: ACTION_TYPES.WAS_MY_NAME_MENTIONED,
     });
   },
 
@@ -389,20 +388,20 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.meetingSite the name.webex.com site for the meeting
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
-   * @returns {Promise<RequestResult>} Resolves with an object
+   * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
-  showAllActionItems(options: SummarizeMeetingOptions): Promise<RequestResult> {
+  showAllActionItems(options: SummarizeMeetingOptions): Promise<RequestResponse> {
     return this._makeMeetingRequest({
       ...options,
       contextResources: [
         {
           id: options.meetingInstanceId,
-          type: 'meeting',
+          type: CONTEXT_RESOURCE_TYPES.MEETING,
           url: options.meetingSite,
         },
       ],
-      contentType: 'action',
-      contentValue: 'SHOW_ALL_ACTION_ITEMS',
+      contentType: CONTENT_TYPES.ACTION,
+      contentValue: ACTION_TYPES.SHOW_ALL_ACTION_ITEMS,
     });
   },
 
@@ -427,19 +426,19 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
    * @param {string} options.question the question to ask about the meeting content
-   * @returns {Promise<RequestResult>} Resolves with an object
+   * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
-  askMeAnything(options: SummarizeMeetingOptions & {question: string}): Promise<RequestResult> {
+  askMeAnything(options: SummarizeMeetingOptions & {question: string}): Promise<RequestResponse> {
     return this._makeMeetingRequest({
       ...options,
       contextResources: [
         {
           id: options.meetingInstanceId,
-          type: 'meeting',
+          type: CONTEXT_RESOURCE_TYPES.MEETING,
           url: options.meetingSite,
         },
       ],
-      contentType: 'message',
+      contentType: CONTENT_TYPES.MESSAGE,
       contentValue: options.question,
     });
   },

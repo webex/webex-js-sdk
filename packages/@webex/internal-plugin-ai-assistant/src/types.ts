@@ -1,8 +1,3 @@
-export interface RequestResult {
-  resultArray: any[];
-  error: string | null;
-}
-
 export interface RequestResponse {
   sessionId: string;
   requestId: string;
