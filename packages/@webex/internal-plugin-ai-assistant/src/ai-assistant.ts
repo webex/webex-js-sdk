@@ -7,7 +7,6 @@ import '@webex/internal-plugin-mercury';
 import {get} from 'lodash';
 import {Timer} from '@webex/common-timers';
 
-import {AIAssistantTimeoutError} from './ai-assistant-errors';
 import {
   MakeMeetingRequestOptions,
   RequestOptions,
