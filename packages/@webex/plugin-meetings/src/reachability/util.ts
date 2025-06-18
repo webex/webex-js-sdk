@@ -50,7 +50,36 @@ export function convertStunUrlToTurnTls(stunUrl: string) {
  * @param {string} serverIps - The server IP or domain name to check.
  * @returns {boolean} true if the server IP is a domain name, false otherwise.
  */
+/**
+ * Checks if the given server IP is a domain name.
+ *
+ * @param {string} serverIps - The server IP or domain name to check.
+ * @returns {boolean} true if the server IP is a domain name, false otherwise.
+ */
 export function isDomainName(serverIps: string): boolean {
-  // A domain name contains letters, dots, or hyphens and is not purely numeric
-  return /^[\w-.]+$/.test(serverIps) && !Number.isNaN(Number(serverIps.replace(/\./g, '')));
+  // Regex to match IPv4 addresses
+  const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+
+  // Regex to match IPv6 addresses (enclosed in square brackets or plain format)
+  const ipv6Regex = /^(\[)?([a-fA-F0-9:]+)(\])?$/;
+
+  // Check if the input matches IPv4 or IPv6
+  if (ipv4Regex.test(serverIps) || ipv6Regex.test(serverIps)) {
+    return false; // It's an IP address
+  }
+
+  // If it doesn't match IPv4 or IPv6, assume it's a domain name
+  return true;
+}
+
+/**
+ * Constructs a unique key for a subnet using server IP, port, and protocol.
+ *
+ * @param {string} serverIps - The server IP or domain name.
+ * @param {number} port - The port number.
+ * @param {string} protocol - The protocol (e.g., 'udp', 'tcp', 'xtls').
+ * @returns {string} The constructed subnet key.
+ */
+export function constructSubnetKey(serverIps: string, port: number, protocol: string): string {
+  return `${serverIps}:${port}:${protocol}`;
 }

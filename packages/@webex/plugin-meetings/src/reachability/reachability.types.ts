@@ -12,13 +12,13 @@ export type TransportResult = {
 
 // New type to represent the result for each subnet IP address
 export type SubnetDetails = {
-  serverIps?: string; // 1. IP address of the subnet being tested
-  port?: number; // 2. Port used for the test
-  'answered-tx'?: number; // 3. 1 if reachable, 0 otherwise
-  'lost-tx'?: number; // 4. 1 if unreachable, 0 otherwise
-  latencies?: number[]; // 5.
+  serverIps?: string; // IP address of the subnet being tested
+  port?: number; // Port used for the test
+  'answered-tx'?: number; // 1 if reachable, 0 otherwise
+  'lost-tx'?: number; // 1 if unreachable, 0 otherwise
+  latencies?: number[]; // latency for subnet IP address
   protocol?: 'udp' | 'tcp' | 'xtls'; // Protocol used for the test
-  reachable?: boolean | true | false; // Result for this specific address
+  reachable?: boolean; // Result for this specific address
 };
 
 export enum NatType {
@@ -54,11 +54,11 @@ export type ReachabilityMetrics = {
  * it uses strings instead of booleans and numbers, but that's what they require.
  */
 export type TransportResultForBackend = {
-  clientMediaIPs?: string[]; // 1
-  latencyInMilliseconds?: string; // 2 amount of time it took to get the first ICE candidate
-  reachable?: 'true' | 'false'; // 3
-  details?: SubnetDetails[]; // 4
-  minLatency?: number; // 5
+  clientMediaIPs?: string[];
+  latencyInMilliseconds?: string; // amount of time it took to get the first ICE candidate
+  reachable?: 'true' | 'false';
+  details?: SubnetDetails[];
+  minLatency?: number;
   untested?: 'true';
 };
 

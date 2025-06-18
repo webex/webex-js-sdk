@@ -161,11 +161,11 @@ export default class Reachability extends EventsScope {
 
     const matchingReachedClusters = Object.values(this.clusterReachability).reduce(
       (acc, cluster) => {
-        const reachedSubnetsArray = Array.from(cluster.reachedSubnets.values());
+        const subnetsArray = Array.from(cluster.subnets.values());
 
         let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
-        for (let i = 0; i < reachedSubnetsArray.length; i += 1) {
-          const subnet = reachedSubnetsArray[i];
+        for (let i = 0; i < subnetsArray.length; i += 1) {
+          const subnet = subnetsArray[i];
           const reachedSubnetFirstOctet = subnet.serverIps.split('.')[0];
 
           if (subnetFirstOctet === reachedSubnetFirstOctet) {
@@ -173,7 +173,7 @@ export default class Reachability extends EventsScope {
           }
 
           logMessage += `${JSON.stringify(subnet)}`;
-          if (i < reachedSubnetsArray.length - 1) {
+          if (i < subnetsArray.length - 1) {
             logMessage += ',';
           }
         }
@@ -447,7 +447,7 @@ export default class Reachability extends EventsScope {
   /**
    * Reachability results as an object in the format that backend expects
    *
-   * @returns {any} reachability results that need to be sent to the backend
+   * @returns {Promise<ReachabilityResultsForBackend | undefined>} reachability results that need to be sent to the backend
    */
   async getReachabilityResults(): Promise<ReachabilityResultsForBackend | undefined> {
     let results: ReachabilityResultsForBackend;
@@ -461,66 +461,38 @@ export default class Reachability extends EventsScope {
 
       const allClusterResults: ReachabilityResults = JSON.parse(resultsJson);
 
-      results = mapValues(allClusterResults, (clusterResult, clusterKey) => {
-        const clusterReachability = this.clusterReachability[clusterKey];
-        const subnets = clusterReachability
-          ? Array.from(clusterReachability.reachedSubnets.values())
-          : [];
+      // @ts-ignore
+      results = mapValues(allClusterResults, (clusterResult) => {
+        const protocols: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
+        const protocolResults = protocols.reduce((acc, protocol) => {
+          const protocolResult = clusterResult[protocol] || {result: 'untested'};
+          const details = protocolResult.details || [];
 
-        return {
-          udp: {
-            ...this.mapTransportResultToBackendDataFormat(
-              clusterResult.udp || {result: 'untested'}
-            ),
-            details: subnets
-              .filter((subnet) => subnet.protocol === 'udp')
-              .map((subnet) => ({
-                ...subnet,
-                protocol: 'udp' as const, // Ensure the protocol is correctly typed
-              })),
-            domainNames: [], // Add domain names for UDP if needed
-          },
-          tcp: {
-            ...this.mapTransportResultToBackendDataFormat(
-              clusterResult.tcp || {result: 'untested'}
-            ),
-            details: subnets
-              .filter((subnet) => subnet.protocol === 'tcp')
-              .map((subnet) => ({
-                ...subnet,
-                protocol: 'tcp' as const, // Ensure the protocol is correctly typed
-              })),
-            domainNames: [], // Add domain names for TCP if needed
-          },
-          xtls: {
-            ...this.mapTransportResultToBackendDataFormat(
-              clusterResult.xtls || {result: 'untested'}
-            ),
-            details: subnets
-              .filter((subnet) => subnet.protocol === 'xtls')
-              .map((subnet) => ({
-                ...subnet,
-                protocol: 'xtls' as const, // Ensure the protocol is correctly typed
-              })),
-            domainNames: subnets
-              .filter((subnet) => subnet.protocol === 'xtls' && isDomainName(subnet.serverIps))
+          acc[protocol] = {
+            ...this.mapTransportResultToBackendDataFormat(protocolResult),
+            details: details.filter((subnet) => !isDomainName(subnet.serverIps)),
+            domainNames: details
+              .filter((subnet) => isDomainName(subnet.serverIps))
               .map((subnet) => ({
                 serverIps: subnet.serverIps,
                 port: subnet.port,
-                protocol: 'xtls' as const, // Ensure the protocol is correctly typed
+                protocol,
                 reachable: subnet.reachable,
                 'answered-tx': subnet['answered-tx'],
                 'lost-tx': subnet['lost-tx'],
                 latencies: subnet.latencies,
               })),
-          },
-        };
+          };
+
+          return acc;
+        }, {});
+
+        return protocolResults;
       });
 
       // Clean up domain names and details before returning
       results = this.cleanUpDomainNames(results);
 
-      // Update the cleaned-up results in local storage
       // @ts-ignore
       await this.webex.boundedStorage.put(
         REACHABILITY.namespace,
@@ -949,9 +921,7 @@ export default class Reachability extends EventsScope {
   private async storeResults(results: ReachabilityResults) {
     const resultsWithDetails = mapValues(results, (clusterResult, clusterKey) => {
       const clusterReachability = this.clusterReachability[clusterKey];
-      const subnets = clusterReachability
-        ? Array.from(clusterReachability.reachedSubnets.values())
-        : [];
+      const subnets = clusterReachability ? Array.from(clusterReachability.subnets.values()) : [];
 
       return {
         ...clusterResult,

@@ -2,7 +2,12 @@ import {Defer} from '@webex/common';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {ClusterNode} from './request';
-import {convertStunUrlToTurn, convertStunUrlToTurnTls, isDomainName} from './util';
+import {
+  convertStunUrlToTurn,
+  convertStunUrlToTurnTls,
+  isDomainName,
+  constructSubnetKey,
+} from './util';
 import EventsScope from '../common/events/events-scope';
 
 import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
@@ -51,11 +56,11 @@ export class ClusterReachability extends EventsScope {
   public readonly name;
 
   public clusterInfo: ClusterNode;
-  public reachedSubnets: Map<
+  public subnets: Map<
     string,
     {
-      serverIps: string;
-      port: number;
+      serverIps?: string;
+      port?: number;
       protocol?: string;
       reachable?: boolean;
       'answered-tx'?: number;
@@ -320,8 +325,8 @@ export class ClusterReachability extends EventsScope {
     }
 
     if (serverIp && port) {
-      const subnetKey = `${serverIp}:${port}:${protocol}`;
-      const subnet = this.reachedSubnets.get(subnetKey);
+      const subnetKey = constructSubnetKey(serverIp, port, protocol);
+      const subnet = this.subnets.get(subnetKey);
 
       if (subnet) {
         subnet.reachable = true;
@@ -329,8 +334,9 @@ export class ClusterReachability extends EventsScope {
         subnet['lost-tx'] = 0;
         subnet.latencies.push(latency);
 
-        // Avoid overwriting domain names with resolved IPs
-        if (protocol === 'xtls' && subnet.serverIps.includes('.public.') && serverIp) {
+        // Replace domain name with resolved IP for all protocols, if applicable
+        const isDomain = isDomainName(subnet.serverIps || '');
+        if (isDomain && serverIp !== subnet.serverIps) {
           LoggerProxy.logger.log(
             `Reachability:index#saveResult --> Replacing domain name ${subnet.serverIps} with resolved IP ${serverIp}`
           );
@@ -343,7 +349,7 @@ export class ClusterReachability extends EventsScope {
           `Reachability:index#saveResult --> Adding new subnet: serverIp=${serverIp}, isDomain=${isDomain}`
         );
 
-        this.reachedSubnets.set(subnetKey, {
+        this.subnets.set(subnetKey, {
           serverIps: serverIp,
           port,
           protocol,
@@ -414,13 +420,14 @@ export class ClusterReachability extends EventsScope {
           let serverIp = null;
           let port = null;
           if ('url' in e.candidate) {
-            const stunServerUrlRegex = /stun:([\d.]+):(\d+)/;
+            // const stunServerUrlRegex = /stun:([\d.]+):(\d+)/;
+            const stunServerUrlRegex = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
 
             const match = (e.candidate as any).url.match(stunServerUrlRegex);
             if (match) {
               const [, extractedServerIp, portString] = match; // Destructure match array
               serverIp = extractedServerIp;
-              port = portString ? Number(portString) : null; // Convert port to a number if it exists
+              port = Number(portString); // Convert port to a number if it exists
             }
           }
 
@@ -463,13 +470,15 @@ export class ClusterReachability extends EventsScope {
       return this.result;
     }
 
-    // Prepopulate reachedSubnets with all subnets (both domain names and IPs)
+    // Prepopulate subnets with all subnets (both domain names and IPs)
     const protocols: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
 
     protocols.forEach((protocol) => {
       const subnets = this.clusterInfo[protocol]
         .map((url) => {
-          const match = url.match(/stun:([\w-.]+):(\d+)/); // Match domain name or IP and port
+          // const match = url.match(/stun:([\w-.]+):(\d+)/); // Match domain name or IP and port
+          const stunServerUrlRegex = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
+          const match = url.match(stunServerUrlRegex);
           if (match) {
             return {
               serverIps: match[1],
@@ -487,15 +496,27 @@ export class ClusterReachability extends EventsScope {
         .filter(Boolean);
 
       subnets.forEach((subnet) => {
-        const subnetKey = `${subnet.serverIps}:${subnet.port}:${subnet.protocol}`;
-        this.reachedSubnets.set(subnetKey, subnet);
+        const subnetKey = constructSubnetKey(subnet.serverIps, subnet.port, subnet.protocol);
+        this.subnets.set(subnetKey, subnet);
       });
     });
 
     LoggerProxy.logger.log(
       `Reachability:ClusterReachability#start --> Prepopulated subnets: `,
-      Array.from(this.reachedSubnets.values())
+      Array.from(this.subnets.values())
     );
+
+    // Initialize this.result as saying that nothing is reachable.
+    // It will get updated as we go along and successfully gather ICE candidates.
+    this.result.udp = {
+      result: this.numUdpUrls > 0 ? 'unreachable' : 'untested',
+    };
+    this.result.tcp = {
+      result: this.numTcpUrls > 0 ? 'unreachable' : 'untested',
+    };
+    this.result.xtls = {
+      result: this.numXTlsUrls > 0 ? 'unreachable' : 'untested',
+    };
 
     try {
       const offer = await this.pc.createOffer({offerToReceiveAudio: true});
@@ -505,7 +526,8 @@ export class ClusterReachability extends EventsScope {
       // Set up the state change listeners before triggering the ICE gathering
       const gatherIceCandidatePromise = this.gatherIceCandidates();
 
-      // Trigger the ICE gathering process
+      // not awaiting the next call on purpose, because we're not sending the offer anywhere and there won't be any answer
+      // we just need to make this call to trigger the ICE gathering process
       this.pc.setLocalDescription(offer);
 
       await gatherIceCandidatePromise;
