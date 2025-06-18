@@ -28,6 +28,65 @@ class MetricManager implements IMetricManager {
     this.serviceIndicator = indicator;
   }
 
+  public submitUploadLogsMetric(
+    name: METRIC_EVENT,
+    action: string,
+    type: METRIC_TYPE,
+    trackingId?: string,
+    feedbackId?: string,
+    correlationId?: string,
+    stack?: string,
+    callId?: string
+  ) {
+    let data;
+
+    switch (name) {
+      case METRIC_EVENT.UPLOAD_LOGS_SUCCESS: {
+        data = {
+          tags: {
+            action,
+            device_id: this.deviceInfo?.device?.deviceId,
+            service_indicator: this.serviceIndicator,
+          },
+          fields: {
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            mobius_url: this.deviceInfo?.device?.uri,
+            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            correlation_id: correlationId,
+            tracking_id: trackingId,
+            feedback_id: feedbackId,
+            call_id: callId,
+          },
+          type,
+        };
+        break;
+      }
+      case METRIC_EVENT.UPLOAD_LOGS_FAILED: {
+        data = {
+          tags: {
+            action,
+            device_id: this.deviceInfo?.device?.deviceId,
+            service_indicator: this.serviceIndicator,
+          },
+          fields: {
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            mobius_url: this.deviceInfo?.device?.uri,
+            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            correlation_id: correlationId,
+            tracking_id: trackingId,
+            feedback_id: feedbackId,
+            error: stack,
+            call_id: callId,
+          },
+          type,
+        };
+      }
+    }
+    if (data) {
+      this.webex.internal.metrics.submitClientMetrics(name, data);
+    }
+  }
+
   /**
    * @param deviceInfo - DeviceInfo object.
    */
@@ -368,8 +427,11 @@ class MetricManager implements IMetricManager {
  * @param webex - Webex object to communicate with metrics microservice.
  * @param indicator - Service Indicator.
  */
-export const getMetricManager = (webex: WebexSDK, indicator?: ServiceIndicator): IMetricManager => {
-  if (!metricManager) {
+export const getMetricManager = (
+  webex?: WebexSDK,
+  indicator?: ServiceIndicator
+): IMetricManager => {
+  if (!metricManager && webex) {
     metricManager = new MetricManager(webex, indicator);
   }
 

@@ -37,10 +37,11 @@ const MockServiceData = {
   indicator: ServiceIndicator.CALLING,
   domain: '',
 };
-const logSpy = jest.spyOn(log, 'info');
+const logSpy = jest.spyOn(log, 'log');
+const infoSpy = jest.spyOn(log, 'info');
 const warnSpy = jest.spyOn(log, 'warn');
 const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
-
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
 describe('Registration Tests', () => {
   const originalProcessNextTick = process.nextTick;
   function flushPromises() {
@@ -165,6 +166,15 @@ describe('Registration Tests', () => {
     expect(lineEmitter).toBeCalledTimes(2);
     expect(lineEmitter).toBeCalledWith(LINE_EVENTS.CONNECTING);
     expect(lineEmitter).toBeCalledWith(LINE_EVENTS.REGISTERED, mockPostResponse);
+
+    // Check that log.log was called for successful registration
+    expect(logSpy).toBeCalledWith(
+      `Registration successful for deviceId: ${mockPostResponse.device.deviceId} userId: ${mockPostResponse.userId}`,
+      expect.objectContaining({
+        file: REGISTRATION_FILE,
+        method: expect.any(String),
+      })
+    );
   });
 
   it('verify failure registration', async () => {
@@ -223,8 +233,8 @@ describe('Registration Tests', () => {
     });
 
     expect(warnSpy).toBeCalledWith('User device limit exceeded', expect.anything());
-    expect(logSpy).toBeCalledWith('Registration restoration in progress.', expect.anything());
-    expect(logSpy).toBeCalledWith('Registration restored successfully.', expect.anything());
+    expect(infoSpy).toBeCalledWith('Registration restoration in progress.', expect.anything());
+    expect(infoSpy).toBeCalledWith('Registration restored successfully.', expect.anything());
 
     expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
     expect(lineEmitter).toBeCalledTimes(4);
@@ -398,7 +408,7 @@ describe('Registration Tests', () => {
         loggerContext
       );
 
-      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(webex.request).toHaveBeenNthCalledWith(4, {
         ...mockResponse,
@@ -498,7 +508,7 @@ describe('Registration Tests', () => {
       );
       expect(failoverSpy).toBeCalledOnceWith(4, 114);
 
-      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(webex.request).toHaveBeenNthCalledWith(5, {
         ...mockResponse,
@@ -582,6 +592,7 @@ describe('Registration Tests', () => {
 
       expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       expect(failoverSpy).toBeCalledOnceWith();
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(logSpy).not.toBeCalledWith(
         `Scheduled retry with primary in 40 seconds, number of attempts : 1`,
@@ -592,8 +603,6 @@ describe('Registration Tests', () => {
         `Scheduled retry with primary in ${failurePayload429Three.headers['retry-after']} seconds, number of attempts : 1`,
         loggerContext
       );
-
-      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(webex.request).toHaveBeenNthCalledWith(2, {
         ...mockResponse,
@@ -647,14 +656,14 @@ describe('Registration Tests', () => {
         loggerContext
       );
 
-      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(logSpy).not.toBeCalledWith(
         `Scheduled retry with primary in ${failurePayload429Four.headers['retry-after']} seconds, number of attempts : 2`,
         loggerContext
       );
 
-      expect(logSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
 
       expect(webex.request).toHaveBeenNthCalledWith(3, {
         ...mockResponse,
@@ -805,7 +814,7 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+      expect(infoSpy).toBeCalledWith(`Attempting failback to primary.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
@@ -835,7 +844,7 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+      expect(infoSpy).toBeCalledWith(`Attempting failback to primary.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
@@ -862,7 +871,7 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+      expect(infoSpy).toBeCalledWith(`Attempting failback to primary.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
@@ -883,7 +892,7 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+      expect(infoSpy).toBeCalledWith(`Attempting failback to primary.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
@@ -905,7 +914,7 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+      expect(infoSpy).toBeCalledWith(`Attempting failback to primary.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
@@ -932,7 +941,7 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Active calls present, deferring failback to next cycle.`, {
+      expect(infoSpy).toBeCalledWith(`Active calls present, deferring failback to next cycle.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
@@ -943,7 +952,7 @@ describe('Registration Tests', () => {
       expect(restoreSpy).not.toBeCalled();
       expect(restartSpy).not.toBeCalled();
 
-      expect(logSpy).toBeCalledWith('Active calls present, deferring failback to next cycle.', {
+      expect(infoSpy).toBeCalledWith('Active calls present, deferring failback to next cycle.', {
         file: REGISTRATION_FILE,
         method: FAILBACK_UTIL,
       });
@@ -997,7 +1006,9 @@ describe('Registration Tests', () => {
       jest.advanceTimersByTime(2 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
       expect(funcSpy).toBeCalledTimes(2); // should be called 2 times: first try and after the interval.
-      expect(logSpy).lastCalledWith('Sent Keepalive, status: 200', logObj);
+
+      expect(logSpy).toBeCalledWith('Sent Keepalive, status: 200', logObj);
+      expect(infoSpy).not.toBeCalledWith('Sent Keepalive, status: 200', logObj);
     });
 
     it('verify failure keep-alive cases: Retry Success', async () => {
@@ -1065,9 +1076,23 @@ describe('Registration Tests', () => {
       expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
       expect(restoreSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
       expect(restartRegSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Keep-alive missed 1 times. Status -> 503 ',
+        expect.objectContaining({
+          file: REGISTRATION_FILE,
+          method: 'startKeepaliveTimer',
+        })
+      );
 
       expect(webex.request).toBeCalledTimes(7);
       expect(reg.keepaliveTimer).toBe(undefined);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Keep-alive missed 1 times. Status -> 503 ',
+        expect.objectContaining({
+          file: REGISTRATION_FILE,
+          method: 'startKeepaliveTimer',
+        })
+      );
       expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.RECONNECTING);
       expect(lineEmitter).nthCalledWith(4, LINE_EVENTS.RECONNECTING);
       expect(lineEmitter).nthCalledWith(5, LINE_EVENTS.UNREGISTERED);
@@ -1247,6 +1272,13 @@ describe('Registration Tests', () => {
         file: REGISTRATION_FILE,
         method: KEEPALIVE_UTIL,
       });
+      expect(warnSpy).toBeCalledWith(
+        'Keep-alive missed 1 times. Status -> 404 ',
+        expect.objectContaining({
+          file: REGISTRATION_FILE,
+          method: 'startKeepaliveTimer',
+        })
+      );
     });
 
     it('verify failure keep-alive case with active call present: Restore Success after call ends', async () => {
@@ -1304,7 +1336,7 @@ describe('Registration Tests', () => {
       expect(restoreSpy).not.toBeCalled();
       expect(restartRegSpy).not.toBeCalled();
       expect(reg.reconnectPending).toStrictEqual(true);
-      expect(logSpy).toBeCalledWith(
+      expect(infoSpy).toBeCalledWith(
         'Active call(s) present, deferred reconnect till call cleanup.',
         {file: REGISTRATION_FILE, method: expect.any(String)}
       );
