@@ -111,7 +111,7 @@ export class BrbState {
       })
       .catch((error) => {
         this.state.syncToServerInProgress = false;
-        LoggerProxy.logger.warn(`Meeting:brbState#applyClientStateToServer: error: ${error}`);
+        LoggerProxy.logger.warn(`Meeting:brbState#applyClientStateToServer: Error: ${error}`);
 
         return Promise.reject(error);
       });
