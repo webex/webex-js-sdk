@@ -81,15 +81,19 @@ export default abstract class Task extends EventEmitter implements ITask {
     throw new Error(`Unsupported operation: ${methodName}`);
   }
 
-  // Helper method to apply UI controls via boolean flags, first is for visibility and second is for enabled state
+  /**
+   * Apply visibility & enabled flags in one go.
+   * Usage: updateTaskUiControls({ hold: [true,true], end: [false,true] })
+   */
   protected updateTaskUiControls(
-    controls: Array<keyof typeof this.taskUiControls>,
-    visible = false,
-    enabled = false
+    config: Partial<Record<keyof typeof this.taskUiControls, [boolean, boolean]>>
   ): void {
-    controls.forEach((c) => {
-      this.taskUiControls[c].setVisiblity(visible);
-      this.taskUiControls[c].setEnabled(enabled);
+    Object.entries(config).forEach(([k, [vis, en]]) => {
+      const ctl = this.taskUiControls[k as keyof typeof this.taskUiControls];
+      if (ctl) {
+        ctl.setVisiblity(vis);
+        ctl.setEnabled(en);
+      }
     });
   }
 

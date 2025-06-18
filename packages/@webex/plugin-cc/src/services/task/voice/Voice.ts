@@ -33,124 +33,150 @@ export default class Voice extends Task implements IVoice {
     this.isEndConsultEnabled = callOptions.isEndConsultEnabled ?? true;
   }
 
-  private applyTerminatedControls(): void {
-    this.updateTaskUiControls(
-      ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'],
-      false,
-      false
-    );
-    this.updateTaskUiControls(['wrapup'], true, true);
-  }
-
-  private applyConnectedControls(): void {
-    this.updateTaskUiControls(['hold', 'transfer', 'consult', 'recording'], true, true);
-    if (this.isEndCallEnabled) {
-      this.updateTaskUiControls(['end'], true, true);
-    }
-  }
-
   private applyConsultingControls(): void {
-    this.updateTaskUiControls(['hold', 'transfer', 'consult'], false, false);
-    this.updateTaskUiControls(['recording'], true, false);
+    this.updateTaskUiControls({
+      hold: [false, false],
+      transfer: [false, false],
+      consult: [false, false],
+      recording: [true, false],
+    });
 
     if (!this.data.isConsulted) {
-      this.updateTaskUiControls(['consultTransfer', 'endConsult'], true, true);
-      if (this.isEndCallEnabled) {
-        this.updateTaskUiControls(['end'], true, false);
-      }
-    } else if (this.isEndConsultEnabled) {
-      this.updateTaskUiControls(['endConsult'], true, true);
+      this.updateTaskUiControls({
+        consultTransfer: [true, true],
+        endConsult: [true, true],
+        end: [this.isEndCallEnabled, false],
+      });
+    } else {
+      this.updateTaskUiControls({endConsult: [this.isEndConsultEnabled, this.isEndConsultEnabled]});
     }
   }
 
   protected setUIControls(): void {
     const eventType = this.data.type;
-    const showMainControls = () =>
-      this.updateTaskUiControls(['hold', 'transfer', 'consult', 'recording'], true, true);
 
     switch (eventType) {
       case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-        this.updateTaskUiControls(['accept', 'decline'], false, false);
-        showMainControls();
-        this.updateTaskUiControls(['end'], this.isEndCallEnabled, this.isEndCallEnabled);
-        this.updateTaskUiControls(['endConsult', 'wrapup'], false);
+        this.updateTaskUiControls({
+          accept: [false, false],
+          decline: [false, false],
+          hold: [true, true],
+          transfer: [true, true],
+          consult: [true, true],
+          recording: [true, true],
+          end: [this.isEndCallEnabled, this.isEndCallEnabled],
+          endConsult: [false, false],
+          wrapup: [false, false],
+        });
         break;
 
       case CC_EVENTS.AGENT_WRAPUP:
       case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
-        this.updateTaskUiControls(
-          ['consultTransfer', 'recording', 'end', 'endConsult', 'hold', 'transfer', 'consult'],
-          false,
-          false
-        );
-        this.updateTaskUiControls(['wrapup'], true, true);
+        this.updateTaskUiControls({
+          consultTransfer: [false, false],
+          recording: [false, false],
+          end: [false, false],
+          endConsult: [false, false],
+          hold: [false, false],
+          transfer: [false, false],
+          consult: [false, false],
+          wrapup: [true, true],
+        });
         break;
 
       case CC_EVENTS.CONTACT_ENDED:
       case CC_EVENTS.AGENT_INVITE_FAILED:
-        this.updateTaskUiControls(
-          ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end', 'endConsult'],
-          false,
-          false
-        );
+        this.updateTaskUiControls({
+          hold: [false, false],
+          transfer: [false, false],
+          consult: [false, false],
+          consultTransfer: [false, false],
+          recording: [false, false],
+          end: [false, false],
+          endConsult: [false, false],
+        });
         if (this.data.interaction.state !== 'new') {
-          this.updateTaskUiControls(['wrapup'], true, true);
+          this.updateTaskUiControls({wrapup: [true, true]});
         }
         break;
 
       case CC_EVENTS.AGENT_CONTACT_HELD:
-        showMainControls();
-        this.updateTaskUiControls(['end'], this.isEndCallEnabled, false);
+        this.updateTaskUiControls({
+          hold: [true, true],
+          transfer: [true, true],
+          consult: [true, true],
+          recording: [true, true],
+          end: [this.isEndCallEnabled, false],
+        });
         break;
 
       case CC_EVENTS.AGENT_CONTACT_UNHELD:
-        showMainControls();
-        this.updateTaskUiControls(['end'], this.isEndCallEnabled, true);
+        this.updateTaskUiControls({
+          hold: [true, true],
+          transfer: [true, true],
+          consult: [true, true],
+          recording: [true, true],
+          end: [this.isEndCallEnabled, true],
+        });
         break;
 
       case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
-        this.updateTaskUiControls(
-          ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'],
-          false,
-          false
-        );
-        this.updateTaskUiControls(['wrapup'], true, true);
+        this.updateTaskUiControls({
+          hold: [false, false],
+          transfer: [false, false],
+          consult: [false, false],
+          consultTransfer: [false, false],
+          recording: [false, false],
+          end: [false, false],
+          wrapup: [true, true],
+        });
         break;
 
       case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
-        showMainControls();
-        this.updateTaskUiControls(['end'], this.isEndCallEnabled, true);
+        this.updateTaskUiControls({
+          hold: [true, true],
+          transfer: [true, true],
+          consult: [true, true],
+          recording: [true, true],
+          end: [this.isEndCallEnabled, true],
+        });
         break;
 
       case CC_EVENTS.AGENT_CONSULT_CREATED:
         if (!this.data.isConsulted) {
-          this.updateTaskUiControls(['hold', 'consult', 'transfer', 'end'], false, false);
-          this.updateTaskUiControls(['consultTransfer', 'recording'], true, false);
-          this.updateTaskUiControls(['endConsult'], true, true);
+          this.updateTaskUiControls({
+            hold: [false, false],
+            consult: [false, false],
+            transfer: [false, false],
+            end: [false, false],
+            consultTransfer: [true, false],
+            recording: [true, false],
+            endConsult: [true, true],
+          });
         }
         break;
 
       case CC_EVENTS.AGENT_OFFER_CONSULT:
-        this.updateTaskUiControls(
-          ['endConsult'],
-          this.isEndConsultEnabled,
-          this.isEndConsultEnabled
-        );
+        this.updateTaskUiControls({
+          endConsult: [this.isEndConsultEnabled, this.isEndConsultEnabled],
+        });
         break;
 
       case CC_EVENTS.AGENT_CONSULTING:
         if (!this.data.isConsulted) {
-          this.updateTaskUiControls(['hold', 'transfer', 'consult'], false, false);
-          this.updateTaskUiControls(['consultTransfer'], true, true);
-          this.updateTaskUiControls(['recording'], true, false);
-          this.updateTaskUiControls(['endConsult'], true, true);
-          this.updateTaskUiControls(['end'], this.isEndCallEnabled, false);
+          this.updateTaskUiControls({
+            hold: [false, false],
+            transfer: [false, false],
+            consult: [false, false],
+            consultTransfer: [true, true],
+            recording: [true, false],
+            endConsult: [true, true],
+            end: [this.isEndCallEnabled, false],
+          });
         } else {
-          this.updateTaskUiControls(
-            ['endConsult'],
-            this.isEndConsultEnabled,
-            this.isEndConsultEnabled
-          );
+          this.updateTaskUiControls({
+            endConsult: [this.isEndConsultEnabled, this.isEndConsultEnabled],
+          });
         }
         break;
 
@@ -158,18 +184,38 @@ export default class Voice extends Task implements IVoice {
       case CC_EVENTS.AGENT_CONSULT_ENDED:
       case CC_EVENTS.AGENT_CTQ_CANCELLED:
         if (!this.data.isConsulted) {
-          showMainControls();
-          this.updateTaskUiControls(['end'], this.isEndCallEnabled, this.isEndCallEnabled);
-          this.updateTaskUiControls(['consultTransfer', 'endConsult'], false, false);
-          this.updateTaskUiControls(['wrapup'], false, false);
+          this.updateTaskUiControls({
+            hold: [true, true],
+            transfer: [true, true],
+            consult: [true, true],
+            recording: [true, true],
+            end: [this.isEndCallEnabled, this.isEndCallEnabled],
+            consultTransfer: [false, false],
+            endConsult: [false, false],
+            wrapup: [false, false],
+          });
         }
         break;
 
       case CC_EVENTS.AGENT_CONTACT:
         if (this.data.interaction.isTerminated) {
-          this.applyTerminatedControls();
+          this.updateTaskUiControls({
+            hold: [false, false],
+            transfer: [false, false],
+            consult: [false, false],
+            consultTransfer: [false, false],
+            recording: [false, false],
+            end: [false, false],
+            wrapup: [true, true],
+          });
         } else if (this.data.interaction.state === 'connected' && !this.data.isConsulted) {
-          this.applyConnectedControls();
+          this.updateTaskUiControls({
+            hold: [true, true],
+            transfer: [true, true],
+            consult: [true, true],
+            recording: [true, true],
+            end: [this.isEndCallEnabled, this.isEndCallEnabled],
+          });
         } else if (this.data.interaction.state === 'consulting') {
           this.applyConsultingControls();
         }
