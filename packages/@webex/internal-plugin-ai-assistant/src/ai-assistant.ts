@@ -16,6 +16,8 @@ import {
   SummarizeMeetingOptions,
 } from './types';
 import {
+  AI_ASSISTANT_ERROR_CODES,
+  AI_ASSISTANT_ERRORS,
   AI_ASSISTANT_REGISTERED,
   AI_ASSISTANT_RESULT,
   AI_ASSISTANT_STREAM,
@@ -127,7 +129,7 @@ const AIAssistant = WebexPlugin.extend({
    * @returns {string}
    */
   _getResultEventName(requestId) {
-    return `${AI_ASSISTANT_RESULT}${requestId}`;
+    return `${AI_ASSISTANT_RESULT}:${requestId}`;
   },
 
   /**
@@ -136,7 +138,7 @@ const AIAssistant = WebexPlugin.extend({
    * @returns {string}
    */
   _getStreamEventName(requestId) {
-    return `${AI_ASSISTANT_STREAM}${requestId}`;
+    return `${AI_ASSISTANT_STREAM}:${requestId}`;
   },
 
   /**
@@ -186,7 +188,12 @@ const AIAssistant = WebexPlugin.extend({
     return new Promise((resolve, reject) => {
       const timer = new Timer(() => {
         this.stopListening(this, eventName);
-        reject(new AIAssistantTimeoutError({requestId, timeout, resource, params}));
+        this.trigger(streamEventName, {
+          requestId,
+          finished: true,
+          errorMessage: AI_ASSISTANT_ERRORS.AI_ASSISTANT_TIMEOUT,
+          errorCode: AI_ASSISTANT_ERROR_CODES.AI_ASSISTANT_TIMEOUT,
+        });
       }, timeout);
 
       this.listenTo(this, eventName, async (data) => {
