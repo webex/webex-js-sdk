@@ -238,7 +238,7 @@ describe('plugin-voicea', () => {
           captionLanguages: ['af', 'am'],
           spokenLanguages: ['en'],
           maxLanguages: 5,
-          currentSpokenLanguage: 'en-US',
+          currentSpokenLanguage: 'en',
         });
       });
 
