@@ -55,7 +55,7 @@ const Services = WebexPlugin.extend({
    * @param {string} [serviceGroup]
    * @returns {string|undefined}
    */
-  get(name: string, serviceGroup: string): string | undefined {
+  get(name: string, serviceGroup?: string): string | undefined {
     const catalog = this._getCatalog();
 
     const clusterId = this._activeServices[name];
@@ -721,7 +721,7 @@ const Services = WebexPlugin.extend({
    * @returns {string} service.url
    */
   getServiceFromClusterId(params: {
-    custerId: string;
+    clusterId: string;
     serviceGroup?: string;
   }): {name: string; url: string} | undefined {
     const catalog = this._getCatalog();

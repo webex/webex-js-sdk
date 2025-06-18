@@ -325,13 +325,12 @@ describe('webex-core', () => {
 
       it('should not attempt to collect catalogs without authorization', (done) => {
         const otherWebex = new WebexCore();
-        let {initServiceCatalogs} = otherWebex.internal.services;
-
-        initServiceCatalogs = sinon.stub();
+        const initServiceCatalogs = sinon.stub(otherWebex.internal.services, 'initServiceCatalogs');
 
         setTimeout(() => {
           assert.notCalled(initServiceCatalogs);
           assert.isFalse(otherWebex.internal.services._getCatalog().isReady);
+          otherWebex.internal.services.initServiceCatalogs.restore();
           done();
         }, 2000);
       });
@@ -850,6 +849,10 @@ describe('webex-core', () => {
         });
 
         describe('when using the name parameter property', () => {
+          afterEach(() => {
+            webex.internal.metrics.submitClientMetrics.restore();
+          });
+
           it('should return a rejected promise', () => {
             const submitMetrics = sinon.stub(webex.internal.metrics, 'submitClientMetrics');
             const waitForService = services.waitForService({name, timeout});
@@ -983,12 +986,12 @@ describe('webex-core', () => {
       const unauthServices = unauthWebex.internal.services;
 
       it('requires an email as the parameter', () =>
-        unauthServices.collectPreauthCatalog().catch((e) => {
+        unauthServices.collectSigninCatalog().catch((e) => {
           assert(true, e);
         }));
 
       it('requires a token as the parameter', () =>
-        unauthServices.collectPreauthCatalog({email: 'email@website.com'}).catch((e) => {
+        unauthServices.collectSigninCatalog({email: 'email@website.com'}).catch((e) => {
           assert(true, e);
         }));
     });
