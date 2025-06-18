@@ -110,7 +110,10 @@ const MembersUtil = {
       return !DIALER_REGEX.E164_FORMAT.test(invitee.phoneNumber);
     }
 
-    return !VALID_EMAIL_ADDRESS.test(invitee.email || invitee.emailAddress);
+    return !(
+      VALID_EMAIL_ADDRESS.test(invitee.email || invitee.emailAddress) ||
+      DIALER_REGEX.SIP_ADDRESS.test(invitee.email || invitee.emailAddress)
+    );
   },
 
   getRemoveMemberRequestParams: (options) => {
@@ -356,6 +359,29 @@ const MembersUtil = {
       invitees: [
         {
           address: options.invitee.phoneNumber,
+        },
+      ],
+    };
+    const requestParams = {
+      method: HTTP_VERBS.PUT,
+      uri: options.locusUrl,
+      body,
+    };
+
+    return requestParams;
+  },
+
+  cancelSIPInviteOptions: (invitee, locusUrl) => ({
+    invitee,
+    locusUrl,
+  }),
+
+  generateCancelSIPInviteRequestParams: (options) => {
+    const body = {
+      actionType: _REMOVE_,
+      invitees: [
+        {
+          address: options.invitee.memberId,
         },
       ],
     };

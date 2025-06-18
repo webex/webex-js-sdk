@@ -1,4 +1,4 @@
-import {isEqual, assignWith, cloneDeep, isEmpty} from 'lodash';
+import {isEqual, assignWith, cloneDeep, isEmpty, forEach} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -264,7 +264,7 @@ export default class LocusInfo extends EventsScope {
     this.updateMeetingInfo(locus.info);
     this.updateEmbeddedApps(locus.embeddedApps);
     // self and participants generate sipUrl for 1:1 meeting
-    this.updateSelf(locus.self, locus.participants);
+    this.updateSelf(locus.self);
     this.updateHostInfo(locus.host);
     this.updateMediaShares(locus.mediaShares);
     this.updateServices(locus.links?.services);
@@ -422,6 +422,7 @@ export default class LocusInfo extends EventsScope {
    */
   onDeltaLocus(locus: any) {
     const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
+    this.mergeParticipants(this.participants, locus.participants);
     this.updateLocusInfo(locus);
     this.updateParticipants(locus.participants, isReplaceMembers);
     this.isMeetingActive();
@@ -449,7 +450,7 @@ export default class LocusInfo extends EventsScope {
     this.updateMediaShares(locus.mediaShares);
     this.updateParticipantsUrl(locus.participantsUrl);
     this.updateReplace(locus.replace);
-    this.updateSelf(locus.self, locus.participants);
+    this.updateSelf(locus.self);
     this.updateLocusUrl(locus.url);
     this.updateAclUrl(locus.aclUrl);
     this.updateBasequence(locus.baseSequence);
@@ -783,6 +784,23 @@ export default class LocusInfo extends EventsScope {
         isReplace,
       }
     );
+
+    if (participants && Array.isArray(participants) && participants.length > 0) {
+      for (const participant of participants) {
+        if (participant && participant?.reason === 'FAILURE') {
+          this.emitScoped(
+            {
+              file: 'locus-info',
+              function: 'updateParticipants',
+            },
+            LOCUSINFO.EVENTS.PARTICIPANT_REASON_CHANGED,
+            {
+              displayName: participant?.person?.primaryDisplayString,
+            }
+          );
+        }
+      }
+    }
   }
 
   /**
@@ -800,6 +818,7 @@ export default class LocusInfo extends EventsScope {
           hasRecordingPausedChanged,
           hasMeetingContainerChanged,
           hasTranscribeChanged,
+          hasTranscribeSpokenLanguageChanged,
           hasManualCaptionChanged,
           hasEntryExitToneChanged,
           hasBreakoutChanged,
@@ -934,6 +953,21 @@ export default class LocusInfo extends EventsScope {
           {
             transcribing,
             caption,
+          }
+        );
+      }
+
+      if (hasTranscribeSpokenLanguageChanged) {
+        const {spokenLanguage} = current.transcribe;
+
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+          {
+            spokenLanguage,
           }
         );
       }
@@ -1357,17 +1391,20 @@ export default class LocusInfo extends EventsScope {
 
   /**
    * handles when the locus.self is updated
-   * @param {Object} self the locus.mediaShares property
-   * @param {Array} participants the locus.participants property
+   * @param {Object} self the new locus.self
    * @returns {undefined}
    * @memberof LocusInfo
    * emits internal events self_admitted_guest, self_unadmitted_guest, locus_info_update_self
    */
-  updateSelf(self: any, participants: Array<any>) {
-    // @ts-ignore - check where this.self come from
-    if (self && !isEqual(this.self, self)) {
+  updateSelf(self: any) {
+    if (self) {
       // @ts-ignore
-      const parsedSelves = SelfUtils.getSelves(this.self, self, this.webex.internal.device.url);
+      const parsedSelves = SelfUtils.getSelves(
+        this.parsedLocus.self,
+        self,
+        this.webex.internal.device.url,
+        this.participants // using this.participants instead of locus.participants here, because with delta DTOs locus.participants will only contain a small subset of participants
+      );
 
       this.updateMeeting(parsedSelves.current);
       this.parsedLocus.self = parsedSelves.current;
@@ -1381,7 +1418,7 @@ export default class LocusInfo extends EventsScope {
       // TODO: check if we need to save the sipUri here as well
       // this.emit(LOCUSINFO.EVENTS.MEETING_UPDATE, SelfUtils.getSipUrl(this.getLocusPartner(participants, self), this.parsedLocus.fullState.type, this.parsedLocus.info.sipUri));
       const result = SelfUtils.getSipUrl(
-        this.getLocusPartner(participants, self),
+        this.getLocusPartner(this.participants, self),
         this.parsedLocus.fullState.type,
         this.parsedLocus.info.sipUri
       );
@@ -1527,7 +1564,7 @@ export default class LocusInfo extends EventsScope {
           {}
         );
       }
-      if (parsedSelves.updates.isUserUnadmitted) {
+      if (parsedSelves.updates.hasUserEnteredLobby) {
         this.emitScoped(
           {
             file: 'locus-info',
@@ -1537,7 +1574,7 @@ export default class LocusInfo extends EventsScope {
           self
         );
       }
-      if (parsedSelves.updates.isUserAdmitted) {
+      if (parsedSelves.updates.hasUserBeenAdmitted) {
         this.emitScoped(
           {
             file: 'locus-info',
