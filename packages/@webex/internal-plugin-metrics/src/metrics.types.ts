@@ -116,9 +116,6 @@ export type MetricEventVerb =
 
 export type MetricEventJoinFlowVersion = 'Other' | 'NewFTE';
 export type MetricEventMeetingJoinPhase = 'pre-join' | 'join' | 'in-meeting';
-export type EventData = {
-  isMercuryConnected: boolean;
-};
 
 export type SubmitClientEventOptions = {
   meetingId?: string;
@@ -341,5 +338,4 @@ export interface DelayedClientEvent {
   name: ClientEvent['name'];
   payload?: RecursivePartial<ClientEvent['payload']>;
   options?: SubmitClientEventOptions;
-  eventData?: EventData;
 }

@@ -5,18 +5,19 @@ import sinon from 'sinon';
 import {Utils} from '@webex/internal-plugin-metrics';
 
 describe('internal-plugin-metrics', () => {
-  const mockWebex = () =>
-    new MockWebex({
-      children: {
-        newMetrics: NewMetrics,
-      },
-      meetings: {},
-      request: sinon.stub().resolves({}),
-      logger: {
-        log: sinon.stub(),
-        error: sinon.stub(),
-      },
-    });
+
+  const mockWebex = () => new MockWebex({
+    children: {
+      newMetrics: NewMetrics,
+    },
+    meetings: {
+    },
+    request: sinon.stub().resolves({}),
+    logger: {
+      log: sinon.stub(),
+      error: sinon.stub(),
+    }
+  });
 
   describe('check submitClientEvent when webex is not ready', () => {
     let webex;
@@ -39,6 +40,7 @@ describe('internal-plugin-metrics', () => {
 
   describe('new-metrics contstructor', () => {
     it('checks callDiagnosticLatencies is defined before ready emit', () => {
+
       const webex = mockWebex();
 
       assert.instanceOf(webex.internal.newMetrics.callDiagnosticLatencies, CallDiagnosticLatencies);
@@ -67,7 +69,7 @@ describe('internal-plugin-metrics', () => {
 
     afterEach(() => {
       sinon.restore();
-    });
+    })
 
     it('lazy metrics backend initialization when checking if backend ready', () => {
       assert.isUndefined(webex.internal.newMetrics.behavioralMetrics);
@@ -78,13 +80,13 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.isReadyToSubmitOperationalEvents();
       assert.isDefined(webex.internal.newMetrics.operationalMetrics);
 
-      assert.isUndefined(webex.internal.newMetrics.businessMetrics);
+      assert.isUndefined(webex.internal.newMetrics.businessMetrics)
       webex.internal.newMetrics.isReadyToSubmitBusinessEvents();
       assert.isDefined(webex.internal.newMetrics.businessMetrics);
-    });
+    })
 
     it('passes the table through to the business metrics', () => {
-      assert.isUndefined(webex.internal.newMetrics.businessMetrics);
+      assert.isUndefined(webex.internal.newMetrics.businessMetrics)
       webex.internal.newMetrics.isReadyToSubmitBusinessEvents();
       assert.isDefined(webex.internal.newMetrics.businessMetrics);
       webex.internal.newMetrics.businessMetrics.submitBusinessEvent = sinon.stub();
@@ -92,24 +94,23 @@ describe('internal-plugin-metrics', () => {
         name: 'foobar',
         payload: {},
         table: 'test',
-        metadata: {foo: 'bar'},
+        metadata: { foo: 'bar' },
       });
 
       assert.calledWith(webex.internal.newMetrics.businessMetrics.submitBusinessEvent, {
         name: 'foobar',
         payload: {},
         table: 'test',
-        metadata: {foo: 'bar'},
+        metadata: { foo: 'bar' },
       });
     });
-
+  
     it('submits Client Event successfully', () => {
       webex.internal.newMetrics.submitClientEvent({
         name: 'client.alert.displayed',
         options: {
           meetingId: '123',
         },
-        eventData: {isMercuryConnected: true},
       });
 
       assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
@@ -121,9 +122,9 @@ describe('internal-plugin-metrics', () => {
         payload: undefined,
         options: {meetingId: '123'},
         delaySubmitEvent: false,
-        eventData: {isMercuryConnected: true},
       });
     });
+
 
     it('submits MQE successfully', () => {
       webex.internal.newMetrics.submitMQE({
@@ -178,9 +179,9 @@ describe('internal-plugin-metrics', () => {
           method: 'POST',
           api: 'metrics',
           resource: 'clientmetrics',
-          headers: {'x-prelogin-userid': 'my-id'},
+          headers: { 'x-prelogin-userid': 'my-id' },
           body: {},
-          qs: {alias: true},
+          qs: { alias: true },
         });
         assert.calledWith(
           webex.logger.log,
@@ -189,8 +190,8 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('handles failed request correctly', async () => {
-        webex.request.rejects(new Error('test error'));
-        sinon.stub(Utils, 'generateCommonErrorMetadata').returns('formattedError');
+        webex.request.rejects(new Error("test error"));
+        sinon.stub(Utils, 'generateCommonErrorMetadata').returns('formattedError')
         try {
           await webex.internal.newMetrics.clientMetricsAliasUser({event: 'test'}, 'my-id');
         } catch (err) {
@@ -272,26 +273,19 @@ describe('internal-plugin-metrics', () => {
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, true);
         sinon.assert.match(webex.internal.newMetrics.delayedClientEventsOverrides, {});
 
-        webex.internal.newMetrics.setDelaySubmitClientEvents({
-          shouldDelay: false,
-          overrides: {foo: 'bar'},
-        });
+        webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: false, overrides: {foo: 'bar'}});
 
-        assert.calledOnce(
-          webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents
-        );
-        assert.calledWith(
-          webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents,
-          {foo: 'bar'}
-        );
+        assert.calledOnce(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
+        assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents, {foo: 'bar'});
 
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
         sinon.assert.match(webex.internal.newMetrics.delayedClientEventsOverrides, {foo: 'bar'});
       });
 
       it('should not fail when called before webex is ready', () => {
+
         // Create mock
-        webex = mockWebex();
+        webex = mockWebex()
 
         webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
         webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps = sinon.stub();
@@ -306,6 +300,7 @@ describe('internal-plugin-metrics', () => {
         webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: false});
         // Webex is ready
         webex.emit('ready');
+
       });
     });
   });

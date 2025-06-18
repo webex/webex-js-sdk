@@ -23,7 +23,6 @@ import {
   SubmitClientEventOptions,
   Table,
   DelayedClientEvent,
-  EventData,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
@@ -288,12 +287,10 @@ class Metrics extends WebexPlugin {
     name,
     payload,
     options,
-    eventData,
   }: {
     name: ClientEvent['name'];
     payload?: RecursivePartial<ClientEvent['payload']>;
     options?: SubmitClientEventOptions;
-    eventData?: EventData;
   }): Promise<any> {
     if (!this.callDiagnosticLatencies || !this.callDiagnosticMetrics) {
       // @ts-ignore
@@ -313,7 +310,6 @@ class Metrics extends WebexPlugin {
       payload,
       options,
       delaySubmitEvent: this.delaySubmitClientEvents,
-      eventData,
     });
   }
 

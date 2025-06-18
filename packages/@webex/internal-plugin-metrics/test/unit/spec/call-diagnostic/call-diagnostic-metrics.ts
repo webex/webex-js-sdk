@@ -13,12 +13,9 @@ import {
 } from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
-import {glob} from 'glob';
-import {expect} from 'chai';
-import {
-  ClientEmailInput,
-  ClientUserNameInput,
-} from '@webex/internal-plugin-metrics/src/metrics.types';
+import { glob } from 'glob';
+import { expect } from 'chai';
+import { ClientEmailInput, ClientUserNameInput } from '@webex/internal-plugin-metrics/src/metrics.types';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
@@ -68,14 +65,14 @@ describe('internal-plugin-metrics', () => {
       ...fakeMeeting,
       id: '4',
       isoLocalClientMeetingJoinTime: 'testTimeString',
-    };
+    }
     const fakeMeeting5 = {
       ...fakeMeeting,
       id: '5',
       correlationId: 'correlationId5',
       sessionCorrelationId: 'sessionCorrelationId5',
       userNameInput: 'test',
-      emailInput: 'test@test.com',
+      emailInput: 'test@test.com'
     };
 
     const fakeMeetings = {
@@ -1473,7 +1470,7 @@ describe('internal-plugin-metrics', () => {
             },
             loginType: 'login-ci',
             name: 'client.alert.displayed',
-            webClientPreload: undefined,
+            webClientPreload: undefined
           },
           options
         );
@@ -1495,7 +1492,7 @@ describe('internal-plugin-metrics', () => {
             },
             loginType: 'login-ci',
             name: 'client.alert.displayed',
-            webClientPreload: undefined,
+            webClientPreload: undefined
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2577,7 +2574,7 @@ describe('internal-plugin-metrics', () => {
           name: 'other',
           rawErrorMessage: 'bad times',
           errorDescription: 'UnknownError',
-        };
+        }
 
         const [res, cached] = cd.generateClientEventErrorPayload(error);
         assert.isFalse(cached);
@@ -2906,10 +2903,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should return unknown error otherwise', () => {
-        const [res, cached] = cd.generateClientEventErrorPayload({
-          something: 'new',
-          message: 'bad times',
-        });
+        const [res, cached] = cd.generateClientEventErrorPayload({something: 'new', message: 'bad times'});
         assert.deepEqual(res, {
           category: 'other',
           errorDescription: 'UnknownError',
@@ -3541,7 +3535,6 @@ describe('internal-plugin-metrics', () => {
             correlationId: 'correlationId',
             triggeredTime: now.toISOString(),
           },
-          eventData: undefined,
         });
         assert.calledWith(submitClientEventSpy.secondCall, {
           name: 'client.alert.removed',
@@ -3551,7 +3544,6 @@ describe('internal-plugin-metrics', () => {
             correlationId: 'correlationId',
             triggeredTime: now.toISOString(),
           },
-          eventData: undefined,
         });
         assert.calledWith(submitClientEventSpy.thirdCall, {
           name: 'client.call.aborted',
@@ -3561,7 +3553,6 @@ describe('internal-plugin-metrics', () => {
             correlationId: 'correlationId',
             triggeredTime: now.toISOString(),
           },
-          eventData: undefined,
         });
         submitClientEventSpy.resetHistory();
 
@@ -3582,7 +3573,7 @@ describe('internal-plugin-metrics', () => {
 
         const overrides = {
           correlationId: 'newCorrelationId',
-        };
+        }
 
         cd.submitClientEvent({
           name: 'client.alert.displayed',
@@ -3617,7 +3608,6 @@ describe('internal-plugin-metrics', () => {
             correlationId: 'newCorrelationId',
             triggeredTime: now.toISOString(),
           },
-          eventData: undefined,
         });
         assert.calledWith(submitClientEventSpy.secondCall, {
           name: 'client.alert.removed',
@@ -3627,7 +3617,6 @@ describe('internal-plugin-metrics', () => {
             correlationId: 'newCorrelationId',
             triggeredTime: now.toISOString(),
           },
-          eventData: undefined,
         });
         assert.calledWith(submitClientEventSpy.thirdCall, {
           name: 'client.call.aborted',
@@ -3637,7 +3626,6 @@ describe('internal-plugin-metrics', () => {
             correlationId: 'newCorrelationId',
             triggeredTime: now.toISOString(),
           },
-          eventData: undefined,
         });
         submitClientEventSpy.resetHistory();
 

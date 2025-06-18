@@ -2209,9 +2209,6 @@ export default class Meeting extends StatelessWebexPlugin {
       options: {
         meetingId: this.id,
       },
-      eventData: {
-        isMercuryConnected: this.hasWebsocketConnected,
-      },
     });
   }
 
@@ -3171,9 +3168,6 @@ export default class Meeting extends StatelessWebexPlugin {
                 shareInstanceId: this.localShareInstanceId,
               },
               options: {meetingId: this.id},
-              eventData: {
-                isMercuryConnected: this.hasWebsocketConnected,
-              },
             });
 
             break;
@@ -3199,9 +3193,6 @@ export default class Meeting extends StatelessWebexPlugin {
               },
               options: {
                 meetingId: this.id,
-              },
-              eventData: {
-                isMercuryConnected: this.hasWebsocketConnected,
               },
             });
             break;
@@ -3261,9 +3252,6 @@ export default class Meeting extends StatelessWebexPlugin {
           },
           options: {
             meetingId: this.id,
-          },
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
           },
         });
         this.members.locusMediaSharesUpdate(payload);
@@ -3545,9 +3533,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.lobby.entered',
           options: {meetingId: this.id},
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
-          },
         });
       }
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.GUEST_ENTERED_LOBBY, {
@@ -3575,9 +3560,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.lobby.exited',
           options: {meetingId: this.id},
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
-          },
         });
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.GUEST_EXITED_LOBBY, {
           correlation_id: this.correlationId,
@@ -4916,6 +4898,11 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // Only send restore event when it was disconnected before and for connected later
       if (!this.hasWebsocketConnected) {
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.mercury.connection.restored',
+          options: {meetingId: this.id},
+        });
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MERCURY_CONNECTION_RESTORED, {
           correlation_id: this.correlationId,
         });
@@ -4926,6 +4913,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     this.webex.internal.mercury.on(OFFLINE, () => {
       LoggerProxy.logger.error('Meeting:index#setMercuryListener --> Web socket offline');
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.mercury.connection.lost',
+        options: {meetingId: this.id},
+      });
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MERCURY_CONNECTION_FAILURE, {
         correlation_id: this.correlationId,
       });
@@ -5051,9 +5043,6 @@ export default class Meeting extends StatelessWebexPlugin {
             name: 'client.muted',
             payload: {trigger: 'user-interaction', mediaType: 'audio'},
             options: {meetingId: this.id},
-            eventData: {
-              isMercuryConnected: this.hasWebsocketConnected,
-            },
           });
         })
         .catch((error) => {
@@ -5104,9 +5093,6 @@ export default class Meeting extends StatelessWebexPlugin {
             name: 'client.unmuted',
             payload: {trigger: 'user-interaction', mediaType: 'audio'},
             options: {meetingId: this.id},
-            eventData: {
-              isMercuryConnected: this.hasWebsocketConnected,
-            },
           });
         })
         .catch((error) => {
@@ -5156,9 +5142,6 @@ export default class Meeting extends StatelessWebexPlugin {
             name: 'client.muted',
             payload: {trigger: 'user-interaction', mediaType: 'video'},
             options: {meetingId: this.id},
-            eventData: {
-              isMercuryConnected: this.hasWebsocketConnected,
-            },
           });
         })
         .catch((error) => {
@@ -5208,9 +5191,6 @@ export default class Meeting extends StatelessWebexPlugin {
             name: 'client.unmuted',
             payload: {trigger: 'user-interaction', mediaType: 'video'},
             options: {meetingId: this.id},
-            eventData: {
-              isMercuryConnected: this.hasWebsocketConnected,
-            },
           });
         })
         .catch((error) => {
@@ -5809,9 +5789,6 @@ export default class Meeting extends StatelessWebexPlugin {
           pstnAudioType: options?.pstnAudioType,
         },
         options: {meetingId: this.id},
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
-        },
       });
     }
 
@@ -5936,9 +5913,6 @@ export default class Meeting extends StatelessWebexPlugin {
             identifiers: {meetingLookupUrl: this.meetingInfo?.meetingLookupUrl},
           },
           options: {meetingId: this.id, rawError: error},
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
-          },
         });
 
         // TODO:  change this to error codes and pre defined dictionary
@@ -6210,18 +6184,12 @@ export default class Meeting extends StatelessWebexPlugin {
         },
       },
       options: {meetingId: this.id},
-      eventData: {
-        isMercuryConnected: this.hasWebsocketConnected,
-      },
     });
 
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.move-media',
       options: {meetingId: this.id},
-      eventData: {
-        isMercuryConnected: this.hasWebsocketConnected,
-      },
     });
 
     this.locusInfo.once(LOCUSINFO.EVENTS.SELF_OBSERVING, async () => {
@@ -6322,9 +6290,6 @@ export default class Meeting extends StatelessWebexPlugin {
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.move-media',
       options: {meetingId: this.id},
-      eventData: {
-        isMercuryConnected: this.hasWebsocketConnected,
-      },
     });
 
     return MeetingUtil.joinMeetingOptions(this)
@@ -6384,9 +6349,6 @@ export default class Meeting extends StatelessWebexPlugin {
           canProceed: false,
         },
         options: {meetingId: this.id, rawError: error},
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
-        },
       });
     } else if (error instanceof Errors.SdpOfferHandlingError) {
       sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.correlationId);
@@ -6398,9 +6360,6 @@ export default class Meeting extends StatelessWebexPlugin {
           canProceed: false,
         },
         options: {meetingId: this.id, rawError: error},
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
-        },
       });
     } else if (error instanceof Errors.SdpAnswerHandlingError) {
       sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.correlationId);
@@ -6412,9 +6371,6 @@ export default class Meeting extends StatelessWebexPlugin {
           canProceed: false,
         },
         options: {meetingId: this.id, rawError: error},
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
-        },
       });
 
       if (this.deferSDPAnswer) {
@@ -6434,9 +6390,6 @@ export default class Meeting extends StatelessWebexPlugin {
           canProceed: false,
         },
         options: {meetingId: this.id, rawError: error},
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
-        },
       });
     }
   };
@@ -6490,9 +6443,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media-engine.remote-sdp-received',
           options: {meetingId: this.id},
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
-          },
         });
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY, {
           correlation_id: this.correlationId,
@@ -6515,9 +6465,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media-engine.local-sdp-generated',
           options: {meetingId: this.id},
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
-          },
         });
 
         // Instantiate Defer so that the SDP offer/answer exchange timeout can start, see waitForRemoteSDPAnswer()
@@ -6533,9 +6480,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.media-engine.remote-sdp-received',
           options: {meetingId: this.id},
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
-          },
         });
       }
     );
@@ -6617,9 +6561,6 @@ export default class Meeting extends StatelessWebexPlugin {
                   ],
                 },
                 options: {meetingId: this.id, rawError: error},
-                eventData: {
-                  isMercuryConnected: this.hasWebsocketConnected,
-                },
               });
 
               this.deferSDPAnswer.reject(error);
@@ -6786,9 +6727,6 @@ export default class Meeting extends StatelessWebexPlugin {
               options: {
                 meetingId: this.id,
               },
-              eventData: {
-                isMercuryConnected: this.hasWebsocketConnected,
-              },
             });
           }
           break;
@@ -6804,9 +6742,6 @@ export default class Meeting extends StatelessWebexPlugin {
               },
               options: {
                 meetingId: this.id,
-              },
-              eventData: {
-                isMercuryConnected: this.hasWebsocketConnected,
               },
             });
           }
@@ -6998,9 +6933,6 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {
             meetingId: this.id,
           },
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
-          },
         });
 
         if (data.mediaType === 'share') {
@@ -7019,9 +6951,6 @@ export default class Meeting extends StatelessWebexPlugin {
           },
           options: {
             meetingId: this.id,
-          },
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
           },
         });
 
@@ -7051,9 +6980,6 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {
             meetingId: this.id,
           },
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
-          },
         });
 
         if (data.mediaType === 'share') {
@@ -7066,9 +6992,6 @@ export default class Meeting extends StatelessWebexPlugin {
             },
             options: {
               meetingId: this.id,
-            },
-            eventData: {
-              isMercuryConnected: this.hasWebsocketConnected,
             },
           });
 
@@ -7088,9 +7011,6 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {
             meetingId: this.id,
           },
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
-          },
         });
 
         if (data.mediaType === 'share') {
@@ -7103,9 +7023,6 @@ export default class Meeting extends StatelessWebexPlugin {
             },
             options: {
               meetingId: this.id,
-            },
-            eventData: {
-              isMercuryConnected: this.hasWebsocketConnected,
             },
           });
 
@@ -7314,9 +7231,6 @@ export default class Meeting extends StatelessWebexPlugin {
             meetingId: this.id,
             rawError: error,
           },
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
-          },
         });
       }
 
@@ -7403,9 +7317,6 @@ export default class Meeting extends StatelessWebexPlugin {
           ],
         },
         options: {meetingId: this.id, rawError: error},
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
-        },
       });
 
       deferSDPAnswer.reject(error);
@@ -7868,9 +7779,6 @@ export default class Meeting extends StatelessWebexPlugin {
         },
       },
       options: {meetingId: this.id},
-      eventData: {
-        isMercuryConnected: this.hasWebsocketConnected,
-      },
     });
 
     // when audioEnabled/videoEnabled is true, we set sendAudio/sendVideo to true even before any streams are published
@@ -7958,9 +7866,6 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         options: {
           meetingId: this.id,
-        },
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
         },
       });
       LoggerProxy.logger.info(
@@ -8256,9 +8161,6 @@ export default class Meeting extends StatelessWebexPlugin {
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.alert.displayed',
             options: {meetingId: this.id},
-            eventData: {
-              isMercuryConnected: this.hasWebsocketConnected,
-            },
           });
 
           return Promise.resolve({
@@ -8357,9 +8259,6 @@ export default class Meeting extends StatelessWebexPlugin {
           ...payload,
         },
         options: {meetingId: this.id},
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
-        },
       });
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
 
@@ -8466,9 +8365,6 @@ export default class Meeting extends StatelessWebexPlugin {
         options: {
           meetingId: this.id,
         },
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
-        },
       });
 
       const body: any = {
@@ -8527,9 +8423,6 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         options: {
           meetingId: this.id,
-        },
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
         },
       });
 
@@ -8594,9 +8487,6 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {
             meetingId: this.id,
           },
-          eventData: {
-            isMercuryConnected: this.hasWebsocketConnected,
-          },
         });
 
         return this.meetingRequest
@@ -8638,9 +8528,6 @@ export default class Meeting extends StatelessWebexPlugin {
               },
               options: {
                 meetingId: this.id,
-              },
-              eventData: {
-                isMercuryConnected: this.hasWebsocketConnected,
               },
             });
 
@@ -8698,9 +8585,6 @@ export default class Meeting extends StatelessWebexPlugin {
           shareInstanceId: this.localShareInstanceId,
         },
         options: {meetingId: this.id},
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
-        },
       });
 
       if (content.floor?.beneficiary.id !== this.selfId) {
@@ -9218,9 +9102,6 @@ export default class Meeting extends StatelessWebexPlugin {
       name: 'client.call.leave',
       payload: {trigger: 'user-interaction', canProceed: false},
       options: {meetingId: this.id},
-      eventData: {
-        isMercuryConnected: this.hasWebsocketConnected,
-      },
     });
 
     LoggerProxy.logger.log('Meeting:index#endMeetingForAll --> End meeting for All');
@@ -9686,9 +9567,6 @@ export default class Meeting extends StatelessWebexPlugin {
           shareInstanceId: this.localShareInstanceId,
         },
         options: {meetingId: this.id},
-        eventData: {
-          isMercuryConnected: this.hasWebsocketConnected,
-        },
       });
 
       this.statsAnalyzer.updateMediaStatus({
