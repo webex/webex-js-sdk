@@ -922,7 +922,6 @@ function getMediaSettings(compareLastSettings = false) {
   const additionalMediaOptions = {};
 
   toggleSourcesMediaDirection.forEach((options) => {
-    console.log("rkanthet options",options)
     if (compareLastSettings) {
       if (currentMediaSettings[options.value] !== options.checked) {
         settings[options.value] = options.checked;
