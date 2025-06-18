@@ -739,6 +739,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       errors,
       eventData: {
         webClientDomain: window.location.hostname,
+        // @ts-ignore
+        isMercuryConnected: this.webex.internal.mercury?.connected,
       },
       userType: meeting.getCurUserType(),
       loginType:
@@ -807,6 +809,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers,
       eventData: {
         webClientDomain: window.location.hostname,
+        // @ts-ignore
+        isMercuryConnected: this.webex.internal.mercury?.connected,
       },
       loginType: this.getCurLoginType(),
       // @ts-ignore
