@@ -1,8 +1,6 @@
-/* eslint-disable no-underscore-dangle */
 /*!
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
-/* eslint-disable no-underscore-dangle */
 import uuid from 'uuid';
 import {WebexPlugin} from '@webex/webex-core';
 import '@webex/internal-plugin-mercury';
@@ -277,13 +275,28 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.meetingSite the name.webex.com site for the meeting
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
-   * @param {string} options.actionValue the action value to perform (e.g., 'SUMMARIZE_FOR_ME', 'WAS_MY_NAME_MENTIONED')
-   * @param {Object} options.parameters optional parameters to include in the request
+   * @param {string} options.contentType the type of content ('action' or 'message')
+   * @param {string} options.contentValue the value to use (action name or message text)
+   * @param {Object} options.parameters optional parameters to include in the request (for action type only)
    * @returns {Promise<RequestResult>} Resolves with an object
    */
-  _makeMeetingRequest(
-    options: SummarizeMeetingOptions & {actionValue: string; parameters?: any}
+  async _makeMeetingRequest(
+    options: SummarizeMeetingOptions & {
+      contentType: 'action' | 'message';
+      contentValue: string;
+      parameters?: any;
+      encryptValue?: boolean;
+    }
   ): Promise<RequestResult> {
+    let value = options.contentValue;
+
+    if (options.contentType === 'message') {
+      value = await this._encryptData({
+        text: options.contentValue,
+        encryptionKeyUrl: options.encryptionKeyUrl,
+      });
+    }
+
     const content: any = {
       context: {
         resources: [
@@ -295,11 +308,11 @@ const AIAssistant = WebexPlugin.extend({
         ],
       },
       encryptionKeyUrl: options.encryptionKeyUrl,
-      type: 'action',
-      value: options.actionValue,
+      type: options.contentType,
+      value,
     };
 
-    if (options.parameters) {
+    if (options.contentType === 'action' && options.parameters) {
       content.parameters = options.parameters;
     }
 
@@ -327,7 +340,8 @@ const AIAssistant = WebexPlugin.extend({
   summarizeMeeting(options: SummarizeMeetingOptions): Promise<RequestResult> {
     return this._makeMeetingRequest({
       ...options,
-      actionValue: 'SUMMARIZE_FOR_ME',
+      contentType: 'action',
+      contentValue: 'SUMMARIZE_FOR_ME',
       ...(options.lastMinutes ? {parameters: {lastMinutes: options.lastMinutes}} : {}),
     });
   },
@@ -344,7 +358,8 @@ const AIAssistant = WebexPlugin.extend({
   wasMyNameMentioned(options: SummarizeMeetingOptions): Promise<RequestResult> {
     return this._makeMeetingRequest({
       ...options,
-      actionValue: 'WAS_MY_NAME_MENTIONED',
+      contentType: 'action',
+      contentValue: 'WAS_MY_NAME_MENTIONED',
     });
   },
 
@@ -360,7 +375,39 @@ const AIAssistant = WebexPlugin.extend({
   showAllActionItems(options: SummarizeMeetingOptions): Promise<RequestResult> {
     return this._makeMeetingRequest({
       ...options,
-      actionValue: 'SHOW_ALL_ACTION_ITEMS',
+      contentType: 'action',
+      contentValue: 'SHOW_ALL_ACTION_ITEMS',
+    });
+  },
+
+  /**
+   * Helper method to encrypt text using the encryption key URL
+   * @param {Object} options
+   * @param {string} options.text the text to encrypt
+   * @param {string} options.encryptionKeyUrl the encryption key URL to use for encryption
+   * @returns {Promise<string>} returns a promise that resolves with the encrypted text
+   */
+  async _encryptData({text, encryptionKeyUrl}) {
+    const result = await this.webex.internal.encryption.encryptText(encryptionKeyUrl, text);
+
+    return result;
+  },
+
+  /**
+   * Ask any question about the meeting content
+   * @param {Object} options
+   * @param {string} options.meetingInstanceId the meeting instance ID for the meeting from locus
+   * @param {string} options.meetingSite the name.webex.com site for the meeting
+   * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
+   * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
+   * @param {string} options.question the question to ask about the meeting content
+   * @returns {Promise<RequestResult>} Resolves with an object
+   */
+  askMeAnything(options: SummarizeMeetingOptions & {question: string}): Promise<RequestResult> {
+    return this._makeMeetingRequest({
+      ...options,
+      contentType: 'message',
+      contentValue: options.question,
     });
   },
 });
