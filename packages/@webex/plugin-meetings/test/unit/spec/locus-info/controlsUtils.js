@@ -411,6 +411,42 @@ describe('plugin-meetings', () => {
         assert.equal(updates.hasRemoteDesktopControlChanged, true);
       });
 
+      it('returns false when previous spoken language is undefined and current is a invalid value', () => {
+        const previous = { transcribe: undefined };
+        const current = { transcribe: { spokenLanguage: null } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, false);
+      });
+
+      it('detects spoken language change when previous is undefined and current is a valid value', () => {
+        const previous = { transcribe: undefined };
+        const current = { transcribe: { spokenLanguage: 'en-US' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, true);
+      });
+
+      it('returns false when spoken language changes to a same value', () => {
+        const previous = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+        const current = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, false);
+      });
+
+      it('returns true when spoken language changes to a different value', () => {
+        const previous = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+        const current = { transcribe: {caption: true, spokenLanguage: 'fr-FR' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, true);
+      });
+
       describe('videoEnabled', () => {
         const testVideoEnabled = (oldControls, newControls, updatedProperty) => {
           const result = ControlsUtils.getControls(oldControls, newControls);
