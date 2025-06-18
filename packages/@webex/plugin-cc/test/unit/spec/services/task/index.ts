@@ -1277,11 +1277,12 @@ describe('Task', () => {
   
   describe('AutoWrapup initialization tests', () => {    
     beforeEach(() => {
-      // No setup needed - we'll spy directly on task instances
+      jest.useFakeTimers();
     });
     
     afterEach(() => {
       jest.restoreAllMocks();
+      jest.useRealTimers();
     });
     
     it('should not initialize AutoWrapup if wrapUpRequired is false', () => {
@@ -1412,6 +1413,12 @@ describe('Task', () => {
       
       const taskData = { ...taskDataMock, wrapUpRequired: true };
       
+      let capturedCallback;
+      jest.spyOn(global, 'setTimeout').mockImplementation((callback, timeout) => {
+        capturedCallback = callback;
+        return {} as any;
+      });
+      
       // Create our task instance 
       const taskInstance = new Task(contactMock, webCallingService, taskData, wrapupProps);
       
@@ -1422,26 +1429,18 @@ describe('Task', () => {
       // Verify autoWrapup was initialized
       expect(taskInstance.autoWrapup).toBeDefined();
       
-      // Get the callback that was passed to start
-      // Find the start function on the autoWrapup instance
-      const startCallback = taskInstance.autoWrapup.start.mock?.calls[0]?.[0];
-      
-      if (startCallback && typeof startCallback === 'function') {
-        // Execute the callback directly
-        startCallback();
-        
-        // Verify wrapup was called with correct parameters
-        expect(wrapupMock).toHaveBeenCalledWith({
-          wrapUpReason: defaultWrapUpReason.name,
-          auxCodeId: defaultWrapUpReason.id
-        });
+      if (capturedCallback) {
+        capturedCallback();
       }
+      
+      // Verify wrapup was called with correct parameters
+      expect(wrapupMock).toHaveBeenCalledWith({
+        wrapUpReason: defaultWrapUpReason.name,
+        auxCodeId: defaultWrapUpReason.id
+      });
     });
 
     it('should handle case when no default wrapup reason is found', () => {
-      // Create a test-only mock for AutoWrapup
-      let capturedCallback;
-
       // Create a task with AutoWrapup enabled but NO default wrapup reason
       const wrapupProps = {
         wrapUpProps: {
@@ -1463,16 +1462,13 @@ describe('Task', () => {
       const wrapupSpy = jest.fn().mockResolvedValue({});
       taskInstance.wrapup = wrapupSpy;
       
-      // Execute the captured callback if available
-      if (capturedCallback) {
-        capturedCallback();
+      jest.runOnlyPendingTimers();
       
-        // Verify wrapup was called with the first reason (since no default exists)
-        expect(wrapupSpy).toHaveBeenCalledWith({
-          wrapUpReason: wrapupProps.wrapUpProps.wrapUpReasonList[0].name,
-          auxCodeId: wrapupProps.wrapUpProps.wrapUpReasonList[0].id
-        });
-      }
+      // Verify wrapup was called with the first reason (since no default exists)
+      expect(wrapupSpy).toHaveBeenCalledWith({
+        wrapUpReason: wrapupProps.wrapUpProps.wrapUpReasonList[0].name,
+        auxCodeId: wrapupProps.wrapUpProps.wrapUpReasonList[0].id
+      });
     });
   });
 });
