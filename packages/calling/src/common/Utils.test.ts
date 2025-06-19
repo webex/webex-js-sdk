@@ -1590,25 +1590,151 @@ describe('modifySdpForIPv4', () => {
   });
 });
 
-describe('uploadLogs tests', () => {
-  it('should call submitLogs with the provided data', async () => {
-    const mockData = {someKey: 'someValue'};
-    await uploadLogs(mockData);
+describe('uploadLogs', () => {
+  let originalCrypto;
+  let submitLogsMock;
 
-    expect(SDKConnector.getWebex().internal.support.submitLogs).toHaveBeenCalledTimes(1);
-    expect(SDKConnector.getWebex().internal.support.submitLogs).toHaveBeenCalledWith(mockData);
+  beforeEach(() => {
+    // Save original crypto and mock it
+    originalCrypto = global.crypto;
+    global.crypto = {
+      randomUUID: jest.fn().mockReturnValue('mocked-uuid-12345'),
+    } as unknown as Crypto;
+
+    // Mock the metrics manager submit function directly
+    mockSubmitRegistrationMetric.mockClear();
+
+    // Mock webex.internal.support.submitLogs
+    submitLogsMock = jest.fn().mockResolvedValue({trackingid: '1234'});
+    webex.internal.support = {
+      submitLogs: submitLogsMock,
+    };
   });
 
-  it('should handle errors when submitLogs fails', async () => {
-    const mockError = new Error('Test error');
-    SDKConnector.getWebex().internal.support.submitLogs.mockRejectedValue(mockError);
+  afterEach(() => {
+    // Restore original crypto
+    global.crypto = originalCrypto;
+    jest.clearAllMocks();
+  });
+
+  it('should upload logs and return the response', async () => {
+    const mockMetaData = {correlationId: 'test-correlation'};
+    const logSpy = jest.spyOn(log, 'info');
+
+    const result = await uploadLogs(mockMetaData, true);
+
+    expect(result).toEqual({trackingid: '1234', feedbackId: 'mocked-uuid-12345'});
+    expect(logSpy).toHaveBeenCalledWith(
+      `Logs uploaded successfully with feedbackId: mocked-uuid-12345`,
+      {
+        file: UTILS_FILE,
+        method: 'uploadLogs',
+      }
+    );
+    expect(mockSubmitRegistrationMetric).toHaveBeenCalledWith(
+      'web-calling-sdk-upload-logs-success',
+      {
+        fields: {
+          call_id: undefined,
+          calling_sdk_version: 'unknown',
+          correlation_id: 'test-correlation',
+          device_url: undefined,
+          feedback_id: 'mocked-uuid-12345',
+          mobius_url: undefined,
+          tracking_id: '1234',
+        },
+        tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
+        type: 'behavioral',
+      }
+    );
+    expect(submitLogsMock).toHaveBeenCalledWith(
+      {...mockMetaData, feedbackId: 'mocked-uuid-12345'},
+      undefined,
+      {type: 'diff'}
+    );
+  });
+
+  it('should log and throw an error if the upload fails', async () => {
+    const mockMetaData = {correlationId: 'test-correlation'};
+    const mockError = new Error('Upload failed');
+
+    // Mock the submitLogs to fail
+    submitLogsMock.mockRejectedValueOnce(mockError);
+
     const logSpy = jest.spyOn(log, 'error');
 
-    await uploadLogs({});
+    try {
+      await uploadLogs(mockMetaData, true);
+      // If we get here, the test should fail since we expected an exception
+      expect(true).toBe(false); // This will fail the test if no exception is thrown
+    } catch (error) {
+      expect(error).toBe(mockError);
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Failed to upload Logs'),
+        }),
+        {
+          file: UTILS_FILE,
+          method: 'uploadLogs',
+        }
+      );
+      expect(mockSubmitRegistrationMetric).toHaveBeenCalledWith(
+        'web-calling-sdk-upload-logs-failed',
+        {
+          fields: {
+            call_id: undefined,
+            calling_sdk_version: 'unknown',
+            correlation_id: 'Failed to upload Logs Error: Upload failed',
+            device_url: undefined,
+            error: undefined,
+            feedback_id: 'test-correlation',
+            mobius_url: undefined,
+            tracking_id: 'mocked-uuid-12345',
+          },
+          tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
+          type: 'behavioral',
+        }
+      );
+    }
+  });
 
-    expect(logSpy).toHaveBeenCalledWith(mockError, {
-      file: UTILS_FILE,
-      method: 'uploadLogs',
-    });
+  it('should log error and not throw an error if the upload fails with throw exception false', async () => {
+    const mockMetaData = {correlationId: 'test-correlation'};
+    const mockError = new Error('Upload failed');
+
+    // Mock the submitLogs to fail
+    submitLogsMock.mockRejectedValueOnce(mockError);
+
+    const logSpy = jest.spyOn(log, 'error');
+
+    const result = await uploadLogs(mockMetaData, false);
+    expect(result).toBeUndefined();
+
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('Failed to upload Logs'),
+      }),
+      {
+        file: UTILS_FILE,
+        method: 'uploadLogs',
+      }
+    );
+    expect(mockSubmitRegistrationMetric).toHaveBeenCalledWith(
+      'web-calling-sdk-upload-logs-failed',
+      {
+        fields: {
+          call_id: undefined,
+          calling_sdk_version: 'unknown',
+          correlation_id: 'Failed to upload Logs Error: Upload failed',
+          device_url: undefined,
+          error: undefined,
+          feedback_id: 'test-correlation',
+          mobius_url: undefined,
+          tracking_id: 'mocked-uuid-12345',
+        },
+        tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
+        type: 'behavioral',
+      }
+    );
   });
 });

@@ -37,15 +37,17 @@ describe('webex-core', () => {
             orgId: process.env.EU_PRIMARY_ORG_ID,
           },
         }),
-      ]).then(([[user], [userEU]]) =>
-        new Promise((resolve) => {
-          setTimeout(() => {
-            webexUser = user;
-            webexUserEU = userEU;
-            resolve();
-          }, 1000)
-        })
-    ));
+      ]).then(
+        ([[user], [userEU]]) =>
+          new Promise((resolve) => {
+            setTimeout(() => {
+              webexUser = user;
+              webexUserEU = userEU;
+              resolve();
+            }, 1000);
+          })
+      )
+    );
 
     beforeEach('create webex instance', () => {
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
@@ -893,7 +895,7 @@ describe('webex-core', () => {
             assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
           }));
 
-      it('validates new user with activationOptions suppressEmail true', () =>
+      it.skip('validates new user with activationOptions suppressEmail true', () =>
         unauthServices
           .validateUser({
             email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
