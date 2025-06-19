@@ -425,7 +425,8 @@ describe('plugin-meetings', () => {
         const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
         assert.equal(updates.hasPollingQAControlChanged, true);
-        
+      });
+
       it('returns false when previous spoken language is undefined and current is a invalid value', () => {
         const previous = { transcribe: undefined };
         const current = { transcribe: { spokenLanguage: null } };

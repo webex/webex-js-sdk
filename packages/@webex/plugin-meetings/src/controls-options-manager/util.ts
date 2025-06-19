@@ -319,10 +319,10 @@ class Utils {
     const requiredHints = [];
 
     if (control.properties.enabled === true) {
-      requiredHints.push(DISPLAY_HINTS.ENABLE_POLLING_QA_MEETING_OPTION);
+      requiredHints.push(DISPLAY_HINTS.ENABLE_ATTENDEE_START_POLLING_QA);
     }
     if (control.properties.enabled === false) {
-      requiredHints.push(DISPLAY_HINTS.DISABLE_POLLING_QA_MEETING_OPTION);
+      requiredHints.push(DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA);
     }
 
     return Utils.hasHints({requiredHints, displayHints});

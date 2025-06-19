@@ -483,7 +483,7 @@ describe('plugin-meetings', () => {
           ControlsOptionsUtil.canUpdatePollingQA({properties: {enabled: true}}, []);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.ENABLE_POLLING_QA_MEETING_OPTION],
+            requiredHints: [DISPLAY_HINTS.ENABLE_ATTENDEE_START_POLLING_QA],
             displayHints: [],
           });
         });
@@ -492,7 +492,7 @@ describe('plugin-meetings', () => {
           ControlsOptionsUtil.canUpdatePollingQA({properties: {enabled: false}}, []);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.DISABLE_POLLING_QA_MEETING_OPTION],
+            requiredHints: [DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA],
             displayHints: [],
           });
         });
