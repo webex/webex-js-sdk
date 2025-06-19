@@ -2,7 +2,7 @@ import {CallError, CallingClientError} from '../Errors';
 import {METRIC_FILE, VERSION} from '../CallingClient/constants';
 import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../common/types';
 import {WebexSDK} from '../SDKConnector/types';
-import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT} from './types';
+import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT, SERVER_TYPE} from './types';
 import {LineError} from '../Errors/catalog/LineError';
 import log from '../Logger';
 
@@ -46,7 +46,7 @@ class MetricManager implements IMetricManager {
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
     caller: string,
-    serverType: string,
+    serverType: SERVER_TYPE,
     trackingId: string,
     keepaliveCount?: number,
     clientError?: LineError | CallingClientError

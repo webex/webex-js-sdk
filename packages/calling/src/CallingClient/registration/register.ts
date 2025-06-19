@@ -2,7 +2,13 @@ import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
 import {emitFinalFailure, handleRegistrationErrors} from '../../common';
 
-import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../../Metrics/types';
+import {
+  IMetricManager,
+  METRIC_EVENT,
+  METRIC_TYPE,
+  REG_ACTION,
+  SERVER_TYPE,
+} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
 import {ICallManager} from '../calling/types';
 import {getCallManager} from '../calling';
@@ -633,9 +639,9 @@ export class Registration implements IRegistration {
     }
     for (const url of servers) {
       const serverType =
-        (this.primaryMobiusUris.includes(url) && 'primary') ||
-        (this.backupMobiusUris?.includes(url) && 'backup') ||
-        'unknown';
+        (this.primaryMobiusUris.includes(url) && SERVER_TYPE.PRIMARY) ||
+        (this.backupMobiusUris?.includes(url) && SERVER_TYPE.BACKUP) ||
+        SERVER_TYPE.UNKNOWN;
       try {
         abort = false;
         this.registrationStatus = RegistrationStatus.INACTIVE;
@@ -719,7 +725,7 @@ export class Registration implements IRegistration {
    * This method sets up a timer to periodically send keep-alive requests to maintain a connection.
    * It handles retries, error handling, and re-registration attempts based on the response, ensuring continuous connectivity with the server.
    */
-  private startKeepaliveTimer(url: string, interval: number, serverType: string) {
+  private startKeepaliveTimer(url: string, interval: number, serverType: SERVER_TYPE) {
     let keepAliveRetryCount = 0;
     this.clearKeepaliveTimer();
     const RETRY_COUNT_THRESHOLD = this.isCCFlow ? 4 : 5;

@@ -41,6 +41,12 @@ export enum VOICEMAIL_ACTION {
   TRANSCRIPT = 'transcript',
 }
 
+export enum SERVER_TYPE {
+  PRIMARY = 'primary',
+  BACKUP = 'backup',
+  UNKNOWN = 'unknown',
+}
+
 export interface IMetricManager {
   setDeviceInfo: (deviceInfo: IDeviceInfo) => void;
   submitRegistrationMetric: (
@@ -48,9 +54,9 @@ export interface IMetricManager {
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
     caller: string,
-    serverType: string,
+    serverType: SERVER_TYPE,
     trackingId: string,
-    keeapliveCount?: number,
+    keepaliveCount?: number,
     error?: LineError | CallingClientError
   ) => void;
   submitBNRMetric: (

@@ -54,7 +54,7 @@ import {
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
-import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from '../Metrics/types';
+import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager, SERVER_TYPE} from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
 
 /**
@@ -263,7 +263,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
               GET_MOBIUS_SERVERS_UTIL,
-              '',
+              SERVER_TYPE.UNKNOWN,
               (err as WebexRequestPayload).headers?.trackingId ?? '',
               undefined,
               clientError
@@ -356,7 +356,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
               GET_MOBIUS_SERVERS_UTIL,
-              '',
+              SERVER_TYPE.UNKNOWN,
               (err as WebexRequestPayload).headers?.trackingId ?? '',
               undefined,
               clientError
