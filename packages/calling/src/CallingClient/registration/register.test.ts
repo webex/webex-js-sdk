@@ -22,6 +22,7 @@ import {
   KEEPALIVE_UTIL,
   MINUTES_TO_SEC_MFACTOR,
   REGISTRATION_FILE,
+  REGISTRATION_UTIL,
   REG_429_RETRY_UTIL,
   REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
   REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
@@ -31,6 +32,7 @@ import {ICall} from '../calling/types';
 import {LINE_EVENTS} from '../line/types';
 import {createLineError} from '../../Errors/catalog/LineError';
 import {IRegistration} from './types';
+import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, SERVER_TYPE} from '../../Metrics/types';
 
 const webex = getTestUtilsWebex();
 const MockServiceData = {
@@ -126,6 +128,7 @@ describe('Registration Tests', () => {
   let postRegistrationSpy;
   let failoverSpy;
   let retry429Spy;
+  let metricSpy;
 
   const setupRegistration = (mockServiceData) => {
     const mutex = new Mutex();
@@ -137,6 +140,7 @@ describe('Registration Tests', () => {
     postRegistrationSpy = jest.spyOn(reg, 'postRegistration');
     failoverSpy = jest.spyOn(reg, 'startFailoverTimer');
     retry429Spy = jest.spyOn(reg, 'handle429Retry');
+    metricSpy = jest.spyOn(reg.metricManager, 'submitRegistrationMetric');
   };
 
   beforeEach(() => {
@@ -174,6 +178,16 @@ describe('Registration Tests', () => {
         file: REGISTRATION_FILE,
         method: expect.any(String),
       })
+    );
+    expect(metricSpy).toBeCalledWith(
+      METRIC_EVENT.REGISTRATION,
+      REG_ACTION.REGISTER,
+      METRIC_TYPE.BEHAVIORAL,
+      REGISTRATION_UTIL,
+      SERVER_TYPE.PRIMARY,
+      '',
+      undefined,
+      undefined
     );
   });
 
@@ -242,6 +256,16 @@ describe('Registration Tests', () => {
     expect(lineEmitter).nthCalledWith(2, LINE_EVENTS.UNREGISTERED);
     expect(lineEmitter).nthCalledWith(3, LINE_EVENTS.CONNECTING);
     expect(lineEmitter).nthCalledWith(4, LINE_EVENTS.REGISTERED, mockPostResponse);
+    expect(metricSpy).toBeCalledWith(
+      METRIC_EVENT.REGISTRATION,
+      REG_ACTION.REGISTER,
+      METRIC_TYPE.BEHAVIORAL,
+      REGISTRATION_UTIL,
+      SERVER_TYPE.UNKNOWN,
+      '',
+      undefined,
+      undefined
+    );
   });
 
   describe('429 handling tests', () => {

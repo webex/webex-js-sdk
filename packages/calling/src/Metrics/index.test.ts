@@ -1,7 +1,7 @@
 /* eslint-disable dot-notation */
 import {getMockDeviceInfo, getTestUtilsWebex} from '../common/testUtil';
 import {getMetricManager} from './index';
-import {METRIC_TYPE, METRIC_EVENT, REG_ACTION, VOICEMAIL_ACTION} from './types';
+import {METRIC_TYPE, METRIC_EVENT, REG_ACTION, VOICEMAIL_ACTION, SERVER_TYPE} from './types';
 import {REGISTRATION_UTIL, VERSION} from '../CallingClient/constants';
 import {createClientError} from '../Errors/catalog/CallingDeviceError';
 import {CallErrorObject, ErrorObject, ERROR_LAYER, ERROR_TYPE} from '../Errors/types';
@@ -70,7 +70,7 @@ describe('CALLING: Metric tests', () => {
         REG_ACTION.REGISTER,
         METRIC_TYPE.BEHAVIORAL,
         REGISTRATION_UTIL,
-        'primary',
+        SERVER_TYPE.PRIMARY,
         'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
         undefined,
         undefined
@@ -106,7 +106,7 @@ describe('CALLING: Metric tests', () => {
           mobius_url: mockDeviceInfo.device.uri,
           calling_sdk_version: MOCK_VERSION_NUMBER,
           reg_source: REGISTRATION_UTIL,
-          server_type: 'primary',
+          server_type: 'backup',
           trackingId: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
           error: clientError.getError().message,
           error_type: clientError.getError().type,
@@ -119,7 +119,7 @@ describe('CALLING: Metric tests', () => {
         REG_ACTION.REGISTER,
         METRIC_TYPE.BEHAVIORAL,
         REGISTRATION_UTIL,
-        'primary',
+        SERVER_TYPE.BACKUP,
         'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
         undefined,
         clientError
@@ -138,7 +138,8 @@ describe('CALLING: Metric tests', () => {
         REG_ACTION.REGISTER,
         METRIC_TYPE.OPERATIONAL,
         REGISTRATION_UTIL,
-        'primary',
+        SERVER_TYPE.PRIMARY,
+        undefined,
         undefined,
         undefined
       );
