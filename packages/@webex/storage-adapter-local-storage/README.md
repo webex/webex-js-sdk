@@ -1,14 +1,6 @@
 # @webex/storage-adapter-local-storage
 
-[![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-
-> localStorage adapter for the Cisco Webex JS SDK
-
-- [Install](#install)
-- [Usage](#usage)
-- [Contribute](#contribute)
-- [Maintainers](#maintainers)
-- [License](#license)
+Storage adapter that uses browser localStorage for the Webex SDK.
 
 ## Install
 
@@ -18,16 +10,50 @@ npm install --save @webex/storage-adapter-local-storage
 
 ## Usage
 
-This is a part of the Cisco Webex JS SDK . Please see our [developer portal](https://developer.webex.com/) and the [API docs](https://webex.github.io/webex-js-sdk/api/) for full details.
+This package provides localStorage functionality for the Webex SDK storage system.
 
-## Maintainers
+```js
+import StorageAdapterLocalStorage from '@webex/storage-adapter-local-storage';
 
-This package is maintained by [Cisco Webex for Developers](https://developer.webex.com/).
+const adapter = new StorageAdapterLocalStorage('webex-storage');
 
-## Contribute
+// Bind to a namespace
+adapter.bind('myNamespace', { logger: console })
+  .then(store => {
+    // Store data
+    return store.put('key', 'value');
+  })
+  .then(() => {
+    // Retrieve data
+    return store.get('key');
+  })
+  .then(value => {
+    console.log('Retrieved:', value);
+  });
+```
 
-Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md) for more details.
+## Methods
 
-## License
+### Constructor
 
-© 2016-2020 Cisco and/or its affiliates. All Rights Reserved.
+Creates a new localStorage adapter.
+
+- `basekey` - The base key under which all data will be stored in localStorage
+
+### bind(namespace, options)
+
+Returns a storage interface bound to a specific namespace.
+
+- `namespace` - Namespace for data isolation
+- `options.logger` - Logger instance for debugging
+
+### Bound Storage Methods
+
+- `put(key, value)` - Store a value
+- `get(key)` - Retrieve a value
+- `del(key)` - Delete a value
+- `clear()` - Clear all data for this namespace
+
+## Browser Support
+
+This adapter requires localStorage support and will only work in browser environments.
