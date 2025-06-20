@@ -37,6 +37,8 @@ import {makeWebexStore} from './lib/storage';
 import mixinWebexCorePlugins from './lib/webex-core-plugin-mixin';
 import mixinWebexInternalCorePlugins from './lib/webex-internal-core-plugin-mixin';
 import WebexInternalCore from './webex-internal-core';
+import { ServerErrorInterceptor, ServiceInterceptor, Services } from './lib/services';
+import {Credentials} from './lib/credentials';
 
 // TODO replace the Interceptor.create with Reflect.construct (
 // Interceptor.create exists because new was really hard to call on an array of
@@ -104,6 +106,10 @@ const WebexCore = AmpState.extend({
   },
 
   constructor(attrs = {}, options) {
+    // We need to register the internal plugins (credentials) before
+    // we try and access properties on them
+    this._registerInternalPlugins();
+
     if (typeof attrs === 'string') {
       attrs = {
         credentials: {
@@ -315,6 +321,27 @@ const WebexCore = AmpState.extend({
   getWindow() {
     // eslint-disable-next-line
     return window;
+  },
+
+  /**
+   * Registers plugins used by webex-core
+   *
+   * @private
+   * @returns {null}
+   */
+  _registerInternalPlugins() {
+    const servicesPlugin = Services;
+
+    registerInternalPlugin('services', servicesPlugin, {
+      interceptors: {
+        ServiceInterceptor: ServiceInterceptor.create,
+        ServerErrorInterceptor: ServerErrorInterceptor.create,
+      },
+    });
+
+    registerPlugin('credentials', Credentials, {
+      proxies: ['canAuthorize', 'canRefresh'],
+    });
   },
 
   /**
