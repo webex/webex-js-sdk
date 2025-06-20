@@ -50,12 +50,6 @@ export function convertStunUrlToTurnTls(stunUrl: string) {
  * @param {string} serverIps - The server IP or domain name to check.
  * @returns {boolean} true if the server IP is a domain name, false otherwise.
  */
-/**
- * Checks if the given server IP is a domain name.
- *
- * @param {string} serverIps - The server IP or domain name to check.
- * @returns {boolean} true if the server IP is a domain name, false otherwise.
- */
 export function isDomainName(serverIps: string): boolean {
   // Regex to match IPv4 addresses
   const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
@@ -82,4 +76,28 @@ export function isDomainName(serverIps: string): boolean {
  */
 export function constructSubnetKey(serverIps: string, port: number, protocol: string): string {
   return `${serverIps}:${port}:${protocol}`;
+}
+
+/**
+ * Processes protocol subnets by segregating details and domain names.
+ *
+ * @param {Array<any>} subnets - List of subnets.
+ * @param {string} protocol - Protocol to process (e.g., 'udp', 'tcp', 'xtls').
+ * @returns {Object} Processed protocol data with segregated details and domain names.
+ */
+export function processProtocol(subnets: Array<any>, protocol: string) {
+  return {
+    details: subnets.filter((subnet) => subnet.protocol === protocol),
+    domainNames: subnets
+      .filter((subnet) => subnet.protocol === protocol && isDomainName(subnet.serverIps))
+      .map((subnet) => ({
+        serverIps: subnet.serverIps,
+        port: subnet.port,
+        protocol: subnet.protocol,
+        reachable: subnet.reachable,
+        'answered-tx': subnet['answered-tx'],
+        'lost-tx': subnet['lost-tx'],
+        latencies: subnet.latencies,
+      })),
+  };
 }

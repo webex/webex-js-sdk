@@ -12,7 +12,7 @@ import MeetingUtil from '../meeting/util';
 import {IP_VERSION, REACHABILITY} from '../constants';
 
 import ReachabilityRequest, {ClusterList} from './request';
-import {isDomainName} from './util';
+import {isDomainName, processProtocol} from './util';
 import {
   ClusterReachabilityResult,
   TransportResult,
@@ -927,28 +927,15 @@ export default class Reachability extends EventsScope {
         ...clusterResult,
         udp: {
           ...clusterResult.udp,
-          details: subnets.filter((subnet) => subnet.protocol === 'udp'),
-          domainNames: [], // Can add domain names for UDP if needed
+          ...processProtocol(subnets, 'udp'),
         },
         tcp: {
           ...clusterResult.tcp,
-          details: subnets.filter((subnet) => subnet.protocol === 'tcp'),
-          domainNames: [], // Can add domain names for TCP if needed
+          ...processProtocol(subnets, 'tcp'),
         },
         xtls: {
           ...clusterResult.xtls,
-          details: subnets.filter((subnet) => subnet.protocol === 'xtls'),
-          domainNames: subnets
-            .filter((subnet) => subnet.protocol === 'xtls' && subnet.serverIps.includes('.public.'))
-            .map((subnet) => ({
-              serverIps: subnet.serverIps,
-              port: subnet.port,
-              protocol: subnet.protocol,
-              reachable: subnet.reachable,
-              'answered-tx': subnet['answered-tx'],
-              'lost-tx': subnet['lost-tx'],
-              latencies: subnet.latencies,
-            })),
+          ...processProtocol(subnets, 'xtls'),
         },
       };
     });
