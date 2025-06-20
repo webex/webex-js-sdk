@@ -106,9 +106,6 @@ describe('internal-plugin-metrics', () => {
             url: 'deviceUrl',
             orgId: 'orgId',
           },
-          mercury: {
-            connected: true,
-          },
         },
         meetings: {
           config: {
@@ -829,6 +826,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
+        cd.setMercuryConnectedStatus(true);
 
         cd.submitClientEvent({
           name: 'client.alert.displayed',
@@ -957,7 +955,6 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should submit client event correctly when mercury is not connected', () => {
-        webex.internal.mercury.connected = false;
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
@@ -969,7 +966,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(false);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1108,7 +1105,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting3.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1249,7 +1246,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting4.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1390,7 +1387,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting5.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1594,7 +1591,7 @@ describe('internal-plugin-metrics', () => {
           globalMeetingId: 'globalMeetingId1',
           sessionCorrelationId: 'sessionCorrelationId1',
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1684,7 +1681,7 @@ describe('internal-plugin-metrics', () => {
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-
+        cd.setMercuryConnectedStatus(true);
         const options = {
           correlationId: 'correlationId',
           webexConferenceIdStr: 'webexConferenceIdStr1',
@@ -1771,7 +1768,7 @@ describe('internal-plugin-metrics', () => {
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-
+        cd.setMercuryConnectedStatus(true);
         const options = {
           correlationId: 'correlationId',
           webexConferenceIdStr: 'webexConferenceIdStr1',
@@ -1862,7 +1859,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting2.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1915,7 +1912,7 @@ describe('internal-plugin-metrics', () => {
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
           sessionCorrelationId: 'sessionCorrelationId1',
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1975,7 +1972,7 @@ describe('internal-plugin-metrics', () => {
           globalMeetingId: 'globalMeetingId1',
           sessionCorrelationId: 'sessionCorrelationId1',
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -2055,7 +2052,7 @@ describe('internal-plugin-metrics', () => {
             },
           },
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -2135,7 +2132,7 @@ describe('internal-plugin-metrics', () => {
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
           rawError: new Error('bad times'),
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -2215,7 +2212,7 @@ describe('internal-plugin-metrics', () => {
           correlationId: 'correlationId',
           rawError: new Error('bad times'),
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -2293,7 +2290,7 @@ describe('internal-plugin-metrics', () => {
             },
           },
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -2364,7 +2361,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           payload: {
@@ -3425,7 +3422,7 @@ describe('internal-plugin-metrics', () => {
             meetingId: fakeMeeting.id,
             preLoginId,
           };
-
+          cd.setMercuryConnectedStatus(true);
           const triggered = new Date();
           const fetchOptions = await cd.buildClientEventFetchRequestOptions({
             name: 'client.exit.app',

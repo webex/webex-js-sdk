@@ -77,6 +77,7 @@ describe('plugin-mercury', () => {
         markFailedUrl: sinon.stub().returns(Promise.resolve()),
       };
       webex.internal.metrics.submitClientMetrics = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
       webex.trackingId = 'fakeTrackingId';
       webex.config.mercury = mercuryConfig.mercury;
 
@@ -113,6 +114,10 @@ describe('plugin-mercury', () => {
         sinon.stub(mercury, 'connect');
         mercury.listen();
         assert.called(mercury.connect);
+        assert.calledWith(
+          webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus,
+          true
+        );
       });
     });
 
@@ -121,6 +126,10 @@ describe('plugin-mercury', () => {
         sinon.stub(mercury, 'connect');
         mercury.listen();
         assert.called(mercury.connect);
+        assert.calledWith(
+          webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus,
+          false
+        );
       });
     });
 
