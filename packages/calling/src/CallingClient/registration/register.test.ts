@@ -157,6 +157,9 @@ describe('Registration Tests', () => {
   it('verify successful registration', async () => {
     webex.request.mockReturnValueOnce({
       body: mockPostResponse,
+      headers: {
+        trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+      },
     });
 
     await reg.triggerRegistration();
@@ -185,7 +188,7 @@ describe('Registration Tests', () => {
       METRIC_TYPE.BEHAVIORAL,
       REGISTRATION_UTIL,
       SERVER_TYPE.PRIMARY,
-      '',
+      'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
       undefined,
       undefined
     );
@@ -195,6 +198,7 @@ describe('Registration Tests', () => {
     webex.request.mockRejectedValue({
       body: mockPostResponse,
       statusCode: 401,
+      headers: {},
     });
 
     await reg.triggerRegistration();
@@ -215,6 +219,16 @@ describe('Registration Tests', () => {
     expect(lineEmitter).toBeCalledTimes(2);
     expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.CONNECTING);
     expect(lineEmitter).nthCalledWith(2, LINE_EVENTS.ERROR, undefined, error);
+    expect(metricSpy).toBeCalledWith(
+      METRIC_EVENT.REGISTRATION_ERROR,
+      REG_ACTION.REGISTER,
+      METRIC_TYPE.BEHAVIORAL,
+      REGISTRATION_UTIL,
+      SERVER_TYPE.PRIMARY,
+      '',
+      undefined,
+      error
+    );
   });
 
   it('verify failure registration 403-101', async () => {
@@ -230,6 +244,9 @@ describe('Registration Tests', () => {
       .mockResolvedValueOnce({
         statusCode: 200,
         body: mockPostResponse,
+        headers: {
+          trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+        },
       });
 
     global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
@@ -262,7 +279,7 @@ describe('Registration Tests', () => {
       METRIC_TYPE.BEHAVIORAL,
       REGISTRATION_UTIL,
       SERVER_TYPE.UNKNOWN,
-      '',
+      'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
       undefined,
       undefined
     );
