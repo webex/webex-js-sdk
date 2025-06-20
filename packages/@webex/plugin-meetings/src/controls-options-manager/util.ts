@@ -9,6 +9,7 @@ import {
   VideoProperties,
   type RemoteDesktopControlProperties,
   type AnnotationProperties,
+  type PollingQAProperties,
 } from './types';
 
 /**
@@ -305,6 +306,29 @@ class Utils {
   }
 
   /**
+   * Validate if a pollingQA-scoped control is allowed to be sent to the service.
+   *
+   * @param {ControlConfig<PollingQAProperties>} control - Polling QA config to validate
+   * @param {Array<string>} displayHints - All available hints
+   * @returns {boolean} - True if all of the actions are allowed.
+   */
+  public static canUpdatePollingQA(
+    control: ControlConfig<PollingQAProperties>,
+    displayHints: Array<string>
+  ): boolean {
+    const requiredHints = [];
+
+    if (control.properties.enabled === true) {
+      requiredHints.push(DISPLAY_HINTS.ENABLE_ATTENDEE_START_POLLING_QA);
+    }
+    if (control.properties.enabled === false) {
+      requiredHints.push(DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA);
+    }
+
+    return Utils.hasHints({requiredHints, displayHints});
+  }
+
+  /**
    * Validate that a control can be sent to the service based on the provided
    * display hints.
    *
@@ -359,6 +383,13 @@ class Utils {
       case Control.rdc:
         determinant = Utils.canUpdateRemoteDesktopControl(
           control as ControlConfig<RemoteDesktopControlProperties>,
+          displayHints
+        );
+        break;
+
+      case Control.pollingQA:
+        determinant = Utils.canUpdatePollingQA(
+          control as ControlConfig<PollingQAProperties>,
           displayHints
         );
         break;
