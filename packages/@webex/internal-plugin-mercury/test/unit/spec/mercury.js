@@ -112,10 +112,8 @@ describe('plugin-mercury', () => {
     describe('#listen()', () => {
       it('proxies to #connect()', () => {
         const connectStub = sinon.stub(mercury, 'connect').callThrough();
-        mercury.listen();
-        assert.called(connectStub);
-        // Verify that setMercuryConnectedStatus is called after successful connection
-        return mercury.connect().then(() => {
+        return mercury.listen().then(() => {
+          assert.called(connectStub);
           assert.calledWith(
             webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus,
             true
