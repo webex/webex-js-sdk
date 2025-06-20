@@ -456,7 +456,7 @@ const Mercury = WebexPlugin.extend({
       this.unset('socket');
       this.connected = false;
       this._emit('offline', event);
-      this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
+      this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
 
       switch (event.code) {
         case 1003:
