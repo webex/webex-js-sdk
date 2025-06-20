@@ -91,16 +91,15 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT:
             // Case1 : Task is already present in taskCollection
             if (this.taskCollection[payload.data.interactionId]) {
-              LoggerProxy.log(` Task already exists in collection`, {
+              LoggerProxy.log(`Got AGENT_CONTACT: Task already exists in collection`, {
                 module: TASK_MANAGER_FILE,
                 method: METHODS.REGISTER_TASK_LISTENERS,
                 interactionId: payload.data.interactionId,
               });
               break;
-            }
-            // Case2 : Task is not present in taskCollection
-            else if (!this.taskCollection[payload.data.interactionId]) {
-              LoggerProxy.log(`Creating new task in taskManager`, {
+            } else if (!this.taskCollection[payload.data.interactionId]) {
+              // Case2 : Task is not present in taskCollection
+              LoggerProxy.log(`Got AGENT_CONTACT : Creating new task in taskManager`, {
                 module: TASK_MANAGER_FILE,
                 method: METHODS.REGISTER_TASK_LISTENERS,
                 interactionId: payload.data.interactionId,
