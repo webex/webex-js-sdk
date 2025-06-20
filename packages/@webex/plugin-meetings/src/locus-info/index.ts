@@ -854,6 +854,7 @@ export default class LocusInfo extends EventsScope {
           hasStageViewChanged,
           hasAnnotationControlChanged,
           hasRemoteDesktopControlChanged,
+          hasPollingQAControlChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
@@ -1117,6 +1118,14 @@ export default class LocusInfo extends EventsScope {
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED,
           {state: current.rdcControl}
+        );
+      }
+
+      if (hasPollingQAControlChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED,
+          {state: current.pollingQAControl}
         );
       }
 

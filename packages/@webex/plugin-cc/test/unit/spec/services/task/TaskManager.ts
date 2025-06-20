@@ -414,7 +414,50 @@ describe('TaskManager', () => {
       );
   });
 
-  it('should emit TASK_HYDRATE event on AGENT_CONTACT event', () => {
+
+  it('should not emit TASK_HYDRATE if task is already present in taskManager', () => {
+    const payload = {
+      data: {
+        ...initalPayload.data,
+        type: CC_EVENTS.AGENT_CONTACT,
+      },
+    };
+    const taskEmitSpy = jest.spyOn(taskManager, 'emit');
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(taskEmitSpy).not.toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_HYDRATE,
+      taskManager.getTask(taskId)
+    );
+    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(
+      taskManager.getTask(taskId)
+    );
+  });
+
+  it('should emit TASK_INCOMING event on AGENT_CONTACT event if task is new and not in the taskManager ', () => {
+    taskManager.taskCollection = [];
+    const payload = {
+      data: {
+        ...initalPayload.data,
+        interaction: {mediaType: 'telephony', state: 'new'},
+        type: CC_EVENTS.AGENT_CONTACT,
+      },
+    };
+
+    const taskEmitSpy = jest.spyOn(taskManager, 'emit');
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_INCOMING,
+      taskManager.getTask(taskId)
+    );
+    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(
+      taskManager.getTask(taskId)
+    );
+  });
+
+  it('should emit TASK_HYDRATE event on AGENT_CONTACT event if task is connected and not in the taskManager ', () => {
+    taskManager.taskCollection = [];
     const payload = {
       data: {
         ...initalPayload.data,
@@ -426,7 +469,9 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, taskManager.getTask(taskId));
-    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(taskManager.getTask(taskId));
+    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(
+      taskManager.getTask(taskId)
+    );
   });
 
   it('should emit TASK_END event on AGENT_WRAPUP event', () => {
