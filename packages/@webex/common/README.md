@@ -121,3 +121,15 @@ class MyClass {
 ## SDK Integration
 
 These utilities are primarily designed for use within the Webex SDK ecosystem but can be useful in any JavaScript application requiring these common patterns.
+
+## Maintainers
+
+This package is maintained by [Cisco Webex for Developers](https://developer.webex.com/).
+
+## Contribute
+
+Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md) for more details.
+
+## License
+
+© 2016-2025 Cisco and/or its affiliates. All Rights Reserved.

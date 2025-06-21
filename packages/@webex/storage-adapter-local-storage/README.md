@@ -57,3 +57,15 @@ Returns a storage interface bound to a specific namespace.
 ## Browser Support
 
 This adapter requires localStorage support and will only work in browser environments.
+
+## Maintainers
+
+This package is maintained by [Cisco Webex for Developers](https://developer.webex.com/).
+
+## Contribute
+
+Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md) for more details.
+
+## License
+
+© 2016-2025 Cisco and/or its affiliates. All Rights Reserved.

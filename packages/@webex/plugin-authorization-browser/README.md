@@ -30,6 +30,9 @@
       - [`isAuthorizing` (boolean)](#isauthorizing-boolean)
       - [`isAuthenticating` (boolean)](#isauthenticating-boolean)
       - [`ready` (boolean)](#ready-boolean)
+  - [Maintainers](#maintainers)
+  - [Contribute](#contribute)
+  - [License](#license)
 
 ## Install
 
@@ -319,3 +322,19 @@ Alias for `isAuthorizing`.
 #### `ready` (boolean)
 
 Indicates if the authorization plugin has finished initialization.
+
+---
+
+## Maintainers
+
+This package is maintained by Cisco Webex for Developers.
+
+## Contribute
+
+Pull requests welcome. Please see CONTRIBUTING.md for more details.
+
+## License
+
+This project is licensed under the Cisco General Terms - see the LICENSE for details.
+
+© 2016-2025 Cisco and/or its affiliates. All Rights Reserved.
