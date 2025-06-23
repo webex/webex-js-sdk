@@ -124,14 +124,17 @@ describe('plugin-mercury', () => {
 
     describe('#stopListening()', () => {
       it('proxies to #disconnect()', () => {
-        return mercury.connect().then(() => {  
-          webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus.resetHistory();   
-          const disconnectStub = sinon.stub(mercury, 'disconnect').callThrough();  
+        return mercury.connect().then(() => {
+          webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus.resetHistory();
+          const disconnectStub = sinon.stub(mercury, 'disconnect').callThrough();
 
-          mercury.stopListening();  
-          assert.called(disconnectStub);  
-          mockWebSocket.emit('close', { code: 1000, reason: 'test' });   
-          assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus, false);  
+          mercury.stopListening();
+          assert.called(disconnectStub);
+          mockWebSocket.emit('close', {code: 1000, reason: 'test'});
+          assert.calledWith(
+            webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus,
+            false
+          );
         });
       });
     });
@@ -461,7 +464,7 @@ describe('plugin-mercury', () => {
             assert.isFalse(mercury.connecting, 'Mercury is not connecting');
             assert.calledWith(
               Socket.prototype.open,
-              sinon.match(/ws:\/\/providedurl.com.*clientTimestamp[=]\d/),
+              sinon.match(/ws:\/\/providedurl.com.*clientTimestamp[=]\d+/),
               sinon.match.any
             );
           });
@@ -811,7 +814,7 @@ describe('plugin-mercury', () => {
       it('handles negative offsets', () => {
         const event = {
           data: {
-            wsWriteTimestamp: Date.now() 60000,
+            wsWriteTimestamp: Date.now() + 60000,
           },
         };
         mercury._setTimeOffset(event);

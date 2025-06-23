@@ -98,7 +98,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private device: any;
   private delayedClientEvents: DelayedClientEvent[] = [];
   private eventErrorCache: WeakMap<any, any> = new WeakMap();
-  private isMercuryConnected: boolean;
+  private isMercuryConnected = false;
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
