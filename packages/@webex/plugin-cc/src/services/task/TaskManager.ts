@@ -89,13 +89,51 @@ export default class TaskManager extends EventEmitter {
         });
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
-            task = new Task(this.contact, this.webCallingService, {
-              ...payload.data,
-              wrapUpRequired:
-                payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp || false,
-            });
-            this.taskCollection[payload.data.interactionId] = task;
-            this.emit(TASK_EVENTS.TASK_HYDRATE, task);
+            // Case1 : Task is already present in taskCollection
+            if (this.taskCollection[payload.data.interactionId]) {
+              LoggerProxy.log(`Got AGENT_CONTACT: Task already exists in collection`, {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              });
+              break;
+            } else if (!this.taskCollection[payload.data.interactionId]) {
+              // Case2 : Task is not present in taskCollection
+              LoggerProxy.log(`Got AGENT_CONTACT : Creating new task in taskManager`, {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              });
+              task = new Task(this.contact, this.webCallingService, {
+                ...payload.data,
+                wrapUpRequired:
+                  payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp || false,
+              });
+              this.taskCollection[payload.data.interactionId] = task;
+              // Condition 1: The state is=new i.e it is a incoming task
+              if (payload.data.interaction.state === 'new') {
+                LoggerProxy.log(
+                  `Got AGENT_CONTACT for a task with state=new, sending TASK_INCOMING event`,
+                  {
+                    module: TASK_MANAGER_FILE,
+                    method: METHODS.REGISTER_TASK_LISTENERS,
+                    interactionId: payload.data.interactionId,
+                  }
+                );
+                this.emit(TASK_EVENTS.TASK_INCOMING, task);
+              } else {
+                // Condition 2: The state is anything else i.e the task was connected
+                LoggerProxy.log(
+                  `Got AGENT_CONTACT for a task with state=${payload.data.interaction.state}, sending TASK_HYDRATE event`,
+                  {
+                    module: TASK_MANAGER_FILE,
+                    method: METHODS.REGISTER_TASK_LISTENERS,
+                    interactionId: payload.data.interactionId,
+                  }
+                );
+                this.emit(TASK_EVENTS.TASK_HYDRATE, task);
+              }
+            }
             break;
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
             task = new Task(this.contact, this.webCallingService, {
