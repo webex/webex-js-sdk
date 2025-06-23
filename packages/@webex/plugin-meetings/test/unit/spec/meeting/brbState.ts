@@ -1,12 +1,14 @@
 import sinon from 'sinon';
-import {assert} from '@webex/test-helper-chai';
+import {assert, expect} from '@webex/test-helper-chai';
 
 import testUtils from '../../../utils/testUtils';
 import {BrbState, createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 
 describe('plugin-meetings', () => {
   let meeting: any;
   let brbState: BrbState;
+  let setBrbStub: sinon.SinonStub;  
 
   beforeEach(async () => {
     meeting = {
@@ -21,12 +23,18 @@ describe('plugin-meetings', () => {
         setSourceStateOverride: sinon.stub(),
       },
       meetingRequest: {
-        setBrb: sinon.stub().resolves(),
+        setBrb: () => {}
       },
     };
 
+    setBrbStub = sinon.stub(meeting.meetingRequest, 'setBrb').resolves();
+
     brbState = new BrbState(meeting, false);
     await testUtils.flushPromises();
+  });
+
+  afterEach(() => {
+    sinon.restore();
   });
 
   describe('brbState library', () => {
@@ -128,6 +136,17 @@ describe('plugin-meetings', () => {
 
       sendLocalBrbStateToServerStub.restore();
       handleServerBrbUpdateSpy.restore();
+    });
+
+    it('should reject when sendLocalBrbStateToServer fails', async () => {
+      const error = new Error('send failed');
+      setBrbStub.rejects(error);
+        
+      await expect(
+        brbState.enable(true, meeting.sendSlotManager)
+      ).to.be.rejectedWith(error); 
+
+      assert.isFalse(brbState.state.syncToServerInProgress);
     });
   });
 });

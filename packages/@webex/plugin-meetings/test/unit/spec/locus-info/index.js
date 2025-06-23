@@ -305,6 +305,20 @@ describe('plugin-meetings', () => {
           {state: newControls.rdcControl}
         );
       });
+      
+      it('should trigger the CONTROLS_POLLING_QA_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        newControls.pollingQAControl = { enabled: true };
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED,
+          {state: newControls.pollingQAControl}
+        );
+      });
 
       it('should keep the recording state to `IDLE`', () => {
         locusInfo.controls = {
@@ -553,6 +567,34 @@ describe('plugin-meetings', () => {
           {
             transcribing: true,
             caption: true,
+          }
+        );
+      });
+
+      it('should update the transcribe spoken language', () => {
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.controls = {
+          transcribe: {
+            transcribing: false,
+            caption: true,
+            spokenLanguage: 'en-US',
+          },
+        };
+        newControls.transcribe.transcribing = false;
+        newControls.transcribe.caption = true;
+        newControls.transcribe.spokenLanguage = 'fr';
+
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+          {
+            spokenLanguage: 'fr',
           }
         );
       });

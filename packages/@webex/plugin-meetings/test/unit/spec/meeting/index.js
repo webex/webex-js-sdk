@@ -1223,6 +1223,46 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#update spoken language', () => {
+        beforeEach(() => {
+          webex.internal.voicea.onSpokenLanguageUpdate = sinon.stub();
+          meeting.transcription = {languageOptions: {currentSpokenLanguage: 'en'}};
+        });
+        afterEach(() => {
+          // Restore the original methods after each test
+          sinon.restore();
+        });
+        it('should call voicea.onSpokenLanguageUpdate when joined', async () => {
+
+          meeting.joinedWith = {state: 'JOINED'};
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+            {spokenLanguage: 'fr'},
+          );
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr');
+          assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'fr');
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED
+          );
+        });
+
+        it('should also call voicea.onSpokenLanguageUpdate when not joined', async () => {
+
+          meeting.joinedWith = {state: 'NOT_JOINED'};
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+            {spokenLanguage: 'de'},
+          );
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'de');
+          assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'de');
+        });
+      });
+
       describe('#startTranscription', () => {
         beforeEach(() => {
           webex.internal.voicea.on = sinon.stub();
@@ -4152,7 +4192,7 @@ describe('plugin-meetings', () => {
           meeting.deviceUrl = 'device url';
           meeting.selfId = 'self id';
           meeting.brbState = createBrbState(meeting, false);
-          meeting.brbState.enable = sinon.stub().resolves();
+          sinon.stub(meeting.brbState, 'enable').resolves();
         });
 
         afterEach(() => {
@@ -4215,6 +4255,19 @@ describe('plugin-meetings', () => {
             await meeting.beRightBack(false);
 
             assert.notCalled(meeting.audio.handleServerRemoteMuteUpdate);
+          });
+
+          it('should reject when brb enable fails', async () => {
+            meeting.brbState.enable.restore();
+
+            const error = new Error();
+            meeting.meetingRequest.setBrb = sinon.stub().rejects(error);
+        
+            await expect(
+              meeting.beRightBack(true)
+            ).to.be.rejectedWith(error);  
+             
+            assert.isFalse(meeting.brbState.state.syncToServerInProgress);
           });
         });
       });
@@ -10011,6 +10064,24 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to CONTROLS_POLLING_QA_CHANGED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_POLLING_QA_UPDATED,
+            {state}
+          );
+        });
+
         it('listens to the locus interpretation update event', () => {
           const interpretation = {
             siLanguages: [{languageCode: 20, languageName: 'en'}],
@@ -11601,6 +11672,14 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_ATTENDEE_START_POLLING_QA],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA],
             displayHints: userDisplayHints,
           });
 

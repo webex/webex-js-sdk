@@ -1344,7 +1344,7 @@ export default class Meeting extends StatelessWebexPlugin {
       captions: [],
       isListening: false,
       commandText: '',
-      languageOptions: {},
+      languageOptions: {currentSpokenLanguage: 'en'},
       showCaptionBox: false,
       transcribingRequestStatus: 'INACTIVE',
       isCaptioning: false,
@@ -2753,6 +2753,27 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     );
 
+    this.locusInfo.on(
+      LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+      ({spokenLanguage}) => {
+        if (spokenLanguage) {
+          this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
+          // @ts-ignore
+          this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage);
+
+          Trigger.trigger(
+            this,
+            {
+              file: 'meeting/index',
+              function: 'setupLocusControlsListener',
+            },
+            EVENT_TRIGGERS.MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+            {spokenLanguage}
+          );
+        }
+      }
+    );
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_MANUAL_CAPTION_UPDATED, ({enable}) => {
       Trigger.trigger(
         this,
@@ -2918,6 +2939,15 @@ export default class Meeting extends StatelessWebexPlugin {
         this,
         {file: 'meeting/index', function: 'setupLocusControlsListener'},
         EVENT_TRIGGERS.MEETING_CONTROLS_REMOTE_DESKTOP_CONTROL_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_POLLING_QA_UPDATED,
         {state}
       );
     });
@@ -3886,13 +3916,16 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.reject(error);
     }
 
-    return this.brbState.enable(enabled, this.sendSlotManager).then(() => {
-      if (this.audio && enabled) {
-        // locus mutes the participant with brb enabled request,
-        // so we need to explicitly update remote mute for correct logic flow
-        this.audio.handleServerRemoteMuteUpdate(this, enabled);
-      }
-    });
+    return this.brbState
+      .enable(enabled, this.sendSlotManager)
+      .then(() => {
+        if (this.audio && enabled) {
+          // locus mutes the participant with brb enabled request,
+          // so we need to explicitly update remote mute for correct logic flow
+          this.audio.handleServerRemoteMuteUpdate(this, enabled);
+        }
+      })
+      .catch((error) => Promise.reject(error));
   }
 
   /**
@@ -4357,6 +4390,14 @@ export default class Meeting extends StatelessWebexPlugin {
           }),
           canDisableRemoteDesktopControl: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnablePollingQA: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_ATTENDEE_START_POLLING_QA],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisablePollingQA: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA],
             displayHints: this.userDisplayHints,
           }),
         }) || changed;
