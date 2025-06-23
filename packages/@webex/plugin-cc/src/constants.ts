@@ -48,4 +48,9 @@ export const METHODS = {
   HANDLE_INCOMING_TASK: 'handleIncomingTask',
   HANDLE_TASK_HYDRATE: 'handleTaskHydrate',
   INCOMING_TASK_LISTENER: 'incomingTaskListener',
+  HOLD_RESUME: 'holdResume',
+  ACCEPT: 'accept',
+  REJECT: 'reject',
+  TRANSFER_CALL: 'transferCall',
+  COMPLETE_TRANSFER: 'completeTransfer',
 };

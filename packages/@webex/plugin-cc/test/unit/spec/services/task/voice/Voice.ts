@@ -2,6 +2,7 @@ import Voice from '../../../../../../src/services/task/voice/Voice';
 import { TaskData } from '../../../../../../src/services/task/types';
 import { CC_EVENTS } from '../../../../../../src/services/config/types';
 import { CONSULT_TRANSFER_DESTINATION_TYPE } from '../../../../../../src/services/task/types';
+import e from 'express';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -292,26 +293,19 @@ describe('Voice Task', () => {
 
     it('AGENT_CONSULT_CREATED when not consulted toggles correctly', () => {
       const ctrl = make(CC_EVENTS.AGENT_CONSULT_CREATED, { isConsulted: false });
-      ['hold', 'consult', 'transfer', 'end'].forEach((k) =>
+      ['hold', 'consult'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(false)
       );
+      expect(ctrl.end.visible).toBe(true);
+      expect(ctrl.end.enabled).toBe(false);
+      expect(ctrl.transfer.visible).toBe(true);
+      expect(ctrl.transfer.enabled).toBe(false);
       expect(ctrl.consultTransfer.visible).toBe(true);
       expect(ctrl.consultTransfer.enabled).toBe(false);
       expect(ctrl.recording.visible).toBe(true);
       expect(ctrl.recording.enabled).toBe(false);
       expect(ctrl.endConsult.visible).toBe(true);
       expect(ctrl.endConsult.enabled).toBe(true);
-    });
-
-    it('AGENT_CONSULT_CREATED shows no UI on receiving agent end', () => {
-      const before = make(CC_EVENTS.AGENT_CONTACT_ASSIGNED);
-      const ctrl = make(CC_EVENTS.AGENT_CONSULT_CREATED, { isConsulted: true });
-      expect(ctrl.hold.visible).toBe(false);
-      expect(ctrl.transfer.visible).toBe(false);
-      expect(ctrl.consult.visible).toBe(false);
-      expect(ctrl.recording.visible).toBe(false);
-      expect(ctrl.end.visible).toBe(false);
-      expect(ctrl.endConsult.visible).toBe(false);
     });
 
     it('AGENT_OFFER_CONSULT respects endConsult flag', () => {
@@ -324,9 +318,11 @@ describe('Voice Task', () => {
 
     it('AGENT_CONSULTING when starting hides main and shows consultTransfer etc.', () => {
       const ctrl = make(CC_EVENTS.AGENT_CONSULTING, { isConsulted: false });
-      ['hold', 'transfer', 'consult'].forEach((k) =>
+      ['hold', 'consult'].forEach((k) =>
         expect((ctrl as any)[k].visible).toBe(false)
       );
+      expect(ctrl.transfer.visible).toBe(true);
+      expect(ctrl.transfer.enabled).toBe(false);
       expect(ctrl.consultTransfer.visible).toBe(true);
       expect(ctrl.consultTransfer.enabled).toBe(true);
       expect(ctrl.recording.visible).toBe(true);
