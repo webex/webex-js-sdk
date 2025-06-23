@@ -4,12 +4,12 @@ This document explains how the Webex SDK handles OAuth authorization in browser 
 
 ## Table of Contents
 
-1. [Browser Webex Initialization](#1-browser-webex-initialization)
-2. [Browser OAuth Flow Trigger](#2-browser-oauth-flow-trigger)
-3. [Authorization Code Processing](#3-authorization-code-processing)
-4. [Token Generation and Exchange](#4-token-generation-and-exchange)
-5. [Refresh Token Management](#5-refresh-token-management)
-6. [Browser Ready and Authorization Events](#6-browser-ready-and-authorization-events)
+- [Browser Webex Initialization](#1-browser-webex-initialization)
+- [Browser OAuth Flow Trigger](#2-browser-oauth-flow-trigger)
+- [Authorization Code Processing](#3-authorization-code-processing)
+- [Token Generation and Exchange](#4-token-generation-and-exchange)
+- [Refresh Token Management](#5-refresh-token-management)
+- [Browser Ready and Authorization Events](#6-browser-ready-and-authorization-events)
 
 ---
 
@@ -136,7 +136,7 @@ webex.credentials.supertoken.refresh(); // Uses grant_type=refresh_token
 - **Redirect**: Two-step process (code → token exchange)
 - **Best For**: Web applications with backend
 
-### 1.4 Browser URL Parsing on Load
+### 1.5 Browser URL Parsing on Load
 
 During browser initialization, the plugin automatically:
 
@@ -267,7 +267,6 @@ For browser implicit grant, access token comes directly in URL hash:
 - access_token
 - token_type (Bearer)
 - expires_in
-- refresh_token
 - scope
 
 > **Note:** Refresh tokens are generally not provided in implicit grant flows due to security reasons. Most OAuth providers, including Webex, do not issue refresh tokens for implicit grant to prevent long-lived tokens from being exposed in browser environments. Applications using implicit grant should expect to obtain new access tokens by re-authenticating the user when the current token expires.
@@ -539,4 +538,4 @@ Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/web
 
 ## License
 
-© 2016-2022 Cisco and/or its affiliates. All Rights Reserved.
+© 2016-2025 Cisco and/or its affiliates. All Rights Reserved.

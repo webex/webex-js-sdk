@@ -168,7 +168,7 @@ Authenticate using a JWT token (useful for guest users):
 
 ```javascript
 // Assuming you have a JWT from your backend
-const jwtToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+const jwtToken = '<YOUR_JWT_TOKEN_HERE>';
 
 webex.authorization.requestAccessTokenFromJwt({
   jwt: jwtToken

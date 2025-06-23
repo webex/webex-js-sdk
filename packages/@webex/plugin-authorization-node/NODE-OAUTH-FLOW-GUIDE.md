@@ -4,12 +4,12 @@ This document explains how the Webex SDK handles OAuth authorization in Node.js 
 
 ## Table of Contents
 
-1. [Node.js Webex Initialization](#1-nodejs-webex-initialization)
-2. [Node.js OAuth Flow Types](#2-nodejs-oauth-flow-types)
-3. [Authorization Code Exchange](#3-authorization-code-exchange)
-4. [Server-Side Token Management](#4-server-side-token-management)
-5. [Node.js Refresh Token Management](#5-nodejs-refresh-token-management)
-6. [Node.js Ready and Authorization Events](#6-nodejs-ready-and-authorization-events)
+[Node.js Webex Initialization](#1-nodejs-webex-initialization)
+[Node.js OAuth Flow Types](#2-nodejs-oauth-flow-types)
+[Authorization Code Exchange](#3-authorization-code-exchange)  
+[Server-Side Token Management](#4-server-side-token-management)  
+[Node.js Refresh Token Management](#5-nodejs-refresh-token-management)  
+[Node.js Ready and Authorization Events](#6-nodejs-ready-and-authorization-events)
 
 ---
 
@@ -254,4 +254,4 @@ Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/web
 
 ## License
 
-© 2016-2022 Cisco and/or its affiliates. All Rights Reserved.
+© 2016-2025 Cisco and/or its affiliates. All Rights Reserved.

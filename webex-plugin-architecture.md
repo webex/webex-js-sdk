@@ -2,20 +2,22 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Architecture Overview](#architecture-overview)
-3. [Core Components](#core-components)
-4. [Webex Object Creation Process](#webex-object-creation-process)
-5. [Plugin System Architecture](#plugin-system-architecture)
-6. [HTTP Request Pipeline](#http-request-pipeline)
-7. [Storage System](#storage-system)
-8. [Configuration Management](#configuration-management)
-9. [Event System](#event-system)
-10. [Detailed Code Flow Analysis](#detailed-code-flow-analysis)
+- [Overview](#overview)
+- [Architecture Overview](#architecture-overview)
+- [Core Components](#core-components)
+- [Webex Object Creation Process](#webex-object-creation-process)
+- [Plugin System Architecture](#plugin-system-architecture)
+- [HTTP Request Pipeline](#http-request-pipeline)
+- [Storage System](#storage-system)
+- [Configuration Management](#configuration-management)
+- [Event System](#event-system)
+- [Detailed Code Flow Analysis](#detailed-code-flow-analysis)
 
 ## Overview
 
 The Webex Core package (`@webex/webex-core`) serves as the foundational infrastructure for the Webex JavaScript SDK. It provides the basic framework for plugin registration, HTTP request handling, authentication, storage management, and event-driven architecture that all other Webex SDK functionality builds upon.
+
+This technical documentation provides a comprehensive overview of the Webex Core package infrastructure, explaining the foundational systems that enable the entire Webex JavaScript SDK ecosystem. The architecture demonstrates a well-designed separation of concerns with clear plugin boundaries, robust HTTP handling, and flexible configuration management.
 
 ## Architecture Overview
 

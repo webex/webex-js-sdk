@@ -118,4 +118,4 @@ Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/web
 
 ## License
 
-© 2016-2022 Cisco and/or its affiliates. All Rights Reserved.
+© 2016-2025 Cisco and/or its affiliates. All Rights Reserved.
