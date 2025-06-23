@@ -102,6 +102,8 @@ describe('plugin-meetings', () => {
         canEnableRemoteDesktopControl: null,
         canDisableRemoteDesktopControl: null,
         canMoveToLobby: null,
+        canEnablePollingQA: null,
+        canDisablePollingQA: null,
 
         ...expected,
       };
@@ -210,6 +212,8 @@ describe('plugin-meetings', () => {
       'canEnableRemoteDesktopControl',
       'canDisableRemoteDesktopControl',
       'canMoveToLobby',
+      'canEnablePollingQA',
+      'canDisablePollingQA',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

@@ -22,6 +22,7 @@ import {
   KEEPALIVE_UTIL,
   MINUTES_TO_SEC_MFACTOR,
   REGISTRATION_FILE,
+  REGISTRATION_UTIL,
   REG_429_RETRY_UTIL,
   REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
   REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
@@ -31,6 +32,7 @@ import {ICall} from '../calling/types';
 import {LINE_EVENTS} from '../line/types';
 import {createLineError} from '../../Errors/catalog/LineError';
 import {IRegistration} from './types';
+import {METRIC_EVENT, REG_ACTION, METRIC_TYPE} from '../../Metrics/types';
 
 const webex = getTestUtilsWebex();
 const MockServiceData = {
@@ -81,6 +83,9 @@ describe('Registration Tests', () => {
   const failurePayload = <WebexRequestPayload>(<unknown>{
     statusCode: 500,
     body: mockPostResponse,
+    headers: {
+      trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+    },
   });
 
   const failurePayload429One = <WebexRequestPayload>(<unknown>{
@@ -118,6 +123,9 @@ describe('Registration Tests', () => {
   const successPayload = <WebexRequestPayload>(<unknown>{
     statusCode: 200,
     body: mockPostResponse,
+    headers: {
+      trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+    },
   });
 
   let reg: IRegistration;
@@ -126,6 +134,7 @@ describe('Registration Tests', () => {
   let postRegistrationSpy;
   let failoverSpy;
   let retry429Spy;
+  let metricSpy;
 
   const setupRegistration = (mockServiceData) => {
     const mutex = new Mutex();
@@ -137,6 +146,7 @@ describe('Registration Tests', () => {
     postRegistrationSpy = jest.spyOn(reg, 'postRegistration');
     failoverSpy = jest.spyOn(reg, 'startFailoverTimer');
     retry429Spy = jest.spyOn(reg, 'handle429Retry');
+    metricSpy = jest.spyOn(reg.metricManager, 'submitRegistrationMetric');
   };
 
   beforeEach(() => {
@@ -153,6 +163,9 @@ describe('Registration Tests', () => {
   it('verify successful registration', async () => {
     webex.request.mockReturnValueOnce({
       body: mockPostResponse,
+      headers: {
+        trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+      },
     });
 
     await reg.triggerRegistration();
@@ -175,12 +188,23 @@ describe('Registration Tests', () => {
         method: expect.any(String),
       })
     );
+    expect(metricSpy).toBeCalledWith(
+      METRIC_EVENT.REGISTRATION,
+      REG_ACTION.REGISTER,
+      METRIC_TYPE.BEHAVIORAL,
+      REGISTRATION_UTIL,
+      'PRIMARY',
+      'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+      undefined,
+      undefined
+    );
   });
 
   it('verify failure registration', async () => {
     webex.request.mockRejectedValue({
       body: mockPostResponse,
       statusCode: 401,
+      headers: {},
     });
 
     await reg.triggerRegistration();
@@ -201,6 +225,16 @@ describe('Registration Tests', () => {
     expect(lineEmitter).toBeCalledTimes(2);
     expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.CONNECTING);
     expect(lineEmitter).nthCalledWith(2, LINE_EVENTS.ERROR, undefined, error);
+    expect(metricSpy).toBeCalledWith(
+      METRIC_EVENT.REGISTRATION_ERROR,
+      REG_ACTION.REGISTER,
+      METRIC_TYPE.BEHAVIORAL,
+      REGISTRATION_UTIL,
+      'PRIMARY',
+      '',
+      undefined,
+      error
+    );
   });
 
   it('verify failure registration 403-101', async () => {
@@ -216,6 +250,9 @@ describe('Registration Tests', () => {
       .mockResolvedValueOnce({
         statusCode: 200,
         body: mockPostResponse,
+        headers: {
+          trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+        },
       });
 
     global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
@@ -242,6 +279,16 @@ describe('Registration Tests', () => {
     expect(lineEmitter).nthCalledWith(2, LINE_EVENTS.UNREGISTERED);
     expect(lineEmitter).nthCalledWith(3, LINE_EVENTS.CONNECTING);
     expect(lineEmitter).nthCalledWith(4, LINE_EVENTS.REGISTERED, mockPostResponse);
+    expect(metricSpy).toBeCalledWith(
+      METRIC_EVENT.REGISTRATION,
+      REG_ACTION.REGISTER,
+      METRIC_TYPE.BEHAVIORAL,
+      REGISTRATION_UTIL,
+      'UNKNOWN',
+      'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+      undefined,
+      undefined
+    );
   });
 
   describe('429 handling tests', () => {
@@ -702,6 +749,17 @@ describe('Registration Tests', () => {
       expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
       /* Active Url must match with the backup url as per the test */
       expect(reg.getActiveMobiusUrl()).toEqual(mobiusUris.backup[0]);
+      expect(metricSpy).toHaveBeenNthCalledWith(
+        3,
+        METRIC_EVENT.REGISTRATION,
+        REG_ACTION.REGISTER,
+        METRIC_TYPE.BEHAVIORAL,
+        FAILOVER_UTIL,
+        'BACKUP',
+        'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+        undefined,
+        undefined
+      );
     });
 
     it('cc: verify unreachable primary with reachable backup server', async () => {
