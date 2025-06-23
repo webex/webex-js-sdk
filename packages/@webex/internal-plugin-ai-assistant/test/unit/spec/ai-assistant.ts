@@ -12,7 +12,7 @@ import {set} from 'lodash';
 import uuid from 'uuid';
 import {Timer} from '@webex/common-timers';
 import config from '@webex/internal-plugin-ai-assistant/src/config';
-import { AI_ASSISTANT_ERROR_CODES, AI_ASSISTANT_ERRORS } from '@webex/internal-plugin-ai-assistant/dist/constants';
+import { AI_ASSISTANT_ERROR_CODES, AI_ASSISTANT_ERRORS } from '@webex/internal-plugin-ai-assistant/src/constants';
 
 const waitForAsync = () =>
   new Promise<void>((resolve) =>

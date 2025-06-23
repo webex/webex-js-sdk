@@ -26,7 +26,7 @@ export interface ContextResource {
 }
 
 export interface SummarizeMeetingOptions {
-  asssistant?: string;
+  assistant?: string;
   meetingInstanceId: string;
   meetingSite: string;
   sessionId: string;
@@ -42,4 +42,5 @@ export interface MakeMeetingRequestOptions {
   contentValue: string;
   parameters?: any;
   assistant?: string;
+  locale?: string;
 }

@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-ai-assistant",
-  "description": "",
+  "description": "A Webex plugin for AI Assistant functionality",
   "license": "MIT",
   "author": "Colin Read <coread@cisco.com>",
   "main": "dist/index.js",

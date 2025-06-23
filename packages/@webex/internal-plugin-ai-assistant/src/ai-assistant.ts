@@ -206,7 +206,7 @@ const AIAssistant = WebexPlugin.extend({
 
           try {
             let decryptedMessage;
-            if (resultData && resultData.value) {
+            if (resultData?.value) {
               decryptedMessage = await this._decryptData(resultData);
             }
 
@@ -221,7 +221,7 @@ const AIAssistant = WebexPlugin.extend({
 
             this.stopListening(this, eventName);
           } catch (decryptError) {
-            this.emit(streamEventName, {
+            this.trigger(streamEventName, {
               message: concatenatedMessage,
               requestId,
               finished: true,
@@ -233,7 +233,7 @@ const AIAssistant = WebexPlugin.extend({
           // For non-finished messages, concatenate and emit the accumulated message
           try {
             let decryptedMessage = '';
-            if (resultData && resultData.value) {
+            if (resultData?.value) {
               decryptedMessage = await this._decryptData(resultData);
             }
 
@@ -294,6 +294,7 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.contentValue the value to use (action name or message text)
    * @param {Object} options.parameters optional parameters to include in the request (for action type only)
    * @param {Object} options.assistant optional parameter to specify the assistant to use
+   * @param {Object} options.locale optional locale to use for the request, defaults to 'en_US'
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   async _makeMeetingRequest(options: MakeMeetingRequestOptions): Promise<RequestResponse> {
@@ -324,7 +325,7 @@ const AIAssistant = WebexPlugin.extend({
       dataPath: 'response.content',
       params: {
         async: 'chunked',
-        locale: 'en_US',
+        locale: options.locale || 'en_US',
         content,
         ...(options.assistant ? {assistant: options.assistant} : {}),
       },
