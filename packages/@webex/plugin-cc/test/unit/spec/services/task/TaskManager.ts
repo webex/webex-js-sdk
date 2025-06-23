@@ -12,6 +12,7 @@ import WebCallingService from '../../../../../src/services/WebCallingService';
 import config from '../../../../../src/config';
 import {CC_TASK_EVENTS} from '../../../../../src/services/config/types';
 import TaskFactory from '../../../../../src/services/task/TaskFactory';
+import { wrap } from 'module';
 
 describe('TaskManager', () => {
   let mockCall;
@@ -495,7 +496,7 @@ describe('TaskManager', () => {
 
     webSocketManagerMock.emit('message', JSON.stringify(wrapupPayload));
 
-    expect(updateTaskDataSpy).toHaveBeenCalledWith(wrapupPayload.data);
+    expect(updateTaskDataSpy).toHaveBeenCalledWith({...wrapupPayload.data, wrapUpRequired: true});
   });
 
   it('should emit TASK_HOLD event on AGENT_CONTACT_HELD event', () => {

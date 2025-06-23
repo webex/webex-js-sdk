@@ -95,7 +95,18 @@ export default class TaskManager extends EventEmitter {
         });
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
-            this.taskCollection[payload.data.interactionId] = task;
+            if (!task) {
+              // Re-create task if it does not exist
+              // This can happen when the task is created after the event is received (multi session)
+              task = TaskFactory.createTask(
+                this.contact,
+                this.webCallingService,
+                {...payload.data, isConsulted: false},
+                this.configFlags
+              );
+              this.taskCollection[payload.data.interactionId] = task;
+            }
+            this.updateTaskData(task, payload.data);
             this.emit(TASK_EVENTS.TASK_HYDRATE, task);
             break;
 
@@ -238,7 +249,11 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED, task);
             break;
           case CC_EVENTS.AGENT_WRAPUP:
-            this.updateTaskData(task, payload.data);
+            this.updateTaskData(task, {
+              ...payload.data,
+              wrapUpRequired: true,
+            });
+            task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
             this.removeTaskFromCollection(task);

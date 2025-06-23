@@ -52,17 +52,15 @@ describe('Task (base class)', () => {
 
   it('getUIControls returns default controls shape', () => {
     const controls = task.taskUiControls;
-    // accept & decline, end & transfer should be visible/enabled
-    expect(controls.accept.visible).toBe(true);
-    expect(controls.accept.enabled).toBe(true);
-    expect(controls.decline.visible).toBe(true);
-    expect(controls.decline.enabled).toBe(true);
-    expect(controls.end.visible).toBe(true);
-    expect(controls.end.enabled).toBe(true);
-    expect(controls.transfer.visible).toBe(true);
-    expect(controls.transfer.enabled).toBe(true);
-
-    // all other controls should be hidden/disabled
+    // all controls should be hidden/disabled
+    expect(controls.accept.visible).toBe(false);
+    expect(controls.accept.enabled).toBe(false);
+    expect(controls.decline.visible).toBe(false);
+    expect(controls.decline.enabled).toBe(false);
+    expect(controls.end.visible).toBe(false);
+    expect(controls.end.enabled).toBe(false);
+    expect(controls.transfer.visible).toBe(false);
+    expect(controls.transfer.enabled).toBe(false);
     expect(controls.hold.visible).toBe(false);
     expect(controls.hold.enabled).toBe(false);
     expect(controls.mute.visible).toBe(false);

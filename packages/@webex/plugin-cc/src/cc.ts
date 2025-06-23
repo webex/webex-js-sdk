@@ -221,13 +221,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const resp = await this.connectWebsocket();
       // Ensure 'dn' is always populated from 'defaultDn'
       resp.dn = resp.defaultDn;
-      const configFlags: ConfigFlags = {
-        isEndCallEnabled: this.agentConfig.isEndCallEnabled,
-        isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
-        webRtcEnabled: this.agentConfig.webRtcEnabled,
-        autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
-      };
-      this.taskManager.setConfigFlags(configFlags);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
         {
@@ -424,6 +417,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const agentId = data.agentId;
           const orgId = this.$webex.credentials.getOrgId();
           this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
+          const configFlags: ConfigFlags = {
+            isEndCallEnabled: this.agentConfig.isEndCallEnabled,
+            isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
+            webRtcEnabled: this.agentConfig.webRtcEnabled,
+            autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
+          };
+          this.taskManager.setConfigFlags(configFlags);
           LoggerProxy.log(`Agent config is fetched successfully`, {
             module: CC_FILE,
             method: METHODS.CONNECT_WEBSOCKET,

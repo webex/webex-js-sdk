@@ -48,12 +48,12 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   private initialiseUIControls() {
     this.taskUiControls = {
-      accept: new TaskButtonControl(true, true),
-      decline: new TaskButtonControl(true, true),
+      accept: new TaskButtonControl(false, false),
+      decline: new TaskButtonControl(false, false),
       hold: new TaskButtonControl(false, false),
       mute: new TaskButtonControl(false, false),
-      end: new TaskButtonControl(true, true),
-      transfer: new TaskButtonControl(true, true),
+      end: new TaskButtonControl(false, false),
+      transfer: new TaskButtonControl(false, false),
       consult: new TaskButtonControl(false, false),
       consultTransfer: new TaskButtonControl(false, false),
       endConsult: new TaskButtonControl(false, false),
@@ -67,6 +67,35 @@ export default abstract class Task extends EventEmitter implements ITask {
    * This method is used to set the UI controls data. Will be implemented in child classes.
    */
   protected setUIControls() {}
+
+  /**
+   *
+   * @param methodName - The name of the method that is unsupported
+   * @throws Error
+   */
+  protected unsupportedMethodError(methodName: string) {
+    LoggerProxy.error(`Unsupported operation`, {
+      module: 'TASK',
+      method: methodName,
+    });
+    throw new Error(`Unsupported operation: ${methodName}`);
+  }
+
+  /**
+   * Apply visibility & enabled flags in one go.
+   * Usage: updateTaskUiControls({ hold: [true,true], end: [false,true] })
+   */
+  protected updateTaskUiControls(
+    config: Partial<Record<keyof typeof this.taskUiControls, [boolean, boolean]>>
+  ): void {
+    Object.entries(config).forEach(([k, [vis, en]]) => {
+      const ctl = this.taskUiControls[k as keyof typeof this.taskUiControls];
+      if (ctl) {
+        ctl.setVisiblity(vis);
+        ctl.setEnabled(en);
+      }
+    });
+  }
 
   /**
    * This method is used to update the task data.

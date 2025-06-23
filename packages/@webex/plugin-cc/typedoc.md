@@ -77,7 +77,7 @@ For a full list of configuration options, see the <a href="https://developer.web
 
 - [`Contact Center`](./classes/ContactCenter.html) - Click here if you want to learn more about `Agent based operations` such as station login, user state management, outdial, and related functionalities.
 
-- [`Task`](./classes/Task.html) - Click here to learn more about task-based operations such as mute, unmute, hold, and transfer
+- [`Task`](./classes/Task.html) - Click here to learn more about task-based operations such as mute, unmute, holdResume, and transfer
 
 ## Support
 

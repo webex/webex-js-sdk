@@ -25,7 +25,7 @@ describe('Digital Task', () => {
 
   it('default UI controls remain unchanged', () => {
     const task = new Digital(dummyContact as any, dummyData);
-    expect(task.taskUiControls.accept.visible).toBe(true);
-    expect(task.taskUiControls.decline.visible).toBe(true);
+    expect(task.taskUiControls.accept.visible).toBe(false);
+    expect(task.taskUiControls.decline.visible).toBe(false);
   });
 });
