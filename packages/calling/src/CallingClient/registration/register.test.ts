@@ -32,7 +32,7 @@ import {ICall} from '../calling/types';
 import {LINE_EVENTS} from '../line/types';
 import {createLineError} from '../../Errors/catalog/LineError';
 import {IRegistration} from './types';
-import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, SERVER_TYPE} from '../../Metrics/types';
+import {METRIC_EVENT, REG_ACTION, METRIC_TYPE} from '../../Metrics/types';
 
 const webex = getTestUtilsWebex();
 const MockServiceData = {
@@ -83,6 +83,9 @@ describe('Registration Tests', () => {
   const failurePayload = <WebexRequestPayload>(<unknown>{
     statusCode: 500,
     body: mockPostResponse,
+    headers: {
+      trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+    },
   });
 
   const failurePayload429One = <WebexRequestPayload>(<unknown>{
@@ -120,6 +123,9 @@ describe('Registration Tests', () => {
   const successPayload = <WebexRequestPayload>(<unknown>{
     statusCode: 200,
     body: mockPostResponse,
+    headers: {
+      trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+    },
   });
 
   let reg: IRegistration;
@@ -187,7 +193,7 @@ describe('Registration Tests', () => {
       REG_ACTION.REGISTER,
       METRIC_TYPE.BEHAVIORAL,
       REGISTRATION_UTIL,
-      SERVER_TYPE.PRIMARY,
+      'PRIMARY',
       'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
       undefined,
       undefined
@@ -224,7 +230,7 @@ describe('Registration Tests', () => {
       REG_ACTION.REGISTER,
       METRIC_TYPE.BEHAVIORAL,
       REGISTRATION_UTIL,
-      SERVER_TYPE.PRIMARY,
+      'PRIMARY',
       '',
       undefined,
       error
@@ -278,7 +284,7 @@ describe('Registration Tests', () => {
       REG_ACTION.REGISTER,
       METRIC_TYPE.BEHAVIORAL,
       REGISTRATION_UTIL,
-      SERVER_TYPE.UNKNOWN,
+      'UNKNOWN',
       'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
       undefined,
       undefined
@@ -743,6 +749,17 @@ describe('Registration Tests', () => {
       expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
       /* Active Url must match with the backup url as per the test */
       expect(reg.getActiveMobiusUrl()).toEqual(mobiusUris.backup[0]);
+      expect(metricSpy).toHaveBeenNthCalledWith(
+        3,
+        METRIC_EVENT.REGISTRATION,
+        REG_ACTION.REGISTER,
+        METRIC_TYPE.BEHAVIORAL,
+        FAILOVER_UTIL,
+        'BACKUP',
+        'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+        undefined,
+        undefined
+      );
     });
 
     it('cc: verify unreachable primary with reachable backup server', async () => {

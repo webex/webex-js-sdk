@@ -654,9 +654,9 @@ export class Registration implements IRegistration {
     }
     for (const url of servers) {
       const serverType =
-        (this.primaryMobiusUris.includes(url) && SERVER_TYPE.PRIMARY) ||
-        (this.backupMobiusUris?.includes(url) && SERVER_TYPE.BACKUP) ||
-        SERVER_TYPE.UNKNOWN;
+        (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
+        (this.backupMobiusUris?.includes(url) && 'BACKUP') ||
+        'UNKNOWN';
       try {
         abort = false;
         this.registrationStatus = RegistrationStatus.INACTIVE;

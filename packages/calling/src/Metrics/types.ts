@@ -43,11 +43,8 @@ export enum VOICEMAIL_ACTION {
   TRANSCRIPT = 'transcript',
 }
 
-export enum SERVER_TYPE {
-  PRIMARY = 'primary',
-  BACKUP = 'backup',
-  UNKNOWN = 'unknown',
-}
+export type SERVER_TYPE = 'PRIMARY' | 'BACKUP' | 'UNKNOWN';
+
 export const UPLOAD_LOGS_ACTION = 'upload_logs';
 
 export interface IMetricManager {
