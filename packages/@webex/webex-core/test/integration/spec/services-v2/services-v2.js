@@ -44,7 +44,7 @@ describe('webex-core', () => {
         }),
       ]).then(
         ([[user], [userEU]]) =>
-          new Promise<void>((resolve) => {
+          new Promise((resolve) => {
             setTimeout(() => {
               webexUser = user;
               webexUserEU = userEU;
@@ -323,13 +323,12 @@ describe('webex-core', () => {
 
       it('should not attempt to collect catalogs without authorization', (done) => {
         const otherWebex = new WebexCore();
-        let {initServiceCatalogs} = otherWebex.internal.services;
-
-        initServiceCatalogs = sinon.stub();
+        const initServiceCatalogs = sinon.stub(otherWebex.internal.services, 'initServiceCatalogs');
 
         setTimeout(() => {
           assert.notCalled(initServiceCatalogs);
           assert.isFalse(otherWebex.internal.services._getCatalog().isReady);
+          otherWebex.internal.services.initServiceCatalogs.restore();
           done();
         }, 2000);
       });
@@ -518,13 +517,11 @@ describe('webex-core', () => {
           assert.isAbove(catalog.serviceGroups.postauth.length, 0);
           done();
         });
-
-        services.updateServices();
       });
 
       it('updates query.email to be emailhash-ed using SHA256', (done) => {
-        catalog.updateServiceGroups = sinon.stub().returns({}); // returns `this`
-        services._fetchNewServiceHostmap = sinon.stub().resolves();
+        const updateStub = sinon.stub(catalog, 'updateServiceGroups').returnsThis();
+        const fetchStub = sinon.stub(services, '_fetchNewServiceHostmap').resolves();
 
         services
           .updateServices({
@@ -537,6 +534,10 @@ describe('webex-core', () => {
               sinon.match.has('query', {emailhash: sinon.match(/\b[A-Fa-f0-9]{64}\b/)})
             );
             done();
+          })
+          .finally(() => {
+            updateStub.restore();
+            fetchStub.restore();
           });
       });
 
@@ -848,6 +849,10 @@ describe('webex-core', () => {
         });
 
         describe('when using the name parameter property', () => {
+          afterEach(() => {
+            webex.internal.metrics.submitClientMetrics.restore();
+          });
+
           it('should return a rejected promise', () => {
             const submitMetrics = sinon.stub(webex.internal.metrics, 'submitClientMetrics');
             const waitForService = services.waitForService({name, timeout});
@@ -981,12 +986,12 @@ describe('webex-core', () => {
       const unauthServices = unauthWebex.internal.services;
 
       it('requires an email as the parameter', () =>
-        unauthServices.collectPreauthCatalog().catch((e) => {
+        unauthServices.collectSigninCatalog().catch((e) => {
           assert(true, e);
         }));
 
       it('requires a token as the parameter', () =>
-        unauthServices.collectPreauthCatalog({email: 'email@website.com'}).catch((e) => {
+        unauthServices.collectSigninCatalog({email: 'email@website.com'}).catch((e) => {
           assert(true, e);
         }));
     });

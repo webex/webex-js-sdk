@@ -30,7 +30,7 @@ describe('webex-core', () => {
     before('create users', () =>
       testUsers.create({count: 1}).then(
         ([user]) =>
-          new Promise<void>((resolve) => {
+          new Promise((resolve) => {
             setTimeout(() => {
               webexUser = user;
               resolve();
@@ -265,6 +265,7 @@ describe('webex-core', () => {
           catalog.get();
 
           assert.called(catalog._getServiceDetail);
+          catalog._getServiceDetail.restore();
         });
 
         it('gets a service from a specific serviceGroup', () => {
@@ -443,11 +444,10 @@ describe('webex-core', () => {
         }));
 
       it('returns a resolved promise once ready', () => {
-        catalog.waitForCatalog('postauth', 1).then(() => {
-          assert(true, 'promise resolved');
-        });
-
-        catalog.updateServiceGroups('postauth', formattedHM);
+        catalog
+          .waitForCatalog('postauth', 1)
+          .then(() => assert(true, 'promise resolved'))
+          .finally(() => catalog.updateServiceGroups('postauth', formattedHM));
       });
     });
 
