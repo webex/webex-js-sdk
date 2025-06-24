@@ -3,7 +3,7 @@ import sha256 from 'crypto-js/sha256';
 import {union, forEach} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
-import METRICS from './metrics';
+import METRICS from '../metrics';
 import ServiceCatalog from './service-catalog';
 import ServiceRegistry from './service-registry';
 import ServiceState from './service-state';

@@ -9,7 +9,7 @@ import {flaky} from '@webex/test-helper-mocha';
 import WebexCore, {
   ServiceCatalogV2,
   ServiceDetail,
-  serviceContants,
+  serviceConstants,
   registerInternalPlugin,
   Services,
   ServiceInterceptor,
@@ -289,10 +289,7 @@ describe('webex-core', () => {
 
         services.initConfig();
 
-        const expectedResult = [
-          ...allowedDomains,
-          ...serviceConstantsV2.COMMERCIAL_ALLOWED_DOMAINS,
-        ];
+        const expectedResult = [...allowedDomains, ...serviceConstants.COMMERCIAL_ALLOWED_DOMAINS];
 
         assert.deepEqual(expectedResult, services._getCatalog().allowedDomains);
       });
