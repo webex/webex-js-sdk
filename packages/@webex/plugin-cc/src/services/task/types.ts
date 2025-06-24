@@ -1247,7 +1247,11 @@ export class TaskButtonControl {
   }
 
   /**
-   * Disables the button control.
+   *
+   * @param enabled - Indicates whether the button control is enabled or not.
+   *
+   * This method sets the enabled state of the button control.
+   * If `enabled` is true, the button will be enabled; otherwise, it will be disabled.
    */
   setEnabled(enabled: boolean) {
     this.enabled = enabled;
