@@ -16,7 +16,6 @@ import './lib/services';
 export {Credentials, filterScope, grantErrors, sortScope, Token} from './lib/credentials';
 
 export {
-  constants as serviceConstants,
   ServiceCatalog,
   ServiceRegistry,
   ServiceState,
@@ -25,13 +24,8 @@ export {
   ServiceUrl,
 } from './lib/services';
 
-export {
-  constants as serviceConstantsV2,
-  ServiceCatalogV2,
-  ServicesV2,
-  ServiceDetail,
-} from './lib/services-v2';
-
+export {ServiceCatalogV2, ServicesV2, ServiceDetail} from './lib/services-v2';
+export * as serviceConstants from './lib/constants';
 export {
   makeWebexStore,
   makeWebexPluginStore,

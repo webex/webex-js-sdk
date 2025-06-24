@@ -9,7 +9,7 @@ import {flaky} from '@webex/test-helper-mocha';
 import WebexCore, {
   ServiceCatalogV2,
   ServiceDetail,
-  serviceConstantsV2,
+  serviceContants,
   registerInternalPlugin,
   Services,
   ServiceInterceptor,

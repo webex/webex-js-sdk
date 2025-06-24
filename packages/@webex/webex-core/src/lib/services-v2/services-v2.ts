@@ -6,7 +6,7 @@ import WebexPlugin from '../webex-plugin';
 import METRICS from './metrics';
 import ServiceCatalog from './service-catalog';
 import fedRampServices from './service-fed-ramp';
-import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
+import {COMMERCIAL_ALLOWED_DOMAINS} from '../constants';
 import {ActiveServices, IServiceCatalog, QueryOptions, Service, ServiceHostmap} from './types';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;

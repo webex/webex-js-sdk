@@ -8,7 +8,7 @@ import ServiceCatalog from './service-catalog';
 import ServiceRegistry from './service-registry';
 import ServiceState from './service-state';
 import fedRampServices from './service-fed-ramp';
-import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
+import {COMMERCIAL_ALLOWED_DOMAINS} from '../constants';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 

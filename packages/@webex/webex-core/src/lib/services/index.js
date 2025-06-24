@@ -3,7 +3,6 @@
  */
 import {registerInternalPlugin} from '../../webex-core';
 
-import * as constants from './constants';
 import Services from './services';
 import ServerErrorInterceptor from '../interceptors/server-error';
 import ServiceInterceptor from '../interceptors/service';
@@ -15,7 +14,6 @@ registerInternalPlugin('services', Services, {
   },
 });
 
-export {constants};
 export {default as Services} from './services';
 export {default as ServiceCatalog} from './service-catalog';
 export {default as ServiceRegistry} from './service-registry';
