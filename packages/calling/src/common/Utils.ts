@@ -316,7 +316,7 @@ export async function handleRegistrationErrors(
 
       updateLineErrorContext(
         loggerContext,
-        ERROR_TYPE.SERVER_ERROR,
+        ERROR_TYPE.BAD_REQUEST,
         'Invalid input. Please verify the required parameters, sign out and then sign back in with the valid data',
         RegistrationStatus.INACTIVE,
         lineError
@@ -359,6 +359,13 @@ export async function handleRegistrationErrors(
 
     case ERROR_CODE.TOO_MANY_REQUESTS: {
       log.warn(`429 Too Many Requests`, loggerContext);
+      updateLineErrorContext(
+        loggerContext,
+        ERROR_TYPE.TOO_MANY_REQUESTS,
+        'Server is handling too many request at the time. Wait a moment and try again',
+        RegistrationStatus.INACTIVE,
+        lineError
+      );
       const caller = loggerContext.method || 'handleErrors';
 
       if (retry429Cb && err.headers) {
