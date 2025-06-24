@@ -45,6 +45,20 @@ export default class WebRTC extends Voice implements IWebRTC {
         });
         break;
 
+      case CC_EVENTS.AGENT_CONTACT_HELD:
+        // disable mute when call is held
+        this.updateTaskUiControls({
+          mute: [true, false],
+        });
+        break;
+
+      case CC_EVENTS.AGENT_CONTACT_UNHELD:
+        // enable mute when call is resumed
+        this.updateTaskUiControls({
+          mute: [true, true],
+        });
+        break;
+
       default:
         // hide mute when wrapup is active
         if (this.taskUiControls.wrapup.visible) {

@@ -122,5 +122,19 @@ describe('WebRTC Task', () => {
       expect(webRtc.taskUiControls.wrapup.visible).toBe(true);
       expect(webRtc.taskUiControls.mute.visible).toBe(false);
     });
+
+    it('setUIControls for AGENT_CONTACT_HELD disables mute', () => {
+      const endedData = { ...data, type: CC_EVENTS.AGENT_CONTACT_HELD } as any;
+      webRtc.updateTaskData(endedData);
+      expect(webRtc.taskUiControls.mute.visible).toBe(true);
+      expect(webRtc.taskUiControls.mute.enabled).toBe(false);
+    });
+
+    it('setUIControls for AGENT_CONTACT_UNHELD re-enables mute', () => {
+      const endedData = { ...data, type: CC_EVENTS.AGENT_CONTACT_UNHELD } as any;
+      webRtc.updateTaskData(endedData);
+      expect(webRtc.taskUiControls.mute.visible).toBe(true);
+      expect(webRtc.taskUiControls.mute.enabled).toBe(true);
+    });
   });
 });
