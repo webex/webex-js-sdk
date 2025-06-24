@@ -1,4 +1,4 @@
-import {CC_FILE} from '../../../constants';
+import {CC_FILE, METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import routingContact from '../contact';
 import {
@@ -143,17 +143,15 @@ export default class Voice extends Task implements IVoice {
         break;
 
       case CC_EVENTS.AGENT_CONSULT_CREATED:
-        if (!this.data.isConsulted) {
-          this.updateTaskUiControls({
-            hold: [false, false],
-            consult: [false, false],
-            transfer: [false, false],
-            end: [false, false],
-            consultTransfer: [true, false],
-            recording: [true, false],
-            endConsult: [true, true],
-          });
-        }
+        this.updateTaskUiControls({
+          hold: [false, false],
+          consult: [false, false],
+          transfer: [true, false],
+          end: [this.isEndCallEnabled, false],
+          consultTransfer: [true, false],
+          recording: [true, false],
+          endConsult: [true, true],
+        });
         break;
 
       case CC_EVENTS.AGENT_OFFER_CONSULT:
@@ -166,7 +164,7 @@ export default class Voice extends Task implements IVoice {
         if (!this.data.isConsulted) {
           this.updateTaskUiControls({
             hold: [false, false],
-            transfer: [false, false],
+            transfer: [true, false],
             consult: [false, false],
             consultTransfer: [true, true],
             recording: [true, false],
@@ -182,7 +180,6 @@ export default class Voice extends Task implements IVoice {
 
       case CC_EVENTS.AGENT_CONSULT_FAILED:
       case CC_EVENTS.AGENT_CONSULT_ENDED:
-      case CC_EVENTS.AGENT_CTQ_CANCELLED:
         if (!this.data.isConsulted) {
           this.updateTaskUiControls({
             hold: [true, true],
@@ -194,7 +191,24 @@ export default class Voice extends Task implements IVoice {
             endConsult: [false, false],
             wrapup: [false, false],
           });
+        } else {
+          this.updateTaskUiControls({
+            endConsult: [false, false],
+          });
         }
+        break;
+
+      case CC_EVENTS.AGENT_CTQ_CANCELLED:
+        this.updateTaskUiControls({
+          hold: [true, true],
+          transfer: [true, true],
+          consult: [true, true],
+          recording: [true, true],
+          end: [this.isEndCallEnabled, this.isEndCallEnabled],
+          consultTransfer: [false, false],
+          endConsult: [false, false],
+          wrapup: [false, false],
+        });
         break;
 
       case CC_EVENTS.AGENT_CONTACT:
@@ -233,7 +247,7 @@ export default class Voice extends Task implements IVoice {
    * @throws Error
    */
   public async accept(): Promise<TaskResponse> {
-    super.unsupportedMethodError('accept');
+    super.unsupportedMethodError(METHODS.ACCEPT);
   }
 
   /**
@@ -243,7 +257,7 @@ export default class Voice extends Task implements IVoice {
    * @throws Error
    */
   public async decline(): Promise<TaskResponse> {
-    super.unsupportedMethodError('decline');
+    super.unsupportedMethodError(METHODS.REJECT);
   }
 
   /**
@@ -257,13 +271,15 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async holdResume(): Promise<TaskResponse> {
-    // Determine if the task is being held or resumed based on the media resource state
-    // If the media resource is not found, default to resuming the task
+    /* 
+    Determine if the task is being held or resumed based on the media resource state
+    If the media resource is not found, default to resuming the task
+    */
     const shouldHold = !this.data.interaction.media[this.data.mediaResourceId].isHold;
 
     LoggerProxy.info(`${shouldHold ? 'Holding' : 'Resuming'} task`, {
       module: CC_FILE,
-      method: 'holdResume',
+      method: METHODS.HOLD_RESUME,
       interactionId: this.data.interactionId,
     });
     const [successEvt, failedEvt] = shouldHold
@@ -290,7 +306,7 @@ export default class Voice extends Task implements IVoice {
         );
         LoggerProxy.log(`Task placed on hold successfully`, {
           module: CC_FILE,
-          method: 'holdResume',
+          method: METHODS.HOLD_RESUME,
           trackingId: response.trackingId,
           interactionId: this.data.interactionId,
         });
@@ -312,7 +328,7 @@ export default class Voice extends Task implements IVoice {
         );
         LoggerProxy.log(`Task resumed successfully`, {
           module: CC_FILE,
-          method: 'holdResume',
+          method: METHODS.HOLD_RESUME,
           trackingId: response.trackingId,
           interactionId: this.data.interactionId,
         });
@@ -492,7 +508,7 @@ export default class Voice extends Task implements IVoice {
         },
         ['operational', 'behavioral', 'business']
       );
-      LoggerProxy.log(`Consult successfullys initiated to ${consultPayload.to}`, {
+      LoggerProxy.log(`Consult successfully initiated to ${consultPayload.to}`, {
         module: CC_FILE,
         method: 'consult',
         trackingId: result.trackingId,
@@ -595,7 +611,7 @@ export default class Voice extends Task implements IVoice {
     try {
       LoggerProxy.info(`Transferring task to ${payload.to}`, {
         module: CC_FILE,
-        method: 'transfer',
+        method: METHODS.TRANSFER_CALL,
         interactionId: this.data.interactionId,
       });
       this.metricsManager.timeEvent([
@@ -637,7 +653,7 @@ export default class Voice extends Task implements IVoice {
         );
         LoggerProxy.log(`Consult transfer completed successfully to ${consultPayload.to}`, {
           module: CC_FILE,
-          method: 'transfer',
+          method: METHODS.TRANSFER_CALL,
           trackingId: result.trackingId,
           interactionId: this.data.interactionId,
         });
@@ -651,7 +667,7 @@ export default class Voice extends Task implements IVoice {
         destinationType: payload.destinationType,
       });
     } catch (err) {
-      const {error: detailedError} = getErrorDetails(err, 'transfer', CC_FILE);
+      const {error: detailedError} = getErrorDetails(err, METHODS.TRANSFER_CALL, CC_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {

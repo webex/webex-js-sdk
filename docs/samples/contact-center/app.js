@@ -715,7 +715,7 @@ function setUIControls(task) {
     const c = ctrls[key];
     if (!c || !el) return;
     el.style.display = c.visible ? 'inline-block' : 'none';
-    el.disabled = !c.enabled;
+    el.disabled      = !c.enabled;
   });
 
   // wrapup‐codes dropdown mirrors wrapup control

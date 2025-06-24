@@ -1239,7 +1239,7 @@ export class TaskButtonControl {
    *
    * @param visible - Indicates whether the button control is visible or not.
    *
-   * This method sets the visibility and enabled state of the button control.
+   * This method sets the visibility.
    * If `visible` is true, the button will be shown;
    */
   setVisiblity(visible: boolean) {
@@ -1247,11 +1247,7 @@ export class TaskButtonControl {
   }
 
   /**
-   *
-   * @param enabled - Indicates whether the button control is enabled or not.
-   *
-   * This method sets the enabled state of the button control.
-   * If `enabled` is true, the button will be enabled; otherwise, it will be disabled.
+   * Disables the button control.
    */
   setEnabled(enabled: boolean) {
     this.enabled = enabled;
