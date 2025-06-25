@@ -614,6 +614,22 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.members.cancelPhoneInvite, uuid1);
         });
       });
+      describe('#cancelSIPInvite', () => {
+        it('should have #cancelSIPInvite', () => {
+          assert.exists(meeting.cancelSIPInvite);
+        });
+        beforeEach(() => {
+          meeting.members.cancelSIPInvite = sinon.stub().returns(Promise.resolve(test1));
+        });
+        it('should proxy members #cancelSIPInvite and return a promise', async () => {
+          const cancel = meeting.cancelSIPInvite({memberId: uuid1});
+
+          assert.exists(cancel.then);
+          await cancel;
+          assert.calledOnce(meeting.members.cancelSIPInvite);
+          assert.calledWith(meeting.members.cancelSIPInvite, {memberId: uuid1});
+        });
+      });
       describe('#admit', () => {
         it('should have #admit', () => {
           assert.exists(meeting.admit);
@@ -1278,6 +1294,46 @@ describe('plugin-meetings', () => {
           meeting.locusInfo.controls = {transcribe: {caption: true}};
 
           assert.equal(meeting.isTranscriptionSupported(), true);
+        });
+      });
+
+      describe('#update spoken language', () => {
+        beforeEach(() => {
+          webex.internal.voicea.onSpokenLanguageUpdate = sinon.stub();
+          meeting.transcription = {languageOptions: {currentSpokenLanguage: 'en'}};
+        });
+        afterEach(() => {
+          // Restore the original methods after each test
+          sinon.restore();
+        });
+        it('should call voicea.onSpokenLanguageUpdate when joined', async () => {
+
+          meeting.joinedWith = {state: 'JOINED'};
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+            {spokenLanguage: 'fr'},
+          );
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr');
+          assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'fr');
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED
+          );
+        });
+
+        it('should also call voicea.onSpokenLanguageUpdate when not joined', async () => {
+
+          meeting.joinedWith = {state: 'NOT_JOINED'};
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+            {spokenLanguage: 'de'},
+          );
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'de');
+          assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'de');
         });
       });
 
@@ -2246,6 +2302,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
               isSubnetReachable: null,
+              selectedCluster: null,
               numTransports: 1,
               iceCandidatesCount: 0,
             }
@@ -2293,6 +2350,7 @@ describe('plugin-meetings', () => {
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
               isSubnetReachable: null,
+              selectedCluster: null,
             })
           );
 
@@ -2359,6 +2417,7 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               iceCandidatesCount: 0,
               isSubnetReachable: null,
+              selectedCluster: null,
             }
           );
         });
@@ -2417,6 +2476,7 @@ describe('plugin-meetings', () => {
               connectionState: 'connecting',
               iceConnectionState: 'checking',
               isSubnetReachable: null,
+              selectedCluster: null,
             })
           );
 
@@ -2475,6 +2535,7 @@ describe('plugin-meetings', () => {
               connectionState: 'connecting',
               iceConnectionState: 'checking',
               isSubnetReachable: null,
+              selectedCluster: null,
             })
           );
 
@@ -2997,6 +3058,7 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               iceCandidatesCount: 0,
               isSubnetReachable: null,
+              selectedCluster: null,
             },
           ]);
 
@@ -3204,6 +3266,7 @@ describe('plugin-meetings', () => {
               isJoinWithMediaRetry: false,
               iceCandidatesCount: 0,
               isSubnetReachable: null,
+              selectedCluster: null,
             },
           ]);
           meeting.roap.doTurnDiscovery;
@@ -3334,6 +3397,11 @@ describe('plugin-meetings', () => {
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(true),
           };
+          meeting.mediaConnections = [
+            {
+              mediaAgentCluster: 'some.cluster',
+            }
+          ]
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
           meeting.iceCandidateErrors.set('701_turn_host_lookup_received_error', 1);
@@ -3362,6 +3430,7 @@ describe('plugin-meetings', () => {
               '701_error': 3,
               '701_turn_host_lookup_received_error': 1,
               isSubnetReachable: null,
+              selectedCluster: 'some.cluster',
             }
           );
 
@@ -3425,6 +3494,7 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               isSubnetReachable: null,
+              selectedCluster: null,
               iceCandidatesCount: 0,
             }
           );
@@ -3487,6 +3557,7 @@ describe('plugin-meetings', () => {
               '701_error': 2,
               '701_turn_host_lookup_received_error': 1,
               isSubnetReachable: null,
+              selectedCluster: null,
               iceCandidatesCount: 0,
             }
           );
@@ -3536,6 +3607,7 @@ describe('plugin-meetings', () => {
             iceCandidatesCount: 0,
             reachability_public_udp_success: 5,
             isSubnetReachable: false,
+            selectedCluster: null,
           });
         });
 
@@ -3597,6 +3669,7 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               reachability_public_udp_success: 5,
               isSubnetReachable: true,
+              selectedCluster: null,
               iceCandidatesCount: 0,
             }
           );
@@ -4193,7 +4266,7 @@ describe('plugin-meetings', () => {
           meeting.deviceUrl = 'device url';
           meeting.selfId = 'self id';
           meeting.brbState = createBrbState(meeting, false);
-          meeting.brbState.enable = sinon.stub().resolves();
+          sinon.stub(meeting.brbState, 'enable').resolves();
         });
 
         afterEach(() => {
@@ -4256,6 +4329,19 @@ describe('plugin-meetings', () => {
             await meeting.beRightBack(false);
 
             assert.notCalled(meeting.audio.handleServerRemoteMuteUpdate);
+          });
+
+          it('should reject when brb enable fails', async () => {
+            meeting.brbState.enable.restore();
+
+            const error = new Error();
+            meeting.meetingRequest.setBrb = sinon.stub().rejects(error);
+        
+            await expect(
+              meeting.beRightBack(true)
+            ).to.be.rejectedWith(error);  
+             
+            assert.isFalse(meeting.brbState.state.syncToServerInProgress);
           });
         });
       });
@@ -10052,6 +10138,24 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to CONTROLS_POLLING_QA_CHANGED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_POLLING_QA_UPDATED,
+            {state}
+          );
+        });
+
         it('listens to the locus interpretation update event', () => {
           const interpretation = {
             siLanguages: [{languageCode: 20, languageName: 'en'}],
@@ -11642,6 +11746,14 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_ATTENDEE_START_POLLING_QA],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA],
             displayHints: userDisplayHints,
           });
 

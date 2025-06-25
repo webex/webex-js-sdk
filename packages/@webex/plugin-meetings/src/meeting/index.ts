@@ -270,7 +270,10 @@ type FetchMeetingInfoParams = {
   sendCAevents?: boolean;
 };
 
-type MediaReachabilityMetrics = ReachabilityMetrics & {isSubnetReachable: boolean};
+type MediaReachabilityMetrics = ReachabilityMetrics & {
+  isSubnetReachable: boolean;
+  selectedCluster: string | null;
+};
 
 /**
  * MediaDirection
@@ -1349,7 +1352,7 @@ export default class Meeting extends StatelessWebexPlugin {
       captions: [],
       isListening: false,
       commandText: '',
-      languageOptions: {},
+      languageOptions: {currentSpokenLanguage: 'en'},
       showCaptionBox: false,
       transcribingRequestStatus: 'INACTIVE',
       isCaptioning: false,
@@ -2645,6 +2648,19 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_PARTICIPANTS, (payload) => {
       this.members.locusParticipantsUpdate(payload);
     });
+    this.locusInfo.on(LOCUSINFO.EVENTS.PARTICIPANT_REASON_CHANGED, (payload) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusParticipantsListener',
+        },
+        EVENT_TRIGGERS.MEETING_PARTICIPANT_REASON_CHANGED,
+        {
+          payload,
+        }
+      );
+    });
   }
 
   /**
@@ -2741,6 +2757,27 @@ export default class Meeting extends StatelessWebexPlugin {
               {caption, transcribing}
             );
           }
+        }
+      }
+    );
+
+    this.locusInfo.on(
+      LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+      ({spokenLanguage}) => {
+        if (spokenLanguage) {
+          this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
+          // @ts-ignore
+          this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage);
+
+          Trigger.trigger(
+            this,
+            {
+              file: 'meeting/index',
+              function: 'setupLocusControlsListener',
+            },
+            EVENT_TRIGGERS.MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+            {spokenLanguage}
+          );
         }
       }
     );
@@ -2910,6 +2947,15 @@ export default class Meeting extends StatelessWebexPlugin {
         this,
         {file: 'meeting/index', function: 'setupLocusControlsListener'},
         EVENT_TRIGGERS.MEETING_CONTROLS_REMOTE_DESKTOP_CONTROL_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_POLLING_QA_UPDATED,
         {state}
       );
     });
@@ -3812,6 +3858,18 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Cancel an SIP call invitation made during a meeting
+   * @param {Object} invitee
+   * @param {String} invitee.memberId
+   * @returns {Promise} see #members.cancelSIPInvite
+   * @public
+   * @memberof Meeting
+   */
+  public cancelSIPInvite(invitee: {memberId: string}) {
+    return this.members.cancelSIPInvite(invitee);
+  }
+
+  /**
    * Admit the guest(s) to the call once they are waiting.
    * If the host/cohost is in a breakout session, the locus url
    * of the session must be provided as the authorizingLocusUrl.
@@ -3866,13 +3924,16 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.reject(error);
     }
 
-    return this.brbState.enable(enabled, this.sendSlotManager).then(() => {
-      if (this.audio && enabled) {
-        // locus mutes the participant with brb enabled request,
-        // so we need to explicitly update remote mute for correct logic flow
-        this.audio.handleServerRemoteMuteUpdate(this, enabled);
-      }
-    });
+    return this.brbState
+      .enable(enabled, this.sendSlotManager)
+      .then(() => {
+        if (this.audio && enabled) {
+          // locus mutes the participant with brb enabled request,
+          // so we need to explicitly update remote mute for correct logic flow
+          this.audio.handleServerRemoteMuteUpdate(this, enabled);
+        }
+      })
+      .catch((error) => Promise.reject(error));
   }
 
   /**
@@ -4337,6 +4398,14 @@ export default class Meeting extends StatelessWebexPlugin {
           }),
           canDisableRemoteDesktopControl: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnablePollingQA: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_ATTENDEE_START_POLLING_QA],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisablePollingQA: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA],
             displayHints: this.userDisplayHints,
           }),
         }) || changed;
@@ -4854,11 +4923,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // Only send restore event when it was disconnected before and for connected later
       if (!this.hasWebsocketConnected) {
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.mercury.connection.restored',
-          options: {meetingId: this.id},
-        });
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MERCURY_CONNECTION_RESTORED, {
           correlation_id: this.correlationId,
         });
@@ -4869,11 +4933,6 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     this.webex.internal.mercury.on(OFFLINE, () => {
       LoggerProxy.logger.error('Meeting:index#setMercuryListener --> Web socket offline');
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.mercury.connection.lost',
-        options: {meetingId: this.id},
-      });
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MERCURY_CONNECTION_FAILURE, {
         correlation_id: this.correlationId,
       });
@@ -7030,6 +7089,11 @@ export default class Meeting extends StatelessWebexPlugin {
         iceCandidatesTimeout: this.config.iceCandidatesGatheringTimeout,
         // @ts-ignore - config coming from registerPlugin
         disableAudioMainDtx: this.config.experimental.disableAudioMainDtx,
+        // @ts-ignore - config coming from registerPlugin
+        enableAudioTwcc: this.config.enableAudioTwccForMultistream,
+        stopIceGatheringAfterFirstRelayCandidate:
+          // @ts-ignore - config coming from registerPlugin
+          this.config.stopIceGatheringAfterFirstRelayCandidate,
       }
     );
 
@@ -9684,9 +9748,15 @@ export default class Meeting extends StatelessWebexPlugin {
       isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(this.mediaServerIp);
     }
 
+    let selectedCluster = null;
+    if (this.mediaConnections && this.mediaConnections.length > 0) {
+      selectedCluster = this.mediaConnections[0].mediaAgentCluster;
+    }
+
     return {
       ...reachabilityMetrics,
       isSubnetReachable,
+      selectedCluster,
     };
   }
 }
