@@ -633,6 +633,11 @@ function registerTaskListeners(task) {
     console.info('Received consult offer from another agent');
   });
 
+  task.on('task:offerContact', (task) => {
+    console.info('Received task offer');
+    updateTaskList();
+  });
+
   task.on('task:consultAccepted', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
       // use UI controls for consult acceptance
@@ -680,6 +685,14 @@ function registerTaskListeners(task) {
   });
 
   task.on('task:wrappedup', (task) => {
+    setUIControls(task);
+  });
+
+  task.on('task:hold', (task) => {
+    setUIControls(task);
+  });
+
+  task.on('task:unhold', (task) => {
     setUIControls(task);
   });
 }
@@ -1277,14 +1290,41 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 
   registerTaskListeners(currentTask);
 
-  if (currentTask.data.interaction.mediaType === 'telephony') {
-    setUIControls(currentTask);
-  } else {
-    enableAnswerDeclineButtons(currentTask);
-  }
-
-  incomingDetailsElm.innerText = `Call from ${currentTask.data.interaction.callAssociatedDetails?.ani}`;
+  // drive all UI via task.taskUiControls; still show type‐specific incoming text
+  setUIControls(currentTask);
+  const { mediaType, callAssociatedDetails } = currentTask.data.interaction;
+  const callerDisplay = callAssociatedDetails?.ani;
+  const label = mediaType === 'email'
+    ? 'Email'
+    : ['chat','social'].includes(mediaType)
+      ? 'Chat'
+      : 'Call';
+ if (mediaType === 'telephony' && webex.cc.taskManager.webCallingService.loginOption !== 'BROWSER') {
+   incomingDetailsElm.innerText = `${label} from ${callerDisplay}… please answer on your registered endpoint`;
+ }
+ else {
+   incomingDetailsElm.innerText = `${label} from ${callerDisplay}`;
+ }
 });
+
+/**
+ * Build the incoming details line for any task.
+ */
+function buildIncomingText(task) {
+  const {mediaType, callAssociatedDetails} = task.data.interaction;
+  const caller = callAssociatedDetails?.ani;
+  let label = 'Call';
+  if (['chat','social'].includes(mediaType)) label = 'Chat';
+  else if (mediaType === 'email')       label = 'Email';
+
+  const nonBrowserHint =
+    mediaType === 'telephony' &&
+    webex.cc.taskManager.webCallingService.loginOption !== 'BROWSER'
+      ? '… please answer on your registered endpoint'
+      : '';
+
+  return `${label} from ${caller}${nonBrowserHint}`;
+}
 
  async function answer() {
   answerElm.disabled = true;
@@ -1485,9 +1525,8 @@ function renderTaskList(taskList) {
   taskListContainer.innerHTML = ''; // Clear existing tasks
 
   if (!taskList || Object.keys(taskList).length === 0) {
-    disableAnswerDeclineButtons();
-    incomingDetailsElm.innerText = '';
     disableAllCallControls();
+    incomingDetailsElm.innerText = '';
     wrapupElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
     taskListContainer.innerHTML = '<p>No tasks available</p>';
@@ -1596,43 +1635,19 @@ function renderTaskList(taskList) {
   });
 }
 
-function enableAnswerDeclineButtons(task) {
-  const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani;
-  const isNew = task.data.interaction.state === 'new'
-  const chatAndSocial = ['chat', 'social'];
-  if (task.data.interaction.mediaType === 'telephony') {
-    if (webex.cc.taskManager.webCallingService.loginOption === 'BROWSER') {
-      answerElm.disabled = !isNew;
-      declineElm.disabled = !isNew;
-  
-      incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
-    } else {
-      incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
-    }
-  } else if (chatAndSocial.includes(task.data.interaction.mediaType)) {
-    answerElm.disabled = !isNew;
-    declineElm.disabled = true;
-    incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
-  } else if (task.data.interaction.mediaType === 'email') {
-    answerElm.disabled = !isNew;
-    declineElm.disabled = true;
-    incomingDetailsElm.innerText = `Email from ${callerDisplay}`;
-  }
-}
-
-function disableAnswerDeclineButtons() {
-  answerElm.disabled = true;
-  declineElm.disabled = true;
-}
-
 function handleTaskSelect(task) {
   // Handle the task click event
   console.log('Task clicked:', task);
-  enableAnswerDeclineButtons(task);
-  engageElm.innerHTML = ``;
-  engageElm.style.height = "100px"
-  const chatAndSocial = ['chat', 'social'];
-  currentTask = task
+  // drive all button visibility via setUIControls
+  setUIControls(task);
+
+  // update incoming details messaging
+  incomingDetailsElm.innerText = buildIncomingText(task);
+
+   engageElm.innerHTML = ``;
+   engageElm.style.height = "100px"
+   const chatAndSocial = ['chat', 'social'];
+   currentTask = task
  if (chatAndSocial.includes(task.data.interaction.mediaType) && isBundleLoaded && !task.data.wrapUpRequired) {
     loadChatWidget(task);
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {

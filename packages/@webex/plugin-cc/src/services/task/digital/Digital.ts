@@ -1,13 +1,19 @@
 import {CC_FILE, METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
-import {IDigital, TaskResponse} from '../types';
+import {IDigital, TaskResponse, TaskData} from '../types';
 import {CC_EVENTS} from '../../config/types';
 import Task from '../Task';
+import routingContact from '../contact';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 
 export default class Digital extends Task implements IDigital {
+  constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
+    super(contact, data);
+    this.updateTaskUiControls({accept: [true, true]});
+  }
+
   /**
    * This is used for incoming digital task accept by agent.
    *
@@ -68,15 +74,50 @@ export default class Digital extends Task implements IDigital {
     const eventType = this.data.type;
 
     switch (eventType) {
+      case CC_EVENTS.AGENT_OFFER_CONTACT:
+        // for incoming task: enable accept
+        this.updateTaskUiControls({
+          accept: [true, true],
+        });
+        break;
+
       case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
         // once accepted: enable transfer + end
-        this.updateTaskUiControls({transfer: [true, true], end: [true, true]});
+        this.updateTaskUiControls({
+          accept: [false, false],
+          transfer: [true, true],
+          end: [true, true],
+        });
         break;
 
       case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
       case CC_EVENTS.AGENT_WRAPUP:
         // after transfer or end: enable wrapup
+        this.updateTaskUiControls({transfer: [false, false], end: [false, false]});
         this.updateTaskUiControls({wrapup: [true, true]});
+        break;
+
+      case CC_EVENTS.AGENT_CONTACT:
+        // eslint-disable-next-line no-console
+        console.info('ADHWAITH', this.data);
+        if (this.data.interaction.isTerminated) {
+          this.updateTaskUiControls({
+            transfer: [false, false],
+            end: [false, false],
+            wrapup: [true, true],
+          });
+        } else if (this.data.interaction.state === 'connected') {
+          this.updateTaskUiControls({
+            transfer: [true, true],
+            end: [true, true],
+          });
+        } else if (this.data.interaction.state === 'new') {
+          this.updateTaskUiControls({
+            accept: [true, true],
+            transfer: [false, false],
+            end: [false, false],
+          });
+        }
         break;
 
       default:

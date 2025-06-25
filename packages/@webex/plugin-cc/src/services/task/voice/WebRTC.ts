@@ -39,6 +39,20 @@ export default class WebRTC extends Voice implements IWebRTC {
   protected setUIControls(): void {
     super.setUIControls();
     switch (this.data.type) {
+      case CC_EVENTS.AGENT_OFFER_CONTACT:
+        this.updateTaskUiControls({
+          accept: [true, true],
+          decline: [true, true],
+        });
+        break;
+
+      case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
+        this.updateTaskUiControls({
+          accept: [false, false],
+          decline: [false, false],
+        });
+        break;
+
       case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
         this.updateTaskUiControls({
           mute: [true, true],
