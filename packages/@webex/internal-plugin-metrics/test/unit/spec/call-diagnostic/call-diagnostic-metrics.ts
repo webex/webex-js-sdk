@@ -185,7 +185,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           environment: 'meeting_evn',
@@ -218,7 +218,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
             clientLaunchMethod: 'url-handler',
           },
@@ -253,7 +253,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
             clientLaunchMethod: 'url-handler',
           },
@@ -288,7 +288,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
             clientLaunchMethod: 'url-handler',
             browserLaunchMethod: 'thinclient',
@@ -316,7 +316,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           name: 'endpoint',
@@ -345,7 +345,7 @@ describe('internal-plugin-metrics', () => {
             majorVersion: 43,
             minorVersion: 9,
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           environment: 'meeting_evn',
@@ -368,7 +368,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.3.4.0',
             localNetworkPrefix: undefined,
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           name: 'endpoint',
@@ -2539,7 +2539,7 @@ describe('internal-plugin-metrics', () => {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',
               mediaEngineSoftwareType: 'browser',
-              mediaEngineSoftwareVersion: getOSVersion(),
+              mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
               startTime: now.toISOString(),
             },
           },
@@ -2578,7 +2578,7 @@ describe('internal-plugin-metrics', () => {
                 applicationSoftwareType: 'webex-js-sdk',
                 applicationSoftwareVersion: 'webex-version',
                 mediaEngineSoftwareType: 'browser',
-                mediaEngineSoftwareVersion: getOSVersion(),
+                mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
                 startTime: now.toISOString(),
               },
             },
@@ -2615,7 +2615,7 @@ describe('internal-plugin-metrics', () => {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',
               mediaEngineSoftwareType: 'browser',
-              mediaEngineSoftwareVersion: getOSVersion(),
+              mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
               startTime: now.toISOString(),
             },
           },
@@ -3466,7 +3466,7 @@ describe('internal-plugin-metrics', () => {
                       localNetworkPrefix: '192.168.1.80',
                       publicNetworkPrefix: '1.3.4.0',
                       os: getOSNameInternal() || 'unknown',
-                      osVersion: getOSVersion(),
+                      osVersion: getOSVersion() || 'unknown',
                       subClientType: 'WEB_APP',
                     },
                     environment: 'meeting_evn',
@@ -3805,6 +3805,42 @@ describe('internal-plugin-metrics', () => {
 
         // should not call submitClientEvent again if delayedClientEvents was cleared
         assert.notCalled(submitClientEventSpy);
+      });
+    });
+
+    describe('#submitFeatureEvent', () => {
+      it('should submit feature event successfully with meetingId', () => {
+        const prepareClientFeatureEventSpy = sinon.spy(cd, 'prepareClientFeatureEvent');
+        const submitToCallFeaturesSpy = sinon.spy(cd, 'submitToCallFeatures');
+
+        const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const validatorSpy = sinon.spy(cd, 'validator');
+        const options = {
+          meetingId: fakeMeeting.id,
+        };
+        cd.setMercuryConnectedStatus(true);
+
+        cd.submitFeatureEvent({
+          name: 'client.feature.meeting.summary',
+          options,
+        });
+
+        assert.calledWith(
+          prepareClientFeatureEventSpy,
+          {
+            name: 'client.feature.meeting.summary',
+            payload: undefined,
+            options: { meetingId: '1'}
+          }
+        );
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-feature-events -> ',
+          'CallFeatureMetrics: @submitFeatureEvent. Submit Client Feature Event CA event.',
+          `name: client.feature.meeting.summary`,
+        ]);
       });
     });
   });

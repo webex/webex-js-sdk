@@ -2,9 +2,12 @@ import {
   ClientEvent as RawClientEvent,
   Event as RawEvent,
   MediaQualityEvent as RawMediaQualityEvent,
+  FeatureEvent as RawFeatureEvent,
 } from '@webex/event-dictionary-ts';
 
-export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent | RawMediaQualityEvent};
+export type Event = Omit<RawEvent, 'event'> & {
+  event: RawClientEvent | RawMediaQualityEvent | RawFeatureEvent;
+};
 
 export type ClientEventError = NonNullable<RawClientEvent['errors']>[0];
 
@@ -212,10 +215,9 @@ export type BehavioralEvent = TaggedEvent;
 export type OperationalEvent = TaggedEvent;
 
 export interface FeatureEvent {
-  // TODO: not implemented
-  name: never;
-  payload?: never;
-  options?: never;
+  name: RawFeatureEvent['name'];
+  payload?: RawFeatureEvent;
+  options?: SubmitClientEventOptions;
 }
 
 export interface MediaQualityEvent {

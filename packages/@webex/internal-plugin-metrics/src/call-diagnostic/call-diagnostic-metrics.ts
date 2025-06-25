@@ -432,6 +432,27 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     return event;
   }
 
+  prepareFeatureEvent(eventData: Event['event'], options: any) {
+    const {meetingId, triggeredTime} = options;
+    const origin = this.getOrigin(options, meetingId);
+
+    const event: Event = {
+      eventId: uuid.v4(),
+      version: 1,
+      origin,
+      originTime: {
+        triggered: triggeredTime || new Date().toISOString(),
+        // is overridden in prepareRequest batcher
+        sent: 'not_defined_yet',
+      },
+      // @ts-ignore
+      senderCountryCode: this.webex.meetings.geoHintInfo?.countryCode,
+      event: eventData,
+    };
+
+    return event;
+  }
+
   /**
    * Create feature event
    * @param name
@@ -439,7 +460,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param options
    * @returns
    */
-  private prepareFeatureEvent({
+  private prepareClientFeatureEvent({
     name,
     payload,
     options,
@@ -462,9 +483,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     featureEventObject = merge(featureEventObject, payload);
 
     // append client event data to the call diagnostic event
-    const diagnosticEvent = this.prepareDiagnosticEvent(featureEventObject, options);
+    const featureEvent = this.prepareFeatureEvent(featureEventObject, options);
 
-    return diagnosticEvent;
+    return featureEvent;
   }
 
   /**
@@ -501,10 +522,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     this.logger.log(
       CALL_FEATURE_LOG_IDENTIFIER,
-      'CallFeatureMetrics: @submitClientEvent. Submit Client Event CA event.',
+      'CallFeatureMetrics: @submitFeatureEvent. Submit Client Feature Event CA event.',
       `name: ${name}`
     );
-    const featureEvent = this.prepareFeatureEvent({name, payload, options});
+    const featureEvent = this.prepareClientFeatureEvent({name, payload, options});
 
     this.validator({type: 'ce', event: featureEvent});
 
