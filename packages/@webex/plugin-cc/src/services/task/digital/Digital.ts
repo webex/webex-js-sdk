@@ -98,8 +98,6 @@ export default class Digital extends Task implements IDigital {
         break;
 
       case CC_EVENTS.AGENT_CONTACT:
-        // eslint-disable-next-line no-console
-        console.info('ADHWAITH', this.data);
         if (this.data.interaction.isTerminated) {
           this.updateTaskUiControls({
             transfer: [false, false],
