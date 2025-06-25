@@ -52,6 +52,11 @@ class Metrics extends WebexPlugin {
   delaySubmitClientEvents = false;
 
   /**
+   * Whether or not to delay the submission of feature events.
+   */
+  delaySubmitClientFeatureEvents = false;
+
+  /**
    * Overrides for delayed client events. E.g. if you want to override the correlationId for all delayed client events, you can set this to { correlationId: 'newCorrelationId' }
    */
   delayedClientEventsOverrides: Partial<DelayedClientEvent['options']> = {};
@@ -275,7 +280,25 @@ class Metrics extends WebexPlugin {
     payload?: RecursivePartial<FeatureEvent['payload']>;
     options: any;
   }) {
-    throw new Error('Not implemented.');
+    if (!this.callDiagnosticLatencies || !this.callDiagnosticMetrics) {
+      // @ts-ignore
+      this.webex.logger.log(
+        `NewMetrics: @submitFeatureEvent. Attempted to submit before webex.ready. Event name: ${name}`
+      );
+
+      return Promise.resolve();
+    }
+    this.callDiagnosticLatencies.saveTimestamp({
+      key: name,
+      options: {meetingId: options?.meetingId},
+    });
+
+    return this.callDiagnosticMetrics.submitFeatureEvent({
+      name,
+      payload,
+      options,
+      delaySubmitEvent: this.delaySubmitClientFeatureEvents,
+    });
   }
 
   /**
@@ -428,6 +451,23 @@ class Metrics extends WebexPlugin {
 
     if (this.isReady && !shouldDelay) {
       return this.callDiagnosticMetrics.submitDelayedClientEvents(overrides);
+    }
+
+    return Promise.resolve();
+  }
+
+  public setDelaySubmitClientFeatureEvents({
+    shouldDelay,
+    overrides,
+  }: {
+    shouldDelay: boolean;
+    overrides?: Partial<DelayedClientEvent['options']>;
+  }) {
+    this.delaySubmitClientFeatureEvents = shouldDelay;
+    this.delayedClientFeatureEventsOverrides = overrides || {};
+
+    if (this.isReady && !shouldDelay) {
+      return this.callDiagnosticMetrics.submitDelayedClientFeatureEvents(overrides);
     }
 
     return Promise.resolve();

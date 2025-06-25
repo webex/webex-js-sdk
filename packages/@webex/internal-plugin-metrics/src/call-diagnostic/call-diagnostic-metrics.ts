@@ -41,6 +41,9 @@ import {
   ClientSubServiceType,
   BrowserLaunchMethodType,
   DelayedClientEvent,
+  DelayedClientFeatureEvent,
+  FeatureEvent,
+  ClientFeatureEventPayload,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
@@ -58,6 +61,8 @@ import {
   AUTHENTICATION_FAILED_CODE,
   WEBEX_SUB_SERVICE_TYPES,
   SDP_OFFER_CREATION_ERROR_MAP,
+  CALL_FEATURE_LOG_IDENTIFIER,
+  CALL_FEATURE_EVENT_FAILED_TO_SEND,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -97,6 +102,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private hasLoggedBrowserSerial: boolean;
   private device: any;
   private delayedClientEvents: DelayedClientEvent[] = [];
+  private delayedClientFeatureEvents: DelayedClientFeatureEvent[] = [];
   private eventErrorCache: WeakMap<any, any> = new WeakMap();
   private isMercuryConnected = false;
 
@@ -427,12 +433,97 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * TODO: NOT IMPLEMENTED
-   * Submit Feature Event
+   * Create feature event
+   * @param name
+   * @param payload
+   * @param options
    * @returns
    */
-  public submitFeatureEvent() {
-    throw Error('Not implemented');
+  private prepareFeatureEvent({
+    name,
+    payload,
+    options,
+  }: {
+    name: FeatureEvent['name'];
+    payload?: ClientFeatureEventPayload;
+    options?: SubmitClientEventOptions;
+  }) {
+    const {meetingId, correlationId} = options;
+    let featureEventObject: FeatureEvent['payload'];
+
+    // events that will most likely happen in join phase
+    if (meetingId) {
+      featureEventObject = this.createFeatureEventObjectInMeeting({name, options});
+    } else {
+      throw new Error('Not implemented');
+    }
+
+    // merge any new properties, or override existing ones
+    featureEventObject = merge(featureEventObject, payload);
+
+    // append client event data to the call diagnostic event
+    const diagnosticEvent = this.prepareDiagnosticEvent(featureEventObject, options);
+
+    return diagnosticEvent;
+  }
+
+  /**
+   * Submit Feature Event
+   * submit to bussiness
+   * @returns
+   */
+  public submitFeatureEvent({
+    name,
+    payload,
+    options,
+    delaySubmitEvent,
+  }: {
+    name: FeatureEvent['name'];
+    payload?: ClientFeatureEventPayload;
+    options?: SubmitClientEventOptions;
+    delaySubmitEvent?: boolean;
+  }) {
+    if (delaySubmitEvent) {
+      // Preserve the time when the event was triggered if delaying the submission to Call Features
+      const delayedOptions = {
+        ...options,
+        triggeredTime: new Date().toISOString(),
+      };
+
+      this.delayedClientFeatureEvents.push({
+        name,
+        payload,
+        options: delayedOptions,
+      });
+
+      return Promise.resolve();
+    }
+
+    this.logger.log(
+      CALL_FEATURE_LOG_IDENTIFIER,
+      'CallFeatureMetrics: @submitClientEvent. Submit Client Event CA event.',
+      `name: ${name}`
+    );
+    const featureEvent = this.prepareFeatureEvent({name, payload, options});
+
+    this.validator({type: 'ce', event: featureEvent});
+
+    return this.submitToCallFeatures(featureEvent);
+  }
+
+  /**
+   * Submit Feature Event
+   * type is business
+   * @param event
+   */
+  submitToCallFeatures(event: Event): Promise<any> {
+    // build metrics-a event type
+    const finalEvent = {
+      eventPayload: event,
+      type: ['business'],
+    };
+
+    return this.callDiagnosticEventsBatcher.request(finalEvent);
   }
 
   /**
@@ -784,6 +875,94 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Create feature event object for in meeting function event
+   * @param name
+   * @param options
+   * @returns object
+   */
+  private createFeatureEventObjectInMeeting({
+    name,
+    options,
+  }: {
+    name: FeatureEvent['name'];
+    options?: SubmitClientEventOptions;
+  }) {
+    const {
+      meetingId,
+      mediaConnections,
+      globalMeetingId,
+      webexConferenceIdStr,
+      sessionCorrelationId,
+    } = options;
+
+    // @ts-ignore
+    const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
+
+    if (!meeting) {
+      console.warn(
+        'Attempt to send client event but no meeting was found...',
+        `name: ${name}, meetingId: ${meetingId}`
+      );
+      // @ts-ignore
+      this.webex.internal.metrics.submitClientMetrics(CALL_FEATURE_EVENT_FAILED_TO_SEND, {
+        fields: {
+          meetingId,
+          name,
+        },
+      });
+
+      return undefined;
+    }
+
+    // grab identifiers
+    const identifiers = this.getIdentifiers({
+      meeting,
+      mediaConnections: meeting?.mediaConnections || mediaConnections,
+      webexConferenceIdStr,
+      globalMeetingId,
+      sessionCorrelationId,
+    });
+
+    // create feature event object
+    const featureEventObject: FeatureEvent['payload'] = {
+      name,
+      canProceed: true,
+      identifiers,
+      eventData: {
+        webClientDomain: window.location.hostname,
+      },
+      userType: meeting.getCurUserType(),
+      loginType:
+        'loginType' in meeting.callStateForMetrics
+          ? meeting.callStateForMetrics.loginType
+          : this.getCurLoginType(),
+      isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
+        meetingId,
+      }),
+      ...(meeting.userNameInput && {userNameInput: meeting.userNameInput}),
+      ...(meeting.emailInput && {emailInput: meeting.emailInput}),
+      webexSubServiceType: this.getSubServiceType(meeting),
+      // @ts-ignore
+      webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
+    };
+
+    const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
+    if (joinFlowVersion) {
+      featureEventObject.joinFlowVersion = joinFlowVersion;
+    }
+    const meetingJoinedTime = meeting.isoLocalClientMeetingJoinTime;
+    if (meetingJoinedTime) {
+      featureEventObject.meetingJoinedTime = meetingJoinedTime;
+    }
+
+    if (options.meetingJoinPhase) {
+      featureEventObject.meetingJoinPhase = options.meetingJoinPhase;
+    }
+
+    return featureEventObject;
+  }
+
+  /**
    * Create client event object for pre meeting events
    * @param arg - create args
    * @param arg.event - event key
@@ -973,6 +1152,31 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     });
 
     this.delayedClientEvents = [];
+
+    return Promise.all(promises);
+  }
+
+  /**
+   * Submit Delayed Client Event CA events. Clears delayedClientFeatureEvents array after submission.
+   */
+  public submitDelayedClientFeatureEvents(overrides?: Partial<DelayedClientEvent['options']>) {
+    this.logger.log(
+      CALL_FEATURE_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @submitDelayedClientFeatureEvents. Submitting delayed client events.'
+    );
+
+    if (this.delayedClientFeatureEvents.length === 0) {
+      return Promise.resolve();
+    }
+
+    const promises = this.delayedClientFeatureEvents.map((delayedSubmitClientEventParams) => {
+      const {name, payload, options} = delayedSubmitClientEventParams;
+      const optionsWithOverrides: DelayedClientEvent['options'] = {...options, ...overrides};
+
+      return this.submitFeatureEvent({name, payload, options: optionsWithOverrides});
+    });
+
+    this.delayedClientFeatureEvents = [];
 
     return Promise.all(promises);
   }

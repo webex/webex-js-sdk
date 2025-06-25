@@ -251,6 +251,8 @@ export type ClientEventPayload = RecursivePartial<ClientEvent['payload']>;
 export type ClientEventLeaveReason = ClientEvent['payload']['leaveReason'];
 export type ClientEventPayloadError = ClientEvent['payload']['errors'];
 
+export type ClientFeatureEventPayload = RecursivePartial<FeatureEvent['payload']>;
+
 export type MediaQualityEventAudioSetupDelayPayload = NonNullable<
   MediaQualityEvent['payload']
 >['audioSetupDelay'];
@@ -337,5 +339,17 @@ export interface IMetricsAttributes {
 export interface DelayedClientEvent {
   name: ClientEvent['name'];
   payload?: RecursivePartial<ClientEvent['payload']>;
+  options?: SubmitClientEventOptions;
+}
+
+export type SubmitFeatureEvent = (args: {
+  name: FeatureEvent['name'];
+  payload?: RecursivePartial<FeatureEvent['payload']>;
+  options?: SubmitClientEventOptions;
+}) => Promise<any>;
+
+export interface DelayedClientFeatureEvent {
+  name: FeatureEvent['name'];
+  payload?: RecursivePartial<FeatureEvent['payload']>;
   options?: SubmitClientEventOptions;
 }
