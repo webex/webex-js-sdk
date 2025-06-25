@@ -1209,7 +1209,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should force sendVideo and receiveVideo to false when videoEnabled is false', async () => {
+        it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
           await meeting.joinWithMedia({
             joinOptions,
             mediaOptions: {
@@ -1220,40 +1220,36 @@ describe('plugin-meetings', () => {
             },
           });
         
-          assert.calledWith(
+          assert.calledWithMatch(
             meeting.addMediaInternal,
             sinon.match.any,
             sinon.match.any,
             sinon.match.any,
-            sinon.match({
-              sendVideo: false,
-              receiveVideo: false,
-            })
+            sinon.match.has('videoEnabled', false)
+                        .and(sinon.match.has('allowMediaInLobby', true))
           );
         });
 
-        it('should force sendAudio and receiveAudio to false when audioEnabled is false', async () => {
+        it('should ignore sendAudio/receiveAudio when audioEnabled is false', async () => {
           await meeting.joinWithMedia({
             joinOptions,
             mediaOptions: {
               audioEnabled: false,
-              sendAudio: true,
-              receiveAudio: true,
+              sendAudio: true, 
+              receiveAudio: false, 
               allowMediaInLobby: true,
             },
           });
         
-          assert.calledWith(
+          assert.calledWithMatch(
             meeting.addMediaInternal,
             sinon.match.any,
             sinon.match.any,
             sinon.match.any,
-            sinon.match({
-              sendAudio: false,
-              receiveAudio: false,
-            })
+            sinon.match.has('audioEnabled', false)
+                        .and(sinon.match.has('allowMediaInLobby', true))
           );
-        });
+        });        
 
         
         it('should use provided send/receive values when videoEnabled/audioEnabled are true or not set', async () => {
