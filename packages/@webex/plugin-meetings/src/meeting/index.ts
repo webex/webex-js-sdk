@@ -7698,7 +7698,7 @@ export default class Meeting extends StatelessWebexPlugin {
       shareVideoEnabled = true,
       remoteMediaManagerConfig,
       bundlePolicy = 'max-bundle',
-      additionalMediaOptions,
+      additionalMediaOptions = {},
     } = options;
 
     const {
