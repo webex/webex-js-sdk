@@ -3,7 +3,13 @@ import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
 
-import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../../Metrics/types';
+import {
+  IMetricManager,
+  METRIC_EVENT,
+  METRIC_TYPE,
+  REG_ACTION,
+  SERVER_TYPE,
+} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
 import {ICallManager} from '../calling/types';
 import {getCallManager} from '../calling';
@@ -44,6 +50,8 @@ import {
   FAILOVER_UTIL,
   REGISTER_UTIL,
   RETRY_TIMER_UPPER_LIMIT,
+  KEEPALIVE_UTIL,
+  REGISTRATION_UTIL,
   METHODS,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
@@ -607,7 +615,7 @@ export class Registration implements IRegistration {
   public async triggerRegistration() {
     if (this.primaryMobiusUris.length > 0) {
       const abort = await this.attemptRegistrationWithServers(
-        this.triggerRegistration.name,
+        REGISTRATION_UTIL,
         this.primaryMobiusUris
       );
 
@@ -645,6 +653,10 @@ export class Registration implements IRegistration {
       return abort;
     }
     for (const url of servers) {
+      const serverType =
+        (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
+        (this.backupMobiusUris?.includes(url) && 'BACKUP') ||
+        'UNKNOWN';
       try {
         abort = false;
         this.registrationStatus = RegistrationStatus.INACTIVE;
@@ -672,17 +684,21 @@ export class Registration implements IRegistration {
           METRIC_EVENT.REGISTRATION,
           REG_ACTION.REGISTER,
           METRIC_TYPE.BEHAVIORAL,
+          caller,
+          serverType,
+          resp.headers?.trackingid ?? '',
+          undefined,
           undefined
         );
         this.startKeepaliveTimer(
           this.deviceInfo.device?.uri as string,
-          this.deviceInfo.keepaliveInterval as number
+          this.deviceInfo.keepaliveInterval as number,
+          serverType
         );
         this.initiateFailback();
         break;
       } catch (err: unknown) {
         const body = err as WebexRequestPayload;
-
         // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-unused-vars
         abort = await handleRegistrationErrors(
           body,
@@ -696,6 +712,10 @@ export class Registration implements IRegistration {
               METRIC_EVENT.REGISTRATION_ERROR,
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
+              caller,
+              serverType,
+              body.headers?.trackingid ?? '',
+              undefined,
               clientError
             );
           },
@@ -727,7 +747,7 @@ export class Registration implements IRegistration {
    * This method sets up a timer to periodically send keep-alive requests to maintain a connection.
    * It handles retries, error handling, and re-registration attempts based on the response, ensuring continuous connectivity with the server.
    */
-  private startKeepaliveTimer(url: string, interval: number) {
+  private startKeepaliveTimer(url: string, interval: number, serverType: SERVER_TYPE) {
     let keepAliveRetryCount = 0;
     this.clearKeepaliveTimer();
     const RETRY_COUNT_THRESHOLD = this.isCCFlow ? 4 : 5;
@@ -735,7 +755,7 @@ export class Registration implements IRegistration {
     this.keepaliveTimer = setInterval(async () => {
       const logContext = {
         file: REGISTRATION_FILE,
-        method: this.startKeepaliveTimer.name,
+        method: KEEPALIVE_UTIL,
       };
       await this.mutex.runExclusive(async () => {
         if (this.isDeviceRegistered() && keepAliveRetryCount < RETRY_COUNT_THRESHOLD) {
@@ -765,10 +785,14 @@ export class Registration implements IRegistration {
                   METRIC_EVENT.REGISTRATION,
                   REG_ACTION.KEEPALIVE_FAILURE,
                   METRIC_TYPE.BEHAVIORAL,
+                  KEEPALIVE_UTIL,
+                  serverType,
+                  error.headers?.trackingid ?? '',
+                  keepAliveRetryCount,
                   clientError
                 );
               },
-              {method: this.startKeepaliveTimer.name, file: REGISTRATION_FILE}
+              {method: KEEPALIVE_UTIL, file: REGISTRATION_FILE}
             );
 
             if (abort || keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
@@ -780,7 +804,7 @@ export class Registration implements IRegistration {
 
               if (!abort) {
                 /* In case of non-final error, re-attempt registration */
-                await this.reconnectOnFailure(this.startKeepaliveTimer.name);
+                await this.reconnectOnFailure(KEEPALIVE_UTIL);
               }
             } else {
               this.lineEmitter(LINE_EVENTS.RECONNECTING);
@@ -828,8 +852,8 @@ export class Registration implements IRegistration {
   }
 
   /**
-   *          Indicates whether the calling client is in a mode
-   *          to retry registration.
+   * Indicates whether the calling client is in a mode
+   * to retry registration.
    */
   private isRegRetry(): boolean {
     return this.registerRetry;

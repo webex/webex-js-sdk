@@ -2,7 +2,7 @@ import {CallError, CallingClientError} from '../Errors';
 import {METRIC_FILE, VERSION} from '../CallingClient/constants';
 import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../common/types';
 import {WebexSDK} from '../SDKConnector/types';
-import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT} from './types';
+import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT, SERVER_TYPE} from './types';
 import {LineError} from '../Errors/catalog/LineError';
 import log from '../Logger';
 
@@ -104,7 +104,11 @@ class MetricManager implements IMetricManager {
     name: METRIC_EVENT,
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
-    clientError: LineError | CallingClientError | undefined
+    caller: string,
+    serverType: SERVER_TYPE,
+    trackingId: string,
+    keepaliveCount?: number,
+    clientError?: LineError | CallingClientError
   ) {
     let data;
 
@@ -120,6 +124,9 @@ class MetricManager implements IMetricManager {
             device_url: this.deviceInfo?.device?.clientDeviceUri,
             mobius_url: this.deviceInfo?.device?.uri,
             calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            reg_source: caller,
+            server_type: serverType,
+            trackingId,
           },
           type,
         };
@@ -138,6 +145,10 @@ class MetricManager implements IMetricManager {
               device_url: this.deviceInfo?.device?.clientDeviceUri,
               mobius_url: this.deviceInfo?.device?.uri,
               calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+              reg_source: caller,
+              server_type: serverType,
+              trackingId,
+              keepalive_count: keepaliveCount,
               error: clientError.getError().message,
               error_type: clientError.getError().type,
             },
