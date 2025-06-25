@@ -1,7 +1,11 @@
-import {CC_FILE} from '../../../constants';
+import {CC_FILE, METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import {IDigital, TaskResponse} from '../types';
+import {CC_EVENTS} from '../../config/types';
 import Task from '../Task';
+import LoggerProxy from '../../../logger-proxy';
+import MetricsManager from '../../../metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 
 export default class Digital extends Task implements IDigital {
   /**
@@ -16,12 +20,67 @@ export default class Digital extends Task implements IDigital {
    */
   public async accept(): Promise<TaskResponse> {
     try {
-      return this.contact.accept({interactionId: this.data.interactionId});
+      LoggerProxy.info(`Accepting task`, {
+        module: CC_FILE,
+        method: METHODS.ACCEPT,
+        interactionId: this.data.interactionId,
+      });
+
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+      ]);
+
+      const response = await this.contact.accept({interactionId: this.data.interactionId});
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+      LoggerProxy.log(`Task accepted successfully`, {
+        module: CC_FILE,
+        method: METHODS.ACCEPT,
+        trackingId: response.trackingId,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'accept', CC_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.ACCEPT, CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
       throw detailedError;
     }
   }
 
-  protected setUIControls(): void {}
+  protected setUIControls(): void {
+    const eventType = this.data.type;
+
+    switch (eventType) {
+      case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
+        // once accepted: enable transfer + end
+        this.updateTaskUiControls({transfer: [true, true], end: [true, true]});
+        break;
+
+      case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
+      case CC_EVENTS.AGENT_WRAPUP:
+        // after transfer or end: enable wrapup
+        this.updateTaskUiControls({wrapup: [true, true]});
+        break;
+
+      default:
+        break;
+    }
+  }
 }
