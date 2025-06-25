@@ -98,6 +98,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private device: any;
   private delayedClientEvents: DelayedClientEvent[] = [];
   private eventErrorCache: WeakMap<any, any> = new WeakMap();
+  private isMercuryConnected = false;
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -148,6 +149,16 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     return undefined;
+  }
+
+  /**
+   * Sets mercury connected status for event data object in CA events
+   * @public
+   * @param status - boolean value indicating mercury connection status
+   * @return {void}
+   */
+  public setMercuryConnectedStatus(status: boolean): void {
+    this.isMercuryConnected = status;
   }
 
   /**
@@ -739,6 +750,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       errors,
       eventData: {
         webClientDomain: window.location.hostname,
+        isMercuryConnected: this.isMercuryConnected,
       },
       userType: meeting.getCurUserType(),
       loginType:
@@ -807,6 +819,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers,
       eventData: {
         webClientDomain: window.location.hostname,
+        isMercuryConnected: this.isMercuryConnected,
       },
       loginType: this.getCurLoginType(),
       // @ts-ignore
