@@ -263,8 +263,9 @@ type FetchMeetingInfoParams = {
 };
 
 type MediaReachabilityMetrics = ReachabilityMetrics & {
-  isSubnetReachable: boolean;
-  selectedCluster: string | null;
+  subnet_reachable: boolean;
+  selected_cluster: string | null;
+  selected_subnet: string | null;
 };
 
 /**
@@ -9703,39 +9704,20 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       await this.webex.meetings.reachability.getReachabilityMetrics();
 
-    const successKeys: Array<keyof ReachabilityMetrics> = [
-      'reachability_public_udp_success',
-      'reachability_public_tcp_success',
-      'reachability_public_xtls_success',
-      'reachability_vmn_udp_success',
-      'reachability_vmn_tcp_success',
-      'reachability_vmn_xtls_success',
-    ];
+    const selectedSubnetFirstOctet = this.mediaServerIp?.split('.')[0];
 
-    const totalSuccessCases = successKeys.reduce((total, key) => {
-      const value = reachabilityMetrics[key];
-      if (typeof value === 'number') {
-        return total + value;
-      }
+    const isSubnetReachable = selectedSubnetFirstOctet
+      ? // @ts-ignore
+        this.webex.meetings.reachability.isSubnetReachable(selectedSubnetFirstOctet)
+      : null;
 
-      return total;
-    }, 0);
-
-    let isSubnetReachable = null;
-    if (totalSuccessCases > 0) {
-      // @ts-ignore
-      isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(this.mediaServerIp);
-    }
-
-    let selectedCluster = null;
-    if (this.mediaConnections && this.mediaConnections.length > 0) {
-      selectedCluster = this.mediaConnections[0].mediaAgentCluster;
-    }
+    const selectedCluster = this.mediaConnections?.[0]?.mediaAgentCluster ?? null;
 
     return {
       ...reachabilityMetrics,
-      isSubnetReachable,
-      selectedCluster,
+      subnet_reachable: isSubnetReachable,
+      selected_cluster: selectedCluster,
+      selected_subnet: `${selectedSubnetFirstOctet}.X.X.X`,
     };
   }
 }
