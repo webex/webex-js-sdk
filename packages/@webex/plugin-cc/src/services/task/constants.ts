@@ -47,4 +47,6 @@ export const METHODS = {
   GET_TASK: 'getTask',
   GET_ALL_TASKS: 'getAllTasks',
   GET_TASK_MANAGER: 'getTaskManager',
+  SETUP_AUTO_WRAPUP_TIMER: 'setupAutoWrapupTimer',
+  CANCEL_AUTO_WRAPUP_TIMER: 'cancelAutoWrapupTimer',
 };
