@@ -80,7 +80,7 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
   const failure = error.details as Failure;
   const reason = failure?.data?.reason ?? `Error while performing ${methodName}`;
 
-  if (!(reason === 'AGENT_NOT_FOUND' && methodName === 'silentReLogin')) {
+  if (!(reason === 'AGENT_NOT_FOUND' && methodName === 'silentRelogin')) {
     LoggerProxy.error(`${methodName} failed with reason: ${reason}`, {
       module: moduleName,
       method: methodName,

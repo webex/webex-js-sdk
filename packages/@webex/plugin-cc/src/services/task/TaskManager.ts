@@ -6,7 +6,7 @@ import WebCallingService from '../WebCallingService';
 import {ITask, MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {METHODS} from './constants';
-import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
+import {CC_EVENTS, CC_TASK_EVENTS, WrapupData} from '../config/types';
 import {LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import Task from '.';
@@ -27,7 +27,7 @@ export default class TaskManager extends EventEmitter {
   private webSocketManager: WebSocketManager;
   private metricsManager: MetricsManager;
   private static taskManager;
-
+  private wrapupData: WrapupData;
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
@@ -46,6 +46,10 @@ export default class TaskManager extends EventEmitter {
     this.metricsManager = MetricsManager.getInstance();
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
+  }
+
+  public setWrapupData(wrapupData: WrapupData) {
+    this.wrapupData = wrapupData;
   }
 
   private handleIncomingWebCall = (call: ICall) => {
@@ -104,11 +108,17 @@ export default class TaskManager extends EventEmitter {
                 method: METHODS.REGISTER_TASK_LISTENERS,
                 interactionId: payload.data.interactionId,
               });
-              task = new Task(this.contact, this.webCallingService, {
-                ...payload.data,
-                wrapUpRequired:
-                  payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp || false,
-              });
+              task = new Task(
+                this.contact,
+                this.webCallingService,
+                {
+                  ...payload.data,
+                  wrapUpRequired:
+                    payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp ||
+                    false,
+                },
+                this.wrapupData
+              );
               this.taskCollection[payload.data.interactionId] = task;
               // Condition 1: The state is=new i.e it is a incoming task
               if (payload.data.interaction.state === 'new') {
@@ -136,10 +146,15 @@ export default class TaskManager extends EventEmitter {
             }
             break;
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            task = new Task(this.contact, this.webCallingService, {
-              ...payload.data,
-              isConsulted: false,
-            }); // Ensure isConsulted prop exists
+            task = new Task(
+              this.contact,
+              this.webCallingService,
+              {
+                ...payload.data,
+                isConsulted: false,
+              },
+              this.wrapupData
+            ); // Ensure isConsulted prop exists
             this.taskCollection[payload.data.interactionId] = task;
             if (
               this.webCallingService.loginOption !== LoginOption.BROWSER ||
@@ -278,6 +293,7 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
+            task.cancelAutoWrapupTimer();
             this.removeTaskFromCollection(task);
             task.emit(TASK_EVENTS.TASK_WRAPPEDUP, task);
             break;

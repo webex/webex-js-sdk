@@ -67,6 +67,8 @@ describe('webex-core', () => {
         },
         replace: true,
       });
+      services = webex.internal.services;
+      catalog = services._getCatalog();
     });
 
     describe('#status()', () => {

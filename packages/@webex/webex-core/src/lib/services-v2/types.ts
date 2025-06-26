@@ -1,3 +1,7 @@
+type ServiceName = string;
+type ClusterId = string;
+export type ServiceGroup = 'discovery' | 'override' | 'preauth' | 'postauth' | 'signin';
+
 export type ServiceUrl = {
   baseUrl: string;
   host: string;
@@ -5,10 +9,10 @@ export type ServiceUrl = {
   failed?: boolean;
 };
 
-export type ActiveServices = Record<string, string>;
+export type ActiveServices = Record<ServiceName, ClusterId>;
 export type Service = {
-  id: string;
-  serviceName: string;
+  id: ClusterId;
+  serviceName: ServiceName;
   serviceUrls: Array<ServiceUrl>;
 };
 export type QueryOptions = {
@@ -27,8 +31,8 @@ export interface ServiceHostmap {
 }
 
 export interface IServiceDetail {
-  id: string;
-  serviceName: string;
+  id: ClusterId;
+  serviceName: ServiceName;
   serviceUrls: Array<ServiceUrl>;
   failHost(url: string): boolean;
   get(): string;
@@ -54,16 +58,16 @@ export interface IServiceCatalog {
   clean(): void;
   findClusterId(url: string): string | undefined;
   findServiceFromClusterId(params: {
-    clusterId: string;
-    serviceGroup?: string;
+    clusterId: ClusterId;
+    serviceGroup?: ServiceGroup;
   }): {name: string; url: string} | undefined;
   findServiceDetailFromUrl(url: string): IServiceDetail | undefined;
   findAllowedDomain(url: string): string | undefined;
-  get(clusterId: string, serviceGroup: string): string | undefined;
+  get(clusterId: ClusterId, serviceGroup: ServiceGroup): string | undefined;
   getAllowedDomains(): string[];
   markFailedServiceUrl(url: string): string | undefined;
   setAllowedDomains(allowedDomains: string[]): void;
   addAllowedDomains(newAllowedDomains: string[]): void;
-  updateServiceGroups(serviceGroup: string, serviceDetails: Array<IServiceDetail>): void;
-  waitForCatalog(serviceGroup: string, timeout?: number): Promise<void>;
+  updateServiceGroups(serviceGroup: ServiceGroup, serviceDetails: Array<IServiceDetail>): void;
+  waitForCatalog(serviceGroup: ServiceGroup, timeout?: number): Promise<void>;
 }

@@ -7,7 +7,14 @@ import METRICS from '../metrics';
 import ServiceCatalog from './service-catalog';
 import fedRampServices from './service-fed-ramp';
 import {COMMERCIAL_ALLOWED_DOMAINS} from '../constants';
-import {ActiveServices, IServiceCatalog, QueryOptions, Service, ServiceHostmap} from './types';
+import {
+  ActiveServices,
+  IServiceCatalog,
+  QueryOptions,
+  Service,
+  ServiceHostmap,
+  ServiceGroup,
+} from './types';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
@@ -52,10 +59,10 @@ const Services = WebexPlugin.extend({
    * Get a service url from the current services list by name
    * from the associated instance catalog.
    * @param {string} name
-   * @param {string} [serviceGroup]
+   * @param {ServiceGroup} [serviceGroup]
    * @returns {string|undefined}
    */
-  get(name: string, serviceGroup?: string): string | undefined {
+  get(name: string, serviceGroup?: ServiceGroup): string | undefined {
     const catalog = this._getCatalog();
 
     const clusterId = this._activeServices[name];
@@ -446,11 +453,11 @@ const Services = WebexPlugin.extend({
 
   /**
    * Updates a given service group i.e. preauth, signin, postauth with a new hostmap.
-   * @param {string} serviceGroup - preauth, signin, postauth
+   * @param {ServiceGroup} serviceGroup - preauth, signin, postauth
    * @param {ServiceHostmap} hostMap - The new hostmap to update the service group with.
    * @returns {Promise<void>}
    */
-  updateCatalog(serviceGroup: string, hostMap: ServiceHostmap): Promise<void> {
+  updateCatalog(serviceGroup: ServiceGroup, hostMap: ServiceHostmap): Promise<void> {
     const catalog = this._getCatalog();
 
     const serviceHostMap = this._formatReceivedHostmap(hostMap);
@@ -538,11 +545,11 @@ const Services = WebexPlugin.extend({
   /**
    * Wait until the service catalog is available,
    * or reject afte ra timeout of 60 seconds.
-   * @param {string} serviceGroup
+   * @param {ServiceGroup} serviceGroup
    * @param {number} [timeout] - in seconds
    * @returns {Promise<void>}
    */
-  waitForCatalog(serviceGroup: string, timeout: number): Promise<void> {
+  waitForCatalog(serviceGroup: ServiceGroup, timeout: number): Promise<void> {
     const catalog = this._getCatalog();
     const {supertoken} = this.webex.credentials;
 
@@ -715,14 +722,14 @@ const Services = WebexPlugin.extend({
    * return an object containing both the name and url of a found service.
    * @param {object} params
    * @param {string} params.clusterId - clusterId of found service
-   * @param {string} [params.serviceGroup] - specify service group
+   * @param {ServiceGroup} [params.serviceGroup] - specify service group
    * @returns {object} service
    * @returns {string} service.name
    * @returns {string} service.url
    */
   getServiceFromClusterId(params: {
     clusterId: string;
-    serviceGroup?: string;
+    serviceGroup?: ServiceGroup;
   }): {name: string; url: string} | undefined {
     const catalog = this._getCatalog();
 
