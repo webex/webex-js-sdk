@@ -87,6 +87,8 @@ export class BrbState {
         `Meeting:brbState#applyClientStateToServer: client state already matching server state, nothing to do`
       );
 
+      this.updateLocalState(sendSlotManager);
+
       return Promise.resolve();
     }
 
@@ -115,6 +117,19 @@ export class BrbState {
 
         return Promise.reject(error);
       });
+  }
+
+  /**
+   * Updates the local state of the brb based on the enabled parameter.
+   *
+   * @param {SendSlotManager} sendSlotManager - the send slot manager instance
+   * @returns {Promise<void>}
+   */
+  private async updateLocalState(sendSlotManager: SendSlotManager) {
+    sendSlotManager.setSourceStateOverride(
+      MediaType.VideoMain,
+      this.state.client.enabled ? 'away' : null
+    );
   }
 
   /**
@@ -154,7 +169,7 @@ export class BrbState {
         selfId: this.meeting.selfId,
       })
       .then(() => {
-        sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
+        this.updateLocalState(sendSlotManager);
       })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:brbState#sendLocalBrbStateToServer: Error ', error);
