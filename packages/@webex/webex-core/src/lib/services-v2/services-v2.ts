@@ -742,7 +742,7 @@ const Services = WebexPlugin.extend({
    *  If empty, just return the base URL.
    * @returns {String} url of the service
    */
-  getServiceUrlFromClusterId({cluster = 'us'} = {} as {cluster: string}): string {
+  getServiceUrlFromClusterId({cluster = 'us'}: {cluster?: string} = {}): string {
     let clusterId = cluster === 'us' ? DEFAULT_CLUSTER_IDENTIFIER : cluster;
 
     // Determine if cluster has service name (non-US clusters from hydra do not)
@@ -770,9 +770,7 @@ const Services = WebexPlugin.extend({
    * @returns {object.priorityUrl} - The default url of the found service.
    * @returns {object.defaultUrl} - The default url of the found service.
    */
-  getServiceFromUrl(
-    url = '' as string
-  ): {name: string; priorityUrl: string; defaultUrl: string} | undefined {
+  getServiceFromUrl(url = ''): {name: string; priorityUrl: string; defaultUrl: string} | undefined {
     const service = this._getCatalog().findServiceDetailFromUrl(url);
 
     if (!service) {
