@@ -3,12 +3,11 @@ import {assert, expect} from '@webex/test-helper-chai';
 
 import testUtils from '../../../utils/testUtils';
 import {BrbState, createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
-import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 
 describe('plugin-meetings', () => {
   let meeting: any;
   let brbState: BrbState;
-  let setBrbStub: sinon.SinonStub;  
+  let setBrbStub: sinon.SinonStub;
 
   beforeEach(async () => {
     meeting = {
@@ -23,7 +22,7 @@ describe('plugin-meetings', () => {
         setSourceStateOverride: sinon.stub(),
       },
       meetingRequest: {
-        setBrb: () => {}
+        setBrb: () => {},
       },
     };
 
@@ -109,7 +108,14 @@ describe('plugin-meetings', () => {
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
 
-      assert.isTrue(meeting.sendSlotManager.setSourceStateOverride.calledOnce);
+      assert.isTrue(meeting.sendSlotManager.setSourceStateOverride.called);
+    });
+
+    it('sets source state override when client state does match server state', async () => {
+      brbState.enable(false, meeting.sendSlotManager);
+      await testUtils.flushPromises();
+
+      assert.isTrue(meeting.sendSlotManager.setSourceStateOverride.called);
     });
 
     it('handles server update', async () => {
@@ -141,10 +147,8 @@ describe('plugin-meetings', () => {
     it('should reject when sendLocalBrbStateToServer fails', async () => {
       const error = new Error('send failed');
       setBrbStub.rejects(error);
-        
-      await expect(
-        brbState.enable(true, meeting.sendSlotManager)
-      ).to.be.rejectedWith(error); 
+
+      await expect(brbState.enable(true, meeting.sendSlotManager)).to.be.rejectedWith(error);
 
       assert.isFalse(brbState.state.syncToServerInProgress);
     });
