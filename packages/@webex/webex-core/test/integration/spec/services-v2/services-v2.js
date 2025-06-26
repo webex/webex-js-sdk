@@ -1,29 +1,31 @@
-/*!
- * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
- */
+// /*!
+//  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+//  */
 
 import '@webex/internal-plugin-device';
 
 import {assert} from '@webex/test-helper-chai';
 import {flaky} from '@webex/test-helper-mocha';
 import WebexCore, {
-  ServiceCatalog,
-  ServiceRegistry,
-  ServiceState,
+  ServiceCatalogV2,
+  ServiceDetail,
+  serviceConstantsV2,
+  registerInternalPlugin,
   Services,
   ServiceInterceptor,
   ServerErrorInterceptor,
-  registerInternalPlugin,
-  ServiceUrl,
-  serviceConstants,
+  ServicesV2,
+  ServiceInterceptorV2,
+  ServerErrorInterceptorV2,
 } from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
 import sinon from 'sinon';
+import {formattedServiceHostmapEntryConv} from '../../../fixtures/host-catalog-v2';
 
-/* eslint-disable no-underscore-dangle */
+// /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
-  describe('Services', () => {
+  describe('ServicesV2', () => {
     let webexUser;
     let webexUserEU;
     let webex;
@@ -31,6 +33,7 @@ describe('webex-core', () => {
     let services;
     let servicesEU;
     let catalog;
+    let catalogEU;
 
     before('create users', () =>
       Promise.all([
@@ -53,11 +56,11 @@ describe('webex-core', () => {
       )
     );
 
-    beforeEach('create webex instance', () => {
-      registerInternalPlugin('services', Services, {
+    beforeEach(() => {
+      registerInternalPlugin('services', ServicesV2, {
         interceptors: {
-          ServiceInterceptor: ServiceInterceptor.create,
-          ServerErrorInterceptor: ServerErrorInterceptor.create,
+          ServiceInterceptor: ServiceInterceptorV2.create,
+          ServerErrorInterceptor: ServerErrorInterceptorV2.create,
         },
         replace: true,
       });
@@ -66,6 +69,7 @@ describe('webex-core', () => {
       services = webex.internal.services;
       servicesEU = webexEU.internal.services;
       catalog = services._getCatalog();
+      catalogEU = servicesEU._getCatalog();
 
       return Promise.all([
         services.waitForCatalog('postauth', 10),
@@ -78,6 +82,20 @@ describe('webex-core', () => {
       );
     });
 
+    afterEach(() => {
+      registerInternalPlugin('services', Services, {
+        interceptors: {
+          ServiceInterceptor: ServiceInterceptor.create,
+          ServerErrorInterceptor: ServerErrorInterceptor.create,
+        },
+        replace: true,
+      });
+      services = webex.internal.services;
+      servicesEU = webexEU.internal.services;
+      catalog = services._getCatalog();
+      catalogEU = servicesEU._getCatalog();
+    });
+
     describe('#_getCatalog()', () => {
       it('returns a catalog', () => {
         const localCatalog = services._getCatalog();
@@ -86,44 +104,28 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#list()', () => {
-      it('matches the values in serviceUrl', () => {
-        let serviceList = services.list();
-
-        Object.keys(serviceList).forEach((key) => {
-          assert.equal(serviceList[key], catalog._getUrl(key).get());
-        });
-
-        serviceList = services.list(true);
-        Object.keys(serviceList).forEach((key) => {
-          assert.equal(serviceList[key], catalog._getUrl(key).get(true));
-        });
-      });
-    });
-
     describe('#get()', () => {
-      let testUrlTemplate;
-      let testUrl;
+      let testDetailTemplate;
+      let testDetail;
 
-      beforeEach('load test url', () => {
-        testUrlTemplate = {
-          defaultUrl: 'https://www.example.com/api/v1',
-          hosts: [],
-          name: 'exampleValid',
+      beforeEach(() => {
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
+        services._activeServices = {
+          [testDetailTemplate.serviceName]: testDetailTemplate.id,
         };
-        testUrl = new ServiceUrl(testUrlTemplate);
-        catalog._loadServiceUrls('preauth', [testUrl]);
       });
 
-      afterEach('unload test url', () => {
-        catalog._unloadServiceUrls('preauth', [testUrl]);
+      afterEach(() => {
+        catalog._unloadServiceDetails('preauth', [testDetail]);
       });
 
       it('returns a valid string when name is specified', () => {
-        const url = services.get(testUrlTemplate.name);
+        const url = services.get(testDetailTemplate.serviceName);
 
         assert.typeOf(url, 'string');
-        assert.equal(url, testUrlTemplate.defaultUrl);
+        assert.equal(url, testDetail.get());
       });
 
       it("returns undefined if url doesn't exist", () => {
@@ -133,57 +135,32 @@ describe('webex-core', () => {
       });
 
       it('gets a service from a specific serviceGroup', () => {
-        assert.isDefined(services.get(testUrlTemplate.name, false, 'preauth'));
+        assert.isDefined(services.get(testDetailTemplate.serviceName, 'preauth'));
       });
 
       it("fails to get a service if serviceGroup isn't accurate", () => {
-        assert.isUndefined(services.get(testUrlTemplate.name, false, 'discovery'));
+        assert.isUndefined(services.get(testDetailTemplate.serviceName, 'discovery'));
       });
     });
 
     describe('#getClusterId()', () => {
-      let testUrlTemplate;
-      let testUrl;
+      let testDetailTemplate;
+      let testDetail;
 
-      beforeEach('load test url', () => {
-        testUrlTemplate = {
-          defaultUrl: 'https://www.example.com/api/v1',
-          hosts: [
-            {
-              homeCluster: true,
-              host: 'www.example-p5.com',
-              ttl: -1,
-              priority: 5,
-              id: 'exampleClusterId',
-            },
-            {
-              host: 'www.example-p3.com',
-              ttl: -1,
-              priority: 3,
-              id: 'exampleClusterId',
-            },
-          ],
-          name: 'exampleValid',
-        };
-        testUrl = new ServiceUrl(testUrlTemplate);
-        catalog._loadServiceUrls('preauth', [testUrl]);
+      beforeEach(() => {
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
       });
 
-      it('returns a clusterId when found with default url', () => {
-        assert.equal(
-          services.getClusterId(testUrlTemplate.defaultUrl),
-          testUrlTemplate.hosts[0].id
-        );
-      });
-
-      it('returns a clusterId when found with priority host url', () => {
-        assert.equal(services.getClusterId(testUrl.get(true)), testUrlTemplate.hosts[0].id);
+      it('returns a clusterId when found with url', () => {
+        assert.equal(services.getClusterId(testDetail.get()), testDetail.id);
       });
 
       it('returns a clusterId when found with resource-appended url', () => {
         assert.equal(
-          services.getClusterId(`${testUrl.get()}example/resource/value`),
-          testUrlTemplate.hosts[0].id
+          services.getClusterId(`${testDetail.get()}example/resource/value`),
+          testDetail.id
         );
       });
 
@@ -197,72 +174,38 @@ describe('webex-core', () => {
     });
 
     describe('#getServiceFromClusterId()', () => {
-      let testUrlTemplate;
-      let testUrl;
+      let testDetailTemplate;
+      let testDetail;
 
-      beforeEach('load test url', () => {
-        testUrlTemplate = {
-          defaultUrl: 'https://www.example.com/api/v1',
-          hosts: [
-            {
-              homeCluster: true,
-              host: 'www.example-p5.com',
-              ttl: -1,
-              priority: 5,
-              id: '0:0:cluster-a:exampleValid',
-            },
-            {
-              host: 'www.example-p3.com',
-              ttl: -1,
-              priority: 3,
-              id: '0:0:cluster-b:exampleValid',
-            },
-          ],
-          name: 'exampleValid',
-        };
-        testUrl = new ServiceUrl(testUrlTemplate);
-        catalog._loadServiceUrls('preauth', [testUrl]);
+      beforeEach(() => {
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
       });
 
       it('finds a valid service url from only a clusterId', () => {
         const serviceFound = services.getServiceFromClusterId({
-          clusterId: testUrlTemplate.hosts[0].id,
-          priorityHost: false,
+          clusterId: testDetailTemplate.id,
         });
 
-        assert.equal(serviceFound.name, testUrl.name);
-        assert.equal(serviceFound.url, testUrl.defaultUrl);
-      });
-
-      it('finds a valid priority service url', () => {
-        const serviceFound = services.getServiceFromClusterId({
-          clusterId: testUrlTemplate.hosts[0].id,
-          priorityHost: true,
-        });
-
-        assert.equal(serviceFound.name, testUrl.name);
-        assert.isTrue(
-          serviceFound.url.includes(testUrlTemplate.hosts[0].host),
-          `'${serviceFound.url}' is not host '${testUrlTemplate.hosts[0].host}'`
-        );
-        // assert.equal(serviceFound.url, catalog.get('exampleValid', true));
+        assert.equal(serviceFound.name, testDetail.serviceName);
+        assert.equal(serviceFound.url, testDetail.get());
       });
 
       it('finds a valid service when a service group is defined', () => {
         const serviceFound = catalog.findServiceFromClusterId({
-          clusterId: testUrlTemplate.hosts[0].id,
-          priorityHost: false,
+          clusterId: testDetailTemplate.id,
           serviceGroup: 'preauth',
         });
 
-        assert.equal(serviceFound.name, testUrl.name);
-        assert.equal(serviceFound.url, testUrl.defaultUrl);
+        assert.equal(serviceFound.name, testDetail.serviceName);
+        assert.equal(serviceFound.url, testDetail.get());
       });
 
       it("fails to find a valid service when it's not in a group", () => {
         assert.isUndefined(
           services.getServiceFromClusterId({
-            clusterId: testUrlTemplate.hosts[0].id,
+            clusterId: testDetailTemplate.id,
             serviceGroup: 'signin',
           })
         );
@@ -274,63 +217,34 @@ describe('webex-core', () => {
     });
 
     describe('#getServiceFromUrl()', () => {
-      let testUrlTemplate;
-      let testUrl;
+      let testDetailTemplate;
+      let testDetail;
 
-      beforeEach('load test url', () => {
-        testUrlTemplate = {
-          defaultUrl: 'https://www.example.com/api/v1',
-          hosts: [
-            {
-              host: 'www.example-p5.com',
-              ttl: -1,
-              priority: 5,
-              id: 'exampleClusterId',
-            },
-            {
-              host: 'www.example-p3.com',
-              ttl: -1,
-              priority: 3,
-              id: 'exampleClusterId',
-            },
-          ],
-          name: 'exampleValid',
-        };
-        testUrl = new ServiceUrl(testUrlTemplate);
-        catalog._loadServiceUrls('preauth', [testUrl]);
+      beforeEach(() => {
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
       });
 
-      afterEach('unload test url', () => {
-        catalog._unloadServiceUrls('preauth', [testUrl]);
+      afterEach(() => {
+        catalog._unloadServiceDetails('preauth', [testDetail]);
       });
 
       it('gets a valid service object from an existing service', () => {
-        const serviceObject = services.getServiceFromUrl(testUrlTemplate.defaultUrl);
+        const serviceObject = services.getServiceFromUrl(testDetail.get());
 
         assert.isDefined(serviceObject);
         assert.hasAllKeys(serviceObject, ['name', 'defaultUrl', 'priorityUrl']);
 
-        assert.equal(testUrlTemplate.name, serviceObject.name);
-        assert.equal(testUrlTemplate.defaultUrl, serviceObject.defaultUrl);
-        assert.equal(testUrl.get(true), serviceObject.priorityUrl);
+        assert.equal(testDetailTemplate.serviceName, serviceObject.name);
+        assert.equal(testDetail.get(true), serviceObject.defaultUrl);
+        assert.equal(testDetail.get(true), serviceObject.priorityUrl);
       });
 
       it("returns undefined when the service url doesn't exist", () => {
         const serviceObject = services.getServiceFromUrl('http://www.not-real.com/');
 
         assert.isUndefined(serviceObject);
-      });
-    });
-
-    describe('#hasService()', () => {
-      it('returns a boolean', () => {
-        assert.isBoolean(services.hasService('some-url'));
-      });
-
-      it('validates that a service exists', () => {
-        const service = Object.keys(services.list())[0];
-
-        assert.isTrue(services.hasService(service));
       });
     });
 
@@ -381,7 +295,10 @@ describe('webex-core', () => {
 
         services.initConfig();
 
-        const expectedResult = [...allowedDomains, ...serviceConstants.COMMERCIAL_ALLOWED_DOMAINS];
+        const expectedResult = [
+          ...allowedDomains,
+          ...serviceConstantsV2.COMMERCIAL_ALLOWED_DOMAINS,
+        ];
 
         assert.deepEqual(expectedResult, services._getCatalog().allowedDomains);
       });
@@ -389,12 +306,7 @@ describe('webex-core', () => {
 
     describe('#initialize()', () => {
       it('should create a catalog', () =>
-        assert.instanceOf(services._getCatalog(), ServiceCatalog));
-
-      it('should create a registry', () =>
-        assert.instanceOf(services.getRegistry(), ServiceRegistry));
-
-      it('should create a state', () => assert.instanceOf(services.getState(), ServiceState));
+        assert.instanceOf(services._getCatalog(), ServiceCatalogV2));
 
       it('should call services#initConfig() when webex config changes', () => {
         services.initConfig = sinon.spy();
@@ -413,17 +325,16 @@ describe('webex-core', () => {
       });
 
       it('should collect different catalogs based on OrgId region', () =>
-        assert.notDeepEqual(services.list(true), servicesEU.list(true)));
+        assert.notDeepEqual(catalog._getAllServiceDetails(), catalogEU._getAllServiceDetails()));
 
       it('should not attempt to collect catalogs without authorization', (done) => {
         const otherWebex = new WebexCore();
-        let {initServiceCatalogs} = otherWebex.internal.services;
-
-        initServiceCatalogs = sinon.stub();
+        const initServiceCatalogs = sinon.stub(otherWebex.internal.services, 'initServiceCatalogs');
 
         setTimeout(() => {
           assert.notCalled(initServiceCatalogs);
           assert.isFalse(otherWebex.internal.services._getCatalog().isReady);
+          otherWebex.internal.services.initServiceCatalogs.restore();
           done();
         }, 2000);
       });
@@ -481,51 +392,6 @@ describe('webex-core', () => {
       });
     });
 
-    describe('#isServiceUrl()', () => {
-      let testUrlTemplate;
-      let testUrl;
-
-      beforeEach('load test url', () => {
-        testUrlTemplate = {
-          defaultUrl: 'https://www.example.com/api/v1',
-          hosts: [
-            {
-              homeCluster: true,
-              host: 'www.example-p5.com',
-              ttl: -1,
-              priority: 5,
-              id: 'exampleClusterId',
-            },
-            {
-              host: 'www.example-p3.com',
-              ttl: -1,
-              priority: 3,
-              id: 'exampleClusterId',
-            },
-          ],
-          name: 'exampleValid',
-        };
-        testUrl = new ServiceUrl(testUrlTemplate);
-        catalog._loadServiceUrls('preauth', [testUrl]);
-      });
-
-      it('returns true if url is a service url', () => {
-        assert.isTrue(services.isServiceUrl(testUrlTemplate.defaultUrl));
-      });
-
-      it('returns true for priority host urls', () => {
-        assert.isTrue(services.isServiceUrl(testUrl.get(true)));
-      });
-
-      it("returns undefined if the url doesn't exist", () => {
-        assert.isFalse(services.isServiceUrl('https://na.com/'));
-      });
-
-      it('returns undefined if the param is not a url', () => {
-        assert.isFalse(services.isServiceUrl('not a url'));
-      });
-    });
-
     describe('#isAllowedDomainUrl()', () => {
       let list;
 
@@ -536,7 +402,7 @@ describe('webex-core', () => {
       });
 
       it('returns a boolean', () => {
-        assert.isBoolean(services.isAllowedDomainUrl(''));
+        assert.isBoolean(services.isAllowedDomainUrl('https://not-a-domain/resource'));
       });
 
       it('returns true if the url contains an allowed domain', () => {
@@ -549,41 +415,23 @@ describe('webex-core', () => {
     });
 
     describe('#convertUrlToPriorityUrl', () => {
-      let testUrl;
-      let testUrlTemplate;
+      let testDetail;
+      let testDetailTemplate;
 
-      beforeEach('load test url', () => {
-        testUrlTemplate = {
-          defaultUrl: 'https://www.example.com/api/v1',
-          hosts: [
-            {
-              homeCluster: true,
-              host: 'www.example-p5.com',
-              ttl: -1,
-              priority: 5,
-              id: '0:0:cluster-a:exampleValid',
-            },
-            {
-              host: 'www.example-p3.com',
-              ttl: -1,
-              priority: 3,
-              id: '0:0:cluster-b:exampleValid',
-            },
-          ],
-          name: 'exampleValid',
-        };
-        testUrl = new ServiceUrl(testUrlTemplate);
-        catalog._loadServiceUrls('preauth', [testUrl]);
+      beforeEach(() => {
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
       });
 
       it('converts the url to a priority host url', () => {
         const resource = 'path/to/resource';
-        const url = `${testUrlTemplate.defaultUrl}/${resource}`;
+        const url = `${testDetailTemplate.serviceUrls[1].baseUrl}/${resource}`;
 
         const convertUrl = services.convertUrlToPriorityHostUrl(url);
 
         assert.isDefined(convertUrl);
-        assert.isTrue(convertUrl.includes(testUrlTemplate.hosts[0].host));
+        assert.isTrue(convertUrl.includes(testDetail.get()));
       });
 
       it('throws an exception if not a valid service', () => {
@@ -595,57 +443,40 @@ describe('webex-core', () => {
         );
       });
 
-      afterEach('unload test url', () => {
-        catalog._unloadServiceUrls('preauth', [testUrl]);
+      afterEach(() => {
+        catalog._unloadServiceDetails('preauth', [testDetail]);
       });
     });
 
     describe('#markFailedUrl()', () => {
-      let testUrlTemplate;
-      let testUrl;
+      let testDetailTemplate;
+      let testDetail;
 
-      beforeEach('load test url', () => {
+      beforeEach(() => {
         catalog.clean();
 
-        testUrlTemplate = {
-          defaultUrl: 'https://www.example-phr.com/api/v1',
-          hosts: [
-            {
-              host: 'www.example-phr-p5.com',
-              ttl: -1,
-              priority: 5,
-              homeCluster: true,
-            },
-            {
-              host: 'www.example-phr-p3.com',
-              ttl: -1,
-              priority: 3,
-              homeCluster: true,
-            },
-          ],
-          name: 'exampleValid-phr',
-        };
-        testUrl = new ServiceUrl(testUrlTemplate);
-        catalog._loadServiceUrls('preauth', [testUrl]);
+        testDetailTemplate = formattedServiceHostmapEntryConv;
+        testDetail = new ServiceDetail(testDetailTemplate);
+        catalog._loadServiceDetails('preauth', [testDetail]);
       });
 
-      afterEach('unload test url', () => {
-        catalog._unloadServiceUrls('preauth', [testUrl]);
+      afterEach(() => {
+        catalog._unloadServiceDetails('preauth', [testDetail]);
       });
 
       it('marks a host as failed', () => {
-        const priorityServiceUrl = catalog._getUrl(testUrlTemplate.name);
+        const priorityServiceUrl = catalog._getServiceDetail(testDetailTemplate.id);
         const priorityUrl = priorityServiceUrl._getPriorityHostUrl();
 
         services.markFailedUrl(priorityUrl);
 
-        const failedHost = priorityServiceUrl.hosts.find((host) => host.failed);
+        const failedHost = priorityServiceUrl.serviceUrls.find((host) => host.failed);
 
         assert.isTrue(priorityUrl.includes(failedHost.host));
       });
 
       it('returns the next priority url', () => {
-        const priorityUrl = services.get(testUrlTemplate.name, true);
+        const priorityUrl = services.get(testDetailTemplate.id);
 
         const nextPriorityUrl = services.markFailedUrl(priorityUrl);
 
@@ -653,10 +484,10 @@ describe('webex-core', () => {
       });
 
       it('should reset hosts once all hosts have been marked failed', () => {
-        const priorityServiceUrl = catalog._getUrl(testUrlTemplate.name);
+        const priorityServiceUrl = catalog._getServiceDetail(testDetailTemplate.id);
         const firstPriorityUrl = priorityServiceUrl._getPriorityHostUrl();
 
-        priorityServiceUrl.hosts.forEach(() => {
+        priorityServiceUrl.serviceUrls.forEach(() => {
           const priorityUrl = priorityServiceUrl._getPriorityHostUrl();
 
           services.markFailedUrl(priorityUrl);
@@ -675,9 +506,10 @@ describe('webex-core', () => {
         assert.typeOf(servicesPromise, 'Promise');
 
         servicesPromise.then(() => {
-          Object.keys(services.list()).forEach((key) => {
-            assert.typeOf(key, 'string');
-            assert.typeOf(services.list()[key], 'string');
+          services._services.forEach((service) => {
+            assert.typeOf(service.serviceName, 'string');
+            assert.typeOf(service.id, 'string');
+            assert.typeOf(service.serviceUrls, 'array');
           });
 
           done();
@@ -691,13 +523,11 @@ describe('webex-core', () => {
           assert.isAbove(catalog.serviceGroups.postauth.length, 0);
           done();
         });
-
-        services.updateServices();
       });
 
       it('updates query.email to be emailhash-ed using SHA256', (done) => {
-        catalog.updateServiceUrls = sinon.stub().returns({}); // returns `this`
-        services._fetchNewServiceHostmap = sinon.stub().resolves();
+        const updateStub = sinon.stub(catalog, 'updateServiceGroups').returnsThis();
+        const fetchStub = sinon.stub(services, '_fetchNewServiceHostmap').resolves();
 
         services
           .updateServices({
@@ -710,6 +540,10 @@ describe('webex-core', () => {
               sinon.match.has('query', {emailhash: sinon.match(/\b[A-Fa-f0-9]{64}\b/)})
             );
             done();
+          })
+          .finally(() => {
+            updateStub.restore();
+            fetchStub.restore();
           });
       });
 
@@ -885,9 +719,6 @@ describe('webex-core', () => {
             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
             assert.equal(r.activated, false);
             assert.equal(r.exists, false);
-            assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
           }));
 
       it('validates new user with activationOptions suppressEmail false', () =>
@@ -901,9 +732,6 @@ describe('webex-core', () => {
             assert.equal(r.activated, false);
             assert.equal(r.exists, false);
             assert.equal(r.user.verificationEmailTriggered, true);
-            assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
           }));
 
       it.skip('validates new user with activationOptions suppressEmail true', () =>
@@ -917,9 +745,6 @@ describe('webex-core', () => {
             assert.equal(r.activated, false);
             assert.equal(r.exists, false);
             assert.equal(r.user.verificationEmailTriggered, false);
-            assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
           }));
 
       it('validates an inactive user', () => {
@@ -931,9 +756,6 @@ describe('webex-core', () => {
             assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
             assert.equal(r.activated, false, 'activated');
             assert.equal(r.exists, true, 'exists');
-            assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
           })
           .catch(() => {
             assert(true);
@@ -945,9 +767,6 @@ describe('webex-core', () => {
           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
           assert.equal(r.activated, true);
           assert.equal(r.exists, true);
-          assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-          assert.isAbove(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-          assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
         }));
 
       it('validates an existing EU user', () =>
@@ -955,9 +774,6 @@ describe('webex-core', () => {
           assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
           assert.equal(r.activated, true);
           assert.equal(r.exists, true);
-          assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-          assert.isAbove(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-          assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
         }));
 
       it('sends the prelogin user id as undefined when not specified', () => {
@@ -997,9 +813,10 @@ describe('webex-core', () => {
       let url;
 
       describe('when the service exists', () => {
-        beforeEach('collect valid service info', () => {
-          name = Object.keys(services.list())[0];
-          url = services.list(true)[name];
+        beforeEach(() => {
+          name = Object.keys(services._activeServices)[0];
+          const clusterId = services._activeServices[name];
+          url = catalog.get(clusterId);
         });
 
         describe('when using the name parameter property', () => {
@@ -1021,7 +838,7 @@ describe('webex-core', () => {
       describe('when the service does not exist', () => {
         let timeout;
 
-        beforeEach('set up the parameters', () => {
+        beforeEach(() => {
           name = 'not a service';
           url = 'http://not-a-service.com/resource';
           timeout = 1;
@@ -1038,6 +855,10 @@ describe('webex-core', () => {
         });
 
         describe('when using the name parameter property', () => {
+          afterEach(() => {
+            webex.internal.metrics.submitClientMetrics.restore();
+          });
+
           it('should return a rejected promise', () => {
             const submitMetrics = sinon.stub(webex.internal.metrics, 'submitClientMetrics');
             const waitForService = services.waitForService({name, timeout});
@@ -1062,7 +883,7 @@ describe('webex-core', () => {
         });
 
         describe('when the service will exist', () => {
-          beforeEach('collect existing service and clear the catalog', () => {
+          beforeEach(() => {
             name = 'metrics';
             url = services.get(name, true);
             catalog.clean();
@@ -1127,16 +948,6 @@ describe('webex-core', () => {
       const unauthServices = unauthWebex.internal.services;
       const forceRefresh = true;
 
-      it('updates the preauth catalog without email', () =>
-        unauthServices.collectPreauthCatalog().then(() => {
-          assert.isAbove(Object.keys(unauthServices.list()).length, 0);
-        }));
-
-      it('updates the preauth catalog with email', () =>
-        unauthServices.collectPreauthCatalog({email: webexUser.email}).then(() => {
-          assert.isAbove(Object.keys(unauthServices.list()).length, 0);
-        }));
-
       it('updates the preauth catalog with email along with additional timestamp to address cache control', (done) => {
         const updateServiceSpy = sinon.spy(unauthServices, 'updateServices');
         const fetchNewServiceHostmapSpy = sinon.spy(unauthServices, '_fetchNewServiceHostmap');
@@ -1181,18 +992,13 @@ describe('webex-core', () => {
       const unauthServices = unauthWebex.internal.services;
 
       it('requires an email as the parameter', () =>
-        unauthServices.collectPreauthCatalog().catch((e) => {
+        unauthServices.collectSigninCatalog().catch((e) => {
           assert(true, e);
         }));
 
       it('requires a token as the parameter', () =>
-        unauthServices.collectPreauthCatalog({email: 'email@website.com'}).catch((e) => {
+        unauthServices.collectSigninCatalog({email: 'email@website.com'}).catch((e) => {
           assert(true, e);
-        }));
-
-      it('updates the preauth catalog', () =>
-        unauthServices.collectPreauthCatalog({email: webexUser.email}).then(() => {
-          assert.isAbove(Object.keys(unauthServices.list()).length, 0);
         }));
     });
 
@@ -1238,4 +1044,4 @@ describe('webex-core', () => {
     });
   });
 });
-/* eslint-enable no-underscore-dangle */
+// /* eslint-enable no-underscore-dangle */
