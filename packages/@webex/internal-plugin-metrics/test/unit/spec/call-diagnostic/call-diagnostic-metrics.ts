@@ -3864,6 +3864,7 @@ describe('internal-plugin-metrics', () => {
                 clickCount: '1'
               }]
             },
+            key: "UcfFeatureUsage",
           },
           options
         );
@@ -3901,6 +3902,7 @@ describe('internal-plugin-metrics', () => {
                 clickCount: '1'
               }]
             },
+            key: "UcfFeatureUsage",
           },
           originTime: {
             sent: 'not_defined_yet',

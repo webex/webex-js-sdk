@@ -965,6 +965,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webexSubServiceType: this.getSubServiceType(meeting),
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
+      // hard code key value, for ucf usage report
+      key: 'UcfFeatureUsage',
     };
 
     const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
