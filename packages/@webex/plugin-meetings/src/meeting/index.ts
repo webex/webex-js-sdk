@@ -9717,7 +9717,7 @@ export default class Meeting extends StatelessWebexPlugin {
       ...reachabilityMetrics,
       subnet_reachable: isSubnetReachable,
       selected_cluster: selectedCluster,
-      selected_subnet: `${selectedSubnetFirstOctet}.X.X.X`,
+      selected_subnet: selectedSubnetFirstOctet ? `${selectedSubnetFirstOctet}.X.X.X` : null,
     };
   }
 }
