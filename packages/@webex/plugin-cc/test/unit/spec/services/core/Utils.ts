@@ -99,7 +99,7 @@ describe('Utils', () => {
         },
       };
 
-      Utils.getErrorDetails(error, 'silentReLogin', moduleName);
+      Utils.getErrorDetails(error, 'silentRelogin', moduleName);
 
       expect(LoggerProxy.error).not.toHaveBeenCalled();
       expect(WebexRequest.getInstance().uploadLogs).not.toHaveBeenCalled();

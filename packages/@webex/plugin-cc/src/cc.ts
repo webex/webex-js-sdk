@@ -612,6 +612,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             module: CC_FILE,
             method: METHODS.CONNECT_WEBSOCKET,
           });
+          // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
+          this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
 
           if (
             this.agentConfig.webRtcEnabled &&
