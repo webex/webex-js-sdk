@@ -125,7 +125,7 @@ export class BrbState {
    * @param {SendSlotManager} sendSlotManager - the send slot manager instance
    * @returns {Promise<void>}
    */
-  private async updateLocalState(sendSlotManager: SendSlotManager) {
+  private updateLocalState(sendSlotManager: SendSlotManager) {
     sendSlotManager.setSourceStateOverride(
       MediaType.VideoMain,
       this.state.client.enabled ? 'away' : null
