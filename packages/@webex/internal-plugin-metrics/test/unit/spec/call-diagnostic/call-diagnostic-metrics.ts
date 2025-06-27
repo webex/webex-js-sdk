@@ -3810,7 +3810,7 @@ describe('internal-plugin-metrics', () => {
 
     describe('#submitFeatureEvent', () => {
       it('should submit feature event successfully with meetingId', () => {
-        const prepareFeatureEventSpy = sinon.spy(cd, 'prepareFeatureEvent');
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallFeaturesSpy = sinon.spy(cd, 'submitToCallFeatures');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
 
@@ -3836,7 +3836,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         assert.calledWith(
-          prepareFeatureEventSpy,
+          prepareDiagnosticEventSpy,
           {
             name: 'client.feature.meeting.summary',
             canProceed: true,

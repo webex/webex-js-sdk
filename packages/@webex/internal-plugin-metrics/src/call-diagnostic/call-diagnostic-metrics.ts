@@ -432,27 +432,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     return event;
   }
 
-  prepareFeatureEvent(eventData: Event['event'], options: any) {
-    const {meetingId, triggeredTime} = options;
-    const origin = this.getOrigin(options, meetingId);
-
-    const event: Event = {
-      eventId: uuid.v4(),
-      version: 1,
-      origin,
-      originTime: {
-        triggered: triggeredTime || new Date().toISOString(),
-        // is overridden in prepareRequest batcher
-        sent: 'not_defined_yet',
-      },
-      // @ts-ignore
-      senderCountryCode: this.webex.meetings.geoHintInfo?.countryCode,
-      event: eventData,
-    };
-
-    return event;
-  }
-
   /**
    * Create feature event
    * @param name
@@ -483,7 +462,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     featureEventObject = merge(featureEventObject, payload);
 
     // append client event data to the call diagnostic event
-    const featureEvent = this.prepareFeatureEvent(featureEventObject, options);
+    const featureEvent = this.prepareDiagnosticEvent(featureEventObject, options);
 
     return featureEvent;
   }
