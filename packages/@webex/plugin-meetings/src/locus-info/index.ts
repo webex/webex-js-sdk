@@ -160,6 +160,22 @@ export default class LocusInfo extends EventsScope {
         } else {
           meeting.locusInfo.onFullLocus(res.body);
         }
+      })
+      .catch((e) => {
+        LoggerProxy.logger.info(
+          `Locus-info:index#doLocusSync --> getLocusDTO succeeded but failed to handle result, locus parser will resume but not all data may be synced (${e.toString()})`
+        );
+
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_SYNC_HANDLING_FAILED, {
+          correlationId: meeting.correlationId,
+          url,
+          reason: e.message,
+          errorName: e.name,
+          stack: e.stack,
+          code: e.code,
+        });
+      })
+      .finally(() => {
         // Notify parser to resume processing delta events.
         // Any deltas in the queue that have now been superseded by this sync will simply be ignored
         this.locusParser.resume();
@@ -818,6 +834,7 @@ export default class LocusInfo extends EventsScope {
           hasRecordingPausedChanged,
           hasMeetingContainerChanged,
           hasTranscribeChanged,
+          hasTranscribeSpokenLanguageChanged,
           hasManualCaptionChanged,
           hasEntryExitToneChanged,
           hasBreakoutChanged,
@@ -837,6 +854,7 @@ export default class LocusInfo extends EventsScope {
           hasStageViewChanged,
           hasAnnotationControlChanged,
           hasRemoteDesktopControlChanged,
+          hasPollingQAControlChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
@@ -952,6 +970,21 @@ export default class LocusInfo extends EventsScope {
           {
             transcribing,
             caption,
+          }
+        );
+      }
+
+      if (hasTranscribeSpokenLanguageChanged) {
+        const {spokenLanguage} = current.transcribe;
+
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+          {
+            spokenLanguage,
           }
         );
       }
@@ -1085,6 +1118,14 @@ export default class LocusInfo extends EventsScope {
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED,
           {state: current.rdcControl}
+        );
+      }
+
+      if (hasPollingQAControlChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED,
+          {state: current.pollingQAControl}
         );
       }
 

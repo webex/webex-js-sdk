@@ -40,6 +40,7 @@ ControlsUtils.parse = (controls: any) => {
     parsedControls.transcribe = {
       transcribing: controls.transcribe.transcribing,
       caption: controls.transcribe.caption,
+      spokenLanguage: controls.transcribe.spokenLanguage,
     };
   }
 
@@ -123,6 +124,12 @@ ControlsUtils.parse = (controls: any) => {
     };
   }
 
+  if (controls?.pollingQAControl) {
+    parsedControls.pollingQAControl = {
+      enabled: controls.pollingQAControl.enabled,
+    };
+  }
+
   return parsedControls;
 };
 
@@ -186,6 +193,11 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         !isEqual(previous?.transcribe?.transcribing, current?.transcribe?.transcribing) && // upon first join, previous?.record?.recording = undefined; thus, never going to be equal and will always return true
         (previous?.transcribe?.transcribing || current?.transcribe?.transcribing), // therefore, condition added to prevent false firings of #meeting:recording:stopped upon first joining a meeting
 
+      hasTranscribeSpokenLanguageChanged:
+        current?.transcribe &&
+        !isEqual(previous?.transcribe?.spokenLanguage, current?.transcribe?.spokenLanguage) &&
+        !!(previous?.transcribe?.spokenLanguage || current?.transcribe?.spokenLanguage),
+
       hasManualCaptionChanged:
         current?.manualCaptionControl &&
         !isEqual(previous?.manualCaptionControl?.enabled, current?.manualCaptionControl?.enabled) &&
@@ -229,6 +241,9 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
 
       hasRemoteDesktopControlChanged:
         current?.rdcControl?.enabled !== previous?.rdcControl?.enabled,
+
+      hasPollingQAControlChanged:
+        current?.pollingQAControl?.enabled !== previous?.pollingQAControl?.enabled,
     },
   };
 };
