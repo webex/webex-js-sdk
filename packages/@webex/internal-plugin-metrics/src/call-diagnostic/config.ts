@@ -5,7 +5,7 @@
 import {ClientEventError, ClientSubServiceType} from '../metrics.types';
 
 export const CALL_DIAGNOSTIC_LOG_IDENTIFIER = 'call-diagnostic-events -> ';
-export const CALL_FEATURE_LOG_IDENTIFIER = 'call-feature-events -> ';
+export const CALL_FEATURE_LOG_IDENTIFIER = 'call-diagnostic-events-feature -> ';
 
 export const AUTHENTICATION_FAILED_CODE = 1010;
 export const NETWORK_ERROR = 1026;

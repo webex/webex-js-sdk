@@ -3913,7 +3913,7 @@ describe('internal-plugin-metrics', () => {
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
         assert.deepEqual(webexLoggerLogCalls[1].args, [
-          'call-feature-events -> ',
+          'call-diagnostic-events-feature -> ',
           'CallFeatureMetrics: @submitFeatureEvent. Submit Client Feature Event CA event.',
           `name: client.feature.meeting.summary`,
         ]);

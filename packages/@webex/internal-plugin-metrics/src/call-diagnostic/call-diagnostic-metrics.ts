@@ -490,7 +490,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
   /**
    * Submit Feature Event
-   * submit to bussiness
+   * submit to business_ucf
    * @returns
    */
   public submitFeatureEvent({
@@ -965,7 +965,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webexSubServiceType: this.getSubServiceType(meeting),
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
-      // hard code key value, for ucf usage report
+
+      // for ucf usage report, hard code key value as UcfFeatureUsage
       key: 'UcfFeatureUsage',
     };
 
@@ -1180,12 +1181,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * Submit Delayed Client Event CA events. Clears delayedClientFeatureEvents array after submission.
+   * Submit Delayed feature Event CA events. Clears submitDelayedClientFeatureEvents array after submission.
    */
   public submitDelayedClientFeatureEvents(overrides?: Partial<DelayedClientEvent['options']>) {
     this.logger.log(
       CALL_FEATURE_LOG_IDENTIFIER,
-      'CallDiagnosticMetrics: @submitDelayedClientFeatureEvents. Submitting delayed client events.'
+      'CallDiagnosticMetrics: @submitDelayedClientFeatureEvents. Submitting delayed feature events.'
     );
 
     if (this.delayedClientFeatureEvents.length === 0) {
