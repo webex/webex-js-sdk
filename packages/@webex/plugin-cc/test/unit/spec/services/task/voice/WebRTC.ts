@@ -151,5 +151,36 @@ describe('WebRTC Task', () => {
       expect(webRtc.taskUiControls.mute.visible).toBe(true);
       expect(webRtc.taskUiControls.mute.enabled).toBe(true);
     });
+
+    it('setUIControls for AGENT_OFFER_CONTACT shows accept and decline', () => {
+      webRtc.updateTaskData({ ...data, type: CC_EVENTS.AGENT_OFFER_CONTACT });
+      expect(webRtc.taskUiControls.accept.visible).toBe(true);
+      expect(webRtc.taskUiControls.decline.visible).toBe(true);
+    });
+
+    it('setUIControls for AGENT_OFFER_CONSULT shows accept and decline', () => {
+      webRtc.updateTaskData({ ...data, type: CC_EVENTS.AGENT_OFFER_CONSULT });
+      expect(webRtc.taskUiControls.accept.visible).toBe(true);
+      expect(webRtc.taskUiControls.decline.visible).toBe(true);
+    });
+
+    it('setUIControls for AGENT_CONSULTING hides accept/decline and shows mute when consulted', () => {
+      webRtc.updateTaskData({ ...data, type: CC_EVENTS.AGENT_CONSULTING, isConsulted: true });
+      expect(webRtc.taskUiControls.accept.visible).toBe(false);
+      expect(webRtc.taskUiControls.decline.visible).toBe(false);
+      expect(webRtc.taskUiControls.mute.visible).toBe(true);
+      expect(webRtc.taskUiControls.mute.enabled).toBe(true);
+    });
+
+    it('setUIControls for AGENT_CONSULT_ENDED hides mute when consulted', () => {
+      webRtc.updateTaskData({ ...data, type: CC_EVENTS.AGENT_CONSULT_ENDED, isConsulted: true });
+      expect(webRtc.taskUiControls.mute.visible).toBe(false);
+    });
+
+    it('setUIControls for AGENT_CONTACT_OFFER_RONA hides accept and decline', () => {
+      webRtc.updateTaskData({ ...data, type: CC_EVENTS.AGENT_CONTACT_OFFER_RONA });
+      expect(webRtc.taskUiControls.accept.visible).toBe(false);
+      expect(webRtc.taskUiControls.decline.visible).toBe(false);
+    });
   });
 });

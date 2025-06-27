@@ -39,6 +39,54 @@ export default class WebRTC extends Voice implements IWebRTC {
   protected setUIControls(): void {
     super.setUIControls();
     switch (this.data.type) {
+      // show accept/decline only on normal web call offers
+      case CC_EVENTS.AGENT_OFFER_CONTACT:
+      case CC_EVENTS.AGENT_OFFER_CONSULT:
+        this.updateTaskUiControls({
+          accept: [true, true],
+          decline: [true, true],
+        });
+        break;
+
+      // on consult accepted hide accept/decline and show mute
+      case CC_EVENTS.AGENT_CONSULTING:
+        if (this.data.isConsulted) {
+          this.updateTaskUiControls({
+            accept: [false, false],
+            decline: [false, false],
+          });
+        }
+        this.updateTaskUiControls({
+          mute: [true, true],
+        });
+        break;
+
+      // when consult ends (and we were the recipient) hide mute
+      case CC_EVENTS.AGENT_CONSULT_ENDED:
+        if (this.data.isConsulted) {
+          this.updateTaskUiControls({
+            mute: [false, false],
+            accept: [false, false],
+            decline: [false, false],
+          });
+        }
+        break;
+
+      // hide accept/decline when RONA occurs
+      case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
+        this.updateTaskUiControls({
+          accept: [false, false],
+          decline: [false, false],
+        });
+        break;
+
+      // hide accept/decline when contact is ended by the external user
+      case CC_EVENTS.CONTACT_ENDED:
+        if (this.data.interaction.state === 'new') {
+          this.updateTaskUiControls({accept: [false, false], decline: [false, false]});
+        }
+        break;
+
       case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
         this.updateTaskUiControls({
           mute: [true, true],
