@@ -7,6 +7,14 @@ import METRICS from './metrics';
 import ServiceCatalog from './service-catalog';
 import fedRampServices from './service-fed-ramp';
 import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
+import {
+  ActiveServices,
+  IServiceCatalog,
+  QueryOptions,
+  Service,
+  ServiceGroup,
+  ServiceHostmap,
+} from './types';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
@@ -41,9 +49,9 @@ const Services = WebexPlugin.extend({
    * @private
    * Get the current catalog based on the assocaited
    * webex instance.
-   * @returns {ServiceCatalog}
+   * @returns {IServiceCatalog}
    */
-  _getCatalog() {
+  _getCatalog(): IServiceCatalog {
     return this._catalogs.get(this.webex);
   },
 
@@ -51,14 +59,23 @@ const Services = WebexPlugin.extend({
    * Get a service url from the current services list by name
    * from the associated instance catalog.
    * @param {string} name
-   * @param {boolean} [priorityHost]
-   * @param {string} [serviceGroup]
+   * @param {ServiceGroup} [serviceGroup]
    * @returns {string|undefined}
    */
-  get(name, priorityHost, serviceGroup) {
+  get(name: string, serviceGroup?: ServiceGroup): string | undefined {
     const catalog = this._getCatalog();
 
-    return catalog.get(name, priorityHost, serviceGroup);
+    const clusterId = this._activeServices[name];
+
+    const urlById = catalog.get(clusterId, serviceGroup);
+    const urlByName = catalog.get(name, serviceGroup);
+
+    // if both are undefined, then we cannot find the service
+    if (!urlById && !urlByName) {
+      return undefined;
+    }
+
+    return urlById || urlByName;
   },
 
   /**
@@ -66,59 +83,42 @@ const Services = WebexPlugin.extend({
    *
    * @returns {boolean} - True if a allowed domains list exists.
    */
-  hasAllowedDomains() {
+  hasAllowedDomains(): boolean {
     const catalog = this._getCatalog();
 
     return catalog.getAllowedDomains().length > 0;
   },
 
   /**
-   * Generate a service catalog as an object from
-   * the associated instance catalog.
-   * @param {boolean} [priorityHost] - use highest priority host if set to `true`
-   * @param {string} [serviceGroup]
-   * @returns {Record<string, string>}
-   */
-  list(priorityHost, serviceGroup) {
-    const catalog = this._getCatalog();
-
-    return catalog.list(priorityHost, serviceGroup);
-  },
-
-  /**
    * Mark a priority host service url as failed.
-   * This will mark the host associated with the
-   * `ServiceUrl` to be removed from the its
-   * respective host array, and then return the next
-   * viable host from the `ServiceUrls` host array,
-   * or the `ServiceUrls` default url if no other priority
-   * hosts are available, or if `noPriorityHosts` is set to
-   * `true`.
+   * This will mark the service url associated with the
+   * `ServiceDetail` to be removed from the its
+   * respective service url array, and then return the next
+   * viable service url from the `ServiceDetail` service url array.
    * @param {string} url
-   * @param {boolean} noPriorityHosts
    * @returns {string}
    */
-  markFailedUrl(url, noPriorityHosts) {
+  markFailedUrl(url: string): string | undefined {
     const catalog = this._getCatalog();
 
-    return catalog.markFailedUrl(url, noPriorityHosts);
+    return catalog.markFailedServiceUrl(url);
   },
 
   /**
    * saves all the services from the pre and post catalog service
-   * @param {Object} activeServices
+   * @param {ActiveServices} activeServices
    * @returns {void}
    */
-  _updateActiveServices(activeServices) {
+  _updateActiveServices(activeServices: ActiveServices): void {
     this._activeServices = {...this._activeServices, ...activeServices};
   },
 
   /**
    * saves the hostCatalog object
-   * @param {Object} services
+   * @param {Array<Service>} services
    * @returns {void}
    */
-  _updateServices(services) {
+  _updateServices(services: Array<Service>): void {
     this._services = unionBy(services, this._services, 'id');
   },
 
@@ -135,7 +135,14 @@ const Services = WebexPlugin.extend({
    * @param {string} [param.token] - used for signin catalog
    * @returns {Promise<object>}
    */
-  updateServices({from, query, token, forceRefresh} = {}) {
+  updateServices(
+    {from, query, token, forceRefresh} = {} as {
+      from: string;
+      query: QueryOptions;
+      token: string;
+      forceRefresh: boolean;
+    }
+  ): Promise<object> {
     const catalog = this._getCatalog();
     let formattedQuery;
     let serviceGroup;
@@ -188,7 +195,7 @@ const Services = WebexPlugin.extend({
       query: formattedQuery,
       forceRefresh,
     })
-      .then((serviceHostMap) => {
+      .then((serviceHostMap: ServiceHostmap) => {
         catalog.updateServiceGroups(serviceGroup, serviceHostMap);
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
@@ -283,7 +290,7 @@ const Services = WebexPlugin.extend({
           // Retrieve the service url from the updated catalog. This is required
           // since `WebexCore` is usually not fully initialized at the time this
           // request completes.
-          const idbrokerService = this.get('idbroker', true);
+          const idbrokerService = this.get('idbroker');
 
           // Collect the client auth token.
           return this.webex.credentials.getClientToken({
@@ -446,11 +453,11 @@ const Services = WebexPlugin.extend({
 
   /**
    * Updates a given service group i.e. preauth, signin, postauth with a new hostmap.
-   * @param {string} serviceGroup - preauth, signin, postauth
-   * @param {object} hostMap - The new hostmap to update the service group with.
+   * @param {ServiceGroup} serviceGroup - preauth, signin, postauth
+   * @param {ServiceHostmap} hostMap - The new hostmap to update the service group with.
    * @returns {Promise<void>}
    */
-  updateCatalog(serviceGroup, hostMap) {
+  updateCatalog(serviceGroup: ServiceGroup, hostMap: ServiceHostmap): Promise<void> {
     const catalog = this._getCatalog();
 
     const serviceHostMap = this._formatReceivedHostmap(hostMap);
@@ -467,7 +474,7 @@ const Services = WebexPlugin.extend({
    * @param {boolean} forceRefresh - Boolean to bypass u2c cache control header
    * @returns {Promise<void>}
    */
-  collectPreauthCatalog(query, forceRefresh = false) {
+  collectPreauthCatalog(query: QueryOptions, forceRefresh = false) {
     if (!query) {
       return this.updateServices({
         from: 'limited',
@@ -486,7 +493,9 @@ const Services = WebexPlugin.extend({
    * @param {string} param.token - must be a client token
    * @returns {Promise<void>}
    */
-  collectSigninCatalog({email, token, forceRefresh} = {}) {
+  collectSigninCatalog(
+    {email, token, forceRefresh} = {} as {email: string; token: string; forceRefresh: boolean}
+  ): Promise<void> {
     if (!email) {
       return Promise.reject(new Error('`email` is required'));
     }
@@ -507,25 +516,26 @@ const Services = WebexPlugin.extend({
    * urls.
    * @returns {void}
    */
-  updateCredentialsConfig() {
-    const {idbroker, identity} = this.list(true);
+  updateCredentialsConfig(): void {
+    const idbrokerUrl = this.get('idbroker');
+    const identityUrl = this.get('identity');
 
-    if (idbroker && identity) {
+    if (idbrokerUrl && identityUrl) {
       const {authorizationString, authorizeUrl} = this.webex.config.credentials;
 
       // This must be set outside of the setConfig method used to assign the
       // idbroker and identity url values.
       this.webex.config.credentials.authorizeUrl = authorizationString
         ? authorizeUrl
-        : `${idbroker.replace(trailingSlashes, '')}/idb/oauth2/v1/authorize`;
+        : `${idbrokerUrl.replace(trailingSlashes, '')}/idb/oauth2/v1/authorize`;
 
       this.webex.setConfig({
         credentials: {
           idbroker: {
-            url: idbroker.replace(trailingSlashes, ''), // remove trailing slash
+            url: idbrokerUrl.replace(trailingSlashes, ''), // remove trailing slash
           },
           identity: {
-            url: identity.replace(trailingSlashes, ''), // remove trailing slash
+            url: identityUrl.replace(trailingSlashes, ''), // remove trailing slash
           },
         },
       });
@@ -535,11 +545,11 @@ const Services = WebexPlugin.extend({
   /**
    * Wait until the service catalog is available,
    * or reject afte ra timeout of 60 seconds.
-   * @param {string} serviceGroup
+   * @param {ServiceGroup} serviceGroup
    * @param {number} [timeout] - in seconds
    * @returns {Promise<void>}
    */
-  waitForCatalog(serviceGroup, timeout) {
+  waitForCatalog(serviceGroup: ServiceGroup, timeout: number): Promise<void> {
     const catalog = this._getCatalog();
     const {supertoken} = this.webex.credentials;
 
@@ -576,7 +586,15 @@ const Services = WebexPlugin.extend({
    * @param {WaitForServicePTO} - The parameter transfer object.
    * @returns {Promise<string>} - Resolves to the priority host of a service.
    */
-  waitForService({name, timeout = 5, url}) {
+  waitForService({
+    name,
+    timeout = 5,
+    url,
+  }: {
+    name: string;
+    timeout: number;
+    url: string;
+  }): Promise<string> {
     const {services} = this.webex.config;
 
     // Save memory by grabbing the catalog after there isn't a priortyURL
@@ -587,10 +605,12 @@ const Services = WebexPlugin.extend({
     );
 
     if (fetchFromServiceUrl) {
-      return Promise.resolve(this._activeServices[name]);
+      const clusterId = this._activeServices[name];
+
+      return Promise.resolve(this.get(clusterId));
     }
 
-    const priorityUrl = this.get(name, true);
+    const priorityUrl = this.get(name);
     const priorityUrlObj = this.getServiceFromUrl(url);
 
     if (priorityUrl || priorityUrlObj) {
@@ -617,7 +637,7 @@ const Services = WebexPlugin.extend({
         catalog
           .waitForCatalog(catalogGroup, timeout)
           .then(() => {
-            const scopedPriorityUrl = this.get(name, true);
+            const scopedPriorityUrl = this.get(name);
             const scopedPrioriryUrlObj = this.getServiceFromUrl(url);
 
             if (scopedPriorityUrl || scopedPrioriryUrlObj) {
@@ -641,25 +661,12 @@ const Services = WebexPlugin.extend({
    * @param {string} uri
    * @returns {string} uri with the host replaced
    */
-  replaceHostFromHostmap(uri) {
-    const url = new URL(uri);
-    const hostCatalog = this._services;
-
-    if (!hostCatalog) {
+  replaceHostFromHostmap(uri: string): string {
+    try {
+      return this.convertUrlToPriorityHostUrl(uri);
+    } catch {
       return uri;
     }
-
-    const host = hostCatalog[url.host];
-
-    if (host && host[0]) {
-      const newHost = host[0].host;
-
-      url.host = newHost;
-
-      return url.toString();
-    }
-
-    return uri;
   },
 
   /**
@@ -687,9 +694,9 @@ const Services = WebexPlugin.extend({
   /**
    * @private
    * Organize a received hostmap from a service
-   * @param {object} serviceHostmap
+   * @param {ServiceHostmap} serviceHostmap
    * catalog endpoint.
-   * @returns {object}
+   * @returns {Array<Service>}
    */
   _formatReceivedHostmap({services, activeServices}) {
     const formattedHostmap = services.map((service) => this._formatHostMapEntry(service));
@@ -702,9 +709,9 @@ const Services = WebexPlugin.extend({
   /**
    * Get the clusterId associated with a URL string.
    * @param {string} url
-   * @returns {string} - Cluster ID of url provided
+   * @returns {string | undefined} - Cluster ID of url provided
    */
-  getClusterId(url) {
+  getClusterId(url: string): string | undefined {
     const catalog = this._getCatalog();
 
     return catalog.findClusterId(url);
@@ -715,13 +722,15 @@ const Services = WebexPlugin.extend({
    * return an object containing both the name and url of a found service.
    * @param {object} params
    * @param {string} params.clusterId - clusterId of found service
-   * @param {boolean} [params.priorityHost] - returns priority host url if true
-   * @param {string} [params.serviceGroup] - specify service group
+   * @param {ServiceGroup} [params.serviceGroup] - specify service group
    * @returns {object} service
    * @returns {string} service.name
    * @returns {string} service.url
    */
-  getServiceFromClusterId(params) {
+  getServiceFromClusterId(params: {
+    clusterId: string;
+    serviceGroup?: ServiceGroup;
+  }): {name: string; url: string} | undefined {
     const catalog = this._getCatalog();
 
     return catalog.findServiceFromClusterId(params);
@@ -733,7 +742,7 @@ const Services = WebexPlugin.extend({
    *  If empty, just return the base URL.
    * @returns {String} url of the service
    */
-  getServiceUrlFromClusterId({cluster = 'us'} = {}) {
+  getServiceUrlFromClusterId({cluster = 'us'} = {} as {cluster: string}): string {
     let clusterId = cluster === 'us' ? DEFAULT_CLUSTER_IDENTIFIER : cluster;
 
     // Determine if cluster has service name (non-US clusters from hydra do not)
@@ -758,20 +767,24 @@ const Services = WebexPlugin.extend({
    * @param {string} url - The url to be validated.
    * @returns {object} - Service object.
    * @returns {object.name} - The name of the service found.
-   * @returns {object.priorityUrl} - The priority url of the found service.
+   * @returns {object.priorityUrl} - The default url of the found service.
    * @returns {object.defaultUrl} - The default url of the found service.
    */
-  getServiceFromUrl(url = '') {
-    const service = this._getCatalog().findServiceUrlFromUrl(url);
+  getServiceFromUrl(
+    url = '' as string
+  ): {name: string; priorityUrl: string; defaultUrl: string} | undefined {
+    const service = this._getCatalog().findServiceDetailFromUrl(url);
 
     if (!service) {
       return undefined;
     }
 
+    const urlRet = service.get();
+
     return {
-      name: service.name,
-      priorityUrl: service.get(true),
-      defaultUrl: service.get(),
+      name: service.serviceName,
+      priorityUrl: urlRet,
+      defaultUrl: urlRet,
     };
   },
 
@@ -781,7 +794,7 @@ const Services = WebexPlugin.extend({
    * @param {string} url - The url to match allowed domains against.
    * @returns {boolean} - True if the url provided is allowed.
    */
-  isAllowedDomainUrl(url) {
+  isAllowedDomainUrl(url: string): boolean {
     const catalog = this._getCatalog();
 
     return !!catalog.findAllowedDomain(url);
@@ -795,14 +808,19 @@ const Services = WebexPlugin.extend({
    * @returns {string} a service url that contains the top priority host.
    * @throws if url isn't a service url
    */
-  convertUrlToPriorityHostUrl(url = '') {
+  convertUrlToPriorityHostUrl(url = '' as string): string {
     const data = this.getServiceFromUrl(url);
 
     if (!data) {
       throw Error(`No service associated with url: [${url}]`);
     }
 
-    return url.replace(data.defaultUrl, data.priorityUrl);
+    const priortyHost = new URL(data.priorityUrl).host;
+    const newUrl = new URL(url);
+
+    newUrl.host = priortyHost;
+
+    return newUrl.href;
   },
 
   /**
@@ -818,10 +836,17 @@ const Services = WebexPlugin.extend({
    * @param {string} [param.token] - used for signin catalog
    * @returns {Promise<object>}
    */
-  _fetchNewServiceHostmap({from, query, token, forceRefresh} = {}) {
+  _fetchNewServiceHostmap(
+    {from, query, token, forceRefresh} = {} as {
+      from: string;
+      query: QueryOptions;
+      token: string;
+      forceRefresh: boolean;
+    }
+  ): Promise<object> {
     const service = 'u2c';
     const resource = from ? `/${from}/catalog` : '/catalog';
-    const qs = {...(query || {}), format: 'hostmap'};
+    const qs = {...(query || {}), format: 'U2CV2'};
 
     if (forceRefresh) {
       qs.timestamp = new Date().getTime();
@@ -832,6 +857,7 @@ const Services = WebexPlugin.extend({
       service,
       resource,
       qs,
+      headers: {},
     };
 
     if (token) {
@@ -848,7 +874,7 @@ const Services = WebexPlugin.extend({
    *
    * @returns {void}
    */
-  initConfig() {
+  initConfig(): void {
     // Get the catalog and destructure the services config.
     const catalog = this._getCatalog();
     const {services, fedramp} = this.webex.config;
@@ -908,7 +934,7 @@ const Services = WebexPlugin.extend({
    *
    * @returns {Promise<void, Error>} - Errors if the token is unavailable.
    */
-  initServiceCatalogs() {
+  initServiceCatalogs(): Promise<void> {
     this.logger.info('services: initializing initial service catalogs');
 
     // Destructure the credentials plugin.
@@ -945,7 +971,7 @@ const Services = WebexPlugin.extend({
    * @memberof Services
    * @returns {Services}
    */
-  initialize() {
+  initialize(): typeof Services {
     const catalog = new ServiceCatalog();
     this._catalogs.set(this.webex, catalog);
 
