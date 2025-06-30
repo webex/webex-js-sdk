@@ -9704,12 +9704,32 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       await this.webex.meetings.reachability.getReachabilityMetrics();
 
+    const successKeys: Array<keyof ReachabilityMetrics> = [
+      'reachability_public_udp_success',
+      'reachability_public_tcp_success',
+      'reachability_public_xtls_success',
+      'reachability_vmn_udp_success',
+      'reachability_vmn_tcp_success',
+      'reachability_vmn_xtls_success',
+    ];
+
+    const totalSuccessCases = successKeys.reduce((total, key) => {
+      const value = reachabilityMetrics[key];
+      if (typeof value === 'number') {
+        return total + value;
+      }
+
+      return total;
+    }, 0);
+
     const selectedSubnetFirstOctet = this.mediaServerIp?.split('.')[0];
 
-    const isSubnetReachable = selectedSubnetFirstOctet
-      ? // @ts-ignore
-        this.webex.meetings.reachability.isSubnetReachable(selectedSubnetFirstOctet)
-      : null;
+    let isSubnetReachable = null;
+    if (totalSuccessCases > 0 && selectedSubnetFirstOctet) {
+      isSubnetReachable =
+        // @ts-ignore
+        this.webex.meetings.reachability.isSubnetReachable(selectedSubnetFirstOctet);
+    }
 
     const selectedCluster = this.mediaConnections?.[0]?.mediaAgentCluster ?? null;
 
