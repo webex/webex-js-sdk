@@ -1277,9 +1277,62 @@ describe('plugin-meetings', () => {
             })
           );
         });
+
+        it('should join with send-only audio and video', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              sendAudio: true,
+              receiveAudio: false,
+              sendVideo: true,
+              receiveVideo: false,
+              allowMediaInLobby: true,
+            },
+          });
+
+          assert.calledWithMatch(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match({
+              sendAudio: true,
+              receiveAudio: false,
+              sendVideo: true,
+              receiveVideo: false,
+              allowMediaInLobby: true,
+            })
+          );
+        });
+
+        it('should join with receive-only audio and video', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              sendAudio: false,
+              receiveAudio: true,
+              sendVideo: false,
+              receiveVideo: true,
+              allowMediaInLobby: true,
+            },
+          });
+
+          assert.calledWithMatch(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match({
+              sendAudio: false,
+              receiveAudio: true,
+              sendVideo: false,
+              receiveVideo: true,
+              allowMediaInLobby: true,
+            })
+          );
+        });
         
       });
-
       describe('#isTranscriptionSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {
           meeting.locusInfo.controls = {transcribe: {caption: false}};
