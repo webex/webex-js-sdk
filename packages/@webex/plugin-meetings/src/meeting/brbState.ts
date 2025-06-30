@@ -87,7 +87,7 @@ export class BrbState {
         `Meeting:brbState#applyClientStateToServer: client state already matching server state, nothing to do`
       );
 
-      this.updateLocalState(sendSlotManager);
+      this.updateSourceStateOverride(sendSlotManager);
 
       return Promise.resolve();
     }
@@ -125,7 +125,7 @@ export class BrbState {
    * @param {SendSlotManager} sendSlotManager - the send slot manager instance
    * @returns {Promise<void>}
    */
-  private updateLocalState(sendSlotManager: SendSlotManager) {
+  private updateSourceStateOverride(sendSlotManager: SendSlotManager) {
     sendSlotManager.setSourceStateOverride(
       MediaType.VideoMain,
       this.state.client.enabled ? 'away' : null
@@ -169,7 +169,7 @@ export class BrbState {
         selfId: this.meeting.selfId,
       })
       .then(() => {
-        this.updateLocalState(sendSlotManager);
+        this.updateSourceStateOverride(sendSlotManager);
       })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:brbState#sendLocalBrbStateToServer: Error ', error);
