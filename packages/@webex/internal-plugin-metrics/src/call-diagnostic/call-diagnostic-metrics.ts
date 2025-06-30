@@ -782,6 +782,105 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Create common object for in meeting events
+   * @param name
+   * @param options
+   * @param eventType - 'client' | 'feature'
+   * @returns object
+   */
+  private createCommonEventObjectInMeeting({
+    name,
+    options,
+    eventType = 'client',
+  }: {
+    name: string;
+    options?: SubmitClientEventOptions;
+    eventType?: 'client' | 'feature';
+  }) {
+    const {
+      meetingId,
+      mediaConnections,
+      globalMeetingId,
+      webexConferenceIdStr,
+      sessionCorrelationId,
+    } = options;
+
+    // @ts-ignore
+    const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
+
+    if (!meeting) {
+      console.warn(
+        'Attempt to send common event but no meeting was found...',
+        `name: ${name}, meetingId: ${meetingId}`
+      );
+      // @ts-ignore
+      this.webex.internal.metrics.submitClientMetrics(
+        eventType === 'feature'
+          ? CALL_FEATURE_EVENT_FAILED_TO_SEND
+          : CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND,
+        {
+          fields: {
+            meetingId,
+            name,
+          },
+        }
+      );
+
+      return undefined;
+    }
+
+    // grab identifiers
+    const identifiers = this.getIdentifiers({
+      meeting,
+      mediaConnections: meeting?.mediaConnections || mediaConnections,
+      webexConferenceIdStr,
+      globalMeetingId,
+      sessionCorrelationId,
+    });
+
+    // create common event object structur
+    const commonEventObject = {
+      name,
+      canProceed: true,
+      identifiers,
+      eventData: {
+        webClientDomain: window.location.hostname,
+      },
+      userType: meeting.getCurUserType(),
+      loginType:
+        'loginType' in meeting.callStateForMetrics
+          ? meeting.callStateForMetrics.loginType
+          : this.getCurLoginType(),
+      isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
+        meetingId,
+      }),
+      ...(meeting.userNameInput && {userNameInput: meeting.userNameInput}),
+      ...(meeting.emailInput && {emailInput: meeting.emailInput}),
+      webexSubServiceType: this.getSubServiceType(meeting),
+      // @ts-ignore
+      webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
+    };
+
+    const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
+    if (joinFlowVersion) {
+      // @ts-ignore
+      commonEventObject.joinFlowVersion = joinFlowVersion;
+    }
+    const meetingJoinedTime = meeting.isoLocalClientMeetingJoinTime;
+    if (meetingJoinedTime) {
+      // @ts-ignore
+      commonEventObject.meetingJoinedTime = meetingJoinedTime;
+    }
+
+    if (options.meetingJoinPhase) {
+      // @ts-ignore
+      commonEventObject.meetingJoinPhase = options.meetingJoinPhase;
+    }
+
+    return commonEventObject;
+  }
+
+  /**
    * Create client event object for in meeting events
    * @param arg - create args
    * @param arg.event - event key
@@ -797,81 +896,21 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options?: SubmitClientEventOptions;
     errors?: ClientEventPayloadError;
   }) {
-    const {
-      meetingId,
-      mediaConnections,
-      globalMeetingId,
-      webexConferenceIdStr,
-      sessionCorrelationId,
-    } = options;
-
-    // @ts-ignore
-    const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
-
-    if (!meeting) {
-      console.warn(
-        'Attempt to send client event but no meeting was found...',
-        `name: ${name}, meetingId: ${meetingId}`
-      );
-      // @ts-ignore
-      this.webex.internal.metrics.submitClientMetrics(CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND, {
-        fields: {
-          meetingId,
-          name,
-        },
-      });
-
-      return undefined;
-    }
-
-    // grab identifiers
-    const identifiers = this.getIdentifiers({
-      meeting,
-      mediaConnections: meeting?.mediaConnections || mediaConnections,
-      webexConferenceIdStr,
-      globalMeetingId,
-      sessionCorrelationId,
-    });
-
-    // create client event object
-    const clientEventObject: ClientEvent['payload'] = {
+    const commonObject = this.createCommonEventObjectInMeeting({
       name,
-      canProceed: true,
-      identifiers,
+      options,
+      eventType: 'client',
+    });
+    if (!commonObject) return undefined;
+
+    return {
+      ...commonObject,
       errors,
       eventData: {
-        webClientDomain: window.location.hostname,
+        ...commonObject.eventData,
         isMercuryConnected: this.isMercuryConnected,
       },
-      userType: meeting.getCurUserType(),
-      loginType:
-        'loginType' in meeting.callStateForMetrics
-          ? meeting.callStateForMetrics.loginType
-          : this.getCurLoginType(),
-      isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
-        meetingId,
-      }),
-      ...(meeting.userNameInput && {userNameInput: meeting.userNameInput}),
-      ...(meeting.emailInput && {emailInput: meeting.emailInput}),
-      webexSubServiceType: this.getSubServiceType(meeting),
-      // @ts-ignore
-      webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
-    };
-
-    const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
-    if (joinFlowVersion) {
-      clientEventObject.joinFlowVersion = joinFlowVersion;
-    }
-    const meetingJoinedTime = meeting.isoLocalClientMeetingJoinTime;
-    if (meetingJoinedTime) {
-      clientEventObject.meetingJoinedTime = meetingJoinedTime;
-    }
-
-    if (options.meetingJoinPhase) {
-      clientEventObject.meetingJoinPhase = options.meetingJoinPhase;
-    }
-
-    return clientEventObject;
+    } as ClientEvent['payload'];
   }
 
   /**
@@ -887,82 +926,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     name: FeatureEvent['name'];
     options?: SubmitClientEventOptions;
   }) {
-    const {
-      meetingId,
-      mediaConnections,
-      globalMeetingId,
-      webexConferenceIdStr,
-      sessionCorrelationId,
-    } = options;
-
-    // @ts-ignore
-    const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
-
-    if (!meeting) {
-      console.warn(
-        'Attempt to send client event but no meeting was found...',
-        `name: ${name}, meetingId: ${meetingId}`
-      );
-      // @ts-ignore
-      this.webex.internal.metrics.submitClientMetrics(CALL_FEATURE_EVENT_FAILED_TO_SEND, {
-        fields: {
-          meetingId,
-          name,
-        },
-      });
-
-      return undefined;
-    }
-
-    // grab identifiers
-    const identifiers = this.getIdentifiers({
-      meeting,
-      mediaConnections: meeting?.mediaConnections || mediaConnections,
-      webexConferenceIdStr,
-      globalMeetingId,
-      sessionCorrelationId,
-    });
-
-    // create feature event object
-    const featureEventObject: FeatureEvent['payload'] = {
+    const commonObject = this.createCommonEventObjectInMeeting({
       name,
-      canProceed: true,
-      identifiers,
-      eventData: {
-        webClientDomain: window.location.hostname,
-      },
-      userType: meeting.getCurUserType(),
-      loginType:
-        'loginType' in meeting.callStateForMetrics
-          ? meeting.callStateForMetrics.loginType
-          : this.getCurLoginType(),
-      isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
-        meetingId,
-      }),
-      ...(meeting.userNameInput && {userNameInput: meeting.userNameInput}),
-      ...(meeting.emailInput && {emailInput: meeting.emailInput}),
-      webexSubServiceType: this.getSubServiceType(meeting),
-      // @ts-ignore
-      webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
+      options,
+      eventType: 'feature',
+    });
+    if (!commonObject) return undefined;
 
-      // for ucf usage report, hard code key value as UcfFeatureUsage
+    return {
+      ...commonObject,
       key: 'UcfFeatureUsage',
-    };
-
-    const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
-    if (joinFlowVersion) {
-      featureEventObject.joinFlowVersion = joinFlowVersion;
-    }
-    const meetingJoinedTime = meeting.isoLocalClientMeetingJoinTime;
-    if (meetingJoinedTime) {
-      featureEventObject.meetingJoinedTime = meetingJoinedTime;
-    }
-
-    if (options.meetingJoinPhase) {
-      featureEventObject.meetingJoinPhase = options.meetingJoinPhase;
-    }
-
-    return featureEventObject;
+    } as FeatureEvent['payload'];
   }
 
   /**
