@@ -263,8 +263,9 @@ type FetchMeetingInfoParams = {
 };
 
 type MediaReachabilityMetrics = ReachabilityMetrics & {
-  isSubnetReachable: boolean;
-  selectedCluster: string | null;
+  subnet_reachable: boolean;
+  selected_cluster: string | null;
+  selected_subnet: string | null;
 };
 
 /**
@@ -9721,21 +9722,22 @@ export default class Meeting extends StatelessWebexPlugin {
       return total;
     }, 0);
 
+    const selectedSubnetFirstOctet = this.mediaServerIp?.split('.')[0];
+
     let isSubnetReachable = null;
-    if (totalSuccessCases > 0) {
-      // @ts-ignore
-      isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(this.mediaServerIp);
+    if (totalSuccessCases > 0 && selectedSubnetFirstOctet) {
+      isSubnetReachable =
+        // @ts-ignore
+        this.webex.meetings.reachability.isSubnetReachable(selectedSubnetFirstOctet);
     }
 
-    let selectedCluster = null;
-    if (this.mediaConnections && this.mediaConnections.length > 0) {
-      selectedCluster = this.mediaConnections[0].mediaAgentCluster;
-    }
+    const selectedCluster = this.mediaConnections?.[0]?.mediaAgentCluster ?? null;
 
     return {
       ...reachabilityMetrics,
-      isSubnetReachable,
-      selectedCluster,
+      subnet_reachable: isSubnetReachable,
+      selected_cluster: selectedCluster,
+      selected_subnet: selectedSubnetFirstOctet ? `${selectedSubnetFirstOctet}.X.X.X` : null,
     };
   }
 }
