@@ -598,11 +598,9 @@ function registerTaskListeners(task) {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
   task.on('task:end', (task) => {
-    incomingDetailsElm.innerText = '';
     if (currentTask.data.interactionId === task.data.interactionId) {
       if (!task.data.wrapUpRequired) {
-        answerElm.disabled = true;
-        declineElm.disabled = true;
+        setUIControls(task);
         console.log('Task ended without call being answered');
       }
       else {
@@ -611,6 +609,7 @@ function registerTaskListeners(task) {
       }
       updateTaskList(); // Update the task list UI to have latest tasks
       handleTaskSelect(task);
+      incomingDetailsElm.innerText = '';
     }
   });
 
@@ -1277,10 +1276,9 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 
   registerTaskListeners(currentTask);
 
-  if (currentTask.data.interaction.mediaType === 'telephony' && webex.cc.taskManager.webCallingService.loginOption !== 'BROWSER') {
+  if (currentTask.data.interaction.mediaType === 'telephony') {
     setUIControls(currentTask);
-  }
-  else {
+  } else {
     enableAnswerDeclineButtons(currentTask);
   }
 

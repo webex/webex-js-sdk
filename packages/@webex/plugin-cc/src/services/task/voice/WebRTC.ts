@@ -21,6 +21,7 @@ export default class WebRTC extends Voice implements IWebRTC {
     callOptions: {isEndCallEnabled?: boolean; isEndConsultEnabled?: boolean} = {}
   ) {
     super(contact, data, callOptions);
+    this.updateTaskUiControls({accept: [true, true], decline: [true, true]});
     this.webCallingService = webCallingService;
   }
 
@@ -36,12 +37,83 @@ export default class WebRTC extends Voice implements IWebRTC {
    * This method is used to set the UI controls for the specific type of task
    */
   protected setUIControls(): void {
-    // TODO: This implementation will change based on the type of task. We need to modify it appropriately, we can even read from task data rather than listening to events
+    super.setUIControls();
     switch (this.data.type) {
-      case CC_EVENTS.AGENT_CONTACT_RESERVED:
-        this.taskUiControls.accept.setEnabled(true);
+      // show accept/decline only on normal web call offers
+      case CC_EVENTS.AGENT_OFFER_CONTACT:
+      case CC_EVENTS.AGENT_OFFER_CONSULT:
+        this.updateTaskUiControls({
+          accept: [true, true],
+          decline: [true, true],
+        });
         break;
+
+      // on consult accepted hide accept/decline and show mute
+      case CC_EVENTS.AGENT_CONSULTING:
+        if (this.data.isConsulted) {
+          this.updateTaskUiControls({
+            accept: [false, false],
+            decline: [false, false],
+          });
+        }
+        this.updateTaskUiControls({
+          mute: [true, true],
+        });
+        break;
+
+      // when consult ends (and we were the recipient) hide mute
+      case CC_EVENTS.AGENT_CONSULT_ENDED:
+        if (this.data.isConsulted) {
+          this.updateTaskUiControls({
+            mute: [false, false],
+            accept: [false, false],
+            decline: [false, false],
+          });
+        }
+        break;
+
+      // hide accept/decline when RONA occurs
+      case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
+        this.updateTaskUiControls({
+          accept: [false, false],
+          decline: [false, false],
+        });
+        break;
+
+      // hide accept/decline when contact is ended by the external user
+      case CC_EVENTS.CONTACT_ENDED:
+        if (this.data.interaction.state === 'new') {
+          this.updateTaskUiControls({accept: [false, false], decline: [false, false]});
+        }
+        break;
+
+      case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
+        this.updateTaskUiControls({
+          mute: [true, true],
+        });
+        break;
+
+      case CC_EVENTS.AGENT_CONTACT_HELD:
+        // disable mute when call is held
+        this.updateTaskUiControls({
+          mute: [true, false],
+        });
+        break;
+
+      case CC_EVENTS.AGENT_CONTACT_UNHELD:
+        // enable mute when call is resumed
+        this.updateTaskUiControls({
+          mute: [true, true],
+        });
+        break;
+
       default:
+        // hide mute when wrapup is active
+        if (this.taskUiControls.wrapup.visible) {
+          this.updateTaskUiControls({
+            mute: [false, false],
+          });
+        }
         break;
     }
   }
