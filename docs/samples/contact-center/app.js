@@ -213,8 +213,6 @@ const taskEvents = new CustomEvent('task:incoming', {
 });
 
 function updateButtonsPostEndCall() {
-  disableAllCallControls();
-
   if (currentTask) {
     setUIControls(currentTask);
 
@@ -412,7 +410,6 @@ async function handleQueueConsult(consultPayload) {
     console.error('Failed to initiate queue consult', error);
     alert('Failed to initiate queue consult');
     // Restore UI state
-    refreshUIPostConsult();
     setUIControls(currentTask);
     currentConsultQueueId = null;
   }
@@ -421,7 +418,7 @@ async function handleQueueConsult(consultPayload) {
 // Updates UI state for queue consult initiation (have to do this as queue consult is initially UI)
 function updateConsultUI() {
   disableCallControlPostConsult();
-  disableTransferControls();
+  transferElm.disabled = true;
   endElm.style.display = 'none';
   endElm.disabled = true;
   endConsultBtn.style.display = 'inline-block';
@@ -449,7 +446,6 @@ async function initiateTransfer() {
   try {
     await currentTask.transfer(transferPayload);
     console.log('Transfer initiated successfully');
-    disableTransferControls();
     toggleTransferOptions(); // Hide the transfer options
   } catch (error) {
     console.error('Failed to initiate transfer', error);
@@ -542,45 +538,11 @@ function pressKey(value) {
   document.getElementById('outBoundDialNumber').value += value;
 }
 
-// Enable consult button after task is accepted
-function enableConsultControls() {
-  consultTabBtn.disabled = false;
-  consultTabBtn.style.display = 'inline-block';
-  endConsultBtn.style.display = 'none';
-}
-
-// Disable consult button after task is accepted
-function disableConsultControls() {
-  consultTabBtn.disabled = true;
-}
-
-// Enable transfer button after task is accepted
-function enableTransferControls() {
-  transferElm.disabled = false;
-}
-
-// Disable transfer button after task is accepted
-function disableTransferControls() {
-  transferElm.disabled = true;
-}
-
-// Disable all buttons post consulting
+// Disable all buttons post consulting (needed for queue consult UI changes)
 function disableCallControlPostConsult() {
   holdResumeElm.disabled = true;
   pauseResumeRecordingElm.disabled = true;
   endElm.disabled = true;
-}
-
-// Enable all buttons post consulting
-function enableCallControlPostConsult() {
-  holdResumeElm.disabled = false;
-  pauseResumeRecordingElm.disabled = false;
-  endElm.disabled = false;
-}
-
-function refreshUIPostConsult() {
-  enableCallControlPostConsult();
-  enableTransferControls();
 }
 
 // Register task listeners
@@ -740,9 +702,6 @@ function updateCallControlUI(task) {
   const { interaction, participants } = data.interaction
     ? { interaction: data.interaction, participants: data.interaction.participants, callProcessingDetails: data.interaction.callProcessingDetails }
     : {};
-  const hasParticipants = participants && Object.keys(participants).length > 1;
-  const isNew = data.interaction.state === 'new';
-  const digitalChannels = ['chat', 'email', 'social'];
 
   if (data.wrapUpRequired) {
     updateButtonsPostEndCall();
@@ -752,22 +711,8 @@ function updateCallControlUI(task) {
   wrapupElm.disabled = true;
   wrapupCodesDropdownElm.disabled = true;
 
-  if (isNew) {
-    disableAllCallControls();
-  } else if (digitalChannels.includes(interaction.mediaType)) {
-    holdResumeElm.disabled = true;
-    muteElm.disabled = true;
-    pauseResumeRecordingElm.disabled = true;
-    consultTabBtn.disabled = true;
-    declineElm.disabled = true;
-    transferElm.disabled = false;
-    endElm.disabled = !hasParticipants;
-    pauseResumeRecordingElm.disabled = true;
-  }
-  else if (interaction.mediaType === 'telephony') {
-    // apply UI controls driven by task.taskUiControls
-    setUIControls(task);
-
+  setUIControls(task);
+  if (interaction.mediaType === 'telephony') {
     // leave consult‐to‐queue UI unchanged
     const { consultMediaResourceId, destAgentId, destinationType } = data;
     if (consultMediaResourceId && destAgentId && destinationType) {
