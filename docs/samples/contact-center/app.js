@@ -77,6 +77,7 @@ const uploadLogsResultElm = document.getElementById('upload-logs-result');
 const agentLoginGenericError = document.getElementById('agent-login-generic-error');
 const agentLoginInputError = document.getElementById('agent-login-input-error');
 const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProfile');
+const remoteAudioElem = document.querySelector('#remote-audio');
 
 deregisterBtn.style.backgroundColor = 'red';
 
@@ -539,7 +540,8 @@ function registerTaskListeners(task) {
     }
   });
   task.on('task:media', (track) => {
-    document.getElementById('remote-audio').srcObject = new MediaStream([track]);
+    remoteAudioElem.srcObject = new MediaStream([track]);
+    remoteAudioElem.play().catch(() => {});
   });
   task.on('task:end', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
@@ -1562,10 +1564,10 @@ function handleTaskSelect(task) {
   // update incoming details messaging
   incomingDetailsElm.innerText = buildIncomingText(task);
 
-   engageElm.innerHTML = ``;
-   engageElm.style.height = "100px"
-   const chatAndSocial = ['chat', 'social'];
-   currentTask = task
+  engageElm.innerHTML = ``;
+  engageElm.style.height = "100px"
+  const chatAndSocial = ['chat', 'social'];
+  currentTask = task
  if (chatAndSocial.includes(task.data.interaction.mediaType) && isBundleLoaded && !task.data.wrapUpRequired) {
     loadChatWidget(task);
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {

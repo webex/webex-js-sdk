@@ -14,11 +14,13 @@ describe('Digital Task', () => {
   let dummyContact: { accept: jest.Mock<Promise<any>> };
 
   beforeEach(() => {
-    dummyContact = { accept: jest.fn().mockResolvedValue({ status: 'ok' }) };
+    dummyContact = {
+      accept: jest.fn().mockResolvedValue({ status: 'ok' }),
+    };
   });
 
   it('accept() calls contact.accept with interactionId', async () => {
-    const task = new Digital(dummyContact as any, dummyData);
+    const task = new Digital(dummyContact, dummyData);
     const res = await task.accept();
     expect(dummyContact.accept).toHaveBeenCalledWith({ interactionId: 'dig1' });
     expect(res).toEqual({ status: 'ok' });
@@ -26,13 +28,13 @@ describe('Digital Task', () => {
 
   it('accept() throws when contact.accept rejects', async () => {
     const error = new Error('Error while performing accept');
-    dummyContact.accept.mockRejectedValue(error);
-    const task = new Digital(dummyContact as any, dummyData);
+    (dummyContact.accept as jest.Mock).mockRejectedValue(error);
+    const task = new Digital(dummyContact, dummyData);
     await expect(task.accept()).rejects.toThrow('Error while performing accept');
   });
 
   it('constructor enables accept by default', () => {
-    const task = new Digital(dummyContact as any, dummyData);
+    const task = new Digital(dummyContact, dummyData);
     // after constructor, accept visible & enabled
     expect(task.taskUiControls.accept.visible).toBe(true);
     expect(task.taskUiControls.accept.enabled).toBe(true);
@@ -45,13 +47,13 @@ describe('Digital Task', () => {
         interaction: { isTerminated: false, state: 'new' },
         ...data,
       } as TaskData;
-      const task = new Digital(dummyContact as any, full);
+      const task = new Digital(dummyContact, full);
       task.updateTaskData(full);
       return task.taskUiControls;
     }
 
     it('new state shows accept only', () => {
-      const ctrl = make({ type: CC_EVENTS.AGENT_CONTACT, interaction: { isTerminated: false, state: 'new' } as any });
+      const ctrl = make({ type: CC_EVENTS.AGENT_CONTACT, interaction: { isTerminated: false, state: 'new' } } as Partial<TaskData> & { type: string });
       expect(ctrl.accept.visible).toBe(true);
       expect(ctrl.transfer.visible).toBe(false);
       expect(ctrl.end.visible).toBe(false);
@@ -59,14 +61,15 @@ describe('Digital Task', () => {
     });
 
     it('connected state shows transfer and end', () => {
-      const ctrl = make({ type: CC_EVENTS.AGENT_CONTACT, interaction: { isTerminated: false, state: 'connected' } as any });
+      const ctrl = make({ type: CC_EVENTS.AGENT_CONTACT, interaction: { isTerminated: false, state: 'connected' } } as Partial<TaskData> & { type: string });
+      expect(ctrl.accept.visible).toBe(false);
       expect(ctrl.transfer.visible).toBe(true);
       expect(ctrl.end.visible).toBe(true);
       expect(ctrl.wrapup.visible).toBe(false);
     });
 
     it('terminated shows wrapup only', () => {
-      const ctrl = make({ type: CC_EVENTS.AGENT_CONTACT, interaction: { isTerminated: true, state: 'connected' } as any });
+      const ctrl = make({ type: CC_EVENTS.AGENT_CONTACT, interaction: { isTerminated: true, state: 'connected' } } as Partial<TaskData> & { type: string });
       expect(ctrl.transfer.visible).toBe(false);
       expect(ctrl.end.visible).toBe(false);
       expect(ctrl.wrapup.visible).toBe(true);
@@ -81,7 +84,7 @@ describe('Digital Task', () => {
         type,
         interaction: { isTerminated: false, state: 'new' },
       } as TaskData;
-      const task = new Digital(dummyContact as any, data);
+      const task = new Digital(dummyContact, data);
       task.updateTaskData(data);
       return task.taskUiControls;
     }

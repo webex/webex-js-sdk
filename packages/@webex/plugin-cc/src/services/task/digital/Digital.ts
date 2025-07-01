@@ -106,6 +106,7 @@ export default class Digital extends Task implements IDigital {
           });
         } else if (this.data.interaction.state === 'connected') {
           this.updateTaskUiControls({
+            accept: [false, false],
             transfer: [true, true],
             end: [true, true],
           });
