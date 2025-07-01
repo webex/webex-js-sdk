@@ -1289,8 +1289,21 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 
   registerTaskListeners(currentTask);
 
-  // delegate to single handler for both voice and digital
-  handleTaskSelect(currentTask);
+  // drive all UI via task.taskUiControls; still show type‐specific incoming text
+  setUIControls(currentTask);
+  const { mediaType, callAssociatedDetails } = currentTask.data.interaction;
+  const callerDisplay = callAssociatedDetails?.ani;
+  const label = mediaType === 'email'
+    ? 'Email'
+    : ['chat','social'].includes(mediaType)
+      ? 'Chat'
+      : 'Call';
+  if (mediaType === 'telephony' && webex.cc.taskManager.webCallingService.loginOption !== 'BROWSER') {
+    incomingDetailsElm.innerText = `${label} from ${callerDisplay}… please answer on your registered endpoint`;
+  }
+  else {
+    incomingDetailsElm.innerText = `${label} from ${callerDisplay}`;
+  }
 });
 
 /**
