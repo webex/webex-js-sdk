@@ -212,24 +212,6 @@ const taskEvents = new CustomEvent('task:incoming', {
   },
 });
 
-function updateButtonsPostEndCall() {
-  if (currentTask) {
-    setUIControls(currentTask);
-
-    const wctrl = currentTask.taskUiControls.wrapup;
-    wrapupElm.style.display = wctrl.visible ? 'inline-block' : 'none';
-    wrapupElm.disabled = !wctrl.enabled;
-    wrapupCodesDropdownElm.style.display = wctrl.visible ? 'inline-block' : 'none';
-    wrapupCodesDropdownElm.disabled = !wctrl.enabled;
-  }
-  else {
-    wrapupElm.style.display = 'none';
-    wrapupElm.disabled = true;
-    wrapupCodesDropdownElm.style.display = 'none';
-    wrapupCodesDropdownElm.disabled = true;
-  }
-}
-
 function showInitiateConsultDialog() {
   initiateConsultDialog.showModal();
 }
@@ -702,14 +684,6 @@ function updateCallControlUI(task) {
   const { interaction, participants } = data.interaction
     ? { interaction: data.interaction, participants: data.interaction.participants, callProcessingDetails: data.interaction.callProcessingDetails }
     : {};
-
-  if (data.wrapUpRequired) {
-    updateButtonsPostEndCall();
-    return;
-  }
-
-  wrapupElm.disabled = true;
-  wrapupCodesDropdownElm.disabled = true;
 
   setUIControls(task);
   if (interaction.mediaType === 'telephony') {
