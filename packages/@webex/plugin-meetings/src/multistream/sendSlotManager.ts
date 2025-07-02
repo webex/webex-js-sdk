@@ -113,7 +113,7 @@ export default class SendSlotManager {
       throw new Error(`Slot for ${mediaType} does not exist`);
     }
 
-    const currentStateOverride = this.sourceStateOverrides.get(mediaType) || null;
+    const currentStateOverride = this.getSourceStateOverride(mediaType);
     if (currentStateOverride === state) {
       return;
     }
