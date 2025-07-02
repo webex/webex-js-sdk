@@ -108,6 +108,8 @@ describe('plugin-metrics', () => {
             .returns(10);
           webex.internal.newMetrics.callDiagnosticLatencies.getDownloadIntelligenceModelsReqResp =
             sinon.stub().returns(42);
+          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitialWithUserDelay =
+            sinon.stub().returns(12);
 
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
@@ -127,6 +129,7 @@ describe('plugin-metrics', () => {
               meetingInfoReqResp: 10,
               refreshCaptchaServiceReqResp: 10,
               downloadIntelligenceModelsReqResp: 42,
+              clickToInterstitialWithUserDelay: 12,
             },
           });
           assert.lengthOf(
@@ -183,9 +186,15 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getCallInitJoinReq = sinon
             .stub()
             .returns(10);
-            webex.internal.newMetrics.callDiagnosticLatencies.getDownloadTimeJMT = sinon
+          webex.internal.newMetrics.callDiagnosticLatencies.getDownloadTimeJMT = sinon
             .stub()
             .returns(100);
+          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitialWithUserDelay = sinon
+            .stub()
+            .returns(43);
+          webex.internal.newMetrics.callDiagnosticLatencies.getTotalJMTWithUserDelay = sinon
+            .stub()
+            .returns(64);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.locus.join.response'}}
@@ -209,6 +218,8 @@ describe('plugin-metrics', () => {
               totalJmt: 20,
               clientJmt: 5,
               downloadTime: 100,
+              clickToInterstitialWithUserDelay: 43,
+              totalJMTWithUserDelay: 64,
             },
           });
           assert.lengthOf(
@@ -338,6 +349,12 @@ describe('plugin-metrics', () => {
             webex.internal.newMetrics.callDiagnosticLatencies.getStayLobbyTime = sinon
             .stub()
             .returns(1);
+          webex.internal.newMetrics.callDiagnosticLatencies.getTotalMediaJMTWithUserDelay = sinon
+            .stub()
+            .returns(43);
+          webex.internal.newMetrics.callDiagnosticLatencies.getTotalJMTWithUserDelay = sinon
+            .stub()
+            .returns(64);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.media-engine.ready'}}
@@ -356,6 +373,8 @@ describe('plugin-metrics', () => {
               interstitialToMediaOKJMT: 22,
               callInitMediaEngineReady: 10,
               stayLobbyTime: 1,
+              totalMediaJMTWithUserDelay: 43,
+              totalJMTWithUserDelay: 64,
             },
           });
           assert.lengthOf(
@@ -441,7 +460,7 @@ describe('plugin-metrics', () => {
         // item also gets assigned a delay property but the key is a Symbol and haven't been able to test that..
         assert.deepEqual(calls.args[0].eventPayload, {
           event: 'my.event',
-          origin: {buildType: 'test', networkType: 'unknown'},
+          origin: {buildType: 'test', networkType: 'unknown', upgradeChannel: 'test'},
         });
 
         assert.deepEqual(calls.args[0].type, ['diagnostic-event']);
@@ -455,6 +474,7 @@ describe('plugin-metrics', () => {
           origin: {
             buildType: 'test',
             networkType: 'unknown',
+            upgradeChannel: 'test',
           },
         });
         assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[1].type, ['diagnostic-event']);

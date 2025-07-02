@@ -41,6 +41,8 @@ import {
   getXsiActionEndpoint,
   getVgActionEndpoint,
   filterMobiusUris,
+  modifySdpForIPv4,
+  uploadLogs,
 } from './Utils';
 import {
   getVoicemailListJsonWXC,
@@ -55,13 +57,15 @@ import {
   WEBEX_API_BTS,
 } from './constants';
 import {CALL_EVENT_KEYS} from '../Events/types';
+import SDKConnector from '../SDKConnector';
 
 const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
 const mockRestoreCb = jest.fn();
+const mock429RetryCb = jest.fn();
 
 const webex = getTestUtilsWebex();
-
+SDKConnector.setWebex(webex);
 webex.internal.metrics.submitClientMetrics = mockSubmitRegistrationMetric;
 
 describe('Mobius service discovery tests', () => {
@@ -120,54 +124,66 @@ describe('Registration Tests', () => {
     logMsg: string;
   }[] = [
     {
+      name: 'verify 429 error response',
+      statusCode: ERROR_CODE.TOO_MANY_REQUESTS,
+      deviceErrorCode: 0,
+      retryAfter: 30,
+      message: '',
+      errorType: ERROR_TYPE.REGISTRATION_ERROR,
+      emitterCbExpected: false,
+      finalError: false,
+      retry429CbExpected: true,
+      restoreCbExpected: false,
+      logMsg: '429 Too Many Requests',
+    },
+    {
       name: 'verify 404 error response',
       statusCode: ERROR_CODE.DEVICE_NOT_FOUND,
       deviceErrorCode: 0,
-      retryAfter: 0,
-      message:
-        'The client has unregistered. Please wait for the client to register before attempting the call. If error persists, sign out, sign back in and attempt the call.',
+      message: 'Webex Calling is unable to find your device. Sign out, then sign back in',
       errorType: ERROR_TYPE.NOT_FOUND,
       emitterCbExpected: true,
       finalError: true,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: '404 Device Not Found',
     },
     {
       name: 'verify 500 error response',
       statusCode: ERROR_CODE.INTERNAL_SERVER_ERROR,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message: 'An unknown error occurred while placing the request. Wait a moment and try again.',
       errorType: ERROR_TYPE.SERVICE_UNAVAILABLE,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: '500 Internal Server Error',
     },
     {
       name: 'verify 503 error response',
       statusCode: ERROR_CODE.SERVICE_UNAVAILABLE,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message:
         'An error occurred on the server while processing the request. Wait a moment and try again.',
       errorType: ERROR_TYPE.SERVICE_UNAVAILABLE,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: '503 Service Unavailable',
     },
     {
       name: 'verify 403 response with no response body',
       statusCode: ERROR_CODE.FORBIDDEN,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message:
         'An unauthorized action has been received. This action has been blocked. Please contact the administrator if this persists.',
       errorType: ERROR_TYPE.FORBIDDEN_ERROR,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: 'Error response has no body, throwing default error',
       customBodyPresent: true,
       body: undefined,
@@ -176,38 +192,38 @@ describe('Registration Tests', () => {
       name: 'verify 403 response with unknown device.errorCode',
       statusCode: ERROR_CODE.FORBIDDEN,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message:
         'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.',
       errorType: ERROR_TYPE.FORBIDDEN_ERROR,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: 'Error code found : 0',
     },
     {
       name: 'verify 403 response with code 101',
       statusCode: ERROR_CODE.FORBIDDEN,
       deviceErrorCode: DEVICE_ERROR_CODE.DEVICE_LIMIT_EXCEEDED,
-      retryAfter: 0,
       message: 'User device limit exceeded',
       errorType: ERROR_TYPE.FORBIDDEN_ERROR,
       emitterCbExpected: false,
       finalError: false,
       restoreCbExpected: true,
+      retry429CbExpected: false,
       logMsg: 'User device limit exceeded',
     },
     {
       name: 'verify 403 response with code 102',
       statusCode: ERROR_CODE.FORBIDDEN,
       deviceErrorCode: DEVICE_ERROR_CODE.DEVICE_CREATION_DISABLED,
-      retryAfter: 0,
       message:
         'User is not configured for WebRTC calling. Please contact the administrator to resolve this issue.',
       errorType: ERROR_TYPE.FORBIDDEN_ERROR,
       emitterCbExpected: true,
       finalError: true,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg:
         'User is not configured for WebRTC calling. Please contact the administrator to resolve this issue.',
     },
@@ -215,13 +231,13 @@ describe('Registration Tests', () => {
       name: 'verify 403 response with code 103',
       statusCode: ERROR_CODE.FORBIDDEN,
       deviceErrorCode: DEVICE_ERROR_CODE.DEVICE_CREATION_FAILED,
-      retryAfter: 0,
       message:
         'An unknown error occurred while provisioning the device. Wait a moment and try again.',
       errorType: ERROR_TYPE.FORBIDDEN_ERROR,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg:
         'An unknown error occurred while provisioning the device. Wait a moment and try again.',
     },
@@ -229,24 +245,37 @@ describe('Registration Tests', () => {
       name: 'verify 401 error response',
       statusCode: ERROR_CODE.UNAUTHORIZED,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message: 'User is unauthorized due to an expired token. Sign out, then sign back in.',
       errorType: ERROR_TYPE.TOKEN_ERROR,
       emitterCbExpected: true,
       finalError: true,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: '401 Unauthorized',
+    },
+    {
+      name: 'verify 400 error response',
+      statusCode: ERROR_CODE.BAD_REQUEST,
+      deviceErrorCode: 0,
+      message:
+        'Invalid input. Please verify the required parameters, sign out and then sign back in with the valid data',
+      errorType: ERROR_TYPE.SERVER_ERROR,
+      emitterCbExpected: true,
+      finalError: true,
+      restoreCbExpected: false,
+      retry429CbExpected: false,
+      logMsg: '400 Bad Request',
     },
     {
       name: 'verify unknown error response',
       statusCode: 206,
       deviceErrorCode: 0,
-      retryAfter: 0,
       message: 'Unknown error',
       errorType: ERROR_TYPE.DEFAULT,
       emitterCbExpected: true,
       finalError: false,
       restoreCbExpected: false,
+      retry429CbExpected: false,
       logMsg: 'Unknown Error',
     },
   ].map((stat) =>
@@ -268,6 +297,7 @@ describe('Registration Tests', () => {
       statusCode: codeObj.statusCode,
       headers: {
         trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
+        ...(codeObj.retryAfter && {'retry-after': codeObj.retryAfter.toString()}),
       },
       body: {
         device: {
@@ -302,7 +332,7 @@ describe('Registration Tests', () => {
       RegistrationStatus.ACTIVE
     );
 
-    handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, mockRestoreCb);
+    handleRegistrationErrors(webexPayload, mockEmitterCb, logObj, mock429RetryCb, mockRestoreCb);
     if (codeObj.emitterCbExpected) {
       expect(mockEmitterCb).toBeCalledOnceWith(callClientError, codeObj.finalError);
     }
@@ -310,6 +340,12 @@ describe('Registration Tests', () => {
       expect(mockRestoreCb).toBeCalledOnceWith(webexPayload.body, logObj.method);
     } else {
       expect(mockRestoreCb).not.toHaveBeenCalled();
+    }
+
+    if (codeObj.retry429CbExpected) {
+      expect(mock429RetryCb).toBeCalledOnceWith(codeObj.retryAfter, logObj.method);
+    } else {
+      expect(mock429RetryCb).not.toHaveBeenCalled();
     }
 
     expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${codeObj.statusCode}`, logObj);
@@ -1371,5 +1407,334 @@ describe('Get endpoint by CALLING_BACKEND tests', () => {
 
   it('verify invalid calling backend wxc for vg endpoint', async () => {
     expect(await getVgActionEndpoint(webex, CALLING_BACKEND.WXC)).toBeInstanceOf(Error);
+  });
+});
+
+describe('Get XSI Action Endpoint tests', () => {
+  const mockWebex: any = {
+    request: jest.fn(),
+    internal: {
+      services: {
+        _serviceUrls: {
+          wdm: 'https://fake-webex-url.com',
+        },
+      },
+    },
+  };
+
+  const loggerContext = {
+    file: 'testFile',
+    method: 'testMethod',
+  };
+
+  it('should return xsiEndpoint for BWRKS backend when URL ends with /v2.0', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com/v2.0',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+
+  it('should return xsiEndpoint for BWRKS backend when URL ends with /v2.0/', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com/v2.0/',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+
+  it('should return xsiEndpoint for BWRKS backend when URL does not end with any version', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+});
+
+describe('modifySdpForIPv4', () => {
+  it('should return original SDP if input is empty', () => {
+    expect(modifySdpForIPv4('')).toBe('');
+  });
+
+  it('should return original SDP if there is no IPv6 c= line', () => {
+    const sdp = `v=0\no=- 12345 67890 IN IP4 192.168.1.1\n\ns=Test Session`;
+    expect(modifySdpForIPv4(sdp)).toEqual(sdp);
+  });
+
+  it('should replace IPv6 c= line with default IPv4 if no IPv4 candidate exists', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host\na=candidate:2 1 UDP 2122260223 192.1.1.1 3478 typ host generation 0 network-id 1 network-cost 10`;
+    const result = modifySdpForIPv4(sdp);
+    expect(result).toEqual(expectedSdp);
+  });
+
+  it('should replace IPv6 c= line with an existing IPv4 candidate address', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    a=candidate:1 1 UDP 2122260223 192.168.1.2 3478 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.168.1.2\na=candidate:1 1 UDP 2122260223 192.168.1.2 3478 typ host`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
+  });
+
+  it('should correctly handle both UDP and TCP candidates by adding only one IPv4 candidate UDP first', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host
+    a=candidate:2 1 TCP 2122260223 2001:db8::2 3479 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host\na=candidate:2 1 UDP 2122260223 192.1.1.1 3478 typ host generation 0 network-id 1 network-cost 10\na=candidate:2 1 TCP 2122260223 2001:db8::2 3479 typ host\n`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
+  });
+
+  it('should correctly handle both UDP and TCP candidates by adding only one IPv4 candidate TCP first', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    a=candidate:1 1 TCP 2122260223 2001:db8::2 3479 typ host
+    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\na=candidate:1 1 TCP 2122260223 2001:db8::2 3479 typ host\na=candidate:2 1 TCP 2122260223 192.1.1.1 3479 typ host generation 0 network-id 1 network-cost 10\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
+  });
+
+  it('should replace all IPv6 c= line if multiple exist', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    c=IN IP6 2001:db8::2
+    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\nc=IN IP4 192.1.1.1\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host\na=candidate:2 1 UDP 2122260223 192.1.1.1 3478 typ host generation 0 network-id 1 network-cost 10`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
+  });
+
+  it('should not modify SDP if IPv6 c= line is absent and IPv4 candidate already exists', () => {
+    const sdp = `v=0\no=- 12345 67890 IN IP4 192.168.1.1\ns=Test Session\nc=IN IP4 192.168.1.1\na=candidate:1 1 UDP 2122260223 192.168.1.1 3478 typ host`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(sdp.trim());
+  });
+
+  it('should handle malformed SDP gracefully and return unmodified input', () => {
+    const malformedSdp = `random text without proper format`;
+
+    expect(modifySdpForIPv4(malformedSdp).trim()).toEqual(malformedSdp.trim());
+  });
+
+  it('should handle an SDP with both IP6 and IP4 c= lines correctly', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    c=IN IP4 192.168.1.3
+    a=candidate:1 1 UDP 2122260223 192.168.1.3 3478 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.168.1.3\nc=IN IP4 192.168.1.3\na=candidate:1 1 UDP 2122260223 192.168.1.3 3478 typ host`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
+  });
+});
+
+describe('uploadLogs', () => {
+  let originalCrypto;
+  let submitLogsMock;
+
+  beforeEach(() => {
+    // Save original crypto and mock it
+    originalCrypto = global.crypto;
+    global.crypto = {
+      randomUUID: jest.fn().mockReturnValue('mocked-uuid-12345'),
+    } as unknown as Crypto;
+
+    // Mock the metrics manager submit function directly
+    mockSubmitRegistrationMetric.mockClear();
+
+    // Mock webex.internal.support.submitLogs
+    submitLogsMock = jest.fn().mockResolvedValue({trackingid: '1234'});
+    webex.internal.support = {
+      submitLogs: submitLogsMock,
+    };
+  });
+
+  afterEach(() => {
+    // Restore original crypto
+    global.crypto = originalCrypto;
+    jest.clearAllMocks();
+  });
+
+  it('should upload logs and return the response', async () => {
+    const mockMetaData = {correlationId: 'test-correlation'};
+    const logSpy = jest.spyOn(log, 'info');
+
+    const result = await uploadLogs(mockMetaData, true);
+
+    expect(result).toEqual({trackingid: '1234', feedbackId: 'mocked-uuid-12345'});
+    expect(logSpy).toHaveBeenCalledWith(
+      `Logs uploaded successfully with feedbackId: mocked-uuid-12345`,
+      {
+        file: UTILS_FILE,
+        method: 'uploadLogs',
+      }
+    );
+    expect(mockSubmitRegistrationMetric).toHaveBeenCalledWith(
+      'web-calling-sdk-upload-logs-success',
+      {
+        fields: {
+          call_id: undefined,
+          calling_sdk_version: 'unknown',
+          correlation_id: 'test-correlation',
+          device_url: undefined,
+          feedback_id: 'mocked-uuid-12345',
+          mobius_url: undefined,
+          tracking_id: '1234',
+        },
+        tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
+        type: 'behavioral',
+      }
+    );
+    expect(submitLogsMock).toHaveBeenCalledWith(
+      {...mockMetaData, feedbackId: 'mocked-uuid-12345'},
+      undefined,
+      {type: 'diff'}
+    );
+  });
+
+  it('should log and throw an error if the upload fails', async () => {
+    const mockMetaData = {correlationId: 'test-correlation'};
+    const mockError = new Error('Upload failed');
+
+    // Mock the submitLogs to fail
+    submitLogsMock.mockRejectedValueOnce(mockError);
+
+    const logSpy = jest.spyOn(log, 'error');
+
+    try {
+      await uploadLogs(mockMetaData, true);
+      // If we get here, the test should fail since we expected an exception
+      expect(true).toBe(false); // This will fail the test if no exception is thrown
+    } catch (error) {
+      expect(error).toBe(mockError);
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Failed to upload Logs'),
+        }),
+        {
+          file: UTILS_FILE,
+          method: 'uploadLogs',
+        }
+      );
+      expect(mockSubmitRegistrationMetric).toHaveBeenCalledWith(
+        'web-calling-sdk-upload-logs-failed',
+        {
+          fields: {
+            call_id: undefined,
+            calling_sdk_version: 'unknown',
+            correlation_id: 'Failed to upload Logs Error: Upload failed',
+            device_url: undefined,
+            error: undefined,
+            feedback_id: 'test-correlation',
+            mobius_url: undefined,
+            tracking_id: 'mocked-uuid-12345',
+          },
+          tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
+          type: 'behavioral',
+        }
+      );
+    }
+  });
+
+  it('should log error and not throw an error if the upload fails with throw exception false', async () => {
+    const mockMetaData = {correlationId: 'test-correlation'};
+    const mockError = new Error('Upload failed');
+
+    // Mock the submitLogs to fail
+    submitLogsMock.mockRejectedValueOnce(mockError);
+
+    const logSpy = jest.spyOn(log, 'error');
+
+    const result = await uploadLogs(mockMetaData, false);
+    expect(result).toBeUndefined();
+
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining('Failed to upload Logs'),
+      }),
+      {
+        file: UTILS_FILE,
+        method: 'uploadLogs',
+      }
+    );
+    expect(mockSubmitRegistrationMetric).toHaveBeenCalledWith(
+      'web-calling-sdk-upload-logs-failed',
+      {
+        fields: {
+          call_id: undefined,
+          calling_sdk_version: 'unknown',
+          correlation_id: 'Failed to upload Logs Error: Upload failed',
+          device_url: undefined,
+          error: undefined,
+          feedback_id: 'test-correlation',
+          mobius_url: undefined,
+          tracking_id: 'mocked-uuid-12345',
+        },
+        tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
+        type: 'behavioral',
+      }
+    );
   });
 });

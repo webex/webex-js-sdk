@@ -17,5 +17,6 @@ export default {
     appType: '',
     appVersion: '',
     languageCode: '',
+    incrementalLogs: false,
   },
 };

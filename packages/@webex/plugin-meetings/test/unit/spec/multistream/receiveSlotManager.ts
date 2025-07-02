@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {MediaType} from '@webex/internal-media-core';

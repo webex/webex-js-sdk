@@ -1,7 +1,9 @@
 import sinon from 'sinon';
+import bowser from 'bowser';
 import {assert} from '@webex/test-helper-chai';
 import {WebexHttpError} from '@webex/webex-core';
 import {BrowserDetection} from '@webex/common';
+import window from 'global/window';
 import {
   CallDiagnosticLatencies,
   CallDiagnosticMetrics,
@@ -11,6 +13,12 @@ import {
 } from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
+import {glob} from 'glob';
+import {expect} from 'chai';
+import {
+  ClientEmailInput,
+  ClientUserNameInput,
+} from '@webex/internal-plugin-metrics/src/metrics.types';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
@@ -40,21 +48,42 @@ describe('internal-plugin-metrics', () => {
       },
       meetingInfo: {},
       getCurUserType: () => 'host',
-      statsAnalyzer: {
-        getLocalIpAddress: () => '192.168.1.90',
-      },
     };
 
     const fakeMeeting2 = {
       ...fakeMeeting,
       id: '2',
       correlationId: 'correlationId2',
-      callStateForMetrics: {loginType: 'fakeLoginType'},
+      callStateForMetrics: {loginType: 'fakeLoginType', joinFlowVersion: 'Other'},
+    };
+
+    const fakeMeeting3 = {
+      ...fakeMeeting,
+      id: '3',
+      correlationId: 'correlationId3',
+      sessionCorrelationId: 'sessionCorrelationId3',
+    };
+
+    const fakeMeeting4 = {
+      ...fakeMeeting,
+      id: '4',
+      isoLocalClientMeetingJoinTime: 'testTimeString',
+    };
+    const fakeMeeting5 = {
+      ...fakeMeeting,
+      id: '5',
+      correlationId: 'correlationId5',
+      sessionCorrelationId: 'sessionCorrelationId5',
+      userNameInput: 'test',
+      emailInput: 'test@test.com',
     };
 
     const fakeMeetings = {
       1: fakeMeeting,
       2: fakeMeeting2,
+      3: fakeMeeting3,
+      4: fakeMeeting4,
+      5: fakeMeeting5,
     };
 
     let webex;
@@ -86,8 +115,19 @@ describe('internal-plugin-metrics', () => {
               clientName: 'Cantina',
             },
           },
+          getBasicMeetingInformation: (id) => fakeMeetings[id],
           meetingCollection: {
-            get: (id) => fakeMeetings[id],
+            get: (meetingId) => {
+              return {
+                statsAnalyzer: {
+                  getLocalIpAddress: () => {
+                    if (meetingId) {
+                      return '192.168.1.90';
+                    }
+                  },
+                },
+              };
+            },
           },
           geoHintInfo: {
             clientAddress: '1.3.4.5',
@@ -366,6 +406,94 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      [undefined, null, '', false, 0].forEach((sessionCorrelationId) => {
+        it(`should build identifiers correctly and not add session correlation id if it is falsy: ${sessionCorrelationId}`, () => {
+          cd.device = {
+            ...cd.device,
+            config: {installationId: 'installationId'},
+          };
+
+          const res = cd.getIdentifiers({
+            mediaConnections: [
+              {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+            ],
+            meeting: {...fakeMeeting, sessionCorrelationId},
+            sessionCorrelationId: sessionCorrelationId as any,
+          });
+
+          assert.deepEqual(res, {
+            correlationId: 'correlationId',
+            deviceId: 'deviceUrl',
+            locusId: 'url',
+            locusStartTime: 'lastActive',
+            locusUrl: 'locus/url',
+            machineId: 'installationId',
+            mediaAgentAlias: 'mediaAgentAlias',
+            mediaAgentGroupId: 'mediaAgentGroupId',
+            orgId: 'orgId',
+            userId: 'userId',
+          });
+        });
+      });
+
+      it('should build identifiers correctly with sessionCorrelationID as a param', () => {
+        cd.device = {
+          ...cd.device,
+          config: {installationId: 'installationId'},
+        };
+
+        const res = cd.getIdentifiers({
+          mediaConnections: [
+            {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+          ],
+          meeting: fakeMeeting,
+          sessionCorrelationId: 'sessionCorrelationId',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          sessionCorrelationId: 'sessionCorrelationId',
+          deviceId: 'deviceUrl',
+          locusId: 'url',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          machineId: 'installationId',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should build identifiers correctly with sessionCorrelationID as a param and a meeting with session correlation id, and the param should take precedence', () => {
+        cd.device = {
+          ...cd.device,
+          config: {installationId: 'installationId'},
+        };
+
+        const res = cd.getIdentifiers({
+          mediaConnections: [
+            {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+          ],
+          meeting: {...fakeMeeting, sessionCorrelationId: 'sessionCorrelationId1'},
+          sessionCorrelationId: 'sessionCorrelationId',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          sessionCorrelationId: 'sessionCorrelationId',
+          deviceId: 'deviceUrl',
+          locusId: 'url',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          machineId: 'installationId',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
       it('should build identifiers correctly with a meeting that has meetingInfo with a webexConferenceIdStr and globalMeetingId, and that should take precedence over the options passed to it', () => {
         const res = cd.getIdentifiers({
           mediaConnections: [
@@ -466,6 +594,42 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build identifiers correctly with a meeting that has sessionCorrelationId', () => {
+        const res = cd.getIdentifiers({
+          mediaConnections: [
+            {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+          ],
+          webexConferenceIdStr: 'webexConferenceIdStr',
+          globalMeetingId: 'globalMeetingId',
+          meeting: {
+            ...fakeMeeting,
+            sessionCorrelationId: 'sessionCorrelationId1',
+            meetingInfo: {
+              ...fakeMeeting.meetingInfo,
+              confIdStr: 'webexConferenceIdStr1',
+              meetingId: 'globalMeetingId1',
+              siteName: 'siteName1',
+            },
+          },
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          sessionCorrelationId: 'sessionCorrelationId1',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          deviceId: 'deviceUrl',
+          locusId: 'url',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+          webexSiteName: 'siteName1',
+        });
+      });
+
       it('should build identifiers correctly given webexConferenceIdStr', () => {
         const res = cd.getIdentifiers({
           correlationId: 'correlationId',
@@ -505,6 +669,22 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
+          deviceId: 'deviceUrl',
+          locusUrl: 'locus-url',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should build identifiers correctly given sessionCorrelationId', () => {
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+          sessionCorrelationId: 'sessionCorrelationId',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          sessionCorrelationId: 'sessionCorrelationId',
           deviceId: 'deviceUrl',
           locusUrl: 'locus-url',
           orgId: 'orgId',
@@ -587,6 +767,52 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    it('should prepare diagnostic event successfully when triggeredTime is supplied in the options object', () => {
+      const options = {meetingId: fakeMeeting.id, triggeredTime: 'fake-triggered-time'};
+      const getOriginStub = sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+      const clearEmptyKeysRecursivelyStub = sinon.stub(
+        CallDiagnosticUtils,
+        'clearEmptyKeysRecursively'
+      );
+
+      const res = cd.prepareDiagnosticEvent(
+        {
+          canProceed: false,
+          identifiers: {
+            correlationId: 'id',
+            webexConferenceIdStr: 'webexConferenceIdStr1',
+            globalMeetingId: 'globalMeetingId1',
+          },
+          name: 'client.alert.displayed',
+        },
+        options
+      );
+
+      assert.calledWith(getOriginStub, options, options.meetingId);
+      assert.calledOnce(clearEmptyKeysRecursivelyStub);
+      assert.deepEqual(res, {
+        event: {
+          canProceed: false,
+          identifiers: {
+            correlationId: 'id',
+            webexConferenceIdStr: 'webexConferenceIdStr1',
+            globalMeetingId: 'globalMeetingId1',
+          },
+          name: 'client.alert.displayed',
+        },
+        eventId: 'my-fake-id',
+        origin: {
+          origin: 'fake-origin',
+        },
+        originTime: {
+          sent: 'not_defined_yet',
+          triggered: 'fake-triggered-time',
+        },
+        senderCountryCode: 'UK',
+        version: 1,
+      });
+    });
+
     describe('#submitClientEvent', () => {
       it('should submit client event successfully with meetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
@@ -600,12 +826,14 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
+        cd.setMercuryConnectedStatus(true);
 
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
         });
 
+        assert.called(getIdentifiersSpy);
         assert.calledWith(getIdentifiersSpy, {
           meeting: fakeMeeting,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
@@ -620,6 +848,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -637,6 +866,7 @@ describe('internal-plugin-metrics', () => {
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
+            webClientPreload: undefined,
           },
           options
         );
@@ -645,6 +875,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -658,6 +889,428 @@ describe('internal-plugin-metrics', () => {
               userId: 'userId',
             },
             loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+        assert.calledWith(validatorSpy, {
+          type: 'ce',
+          event: {
+            event: {
+              canProceed: true,
+              eventData: {
+                webClientDomain: 'whatever',
+                isMercuryConnected: true,
+              },
+              identifiers: {
+                correlationId: 'correlationId',
+                deviceId: 'deviceUrl',
+                locusId: 'url',
+                locusStartTime: 'lastActive',
+                locusUrl: 'locus/url',
+                mediaAgentAlias: 'alias',
+                mediaAgentGroupId: '1',
+                orgId: 'orgId',
+                userId: 'userId',
+              },
+              loginType: 'login-ci',
+              name: 'client.alert.displayed',
+              userType: 'host',
+              isConvergedArchitectureEnabled: undefined,
+              webexSubServiceType: undefined,
+              webClientPreload: undefined,
+            },
+            eventId: 'my-fake-id',
+            origin: {
+              origin: 'fake-origin',
+            },
+            originTime: {
+              sent: 'not_defined_yet',
+              triggered: now.toISOString(),
+            },
+            senderCountryCode: 'UK',
+            version: 1,
+          },
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+      });
+
+      it('should submit client event correctly when mercury is not connected', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const validatorSpy = sinon.spy(cd, 'validator');
+        const options = {
+          meetingId: fakeMeeting.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+        cd.setMercuryConnectedStatus(false);
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.called(getIdentifiersSpy);
+        assert.calledWith(getIdentifiersSpy, {
+          meeting: fakeMeeting,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          webexConferenceIdStr: undefined,
+          sessionCorrelationId: undefined,
+          globalMeetingId: undefined,
+        });
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: false,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: false,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+        assert.calledWith(validatorSpy, {
+          type: 'ce',
+          event: {
+            event: {
+              canProceed: true,
+              eventData: {
+                webClientDomain: 'whatever',
+                isMercuryConnected: false,
+              },
+              identifiers: {
+                correlationId: 'correlationId',
+                deviceId: 'deviceUrl',
+                locusId: 'url',
+                locusStartTime: 'lastActive',
+                locusUrl: 'locus/url',
+                mediaAgentAlias: 'alias',
+                mediaAgentGroupId: '1',
+                orgId: 'orgId',
+                userId: 'userId',
+              },
+              loginType: 'login-ci',
+              name: 'client.alert.displayed',
+              userType: 'host',
+              isConvergedArchitectureEnabled: undefined,
+              webexSubServiceType: undefined,
+              webClientPreload: undefined,
+            },
+            eventId: 'my-fake-id',
+            origin: {
+              origin: 'fake-origin',
+            },
+            originTime: {
+              sent: 'not_defined_yet',
+              triggered: now.toISOString(),
+            },
+            senderCountryCode: 'UK',
+            version: 1,
+          },
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+      });
+
+      it('should submit client event successfully with meetingId which has a sessionCorrelationId', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const validatorSpy = sinon.spy(cd, 'validator');
+        const options = {
+          meetingId: fakeMeeting3.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+        cd.setMercuryConnectedStatus(true);
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.called(getIdentifiersSpy);
+        assert.calledWith(getIdentifiersSpy, {
+          meeting: {...fakeMeeting3, sessionCorrelationId: 'sessionCorrelationId3'},
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          webexConferenceIdStr: undefined,
+          globalMeetingId: undefined,
+          sessionCorrelationId: undefined,
+        });
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId3',
+              sessionCorrelationId: 'sessionCorrelationId3',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId3',
+              sessionCorrelationId: 'sessionCorrelationId3',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+        assert.calledWith(validatorSpy, {
+          type: 'ce',
+          event: {
+            event: {
+              canProceed: true,
+              eventData: {
+                webClientDomain: 'whatever',
+                isMercuryConnected: true,
+              },
+              identifiers: {
+                correlationId: 'correlationId3',
+                sessionCorrelationId: 'sessionCorrelationId3',
+                deviceId: 'deviceUrl',
+                locusId: 'url',
+                locusStartTime: 'lastActive',
+                locusUrl: 'locus/url',
+                mediaAgentAlias: 'alias',
+                mediaAgentGroupId: '1',
+                orgId: 'orgId',
+                userId: 'userId',
+              },
+              loginType: 'login-ci',
+              name: 'client.alert.displayed',
+              userType: 'host',
+              isConvergedArchitectureEnabled: undefined,
+              webexSubServiceType: undefined,
+              webClientPreload: undefined,
+            },
+            eventId: 'my-fake-id',
+            origin: {
+              origin: 'fake-origin',
+            },
+            originTime: {
+              sent: 'not_defined_yet',
+              triggered: now.toISOString(),
+            },
+            senderCountryCode: 'UK',
+            version: 1,
+          },
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+      });
+
+      it('should submit client event successfully with meetingId which has a meetingJoinedTime', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const validatorSpy = sinon.spy(cd, 'validator');
+        const options = {
+          meetingId: fakeMeeting4.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+        cd.setMercuryConnectedStatus(true);
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.called(getIdentifiersSpy);
+        assert.calledWith(getIdentifiersSpy, {
+          meeting: {...fakeMeeting4},
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          webexConferenceIdStr: undefined,
+          globalMeetingId: undefined,
+          sessionCorrelationId: undefined,
+        });
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            meetingJoinedTime: fakeMeeting4.isoLocalClientMeetingJoinTime,
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            webClientPreload: undefined,
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            meetingJoinedTime: fakeMeeting4.isoLocalClientMeetingJoinTime,
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            webClientPreload: undefined,
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
@@ -678,9 +1331,11 @@ describe('internal-plugin-metrics', () => {
           type: 'ce',
           event: {
             event: {
+              meetingJoinedTime: fakeMeeting4.isoLocalClientMeetingJoinTime,
               canProceed: true,
               eventData: {
                 webClientDomain: 'whatever',
+                isMercuryConnected: true,
               },
               identifiers: {
                 correlationId: 'correlationId',
@@ -694,10 +1349,158 @@ describe('internal-plugin-metrics', () => {
                 userId: 'userId',
               },
               loginType: 'login-ci',
+              webClientPreload: undefined,
               name: 'client.alert.displayed',
               userType: 'host',
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
+            },
+            eventId: 'my-fake-id',
+            origin: {
+              origin: 'fake-origin',
+            },
+            originTime: {
+              sent: 'not_defined_yet',
+              triggered: now.toISOString(),
+            },
+            senderCountryCode: 'UK',
+            version: 1,
+          },
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+      });
+
+      it('should submit client event successfully with meetingId which has emailInput and userNameInput', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const validatorSpy = sinon.spy(cd, 'validator');
+        const options = {
+          meetingId: fakeMeeting5.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+        cd.setMercuryConnectedStatus(true);
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.called(getIdentifiersSpy);
+        assert.calledWith(getIdentifiersSpy, {
+          meeting: {...fakeMeeting5, sessionCorrelationId: 'sessionCorrelationId5'},
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          webexConferenceIdStr: undefined,
+          globalMeetingId: undefined,
+          sessionCorrelationId: undefined,
+        });
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId5',
+              sessionCorrelationId: 'sessionCorrelationId5',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            userNameInput: 'test',
+            emailInput: 'test@test.com',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId5',
+              sessionCorrelationId: 'sessionCorrelationId5',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            userNameInput: 'test',
+            emailInput: 'test@test.com',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+        assert.calledWith(validatorSpy, {
+          type: 'ce',
+          event: {
+            event: {
+              canProceed: true,
+              eventData: {
+                webClientDomain: 'whatever',
+                isMercuryConnected: true,
+              },
+              identifiers: {
+                correlationId: 'correlationId5',
+                sessionCorrelationId: 'sessionCorrelationId5',
+                deviceId: 'deviceUrl',
+                locusId: 'url',
+                locusStartTime: 'lastActive',
+                locusUrl: 'locus/url',
+                mediaAgentAlias: 'alias',
+                mediaAgentGroupId: '1',
+                orgId: 'orgId',
+                userId: 'userId',
+              },
+              loginType: 'login-ci',
+              name: 'client.alert.displayed',
+              userType: 'host',
+              userNameInput: 'test',
+              emailInput: 'test@test.com',
+              isConvergedArchitectureEnabled: undefined,
+              webexSubServiceType: undefined,
+              webClientPreload: undefined,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -727,6 +1530,16 @@ describe('internal-plugin-metrics', () => {
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
         const validatorSpy = sinon.spy(cd, 'validator');
+
+        Object.defineProperty(global, 'navigator', {
+          value: {
+            userAgent,
+          },
+          configurable: true,
+        });
+
+        sinon.stub(bowser, 'getParser').returns(userAgent);
+
         const options = {
           meetingId: fakeMeeting.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
@@ -755,7 +1568,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @createClientEventObjectInMeeting => collected browser data',
-          '{"error":"unable to access window.navigator.userAgent"}',
+          `${JSON.stringify(userAgent)}`,
         ]);
 
         assert.deepEqual(webexLoggerLogCalls[3].args, [
@@ -776,9 +1589,9 @@ describe('internal-plugin-metrics', () => {
           correlationId: 'correlationId',
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -799,6 +1612,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -812,6 +1626,7 @@ describe('internal-plugin-metrics', () => {
             },
             loginType: 'login-ci',
             name: 'client.alert.displayed',
+            webClientPreload: undefined,
           },
           options
         );
@@ -820,6 +1635,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -833,6 +1649,7 @@ describe('internal-plugin-metrics', () => {
             },
             loginType: 'login-ci',
             name: 'client.alert.displayed',
+            webClientPreload: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -864,13 +1681,13 @@ describe('internal-plugin-metrics', () => {
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-
+        cd.setMercuryConnectedStatus(true);
         const options = {
           correlationId: 'correlationId',
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         };
 
         cd.submitClientEvent({
@@ -883,7 +1700,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -893,6 +1710,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -906,6 +1724,7 @@ describe('internal-plugin-metrics', () => {
             },
             loginType: 'login-ci',
             name: 'client.alert.displayed',
+            webClientPreload: undefined,
           },
           options
         );
@@ -931,8 +1750,102 @@ describe('internal-plugin-metrics', () => {
                 webexConferenceIdStr: 'webexConferenceIdStr1',
                 globalMeetingId: 'globalMeetingId1',
               },
-              eventData: {webClientDomain: 'whatever'},
+              eventData: {webClientDomain: 'whatever', isMercuryConnected: true},
               loginType: 'login-ci',
+              webClientPreload: undefined,
+            },
+          },
+          options.preLoginId
+        );
+      });
+
+      it('should submit client event successfully with emailInput and userNameInput as options', () => {
+        cd.device.userId = undefined;
+
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsPreLoginSpy = sinon.spy(cd, 'submitToCallDiagnosticsPreLogin');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        cd.setMercuryConnectedStatus(true);
+        const options = {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          preLoginId: 'myPreLoginId',
+          sessionCorrelationId: 'sessionCorrelationId1',
+          userNameInput: 'current' as ClientUserNameInput,
+          emailInput: 'current' as ClientEmailInput,
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.calledWith(getIdentifiersSpy, {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          preLoginId: 'myPreLoginId',
+          sessionCorrelationId: 'sessionCorrelationId1',
+        });
+
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              sessionCorrelationId: 'sessionCorrelationId1',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
+              deviceId: 'deviceUrl',
+              locusUrl: 'locus-url',
+              orgId: 'orgId',
+              userId: 'myPreLoginId',
+            },
+            userNameInput: 'current',
+            emailInput: 'current',
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            webClientPreload: undefined,
+          },
+          options
+        );
+        assert.notCalled(submitToCallDiagnosticsSpy);
+        assert.calledWith(
+          submitToCallDiagnosticsPreLoginSpy,
+          {
+            eventId: 'my-fake-id',
+            version: 1,
+            origin: {origin: 'fake-origin'},
+            originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
+            senderCountryCode: 'UK',
+            event: {
+              name: 'client.alert.displayed',
+              canProceed: true,
+              identifiers: {
+                correlationId: 'correlationId',
+                sessionCorrelationId: 'sessionCorrelationId1',
+                userId: 'myPreLoginId',
+                deviceId: 'deviceUrl',
+                orgId: 'orgId',
+                locusUrl: 'locus-url',
+                webexConferenceIdStr: 'webexConferenceIdStr1',
+                globalMeetingId: 'globalMeetingId1',
+              },
+              eventData: {webClientDomain: 'whatever', isMercuryConnected: true},
+              loginType: 'login-ci',
+              userNameInput: 'current',
+              emailInput: 'current',
+              webClientPreload: undefined,
             },
           },
           options.preLoginId
@@ -946,7 +1859,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting2.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -957,6 +1870,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId2',
@@ -972,8 +1886,143 @@ describe('internal-plugin-metrics', () => {
             loginType: 'fakeLoginType',
             name: 'client.alert.displayed',
             userType: 'host',
+            joinFlowVersion: 'Other',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
+            webClientPreload: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
+
+      it('should use meeting loginType if present and meetingId provided, with sessionCorrelationId', () => {
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const options = {
+          meetingId: fakeMeeting2.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          sessionCorrelationId: 'sessionCorrelationId1',
+        };
+        cd.setMercuryConnectedStatus(true);
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId2',
+              sessionCorrelationId: 'sessionCorrelationId1',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'fakeLoginType',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            joinFlowVersion: 'Other',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
+
+      it('should submit client event successfully with webClientPreload', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        webex.meetings.config.metrics.webClientPreload = true;
+
+        const options = {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          sessionCorrelationId: 'sessionCorrelationId1',
+        };
+        cd.setMercuryConnectedStatus(true);
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              sessionCorrelationId: 'sessionCorrelationId1',
+              globalMeetingId: 'globalMeetingId1',
+              deviceId: 'deviceUrl',
+              locusUrl: 'locus-url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            webClientPreload: true,
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              sessionCorrelationId: 'sessionCorrelationId1',
+              globalMeetingId: 'globalMeetingId1',
+              deviceId: 'deviceUrl',
+              locusUrl: 'locus-url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            webClientPreload: true,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1003,7 +2052,7 @@ describe('internal-plugin-metrics', () => {
             },
           },
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1014,6 +2063,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1045,6 +2095,7 @@ describe('internal-plugin-metrics', () => {
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
+            webClientPreload: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1068,7 +2119,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
+          `generatedError (cached: false): {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
         ]);
       });
 
@@ -1081,7 +2132,7 @@ describe('internal-plugin-metrics', () => {
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
           rawError: new Error('bad times'),
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1092,6 +2143,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1111,6 +2163,9 @@ describe('internal-plugin-metrics', () => {
                 name: 'other',
                 category: 'other',
                 errorCode: 9999,
+                errorData: {
+                  errorName: 'Error',
+                },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
                 rawErrorMessage: 'bad times',
@@ -1121,6 +2176,7 @@ describe('internal-plugin-metrics', () => {
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
+            webClientPreload: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1144,7 +2200,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
+          `generatedError (cached: false): {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
@@ -1156,7 +2212,7 @@ describe('internal-plugin-metrics', () => {
           correlationId: 'correlationId',
           rawError: new Error('bad times'),
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1167,6 +2223,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1182,6 +2239,9 @@ describe('internal-plugin-metrics', () => {
                 name: 'other',
                 category: 'other',
                 errorCode: 9999,
+                errorData: {
+                  errorName: 'Error',
+                },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
                 rawErrorMessage: 'bad times',
@@ -1189,6 +2249,7 @@ describe('internal-plugin-metrics', () => {
             ],
             loginType: 'login-ci',
             name: 'client.alert.displayed',
+            webClientPreload: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1213,7 +2274,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
+          `generatedError (cached: false): {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
@@ -1229,7 +2290,7 @@ describe('internal-plugin-metrics', () => {
             },
           },
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1240,6 +2301,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1262,6 +2324,7 @@ describe('internal-plugin-metrics', () => {
             ],
             loginType: 'login-ci',
             name: 'client.alert.displayed',
+            webClientPreload: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1286,7 +2349,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
+          `generatedError (cached: false): {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
         ]);
       });
 
@@ -1298,7 +2361,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           payload: {
@@ -1319,6 +2382,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1344,6 +2408,7 @@ describe('internal-plugin-metrics', () => {
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
+            webClientPreload: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1367,7 +2432,8 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should send behavioral event if meetingId provided but meeting is undefined', () => {
-        webex.meetings.meetingCollection.get = sinon.stub().returns(undefined);
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns(undefined);
+
         cd.submitClientEvent({name: 'client.alert.displayed', options: {meetingId: 'meetingId'}});
         assert.calledWith(
           webex.internal.metrics.submitClientMetrics,
@@ -1428,7 +2494,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting.id,
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         };
 
         cd.submitMQE({
@@ -1571,7 +2637,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should send behavioral event if meeting is undefined', () => {
-        webex.meetings.meetingCollection.get = sinon.stub().returns(undefined);
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns(undefined);
         cd.submitMQE({
           name: 'client.mediaquality.event',
           payload: {
@@ -1664,8 +2730,37 @@ describe('internal-plugin-metrics', () => {
         rawErrorMessage: 'bad times',
       };
 
+      it('should be cached if called twice with the same payload', () => {
+        const error = new Error('bad times');
+        const expectedPayload = {
+          category: 'other',
+          errorCode: 9999,
+          errorData: {errorName: 'Error'},
+          serviceErrorCode: 9999,
+          fatal: true,
+          shownToUser: false,
+          name: 'other',
+          rawErrorMessage: 'bad times',
+          errorDescription: 'UnknownError',
+        };
+
+        const [res, cached] = cd.generateClientEventErrorPayload(error);
+        assert.isFalse(cached);
+        assert.deepEqual(res, expectedPayload);
+
+        const [res2, cached2] = cd.generateClientEventErrorPayload(error);
+        assert.isTrue(cached2);
+        assert.deepEqual(res2, expectedPayload);
+
+        // after clearing the cache, it should be false again
+        cd.clearErrorCache();
+        const [res3, cached3] = cd.generateClientEventErrorPayload(error);
+        assert.isFalse(cached3);
+        assert.deepEqual(res3, expectedPayload);
+      });
+
       const checkNameError = (payload: any, isExpectedToBeCalled: boolean) => {
-        const res = cd.generateClientEventErrorPayload(payload);
+        const [res, cached] = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {
           category: 'expected',
           errorDescription: 'CameraPermissionDenied',
@@ -1694,7 +2789,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       const checkCodeError = (payload: any, expetedRes: any) => {
-        const res = cd.generateClientEventErrorPayload(payload);
+        const [res, cached] = cd.generateClientEventErrorPayload(payload);
         assert.deepEqual(res, expetedRes);
       };
       it('should generate event error payload correctly', () => {
@@ -1720,7 +2815,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       const checkLocusError = (payload: any, isExpectedToBeCalled: boolean) => {
-        const res = cd.generateClientEventErrorPayload(payload);
+        const [res, cached] = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {
           category: 'signaling',
           errorDescription: 'NewLocusError',
@@ -1748,7 +2843,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       const checkMeetingInfoError = (payload: any, isExpectedToBeCalled: boolean) => {
-        const res = cd.generateClientEventErrorPayload(payload);
+        const [res, cached] = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {
           category: 'signaling',
           errorDescription: 'MeetingInfoLookupError',
@@ -1789,7 +2884,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should return NetworkError code for a NetworkOrCORSERror', () => {
-        const res = cd.generateClientEventErrorPayload(
+        const [res, cached] = cd.generateClientEventErrorPayload(
           new WebexHttpError.NetworkOrCORSError({
             url: 'https://example.com',
             statusCode: 0,
@@ -1833,7 +2928,7 @@ describe('internal-plugin-metrics', () => {
               message: 'No codecs present in m-line with MID 0 after filtering.',
             },
           };
-          const res = cd.generateClientEventErrorPayload(error);
+          const [res, cached] = cd.generateClientEventErrorPayload(error);
           assert.deepEqual(res, {
             category: 'expected',
             errorCode: 2051,
@@ -1859,7 +2954,7 @@ describe('internal-plugin-metrics', () => {
               message: 'empty local SDP',
             },
           };
-          const res = cd.generateClientEventErrorPayload(error);
+          const [res, cached] = cd.generateClientEventErrorPayload(error);
           assert.deepEqual(res, {
             category: 'media',
             errorCode: 2050,
@@ -1884,7 +2979,7 @@ describe('internal-plugin-metrics', () => {
           category: 'expected',
         };
 
-        const res = cd.generateClientEventErrorPayload(error);
+        const [res, cached] = cd.generateClientEventErrorPayload(error);
         assert.deepEqual(res, {
           category: 'expected',
           errorDescription: 'UnknownError',
@@ -1893,6 +2988,9 @@ describe('internal-plugin-metrics', () => {
           shownToUser: true,
           serviceErrorCode: 9999,
           errorCode: 9999,
+          errorData: {
+            errorName: 'Error',
+          },
           rawErrorMessage: 'bad times',
         });
       });
@@ -1910,7 +3008,7 @@ describe('internal-plugin-metrics', () => {
           category: 'expected',
         };
 
-        const res = cd.generateClientEventErrorPayload(error);
+        const [res, cached] = cd.generateClientEventErrorPayload(error);
         assert.deepEqual(res, {
           category: 'expected',
           errorDescription: 'NetworkError',
@@ -1925,7 +3023,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should return AuthenticationFailed code for an Unauthorized error', () => {
-        const res = cd.generateClientEventErrorPayload(
+        const [res, cached] = cd.generateClientEventErrorPayload(
           new WebexHttpError.Unauthorized({
             url: 'https://example.com',
             statusCode: 0,
@@ -1958,7 +3056,7 @@ describe('internal-plugin-metrics', () => {
           category: 'expected',
         };
 
-        const res = cd.generateClientEventErrorPayload(error);
+        const [res, cached] = cd.generateClientEventErrorPayload(error);
         assert.deepEqual(res, {
           category: 'expected',
           errorDescription: 'AuthenticationFailed',
@@ -1973,7 +3071,10 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should return unknown error otherwise', () => {
-        const res = cd.generateClientEventErrorPayload({something: 'new', message: 'bad times'});
+        const [res, cached] = cd.generateClientEventErrorPayload({
+          something: 'new',
+          message: 'bad times',
+        });
         assert.deepEqual(res, {
           category: 'other',
           errorDescription: 'UnknownError',
@@ -1987,7 +3088,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should generate event error payload correctly for locus error 2423012', () => {
-        const res = cd.generateClientEventErrorPayload({
+        const [res, cached] = cd.generateClientEventErrorPayload({
           body: {errorCode: 2423012},
           message: 'bad times',
         });
@@ -2003,7 +3104,7 @@ describe('internal-plugin-metrics', () => {
         });
       });
       it('should generate event error payload correctly for locus error 2409062', () => {
-        const res = cd.generateClientEventErrorPayload({
+        const [res, cached] = cd.generateClientEventErrorPayload({
           body: {errorCode: 2409062},
           message: 'bad times',
         });
@@ -2020,7 +3121,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should generate event error payload correctly for locus error 2423021', () => {
-        const res = cd.generateClientEventErrorPayload({
+        const [res, cached] = cd.generateClientEventErrorPayload({
           body: {errorCode: 2423021},
           message: 'bad times',
         });
@@ -2036,9 +3137,43 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should generate event error payload correctly for wdm error 4404002', () => {
+        const [res, cached] = cd.generateClientEventErrorPayload({
+          body: {errorCode: 4404002},
+          message: 'Operation denied due to region restriction',
+        });
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'WdmRestrictedRegion',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: 4404002,
+          errorCode: 13000,
+          rawErrorMessage: 'Operation denied due to region restriction',
+        });
+      });
+
+      it('should generate event error payload correctly for wdm error 4404003', () => {
+        const [res, cached] = cd.generateClientEventErrorPayload({
+          body: {errorCode: 4404003},
+          message: 'Operation denied due to region restriction',
+        });
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'WdmRestrictedRegion',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: 4404003,
+          errorCode: 13000,
+          rawErrorMessage: 'Operation denied due to region restriction',
+        });
+      });
+
       describe('httpStatusCode', () => {
         it('should include httpStatusCode for browser media errors', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             name: 'PermissionDeniedError',
             message: 'bad times',
             statusCode: 401,
@@ -2060,7 +3195,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for SdpOfferCreationErrors', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             name: 'SdpOfferCreationError',
             message: 'bad times',
             statusCode: 404,
@@ -2082,7 +3217,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for service error codes', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             body: {errorCode: 58400},
             message: 'bad times',
             statusCode: 400,
@@ -2101,7 +3236,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for locus service error codes', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             body: {errorCode: 2403001},
             message: 'bad times',
             statusCode: 400,
@@ -2120,7 +3255,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for meetingInfo service error codes', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             body: {data: {meetingInfo: {}}},
             message: 'bad times',
             statusCode: 400,
@@ -2143,7 +3278,7 @@ describe('internal-plugin-metrics', () => {
             statusCode: 400,
             options: {service: '', headers: {}},
           });
-          const res = cd.generateClientEventErrorPayload(error);
+          const [res, cached] = cd.generateClientEventErrorPayload(error);
           assert.deepEqual(res, {
             category: 'network',
             errorCode: 1026,
@@ -2162,7 +3297,7 @@ describe('internal-plugin-metrics', () => {
             statusCode: 401,
             options: {service: '', headers: {}},
           });
-          const res = cd.generateClientEventErrorPayload(error);
+          const [res, cached] = cd.generateClientEventErrorPayload(error);
           assert.deepEqual(res, {
             category: 'network',
             errorCode: 1010,
@@ -2177,7 +3312,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for unknown errors', () => {
-          const res = cd.generateClientEventErrorPayload({
+          const [res, cached] = cd.generateClientEventErrorPayload({
             message: 'bad times',
             statusCode: 404,
           });
@@ -2226,13 +3361,34 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'ScheduledMeeting');
       });
 
-      it('returns subServicetype as Webinar when meeting is Webinar', () => {
+      it('returns subServicetype as Webinar when meeting is non-converged Webinar', () => {
         fakeMeeting.meetingInfo = {
           webexScheduled: true,
           pmr: false,
           enableEvent: true,
+          enableConvergedArchitecture: false,
         };
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webinar');
+      });
+
+      it('returns subServicetype as Webinar when meeting is converged Webinar', () => {
+        fakeMeeting.meetingInfo = {
+          enableEvent: true,
+          isConvergedWebinar: true,
+          isConvergedWebinarWebcast: false,
+          enableConvergedArchitecture: true,
+        };
+        assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webinar');
+      });
+
+      it('returns subServicetype as Webcast when meeting is converged Webinar and enable webcast', () => {
+        fakeMeeting.meetingInfo = {
+          enableEvent: true,
+          isConvergedWebinar: false,
+          isConvergedWebinarWebcast: true,
+          enableConvergedArchitecture: true,
+        };
+        assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webcast');
       });
 
       it('returns subServicetype as undefined when correct parameters are not found', () => {
@@ -2266,7 +3422,7 @@ describe('internal-plugin-metrics', () => {
             meetingId: fakeMeeting.id,
             preLoginId,
           };
-
+          cd.setMercuryConnectedStatus(true);
           const triggered = new Date();
           const fetchOptions = await cd.buildClientEventFetchRequestOptions({
             name: 'client.exit.app',
@@ -2282,6 +3438,7 @@ describe('internal-plugin-metrics', () => {
                     canProceed: false,
                     eventData: {
                       webClientDomain: 'whatever',
+                      isMercuryConnected: true,
                     },
                     identifiers: {
                       correlationId: 'correlationId',
@@ -2298,6 +3455,7 @@ describe('internal-plugin-metrics', () => {
                     userType: 'host',
                     isConvergedArchitectureEnabled: undefined,
                     webexSubServiceType: undefined,
+                    webClientPreload: undefined,
                   },
                   eventId: 'my-fake-id',
                   origin: {
@@ -2314,6 +3472,7 @@ describe('internal-plugin-metrics', () => {
                     environment: 'meeting_evn',
                     name: 'endpoint',
                     networkType: 'unknown',
+                    upgradeChannel: 'test',
                     userAgent,
                   },
                   originTime: {
@@ -2362,6 +3521,95 @@ describe('internal-plugin-metrics', () => {
           ]);
         });
       });
+
+      it('includes expected joinFlowVersion and meetingJoinPhase from options when in-meeting', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting.id,
+          joinFlowVersion: 'NewFTE',
+          meetingJoinPhase: 'join',
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion,
+          options.joinFlowVersion
+        );
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase,
+          options.meetingJoinPhase
+        );
+      });
+
+      it('includes expected joinFlowVersion from meeting callStateForMetrics when in-meeting', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting2.id,
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion, 'Other');
+      });
+
+      it('prioritizes joinFlowVersion from options over meeting callStateForMetrics', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting2.id,
+          joinFlowVersion: 'NewFTE',
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion,
+          options.joinFlowVersion
+        );
+      });
+
+      it('includes expected joinFlowVersion and meetingJoinPhase from options during prejoin', async () => {
+        // correlationId and no meeting id means prejoin
+        const options = {
+          correlationId: 'myCorrelationId',
+          preLoginId: 'myPreLoginId',
+          joinFlowVersion: 'NewFTE',
+          meetingJoinPhase: 'pre-join',
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion,
+          options.joinFlowVersion
+        );
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase,
+          options.meetingJoinPhase
+        );
+      });
     });
 
     describe('#submitToCallDiagnosticsPreLogin', () => {
@@ -2397,14 +3645,166 @@ describe('internal-plugin-metrics', () => {
       // The method is called in beforeEach itself. We are just testing it here
       it('sets the received deviceInfo to call-diagnostics', () => {
         const webexLoggerLogCalls = webex.logger.log.getCalls();
-        const device = { userId: 'userId', url: 'deviceUrl', orgId: 'orgId' };
+        const device = {userId: 'userId', url: 'deviceUrl', orgId: 'orgId'};
 
         assert.deepEqual(webexLoggerLogCalls[0].args, [
           'CallDiagnosticMetrics: @setDeviceInfo called',
-          device
+          device,
         ]);
 
         assert.deepEqual(cd.device, device);
+      });
+    });
+
+    describe('#submitDelayedClientEvents', () => {
+      it('does not call submitClientEvent if there were no delayed events', () => {
+        const submitClientEventSpy = sinon.spy(cd, 'submitClientEvent');
+
+        cd.submitDelayedClientEvents();
+
+        assert.notCalled(submitClientEventSpy);
+      });
+
+      it('calls submitClientEvent for every delayed event and clears delayedClientEvents array', () => {
+        const submitClientEventSpy = sinon.spy(cd, 'submitClientEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+
+        const options = {
+          meetingId: 'meetingId',
+          correlationId: 'correlationId',
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+          delaySubmitEvent: true,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.alert.removed',
+          options,
+          delaySubmitEvent: true,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.call.aborted',
+          options,
+          delaySubmitEvent: true,
+        });
+
+        assert.notCalled(submitToCallDiagnosticsSpy);
+        assert.calledThrice(submitClientEventSpy);
+        submitClientEventSpy.resetHistory();
+
+        cd.submitDelayedClientEvents();
+
+        assert.calledThrice(submitClientEventSpy);
+        assert.calledWith(submitClientEventSpy.firstCall, {
+          name: 'client.alert.displayed',
+          payload: undefined,
+          options: {
+            meetingId: 'meetingId',
+            correlationId: 'correlationId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        assert.calledWith(submitClientEventSpy.secondCall, {
+          name: 'client.alert.removed',
+          payload: undefined,
+          options: {
+            meetingId: 'meetingId',
+            correlationId: 'correlationId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        assert.calledWith(submitClientEventSpy.thirdCall, {
+          name: 'client.call.aborted',
+          payload: undefined,
+          options: {
+            meetingId: 'meetingId',
+            correlationId: 'correlationId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        submitClientEventSpy.resetHistory();
+
+        cd.submitDelayedClientEvents();
+
+        // should not call submitClientEvent again if delayedClientEvents was cleared
+        assert.notCalled(submitClientEventSpy);
+      });
+
+      it('calls submitClientEvent for every delayed event with overrides and clears delayedClientEvents array', () => {
+        const submitClientEventSpy = sinon.spy(cd, 'submitClientEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+
+        const options = {
+          meetingId: 'meetingId',
+          correlationId: 'correlationId',
+        };
+
+        const overrides = {
+          correlationId: 'newCorrelationId',
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+          delaySubmitEvent: true,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.alert.removed',
+          options,
+          delaySubmitEvent: true,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.call.aborted',
+          options,
+          delaySubmitEvent: true,
+        });
+
+        assert.notCalled(submitToCallDiagnosticsSpy);
+        assert.calledThrice(submitClientEventSpy);
+        submitClientEventSpy.resetHistory();
+
+        cd.submitDelayedClientEvents(overrides);
+
+        assert.calledThrice(submitClientEventSpy);
+        assert.calledWith(submitClientEventSpy.firstCall, {
+          name: 'client.alert.displayed',
+          payload: undefined,
+          options: {
+            meetingId: 'meetingId',
+            correlationId: 'newCorrelationId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        assert.calledWith(submitClientEventSpy.secondCall, {
+          name: 'client.alert.removed',
+          payload: undefined,
+          options: {
+            meetingId: 'meetingId',
+            correlationId: 'newCorrelationId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        assert.calledWith(submitClientEventSpy.thirdCall, {
+          name: 'client.call.aborted',
+          payload: undefined,
+          options: {
+            meetingId: 'meetingId',
+            correlationId: 'newCorrelationId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        submitClientEventSpy.resetHistory();
+
+        cd.submitDelayedClientEvents();
+
+        // should not call submitClientEvent again if delayedClientEvents was cleared
+        assert.notCalled(submitClientEventSpy);
       });
     });
   });

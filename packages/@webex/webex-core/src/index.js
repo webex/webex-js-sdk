@@ -29,6 +29,16 @@ export {
 } from './lib/services';
 
 export {
+  constants as serviceConstantsV2,
+  ServiceCatalogV2,
+  ServiceInterceptorV2,
+  ServerErrorInterceptorV2,
+  ServicesV2,
+  ServiceDetail,
+  HostMapInterceptorV2,
+} from './lib/services-v2';
+
+export {
   makeWebexStore,
   makeWebexPluginStore,
   MemoryStoreAdapter,
@@ -54,6 +64,7 @@ export {default as RequestTimingInterceptor} from './interceptors/request-timing
 export {default as UserAgentInterceptor} from './interceptors/user-agent';
 export {default as ProxyInterceptor} from './interceptors/proxy';
 export {default as WebexTrackingIdInterceptor} from './interceptors/webex-tracking-id';
+export {sequenceNumbers as webexTrackingIdSequenceNumbers} from './interceptors/webex-tracking-id';
 export {default as WebexUserAgentInterceptor} from './interceptors/webex-user-agent';
 export {default as RateLimitInterceptor} from './interceptors/rate-limit';
 export {default as EmbargoInterceptor} from './interceptors/embargo';

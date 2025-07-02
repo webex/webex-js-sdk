@@ -161,7 +161,7 @@ describe('Roap', () => {
           roapMessage: expectedRoapMessage,
           locusSelfUrl: meeting.selfUrl,
           mediaId: meeting.mediaId,
-          meetingId: meeting.id,
+          isMultistream: meeting.isMultistream,
           locusMediaRequest: meeting.locusMediaRequest,
         })
       );
@@ -218,6 +218,53 @@ describe('Roap', () => {
           // this is the actual value Locus returns to us when they don't send Roap ANSWER in the http response
           remoteSdp:
             '{"audioMuted":false,"videoMuted":false,"csis":[],"dtmfReceiveSupported":true,"type":"SDP"}',
+        },
+      ];
+
+      sendRoapStub.resolves({
+        mediaConnections: fakeMediaConnections,
+        locus: fakeLocus,
+      });
+
+      const result = await roap.sendRoapMediaRequest({
+        meeting,
+        sdp: 'sdp',
+        reconnect: false,
+        seq: 1,
+        tieBreaker: 4294967294,
+      });
+
+      assert.calledOnce(sendRoapStub);
+      assert.calledOnceWithExactly(meeting.updateMediaConnections, fakeMediaConnections);
+      assert.deepEqual(result, {
+        locus: fakeLocus,
+        roapAnswer: undefined,
+      });
+      assert.calledOnceWithExactly(
+        Metrics.sendBehavioralMetric,
+        BEHAVIORAL_METRICS.ROAP_HTTP_RESPONSE_MISSING,
+        {
+          correlationId: meeting.correlationId,
+          messageType: 'ANSWER',
+          isMultistream: meeting.isMultistream,
+        }
+      );
+    });
+
+    it('handles the case when there is some other (not an answer) roap message type in the http response', async () => {
+      const roapError = {
+        seq: 1,
+        messageType: 'ERROR',
+        sdps: [],
+        errorType: 'error type',
+        errorCause: 'error cause',
+        headers: ['header1', 'header2'],
+      };
+      const fakeMediaConnections = [
+        {
+          remoteSdp: JSON.stringify({
+            roapMessage: roapError,
+          }),
         },
       ];
 

@@ -17,12 +17,14 @@ export const DTLS_HANDSHAKE_FAILED_CLIENT_CODE = 2008;
 export const ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE = 2010;
 export const ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE = 2009;
 export const ICE_AND_REACHABILITY_FAILED_CLIENT_CODE = 2011;
+export const MULTISTREAM_NOT_AVAILABLE_CLIENT_CODE = 2012;
 export const WBX_APP_API_URL = 'wbxappapi'; // MeetingInfo WebexAppApi response object normally contains a body.url that includes the string 'wbxappapi'
 
 export const WEBEX_SUB_SERVICE_TYPES: Record<string, ClientSubServiceType> = {
   PMR: 'PMR',
   SCHEDULED_MEETING: 'ScheduledMeeting',
   WEBINAR: 'Webinar',
+  WEBCAST: 'Webcast',
 };
 
 // Found in https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
@@ -127,8 +129,11 @@ export const ERROR_DESCRIPTIONS = {
   ICE_FAILED_WITHOUT_TURN_TLS: 'ICEFailedWithoutTURN_TLS',
   ICE_FAILED_WITH_TURN_TLS: 'ICEFailedWithTURN_TLS',
   ICE_AND_REACHABILITY_FAILED: 'ICEAndReachabilityFailed',
+  MULTISTREAM_NOT_AVAILABLE: 'MultistreamNotAvailable',
   SDP_OFFER_CREATION_ERROR: 'SdpOfferCreationError',
   SDP_OFFER_CREATION_ERROR_MISSING_CODEC: 'SdpOfferCreationErrorMissingCodec',
+  WDM_RESTRICTED_REGION: 'WdmRestrictedRegion',
+  USER_NOT_ALLOWED_JOIN_WEBINAR: 'UserNotAllowedJoinWebinar',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -147,6 +152,10 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   403004: 4005,
   // Wrong password. Meeting is not allow to access since password error
   403028: 4005,
+  // meeting is not allow to access since require panelist password
+  403025: 4005,
+  // wrong password. Meeting is not allow to access since panelist password error
+  403125: 4005,
   // Wrong or expired permission. Meeting is not allow to access since permissionToken error or expire
   403032: 4005,
   // Meeting is required login for current user
@@ -198,6 +207,24 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   423013: 4005,
   // Too many requests access
   429005: 4100,
+  // Webinar: Meeting registration is required
+  403021: 4104,
+  // Webinar: Meeting registration is still pending
+  403022: 4104,
+  // Webinar: Meeting registration have been rejected
+  403024: 4104,
+  // Webinar: Registration ID verified failure
+  403137: 4104,
+  // Webinar: Registration ID input too many time,please input captcha code
+  423007: 4104,
+  // Webinar: Need to join meeting via webcast
+  403026: 4104,
+  // Webinar: Meeting join required registration ID
+  403037: 4104,
+  // Not reach JBH, can't join meeting
+  403003: 4101,
+  // Attendee email is required
+  403030: 4101,
 
   // ---- Locus ------
   // FREE_USER_MAX_PARTICIPANTS_EXCEEDED
@@ -288,6 +315,12 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   100005: 4103, // Depracated because of an issue in the UCF Clients
   // If both email-hash and domain-hash are null or undefined.
   100004: 4103,
+
+  // ---- WDM ----
+  // WDM_BLOCKED_ACCESS_BY_COUNTRY_CODE_BANNED_COUNTRY_ERROR_CODE
+  4404002: 13000,
+  // WDM_BLOCKED_ACCESS_BY_COUNTRY_CODE_RESTRICTED_COUNTRY_ERROR_CODE
+  4404003: 13000,
 };
 
 export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEventError>> = {
@@ -401,6 +434,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     errorDescription: ERROR_DESCRIPTIONS.ICE_AND_REACHABILITY_FAILED,
     category: 'expected',
     fatal: true,
+  },
+  [MULTISTREAM_NOT_AVAILABLE_CLIENT_CODE]: {
+    errorDescription: ERROR_DESCRIPTIONS.MULTISTREAM_NOT_AVAILABLE,
+    category: 'expected',
+    fatal: false,
   },
   2050: {
     errorDescription: ERROR_DESCRIPTIONS.SDP_OFFER_CREATION_ERROR,
@@ -651,6 +689,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     category: 'expected',
     fatal: true,
   },
+  4104: {
+    errorDescription: ERROR_DESCRIPTIONS.USER_NOT_ALLOWED_JOIN_WEBINAR,
+    category: 'expected',
+    fatal: true,
+  },
   2729: {
     errorDescription: ERROR_DESCRIPTIONS.NO_MEDIA_FOUND,
     category: 'expected',
@@ -684,6 +727,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   12003: {
     errorDescription: ERROR_DESCRIPTIONS.USER_NOT_INVITED_TO_JOIN,
+    category: 'expected',
+    fatal: true,
+  },
+  13000: {
+    errorDescription: ERROR_DESCRIPTIONS.WDM_RESTRICTED_REGION,
     category: 'expected',
     fatal: true,
   },

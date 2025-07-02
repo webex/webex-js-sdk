@@ -4,6 +4,12 @@
 
 import {WebexPlugin} from '@webex/webex-core';
 
+const STATE = {
+  INITIAL: 'initial',
+  IN_PROGRESS: 'in-progress',
+  IDLE: 'idle',
+};
+
 /**
  * @class
  */
@@ -17,6 +23,8 @@ const IpNetworkDetector = WebexPlugin.extend({
     firstIpV6: ['number', true, -1], // time [ms] it took to receive first IPv6 candidate
     firstMdns: ['number', true, -1], // time [ms] it took to receive first mDNS candidate
     totalTime: ['number', true, -1], // total time [ms] it took to do the last IP network detection
+    state: ['string', true, STATE.INITIAL],
+    pendingDetection: ['object', false, undefined],
   },
 
   derived: {
@@ -155,21 +163,41 @@ const IpNetworkDetector = WebexPlugin.extend({
    * Detects if we are on IPv4 and/or IPv6 network. Once it resolves, read the
    * supportsIpV4 and supportsIpV6 props to find out the result.
    *
-   * @returns {Promise<Object>}
+   * @param {boolean} force - if false, the detection will only be done if we haven't managed to get any meaningful results yet
+   * @returns {Promise<void>}
    */
-  async detect() {
+  async detect(force = false) {
     let results;
     let pc;
 
+    if (this.state === STATE.IN_PROGRESS) {
+      this.pendingDetection = {force};
+
+      return;
+    }
+
+    if (!force && this.state !== STATE.INITIAL && !this.receivedOnlyMDnsCandidates()) {
+      // we already have the results, no need to do the detection again
+      return;
+    }
+
     try {
+      this.state = STATE.IN_PROGRESS;
+
       pc = new RTCPeerConnection();
 
       results = await this.gatherLocalCandidates(pc);
     } finally {
       pc.close();
+      this.state = STATE.IDLE;
     }
 
-    return results;
+    if (this.pendingDetection) {
+      const {force: forceParam} = this.pendingDetection;
+
+      this.pendingDetection = undefined;
+      this.detect(forceParam);
+    }
   },
 });
 

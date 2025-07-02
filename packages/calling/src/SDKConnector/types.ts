@@ -1,4 +1,11 @@
-import {KmsKey, KmsResourceObject, PeopleListResponse, WebexRequestPayload} from '../common/types';
+import {
+  KmsKey,
+  KmsResourceObject,
+  LogsMetaData,
+  PeopleListResponse,
+  UploadLogsResponse,
+  WebexRequestPayload,
+} from '../common/types';
 /* eslint-disable no-shadow */
 
 type Listener = (e: string, data?: unknown) => void;
@@ -43,10 +50,24 @@ export type ClientRegionInfo = {
   timezone: string;
 };
 
+export type Logger = {
+  config?: {
+    level: string;
+    bufferLogLevel: string;
+  };
+  log: (payload: string) => void;
+  error: (payload: string) => void;
+  warn: (payload: string) => void;
+  info: (payload: string) => void;
+  trace: (payload: string) => void;
+  debug: (payload: string) => void;
+};
+
 // TODO: is there a way to import bindings from the Webex JS SDK without having to redefine expected methods and structure?
 // This defines the shape for the webex SDK, if a typing doesn't exist, it should be added here
 export interface WebexSDK {
   // top level primitives/funcs
+  config: {fedramp: boolean};
   version: string;
   canAuthorize: boolean;
   credentials: {
@@ -85,7 +106,15 @@ export interface WebexSDK {
       };
     };
     presence: unknown;
-    support: unknown;
+    support: {
+      submitLogs: (
+        metaData: LogsMetaData,
+        logs?: string,
+        options?: {
+          type: 'diff' | 'full';
+        }
+      ) => Promise<UploadLogsResponse>;
+    };
     services: {
       _hostCatalog: Record<string, ServiceHost[]>;
       _serviceUrls: {
@@ -106,14 +135,7 @@ export interface WebexSDK {
     };
   };
   // public plugins
-  logger: {
-    log: (payload: string) => void;
-    error: (payload: string) => void;
-    warn: (payload: string) => void;
-    info: (payload: string) => void;
-    trace: (payload: string) => void;
-    debug: (payload: string) => void;
-  };
+  logger: Logger;
   messages: unknown;
   memberships: unknown;
   people: {

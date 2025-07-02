@@ -36,6 +36,20 @@ export interface VideoProperties {
 
 export interface ViewTheParticipantListProperties {
   enabled?: boolean;
+  panelistEnabled?: boolean;
+  attendeeCount?: boolean;
+}
+
+export interface AnnotationProperties {
+  enabled?: boolean;
+}
+
+export interface RemoteDesktopControlProperties {
+  enabled?: boolean;
+}
+
+export interface PollingQAProperties {
+  enabled?: boolean;
 }
 
 export type Properties =
@@ -44,7 +58,10 @@ export type Properties =
   | ReactionsProperties
   | ShareControlProperties
   | VideoProperties
-  | ViewTheParticipantListProperties;
+  | ViewTheParticipantListProperties
+  | AnnotationProperties
+  | RemoteDesktopControlProperties
+  | PollingQAProperties;
 
 export interface ControlConfig<Props = Properties> {
   /**

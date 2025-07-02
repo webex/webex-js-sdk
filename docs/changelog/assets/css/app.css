@@ -2,6 +2,17 @@
     box-sizing: border-box;
 }
 
+::-webkit-scrollbar {
+    -webkit-appearance: none;
+    width: 7px;
+}
+
+::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, .5);
+    box-shadow: 0 0 1px rgba(255, 255, 255, .5);
+}
+
 body {
     font-family: 'Roboto', sans-serif;
     background-color: #f5f5f5;
@@ -169,6 +180,8 @@ th {
     margin-top: 10px;
     list-style-type: none;
     padding: 0;
+    max-height: 200px;
+    overflow: scroll;
 }
 
 .changelog-item .commits ul li {
@@ -247,4 +260,23 @@ footer {
 footer .copyright {
     text-align: center;
     margin: 0 auto;
+}
+
+.alert-info {
+    background-color: #f0f9ff;
+    border-left: 6px solid #00bceb;
+    color: #333;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.alert-info p.note {
+    font-weight: bold;
+    color: #00bceb;
+}
+
+.alert-info p.warning {
+    font-weight: bold;
+    color: #ff7f0e;
+    display: inline;
 }

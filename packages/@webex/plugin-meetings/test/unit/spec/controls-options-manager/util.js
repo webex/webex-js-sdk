@@ -348,6 +348,50 @@ describe('plugin-meetings', () => {
           });
         });
 
+        it('should call hasHints() with proper hints when `panelistEnabled` is true, attendeeCount is false', () => {
+          ControlsOptionsUtil.canUpdateViewTheParticipantsList({properties: {enabled: true, panelistEnabled: true, attendeeCount: false}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST,
+              DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST,
+              DISPLAY_HINTS.DISABLE_SHOW_ATTENDEE_COUNT],
+            displayHints: [],
+          });
+        });
+
+        it('should call hasHints() with proper hints when `panelistEnabled` is true, attendeeCount is true', () => {
+          ControlsOptionsUtil.canUpdateViewTheParticipantsList({properties: {enabled: true, panelistEnabled: true, attendeeCount: true}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST,
+            DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST,
+            DISPLAY_HINTS.ENABLE_SHOW_ATTENDEE_COUNT],
+            displayHints: [],
+          });
+        });
+
+        it('should call hasHints() with proper hints when `panelistEnabled` is false, attendeeCount is false', () => {
+          ControlsOptionsUtil.canUpdateViewTheParticipantsList({properties: {enabled: true, panelistEnabled: false, attendeeCount: false}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST,
+              DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST,
+              DISPLAY_HINTS.DISABLE_SHOW_ATTENDEE_COUNT],
+            displayHints: [],
+          });
+        });
+
+        it('should call hasHints() with proper hints when `panelistEnabled` is false, attendeeCount is true', () => {
+          ControlsOptionsUtil.canUpdateViewTheParticipantsList({properties: {enabled: true, panelistEnabled: false, attendeeCount: true}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST,
+              DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST,
+              DISPLAY_HINTS.ENABLE_SHOW_ATTENDEE_COUNT],
+            displayHints: [],
+          });
+        });
+
         it('should return the resolution of hasHints()', () => {
           const expected = 'example-return-value';
           ControlsOptionsUtil.hasHints.returns(expected);
@@ -356,6 +400,108 @@ describe('plugin-meetings', () => {
             {properties: {}},
             []
           );
+
+          assert.calledOnce(ControlsOptionsUtil.hasHints);
+          assert.equal(results, expected);
+        });
+      });
+
+      describe('canUpdateAnnotation()', () => {
+        beforeEach(() => {
+          sinon.stub(ControlsOptionsUtil, 'hasHints').returns(true);
+        });
+
+        it('should call hasHints() with proper hints when `enabled` is true', () => {
+          ControlsOptionsUtil.canUpdateAnnotation({properties: {enabled: true}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: [],
+          });
+        });
+
+        it('should call hasHints() with proper hints when `enabled` is false', () => {
+          ControlsOptionsUtil.canUpdateAnnotation({properties: {enabled: false}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_ANNOTATION_MEETING_OPTION],
+            displayHints: [],
+          });
+        });
+
+        it('should return the resolution of hasHints()', () => {
+          const expected = 'example-return-value';
+          ControlsOptionsUtil.hasHints.returns(expected);
+
+          const results = ControlsOptionsUtil.canUpdateAnnotation({properties: {}}, []);
+
+          assert.calledOnce(ControlsOptionsUtil.hasHints);
+          assert.equal(results, expected);
+        });
+      });
+
+      describe('canUpdateRemoteDesktopControl()', () => {
+        beforeEach(() => {
+          sinon.stub(ControlsOptionsUtil, 'hasHints').returns(true);
+        });
+
+        it('should call hasHints() with proper hints when `enabled` is true', () => {
+          ControlsOptionsUtil.canUpdateRemoteDesktopControl({properties: {enabled: true}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_RDC_MEETING_OPTION],
+            displayHints: [],
+          });
+        });
+
+        it('should call hasHints() with proper hints when `enabled` is false', () => {
+          ControlsOptionsUtil.canUpdateRemoteDesktopControl({properties: {enabled: false}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: [],
+          });
+        });
+
+        it('should return the resolution of hasHints()', () => {
+          const expected = 'example-return-value';
+          ControlsOptionsUtil.hasHints.returns(expected);
+
+          const results = ControlsOptionsUtil.canUpdateRemoteDesktopControl({properties: {}}, []);
+
+          assert.calledOnce(ControlsOptionsUtil.hasHints);
+          assert.equal(results, expected);
+        });
+      });
+      
+      describe('canUpdatePollingQA()', () => {
+        beforeEach(() => {
+          sinon.stub(ControlsOptionsUtil, 'hasHints').returns(true);
+        });
+
+        it('should call hasHints() with proper hints when `enabled` is true', () => {
+          ControlsOptionsUtil.canUpdatePollingQA({properties: {enabled: true}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_ATTENDEE_START_POLLING_QA],
+            displayHints: [],
+          });
+        });
+
+        it('should call hasHints() with proper hints when `enabled` is false', () => {
+          ControlsOptionsUtil.canUpdatePollingQA({properties: {enabled: false}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA],
+            displayHints: [],
+          });
+        });
+
+        it('should return the resolution of hasHints()', () => {
+          const expected = 'example-return-value';
+          ControlsOptionsUtil.hasHints.returns(expected);
+
+          const results = ControlsOptionsUtil.canUpdatePollingQA({properties: {}}, []);
 
           assert.calledOnce(ControlsOptionsUtil.hasHints);
           assert.equal(results, expected);
@@ -372,6 +518,9 @@ describe('plugin-meetings', () => {
           ControlsOptionsUtil.canUpdateShareControl = sinon.stub().returns(true);
           ControlsOptionsUtil.canUpdateVideo = sinon.stub().returns(true);
           ControlsOptionsUtil.canUpdateViewTheParticipantsList = sinon.stub().returns(true);
+          ControlsOptionsUtil.canUpdateAnnotation = sinon.stub().returns(true);
+          ControlsOptionsUtil.canUpdateRemoteDesktopControl = sinon.stub().returns(true);
+          ControlsOptionsUtil.canUpdatePollingQA = sinon.stub().returns(true);
         });
 
         it('should only call canUpdateAudio() if the scope is audio', () => {
@@ -385,6 +534,8 @@ describe('plugin-meetings', () => {
           assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
           assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
           assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateAnnotation, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateRemoteDesktopControl, 0);
           assert.isTrue(results);
         });
 
@@ -399,6 +550,8 @@ describe('plugin-meetings', () => {
           assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
           assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
           assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateAnnotation, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateRemoteDesktopControl, 0);
           assert.isTrue(results);
         });
 
@@ -413,6 +566,8 @@ describe('plugin-meetings', () => {
           assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
           assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
           assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateAnnotation, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateRemoteDesktopControl, 0);
           assert.isTrue(results);
         });
 
@@ -427,6 +582,8 @@ describe('plugin-meetings', () => {
           assert.calledWith(ControlsOptionsUtil.canUpdateShareControl, displayHints);
           assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
           assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateAnnotation, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateRemoteDesktopControl, 0);
           assert.isTrue(results);
         });
 
@@ -441,6 +598,8 @@ describe('plugin-meetings', () => {
           assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
           assert.calledWith(ControlsOptionsUtil.canUpdateVideo, control, displayHints);
           assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateAnnotation, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateRemoteDesktopControl, 0);
           assert.isTrue(results);
         });
 
@@ -459,6 +618,66 @@ describe('plugin-meetings', () => {
             control,
             displayHints
           );
+          assert.callCount(ControlsOptionsUtil.canUpdateAnnotation, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateRemoteDesktopControl, 0);
+          assert.isTrue(results);
+        });
+
+        it('should only call canUpdateAnnotation() if the scope is annotation', () => {
+          const control = {scope: 'annotation'};
+
+          const results = ControlsOptionsUtil.canUpdate(control, displayHints);
+
+          assert.callCount(ControlsOptionsUtil.canUpdateAudio, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateRaiseHand, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateReactions, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
+          assert.calledWith(ControlsOptionsUtil.canUpdateAnnotation, control, displayHints);
+          assert.callCount(ControlsOptionsUtil.canUpdateRemoteDesktopControl, 0);
+          assert.isTrue(results);
+        });
+
+        it('should only call canUpdateRemoteDesktopControl() if the scope is rdc', () => {
+          const control = {scope: 'rdc'};
+
+          const results = ControlsOptionsUtil.canUpdate(control, displayHints);
+
+          assert.callCount(ControlsOptionsUtil.canUpdateAudio, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateRaiseHand, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateReactions, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateAnnotation, 0);
+          assert.calledWith(
+            ControlsOptionsUtil.canUpdateRemoteDesktopControl,
+            control,
+            displayHints
+          );
+          assert.callCount(ControlsOptionsUtil.canUpdatePollingQA, 0);
+          assert.isTrue(results);
+        });
+
+        it('should only call canUpdatePollingQA() if the scope is pollingQA', () => {
+          const control = {scope: 'pollingQA'};
+
+          const results = ControlsOptionsUtil.canUpdate(control, displayHints);
+
+          assert.callCount(ControlsOptionsUtil.canUpdateAudio, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateRaiseHand, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateReactions, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateAnnotation, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateRemoteDesktopControl, 0);
+          assert.calledWith(
+            ControlsOptionsUtil.canUpdatePollingQA,
+            control,
+            displayHints
+          );
           assert.isTrue(results);
         });
 
@@ -473,6 +692,9 @@ describe('plugin-meetings', () => {
           assert.callCount(ControlsOptionsUtil.canUpdateShareControl, 0);
           assert.callCount(ControlsOptionsUtil.canUpdateVideo, 0);
           assert.callCount(ControlsOptionsUtil.canUpdateViewTheParticipantsList, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateAnnotation, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdateRemoteDesktopControl, 0);
+          assert.callCount(ControlsOptionsUtil.canUpdatePollingQA, 0);
           assert.isFalse(results);
         });
       });

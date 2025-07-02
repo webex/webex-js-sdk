@@ -35,7 +35,7 @@ const Presence: IPresence = WebexPlugin.extend({
   },
 
   /**
-   * Initialize the presence worker for client
+   * Initialize the presence plugin
    * @returns {undefined}
    */
   initialize(): void {
@@ -44,6 +44,20 @@ const Presence: IPresence = WebexPlugin.extend({
         this.worker.initialize(this.webex);
       }
     });
+  },
+
+  /**
+   * Initializes the presence worker.
+   * @returns {undefined}
+   */
+  initializeWorker(): void {
+    if (this.webex.ready) {
+      this.worker.initialize(this.webex);
+    } else {
+      this.webex.once('ready', () => {
+        this.worker.initialize(this.webex);
+      });
+    }
   },
 
   /**
@@ -238,7 +252,7 @@ const Presence: IPresence = WebexPlugin.extend({
         body: {
           subject: this.webex.internal.device.userId,
           eventType: status,
-          label: this.webex.internal.device.userId,
+          ...(status !== 'dnd' && {label: this.webex.internal.device.userId}),
           ttl,
         },
       })

@@ -49,7 +49,7 @@ Handlebars.registerHelper('github_linking', function(string, type) {
 });
 
 Handlebars.registerHelper('convertDate', function(timestamp) {
-    return `${new Date(1723028345568).toDateString()} ${new Date(1723028345568).toTimeString()}`;
+    return `${new Date(timestamp).toDateString()} ${new Date(timestamp).toTimeString()}`;
 });
 
 
@@ -178,7 +178,7 @@ const validateVersionInput = ({version}) => {
     const stableVersion = versionSelectDropdown.value;
     const expectedPattern = new RegExp(`^${stableVersion}-([a-z\-]*\\.)?\\d+$`, 'i');
 
-    if (version !== "" && !expectedPattern.test(version)) {
+    if (version !== "" && !expectedPattern.test(version) && stableVersion !== version) {
         versionInputError.innerText = `Version can be empty or should start with ${stableVersion} and match ${stableVersion}-{tag}.patch_version. Eg: ${stableVersion}-next.1`;
         versionInput.focus();
         searchButton.disabled = true;

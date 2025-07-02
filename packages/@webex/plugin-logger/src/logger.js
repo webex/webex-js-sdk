@@ -102,9 +102,12 @@ const Logger = WebexPlugin.extend({
   session: {
     // for when configured to use single buffer
     buffer: {
-      type: 'array',
+      type: 'object',
       default() {
-        return [];
+        return {
+          buffer: [],
+          nextIndex: 0,
+        };
       },
     },
     groupLevel: {
@@ -115,15 +118,21 @@ const Logger = WebexPlugin.extend({
     },
     // for when configured to use separate buffers
     sdkBuffer: {
-      type: 'array',
+      type: 'object',
       default() {
-        return [];
+        return {
+          buffer: [],
+          nextIndex: 0,
+        };
       },
     },
     clientBuffer: {
-      type: 'array',
+      type: 'object',
       default() {
-        return [];
+        return {
+          buffer: [],
+          nextIndex: 0,
+        };
       },
     },
   },
@@ -261,41 +270,54 @@ const Logger = WebexPlugin.extend({
    * @memberof Logger
    * @public
    * @memberof Logger
+   * @param {Object} options
+   * @param {boolean} options.diff whether to only format the diff from last call to formatLogs(), false by default
    * @returns {string} formatted buffer
    */
-  formatLogs() {
+  formatLogs(options = {}) {
     function getDate(log) {
       return log[1];
     }
+    const {diff = false} = options;
     let buffer = [];
-    let clientIndex = 0;
-    let sdkIndex = 0;
+    let clientIndex = diff ? this.clientBuffer.nextIndex : 0;
+    let sdkIndex = diff ? this.sdkBuffer.nextIndex : 0;
 
     if (this.config.separateLogBuffers) {
       // merge the client and sdk buffers
       // while we have entries in either buffer
-      while (clientIndex < this.clientBuffer.length || sdkIndex < this.sdkBuffer.length) {
+      while (
+        clientIndex < this.clientBuffer.buffer.length ||
+        sdkIndex < this.sdkBuffer.buffer.length
+      ) {
         // if we have remaining entries in the SDK buffer
         if (
-          sdkIndex < this.sdkBuffer.length &&
+          sdkIndex < this.sdkBuffer.buffer.length &&
           // and we haven't exhausted all the client buffer entries, or SDK date is before client date
-          (clientIndex >= this.clientBuffer.length ||
-            new Date(getDate(this.sdkBuffer[sdkIndex])) <=
-              new Date(getDate(this.clientBuffer[clientIndex])))
+          (clientIndex >= this.clientBuffer.buffer.length ||
+            new Date(getDate(this.sdkBuffer.buffer[sdkIndex])) <=
+              new Date(getDate(this.clientBuffer.buffer[clientIndex])))
         ) {
           // then add to the SDK buffer
-          buffer.push(this.sdkBuffer[sdkIndex]);
+          buffer.push(this.sdkBuffer.buffer[sdkIndex]);
           sdkIndex += 1;
         }
         // otherwise if we haven't exhausted all the client buffer entries, add client entry, whether it was because
         // it was the only remaining entries or date was later (the above if)
-        else if (clientIndex < this.clientBuffer.length) {
-          buffer.push(this.clientBuffer[clientIndex]);
+        else if (clientIndex < this.clientBuffer.buffer.length) {
+          buffer.push(this.clientBuffer.buffer[clientIndex]);
           clientIndex += 1;
         }
       }
+      if (diff) {
+        this.clientBuffer.nextIndex = clientIndex;
+        this.sdkBuffer.nextIndex = sdkIndex;
+      }
+    } else if (diff) {
+      buffer = this.buffer.buffer.slice(this.buffer.nextIndex);
+      this.buffer.nextIndex = this.buffer.buffer.length;
     } else {
-      buffer = this.buffer;
+      buffer = this.buffer.buffer;
     }
 
     return buffer.join('\n');
@@ -328,16 +350,16 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
     const clientName =
       logType === LOG_TYPES.SDK ? SDK_LOG_TYPE_NAME : this.config.clientName || logType;
 
-    let buffer;
+    let bufferRef;
     let historyLength;
 
     if (this.config.separateLogBuffers) {
       historyLength = this.config.clientHistoryLength
         ? this.config.clientHistoryLength
         : this.config.historyLength;
-      buffer = logType === LOG_TYPES.SDK ? this.sdkBuffer : this.clientBuffer;
+      bufferRef = logType === LOG_TYPES.SDK ? this.sdkBuffer : this.clientBuffer;
     } else {
-      buffer = this.buffer;
+      bufferRef = this.buffer;
       historyLength = this.config.historyLength;
     }
 
@@ -401,9 +423,18 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
 
         stringified.unshift(logDate.toISOString());
         stringified.unshift('|  '.repeat(this.groupLevel));
-        buffer.push(stringified);
-        if (buffer.length > historyLength) {
-          buffer.splice(0, buffer.length - historyLength);
+        bufferRef.buffer.push(stringified);
+        if (bufferRef.buffer.length > historyLength) {
+          // we've gone over the buffer limit, trim it down
+          const deleteCount = bufferRef.buffer.length - historyLength;
+
+          bufferRef.buffer.splice(0, deleteCount);
+
+          // and adjust the corresponding buffer index used for log diff uploads
+          bufferRef.nextIndex -= deleteCount;
+          if (bufferRef.nextIndex < 0) {
+            bufferRef.nextIndex = 0;
+          }
         }
         if (level === 'group') this.groupLevel += 1;
         if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;

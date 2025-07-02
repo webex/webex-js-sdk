@@ -22,15 +22,53 @@ describe('plugin-meetings', () => {
     });
 
     describe('#initialize', () => {
+      beforeEach(() => {
+        interpretation.querySupportLanguages = sinon.stub();
+        interpretation.set({
+          canManageInterpreters: undefined,
+          hostSIEnabled: undefined,
+          locusUrl: undefined
+        });
+      });
+
+      afterEach(() => {
+        interpretation.querySupportLanguages.reset();
+      });
+
       it('creates SimultaneousInterpretation as expected', () => {
         assert.equal(interpretation.namespace, 'Meetings');
       });
       it('call querySupportLanguages correctly when meet the conditions', () => {
-        interpretation.querySupportLanguages = sinon.stub();
         interpretation.set({
           canManageInterpreters: true,
+          hostSIEnabled: true,
+          locusUrl: "MOCK_LOCUS_URL"
         });
         assert.called(interpretation.querySupportLanguages);
+      });
+
+      it('does not call querySupportLanguages when canManageInterpreters is not set', () => {
+        interpretation.set({
+          hostSIEnabled: true,
+          locusUrl: "MOCK_LOCUS_URL"
+        });
+        assert.notCalled(interpretation.querySupportLanguages);
+      });
+
+      it('does not call querySupportLanguages when hostSIEnabled is not set', () => {
+        interpretation.set({
+          canManageInterpreters: true,
+          locusUrl: "MOCK_LOCUS_URL"
+        });
+        assert.notCalled(interpretation.querySupportLanguages);
+      });
+
+      it('does not call querySupportLanguages when locusUrl is not set', () => {
+        interpretation.set({
+          canManageInterpreters: true,
+          hostSIEnabled: true,
+        });
+        assert.notCalled(interpretation.querySupportLanguages);
       });
     });
 

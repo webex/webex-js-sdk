@@ -30,6 +30,7 @@ const voicemailOffset = 0;
 const voicemailOffsetLimit = 20;
 const voicemailSort = 'DESC';
 const credentialsFormElm = document.querySelector('#credentials');
+const fedrampBox = document.getElementById('fedramp');
 const tokenElm = document.querySelector('#access-token');
 const jwtTokenForDestElm = document.querySelector('#jwt-token-for-dest');
 const guestContainerElm = document.querySelector('#guest-container');
@@ -88,6 +89,7 @@ const cfaDataElem = document.querySelector('#callforwardalways-data');
 const makeCallBtn = document.querySelector('#create-call-action');
 const muteElm = document.getElementById('mute_button');
 const bnrButton = document.getElementById('bnr-button');
+const uploadLogsResultElm = document.getElementById('upload-logs-result');
 
 let base64;
 let audio64;
@@ -116,6 +118,17 @@ const getOptionValue = (select) => {
 
   return selected ? selected.value : undefined;
 };
+
+async function uploadLogs() {
+    try {
+      await callingClient.uploadLogs();
+      console.log('Logs uploaded successfully');
+      uploadLogsResultElm.innerText = 'Logs uploaded successfully';
+    } catch (error) {
+      console.error('Failed to upload logs:', error);
+      uploadLogsResultElm.innerText = 'Failed to upload logs';
+    }
+}
 
 function getMediaSettings() {
   const settings = {};
@@ -181,14 +194,14 @@ async function generateGuestToken() {
     if (error.code === 401) {
       // TODO: Refresh the access token and try again with the new token
     }
-  }    
+  }
 }
 
 async function handleServiceSelect(e) {
   const value = e.target.value;
   tokenElm.value = '';
 
-  if (value === 'guestCalling') {
+  if (value === 'guestcalling') {
     guestContainerElm.classList.remove('hidden');
   } else {
     guestContainerElm.classList.add('hidden');
@@ -204,7 +217,9 @@ async function initCalling(e) {
   authStatusElm.innerText = 'initializing...';
 
   const webexConfig = {
+    fedramp: fedrampBox.checked,
     config: {
+      fedramp: fedrampBox.checked,
       logger: {
         level: 'debug', // set the desired log level
       },
@@ -231,24 +246,32 @@ async function initCalling(e) {
     webexConfig.config.services = {
       discovery: {
         u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
-        hydra: 'https://apialpha.ciscospark.com/v1/',
+        hydra: 'https://hydra-intb.ciscospark.com/v1/',
+      },
+    };
+  }
+
+  if (fedrampBox.checked) {
+    webexConfig.config.services = {
+      discovery: {
+        u2c: 'https://u2c.gov.ciscospark.com/u2c/api/v1',
       },
     };
   }
 
   const clientConfig = {
-    calling: true,
-    contact: true,
+    calling: !fedrampBox.checked,
+    contact: !fedrampBox.checked,
     callHistory: true,
-    callSettings: true,
+    callSettings: !fedrampBox.checked,
     voicemail: true,
   }
 
   const loggerConfig = {
-    level: 'info'
+    level: 'info',
   }
 
-  const {region, country} = credentialsFormElm.elements;
+  const {region, country, guestName} = credentialsFormElm.elements;
 
   const serviceData = {indicator: 'calling', domain: ''};
 
@@ -258,6 +281,10 @@ async function initCalling(e) {
 
   if (serviceDomain.value) {
     serviceData.domain = serviceDomain.value;
+  }
+
+  if (guestName && serviceData.indicator === 'guestcalling') {
+    serviceData.guestName = guestName.value
   }
 
   const callingClientConfig = {
@@ -305,7 +332,9 @@ async function initCalling(e) {
       registerElm.classList.add('btn--green');
       registerElm.disabled = false;
 
+      if(window.callingClient === undefined && calling.callingClient !== undefined) {
       callingClient = window.callingClient = calling.callingClient;
+    }
 
       if (window.contacts === undefined) {
         contacts = window.contacts = calling.contactClient;
@@ -323,7 +352,7 @@ async function initCalling(e) {
         voicemail = window.voicemail = calling.voicemailClient;
       }
 
-      fetchLines();
+      if(callingClient) fetchLines();
     });
   });
 
@@ -373,6 +402,7 @@ function userSession() {
 }
 
 function createDevice() {
+  if (!callingClient) return ;
   line.register();
   userSession();
   line.on('registered', (deviceInfo) => {
@@ -447,12 +477,11 @@ function endSecondCall() {
 }
 
 function muteUnmute() {
-  muteElm.value = muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
   if (callTransferObj){
-    callTransferObj.mute(localAudioStream)
+    callTransferObj.mute(localAudioStream, 'user_mute');
   }
   else {
-    call.mute(localAudioStream);
+    call.mute(localAudioStream, 'user_mute');
   }
 }
 
@@ -566,10 +595,15 @@ function createCall(e) {
   console.log(destination.value);
   makeCallBtn.disabled = true;
   outboundEndElm.disabled = false
-  call = line.makeCall({
-    type: 'uri',
-    address: destination.value,
-  });
+  if (serviceIndicator.value !== 'guestcalling') {
+    call = line.makeCall({
+      type: 'uri',
+      address: destination.value,
+    });
+  }
+  else {
+    call = line.makeCall();
+  }
 
   call.on('caller_id', (CallerIdEmitter) => {
     callDetailsElm.innerText = `Name: ${CallerIdEmitter.callerId.name}, Number: ${CallerIdEmitter.callerId.num}, Avatar: ${CallerIdEmitter.callerId.avatarSrc} , UserId: ${CallerIdEmitter.callerId.id}`;
@@ -608,6 +642,17 @@ function createCall(e) {
 
   call.on('remote_media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
+  });
+
+  localAudioStream.on('system-mute-state-change', (systemMuted) => {
+    call.mute(localAudioStream, 'system_mute');
+    if (!localAudioStream.userMuted) {
+      muteElm.value = systemMuted && muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
+    }
+  });
+
+  localAudioStream.on('user-mute-state-change', (userMuted) => {
+    muteElm.value = userMuted && muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
   });
 
   call.dial(localAudioStream);
@@ -701,7 +746,7 @@ async function getMediaStreams() {
 }
 
 async function toggleNoiseReductionEffect() {
-  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'} 
+  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'}
   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
@@ -793,6 +838,16 @@ function answer() {
 
     call.on('remote_media', (track) => {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
+    });
+
+    localAudioStream.on('system-mute-state-change', (muted) => {
+      muteElm.value = muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
+      console.log('system mute received');
+    });
+
+    localAudioStream.on('user-mute-state-change', (muted) => {
+      muteElm.value = muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
+      console.log('user mute received');
     });
 
     call.answer(localAudioStream);
@@ -1036,6 +1091,94 @@ async function createVoiceMail() {
         true
       );
 
+      const voicemailList = getVoicemailListResponse.data.voicemailList;
+
+      console.log('Voice mail list response', getVoicemailListResponse.data.voicemailList);
+      const vmLength = voicemailList.voicemailList.length;
+
+      const voicemailTable = document.getElementById('voicemailTable');
+
+      voicemailTable.innerHTML = '';
+      if (vmLength !== 0) {
+        voicemailElm.disabled = false;
+        const table = document.getElementById('voicemailTable');
+        const thead = document.createElement('thead');
+        const htr = document.createElement('tr');
+
+        const th1 = document.createElement('th');
+
+        th1.innerHTML = 'Caller Name';
+        htr.appendChild(th1);
+
+        const th2 = document.createElement('th');
+
+        th2.innerHTML = 'Duration';
+        htr.appendChild(th2);
+
+        const th3 = document.createElement('th');
+
+        th3.innerHTML = 'Date/Time';
+        htr.appendChild(th3);
+
+        const th5 = document.createElement('th');
+
+        th5.innerHTML = 'Actions';
+        htr.appendChild(th5);
+
+        thead.appendChild(htr);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+
+        for (let index = 0; index < vmLength; index += 1) {
+          const vm = voiceMailList[index];
+          const tr = document.createElement('tr');
+          let td = document.createElement('td');
+
+          td.innerHTML = vm.callingPartyInfo.name.$;
+          tr.appendChild(td);
+          tr.className = index;
+
+          td = document.createElement('td');
+          td.innerHTML = this.convertMStoS(vm.duration.$);
+          tr.appendChild(td);
+
+          td = document.createElement('td');
+          td.innerHTML = this.convertUnix(vm.time.$);
+          tr.appendChild(td);
+
+          td = document.createElement('td');
+          const msgId = voicemailList[index].messageId.$;
+
+          td.innerHTML = `<div>
+          <div style="width: 10%; float:left"><input type = 'button' onclick = 'createVoiceMailContentPlay("${msgId}", ${tr.className})' value = 'Play'/></div>
+          <div style="width: 20%; float:left; padding-left:40px" id='read${tr.className}'> <input type = 'button' onclick = 'voicemailMarkAsRead("${msgId}", ${tr.className})' value = 'MarkAsRead'/></div>
+          <div style="float:left; padding-left:40px" id='unread${tr.className}'> <input type = 'button'  onclick = 'voicemailMarkAsUnRead("${msgId}", ${tr.className})' value = 'MarkAsUnRead'/></div>
+          <div style="float:right; padding-right:40px" id='delete${tr.className}'> <input type = 'button'  onclick = 'deleteVoicemail("${msgId}", ${tr.className})' value = 'Delete'/></div>
+          <div>
+          <audio controls id="${msgId}">
+          Your browser does not support the audio element.
+          </audio>
+          </div>
+          </div>
+          `;
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+          table.appendChild(tbody);
+        }
+        for (let index = 0; index < vmLength; index += 1) {
+          const vm = voiceMailList[index];
+
+          if (vm.read === 'true') {
+            this.markAsRead(index);
+          } else {
+            this.markAsUnRead(index);
+          }
+        }
+      } else {
+        console.log('Voicemail is empty');
+      } 
+
       voicemailElm.disabled = false;
 
       if (getVoicemailListResponse?.data.voicemailList.length) {
@@ -1083,7 +1226,7 @@ function convertMStoS(ms) {
 }
 
 function convertUnix(unixTimeStamp) {
-  const d = new Date(unixTimeStamp);
+  const d = new Date(Number(unixTimeStamp));
 
   return `${[d.getMonth() + 1, d.getDate(), d.getFullYear()].join('/')} ${[
     d.getHours(),
@@ -1097,6 +1240,7 @@ async function createVoiceMailContentPlay(msgId, rowId) {
 }
 
 async function VMPlay(msgId, rowId) {
+  let content, contentType;
   try {
     const getVoicemailContentResponse = await voicemail.getVoicemailContent(msgId);
 
@@ -1105,7 +1249,9 @@ async function VMPlay(msgId, rowId) {
       console.log(getVoicemailContentResponse.data?.voicemailContent);
       base64 = getVoicemailContentResponse.data?.voicemailContent?.content;
       audio64 = document.getElementById(msgId);
-      audio64.src = `data:${getVoicemailContentResponse?.data?.voicemailContent?.type};base64,${getVoicemailContentResponse?.data?.voicemailContent?.content}`;
+      contentType = getVoicemailContentResponse?.data?.voicemailContent?.type
+      content = getVoicemailContentResponse?.data?.voicemailContent?.content
+      audio64.src = `data:${contentType==='WAV'?'audio/wav':contentType};base64,${content}`;
       audio64.play();
 
       const markVoicemailAsRead = await voicemail.voicemailMarkAsRead(msgId);

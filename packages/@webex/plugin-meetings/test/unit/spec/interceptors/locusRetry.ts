@@ -3,6 +3,7 @@
  */
 
 /* eslint-disable camelcase */
+import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import { expect } from "@webex/test-helper-chai";
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -13,7 +14,7 @@ import sinon from 'sinon';
 
 describe('plugin-meetings', () => {
     describe('Interceptors', () => {
-      describe('LocusRetryStatusInterceptor', () => { 
+      describe('LocusRetryStatusInterceptor', () => {
         let interceptor, webex;
         beforeEach(() => {
             webex = new MockWebex({
@@ -24,7 +25,7 @@ describe('plugin-meetings', () => {
             interceptor = Reflect.apply(LocusRetryStatusInterceptor.create, {
                 sessionId: 'mock-webex_uuid',
               }, []);
-          });  
+          });
         describe('#onResponseError', () => {
             const options = {
                 method: 'POST',
@@ -41,7 +42,7 @@ describe('plugin-meetings', () => {
                     headers: {
                         trackingid: 'test',
                         'retry-after': 1000,
-                    },    
+                    },
                     uri: `https://locus-test.webex.com/locus/api/v1/loci/call`,
                     },
                 body: {
@@ -54,7 +55,7 @@ describe('plugin-meetings', () => {
                     headers: {
                         trackingid: 'test',
                         'retry-after': 1000,
-                    },    
+                    },
                     uri: `https://locus-test.webex.com/locus/api/v1/loci/call`,
                     },
                 body: {
@@ -73,7 +74,7 @@ describe('plugin-meetings', () => {
 
                 return interceptor.onResponseError(options, reason2).then(() => {
                     expect(handleRetryStub.calledWith(options, 1000)).to.be.true;
-                    
+
                 });
             });
         });
@@ -92,7 +93,7 @@ describe('plugin-meetings', () => {
             it('returns the correct resolved value when the request is successful', () => {
                 const mockResponse = 'mock response'
                 interceptor.webex.request = sinon.stub().returns(Promise.resolve(mockResponse));
-          
+
                 return interceptor.handleRetryRequestLocusServiceError(options, retryAfterTime)
                   .then((response) => {
                     expect(response).to.equal(mockResponse);
@@ -101,9 +102,9 @@ describe('plugin-meetings', () => {
 
             it('rejects the promise when the request is unsuccessful', () => {
               const rejectionReason = 'Service Unavaialble after retry';
-    
+
               interceptor.webex.request = sinon.stub().returns(Promise.reject(rejectionReason));
-        
+
               return interceptor.handleRetryRequestLocusServiceError(options, retryAfterTime)
                 .catch((error) => {
                   expect(error).to.equal(rejectionReason);
@@ -114,10 +115,10 @@ describe('plugin-meetings', () => {
                 let clock;
                 clock = sinon.useFakeTimers();
                 const mockResponse = 'mock response'
-      
+
                 interceptor.webex.request = sinon.stub().returns(Promise.resolve(mockResponse));
                 const promise = interceptor.handleRetryRequestLocusServiceError(options, retryAfterTime);
-      
+
                 clock.tick(retryAfterTime);
 
                 return promise.then(() => {

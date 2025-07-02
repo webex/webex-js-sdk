@@ -16,45 +16,106 @@ export type ClientLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['clientLaunchMethod'];
 
+export type ClientUserNameInput = NonNullable<RawClientEvent['userNameInput']>;
+
+export type ClientEmailInput = NonNullable<RawClientEvent['emailInput']>;
+
 export type BrowserLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['browserLaunchMethod'];
 
-export type MetricEventProduct = 'webex' | 'wxcc_desktop';
+export type MetricEventProduct = 'webex' | 'wxcc_desktop' | 'wxcc_crm' | 'wxcc_sdk';
 
-export type MetricEventAgent = 'user' | 'browser' | 'system' | 'sdk' | 'redux' | 'service';
+export type MetricEventAgent = 'user' | 'browser' | 'system' | 'sdk' | 'redux' | 'service' | 'api';
 
 export type MetricEventVerb =
-  | 'create'
-  | 'get'
-  | 'fetch'
-  | 'update'
-  | 'list'
-  | 'delete'
-  | 'select'
-  | 'view'
-  | 'set'
-  | 'toggle'
-  | 'load'
-  | 'reload'
-  | 'click'
-  | 'hover'
-  | 'register'
-  | 'unregister'
-  | 'enable'
-  | 'disable'
-  | 'use'
-  | 'complete'
-  | 'submit'
-  | 'apply'
-  | 'cancel'
   | 'abort'
-  | 'sync'
+  | 'accept'
+  | 'activate'
+  | 'apply'
+  | 'answer'
+  | 'authorize'
+  | 'build'
+  | 'cancel'
+  | 'change'
+  | 'click'
+  | 'close'
+  | 'complete'
+  | 'connect'
+  | 'create'
+  | 'deactivate'
+  | 'decrypt'
+  | 'delete'
+  | 'deliver'
+  | 'destroy'
+  | 'disable'
+  | 'disconnect'
+  | 'dismiss'
+  | 'display'
+  | 'download'
+  | 'edit'
+  | 'enable'
+  | 'encrypt'
+  | 'end'
+  | 'expire'
+  | 'fail'
+  | 'fetch'
+  | 'fire'
+  | 'generate'
+  | 'get'
+  | 'hide'
+  | 'hover'
+  | 'ignore'
+  | 'initialize'
+  | 'initiate'
+  | 'invalidate'
+  | 'join'
+  | 'list'
+  | 'load'
   | 'login'
   | 'logout'
-  | 'answer'
-  | 'activate'
-  | 'deactivate';
+  | 'notify'
+  | 'offer'
+  | 'open'
+  | 'press'
+  | 'receive'
+  | 'refer'
+  | 'refresh'
+  | 'register'
+  | 'release'
+  | 'reload'
+  | 'reject'
+  | 'request'
+  | 'reset'
+  | 'resize'
+  | 'respond'
+  | 'retry'
+  | 'revoke'
+  | 'save'
+  | 'search'
+  | 'select'
+  | 'send'
+  | 'set'
+  | 'sign'
+  | 'start'
+  | 'submit'
+  | 'switch'
+  | 'sync'
+  | 'toggle'
+  | 'transfer'
+  | 'unregister'
+  | 'update'
+  | 'upload'
+  | 'use'
+  | 'validate'
+  | 'view'
+  | 'visit'
+  | 'wait'
+  | 'warn'
+  | 'exit';
+
+export type MetricEventJoinFlowVersion = 'Other' | 'NewFTE';
+export type MetricEventMeetingJoinPhase = 'pre-join' | 'join' | 'in-meeting';
 
 export type SubmitClientEventOptions = {
   meetingId?: string;
@@ -69,6 +130,11 @@ export type SubmitClientEventOptions = {
   browserLaunchMethod?: BrowserLaunchMethodType;
   webexConferenceIdStr?: string;
   globalMeetingId?: string;
+  joinFlowVersion?: MetricEventJoinFlowVersion;
+  meetingJoinPhase?: MetricEventMeetingJoinPhase;
+  triggeredTime?: string;
+  emailInput?: ClientEmailInput;
+  userNameInput?: ClientUserNameInput;
 };
 
 export type SubmitMQEOptions = {
@@ -114,6 +180,8 @@ export interface DeviceContext {
 }
 
 export type MetricType = 'behavioral' | 'operational' | 'business';
+
+export type Table = 'wbxapp_callend_metrics' | 'business_metrics' | 'business_ucf' | 'default';
 
 type InternalEventPayload = string | number | boolean;
 export type EventPayload = Record<string, InternalEventPayload>;
@@ -219,6 +287,13 @@ export type SubmitOperationalEvent = (args: {
   payload: EventPayload;
 }) => void;
 
+export type SubmitBusinessEvent = (args: {
+  name: OperationalEvent['metricName'];
+  payload: EventPayload;
+  metadata?: EventPayload;
+  table?: Table;
+}) => void;
+
 export type SubmitMQE = (args: {
   name: MediaQualityEvent['name'];
   payload: SubmitMQEPayload;
@@ -236,9 +311,32 @@ export type PreComputedLatencies =
   | 'internal.download.time'
   | 'internal.get.cluster.time'
   | 'internal.click.to.interstitial'
+  | 'internal.click.to.interstitial.with.user.delay'
   | 'internal.refresh.captcha.time'
   | 'internal.exchange.ci.token.time'
   | 'internal.get.u2c.time'
   | 'internal.call.init.join.req'
   | 'internal.other.app.api.time'
   | 'internal.api.fetch.intelligence.models';
+
+export interface IdType {
+  meetingId?: string;
+  callId?: string;
+}
+
+export interface IMetricsAttributes {
+  type: string;
+  version: string;
+  userId: string;
+  correlationId: string;
+  connectionId: string;
+  data: any[];
+  meetingId?: string;
+  callId?: string;
+}
+
+export interface DelayedClientEvent {
+  name: ClientEvent['name'];
+  payload?: RecursivePartial<ClientEvent['payload']>;
+  options?: SubmitClientEventOptions;
+}

@@ -137,6 +137,7 @@ export enum SORT_BY {
 export enum ServiceIndicator {
   CALLING = 'calling',
   CONTACT_CENTER = 'contactcenter',
+  GUEST_CALLING = 'guestcalling',
 }
 
 export type ServiceData = {
@@ -258,3 +259,17 @@ export interface SCIMListResponse {
   startIndex: number;
   Resources: Resource[];
 }
+
+export type LogsMetaData = {
+  callId?: string;
+  feedbackId?: string;
+  correlationId?: string;
+};
+
+export type UploadLogsResponse = {
+  trackingid?: string;
+  url?: string;
+  userId?: string;
+  feedbackId: string;
+  correlationId?: string;
+};

@@ -1,3 +1,5 @@
+import 'jsdom-global/register';
+import {v4 as uuidv4} from 'uuid';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -195,6 +197,7 @@ describe('plugin-meetings', () => {
         const permissionToken = 'permission-token';
         const installationId = 'installationId';
         const reachability = 'reachability';
+        const clientMediaPreferences = 'clientMediaPreferences';
 
         await meetingsRequest.joinMeeting({
           locusUrl,
@@ -203,6 +206,7 @@ describe('plugin-meetings', () => {
           roapMessage,
           reachability,
           permissionToken,
+          clientMediaPreferences,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -213,6 +217,7 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.body.device.countryCode, 'US');
         assert.equal(requestParams.body.permissionToken, 'permission-token');
         assert.equal(requestParams.body.device.regionCode, 'WEST-COAST');
+        assert.equal(requestParams.body.clientMediaPreferences, 'clientMediaPreferences');
         assert.include(requestParams.body.device.localIp, '127.0.0');
         assert.deepEqual(requestParams.body.localMedias, [
           {localSdp: '{"roapMessage":"roap-message","reachability":"reachability"}'},
@@ -384,32 +389,6 @@ describe('plugin-meetings', () => {
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
         assert.deepEqual(requestParams.body.alias, undefined);
-      });
-
-      it('includes joinCookie and ipver correctly', async () => {
-        const locusUrl = 'locusURL';
-        const deviceUrl = 'deviceUrl';
-        const correlationId = 'random-uuid';
-        const roapMessage = 'roap-message';
-        const permissionToken = 'permission-token';
-
-        await meetingsRequest.joinMeeting({
-          locusUrl,
-          deviceUrl,
-          correlationId,
-          roapMessage,
-          permissionToken,
-          ipVersion: IP_VERSION.ipv4_and_ipv6,
-        });
-        const requestParams = meetingsRequest.request.getCall(0).args[0];
-
-        assert.equal(requestParams.method, 'POST');
-        assert.equal(requestParams.uri, `${locusUrl}/participant?alternateRedirect=true`);
-        assert.deepEqual(requestParams.body.clientMediaPreferences, {
-          joinCookie: {anycastEntryPoint: 'aws-eu-west-1'},
-          preferTranscoding: true,
-          ipver: 1,
-        });
       });
     });
 
@@ -648,6 +627,36 @@ describe('plugin-meetings', () => {
             },
             requestingParticipantId,
           },
+        });
+      });
+    });
+
+    describe('#setPostMeetingDataConsent', () => {
+      [true, false].forEach((consent) => {
+        it(`sends request to set post meeting data consent with ${consent}`, async () => {
+          const locusUrl = `https://locus-test.wbx2.com/locus/api/v1/loci/${consent}`;
+          const selfId = uuidv4();
+          const deviceUrl = `https://wdm-test.wbx2.com/wdm/api/v1/devices/${consent}`;
+
+          const consentPromise = meetingsRequest.setPostMeetingDataConsent({
+            postMeetingDataConsent: consent,
+            locusUrl,
+            selfId,
+            deviceUrl,
+          });
+          assert.exists(consentPromise.then);
+          await consentPromise;
+
+          checkRequest({
+            method: 'PATCH',
+            uri: `${locusUrl}/participant/${selfId}/controls`,
+            body: {
+              consent: {
+                postMeetingDataConsent: consent,
+                deviceUrl,
+              },
+            },
+          });
         });
       });
     });

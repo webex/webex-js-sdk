@@ -2,6 +2,7 @@ enum Setting {
   disallowUnmute = 'DisallowUnmute',
   muteOnEntry = 'MuteOnEntry',
   muted = 'Muted',
+  roles = 'Roles',
 }
 
 enum Control {
@@ -11,6 +12,9 @@ enum Control {
   shareControl = 'shareControl',
   video = 'video',
   viewTheParticipantList = 'viewTheParticipantList',
+  annotation = 'annotation',
+  rdc = 'rdc',
+  pollingQA = 'pollingQA',
 }
 
 export {Control, Setting};

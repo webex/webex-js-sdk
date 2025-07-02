@@ -1,9 +1,11 @@
 /* eslint-disable valid-jsdoc */
 import {defer} from 'lodash';
-import {Defer} from '@webex/common';
+import {Defer, transferEvents} from '@webex/common';
+import {EventEmitter} from 'events';
 import {WebexPlugin} from '@webex/webex-core';
-import {MEDIA, HTTP_VERBS, ROAP, IP_VERSION} from '../constants';
+import {MEDIA, HTTP_VERBS, ROAP} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
+import {ClientMediaPreferences} from '../reachability/reachability.types';
 
 export type MediaRequestType = 'RoapMessage' | 'LocalMute';
 export type RequestResult = any;
@@ -14,9 +16,8 @@ export type RoapRequest = {
   mediaId: string;
   roapMessage: any;
   reachability: any;
+  clientMediaPreferences: ClientMediaPreferences;
   sequence?: any;
-  joinCookie: any; // any, because this is opaque to the client, we pass whatever object we got from one backend component (Orpheus) to the other (Locus)
-  ipVersion?: IP_VERSION;
 };
 
 export type LocalMuteRequest = {
@@ -202,10 +203,6 @@ export class LocusMediaRequest extends WebexPlugin {
     const body: any = {
       device: this.config.device,
       correlationId: this.config.correlationId,
-      clientMediaPreferences: {
-        preferTranscoding: this.config.preferTranscoding,
-        ipver: request.type === 'RoapMessage' ? request.ipVersion : undefined,
-      },
     };
 
     const localMedias: any = {
@@ -223,15 +220,7 @@ export class LocusMediaRequest extends WebexPlugin {
       case 'RoapMessage':
         localMedias.roapMessage = request.roapMessage;
         localMedias.reachability = request.reachability;
-        body.clientMediaPreferences.joinCookie = request.joinCookie;
-
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.locus.media.request',
-          options: {
-            meetingId: this.config.meetingId,
-          },
-        });
+        body.clientMediaPreferences = request.clientMediaPreferences;
         break;
     }
 
@@ -254,25 +243,22 @@ export class LocusMediaRequest extends WebexPlugin {
       this.confluenceState = 'creation in progress';
     }
 
-    // @ts-ignore
-    return this.request({
+    const upload = new EventEmitter();
+    const download = new EventEmitter();
+
+    const options = {
       method: HTTP_VERBS.PUT,
       uri,
       body,
-    })
+      upload,
+      download,
+    };
+
+    // @ts-ignore
+    const promise = this.request(options)
       .then((result) => {
         if (isRequestAffectingConfluenceState(request)) {
           this.confluenceState = 'created';
-        }
-
-        if (request.type === 'RoapMessage') {
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.locus.media.response',
-            options: {
-              meetingId: this.config.meetingId,
-            },
-          });
         }
 
         return result;
@@ -298,6 +284,21 @@ export class LocusMediaRequest extends WebexPlugin {
 
         throw e;
       });
+
+    if (request.type === 'RoapMessage') {
+      const setupProgressListener = (direction: string, eventEmitter: EventEmitter) => {
+        eventEmitter.on('progress', (progressEvent: ProgressEvent) => {
+          LoggerProxy.logger.info(
+            `${request.type}: ${direction} Progress, Timestamp: ${progressEvent.timeStamp}, Progress: ${progressEvent.loaded}/${progressEvent.total}`
+          );
+        });
+      };
+
+      setupProgressListener('Upload', options.upload);
+      setupProgressListener('Download', options.download);
+    }
+
+    return promise;
   }
 
   /**
@@ -345,5 +346,12 @@ export class LocusMediaRequest extends WebexPlugin {
   /** Returns true if a confluence on the server is already created */
   public isConfluenceCreated() {
     return this.confluenceState === 'created';
+  }
+
+  /**
+   * This method needs to be called when we downgrade from multistream to transcoded connection.
+   */
+  public downgradeFromMultistreamToTranscoded() {
+    this.config.preferTranscoding = true;
   }
 }

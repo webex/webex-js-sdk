@@ -15,6 +15,7 @@ import {
   SubmitClientEvent,
   SubmitInternalEvent,
   SubmitOperationalEvent,
+  SubmitBusinessEvent,
   SubmitMQE,
   PreComputedLatencies,
 } from './metrics.types';
@@ -25,6 +26,7 @@ import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-l
 import BehavioralMetrics from './behavioral-metrics';
 import OperationalMetrics from './operational-metrics';
 import BusinessMetrics from './business-metrics';
+import RtcMetrics from './rtcMetrics';
 
 registerInternalPlugin('metrics', Metrics, {
   config,
@@ -47,6 +49,7 @@ export {
   BehavioralMetrics,
   OperationalMetrics,
   BusinessMetrics,
+  RtcMetrics,
 };
 export type {
   ClientEvent,
@@ -56,5 +59,6 @@ export type {
   SubmitInternalEvent,
   SubmitMQE,
   SubmitOperationalEvent,
+  SubmitBusinessEvent,
   PreComputedLatencies,
 };

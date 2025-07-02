@@ -1,5 +1,6 @@
 import {Mutex} from 'async-mutex';
 import {v4 as uuid} from 'uuid';
+import {METHOD_START_MESSAGE} from '../../common/constants';
 import {
   CallDetails,
   CallDirection,
@@ -7,10 +8,11 @@ import {
   IDeviceInfo,
   MobiusDeviceId,
   RegistrationStatus,
+  ServiceData,
   ServiceIndicator,
 } from '../../common/types';
 import {ILine, LINE_EVENTS} from './types';
-import {LINE_FILE, VALID_PHONE} from '../constants';
+import {LINE_FILE, METHODS, VALID_PHONE_REGEX} from '../constants';
 import log from '../../Logger';
 import {IRegistration} from '../registration/types';
 import {createRegistration} from '../registration';
@@ -69,6 +71,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   private callManager: ICallManager;
 
+  private serviceData: ServiceData;
+
   #primaryMobiusUris: string[];
 
   #backupMobiusUris: string[];
@@ -81,6 +85,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     backupMobiusUris: string[],
     logLevel: LOGGER,
     serviceDataConfig?: CallingClientConfig['serviceData'],
+    jwe?: string,
     phoneNumber?: string,
     extension?: string,
     voicemail?: string
@@ -100,23 +105,24 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     this.#primaryMobiusUris = primaryMobiusUris;
     this.#backupMobiusUris = backupMobiusUris;
 
-    const serviceData = serviceDataConfig?.indicator
+    this.serviceData = serviceDataConfig?.indicator
       ? serviceDataConfig
       : {indicator: ServiceIndicator.CALLING, domain: ''};
 
-    validateServiceData(serviceData);
+    validateServiceData(this.serviceData);
 
     this.registration = createRegistration(
       this.#webex,
-      serviceData,
+      this.serviceData,
       this.#mutex,
       this.lineEmitter,
-      logLevel
+      logLevel,
+      jwe
     );
 
     log.setLogger(logLevel, LINE_FILE);
 
-    this.callManager = getCallManager(this.#webex, serviceData.indicator);
+    this.callManager = getCallManager(this.#webex, this.serviceData.indicator);
 
     this.incomingCallListener();
   }
@@ -125,6 +131,10 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * Wrapper to for device registration.
    */
   public async register() {
+    log.info(METHOD_START_MESSAGE, {
+      file: LINE_FILE,
+      method: METHODS.REGISTER,
+    });
     await this.#mutex.runExclusive(async () => {
       this.emit(LINE_EVENTS.CONNECTING);
 
@@ -140,6 +150,10 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * Wrapper to for device  deregister.
    */
   public async deregister() {
+    log.info(METHOD_START_MESSAGE, {
+      file: LINE_FILE,
+      method: METHODS.DEREGISTER,
+    });
     await this.registration.deregister();
     this.registration.setStatus(RegistrationStatus.IDLE);
   }
@@ -174,6 +188,10 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * Line events emitter
    */
   public lineEmitter = (event: LINE_EVENTS, deviceInfo?: IDeviceInfo, lineError?: LineError) => {
+    log.info(METHOD_START_MESSAGE, {
+      file: LINE_FILE,
+      method: METHODS.LINE_EMITTER,
+    });
     switch (event) {
       case LINE_EVENTS.REGISTERED:
         if (deviceInfo) {
@@ -225,11 +243,15 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * Initiates a call to the specified destination.
    * @param dest - The call details including destination information.
    */
-  public makeCall = (dest: CallDetails): ICall | undefined => {
+  public makeCall = (dest?: CallDetails): ICall | undefined => {
+    log.info(METHOD_START_MESSAGE, {
+      file: LINE_FILE,
+      method: METHODS.MAKE_CALL,
+    });
     let call;
 
     if (dest) {
-      const match = dest.address.match(VALID_PHONE);
+      const match = dest.address.match(VALID_PHONE_REGEX);
 
       if (match && match[0].length === dest.address.length) {
         const sanitizedNumber = dest.address
@@ -242,14 +264,20 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
         };
 
         call = this.callManager.createCall(
-          formattedDest,
           CallDirection.OUTBOUND,
           this.registration.getDeviceInfo().device?.deviceId as string,
-          this.lineId
+          this.lineId,
+          formattedDest
         );
-        log.log(`New call created, callId: ${call.getCallId()}`, {});
+        log.log(`New call created, callId: ${call?.getCallId()}`, {
+          file: LINE_FILE,
+          method: METHODS.MAKE_CALL,
+        });
       } else {
-        log.warn('Invalid phone number detected', {});
+        log.warn('Invalid phone number detected', {
+          file: LINE_FILE,
+          method: METHODS.MAKE_CALL,
+        });
 
         const err = new LineError(
           'An invalid phone number was detected. Check the number and try again.',
@@ -263,6 +291,19 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
       return call;
     }
+    if (this.serviceData.indicator === ServiceIndicator.GUEST_CALLING) {
+      call = this.callManager.createCall(
+        CallDirection.OUTBOUND,
+        this.registration.getDeviceInfo().device?.deviceId as string,
+        this.lineId
+      );
+      log.info(`New guest call created, callId: ${call.getCallId()}`, {
+        file: LINE_FILE,
+        method: METHODS.MAKE_CALL,
+      });
+
+      return call;
+    }
 
     return undefined;
   };
@@ -271,11 +312,14 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * An Incoming Call listener.
    */
   private incomingCallListener() {
-    const logContext = {
+    log.info(METHOD_START_MESSAGE, {
       file: LINE_FILE,
-      method: this.incomingCallListener.name,
-    };
-    log.log('Listening for incoming calls... ', logContext);
+      method: METHODS.INCOMING_CALL_LISTENER,
+    });
+    log.info('Listening for incoming calls... ', {
+      file: LINE_FILE,
+      method: METHODS.INCOMING_CALL_LISTENER,
+    });
     this.callManager.on(LINE_EVENT_KEYS.INCOMING_CALL, (callObj: ICall) => {
       this.emit(LINE_EVENTS.INCOMING_CALL, callObj);
     });

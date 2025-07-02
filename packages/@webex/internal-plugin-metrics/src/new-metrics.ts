@@ -21,6 +21,8 @@ import {
   MediaQualityEvent,
   InternalEvent,
   SubmitClientEventOptions,
+  Table,
+  DelayedClientEvent,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
@@ -28,6 +30,7 @@ import {generateCommonErrorMetadata} from './utils';
 
 /**
  * Metrics plugin to centralize all types of metrics.
+ * https://confluence-eng-gpk2.cisco.com/conf/pages/viewpage.action?pageId=231011379
  * @class
  */
 class Metrics extends WebexPlugin {
@@ -42,6 +45,16 @@ class Metrics extends WebexPlugin {
   operationalMetrics: OperationalMetrics;
   businessMetrics: BusinessMetrics;
   isReady = false;
+
+  /**
+   * Whether or not to delay the submission of client events.
+   */
+  delaySubmitClientEvents = false;
+
+  /**
+   * Overrides for delayed client events. E.g. if you want to override the correlationId for all delayed client events, you can set this to { correlationId: 'newCorrelationId' }
+   */
+  delayedClientEventsOverrides: Partial<DelayedClientEvent['options']> = {};
 
   /**
    * Constructor
@@ -67,6 +80,10 @@ class Metrics extends WebexPlugin {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
       this.isReady = true;
+      this.setDelaySubmitClientEvents({
+        shouldDelay: this.delaySubmitClientEvents,
+        overrides: this.delayedClientEventsOverrides,
+      });
     });
   }
 
@@ -139,7 +156,7 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   * @returns true once we have the deviceId we need to submit buisness events
+   * @returns true once we have the deviceId we need to submit business events
    */
   isReadyToSubmitBusinessEvents() {
     this.lazyBuildBusinessMetrics();
@@ -198,10 +215,20 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   * Buisness event
+   * Business event
    * @param args
    */
-  submitBusinessEvent({name, payload}: {name: string; payload: EventPayload}) {
+  submitBusinessEvent({
+    name,
+    payload,
+    table,
+    metadata,
+  }: {
+    name: string;
+    payload: EventPayload;
+    table?: Table;
+    metadata?: EventPayload;
+  }) {
     if (!this.isReady) {
       // @ts-ignore
       this.webex.logger.log(
@@ -213,7 +240,7 @@ class Metrics extends WebexPlugin {
 
     this.lazyBuildBusinessMetrics();
 
-    return this.businessMetrics.submitBusinessEvent({name, payload});
+    return this.businessMetrics.submitBusinessEvent({name, payload, table, metadata});
   }
 
   /**
@@ -278,7 +305,12 @@ class Metrics extends WebexPlugin {
       options: {meetingId: options?.meetingId},
     });
 
-    return this.callDiagnosticMetrics.submitClientEvent({name, payload, options});
+    return this.callDiagnosticMetrics.submitClientEvent({
+      name,
+      payload,
+      options,
+      delaySubmitEvent: this.delaySubmitClientEvents,
+    });
   }
 
   /**
@@ -376,6 +408,29 @@ class Metrics extends WebexPlugin {
    */
   public isServiceErrorExpected(serviceErrorCode: number): boolean {
     return this.callDiagnosticMetrics.isServiceErrorExpected(serviceErrorCode);
+  }
+
+  /**
+   * Sets the value of delaySubmitClientEvents. If set to true, client events will be delayed until submitDelayedClientEvents is called. If
+   * set to false, delayed client events will be submitted.
+   *
+   * @param {object} options - {shouldDelay: A boolean value indicating whether to delay the submission of client events, overrides: An object containing overrides for the client events}
+   */
+  public setDelaySubmitClientEvents({
+    shouldDelay,
+    overrides,
+  }: {
+    shouldDelay: boolean;
+    overrides?: Partial<DelayedClientEvent['options']>;
+  }) {
+    this.delaySubmitClientEvents = shouldDelay;
+    this.delayedClientEventsOverrides = overrides || {};
+
+    if (this.isReady && !shouldDelay) {
+      return this.callDiagnosticMetrics.submitDelayedClientEvents(overrides);
+    }
+
+    return Promise.resolve();
   }
 }
 

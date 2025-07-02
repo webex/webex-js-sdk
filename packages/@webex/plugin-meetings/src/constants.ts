@@ -36,6 +36,8 @@ export const HOST = 'host';
 
 export const JOIN = 'join';
 
+export const JOIN_LINK_MTID = 'MTID';
+
 export const LEAVE = 'leave';
 export const LIVE = 'live';
 export const LOCAL = 'local';
@@ -104,6 +106,7 @@ export const _ON_HOLD_LOBBY_ = 'ON_HOLD_LOBBY';
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
 export const _MEETING_ = 'MEETING';
+export const _SPACE_SHARE_ = 'SPACE_SHARE';
 export const _MEETING_CENTER_ = 'MEETING_CENTER';
 export const _MEETING_ID_ = 'MEETING_ID';
 
@@ -198,6 +201,9 @@ export const RETRY_TIMEOUT = 3000;
 
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
+export const WEBINAR_ERROR_WEBCAST = [403026];
+export const WEBINAR_ERROR_REGISTRATION_ID = [403037, 403137];
+export const JOIN_BEFORE_HOST = 403003;
 
 // ******************** REGEX **********************
 // Please alphabetize
@@ -303,6 +309,7 @@ export const EVENT_TRIGGERS = {
   MEETING_SELF_CANNOT_VIEW_PARTICIPANT_LIST: 'meeting:self:cannotViewParticipantList',
   MEETING_SELF_IS_SHARING_BLOCKED: 'meeting:self:isSharingBlocked',
   MEETING_SELF_ROLES_CHANGED: 'meeting:self:rolesChanged',
+  MEETING_SELF_BRB_UPDATE: 'meeting:self:brbUpdate',
   MEETING_CONTROLS_LAYOUT_UPDATE: 'meeting:layout:update',
   MEETING_ENTRY_EXIT_TONE_UPDATE: 'meeting:entryExitTone:update',
   MEETING_BREAKOUTS_UPDATE: 'meeting:breakouts:update',
@@ -325,6 +332,7 @@ export const EVENT_TRIGGERS = {
   MEETING_RECONNECTION_FAILURE: 'meeting:reconnectionFailure',
   MEETING_UNLOCKED: 'meeting:unlocked',
   MEETING_LOCKED: 'meeting:locked',
+  MEETING_RESOURCE_LINKS_UPDATE: 'meeting:resourceLinks:update',
   MEETING_INFO_AVAILABLE: 'meeting:meetingInfoAvailable',
   MEETING_INFO_UPDATED: 'meeting:meetingInfoUpdated',
   MEETING_LOG_UPLOAD_SUCCESS: 'meeting:logUpload:success',
@@ -356,6 +364,15 @@ export const EVENT_TRIGGERS = {
     'meeting:controls:view-the-participants-list:updated',
   MEETING_CONTROLS_RAISE_HAND_UPDATED: 'meeting:controls:raise-hand:updated',
   MEETING_CONTROLS_VIDEO_UPDATED: 'meeting:controls:video:updated',
+  MEETING_CONTROLS_STAGE_VIEW_UPDATED: 'meeting:controls:stage-view:updated',
+  MEETING_CONTROLS_WEBCAST_UPDATED: 'meeting:controls:webcast:updated',
+  MEETING_CONTROLS_MEETING_FULL_UPDATED: 'meeting:controls:meeting-full:updated',
+  MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED:
+    'meeting:controls:practice-session-status:updated',
+  MEETING_CONTROLS_ANNOTATION_UPDATED: 'meeting:controls:annotation:updated',
+  MEETING_CONTROLS_REMOTE_DESKTOP_CONTROL_UPDATED:
+    'meeting:controls:remote-desktop-control:updated',
+  MEETING_CONTROLS_POLLING_QA_UPDATED: 'meeting:controls:polling-qa:updated',
   // Locus URL changed
   MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
   MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
@@ -363,8 +380,10 @@ export const EVENT_TRIGGERS = {
   MEETING_TRANSCRIPTION_CONNECTED: 'meeting:transcription:connected',
   MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
   MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
+  MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED: 'meeting:transcription:spokenLanguageUpdate',
   MEETING_MANUAL_CAPTION_UPDATED: 'meeting:manualCaptionControl:updated',
   MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
+  MEETING_PARTICIPANT_REASON_CHANGED: 'meeting:participant-reason-changed',
 };
 
 export const EVENT_TYPES = {
@@ -376,6 +395,13 @@ export const EVENT_TYPES = {
   REMOTE_SHARE: 'remoteShare',
   REMOTE_SHARE_AUDIO: 'remoteShareAudio',
   ERROR: 'error',
+};
+
+export const HEADERS = {
+  CONTENT_TYPE: 'Content-Type',
+  CONTENT_TYPE_VALUE: {
+    APPLICATION_JSON: 'application/json',
+  },
 };
 
 // Handles the reason when meeting gets destroyed
@@ -524,6 +550,21 @@ export const ERROR_DICTIONARY = {
       'Reconnection was not started, because there is one already in progress or reconnections are disabled in config.',
     CODE: 15,
   },
+  JoinWebinarError: {
+    NAME: 'JoinWebinarError',
+    MESSAGE: 'An error occurred while the join webinar.',
+    CODE: 16,
+  },
+  MULTISTREAM_NOT_SUPPORTED: {
+    NAME: 'MultistreamNotSupported',
+    MESSAGE: 'Client asked for multistream backend (Homer), but got something else instead',
+    CODE: 17,
+  },
+  JoinForbiddenError: {
+    NAME: 'JoinForbiddenError',
+    MESSAGE: 'Meeting join forbidden.',
+    CODE: 18,
+  },
 };
 
 export const FLOOR_ACTION = {
@@ -660,6 +701,8 @@ export const LOCUSINFO = {
     CONTROLS_MEETING_LAYOUT_UPDATED: 'CONTROLS_MEETING_LAYOUT_UPDATED',
     CONTROLS_RECORDING_UPDATED: 'CONTROLS_RECORDING_UPDATED',
     CONTROLS_MEETING_TRANSCRIBE_UPDATED: 'CONTROLS_MEETING_TRANSCRIBE_UPDATED',
+    CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED:
+      'CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED',
     CONTROLS_MEETING_MANUAL_CAPTION_UPDATED: 'CONTROLS_MEETING_MANUAL_CAPTION_UPDATED',
     CONTROLS_MEETING_BREAKOUT_UPDATED: 'CONTROLS_MEETING_BREAKOUT_UPDATED',
     CONTROLS_MEETING_CONTAINER_UPDATED: 'CONTROLS_MEETING_CONTAINER_UPDATED',
@@ -671,7 +714,14 @@ export const LOCUSINFO = {
     CONTROLS_REACTIONS_CHANGED: 'CONTROLS_REACTIONS_CHANGED',
     CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED: 'CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED',
     CONTROLS_RAISE_HAND_CHANGED: 'CONTROLS_RAISE_HAND_CHANGED',
+    CONTROLS_WEBCAST_CHANGED: 'CONTROLS_WEBCAST_CHANGED',
+    CONTROLS_MEETING_FULL_CHANGED: 'CONTROLS_MEETING_FULL_CHANGED',
+    CONTROLS_PRACTICE_SESSION_STATUS_UPDATED: 'CONTROLS_PRACTICE_SESSION_STATUS_UPDATED',
     CONTROLS_VIDEO_CHANGED: 'CONTROLS_VIDEO_CHANGED',
+    CONTROLS_STAGE_VIEW_UPDATED: 'CONTROLS_STAGE_VIEW_UPDATED',
+    CONTROLS_ANNOTATION_CHANGED: 'CONTROLS_ANNOTATION_CHANGED',
+    CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED: 'CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED',
+    CONTROLS_POLLING_QA_CHANGED: 'CONTROLS_POLLING_QA_CHANGED',
     SELF_UNADMITTED_GUEST: 'SELF_UNADMITTED_GUEST',
     SELF_ADMITTED_GUEST: 'SELF_ADMITTED_GUEST',
     SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED: 'SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED',
@@ -695,8 +745,11 @@ export const LOCUSINFO = {
     SELF_IS_SHARING_BLOCKED_CHANGE: 'SELF_IS_SHARING_BLOCKED_CHANGE',
     SELF_MEETING_BREAKOUTS_CHANGED: 'SELF_MEETING_BREAKOUTS_CHANGED',
     SELF_MEETING_INTERPRETATION_CHANGED: 'SELF_MEETING_INTERPRETATION_CHANGED',
+    SELF_MEETING_BRB_CHANGED: 'SELF_MEETING_BRB_CHANGED',
     MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
     LINKS_SERVICES: 'LINKS_SERVICES',
+    LINKS_RESOURCES: 'LINKS_RESOURCES',
+    PARTICIPANT_REASON_CHANGED: 'PARTICIPANT_REASON_CHANGED',
   },
 };
 
@@ -863,7 +916,9 @@ export enum SELF_POLICY {
   ENFORCE_VIRTUAL_BACKGROUND = 'enforceVirtualBackground',
   SUPPORT_LOCAL_RECORD = 'supportLocalRecord',
   SUPPORT_NETWORK_BASED_RECORD = 'supportNetworkBasedRecord',
+  SUPPORT_PREMISE_RECORD = 'supportPremiseRecord',
   SUPPORT_REALTIME_CLOSE_CAPTION = 'supportRealtimeCloseCaption',
+  SUPPORT_REALTIME_CLOSE_CAPTION_MANUAL = 'supportRealtimeCloseCaptionManual',
   SUPPORT_CHAT = 'supportChat',
   SUPPORT_DESKTOP_SHARE_REMOTE = 'supportDesktopShareRemote',
   SUPPORT_DESKTOP_SHARE = 'supportDesktopShare',
@@ -879,6 +934,7 @@ export enum SELF_POLICY {
   SUPPORT_HDV = 'supportHDV',
   SUPPORT_PARTICIPANT_LIST = 'supportParticipantList',
   SUPPORT_VOIP = 'supportVoIP',
+  SUPPORT_POLLING_AND_QA = 'supportPollingAndQA',
 }
 
 export const DISPLAY_HINTS = {
@@ -888,6 +944,10 @@ export const DISPLAY_HINTS = {
   RECORDING_CONTROL_PAUSE: 'RECORDING_CONTROL_PAUSE',
   RECORDING_CONTROL_STOP: 'RECORDING_CONTROL_STOP',
   RECORDING_CONTROL_RESUME: 'RECORDING_CONTROL_RESUME',
+  PREMISE_RECORDING_CONTROL_START: 'PREMISE_RECORDING_CONTROL_START',
+  PREMISE_RECORDING_CONTROL_PAUSE: 'PREMISE_RECORDING_CONTROL_PAUSE',
+  PREMISE_RECORDING_CONTROL_STOP: 'PREMISE_RECORDING_CONTROL_STOP',
+  PREMISE_RECORDING_CONTROL_RESUME: 'PREMISE_RECORDING_CONTROL_RESUME',
   LOCK_CONTROL_UNLOCK: 'LOCK_CONTROL_UNLOCK',
   LOCK_CONTROL_LOCK: 'LOCK_CONTROL_LOCK',
   LOCK_STATUS_LOCKED: 'LOCK_STATUS_LOCKED',
@@ -926,6 +986,7 @@ export const DISPLAY_HINTS = {
   PRESENTER_CONTROL: 'PRESENTER_CONTROL',
   CAN_RENAME_SELF_AND_OBSERVED: 'CAN_RENAME_SELF_AND_OBSERVED',
   CAN_RENAME_OTHERS: 'CAN_RENAME_OTHERS',
+  MOVE_TO_LOBBY: 'MOVE_TO_LOBBY',
 
   // breakout session
   BREAKOUT_MANAGEMENT: 'BREAKOUT_MANAGEMENT',
@@ -934,10 +995,16 @@ export const DISPLAY_HINTS = {
   DISABLE_ASK_FOR_HELP: 'DISABLE_ASK_FOR_HELP',
   DISABLE_BREAKOUT_PREASSIGNMENTS: 'DISABLE_BREAKOUT_PREASSIGNMENTS',
   DISABLE_LOBBY_TO_BREAKOUT: 'DISABLE_LOBBY_TO_BREAKOUT',
+  DISABLE_BREAKOUT_START: 'DISABLE_BREAKOUT_START',
 
   // participants list
   DISABLE_VIEW_THE_PARTICIPANT_LIST: 'DISABLE_VIEW_THE_PARTICIPANT_LIST',
   ENABLE_VIEW_THE_PARTICIPANT_LIST: 'ENABLE_VIEW_THE_PARTICIPANT_LIST',
+  // for webinar participants list
+  DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST: 'DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST',
+  ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST: 'ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST',
+  DISABLE_SHOW_ATTENDEE_COUNT: 'DISABLE_SHOW_ATTENDEE_COUNT',
+  ENABLE_SHOW_ATTENDEE_COUNT: 'ENABLE_SHOW_ATTENDEE_COUNT',
 
   // raise hand
   DISABLE_RAISE_HAND: 'DISABLE_RAISE_HAND',
@@ -957,6 +1024,37 @@ export const DISPLAY_HINTS = {
 
   // Voip (audio/video)
   VOIP_IS_ENABLED: 'VOIP_IS_ENABLED',
+
+  // Webcast
+  WEBCAST_CONTROL_START: 'WEBCAST_CONTROL_START',
+  WEBCAST_CONTROL_STOP: 'WEBCAST_CONTROL_STOP',
+
+  // Stage View
+  STAGE_VIEW_ACTIVE: 'STAGE_VIEW_ACTIVE',
+  STAGE_VIEW_INACTIVE: 'STAGE_VIEW_INACTIVE',
+  ENABLE_STAGE_VIEW: 'ENABLE_STAGE_VIEW',
+  DISABLE_STAGE_VIEW: 'DISABLE_STAGE_VIEW',
+
+  // Practice Session
+  PRACTICE_SESSION_ON: 'PRACTICE_SESSION_ON',
+  PRACTICE_SESSION_OFF: 'PRACTICE_SESSION_OFF',
+  SHOW_PRACTICE_SESSION_START: 'SHOW_PRACTICE_SESSION_START',
+  SHOW_PRACTICE_SESSION_STOP: 'SHOW_PRACTICE_SESSION_STOP',
+
+  // Explicit consent for post meeting data
+  SHOW_POST_MEETING_DATA_CONSENT_PROMPT: 'SHOW_POST_MEETING_DATA_CONSENT_PROMPT',
+
+  // Annotations
+  ENABLE_ANNOTATION_MEETING_OPTION: 'ENABLE_ANNOTATION_MEETING_OPTION',
+  DISABLE_ANNOTATION_MEETING_OPTION: 'DISABLE_ANNOTATION_MEETING_OPTION',
+
+  // Remote Desktop Control
+  ENABLE_RDC_MEETING_OPTION: 'ENABLE_RDC_MEETING_OPTION',
+  DISABLE_RDC_MEETING_OPTION: 'DISABLE_RDC_MEETING_OPTION',
+
+  // Polling QA
+  ENABLE_ATTENDEE_START_POLLING_QA: 'ENABLE_ATTENDEE_START_POLLING_QA',
+  DISABLE_ATTENDEE_START_POLLING_QA: 'DISABLE_ATTENDEE_START_POLLING_QA',
 };
 
 export const INTERSTITIAL_DISPLAY_HINTS = [DISPLAY_HINTS.VOIP_IS_ENABLED];
@@ -1081,96 +1179,6 @@ export const NETWORK_STATUS = {
 
 export type NETWORK_STATUS = Enum<typeof NETWORK_STATUS>;
 
-export const NETWORK_TYPE = {
-  VPN: 'vpn',
-  UNKNOWN: 'unknown',
-  WIFI: 'wifi',
-  ETHERNET: 'ethernet',
-};
-
-export const STATS = {
-  SEND_DIRECTION: 'send',
-  RECEIVE_DIRECTION: 'recv',
-  REMOTE: 'remote',
-  LOCAL: 'local',
-};
-
-export const MQA_STATS = {
-  MQA_SIZE: 120, // MQA is done on 60 second intervals by server def, add a buffer for missed events
-  CA_TYPE: 'MQA',
-  DEFAULT_IP: '0.0.0.0',
-  DEFAULT_SHARE_SENDER_STATS: {
-    common: {
-      common: {
-        direction: 'sendrecv', // TODO: parse from SDP and save globally
-        isMain: false, // always true for share sender
-        mariFecEnabled: false, // unavailable
-        mariRtxEnabled: false, // unavailable
-        mariLiteEnabled: false, // unavailable
-        mariQosEnabled: false, // unavailable
-        multistreamEnabled: false, // unavailable
-      },
-      availableBitrate: 0,
-      dtlsBitrate: 0, // unavailable
-      dtlsPackets: 0, // unavailable
-      fecBitrate: 0, // unavailable
-      fecPackets: 0, // unavailable
-      maxBitrate: 0, // unavailable
-      queueDelay: 0, // unavailable
-      remoteJitter: 0, // unavailable
-      remoteLossRate: 0,
-      roundTripTime: 0,
-      rtcpBitrate: 0, // unavailable
-      rtcpPackets: 0, // unavailable
-      rtpBitrate: 0, // unavailable
-      rtpPackets: 0,
-      stunBitrate: 0, // unavailable
-      stunPackets: 0, // unavailable
-      transportType: 'UDP', // TODO: parse the transport type from the SDP and save globally
-    },
-    streams: [
-      {
-        common: {
-          codec: 'H264', // TODO: parse the codec from the SDP and save globally
-          duplicateSsci: 0, // unavailable
-          requestedBitrate: 0, // unavailable
-          requestedFrames: 0, // unavailable
-          rtpPackets: 0,
-          ssci: 0, // unavailable
-          transmittedBitrate: 0,
-          transmittedFrameRate: 0,
-        },
-        h264CodecProfile: 'BP', // TODO: parse the profile level from h264 in the SDP and save globally
-        localConfigurationChanges: 0, // unavailable
-        remoteConfigurationChanges: 0, // unavailable
-        requestedFrameSize: 0, // unavailable
-        requestedKeyFrames: 0, // unavailable
-        transmittedFrameSize: 0, // unavailable
-        transmittedHeight: 0,
-        transmittedKeyFrames: 0,
-        transmittedWidth: 0,
-      },
-    ],
-  },
-  intervalMetadata: {
-    memoryUsage: {
-      cpuBitWidth: 0,
-      mainProcessMaximumMemoryBytes: 0,
-      osBitWidth: 0,
-      processAverageMemoryUsage: 0,
-      processMaximumMemoryBytes: 0,
-      processMaximumMemoryUsage: 0,
-      systemAverageMemoryUsage: 0,
-      systemMaximumMemoryUsage: 0,
-    },
-    peerReflexiveIP: 'NULL', // TODO: save after ice trickling completes and use as a global variable
-    processAverageCPU: 0,
-    processMaximumCPU: 0,
-    systemAverageCPU: 0,
-    systemMaximumCPU: 0,
-  },
-};
-
 // ****** MEDIA QUALITY CONSTANTS ****** //
 
 // these values must match allowed values of RemoteQualityLevel from the @webex/internal-media-core lib
@@ -1263,11 +1271,24 @@ export const PASSWORD_STATUS = {
   VERIFIED: 'VERIFIED', // client has already provided the password and it has been verified, client can proceed to call join()
 };
 
+export const REGISTRATION_ID_STATUS = {
+  NOT_REQUIRED: 'NOT_REQUIRED', // registrationId is not required to join the meeting
+  REQUIRED: 'REQUIRED', // client needs to provide the registrationId by calling verifyRegistrationId() before calling join()
+  UNKNOWN: 'UNKNOWN', // we are waiting for information from the backend if registrationId is required or not
+  VERIFIED: 'VERIFIED', // client has already provided the registrationId and it has been verified, client can proceed to call join()
+};
+
 export const MEETING_INFO_FAILURE_REASON = {
   NONE: 'NONE', // meeting info was retrieved succesfully
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
+  WRONG_REGISTRATION_ID: 'WRONG_REGISTRATION_ID', // meeting requires registrationId and no registrationId or wrong one was provided
   POLICY: 'POLICY', // meeting info request violates some meeting policy
+  WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
+  NEED_JOIN_WITH_WEBCAST: 'NEED_JOIN_WITH_WEBCAST', // webinar need using webcast join
+  WEBINAR_NEED_REGISTRATION_ID: 'WEBINAR_NEED_REGISTRATION_ID', // webinar need registrationID
+  NOT_REACH_JBH: 'NOT_REACH_JBH', // Meeting is not allow to access since not reach JBH (join before host) time
+  JOIN_FORBIDDEN: 'JOIN_FORBIDDEN', // meeting is not allow join
   OTHER: 'OTHER', // any other error (network, etc)
 };
 
@@ -1327,3 +1348,12 @@ export const DESTINATION_TYPE = {
 } as const;
 
 export type DESTINATION_TYPE = Enum<typeof DESTINATION_TYPE>;
+
+export const INITIAL_REGISTRATION_STATUS = {
+  fetchWebexSite: false,
+  getGeoHint: false,
+  startReachability: false,
+  deviceRegister: false,
+  mercuryConnect: false,
+  checkH264Support: false,
+};

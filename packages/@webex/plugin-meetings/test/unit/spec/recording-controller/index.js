@@ -221,7 +221,21 @@ describe('plugin-meetings', () => {
 
             assert.calledWith(request.request, {
               uri: `test/loci/id/recording`,
-              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'start'}},
+              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'start'}, recordingType: 'cloud'},
+              method: HTTP_VERBS.PUT,
+            });
+
+            assert.deepEqual(result, request.request.firstCall.returnValue);
+          });
+
+          it('can start premise recording when the correct display hint is present', () => {
+            controller.setDisplayHints(['PREMISE_RECORDING_CONTROL_START']);
+
+            const result = controller.startRecording();
+
+            assert.calledWith(request.request, {
+              uri: `test/loci/id/recording`,
+              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'start'}, recordingType: 'premise'},
               method: HTTP_VERBS.PUT,
             });
 
@@ -238,14 +252,28 @@ describe('plugin-meetings', () => {
             assert.isRejected(result);
           });
 
-          it('can start recording when the correct display hint is present', () => {
+          it('can stop recording when the correct display hint is present', () => {
             controller.setDisplayHints(['RECORDING_CONTROL_STOP']);
 
             const result = controller.stopRecording();
 
             assert.calledWith(request.request, {
               uri: `test/loci/id/recording`,
-              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'stop'}},
+              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'stop'}, recordingType: 'cloud'},
+              method: HTTP_VERBS.PUT,
+            });
+
+            assert.deepEqual(result, request.request.firstCall.returnValue);
+          });
+
+          it('can stop premise recording when the correct display hint is present', () => {
+            controller.setDisplayHints(['PREMISE_RECORDING_CONTROL_STOP']);
+
+            const result = controller.stopRecording();
+
+            assert.calledWith(request.request, {
+              uri: `test/loci/id/recording`,
+              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'stop'}, recordingType: 'premise'},
               method: HTTP_VERBS.PUT,
             });
 
@@ -269,7 +297,21 @@ describe('plugin-meetings', () => {
 
             assert.calledWith(request.request, {
               uri: `test/loci/id/recording`,
-              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'pause'}},
+              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'pause'}, recordingType: 'cloud'},
+              method: HTTP_VERBS.PUT,
+            });
+
+            assert.deepEqual(result, request.request.firstCall.returnValue);
+          });
+
+          it('can pause premise recording when the correct display hint is present', () => {
+            controller.setDisplayHints(['PREMISE_RECORDING_CONTROL_PAUSE']);
+
+            const result = controller.pauseRecording();
+
+            assert.calledWith(request.request, {
+              uri: `test/loci/id/recording`,
+              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'pause'}, recordingType: 'premise'},
               method: HTTP_VERBS.PUT,
             });
 
@@ -293,7 +335,21 @@ describe('plugin-meetings', () => {
 
             assert.calledWith(request.request, {
               uri: `test/loci/id/recording`,
-              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'resume'}},
+              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'resume'}, recordingType: 'cloud'},
+              method: HTTP_VERBS.PUT,
+            });
+
+            assert.deepEqual(result, request.request.firstCall.returnValue);
+          });
+
+          it('can resume premise recording when the correct display hint is present', () => {
+            controller.setDisplayHints(['PREMISE_RECORDING_CONTROL_RESUME']);
+
+            const result = controller.resumeRecording();
+
+            assert.calledWith(request.request, {
+              uri: `test/loci/id/recording`,
+              body: {meetingInfo: {locusSessionId: 'testId'}, recording: {action: 'resume'}, recordingType: 'premise'},
               method: HTTP_VERBS.PUT,
             });
 

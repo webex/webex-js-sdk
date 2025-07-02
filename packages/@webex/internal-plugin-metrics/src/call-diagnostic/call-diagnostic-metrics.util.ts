@@ -231,13 +231,19 @@ export const getBuildType = (
  * @returns {Object} prepared item
  */
 export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
+  const buildType = getBuildType(
+    webex,
+    item.eventPayload?.event?.eventData?.webClientDomain,
+    item.eventPayload?.event?.eventData?.markAsTestEvent
+  );
+
+  // Set upgradeChannel to 'gold' if buildType is 'prod', otherwise to the buildType value
+  const upgradeChannel = buildType === 'prod' ? 'gold' : buildType;
+
   const origin: Partial<Event['origin']> = {
-    buildType: getBuildType(
-      webex,
-      item.eventPayload?.event?.eventData?.webClientDomain,
-      item.eventPayload?.event?.eventData?.markAsTestEvent
-    ),
+    buildType,
     networkType: 'unknown',
+    upgradeChannel,
   };
 
   // check event names and append latencies?
@@ -251,6 +257,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
   switch (eventName) {
     case 'client.webexapp.launched':
       joinTimes.downloadTime = cdl.getDownloadTimeJMT();
+      joinTimes.pageJmt = cdl.getPageJMT();
       break;
     case 'client.login.end':
       joinTimes.otherAppApiReqResp = cdl.getOtherAppApiReqResp();
@@ -261,6 +268,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
       joinTimes.refreshCaptchaServiceReqResp = cdl.getRefreshCaptchaReqResp();
       joinTimes.downloadIntelligenceModelsReqResp = cdl.getDownloadIntelligenceModelsReqResp();
+      joinTimes.clickToInterstitialWithUserDelay = cdl.getClickToInterstitialWithUserDelay();
       break;
 
     case 'client.call.initiated':
@@ -281,6 +289,8 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.totalJmt = cdl.getTotalJMT();
       joinTimes.clientJmt = cdl.getClientJMT();
       joinTimes.downloadTime = cdl.getDownloadTimeJMT();
+      joinTimes.clickToInterstitialWithUserDelay = cdl.getClickToInterstitialWithUserDelay();
+      joinTimes.totalJMTWithUserDelay = cdl.getTotalJMTWithUserDelay();
       break;
 
     case 'client.ice.end':
@@ -301,6 +311,8 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.interstitialToMediaOKJMT = cdl.getInterstitialToMediaOKJMT();
       joinTimes.callInitMediaEngineReady = cdl.getCallInitMediaEngineReady();
       joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
+      joinTimes.totalMediaJMTWithUserDelay = cdl.getTotalMediaJMTWithUserDelay();
+      joinTimes.totalJMTWithUserDelay = cdl.getTotalJMTWithUserDelay();
       break;
 
     case 'client.media.tx.start':

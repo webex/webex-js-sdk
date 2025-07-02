@@ -6,20 +6,7 @@ import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 import EventsScope from '../common/events/events-scope';
 
 import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
-
-// result for a specific transport protocol (like udp or tcp)
-export type TransportResult = {
-  result: 'reachable' | 'unreachable' | 'untested';
-  latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
-  clientMediaIPs?: string[];
-};
-
-// reachability result for a specific media cluster
-export type ClusterReachabilityResult = {
-  udp: TransportResult;
-  tcp: TransportResult;
-  xtls: TransportResult;
-};
+import {ClusterReachabilityResult, NatType} from './reachability.types';
 
 // data for the Events.resultReady event
 export type ResultEventData = {
@@ -35,9 +22,14 @@ export type ClientMediaIpsUpdatedEventData = {
   clientMediaIPs: string[];
 };
 
+export type NatTypeUpdatedEventData = {
+  natType: NatType;
+};
+
 export const Events = {
   resultReady: 'resultReady', // emitted when a cluster is reached successfully using specific protocol
   clientMediaIpsUpdated: 'clientMediaIpsUpdated', // emitted when more public IPs are found after resultReady was already sent for a given protocol
+  natTypeUpdated: 'natTypeUpdated', // emitted when NAT type is determined
 } as const;
 
 export type Events = Enum<typeof Events>;
@@ -54,8 +46,10 @@ export class ClusterReachability extends EventsScope {
   private pc?: RTCPeerConnection;
   private defer: Defer; // this defer is resolved once reachability checks for this cluster are completed
   private startTimestamp: number;
+  private srflxIceCandidates: RTCIceCandidate[] = [];
   public readonly isVideoMesh: boolean;
   public readonly name;
+  public readonly reachedSubnets: Set<string> = new Set();
 
   /**
    * Constructor for ClusterReachability
@@ -241,25 +235,11 @@ export class ClusterReachability extends EventsScope {
    */
   private registerIceGatheringStateChangeListener() {
     this.pc.onicegatheringstatechange = () => {
-      const {COMPLETE} = ICE_GATHERING_STATE;
-
-      if (this.pc.iceConnectionState === COMPLETE) {
+      if (this.pc.iceGatheringState === ICE_GATHERING_STATE.COMPLETE) {
         this.closePeerConnection();
         this.finishReachabilityCheck();
       }
     };
-  }
-
-  /**
-   * Checks if we have the results for all the protocols (UDP and TCP)
-   *
-   * @returns {boolean} true if we have all results, false otherwise
-   */
-  private haveWeGotAllResults(): boolean {
-    return ['udp', 'tcp', 'xtls'].every(
-      (protocol) =>
-        this.result[protocol].result === 'reachable' || this.result[protocol].result === 'untested'
-    );
   }
 
   /**
@@ -271,9 +251,15 @@ export class ClusterReachability extends EventsScope {
    * @param {string} protocol
    * @param {number} latency
    * @param {string|null} [publicIp]
+   * @param {string|null} [serverIp]
    * @returns {void}
    */
-  private saveResult(protocol: 'udp' | 'tcp' | 'xtls', latency: number, publicIp?: string | null) {
+  private saveResult(
+    protocol: 'udp' | 'tcp' | 'xtls',
+    latency: number,
+    publicIp?: string | null,
+    serverIp?: string | null
+  ) {
     const result = this.result[protocol];
 
     if (result.latencyInMilliseconds === undefined) {
@@ -301,6 +287,48 @@ export class ClusterReachability extends EventsScope {
     } else {
       this.addPublicIP(protocol, publicIp);
     }
+
+    if (serverIp) {
+      this.reachedSubnets.add(serverIp);
+    }
+  }
+
+  /**
+   * Determines NAT Type.
+   *
+   * @param {RTCIceCandidate} candidate
+   * @returns {void}
+   */
+  private determineNatType(candidate: RTCIceCandidate) {
+    this.srflxIceCandidates.push(candidate);
+
+    if (this.srflxIceCandidates.length > 1) {
+      const portsFound: Record<string, Set<number>> = {};
+
+      this.srflxIceCandidates.forEach((c) => {
+        const key = `${c.address}:${c.relatedPort}`;
+        if (!portsFound[key]) {
+          portsFound[key] = new Set();
+        }
+        portsFound[key].add(c.port);
+      });
+
+      Object.entries(portsFound).forEach(([, ports]) => {
+        if (ports.size > 1) {
+          // Found candidates with the same address and relatedPort, but different ports
+          this.emit(
+            {
+              file: 'clusterReachability',
+              function: 'determineNatType',
+            },
+            Events.natTypeUpdated,
+            {
+              natType: NatType.SymmetricNat,
+            }
+          );
+        }
+      });
+    }
   }
 
   /**
@@ -320,19 +348,25 @@ export class ClusterReachability extends EventsScope {
 
       if (e.candidate) {
         if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          this.saveResult('udp', latencyInMilliseconds, e.candidate.address);
+          let serverIp = null;
+          if ('url' in e.candidate) {
+            const stunServerUrlRegex = /stun:([\d.]+):\d+/;
+
+            const match = (e.candidate as any).url.match(stunServerUrlRegex);
+            if (match) {
+              // eslint-disable-next-line prefer-destructuring
+              serverIp = match[1];
+            }
+          }
+
+          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp);
+
+          this.determineNatType(e.candidate);
         }
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
           const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
-          this.saveResult(protocol, latencyInMilliseconds);
-          // we don't add public IP for TCP, because in the case of relay candidates
-          // e.candidate.address is the TURN server address, not the client's public IP
-        }
-
-        if (this.haveWeGotAllResults()) {
-          this.closePeerConnection();
-          this.finishReachabilityCheck();
+          this.saveResult(protocol, latencyInMilliseconds, null, e.candidate.address);
         }
       }
     };
@@ -370,11 +404,14 @@ export class ClusterReachability extends EventsScope {
 
       this.startTimestamp = performance.now();
 
+      // Set up the state change listeners before triggering the ICE gathering
+      const gatherIceCandidatePromise = this.gatherIceCandidates();
+
       // not awaiting the next call on purpose, because we're not sending the offer anywhere and there won't be any answer
       // we just need to make this call to trigger the ICE gathering process
       this.pc.setLocalDescription(offer);
 
-      await this.gatherIceCandidates();
+      await gatherIceCandidatePromise;
     } catch (error) {
       LoggerProxy.logger.warn(`Reachability:ClusterReachability#start --> Error: `, error);
     }

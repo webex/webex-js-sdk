@@ -128,6 +128,9 @@ export default class Socket extends EventEmitter {
         return;
       }
 
+      const originalCode = options.code;
+      const originalReason = options.reason;
+
       options = defaults(options, {
         code: 1000,
         reason: 'Done',
@@ -137,10 +140,14 @@ export default class Socket extends EventEmitter {
         try {
           this.logger.info(`socket,${this._domain}: no close event received, forcing closure`);
           resolve(
-            this.onclose({
-              code: 1000,
-              reason: 'Done (forced)',
-            })
+            this.onclose(
+              originalCode
+                ? {code: originalCode, reason: originalReason || 'Done (unknown)'}
+                : {
+                    code: 1000,
+                    reason: 'Done (forced)',
+                  }
+            )
           );
         } catch (error) {
           this.logger.warn(`socket,${this._domain}: force-close failed`, error);

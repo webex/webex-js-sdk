@@ -23,7 +23,10 @@ type TRANSCRIPTION_TYPES =
   | 'eva_cancel'
   | 'highlight_created'
   | 'transcript_interim_results'
-  | 'transcript_final_result';
+  | 'transcript_final_result'
+  | 'manual_caption_interim_results'
+  | 'manual_caption_interim_result'
+  | 'manual_caption_final_result';
 
 /**
  * Class for an Transcription Object
@@ -57,6 +60,8 @@ interface Highlight {
 interface TranscriptionResponse {
   type: TRANSCRIPTION_TYPES;
   id: string;
+  sender: string;
+  data_source: string;
   transcript_id: string;
   translations?: {[x: string]: string};
   transcripts?: Transcription[];
@@ -78,10 +83,18 @@ interface CaptionLanguageResponse {
 
 interface IVoiceaChannel {
   setSpokenLanguage: (languageCode: string) => Promise<void>;
+  onSpokenLanguageUpdate: (languageCode: string) => void;
   requestLanguage: (languageCode: string) => void;
   turnOnCaptions: () => undefined | Promise<void>;
   toggleTranscribing: (activate: boolean, spokenLanguage: string) => undefined | Promise<void>;
   deregisterEvents: () => void;
+  toggleManualCaption: (enable: boolean) => undefined | Promise<void>;
+  sendManualClosedCaption: (
+    text: string,
+    timeStamp: number,
+    csis: number[],
+    isFinal: boolean
+  ) => void;
 }
 
 type MeetingTranscripts = {

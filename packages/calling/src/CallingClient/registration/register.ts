@@ -1,9 +1,15 @@
 import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
-import {ERROR_CODE} from '../../Errors/types';
-import {emitFinalFailure, handleRegistrationErrors} from '../../common';
+import {METHOD_START_MESSAGE} from '../../common/constants';
+import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
 
-import {IMetricManager, METRIC_EVENT, METRIC_TYPE, REG_ACTION} from '../../Metrics/types';
+import {
+  IMetricManager,
+  METRIC_EVENT,
+  METRIC_TYPE,
+  REG_ACTION,
+  SERVER_TYPE,
+} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
 import {ICallManager} from '../calling/types';
 import {getCallManager} from '../calling';
@@ -33,7 +39,7 @@ import {
   REG_RANDOM_T_FACTOR_UPPER_LIMIT,
   REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
   MINUTES_TO_SEC_MFACTOR,
-  FAILBACK_429_RETRY_UTIL,
+  REG_429_RETRY_UTIL,
   REG_FAILBACK_429_MAX_RETRIES,
   FAILBACK_UTIL,
   REGISTRATION_FILE,
@@ -41,6 +47,12 @@ import {
   DEFAULT_REHOMING_INTERVAL_MAX,
   DEFAULT_KEEPALIVE_INTERVAL,
   REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
+  FAILOVER_UTIL,
+  REGISTER_UTIL,
+  RETRY_TIMER_UPPER_LIMIT,
+  KEEPALIVE_UTIL,
+  REGISTRATION_UTIL,
+  METHODS,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -75,7 +87,11 @@ export class Registration implements IRegistration {
   private backupMobiusUris: string[];
   private registerRetry = false;
   private reconnectPending = false;
+  private jwe?: string;
   private isCCFlow = false;
+  private failoverImmediately = false;
+  private retryAfter: number | undefined;
+  private scheduled429Retry = false;
 
   /**
    */
@@ -84,8 +100,10 @@ export class Registration implements IRegistration {
     serviceData: ServiceData,
     mutex: Mutex,
     lineEmitter: LineEmitterCallback,
-    logLevel: LOGGER
+    logLevel: LOGGER,
+    jwe?: string
   ) {
+    this.jwe = jwe;
     this.sdkConnector = SDKConnector;
     this.serviceData = serviceData;
     this.isCCFlow = serviceData.indicator === ServiceIndicator.CONTACT_CENTER;
@@ -114,12 +132,16 @@ export class Registration implements IRegistration {
   }
 
   public setActiveMobiusUrl(url: string) {
-    log.info(`ActiveMobiusUrl: ${url}`, {method: 'setActiveMobiusUrl', file: REGISTRATION_FILE});
+    log.info(`${METHOD_START_MESSAGE} with ${url}`, {
+      method: METHODS.UPDATE_ACTIVE_MOBIUS,
+      file: REGISTRATION_FILE,
+    });
     this.activeMobiusUrl = url;
     this.callManager.updateActiveMobius(url);
   }
 
   public setMobiusServers(primaryMobiusUris: string[], backupMobiusUris: string[]) {
+    log.log(METHOD_START_MESSAGE, {method: METHODS.SET_MOBIUS_SERVERS, file: REGISTRATION_FILE});
     this.primaryMobiusUris = primaryMobiusUris;
     this.backupMobiusUris = backupMobiusUris;
   }
@@ -157,7 +179,10 @@ export class Registration implements IRegistration {
         },
       });
     } catch (error) {
-      log.warn(`Delete failed with Mobius`, {});
+      log.warn(`Delete failed with Mobius ${error}`, {
+        file: REGISTRATION_FILE,
+        method: METHODS.DEREGISTER,
+      });
     }
 
     this.setStatus(RegistrationStatus.INACTIVE);
@@ -174,7 +199,7 @@ export class Registration implements IRegistration {
     const deviceInfo = {
       userId: this.userId,
       clientDeviceUri: this.webex.internal.device.url,
-      serviceData: this.serviceData,
+      serviceData: this.jwe ? {...this.serviceData, jwe: this.jwe} : this.serviceData,
     };
 
     return <WebexRequestPayload>this.webex.request({
@@ -204,28 +229,31 @@ export class Registration implements IRegistration {
   }
 
   /**
-   * When a failback request is rejected with 429, it means the
-   * request did not even land on primary mobius to know if it
-   * can handle this device registration now, in such cases this
-   * method is called to retry sooner than the rehoming timer value.
+   *
    */
-  private async scheduleFailback429Retry() {
-    if (this.failback429RetryAttempts >= REG_FAILBACK_429_MAX_RETRIES) {
-      return;
-    }
-    this.clearFailbackTimer();
-    this.failback429RetryAttempts += 1;
-    log.log(`Received 429 while rehoming, 429 retry count : ${this.failback429RetryAttempts}`, {
-      file: REGISTRATION_FILE,
-      method: FAILBACK_429_RETRY_UTIL,
-    });
-    const interval = this.getRegRetryInterval(this.failback429RetryAttempts);
+  private async handle429Retry(retryAfter: number, caller: string): Promise<void> {
+    if (caller === FAILBACK_UTIL) {
+      if (this.failback429RetryAttempts >= REG_FAILBACK_429_MAX_RETRIES) {
+        return;
+      }
 
-    this.startFailbackTimer(interval);
-    const abort = await this.restorePreviousRegistration(FAILBACK_429_RETRY_UTIL);
+      this.clearFailbackTimer();
+      this.failback429RetryAttempts += 1;
+      log.log(`Received 429 while rehoming, 429 retry count : ${this.failback429RetryAttempts}`, {
+        file: REGISTRATION_FILE,
+        method: REG_429_RETRY_UTIL,
+      });
+      const interval = this.getRegRetryInterval(this.failback429RetryAttempts);
 
-    if (!abort && !this.isDeviceRegistered()) {
-      await this.restartRegistration(FAILBACK_429_RETRY_UTIL);
+      this.startFailbackTimer(interval);
+      this.scheduled429Retry = true;
+      const abort = await this.restorePreviousRegistration(REG_429_RETRY_UTIL);
+
+      if (!abort && !this.isDeviceRegistered()) {
+        await this.restartRegistration(REG_429_RETRY_UTIL);
+      }
+    } else {
+      this.retryAfter = retryAfter;
     }
   }
 
@@ -257,7 +285,7 @@ export class Registration implements IRegistration {
   private async startFailoverTimer(attempt = 1, timeElapsed = 0) {
     const loggerContext = {
       file: REGISTRATION_FILE,
-      method: this.startFailoverTimer.name,
+      method: FAILOVER_UTIL,
     };
 
     let interval = this.getRegRetryInterval(attempt);
@@ -272,14 +300,21 @@ export class Registration implements IRegistration {
       interval -= excessVal;
     }
 
-    let abort;
+    if (this.retryAfter != null && interval < this.retryAfter) {
+      this.failoverImmediately = this.retryAfter + timeElapsed > TIMER_THRESHOLD;
+    }
 
-    if (interval > BASE_REG_RETRY_TIMER_VAL_IN_SEC) {
+    let abort;
+    if (interval > BASE_REG_RETRY_TIMER_VAL_IN_SEC && !this.failoverImmediately) {
       const scheduledTime = Math.floor(Date.now() / 1000);
+
+      if (this.retryAfter != null) {
+        interval = Math.max(interval, this.retryAfter);
+      }
 
       setTimeout(async () => {
         await this.mutex.runExclusive(async () => {
-          abort = await this.attemptRegistrationWithServers(this.startFailoverTimer.name);
+          abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL);
           const currentTime = Math.floor(Date.now() / 1000);
 
           if (!abort && !this.isDeviceRegistered()) {
@@ -292,20 +327,21 @@ export class Registration implements IRegistration {
         loggerContext
       );
     } else if (this.backupMobiusUris.length) {
-      log.log('Failing over to backup servers.', loggerContext);
-      abort = await this.attemptRegistrationWithServers(
-        this.startFailoverTimer.name,
-        this.backupMobiusUris
-      );
+      log.info('Failing over to backup servers.', loggerContext);
+      this.failoverImmediately = false;
+      abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL, this.backupMobiusUris);
       if (!abort && !this.isDeviceRegistered()) {
         interval = this.getRegRetryInterval();
+
+        if (this.retryAfter != null && this.retryAfter < RETRY_TIMER_UPPER_LIMIT) {
+          interval = interval < this.retryAfter ? this.retryAfter : interval;
+        }
+
         setTimeout(async () => {
           await this.mutex.runExclusive(async () => {
-            abort = await this.attemptRegistrationWithServers(
-              this.startFailoverTimer.name,
-              this.backupMobiusUris
-            );
+            abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL, this.backupMobiusUris);
             if (!abort && !this.isDeviceRegistered()) {
+              await uploadLogs();
               emitFinalFailure((clientError: LineError) => {
                 this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
               }, loggerContext);
@@ -315,6 +351,7 @@ export class Registration implements IRegistration {
         log.log(`Scheduled retry with backup servers in ${interval} seconds.`, loggerContext);
       }
     } else {
+      await uploadLogs();
       emitFinalFailure((clientError: LineError) => {
         this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
       }, loggerContext);
@@ -396,21 +433,24 @@ export class Registration implements IRegistration {
           });
           await this.deregister();
           const abort = await this.attemptRegistrationWithServers(FAILBACK_UTIL);
-          if (!abort && !this.isDeviceRegistered()) {
-            const abortNew = await this.restorePreviousRegistration(FAILBACK_UTIL);
 
-            if (abortNew) {
-              this.clearFailbackTimer();
+          if (this.scheduled429Retry || abort || this.isDeviceRegistered()) {
+            return;
+          }
 
-              return;
-            }
+          const abortNew = await this.restorePreviousRegistration(FAILBACK_UTIL);
 
-            if (!this.isDeviceRegistered()) {
-              await this.restartRegistration(this.executeFailback.name);
-            } else {
-              this.failbackTimer = undefined;
-              this.initiateFailback();
-            }
+          if (abortNew) {
+            this.clearFailbackTimer();
+
+            return;
+          }
+
+          if (!this.isDeviceRegistered()) {
+            await this.restartRegistration(this.executeFailback.name);
+          } else {
+            this.failbackTimer = undefined;
+            this.initiateFailback();
           }
         } else {
           log.info('Active calls present, deferring failback to next cycle.', {
@@ -492,10 +532,14 @@ export class Registration implements IRegistration {
    *
    */
   public async handleConnectionRestoration(retry: boolean): Promise<boolean> {
+    log.info(METHOD_START_MESSAGE, {
+      method: METHODS.HANDLE_CONNECTION_RESTORATION,
+      file: REGISTRATION_FILE,
+    });
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
-        log.info('Mercury connection is up again, re-registering with Webex Calling if needed', {
+        log.log('Mercury connection is up again, re-registering with Webex Calling if needed', {
           file: REGISTRATION_FILE,
           method: this.handleConnectionRestoration.name,
         });
@@ -571,7 +615,7 @@ export class Registration implements IRegistration {
   public async triggerRegistration() {
     if (this.primaryMobiusUris.length > 0) {
       const abort = await this.attemptRegistrationWithServers(
-        this.triggerRegistration.name,
+        REGISTRATION_UTIL,
         this.primaryMobiusUris
       );
 
@@ -594,29 +638,45 @@ export class Registration implements IRegistration {
     servers: string[] = this.primaryMobiusUris
   ): Promise<boolean> {
     let abort = false;
+    this.retryAfter = undefined;
+
+    if (this.failoverImmediately) {
+      return abort;
+    }
 
     if (this.isDeviceRegistered()) {
-      log.log(`[${caller}] : Device already registered with : ${this.activeMobiusUrl}`, {
+      log.info(`[${caller}] : Device already registered with : ${this.activeMobiusUrl}`, {
         file: REGISTRATION_FILE,
-        method: this.attemptRegistrationWithServers.name,
+        method: REGISTER_UTIL,
       });
 
       return abort;
     }
     for (const url of servers) {
+      const serverType =
+        (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
+        (this.backupMobiusUris?.includes(url) && 'BACKUP') ||
+        'UNKNOWN';
       try {
         abort = false;
         this.registrationStatus = RegistrationStatus.INACTIVE;
         this.lineEmitter(LINE_EVENTS.CONNECTING);
-        log.log(`[${caller}] : Mobius url to contact: ${url}`, {
+        log.info(`[${caller}] : Mobius url to contact: ${url}`, {
           file: REGISTRATION_FILE,
-          method: this.attemptRegistrationWithServers.name,
+          method: REGISTER_UTIL,
         });
         // eslint-disable-next-line no-await-in-loop
         const resp = await this.postRegistration(url);
         this.deviceInfo = resp.body as IDeviceInfo;
         this.registrationStatus = RegistrationStatus.ACTIVE;
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
+        log.log(
+          `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId}`,
+          {
+            file: REGISTRATION_FILE,
+            method: METHODS.REGISTER,
+          }
+        );
         this.setActiveMobiusUrl(url);
         this.setIntervalValues(this.deviceInfo);
         this.metricManager.setDeviceInfo(this.deviceInfo);
@@ -624,17 +684,21 @@ export class Registration implements IRegistration {
           METRIC_EVENT.REGISTRATION,
           REG_ACTION.REGISTER,
           METRIC_TYPE.BEHAVIORAL,
+          caller,
+          serverType,
+          resp.headers?.trackingid ?? '',
+          undefined,
           undefined
         );
         this.startKeepaliveTimer(
           this.deviceInfo.device?.uri as string,
-          this.deviceInfo.keepaliveInterval as number
+          this.deviceInfo.keepaliveInterval as number,
+          serverType
         );
         this.initiateFailback();
         break;
       } catch (err: unknown) {
         const body = err as WebexRequestPayload;
-
         // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-unused-vars
         abort = await handleRegistrationErrors(
           body,
@@ -648,10 +712,15 @@ export class Registration implements IRegistration {
               METRIC_EVENT.REGISTRATION_ERROR,
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
+              caller,
+              serverType,
+              body.headers?.trackingid ?? '',
+              undefined,
               clientError
             );
           },
-          {method: this.attemptRegistrationWithServers.name, file: REGISTRATION_FILE},
+          {method: caller, file: REGISTRATION_FILE},
+          (retryAfter: number, retryCaller: string) => this.handle429Retry(retryAfter, retryCaller),
           this.restoreRegistrationCallBack()
         );
         if (this.registrationStatus === RegistrationStatus.ACTIVE) {
@@ -667,15 +736,6 @@ export class Registration implements IRegistration {
         if (abort) {
           this.setStatus(RegistrationStatus.INACTIVE);
           break;
-        } else if (caller === this.executeFailback.name) {
-          const error = body.statusCode;
-
-          if (error === ERROR_CODE.TOO_MANY_REQUESTS) {
-            // eslint-disable-next-line no-await-in-loop
-            await this.scheduleFailback429Retry();
-            abort = true;
-            break;
-          }
         }
       }
     }
@@ -687,7 +747,7 @@ export class Registration implements IRegistration {
    * This method sets up a timer to periodically send keep-alive requests to maintain a connection.
    * It handles retries, error handling, and re-registration attempts based on the response, ensuring continuous connectivity with the server.
    */
-  private startKeepaliveTimer(url: string, interval: number) {
+  private startKeepaliveTimer(url: string, interval: number, serverType: SERVER_TYPE) {
     let keepAliveRetryCount = 0;
     this.clearKeepaliveTimer();
     const RETRY_COUNT_THRESHOLD = this.isCCFlow ? 4 : 5;
@@ -695,13 +755,13 @@ export class Registration implements IRegistration {
     this.keepaliveTimer = setInterval(async () => {
       const logContext = {
         file: REGISTRATION_FILE,
-        method: this.startKeepaliveTimer.name,
+        method: KEEPALIVE_UTIL,
       };
       await this.mutex.runExclusive(async () => {
         if (this.isDeviceRegistered() && keepAliveRetryCount < RETRY_COUNT_THRESHOLD) {
           try {
             const res = await this.postKeepAlive(url);
-            log.info(`Sent Keepalive, status: ${res.statusCode}`, logContext);
+            log.log(`Sent Keepalive, status: ${res.statusCode}`, logContext);
             if (keepAliveRetryCount > 0) {
               this.lineEmitter(LINE_EVENTS.RECONNECTED);
             }
@@ -725,13 +785,18 @@ export class Registration implements IRegistration {
                   METRIC_EVENT.REGISTRATION,
                   REG_ACTION.KEEPALIVE_FAILURE,
                   METRIC_TYPE.BEHAVIORAL,
+                  KEEPALIVE_UTIL,
+                  serverType,
+                  error.headers?.trackingid ?? '',
+                  keepAliveRetryCount,
                   clientError
                 );
               },
-              {method: this.startKeepaliveTimer.name, file: REGISTRATION_FILE}
+              {method: KEEPALIVE_UTIL, file: REGISTRATION_FILE}
             );
 
             if (abort || keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
+              this.failoverImmediately = this.isCCFlow;
               this.setStatus(RegistrationStatus.INACTIVE);
               this.clearKeepaliveTimer();
               this.clearFailbackTimer();
@@ -739,7 +804,7 @@ export class Registration implements IRegistration {
 
               if (!abort) {
                 /* In case of non-final error, re-attempt registration */
-                await this.reconnectOnFailure(this.startKeepaliveTimer.name);
+                await this.reconnectOnFailure(KEEPALIVE_UTIL);
               }
             } else {
               this.lineEmitter(LINE_EVENTS.RECONNECTING);
@@ -771,8 +836,15 @@ export class Registration implements IRegistration {
         this.deviceInfo.device?.deviceId as string,
         this.deviceInfo.device?.clientDeviceUri as string
       );
+      log.log('Registration successfully deregistered', {
+        file: REGISTRATION_FILE,
+        method: METHODS.DEREGISTER,
+      });
     } catch (err) {
-      log.warn(`Delete failed with Mobius`, {});
+      log.warn(`Delete failed with Mobius: ${err}`, {
+        file: REGISTRATION_FILE,
+        method: METHODS.DEREGISTER,
+      });
     }
 
     this.clearKeepaliveTimer();
@@ -780,8 +852,8 @@ export class Registration implements IRegistration {
   }
 
   /**
-   *          Indicates whether the calling client is in a mode
-   *          to retry registration.
+   * Indicates whether the calling client is in a mode
+   * to retry registration.
    */
   private isRegRetry(): boolean {
     return this.registerRetry;
@@ -832,6 +904,7 @@ export class Registration implements IRegistration {
    *
    */
   public async reconnectOnFailure(caller: string) {
+    log.info(METHOD_START_MESSAGE, {method: METHODS.RECONNECT_ON_FAILURE, file: REGISTRATION_FILE});
     this.reconnectPending = false;
     if (!this.isDeviceRegistered()) {
       if (Object.keys(this.callManager.getActiveCalls()).length === 0) {
@@ -844,7 +917,7 @@ export class Registration implements IRegistration {
         this.reconnectPending = true;
         log.info('Active call(s) present, deferred reconnect till call cleanup.', {
           file: REGISTRATION_FILE,
-          method: this.reconnectOnFailure.name,
+          method: METHODS.RECONNECT_ON_FAILURE,
         });
       }
     }
@@ -858,5 +931,6 @@ export const createRegistration = (
   serviceData: ServiceData,
   mutex: Mutex,
   lineEmitter: LineEmitterCallback,
-  logLevel: LOGGER
-): IRegistration => new Registration(webex, serviceData, mutex, lineEmitter, logLevel);
+  logLevel: LOGGER,
+  jwe?: string
+): IRegistration => new Registration(webex, serviceData, mutex, lineEmitter, logLevel, jwe);

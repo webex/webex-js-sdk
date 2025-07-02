@@ -1,6 +1,10 @@
 import {assert} from '@webex/test-helper-chai';
 import ControlsUtils from '@webex/plugin-meetings/src/locus-info/controlsUtils';
 import controlsUtils from "@webex/plugin-meetings/src/locus-info/controlsUtils";
+import {
+  MEETING_STATE,
+  BREAKOUTS,
+} from '../../../../src/constants';
 
 const defaultControls = {
   entryExitTone: {
@@ -82,11 +86,13 @@ describe('plugin-meetings', () => {
       });
 
       it('should parse the viewTheParticipantList control', () => {
-        const newControls = {viewTheParticipantList: {enabled: true}};
+        const newControls = {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false}};
 
         const parsedControls = ControlsUtils.parse(newControls);
 
         assert.equal(parsedControls.viewTheParticipantList.enabled, newControls.viewTheParticipantList.enabled);
+        assert.equal(parsedControls.viewTheParticipantList.panelistEnabled, newControls.viewTheParticipantList.panelistEnabled);
+        assert.equal(parsedControls.viewTheParticipantList.attendeeCount, newControls.viewTheParticipantList.attendeeCount);
       });
 
       it('should parse the raiseHand control', () => {
@@ -103,6 +109,68 @@ describe('plugin-meetings', () => {
         const parsedControls = ControlsUtils.parse(newControls);
 
         assert.equal(parsedControls.video.enabled, newControls.video.enabled);
+      });
+
+      it('should parse the webcast control', () => {
+        const newControls = {webcastControl: {streaming: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.webcastControl.streaming, newControls.webcastControl.streaming);
+      });
+
+      it('should parse the meeting full control', () => {
+        const newControls = {meetingFull: {meetingFull: true, meetingPanelistFull: false}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.meetingFull.meetingFull, newControls.meetingFull.meetingFull);
+        assert.equal(parsedControls.meetingFull.meetingPanelistFull, newControls.meetingFull.meetingPanelistFull);
+      });
+
+      it('should parse the practiceSession control', () => {
+        const newControls = {practiceSession: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.practiceSession.enabled, newControls.practiceSession.enabled);
+      });
+
+      it('should parse the videoLayout control', () => {
+        const newControls = {videoLayout: {overrideDefault: true, lockAttendeeViewOnStageOnly:false, stageParameters: {}}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.videoLayout.overrideDefault, newControls.videoLayout.overrideDefault);
+        assert.equal(parsedControls.videoLayout.lockAttendeeViewOnStageOnly, newControls.videoLayout.lockAttendeeViewOnStageOnly);
+        assert.equal(parsedControls.videoLayout.stageParameters, newControls.videoLayout.stageParameters);
+      });
+
+      it('should parse the annotationControl control', () => {
+        const newControls = {annotationControl: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(
+          parsedControls.annotationControl.enabled,
+          newControls.annotationControl.enabled
+        );
+      });
+
+      it('should parse the rdcControl control', () => {
+        const newControls = {rdcControl: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.rdcControl.enabled, newControls.rdcControl.enabled);
+      });
+      
+      it('should parse the pollingQAControl control', () => {
+        const newControls = {pollingQAControl: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.pollingQAControl.enabled, newControls.pollingQAControl.enabled);
       });
 
       describe('videoEnabled', () => {
@@ -170,11 +238,21 @@ describe('plugin-meetings', () => {
       });
 
       it('returns hasViewTheParticipantListChanged = true when changed', () => {
-        const newControls = {viewTheParticipantList: {enabled: true}};
+        const oldControls = {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false}};
 
-        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+        let result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: false, panelistEnabled: true, attendeeCount: false}});
 
-        assert.equal(updates.hasViewTheParticipantListChanged, true);
+        assert.equal(result.updates.hasViewTheParticipantListChanged, true);
+
+        result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: true, panelistEnabled: false, attendeeCount: false}});
+
+        assert.equal(result.updates.hasViewTheParticipantListChanged, true);
+        result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: true}});
+
+        assert.equal(result.updates.hasViewTheParticipantListChanged, true);
+        result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false}});
+
+        assert.equal(result.updates.hasViewTheParticipantListChanged, false);
       });
 
       it('returns hasRaiseHandChanged = true when changed', () => {
@@ -191,6 +269,42 @@ describe('plugin-meetings', () => {
         const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
         assert.equal(updates.hasVideoChanged, true);
+      });
+
+      it('returns hasWebcastChanged = true when changed', () => {
+        const newControls = {webcastControl: {streaming: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasWebcastChanged, true);
+      });
+
+      it('returns hasMeetingFullChanged = true when changed', () => {
+        const newControls = {meetingFull: {meetingFull: true, meetingPanelistFull: false}};
+
+        let result = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(result.updates.hasMeetingFullChanged, true);
+
+        result = ControlsUtils.getControls(newControls, {meetingFull: {meetingFull: true, meetingPanelistFull: true}});
+
+        assert.equal(result.updates.hasMeetingFullChanged, true);
+      });
+
+      it('returns hasPracticeSessionEnabledChanged = true when changed', () => {
+        const newControls = {practiceSession: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasPracticeSessionEnabledChanged, true);
+      });
+
+      it('returns hasPracticeSessionEnabledChanged = false when enabled is false and previous state is false', () => {
+        const newControls = {practiceSession: {enabled: false}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasPracticeSessionEnabledChanged, false);
       });
 
       it('returns hasEntryExitToneChanged = true when mode changed', () => {
@@ -289,6 +403,66 @@ describe('plugin-meetings', () => {
         assert.equal(updates.hasManualCaptionChanged, false);
       });
 
+      it('returns hasAnnotationControlChanged = true when changed', () => {
+        const newControls = {annotationControl: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasAnnotationControlChanged, true);
+      });
+
+      it('returns hasRemoteDesktopControlChanged = true when changed', () => {
+        const newControls = {rdcControl: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasRemoteDesktopControlChanged, true);
+      });
+
+      it('returns hasPollingQAControlChanged = true when changed', () => {
+        const newControls = {pollingQAControl: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasPollingQAControlChanged, true);
+      });
+
+      it('returns false when previous spoken language is undefined and current is a invalid value', () => {
+        const previous = { transcribe: undefined };
+        const current = { transcribe: { spokenLanguage: null } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, false);
+      });
+
+      it('detects spoken language change when previous is undefined and current is a valid value', () => {
+        const previous = { transcribe: undefined };
+        const current = { transcribe: { spokenLanguage: 'en-US' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, true);
+      });
+
+      it('returns false when spoken language changes to a same value', () => {
+        const previous = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+        const current = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, false);
+      });
+
+      it('returns true when spoken language changes to a different value', () => {
+        const previous = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+        const current = { transcribe: {caption: true, spokenLanguage: 'fr-FR' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, true);
+      });
+
       describe('videoEnabled', () => {
         const testVideoEnabled = (oldControls, newControls, updatedProperty) => {
           const result = ControlsUtils.getControls(oldControls, newControls);
@@ -348,26 +522,74 @@ describe('plugin-meetings', () => {
 
     describe('getSessionSwitchStatus', () => {
       it('if no breakout control, return switch status both false', () => {
-        const oldControls = {};
-        const newControls = {};
-        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldControls, newControls), {
+        const oldLocus = {};
+        const newLocus = {};
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
           isReturnToMain: false, isJoinToBreakout: false
         });
       });
 
       it('if switch session from breakout to main, return isReturnToMain as true', () => {
-        const oldControls = {breakout: {sessionType: 'BREAKOUT'}};
-        const newControls = {breakout: {sessionType: 'MAIN'}};
-        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldControls, newControls), {
+        const oldLocus = {controls: {breakout: {sessionType: 'BREAKOUT'}}};
+        const newLocus = {controls: {breakout: {sessionType: 'MAIN'}}};
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
           isReturnToMain: true, isJoinToBreakout: false
         });
       });
 
       it('if switch session from main to breakout, return isJoinToBreakout as true', () => {
-        const oldControls = {breakout: {sessionType: 'MAIN'}};
-        const newControls = {breakout: {sessionType: 'BREAKOUT'}};
-        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldControls, newControls), {
+        const oldLocus = {controls: {breakout: {sessionType: 'MAIN'}}};
+        const newLocus = {controls: {breakout: {sessionType: 'BREAKOUT'}}};
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
           isReturnToMain: false, isJoinToBreakout: true
+        });
+      });
+
+      it('if needUseCache conditions are met, return isJoinToBreakout as true', () => {
+        const oldLocus = {
+          self: { isCreator: true },
+          controls: { breakout: { sessionType: BREAKOUTS.SESSION_TYPES.MAIN} },
+        };
+
+        const newLocus = {
+          participants: [
+            { isCreator: true, state: MEETING_STATE.STATES.JOINED },
+          ],
+          controls: {
+            breakout: {
+              sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
+              groups: [{ id: 'group1' }]
+            },
+          },
+        };
+
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
+          isReturnToMain: true,
+          isJoinToBreakout: false
+        });
+      });
+
+      it('if needUseCache conditions are not met, return newLocus and isReturnToMain as false', () => {
+        const oldLocus = {
+          self: { isCreator: false },
+          controls: { breakout: { sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT} },
+        };
+
+        const newLocus = {
+          participants: [
+            { isCreator: true, state: MEETING_STATE.STATES.JOINED },
+          ],
+          controls: {
+            breakout: {
+              sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT,
+              groups: []
+            },
+          },
+        };
+
+        assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
+          isReturnToMain: false,
+          isJoinToBreakout: false
         });
       });
     });

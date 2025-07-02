@@ -16,8 +16,27 @@ const CAPTCHA_ERROR_DEFAULT_MESSAGE =
   'Captcha required. Call fetchMeetingInfo() with captchaInfo argument';
 const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
+const MEETING_IS_IN_PROGRESS_MESSAGE = 'Meeting is in progress';
+const STATIC_MEETING_LINK_ALREADY_EXISTS_MESSAGE = 'Static meeting link already exists';
+const FETCH_STATIC_MEETING_LINK = 'Meeting link does not exists for conversation';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
+const CAPTCHA_ERROR_REQUIRES_REGISTRATION_ID_CODES = [423007];
+
 const POLICY_ERROR_CODES = [403049, 403104, 403103, 403048, 403102, 403101];
+const JOIN_FORBIDDEN_CODES = [403003];
+/**
+ * 403021 - Meeting registration is required
+ * 403022 - Meeting registration is still pending
+ * 403024 - Meeting registration have been rejected
+ * 403137 - Registration ID verified failure
+ * 423007 - Registration ID input too many time,please input captcha code
+ * 403026 - Need to join meeting via webcast
+ * 403037 - Meeting join required registration ID
+ * 403137 - Registration ID verified failure
+ *
+ */
+const JOIN_WEBINAR_ERROR_CODES = [403021, 403022, 403024, 403137, 423007, 403026, 403037, 403137];
+
 /**
  * Error to indicate that wbxappapi requires a password
  */
@@ -99,6 +118,7 @@ export class MeetingInfoV2PolicyError extends Error {
 export class MeetingInfoV2CaptchaError extends Error {
   captchaInfo: any;
   isPasswordRequired: any;
+  isRegistrationIdRequired: any;
   sdkMessage: any;
   wbxAppApiCode: any;
   body: any;
@@ -120,7 +140,130 @@ export class MeetingInfoV2CaptchaError extends Error {
     this.stack = new Error().stack;
     this.wbxAppApiCode = wbxAppApiErrorCode;
     this.isPasswordRequired = CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES.includes(wbxAppApiErrorCode);
+    this.isRegistrationIdRequired =
+      CAPTCHA_ERROR_REQUIRES_REGISTRATION_ID_CODES.includes(wbxAppApiErrorCode);
     this.captchaInfo = captchaInfo;
+  }
+}
+
+/**
+ * Error preventing join because of a webinar have some error
+ */
+export class MeetingInfoV2JoinWebinarError extends Error {
+  meetingInfo: any;
+  sdkMessage: any;
+  wbxAppApiCode: any;
+  body: any;
+  /**
+   *
+   * @constructor
+   * @param {Number} [wbxAppApiErrorCode]
+   * @param {Object} [meetingInfo]
+   * @param {String} [message]
+   */
+  constructor(wbxAppApiErrorCode?: number, meetingInfo?: object, message?: string) {
+    super(`${message}, code=${wbxAppApiErrorCode}`);
+    this.name = 'MeetingInfoV2JoinWebinarError';
+    this.sdkMessage = message;
+    this.stack = new Error().stack;
+    this.wbxAppApiCode = wbxAppApiErrorCode;
+    this.meetingInfo = meetingInfo;
+  }
+}
+
+/**
+ * Error preventing join because of a forbidden error
+ */
+export class MeetingInfoV2JoinForbiddenError extends Error {
+  meetingInfo: any;
+  sdkMessage: any;
+  wbxAppApiCode: any;
+  body: any;
+  /**
+   *
+   * @constructor
+   * @param {Number} [wbxAppApiErrorCode]
+   * @param {Object} [meetingInfo]
+   * @param {String} [message]
+   */
+  constructor(wbxAppApiErrorCode?: number, meetingInfo?: object, message?: string) {
+    super(`${message}, code=${wbxAppApiErrorCode}`);
+    this.name = 'MeetingInfoV2JoinForbiddenError';
+    this.sdkMessage = message;
+    this.stack = new Error().stack;
+    this.wbxAppApiCode = wbxAppApiErrorCode;
+    this.meetingInfo = meetingInfo;
+  }
+}
+
+/**
+ * Error fetching static link for a conversation when it does not exist
+ */
+export class MeetingInfoV2StaticLinkDoesNotExistError extends Error {
+  sdkMessage: any;
+  wbxAppApiCode: any;
+  body: any;
+  /**
+   *
+   * @constructor
+   * @param {Number} [wbxAppApiErrorCode]
+   * @param {String} [message]
+   */
+  constructor(wbxAppApiErrorCode?: number, message: string = FETCH_STATIC_MEETING_LINK) {
+    super(`${message}, code=${wbxAppApiErrorCode}`);
+    this.name = 'MeetingInfoV2StaticLinkDoesNotExistError';
+    this.sdkMessage = message;
+    this.stack = new Error().stack;
+    this.wbxAppApiCode = wbxAppApiErrorCode;
+  }
+}
+
+/**
+ * Error enabling/disabling static meeting link
+ */
+export class MeetingInfoV2MeetingIsInProgressError extends Error {
+  sdkMessage: any;
+  wbxAppApiCode: any;
+  body: any;
+  /**
+   *
+   * @constructor
+   * @param {Number} [wbxAppApiErrorCode]
+   * @param {String} [message]
+   * @param {Boolean} [enable]
+   */
+  constructor(
+    wbxAppApiErrorCode?: number,
+    message = MEETING_IS_IN_PROGRESS_MESSAGE,
+    enable = false
+  ) {
+    super(`${message}, code=${wbxAppApiErrorCode}, enable=${enable}`);
+    this.name = 'MeetingInfoV2MeetingIsInProgressError';
+    this.sdkMessage = message;
+    this.stack = new Error().stack;
+    this.wbxAppApiCode = wbxAppApiErrorCode;
+  }
+}
+
+/**
+ * Error enabling/disabling static meeting link
+ */
+export class MeetingInfoV2StaticMeetingLinkAlreadyExists extends Error {
+  sdkMessage: any;
+  wbxAppApiCode: any;
+  body: any;
+  /**
+   *
+   * @constructor
+   * @param {Number} [wbxAppApiErrorCode]
+   * @param {String} [message]
+   */
+  constructor(wbxAppApiErrorCode?: number, message = STATIC_MEETING_LINK_ALREADY_EXISTS_MESSAGE) {
+    super(`${message}, code=${wbxAppApiErrorCode}`);
+    this.name = 'MeetingInfoV2StaticMeetingLinkAlreadyExists';
+    this.sdkMessage = message;
+    this.stack = new Error().stack;
+    this.wbxAppApiCode = wbxAppApiErrorCode;
   }
 }
 
@@ -178,17 +321,66 @@ export default class MeetingInfoV2 {
   };
 
   /**
-   * Creates adhoc space meetings for a space by fetching the conversation infomation
+   * Raises a handleJoinWebinarError for join webinar error codes
+   * @param {any} err the error from the request
+   * @returns {void}
+   */
+  handleJoinWebinarError = (err) => {
+    if (!err.body) {
+      return;
+    }
+
+    if (JOIN_WEBINAR_ERROR_CODES.includes(err.body?.code)) {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_WEBINAR_ERROR, {
+        code: err.body?.code,
+      });
+
+      throw new MeetingInfoV2JoinWebinarError(
+        err.body?.code,
+        err.body?.data?.meetingInfo,
+        err.body?.message
+      );
+    }
+  };
+
+  /**
+   * Raises a handleForbiddenError for join meeting forbidden error
+   * @param {any} err the error from the request
+   * @returns {void}
+   */
+  handleForbiddenError = (err) => {
+    if (!err.body) {
+      return;
+    }
+
+    if (JOIN_FORBIDDEN_CODES.includes(err.body?.code)) {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_FORBIDDEN_ERROR, {
+        code: err.body?.code,
+      });
+
+      throw new MeetingInfoV2JoinForbiddenError(
+        err.body?.code,
+        err.body?.data?.meetingInfo,
+        err.body?.message
+      );
+    }
+  };
+
+  /**
+   * helper function to either create an adhoc space meeting or enable static meeting link
    * @param {String} conversationUrl conversationUrl to start adhoc meeting on
    * @param {String} installedOrgID org ID of user's machine
+   * @param {Boolean} enableStaticMeetingLink whether or not to enable static meeting link
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
    */
-  async createAdhocSpaceMeeting(conversationUrl: string, installedOrgID?: string) {
-    if (!this.webex.meetings.preferredWebexSite) {
-      throw Error('No preferred webex site found');
-    }
+  async createAdhocSpaceMeetingOrEnableStaticMeetingLink(
+    conversationUrl: string,
+    installedOrgID?: string,
+    // setting this to true enables static meeting link
+    enableStaticMeetingLink = false
+  ) {
     const getInvitees = (particpants = []) => {
       const invitees = [];
 
@@ -214,6 +406,7 @@ export default class MeetingInfoV2 {
           kroUrl: conversation.kmsResourceObjectUrl,
           invitees: getInvitees(conversation.participants?.items),
           installedOrgID,
+          schedule: enableStaticMeetingLink,
         };
 
         if (installedOrgID) {
@@ -229,7 +422,23 @@ export default class MeetingInfoV2 {
           uri,
           body,
         });
-      })
+      });
+  }
+
+  /**
+   * Creates adhoc space meetings for a space by fetching the conversation infomation
+   * @param {String} conversationUrl conversationUrl to start adhoc meeting on
+   * @param {String} installedOrgID org ID of user's machine
+   * @returns {Promise} returns a meeting info object
+   * @public
+   * @memberof MeetingInfo
+   */
+  async createAdhocSpaceMeeting(conversationUrl: string, installedOrgID?: string) {
+    if (!this.webex.meetings.preferredWebexSite) {
+      throw Error('No preferred webex site found');
+    }
+
+    return this.createAdhocSpaceMeetingOrEnableStaticMeetingLink(conversationUrl, installedOrgID)
       .then((requestResult) => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
 
@@ -237,12 +446,161 @@ export default class MeetingInfoV2 {
       })
       .catch((err) => {
         this.handlePolicyError(err);
+        this.handleJoinWebinarError(err);
+        this.handleForbiddenError(err);
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_FAILURE, {
           reason: err.message,
           stack: err.stack,
         });
         throw new MeetingInfoV2AdhocMeetingError(err.body?.code, err.body?.message);
+      });
+  }
+
+  /**
+   * Fetches details for static meeting link
+   * @param {String} conversationUrl conversationUrl that's required to find static meeting link if it exists
+   * @returns {Promise} returns a Promise
+   * @public
+   * @memberof MeetingInfo
+   */
+  async fetchStaticMeetingLink(conversationUrl: string) {
+    if (!this.webex.meetings.preferredWebexSite) {
+      throw Error('No preferred webex site found');
+    }
+
+    const body = {
+      spaceUrl: conversationUrl,
+    };
+
+    const uri = this.webex.meetings.preferredWebexSite
+      ? `https://${this.webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/query`
+      : '';
+
+    return this.webex
+      .request({
+        method: HTTP_VERBS.POST,
+        uri,
+        body,
+      })
+      .then((requestResult) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_SUCCESS);
+
+        return requestResult;
+      })
+      .catch((err) => {
+        if (err?.statusCode === 403) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_LINK_DOES_NOT_EXIST_ERROR, {
+            reason: err.message,
+            stack: err.stack,
+          });
+
+          throw new MeetingInfoV2StaticLinkDoesNotExistError(err.body?.code, err.body?.message);
+        }
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_STATIC_MEETING_LINK_FAILURE, {
+          reason: err.message,
+          stack: err.stack,
+        });
+
+        throw err;
+      });
+  }
+
+  /**
+   * Enables static meeting link
+   * @param {String} conversationUrl conversationUrl that's required to enable static meeting link
+   * @returns {Promise} returns a Promise
+   * @public
+   * @memberof MeetingInfo
+   */
+  async enableStaticMeetingLink(conversationUrl: string) {
+    if (!this.webex.meetings.preferredWebexSite) {
+      throw Error('No preferred webex site found');
+    }
+
+    return this.createAdhocSpaceMeetingOrEnableStaticMeetingLink(conversationUrl, undefined, true)
+      .then((requestResult) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ENABLE_STATIC_METTING_LINK_SUCCESS);
+
+        return requestResult;
+      })
+      .catch((err) => {
+        if (err?.statusCode === 403) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_IS_IN_PROGRESS_ERROR, {
+            reason: err.message,
+            stack: err.stack,
+          });
+
+          throw new MeetingInfoV2MeetingIsInProgressError(err.body?.code, err.body?.message, true);
+        }
+
+        if (err?.statusCode === 409) {
+          Metrics.sendBehavioralMetric(
+            BEHAVIORAL_METRICS.STATIC_MEETING_LINK_ALREADY_EXISTS_ERROR,
+            {
+              reason: err.message,
+              stack: err.stack,
+            }
+          );
+
+          throw new MeetingInfoV2StaticMeetingLinkAlreadyExists(err.body?.code, err.body?.message);
+        }
+
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ENABLE_STATIC_METTING_LINK_FAILURE, {
+          reason: err.message,
+          stack: err.stack,
+        });
+
+        throw err;
+      });
+  }
+
+  /**
+   * Disables static meeting link for given conversation url
+   * @param {String} conversationUrl conversationUrl that's required to disable static meeting link if it exists
+   * @returns {Promise} returns a Promise
+   * @public
+   * @memberof MeetingInfo
+   */
+  async disableStaticMeetingLink(conversationUrl: string) {
+    if (!this.webex.meetings.preferredWebexSite) {
+      throw Error('No preferred webex site found');
+    }
+
+    const body = {
+      spaceUrl: conversationUrl,
+    };
+
+    const uri = this.webex.meetings.preferredWebexSite
+      ? `https://${this.webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant/deletePersistentMeeting`
+      : '';
+
+    return this.webex
+      .request({
+        method: HTTP_VERBS.POST,
+        uri,
+        body,
+      })
+      .then((requestResult) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DISABLE_STATIC_MEETING_LINK_SUCCESS);
+
+        return requestResult;
+      })
+      .catch((err) => {
+        if (err?.statusCode === 403) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_IS_IN_PROGRESS_ERROR, {
+            reason: err.message,
+            stack: err.stack,
+          });
+
+          throw new MeetingInfoV2MeetingIsInProgressError(err.body?.code, err.body?.message);
+        }
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DISABLE_STATIC_MEETING_LINK_FAILURE, {
+          reason: err.message,
+          stack: err.stack,
+        });
+
+        throw err;
       });
   }
 
@@ -258,6 +616,8 @@ export default class MeetingInfoV2 {
    * @param {String} locusId
    * @param {Object} extraParams
    * @param {Object} options
+   * @param {String} registrationId
+   * @param {String} fullSiteUrl
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -273,7 +633,9 @@ export default class MeetingInfoV2 {
     installedOrgID = null,
     locusId = null,
     extraParams: object = {},
-    options: {meetingId?: string; sendCAevents?: boolean} = {}
+    options: {meetingId?: string; sendCAevents?: boolean} = {},
+    registrationId: string = null,
+    fullSiteUrl: string = null
   ) {
     const {meetingId, sendCAevents} = options;
 
@@ -298,6 +660,8 @@ export default class MeetingInfoV2 {
       installedOrgID,
       locusId,
       extraParams,
+      registrationId,
+      disableWebRedirect: true,
     });
 
     // If the body only contains the default properties, we don't have enough to
@@ -323,7 +687,9 @@ export default class MeetingInfoV2 {
 
     const directURI = await MeetingInfoUtil.getDirectMeetingInfoURI(destinationType);
 
-    if (directURI) {
+    if (fullSiteUrl) {
+      requestOptions.uri = `https://${fullSiteUrl}/wbxappapi/v1/meetingInfo`;
+    } else if (directURI) {
       requestOptions.uri = directURI;
     } else {
       requestOptions.service = WBXAPPAPI_SERVICE;
@@ -391,6 +757,8 @@ export default class MeetingInfoV2 {
 
         if (err?.statusCode === 403) {
           this.handlePolicyError(err);
+          this.handleJoinWebinarError(err);
+          this.handleForbiddenError(err);
 
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_PASSWORD_ERROR, {
             reason: err.message,

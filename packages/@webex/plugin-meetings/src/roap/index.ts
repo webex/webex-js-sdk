@@ -5,17 +5,13 @@ import {ROAP} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import RoapRequest from './request';
-import TurnDiscovery, {TurnDiscoveryResult} from './turnDiscovery';
+import TurnDiscovery from './turnDiscovery';
+import {TurnDiscoveryResult} from './types';
 import Meeting from '../meeting';
-import MeetingUtil from '../meeting/util';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
-export {
-  type TurnDiscoveryResult,
-  type TurnServerInfo,
-  type TurnDiscoverySkipReason,
-} from './turnDiscovery';
+export {type TurnDiscoveryResult, type TurnServerInfo, type TurnDiscoverySkipReason} from './types';
 
 /**
  * Roap options
@@ -107,7 +103,7 @@ export default class Roap extends StatelessWebexPlugin {
           roapMessage,
           locusSelfUrl: meeting.selfUrl,
           mediaId: options.mediaId,
-          meetingId: meeting.id,
+          isMultistream: meeting.isMultistream,
           locusMediaRequest: meeting.locusMediaRequest,
         })
         .then(() => {
@@ -141,7 +137,7 @@ export default class Roap extends StatelessWebexPlugin {
       roapMessage,
       locusSelfUrl: meeting.selfUrl,
       mediaId: options.mediaId,
-      meetingId: meeting.id,
+      isMultistream: meeting.isMultistream,
       locusMediaRequest: meeting.locusMediaRequest,
     });
   }
@@ -170,7 +166,7 @@ export default class Roap extends StatelessWebexPlugin {
         roapMessage,
         locusSelfUrl: meeting.selfUrl,
         mediaId: options.mediaId,
-        meetingId: meeting.id,
+        isMultistream: meeting.isMultistream,
         locusMediaRequest: meeting.locusMediaRequest,
       })
       .then(() => {
@@ -207,10 +203,9 @@ export default class Roap extends StatelessWebexPlugin {
         roapMessage,
         locusSelfUrl: meeting.selfUrl,
         mediaId: sendEmptyMediaId ? '' : meeting.mediaId,
-        meetingId: meeting.id,
+        isMultistream: meeting.isMultistream,
         preferTranscoding: !meeting.isMultistream,
         locusMediaRequest: meeting.locusMediaRequest,
-        ipVersion: MeetingUtil.getIpVersion(meeting.webex),
       })
       .then(({locus, mediaConnections}) => {
         if (mediaConnections) {
@@ -232,14 +227,16 @@ export default class Roap extends StatelessWebexPlugin {
               headers,
             } = remoteSdp.roapMessage;
 
-            roapAnswer = {
-              seq: answerSeq,
-              messageType,
-              sdp: sdps[0],
-              errorType,
-              errorCause,
-              headers,
-            };
+            if (messageType === ROAP.ROAP_TYPES.ANSWER) {
+              roapAnswer = {
+                seq: answerSeq,
+                messageType,
+                sdp: sdps[0],
+                errorType,
+                errorCause,
+                headers,
+              };
+            }
           }
         }
 

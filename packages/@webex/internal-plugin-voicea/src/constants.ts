@@ -22,6 +22,7 @@ export const AIBRIDGE_RELAY_TYPES = {
   },
   MANUAL: {
     TRANSCRIPTION: 'aibridge.manual_transcription',
+    CAPTIONER: 'client.manual_transcription',
   },
 };
 
@@ -34,10 +35,12 @@ export const TRANSCRIPTION_TYPE = {
   TRANSCRIPT_INTERIM_RESULTS: 'transcript_interim_results',
   TRANSCRIPT_FINAL_RESULT: 'transcript_final_result',
   MANUAL_CAPTION_INTERIM_RESULTS: 'manual_caption_interim_results',
+  MANUAL_CAPTION_INTERIM_RESULT: 'manual_caption_interim_result',
   MANUAL_CAPTION_FINAL_RESULT: 'manual_caption_final_result',
 };
 
 export const VOICEA = 'voicea';
+export const DEFAULT_SPOKEN_LANGUAGE = 'en';
 
 export const ANNOUNCE_STATUS = {
   IDLE: 'idle',
@@ -48,5 +51,10 @@ export const ANNOUNCE_STATUS = {
 export const TURN_ON_CAPTION_STATUS = {
   IDLE: 'idle',
   ENABLED: 'enabled',
+  SENDING: 'sending',
+};
+
+export const TOGGLE_MANUAL_CAPTION_STATUS = {
+  IDLE: 'idle',
   SENDING: 'sending',
 };

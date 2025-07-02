@@ -20,23 +20,36 @@ import {
   MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA,
   MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER,
   MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER,
+  MOCK_SESSION_EVENT_DELETED,
+  MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE,
+  janusMarkAsDeletedUrl,
+  MOCK_DELETE_CALL_HISTORY_INVALID_DATE_RESPONSE,
 } from './callHistoryFixtures';
 import {
   COMMON_EVENT_KEYS,
+  CallSessionDeletedEvent,
   CallSessionEvent,
   CallSessionViewedEvent,
   MOBIUS_EVENT_KEYS,
 } from '../Events/types';
-import {APPLICATION_JSON, CALL_HISTORY_FILE, CONTENT_TYPE} from './constants';
+import {APPLICATION_JSON, CALL_HISTORY_FILE, CONTENT_TYPE, METHODS} from './constants';
 import * as utils from '../common/Utils';
+import log from '../Logger';
+import {METHOD_START_MESSAGE} from '../common/constants';
 
 const webex = getTestUtilsWebex();
 let serviceErrorCodeHandlerSpy: jest.SpyInstance;
+let uploadLogsSpy: jest.SpyInstance;
+
 describe('Call history tests', () => {
   let callHistory: ICallHistory;
+  const infoSpy = jest.spyOn(log, 'info').mockImplementation();
+  const logSpy = jest.spyOn(log, 'log').mockImplementation();
+  const errorSpy = jest.spyOn(log, 'error').mockImplementation();
 
   beforeAll(() => {
     callHistory = new CallHistory(webex, {level: LOGGER.INFO});
+    uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
   });
 
   it('verify successful call history case', async () => {
@@ -47,6 +60,23 @@ describe('Call history tests', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.message).toBe('SUCCESS');
+
+    // Verify logging behavior
+    expect(infoSpy).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    // Verify logs were called with correct information
+    expect(infoSpy).toHaveBeenCalledWith(
+      'invoking with days=7, limit=10, sort=DESC, sortBy=endTime',
+      {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Successfully retrieved call history data'),
+      {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
+    );
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(uploadLogsSpy).not.toHaveBeenCalled();
   });
 
   it('verify bad request failed call history case', async () => {
@@ -60,6 +90,14 @@ describe('Call history tests', () => {
 
     expect(response.statusCode).toBe(400);
     expect(response.message).toBe('FAILURE');
+
+    // Verify logs were called with correct information
+    expect(infoSpy).toHaveBeenCalledWith(
+      'invoking with days=7, limit=2000, sort=ASC, sortBy=startTime',
+      {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
+    );
+    expect(errorSpy).toHaveBeenCalled();
+    expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
   });
 
   it('verify device not found call history case', async () => {
@@ -73,6 +111,14 @@ describe('Call history tests', () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.message).toBe('FAILURE');
+
+    // Verify logs were called with correct information
+    expect(infoSpy).toHaveBeenCalledWith(
+      'invoking with days=0, limit=0, sort=ASC, sortBy=startTime',
+      {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
+    );
+    expect(errorSpy).toHaveBeenCalled();
+    expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
   });
 
   describe('sorting  user session response data by sortby', () => {
@@ -91,6 +137,12 @@ describe('Call history tests', () => {
       };
 
       expect(response).toEqual(responseDetails);
+
+      // Verify logs were called with correct information
+      expect(infoSpy).toHaveBeenCalledWith(
+        'invoking with days=10, limit=20, sort=ASC, sortBy=startTime',
+        {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
+      );
     });
   });
 
@@ -148,18 +200,36 @@ describe('Call history tests', () => {
         callSessionCallback(MOCK_SESSION_EVENT_VIEWED);
       });
     });
+
+    it('verify the user sessions deleted event for deleting the call history records', async () => {
+      await new Promise<void>((resolve) => {
+        callHistory.on(
+          COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED,
+          (event: CallSessionDeletedEvent) => {
+            expect(event.data).toEqual(MOCK_SESSION_EVENT_DELETED.data);
+            resolve();
+          }
+        );
+
+        expect(mockOn.mock.calls[3][0]).toEqual(MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_DELETED);
+        const callSessionCallback = mockOn.mock.calls[3][1];
+
+        callSessionCallback(MOCK_SESSION_EVENT_DELETED);
+      });
+    });
   });
 
   describe('Update missed calls test', () => {
     const methodDetails = {
       file: CALL_HISTORY_FILE,
-      method: 'updateMissedCalls',
+      method: METHODS.UPDATE_MISSED_CALLS,
     };
     afterEach(() => {
       jest.clearAllMocks();
     });
     beforeEach(async () => {
       serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
+      uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
       global.fetch = jest.fn(() =>
         Promise.resolve({
           status: 200,
@@ -186,6 +256,18 @@ describe('Call history tests', () => {
         },
         body: JSON.stringify({endTimeSessionIds: convertedEndTimeSessionIds}),
       });
+
+      // Verify logs were called with correct information
+      expect(infoSpy).toHaveBeenCalledWith(
+        `${METHOD_START_MESSAGE} with sessions: ${JSON.stringify(convertedEndTimeSessionIds)}`,
+        methodDetails
+      );
+      expect(logSpy).toHaveBeenCalledWith(
+        'Missed calls are successfully read by the user',
+        methodDetails
+      );
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(uploadLogsSpy).not.toHaveBeenCalled();
     });
 
     it('Error: updateMissedCalls throw 400 error', async () => {
@@ -217,6 +299,8 @@ describe('Call history tests', () => {
         },
         methodDetails
       );
+      expect(errorSpy).toHaveBeenCalled();
+      expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
 
     it('Error: updateMissedCalls throw 401 error', async () => {
@@ -249,10 +333,16 @@ describe('Call history tests', () => {
         },
         methodDetails
       );
+      expect(errorSpy).toHaveBeenCalled();
+      expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('fetchUCMLinesData test', () => {
+    beforeEach(() => {
+      uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
+    });
+
     it('verify successful UCM lines API case', async () => {
       const ucmLinesAPIPayload = <WebexRequestPayload>(<unknown>MOCK_LINES_API_CALL_RESPONSE);
 
@@ -261,6 +351,21 @@ describe('Call history tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe('SUCCESS');
+
+      // Verify logs were called with correct information
+      expect(infoSpy).toHaveBeenCalledWith(
+        'invoking with URL: https://gw.telemetry.int-ucmgmt.cisco.com/v1/uc/config/people/8a67806f-fc4d-446b-a131-31e71ea5b0e9/lines?orgId=1704d30d-a131-4bc7-9449-948487643793',
+        {
+          file: CALL_HISTORY_FILE,
+          method: METHODS.FETCH_UCM_LINES_DATA,
+        }
+      );
+      expect(logSpy).toHaveBeenCalledWith('Line details fetched successfully', {
+        file: CALL_HISTORY_FILE,
+        method: METHODS.FETCH_UCM_LINES_DATA,
+      });
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(uploadLogsSpy).not.toHaveBeenCalled();
     });
 
     it('verify bad request failed UCM lines API case', async () => {
@@ -278,8 +383,19 @@ describe('Call history tests', () => {
       expect(response.message).toBe('FAILURE');
       expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
         {statusCode: 400},
-        {file: 'CallHistory', method: 'fetchLinesData'}
+        {file: CALL_HISTORY_FILE, method: METHODS.FETCH_UCM_LINES_DATA}
       );
+
+      // Verify logs were called with correct information
+      expect(infoSpy).toHaveBeenCalledWith(
+        `${METHOD_START_MESSAGE} with URL: https://gw.telemetry.int-ucmgmt.cisco.com/v1/uc/config/people/8a67806f-fc4d-446b-a131-31e71ea5b0e9/lines?orgId=1704d30d-a131-4bc7-9449-948487643793`,
+        {
+          file: CALL_HISTORY_FILE,
+          method: METHODS.FETCH_UCM_LINES_DATA,
+        }
+      );
+      expect(errorSpy).toHaveBeenCalled();
+      expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should call fetchUCMLinesData when calling backend is UCM and userSessions contain valid cucmDN', async () => {
@@ -358,6 +474,154 @@ describe('Call history tests', () => {
       webex.request.mockResolvedValue(callHistoryPayload);
       await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
       expect(fetchUCMLinesDataSpy).not.toHaveBeenCalled(); // Check that fetchUCMLinesData was not called
+    });
+  });
+
+  describe('Delete call history records test', () => {
+    const methodDetails = {
+      file: CALL_HISTORY_FILE,
+      method: METHODS.DELETE_CALL_HISTORY_RECORDS,
+    };
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    beforeEach(async () => {
+      serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
+      uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 200,
+          ok: true,
+          json: () => Promise.resolve(MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE),
+        })
+      ) as jest.Mock;
+    });
+
+    it('successfully deletes the call history records', async () => {
+      const deleteSessionIds = [{endTime: '2024-10-22T08:50:48.603Z', sessionId: '123'}];
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+      const convertedEndTimeSessionIds = deleteSessionIds.map((session) => ({
+        ...session,
+        endTime: new Date(session.endTime).getTime(),
+      }));
+      expect(response.statusCode).toEqual(200);
+      expect(response).toEqual(MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE);
+      expect(global.fetch).toBeCalledOnceWith(janusMarkAsDeletedUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify({deleteSessionIds: convertedEndTimeSessionIds}),
+      });
+
+      // Verify logs were called with correct information
+      expect(infoSpy).toHaveBeenCalledWith(
+        `${METHOD_START_MESSAGE} with sessions: ${JSON.stringify(deleteSessionIds)}`,
+        methodDetails
+      );
+      expect(logSpy).toHaveBeenCalledWith(
+        `Successfully deleted ${deleteSessionIds.length} call history records`,
+        methodDetails
+      );
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(uploadLogsSpy).not.toHaveBeenCalled();
+    });
+
+    it('Error: deleteCallHistoryRecords throw 400 error', async () => {
+      const deleteSessionIds = [];
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 400,
+          ok: false,
+        })
+      ) as jest.Mock;
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+      const convertedEndTimeSessionIds = deleteSessionIds.map((session) => ({
+        ...session,
+        endTime: new Date(session.endTime).getTime(),
+      }));
+      expect(response).toStrictEqual(ERROR_DETAILS_400);
+      expect(response.statusCode).toBe(400);
+      expect(global.fetch).toBeCalledOnceWith(janusMarkAsDeletedUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify({deleteSessionIds: convertedEndTimeSessionIds}),
+      });
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 400,
+        },
+        methodDetails
+      );
+      expect(errorSpy).toHaveBeenCalled();
+      expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('Error: deleteCallHistoryRecords throw 401 error', async () => {
+      const deleteSessionIds = [];
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 401,
+          ok: false,
+        })
+      ) as jest.Mock;
+
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+      const convertedEndTimeSessionIds = deleteSessionIds.map((session) => ({
+        ...session,
+        endTime: new Date(session.endTime).getTime(),
+      }));
+      expect(response).toStrictEqual(ERROR_DETAILS_401);
+      expect(response.statusCode).toBe(401);
+      expect(global.fetch).toBeCalledOnceWith(janusMarkAsDeletedUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify({deleteSessionIds: convertedEndTimeSessionIds}),
+      });
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 401,
+        },
+        methodDetails
+      );
+      expect(errorSpy).toHaveBeenCalledWith(expect.any(Error), {
+        file: CALL_HISTORY_FILE,
+        method: METHODS.DELETE_CALL_HISTORY_RECORDS,
+      });
+      expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('handles invalid date formats gracefully', async () => {
+      const deleteSessionIds = [{endTime: 'invalid-date', sessionId: '123'}];
+
+      // Mock the response to be 400 and trigger an error in your function
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 400,
+          ok: false,
+        })
+      ) as jest.Mock;
+
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+
+      expect(response.statusCode).toBe(400);
+      expect(response).toEqual(MOCK_DELETE_CALL_HISTORY_INVALID_DATE_RESPONSE);
+
+      // Verify logs were called with correct information
+      expect(infoSpy).toHaveBeenCalledWith(
+        expect.stringContaining('The provided date is malformed or invalid'),
+        methodDetails
+      );
+      expect(uploadLogsSpy).not.toHaveBeenCalled();
     });
   });
 });
