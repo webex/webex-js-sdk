@@ -459,6 +459,14 @@ class Metrics extends WebexPlugin {
     return Promise.resolve();
   }
 
+  /**
+   * Sets the value of setDelaySubmitClientFeatureEvents.
+   * If set to true, feature events will be delayed until submitDelayedClientFeatureEvents is called.
+   * If set to false, delayed feature events will be submitted.
+   *
+   * @param {object} options - {shouldDelay: A boolean value indicating whether to delay the submission of feature events,
+   * overrides: An object containing overrides for the feature events}
+   */
   public setDelaySubmitClientFeatureEvents({
     shouldDelay,
     overrides,
