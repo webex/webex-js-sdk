@@ -58,7 +58,9 @@ export class BrbState {
   public enable(enabled: boolean, sendSlotManager: SendSlotManager) {
     this.state.client.enabled = enabled;
 
-    return this.applyClientStateToServer(sendSlotManager);
+    return this.applyClientStateToServer(sendSlotManager).finally(() => {
+      this.updateSourceStateOverride(sendSlotManager);
+    });
   }
 
   /**
@@ -86,8 +88,6 @@ export class BrbState {
       LoggerProxy.logger.info(
         `Meeting:brbState#applyClientStateToServer: client state already matching server state, nothing to do`
       );
-
-      this.updateSourceStateOverride(sendSlotManager);
 
       return Promise.resolve();
     }
@@ -172,9 +172,6 @@ export class BrbState {
         locusUrl: this.meeting.locusUrl,
         deviceUrl: this.meeting.deviceUrl,
         selfId: this.meeting.selfId,
-      })
-      .then(() => {
-        this.updateSourceStateOverride(sendSlotManager);
       })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:brbState#sendLocalBrbStateToServer: Error ', error);
