@@ -13,7 +13,7 @@ import {
 export default class SendSlotManager {
   private readonly slots: Map<MediaType, SendSlot> = new Map();
   private readonly LoggerProxy: any;
-  private sourceStateOverride: Map<MediaType, StreamState | null> = new Map();
+  private readonly sourceStateOverrides: Map<MediaType, StreamState> = new Map();
 
   /**
    * Constructor for SendSlotsManager
@@ -115,10 +115,10 @@ export default class SendSlotManager {
 
     if (state) {
       slot.setSourceStateOverride(state);
-      this.sourceStateOverride.set(mediaType, state);
+      this.sourceStateOverrides.set(mediaType, state);
     } else {
       slot.clearSourceStateOverride();
-      this.sourceStateOverride.delete(mediaType);
+      this.sourceStateOverrides.delete(mediaType);
     }
 
     this.LoggerProxy.logger.info(
@@ -138,7 +138,7 @@ export default class SendSlotManager {
       );
     }
 
-    return this.sourceStateOverride.get(mediaType) || null;
+    return this.sourceStateOverrides.get(mediaType) || null;
   }
 
   /**
