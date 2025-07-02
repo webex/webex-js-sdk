@@ -59,7 +59,10 @@ export class BrbState {
     this.state.client.enabled = enabled;
 
     return this.applyClientStateToServer(sendSlotManager).finally(() => {
-      this.updateSourceStateOverride(sendSlotManager);
+      sendSlotManager.setSourceStateOverride(
+        MediaType.VideoMain,
+        this.state.client.enabled ? 'away' : null
+      );
     });
   }
 
@@ -117,25 +120,6 @@ export class BrbState {
 
         return Promise.reject(error);
       });
-  }
-
-  /**
-   * Updates the local state of the brb based on the enabled parameter.
-   *
-   * @param {SendSlotManager} sendSlotManager - the send slot manager instance
-   * @returns {void}
-   */
-  private updateSourceStateOverride(sendSlotManager: SendSlotManager): void {
-    const isSourceStateOverridden =
-      sendSlotManager.getSourceStateOverride(MediaType.VideoMain) === 'away';
-    const isClientEnabled = this.state.client.enabled;
-
-    if (isClientEnabled && !isSourceStateOverridden) {
-      sendSlotManager.setSourceStateOverride(MediaType.VideoMain, 'away');
-    }
-    if (!isClientEnabled && isSourceStateOverridden) {
-      sendSlotManager.setSourceStateOverride(MediaType.VideoMain, null);
-    }
   }
 
   /**

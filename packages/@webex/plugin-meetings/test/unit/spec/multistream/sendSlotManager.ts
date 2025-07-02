@@ -285,54 +285,58 @@ describe('SendSlotsManager', () => {
       });
 
       it('can set and get source state override', () => {
-        sendSlotsManager.createSlot(mediaConnection, MediaType.VideoMain);
+        const slot: any = sendSlotsManager.createSlot(mediaConnection, MediaType.VideoMain);
 
         sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, 'away');
         const overrideState = sendSlotsManager.getSourceStateOverride(MediaType.VideoMain);
 
         expect(overrideState).to.equal('away');
+        expect(slot.setSourceStateOverride.calledWith('away')).to.be.true;
       });
 
       [MediaType.VideoMain].forEach((mediaType) => {
         it(`can get and set source state override for ${mediaType}`, () => {
-          sendSlotsManager.createSlot(mediaConnection, mediaType);
+          const slot: any = sendSlotsManager.createSlot(mediaConnection, mediaType);
 
           const set = () => sendSlotsManager.setSourceStateOverride(mediaType, 'away');
           const get = () => sendSlotsManager.getSourceStateOverride(mediaType);
 
           expect(set).not.to.throw();
           expect(get).not.to.throw();
+          expect(slot.setSourceStateOverride.calledWith('away')).to.be.true;
         });
       });
 
       [MediaType.VideoSlides, MediaType.AudioMain, MediaType.AudioSlides].forEach((mediaType) => {
         it(`can't set nor get source state override for ${mediaType}`, () => {
-          sendSlotsManager.createSlot(mediaConnection, mediaType);
+          const slot: any = sendSlotsManager.createSlot(mediaConnection, mediaType);
 
           const set = () => sendSlotsManager.setSourceStateOverride(mediaType, 'away');
           const get = () => sendSlotsManager.getSourceStateOverride(mediaType);
 
           expect(set).to.throw();
           expect(get).to.throw();
+          expect(slot.setSourceStateOverride.called).to.be.false;
         });
       });
 
       it("can't set source state override for non-existing slot", () => {
-        expect(() => sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, 'away')).to.throw(
-          `Slot for ${MediaType.VideoMain} does not exist`
-        );
+        const set = () => sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, 'away');
+        expect(set).to.throw(`Slot for ${MediaType.VideoMain} does not exist`);
       });
 
       it('can clear source state override', () => {
-        sendSlotsManager.createSlot(mediaConnection, MediaType.VideoMain);
+        const slot: any = sendSlotsManager.createSlot(mediaConnection, MediaType.VideoMain);
         sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, 'away');
 
         let overrideState = sendSlotsManager.getSourceStateOverride(MediaType.VideoMain);
         expect(overrideState).to.equal('away');
+        expect(slot.setSourceStateOverride.calledWith('away')).to.be.true;
 
         sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, null);
         overrideState = sendSlotsManager.getSourceStateOverride(MediaType.VideoMain);
         expect(overrideState).to.be.null;
+        expect(slot.clearSourceStateOverride.called).to.be.true;
       });
     });
 });
