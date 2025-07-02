@@ -311,6 +311,7 @@ export type PreComputedLatencies =
   | 'internal.download.time'
   | 'internal.get.cluster.time'
   | 'internal.click.to.interstitial'
+  | 'internal.click.to.interstitial.with.user.delay'
   | 'internal.refresh.captcha.time'
   | 'internal.exchange.ci.token.time'
   | 'internal.get.u2c.time'
