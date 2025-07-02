@@ -94,7 +94,7 @@ export class BrbState {
 
     this.state.syncToServerInProgress = true;
 
-    return this.sendLocalBrbStateToServer(sendSlotManager)
+    return this.sendLocalBrbStateToServer()
       .then(() => {
         this.state.syncToServerInProgress = false;
 
@@ -126,13 +126,14 @@ export class BrbState {
    * @returns {void}
    */
   private updateSourceStateOverride(sendSlotManager: SendSlotManager): void {
-    const isOverrideEnabled =
+    const isSourceStateOverridden =
       sendSlotManager.getSourceStateOverride(MediaType.VideoMain) === 'away';
     const isClientEnabled = this.state.client.enabled;
 
-    if (isClientEnabled && !isOverrideEnabled) {
+    if (isClientEnabled && !isSourceStateOverridden) {
       sendSlotManager.setSourceStateOverride(MediaType.VideoMain, 'away');
-    } else if (!isClientEnabled && isOverrideEnabled) {
+    }
+    if (!isClientEnabled && isSourceStateOverridden) {
       sendSlotManager.setSourceStateOverride(MediaType.VideoMain, null);
     }
   }
@@ -140,10 +141,9 @@ export class BrbState {
   /**
    * Send the local brb state to the server
    *
-   * @param {SendSlotManager} sendSlotManager
    * @returns {Promise}
    */
-  private async sendLocalBrbStateToServer(sendSlotManager: SendSlotManager) {
+  private async sendLocalBrbStateToServer() {
     const {enabled} = this.state.client;
 
     if (!this.meeting.isMultistream) {
