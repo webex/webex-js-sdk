@@ -2758,7 +2758,7 @@ export default class Meeting extends StatelessWebexPlugin {
       LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
       ({spokenLanguage}) => {
         if (spokenLanguage) {
-          this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
+          this.transcription?.languageOptions?.currentSpokenLanguage = spokenLanguage;
           // @ts-ignore
           this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage);
 
