@@ -464,7 +464,7 @@ class Metrics extends WebexPlugin {
     overrides,
   }: {
     shouldDelay: boolean;
-    overrides?: Partial<DelayedClientEvent['options']>;
+    overrides?: Partial<DelayedClientFeatureEvent['options']>;
   }) {
     this.delaySubmitClientFeatureEvents = shouldDelay;
     this.delayedClientFeatureEventsOverrides = overrides || {};
