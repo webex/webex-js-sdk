@@ -7,10 +7,20 @@ import {
   StreamState,
 } from '@webex/internal-media-core';
 
+/**
+ * This class is used to manage the sendSlots for the given media types.
+ */
 export default class SendSlotManager {
   private readonly slots: Map<MediaType, SendSlot> = new Map();
   private readonly LoggerProxy: any;
+  private sourceStateOverride: Map<MediaType, StreamState | null> = new Map();
 
+  /**
+   * Constructor for SendSlotsManager
+   *
+   * @param {any} LoggerProxy is used to log the messages
+   * @constructor
+   */
   constructor(LoggerProxy: any) {
     this.LoggerProxy = LoggerProxy;
   }
@@ -105,13 +115,30 @@ export default class SendSlotManager {
 
     if (state) {
       slot.setSourceStateOverride(state);
+      this.sourceStateOverride.set(mediaType, state);
     } else {
       slot.clearSourceStateOverride();
+      this.sourceStateOverride.delete(mediaType);
     }
 
     this.LoggerProxy.logger.info(
       `SendSlotsManager->setSourceStateOverride#set source state override for ${mediaType} to ${state}`
     );
+  }
+
+  /**
+   * Gets the source state override for the given media type.
+   * @param {MediaType} mediaType - The type of media to get the source state override for.
+   * @returns {StreamState | null} - The current source state override or null if not set.
+   */
+  public getSourceStateOverride(mediaType: MediaType): StreamState | null {
+    if (mediaType !== MediaType.VideoMain) {
+      throw new Error(
+        `sendSlotManager cannot get source state override which media type is ${mediaType}`
+      );
+    }
+
+    return this.sourceStateOverride.get(mediaType) || null;
   }
 
   /**

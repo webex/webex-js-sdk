@@ -20,6 +20,7 @@ describe('plugin-meetings', () => {
       },
       sendSlotManager: {
         setSourceStateOverride: sinon.stub(),
+        getSourceStateOverride: sinon.stub().returns(null),
       },
       meetingRequest: {
         setBrb: () => {},
@@ -111,11 +112,11 @@ describe('plugin-meetings', () => {
       assert.isTrue(meeting.sendSlotManager.setSourceStateOverride.called);
     });
 
-    it('sets source state override when client state does match server state', async () => {
+    it('does not set source state override when client state does match server state', async () => {
       brbState.enable(false, meeting.sendSlotManager);
       await testUtils.flushPromises();
 
-      assert.isTrue(meeting.sendSlotManager.setSourceStateOverride.called);
+      assert.isFalse(meeting.sendSlotManager.setSourceStateOverride.called);
     });
 
     it('handles server update', async () => {
