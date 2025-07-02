@@ -17,6 +17,7 @@
   "exports": {
     ".": {
       "import": "./dist/webex.js",
+      "require": "./dist/webex.js",
       "types": "./dist/types/index.d.ts"
     },
     "./package": "./package.json"
