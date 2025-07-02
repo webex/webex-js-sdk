@@ -12,6 +12,7 @@
     "Sreekanth Narayanan <sreenara@cisco.com>"
   ],
   "main": "dist/webex.js",
+  "types": "./dist/types/index.d.ts",
   "devMain": "src/index.ts",
   "exports": {
     ".": "./dist/webex.js",
