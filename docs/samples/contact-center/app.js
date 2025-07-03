@@ -75,8 +75,15 @@ let isBundleLoaded = false; // this is just to check before loading/using engage
 const uploadLogsButton = document.getElementById('upload-logs');
 const uploadLogsResultElm = document.getElementById('upload-logs-result');
 const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProfile');
+const changeEnv = document.querySelector('#changeEnv');
 
 deregisterBtn.style.backgroundColor = 'red';
+let enableProd = true;
+
+function changeEnv() {
+  enableProd = !enableProd;
+  changeEnv.innerHTML = enableProd ? 'In Production' : 'In Integration';
+}
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -172,14 +179,24 @@ function initOauth() {
         .concat(additionalScopes))
       ).join(' ');
 
+  const webexConfig = generateWebexConfig({
+    credentials: {
+      client_id: enableProd ? 'C70599433db154842e919ad9e18273d835945ff198251c82204b236b157b3a213' : 'Cd0dd53db1f470a5a9941e5eee31575bd0889d7006e3a80a1443ad12a42049da1',
+      redirect_uri: redirectUri,
+      scope: requestedScopes,
+    }
+  });
+
+  if (!enableProd) {
+    webexConfig.config.services = {
+      discovery: {
+        u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+      },
+    };
+  }
+
   webex = window.webex = Webex.init({
-    config: generateWebexConfig({
-      credentials: {
-        client_id: 'C70599433db154842e919ad9e18273d835945ff198251c82204b236b157b3a213',
-        redirect_uri: redirectUri,
-        scope: requestedScopes,
-      }
-    })
+    config: webexConfig
   });
 
   localStorage.setItem('OAuth', true);
@@ -793,6 +810,14 @@ function initWebex(e) {
   authStatusElm.innerText = 'initializing...';
 
   const webexConfig = generateWebexConfig({})
+
+  if (!enableProd) {
+     webexConfig.config.services = {
+      discovery: {
+        u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+      },
+    };
+  }
 
   webex = window.webex = Webex.init({
     config: webexConfig,
