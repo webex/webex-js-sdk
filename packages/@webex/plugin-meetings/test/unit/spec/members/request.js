@@ -221,7 +221,7 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#cancelSIPInvite', () => {
+    describe('#cancelInvite', () => {
       const memberId = uuid.v4();
       it('sends a PUT to the locus endpoint', async () => {
         const options = {
@@ -231,7 +231,7 @@ describe('plugin-meetings', () => {
           locusUrl: url1,
         };
 
-        await membersRequest.cancelSIPInvite(options);
+        await membersRequest.cancelInvite(options);
 
         checkRequest({
           method: 'PUT',

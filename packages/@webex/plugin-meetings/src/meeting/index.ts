@@ -3850,15 +3850,16 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Cancel an SIP call invitation made during a meeting
+   * Cancel an SIP/phone call invitation made during a meeting
    * @param {Object} invitee
    * @param {String} invitee.memberId
-   * @returns {Promise} see #members.cancelSIPInvite
+   * @param {Boolean} [invitee.isInternalNumber] - When cancel phone invitation, if the number is internal
+   * @returns {Promise} see #members.cancelInvite
    * @public
    * @memberof Meeting
    */
-  public cancelSIPInvite(invitee: {memberId: string}) {
-    return this.members.cancelSIPInvite(invitee);
+  public cancelInvite(invitee: {memberId: string; isInternalNumber?: boolean}) {
+    return this.members.cancelInvite(invitee);
   }
 
   /**

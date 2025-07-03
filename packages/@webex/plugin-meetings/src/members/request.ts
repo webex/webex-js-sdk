@@ -274,7 +274,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
       );
     }
 
-    const requestParams = MembersUtil.generateCancelInviteRequestParams(options);
+    const requestParams = MembersUtil.generateCancelPhoneInviteRequestParams(options);
 
     return this.locusDeltaRequest(requestParams);
   }
@@ -285,14 +285,14 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @throws {Error} if the options are not valid and complete, must have invitee with memberId AND locusUrl
    * @memberof MembersRequest
    */
-  cancelSIPInvite(options: any) {
+  cancelInvite(options: any) {
     if (!options?.invitee?.memberId || !options?.locusUrl) {
       throw new ParameterError(
         'invitee must be passed and the associated locus url for this meeting object must be defined.'
       );
     }
 
-    const requestParams = MembersUtil.generateCancelSIPInviteRequestParams(options);
+    const requestParams = MembersUtil.generateCancelInviteRequestParams(options);
 
     return this.locusDeltaRequest(requestParams);
   }
