@@ -284,14 +284,6 @@ describe('SendSlotsManager', () => {
         } as MultistreamRoapMediaConnection;
       });
 
-      it('can set source state override', () => {
-        const slot: any = sendSlotsManager.createSlot(mediaConnection, MediaType.VideoMain);
-
-        sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, 'away');
-
-        expect(slot.setSourceStateOverride.calledWith('away')).to.be.true;
-      });
-
       [MediaType.VideoMain].forEach((mediaType) => {
         it(`can set source state override for ${mediaType}`, () => {
           const slot: any = sendSlotsManager.createSlot(mediaConnection, mediaType);
