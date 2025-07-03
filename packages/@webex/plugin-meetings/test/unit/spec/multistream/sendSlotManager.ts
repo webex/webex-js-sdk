@@ -284,38 +284,32 @@ describe('SendSlotsManager', () => {
         } as MultistreamRoapMediaConnection;
       });
 
-      it('can set and get source state override', () => {
+      it('can set source state override', () => {
         const slot: any = sendSlotsManager.createSlot(mediaConnection, MediaType.VideoMain);
 
         sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, 'away');
-        const overrideState = sendSlotsManager.getSourceStateOverride(MediaType.VideoMain);
 
-        expect(overrideState).to.equal('away');
         expect(slot.setSourceStateOverride.calledWith('away')).to.be.true;
       });
 
       [MediaType.VideoMain].forEach((mediaType) => {
-        it(`can get and set source state override for ${mediaType}`, () => {
+        it(`can set source state override for ${mediaType}`, () => {
           const slot: any = sendSlotsManager.createSlot(mediaConnection, mediaType);
 
           const set = () => sendSlotsManager.setSourceStateOverride(mediaType, 'away');
-          const get = () => sendSlotsManager.getSourceStateOverride(mediaType);
 
           expect(set).not.to.throw();
-          expect(get).not.to.throw();
           expect(slot.setSourceStateOverride.calledWith('away')).to.be.true;
         });
       });
 
       [MediaType.VideoSlides, MediaType.AudioMain, MediaType.AudioSlides].forEach((mediaType) => {
-        it(`can't set nor get source state override for ${mediaType}`, () => {
+        it(`can't set source state override for ${mediaType}`, () => {
           const slot: any = sendSlotsManager.createSlot(mediaConnection, mediaType);
 
           const set = () => sendSlotsManager.setSourceStateOverride(mediaType, 'away');
-          const get = () => sendSlotsManager.getSourceStateOverride(mediaType);
 
           expect(set).to.throw();
-          expect(get).to.throw();
           expect(slot.setSourceStateOverride.called).to.be.false;
         });
       });
@@ -329,13 +323,10 @@ describe('SendSlotsManager', () => {
         const slot: any = sendSlotsManager.createSlot(mediaConnection, MediaType.VideoMain);
         sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, 'away');
 
-        let overrideState = sendSlotsManager.getSourceStateOverride(MediaType.VideoMain);
-        expect(overrideState).to.equal('away');
         expect(slot.setSourceStateOverride.calledWith('away')).to.be.true;
+        expect(slot.clearSourceStateOverride.called).to.be.false;
 
         sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, null);
-        overrideState = sendSlotsManager.getSourceStateOverride(MediaType.VideoMain);
-        expect(overrideState).to.be.null;
         expect(slot.clearSourceStateOverride.called).to.be.true;
       });
     });

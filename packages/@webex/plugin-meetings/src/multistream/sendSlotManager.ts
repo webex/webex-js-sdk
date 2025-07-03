@@ -136,7 +136,7 @@ export default class SendSlotManager {
    * @param {MediaType} mediaType - The type of media to get the source state override for.
    * @returns {StreamState | null} - The current source state override or null if not set.
    */
-  public getSourceStateOverride(mediaType: MediaType): StreamState | null {
+  private getSourceStateOverride(mediaType: MediaType): StreamState | null {
     if (mediaType !== MediaType.VideoMain) {
       throw new Error(
         `sendSlotManager cannot get source state override which media type is ${mediaType}`
