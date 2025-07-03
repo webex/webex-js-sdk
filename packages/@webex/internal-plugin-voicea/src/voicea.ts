@@ -436,7 +436,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {Promise}
    */
   public turnOnCaptions = async (spokenLanguage?): undefined | Promise<void> => {
-    if (this.isCaptionProcessing()) return undefined;
+    if (this.captionStatus === TURN_ON_CAPTION_STATUS.SENDING) return undefined;
     // @ts-ignore
     if (!this.webex.internal.llm.isConnected()) {
       throw new Error('can not turn on captions before llm connected');
