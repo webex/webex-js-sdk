@@ -74,13 +74,6 @@ export default class Digital extends Task implements IDigital {
     const eventType = this.data.type;
 
     switch (eventType) {
-      case CC_EVENTS.AGENT_OFFER_CONTACT:
-        // for incoming task: enable accept
-        this.updateTaskUiControls({
-          accept: [true, true],
-        });
-        break;
-
       case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
         // once accepted: enable transfer + end
         this.updateTaskUiControls({
@@ -91,10 +84,14 @@ export default class Digital extends Task implements IDigital {
         break;
 
       case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
+      case CC_EVENTS.AGENT_BLIND_TRANSFERRED:
       case CC_EVENTS.AGENT_WRAPUP:
         // after transfer or end: enable wrapup
-        this.updateTaskUiControls({transfer: [false, false], end: [false, false]});
-        this.updateTaskUiControls({wrapup: [true, true]});
+        this.updateTaskUiControls({
+          transfer: [false, false],
+          end: [false, false],
+          wrapup: [true, true],
+        });
         break;
 
       case CC_EVENTS.AGENT_CONTACT:
@@ -117,6 +114,14 @@ export default class Digital extends Task implements IDigital {
             end: [false, false],
           });
         }
+        break;
+
+      case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
+        this.updateTaskUiControls({
+          accept: [false, false],
+          transfer: [false, false],
+          end: [false, false],
+        });
         break;
 
       default:

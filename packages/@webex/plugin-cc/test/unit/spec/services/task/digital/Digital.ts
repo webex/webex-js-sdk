@@ -112,5 +112,13 @@ describe('Digital Task', () => {
       const ctrl = ctrlFor(CC_EVENTS.AGENT_WRAPUP);
       expect(ctrl.wrapup.visible).toBe(true);
     });
+
+    it('AGENT_CONTACT_OFFER_RONA disables accept, transfer, end, and wrapup', () => {
+      const ctrl = ctrlFor(CC_EVENTS.AGENT_CONTACT_OFFER_RONA);
+      expect(ctrl.accept.visible).toBe(false);
+      expect(ctrl.transfer.visible).toBe(false);
+      expect(ctrl.end.visible).toBe(false);
+      expect(ctrl.wrapup.visible).toBe(false);
+    });
   });
 });
