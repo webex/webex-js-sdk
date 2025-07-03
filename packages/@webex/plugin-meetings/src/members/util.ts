@@ -392,7 +392,7 @@ const MembersUtil = {
       invitees: [
         {
           address: memberId,
-          ...(hasIsInternalNumberProp && {isInternalNumber}),
+          ...(hasIsInternalNumberProp ? {isInternalNumber} : {}),
         },
       ],
     };
