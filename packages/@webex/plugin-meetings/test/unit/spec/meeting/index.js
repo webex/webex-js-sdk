@@ -1240,7 +1240,7 @@ describe('plugin-meetings', () => {
             LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
             {spokenLanguage: 'fr'},
           );
-          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr');
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr', meeting.id);
           assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'fr');
           assert.calledWith(
             TriggerProxy.trigger,
@@ -4286,11 +4286,11 @@ describe('plugin-meetings', () => {
 
             const error = new Error();
             meeting.meetingRequest.setBrb = sinon.stub().rejects(error);
-        
+
             await expect(
               meeting.beRightBack(true)
-            ).to.be.rejectedWith(error);  
-             
+            ).to.be.rejectedWith(error);
+
             assert.isFalse(meeting.brbState.state.syncToServerInProgress);
           });
         });
