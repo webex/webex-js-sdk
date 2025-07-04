@@ -144,6 +144,7 @@ describe('plugin-meetings', () => {
       await expect(brbState.enable(true, meeting.sendSlotManager)).to.be.rejectedWith(error);
 
       assert.isFalse(brbState.state.syncToServerInProgress);
+      assert.isTrue(meeting.sendSlotManager.setSourceStateOverride.calledWith('away'));
     });
   });
 });

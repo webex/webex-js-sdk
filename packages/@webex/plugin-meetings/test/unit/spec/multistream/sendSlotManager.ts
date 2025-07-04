@@ -321,5 +321,16 @@ describe('SendSlotsManager', () => {
         sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, null);
         expect(slot.clearSourceStateOverride.called).to.be.true;
       });
+
+      it("won't set source state override if it didn't change", () => {
+        const slot: any = sendSlotsManager.createSlot(mediaConnection, MediaType.VideoMain);
+        sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, 'away');
+
+        expect(slot.setSourceStateOverride.calledWith('away')).to.be.true;
+        slot.setSourceStateOverride.resetHistory();
+
+        sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, 'away');
+        expect(slot.setSourceStateOverride.called).to.be.false;
+      });
     });
 });

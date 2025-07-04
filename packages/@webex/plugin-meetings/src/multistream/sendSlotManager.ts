@@ -103,7 +103,7 @@ export default class SendSlotManager {
   public setSourceStateOverride(mediaType: MediaType, state: StreamState | null) {
     if (mediaType !== MediaType.VideoMain) {
       throw new Error(
-        `sendSlotManager cannot set source state override which media type is ${mediaType}`
+        `Invalid media type '${mediaType}'. Source state overrides are only applicable to ${MediaType.VideoMain}.`
       );
     }
 
@@ -139,7 +139,7 @@ export default class SendSlotManager {
   private getSourceStateOverride(mediaType: MediaType): StreamState | null {
     if (mediaType !== MediaType.VideoMain) {
       throw new Error(
-        `sendSlotManager cannot get source state override which media type is ${mediaType}`
+        `Invalid media type '${mediaType}'. Source state overrides are only applicable to ${MediaType.VideoMain}.`
       );
     }
 
