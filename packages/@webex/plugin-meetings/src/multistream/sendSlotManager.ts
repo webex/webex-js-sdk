@@ -16,7 +16,7 @@ export default class SendSlotManager {
   private readonly sourceStateOverrides: Map<MediaType, StreamState> = new Map();
 
   /**
-   * Constructor for SendSlotsManager
+   * Constructor for SendSlotManager
    *
    * @param {any} LoggerProxy is used to log the messages
    * @constructor
@@ -127,7 +127,7 @@ export default class SendSlotManager {
     }
 
     this.LoggerProxy.logger.info(
-      `SendSlotsManager->setSourceStateOverride#set source state override for ${mediaType} to ${state}`
+      `SendSlotManager->setSourceStateOverride#set source state override for ${mediaType} to ${state}`
     );
   }
 
