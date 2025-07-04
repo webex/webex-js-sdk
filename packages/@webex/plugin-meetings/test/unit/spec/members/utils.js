@@ -430,7 +430,7 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#generateCancelInviteRequestParams', () => {
+    describe('#generateCancelSipPhoneInviteRequestParams', () => {
       it('returns the correct params', () => {
         const locusUrl = 'TestLocusUrl';
         const memberId = 'test';
@@ -445,7 +445,7 @@ describe('plugin-meetings', () => {
 
         const uri = options.locusUrl;
 
-        assert.deepEqual(MembersUtil.generateCancelInviteRequestParams(options), {
+        assert.deepEqual(MembersUtil.generateCancelSipPhoneInviteRequestParams(options), {
           method: HTTP_VERBS.PUT,
           uri,
           body,

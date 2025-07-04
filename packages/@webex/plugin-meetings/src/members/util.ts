@@ -361,7 +361,7 @@ const MembersUtil = {
     locusUrl,
   }),
 
-  generateCancelPhoneInviteRequestParams: (options) => {
+  generateCancelInviteRequestParams: (options) => {
     const body = {
       actionType: _REMOVE_,
       invitees: [
@@ -384,7 +384,7 @@ const MembersUtil = {
     locusUrl,
   }),
 
-  generateCancelInviteRequestParams: (options) => {
+  generateCancelSipPhoneInviteRequestParams: (options) => {
     const {memberId, isInternalNumber} = options.invitee;
     const hasIsInternalNumberProp = has(options.invitee, 'isInternalNumber');
     const body = {

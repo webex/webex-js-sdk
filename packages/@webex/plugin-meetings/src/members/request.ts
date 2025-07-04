@@ -274,7 +274,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
       );
     }
 
-    const requestParams = MembersUtil.generateCancelPhoneInviteRequestParams(options);
+    const requestParams = MembersUtil.generateCancelInviteRequestParams(options);
 
     return this.locusDeltaRequest(requestParams);
   }
@@ -292,7 +292,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
       );
     }
 
-    const requestParams = MembersUtil.generateCancelInviteRequestParams(options);
+    const requestParams = MembersUtil.generateCancelSipPhoneInviteRequestParams(options);
 
     return this.locusDeltaRequest(requestParams);
   }
