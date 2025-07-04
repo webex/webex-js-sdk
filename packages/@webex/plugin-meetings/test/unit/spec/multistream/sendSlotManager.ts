@@ -284,15 +284,13 @@ describe('SendSlotsManager', () => {
         } as MultistreamRoapMediaConnection;
       });
 
-      [MediaType.VideoMain].forEach((mediaType) => {
-        it(`can set source state override for ${mediaType}`, () => {
-          const slot: any = sendSlotsManager.createSlot(mediaConnection, mediaType);
+      it(`can set source state override for ${MediaType.VideoMain}`, () => {
+        const slot: any = sendSlotsManager.createSlot(mediaConnection, MediaType.VideoMain);
 
-          const set = () => sendSlotsManager.setSourceStateOverride(mediaType, 'away');
+        const set = () => sendSlotsManager.setSourceStateOverride(MediaType.VideoMain, 'away');
 
-          expect(set).not.to.throw();
-          expect(slot.setSourceStateOverride.calledWith('away')).to.be.true;
-        });
+        expect(set).not.to.throw();
+        expect(slot.setSourceStateOverride.calledWith('away')).to.be.true;
       });
 
       [MediaType.VideoSlides, MediaType.AudioMain, MediaType.AudioSlides].forEach((mediaType) => {
