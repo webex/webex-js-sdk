@@ -320,7 +320,7 @@ describe('plugin-meetings', () => {
           ],
           alertIfActive: false,
         });
-      })
+      });
 
       it('returns the correct body with fallback to email', () => {
         const options = {
