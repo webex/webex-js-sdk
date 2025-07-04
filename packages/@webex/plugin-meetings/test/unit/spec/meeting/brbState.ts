@@ -3,6 +3,7 @@ import {assert, expect} from '@webex/test-helper-chai';
 
 import testUtils from '../../../utils/testUtils';
 import {BrbState, createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
+import {MediaType} from '@webex/internal-media-core';
 
 describe('plugin-meetings', () => {
   let meeting: any;
@@ -141,10 +142,13 @@ describe('plugin-meetings', () => {
       const error = new Error('send failed');
       setBrbStub.rejects(error);
 
-      await expect(brbState.enable(true, meeting.sendSlotManager)).to.be.rejectedWith(error);
+      const enablePromise = brbState.enable(true, meeting.sendSlotManager);
+      await expect(enablePromise).to.be.rejectedWith(error);
 
       assert.isFalse(brbState.state.syncToServerInProgress);
-      assert.isTrue(meeting.sendSlotManager.setSourceStateOverride.calledWith('away'));
+      assert.isTrue(
+        meeting.sendSlotManager.setSourceStateOverride.calledWith(MediaType.VideoMain, 'away')
+      );
     });
   });
 });
