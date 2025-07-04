@@ -231,6 +231,14 @@ export type AddMediaOptions = {
   remoteMediaManagerConfig?: RemoteMediaManagerConfiguration; // applies only to multistream meetings
   bundlePolicy?: BundlePolicy; // applies only to multistream meetings
   allowMediaInLobby?: boolean; // allows adding media when in the lobby
+  additionalMediaOptions?: AdditionalMediaOptions; // allows adding additional options like send/receive audio/video
+};
+
+export type AdditionalMediaOptions = {
+  sendVideo?: boolean; // if not specified, default value of videoEnabled is used
+  receiveVideo?: boolean; // if not specified, default value of videoEnabled is used
+  sendAudio?: boolean; // if not specified, default value of audioEnabled true is used
+  receiveAudio?: boolean; // if not specified, default value of audioEnabled true is used
 };
 
 export type CallStateForMetrics = {
@@ -263,8 +271,9 @@ type FetchMeetingInfoParams = {
 };
 
 type MediaReachabilityMetrics = ReachabilityMetrics & {
-  isSubnetReachable: boolean;
-  selectedCluster: string | null;
+  subnet_reachable: boolean;
+  selected_cluster: string | null;
+  selected_subnet: string | null;
 };
 
 /**
@@ -2757,7 +2766,9 @@ export default class Meeting extends StatelessWebexPlugin {
       LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
       ({spokenLanguage}) => {
         if (spokenLanguage) {
-          this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
+          if (this.transcription?.languageOptions) {
+            this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
+          }
           // @ts-ignore
           this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage);
 
@@ -7755,7 +7766,20 @@ export default class Meeting extends StatelessWebexPlugin {
       shareVideoEnabled = true,
       remoteMediaManagerConfig,
       bundlePolicy = 'max-bundle',
+      additionalMediaOptions = {},
     } = options;
+
+    const {
+      sendVideo: rawSendVideo,
+      receiveVideo: rawReceiveVideo,
+      sendAudio: rawSendAudio,
+      receiveAudio: rawReceiveAudio,
+    } = additionalMediaOptions;
+
+    const sendVideo = videoEnabled && (rawSendVideo ?? true);
+    const receiveVideo = videoEnabled && (rawReceiveVideo ?? true);
+    const sendAudio = audioEnabled && (rawSendAudio ?? true);
+    const receiveAudio = audioEnabled && (rawReceiveAudio ?? true);
 
     this.allowMediaInLobby = options?.allowMediaInLobby;
 
@@ -7792,11 +7816,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // when audioEnabled/videoEnabled is true, we set sendAudio/sendVideo to true even before any streams are published
     // to avoid doing an extra SDP exchange when they are published for the first time
     this.mediaProperties.setMediaDirection({
-      sendAudio: audioEnabled,
-      sendVideo: videoEnabled,
+      sendAudio,
+      sendVideo,
       sendShare: false,
-      receiveAudio: audioEnabled,
-      receiveVideo: videoEnabled,
+      receiveAudio,
+      receiveVideo,
       receiveShare: shareAudioEnabled || shareVideoEnabled,
     });
 
@@ -9722,21 +9746,22 @@ export default class Meeting extends StatelessWebexPlugin {
       return total;
     }, 0);
 
+    const selectedSubnetFirstOctet = this.mediaServerIp?.split('.')[0];
+
     let isSubnetReachable = null;
-    if (totalSuccessCases > 0) {
-      // @ts-ignore
-      isSubnetReachable = this.webex.meetings.reachability.isSubnetReachable(this.mediaServerIp);
+    if (totalSuccessCases > 0 && selectedSubnetFirstOctet) {
+      isSubnetReachable =
+        // @ts-ignore
+        this.webex.meetings.reachability.isSubnetReachable(selectedSubnetFirstOctet);
     }
 
-    let selectedCluster = null;
-    if (this.mediaConnections && this.mediaConnections.length > 0) {
-      selectedCluster = this.mediaConnections[0].mediaAgentCluster;
-    }
+    const selectedCluster = this.mediaConnections?.[0]?.mediaAgentCluster ?? null;
 
     return {
       ...reachabilityMetrics,
-      isSubnetReachable,
-      selectedCluster,
+      subnet_reachable: isSubnetReachable,
+      selected_cluster: selectedCluster,
+      selected_subnet: selectedSubnetFirstOctet ? `${selectedSubnetFirstOctet}.X.X.X` : null,
     };
   }
 }

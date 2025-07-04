@@ -137,6 +137,113 @@ describe('createMediaConnection', () => {
     );
   });
 
+  it('should set direction to sendonly for both audio and video when only send flags are true', () => {
+    const roapMediaConnectionConstructorStub = sinon
+      .stub(InternalMediaCoreModule, 'RoapMediaConnection')
+      .returns(fakeRoapMediaConnection);
+  
+    StaticConfig.set({bandwidth: {audio: 123, video: 456, startBitrate: 999}});
+  
+    const ENABLE_EXTMAP = false;
+    const ENABLE_RTX = true;
+  
+    Media.createMediaConnection(false, 'sendonly-debug-id', 'meetingId', {
+      mediaProperties: {
+        mediaDirection: {
+          sendAudio: true,
+          receiveAudio: false,
+          sendVideo: true,
+          receiveVideo: false,
+          sendShare: false,
+          receiveShare: false,
+        },
+        audioStream: fakeAudioStream,
+        videoStream: fakeVideoStream,
+        shareVideoTrack: null,
+        shareAudioTrack: null,
+      },
+      remoteQualityLevel: 'HIGH',
+      enableRtx: ENABLE_RTX,
+      enableExtmap: ENABLE_EXTMAP,
+      turnServerInfo: undefined,
+      iceCandidatesTimeout: undefined,
+    });
+  
+    assert.calledWith(
+      roapMediaConnectionConstructorStub,
+      sinon.match.any,
+      {
+        localTracks: {
+          audio: fakeTrack,
+          video: fakeTrack,
+          screenShareVideo: undefined,
+          screenShareAudio: undefined,
+        },
+        direction: {
+          audio: 'sendonly',
+          video: 'sendonly',
+          screenShareVideo: 'inactive',
+        },
+        remoteQualityLevel: 'HIGH',
+      },
+      'sendonly-debug-id'
+    );
+  });
+
+  it('should set direction to recvonly for both audio and video when only receive flags are true', () => {
+    const roapMediaConnectionConstructorStub = sinon
+      .stub(InternalMediaCoreModule, 'RoapMediaConnection')
+      .returns(fakeRoapMediaConnection);
+  
+    StaticConfig.set({bandwidth: {audio: 123, video: 456, startBitrate: 999}});
+  
+    const ENABLE_EXTMAP = true;
+    const ENABLE_RTX = false;
+  
+    Media.createMediaConnection(false, 'recvonly-debug-id', 'meetingId', {
+      mediaProperties: {
+        mediaDirection: {
+          sendAudio: false,
+          receiveAudio: true,
+          sendVideo: false,
+          receiveVideo: true,
+          sendShare: false,
+          receiveShare: false,
+        },
+        audioStream: fakeAudioStream,
+        videoStream: fakeVideoStream,
+        shareVideoTrack: null,
+        shareAudioTrack: null,
+      },
+      remoteQualityLevel: 'HIGH',
+      enableRtx: ENABLE_RTX,
+      enableExtmap: ENABLE_EXTMAP,
+      turnServerInfo: undefined,
+      iceCandidatesTimeout: undefined,
+    });
+  
+    assert.calledWith(
+      roapMediaConnectionConstructorStub,
+      sinon.match.any,
+      {
+        localTracks: {
+          audio: fakeTrack,
+          video: fakeTrack,
+          screenShareVideo: undefined,
+          screenShareAudio: undefined,
+        },
+        direction: {
+          audio: 'recvonly',
+          video: 'recvonly',
+          screenShareVideo: 'inactive',
+        },
+        remoteQualityLevel: 'HIGH',
+      },
+      'recvonly-debug-id'
+    );
+  });
+  
+
   it('creates a MultistreamRoapMediaConnection when multistream is enabled', () => {
     const multistreamRoapMediaConnectionConstructorStub = sinon
       .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')

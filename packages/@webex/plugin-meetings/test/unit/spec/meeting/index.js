@@ -1208,8 +1208,76 @@ describe('plugin-meetings', () => {
             reason: 'joinWithMedia failure',
           });
         });
-      });
 
+        it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              videoEnabled: false,
+              sendVideo: true,
+              receiveVideo: true,
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWithMatch(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.has('videoEnabled', false)
+                        .and(sinon.match.has('allowMediaInLobby', true))
+          );
+        });
+
+        it('should ignore sendAudio/receiveAudio when audioEnabled is false', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              audioEnabled: false,
+              sendAudio: true, 
+              receiveAudio: false, 
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWithMatch(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.has('audioEnabled', false)
+                        .and(sinon.match.has('allowMediaInLobby', true))
+          );
+        });        
+
+        
+        it('should use provided send/receive values when videoEnabled/audioEnabled are true or not set', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              sendVideo: true,
+              receiveVideo: false,
+              sendAudio: false,
+              receiveAudio: true,
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWith(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match({
+              sendVideo: true,
+              receiveVideo: false,
+              sendAudio: false,
+              receiveAudio: true,
+            })
+          );
+        });
+      });
       describe('#isTranscriptionSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {
           meeting.locusInfo.controls = {transcribe: {caption: false}};
@@ -2227,8 +2295,9 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
-              isSubnetReachable: null,
-              selectedCluster: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
               numTransports: 1,
               iceCandidatesCount: 0,
             }
@@ -2275,8 +2344,9 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
-              isSubnetReachable: null,
-              selectedCluster: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             })
           );
 
@@ -2342,8 +2412,9 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
-              isSubnetReachable: null,
-              selectedCluster: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             }
           );
         });
@@ -2401,8 +2472,9 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
-              isSubnetReachable: null,
-              selectedCluster: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             })
           );
 
@@ -2460,8 +2532,9 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
-              isSubnetReachable: null,
-              selectedCluster: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             })
           );
 
@@ -2983,8 +3056,9 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
-              isSubnetReachable: null,
-              selectedCluster: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             },
           ]);
 
@@ -3191,8 +3265,9 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: true,
               isJoinWithMediaRetry: false,
               iceCandidatesCount: 0,
-              isSubnetReachable: null,
-              selectedCluster: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             },
           ]);
           meeting.roap.doTurnDiscovery;
@@ -3355,8 +3430,9 @@ describe('plugin-meetings', () => {
               iceCandidatesCount: 3,
               '701_error': 3,
               '701_turn_host_lookup_received_error': 1,
-              isSubnetReachable: null,
-              selectedCluster: 'some.cluster',
+              subnet_reachable: null,
+              selected_cluster: 'some.cluster',
+              selected_subnet: null,
             }
           );
 
@@ -3419,8 +3495,9 @@ describe('plugin-meetings', () => {
               iceConnectionState: 'unknown',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
-              isSubnetReachable: null,
-              selectedCluster: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
               iceCandidatesCount: 0,
             }
           );
@@ -3482,8 +3559,9 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               '701_error': 2,
               '701_turn_host_lookup_received_error': 1,
-              isSubnetReachable: null,
-              selectedCluster: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
               iceCandidatesCount: 0,
             }
           );
@@ -3491,7 +3569,7 @@ describe('plugin-meetings', () => {
           assert.isOk(errorThrown);
         });
 
-        it('should send valid isSubnetReachability if media connection success', async () => {
+        it('should send subnet reachablity metrics if media connection success', async () => {
           meeting.roap.doTurnDiscovery = sinon.stub().returns({
             turnServerInfo: undefined,
             turnDiscoverySkippedReason: undefined,
@@ -3505,6 +3583,12 @@ describe('plugin-meetings', () => {
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(false),
           };
+          meeting.mediaServerIp =  '1.2.3.4';
+          meeting.mediaConnections = [
+            {
+              mediaAgentCluster: 'some.cluster',
+            }
+          ]
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -3532,12 +3616,13 @@ describe('plugin-meetings', () => {
             isJoinWithMediaRetry: false,
             iceCandidatesCount: 0,
             reachability_public_udp_success: 5,
-            isSubnetReachable: false,
-            selectedCluster: null,
+            subnet_reachable: false,
+            selected_cluster: 'some.cluster',
+            selected_subnet: '1.X.X.X',
           });
         });
 
-        it('should send valid isSubnetReachability if media connection fails', async () => {
+        it('should send subnet reachablity metrics if media connection fails', async () => {
           let errorThrown = undefined;
 
           meeting.roap.doTurnDiscovery = sinon.stub().returns({
@@ -3553,6 +3638,12 @@ describe('plugin-meetings', () => {
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(true),
           };
+          meeting.mediaServerIp =  '1.2.3.4';
+          meeting.mediaConnections = [
+            {
+              mediaAgentCluster: 'some.cluster',
+            }
+          ]
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -3594,8 +3685,9 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               reachability_public_udp_success: 5,
-              isSubnetReachable: true,
-              selectedCluster: null,
+              subnet_reachable: true,
+              selected_cluster: 'some.cluster',
+              selected_subnet: '1.X.X.X',
               iceCandidatesCount: 0,
             }
           );
