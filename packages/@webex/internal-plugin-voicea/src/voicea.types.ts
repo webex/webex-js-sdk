@@ -83,7 +83,7 @@ interface CaptionLanguageResponse {
 
 interface IVoiceaChannel {
   setSpokenLanguage: (languageCode: string) => Promise<void>;
-  onSpokenLanguageUpdate: (languageCode: string) => void;
+  onSpokenLanguageUpdate: (languageCode: string, meetingId: string) => void;
   requestLanguage: (languageCode: string) => void;
   turnOnCaptions: () => undefined | Promise<void>;
   toggleTranscribing: (activate: boolean, spokenLanguage: string) => undefined | Promise<void>;
