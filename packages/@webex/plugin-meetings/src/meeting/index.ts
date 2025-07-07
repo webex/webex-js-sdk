@@ -2771,7 +2771,7 @@ export default class Meeting extends StatelessWebexPlugin {
               function: 'setupLocusControlsListener',
             },
             EVENT_TRIGGERS.MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
-            {spokenLanguage}
+            {spokenLanguage, meetingId: this.id}
           );
         }
       }
