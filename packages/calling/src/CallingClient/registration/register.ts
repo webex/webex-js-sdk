@@ -150,22 +150,6 @@ export class Registration implements IRegistration {
   }
 
   /**
-   *  Implementation of sending keepalive.
-   *
-   */
-  private async postKeepAlive(url: string) {
-    return <WebexRequestPayload>this.webex.request({
-      uri: `${url}/status`,
-      method: HTTP_METHODS.POST,
-      headers: {
-        [CISCO_DEVICE_URL]: this.webex.internal.device.url,
-        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-      },
-      service: ALLOWED_SERVICES.MOBIUS,
-    });
-  }
-
-  /**
    * Implementation of delete device.
    *
    */

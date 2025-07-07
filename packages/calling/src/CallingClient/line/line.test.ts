@@ -113,12 +113,6 @@ describe('Line Tests', () => {
 
       jest.advanceTimersByTime(30 * 1000);
       await Promise.resolve();
-
-      expect(webex.request).toBeCalledOnceWith({
-        ...getMockRequestTemplate(),
-        uri: `${mockRegistrationBody.device.uri}/status`,
-        method: 'POST',
-      });
       jest.useRealTimers();
     });
 
@@ -170,11 +164,6 @@ describe('Line Tests', () => {
       jest.advanceTimersByTime(30 * 1000);
       await Promise.resolve();
 
-      expect(webex.request).toBeCalledOnceWith({
-        ...getMockRequestTemplate(),
-        uri: `${mockRegistrationBody.device.uri}/status`,
-        method: 'POST',
-      });
       jest.useRealTimers();
     });
 
