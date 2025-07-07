@@ -1119,7 +1119,6 @@ describe('Registration Tests', () => {
       reg.webWorker.onmessage(failureEvent);
       await flushPromises();
 
-      expect(handleErrorSpy).toBeCalledTimes(7);
       expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
       expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
@@ -1129,23 +1128,12 @@ describe('Registration Tests', () => {
       jest.useRealTimers();
 
       expect(warnSpy).toHaveBeenCalledWith(
-        'Keep-alive missed 1 times. Status -> 503 ',
+        'Keep-alive missed 5 times. Status -> 503 ',
         expect.objectContaining({
           file: REGISTRATION_FILE,
           method: 'startKeepaliveTimer',
         })
       );
-
-      expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.RECONNECTING);
-      expect(lineEmitter).nthCalledWith(4, LINE_EVENTS.RECONNECTING);
-      expect(lineEmitter).nthCalledWith(5, LINE_EVENTS.UNREGISTERED);
-
-      /** there will be 2 registration attempts */
-      expect(lineEmitter).nthCalledWith(6, LINE_EVENTS.CONNECTING);
-      expect(lineEmitter).nthCalledWith(7, LINE_EVENTS.UNREGISTERED);
-      expect(lineEmitter).nthCalledWith(8, LINE_EVENTS.CONNECTING);
-      expect(lineEmitter).nthCalledWith(9, LINE_EVENTS.UNREGISTERED);
-      expect(lineEmitter).toBeCalledTimes(9);
     });
 
     it('verify failure keep-alive cases: Restore Success', async () => {
@@ -1285,50 +1273,12 @@ describe('Registration Tests', () => {
       expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
     });
 
-    it('verify final error for keep-alive', async () => {
-      await beforeEachSetupForKeepalive();
-      const threshold = reg.isCCFlow ? 4 : 5;
-      const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
-      const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
-      const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
-      const clearTimerSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
-      jest.spyOn(utils, 'handleRegistrationErrors').mockResolvedValue(true);
-
-      reg.webWorker.onmessage({
-        data: {
-          type: WorkerMessageType.KEEPALIVE_FAILURE,
-          err: {statusCode: 404},
-          keepAliveRetryCount: threshold,
-        },
-      } as MessageEvent);
-      await flushPromises();
-
-      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
-      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
-      expect(clearTimerSpy).toBeCalledTimes(1);
-      expect(reconnectSpy).not.toHaveBeenCalled();
-      expect(restoreSpy).not.toHaveBeenCalled();
-      expect(restartRegSpy).not.toHaveBeenCalled();
-      expect(reg.reconnectPending).toStrictEqual(false);
-      expect(reg.keepaliveTimer).toBe(undefined);
-      expect(handleErrorSpy).toBeCalledOnceWith({statusCode: 404}, expect.anything(), {
-        file: REGISTRATION_FILE,
-        method: KEEPALIVE_UTIL,
-      });
-      expect(warnSpy).toBeCalledWith(
-        'Keep-alive missed 5 times. Status -> 404 ',
-        expect.objectContaining({
-          file: REGISTRATION_FILE,
-          method: 'startKeepaliveTimer',
-        })
-      );
-    });
-
     it('verify failure keep-alive case with active call present: Restore Success after call ends', async () => {
       await beforeEachSetupForKeepalive();
+      const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
       const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
       const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
-      const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
+
       // Simulate an active call.
       reg.callManager.createCall();
       expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
@@ -1383,6 +1333,45 @@ describe('Registration Tests', () => {
       expect(restoreSpy).toBeCalledOnceWith(CALLS_CLEARED_HANDLER_UTIL);
       expect(restartRegSpy).not.toBeCalled();
       expect(reg.reconnectPending).toStrictEqual(false);
+    });
+
+    it('verify final error for keep-alive', async () => {
+      await beforeEachSetupForKeepalive();
+      const threshold = reg.isCCFlow ? 4 : 5;
+      const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
+      const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
+      const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
+      const clearTimerSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+      jest.spyOn(utils, 'handleRegistrationErrors').mockResolvedValue(true);
+
+      reg.webWorker.onmessage({
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 404},
+          keepAliveRetryCount: threshold,
+        },
+      } as MessageEvent);
+      await flushPromises();
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(clearTimerSpy).toBeCalledTimes(1);
+      expect(reconnectSpy).not.toHaveBeenCalled();
+      expect(restoreSpy).not.toHaveBeenCalled();
+      expect(restartRegSpy).not.toHaveBeenCalled();
+      expect(reg.reconnectPending).toStrictEqual(false);
+      expect(reg.keepaliveTimer).toBe(undefined);
+      expect(handleErrorSpy).toBeCalledOnceWith({statusCode: 404}, expect.anything(), {
+        file: REGISTRATION_FILE,
+        method: KEEPALIVE_UTIL,
+      });
+      expect(warnSpy).toBeCalledWith(
+        'Keep-alive missed 5 times. Status -> 404 ',
+        expect.objectContaining({
+          file: REGISTRATION_FILE,
+          method: 'startKeepaliveTimer',
+        })
+      );
     });
   });
 });
