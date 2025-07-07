@@ -1,5 +1,5 @@
 import Digital from '../../../../../../src/services/task/digital/Digital';
-import { TaskData } from '../../../../../../src/services/task/types';
+import { TaskData, TaskResponse } from '../../../../../../src/services/task/types';
 import { CC_EVENTS } from '../../../../../../src/services/config/types';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
@@ -11,7 +11,7 @@ jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
 
 describe('Digital Task', () => {
   const dummyData = { interactionId: 'dig1' } as TaskData;
-  let dummyContact: { accept: jest.Mock<Promise<any>> };
+  let dummyContact: { accept: jest.Mock<Promise<TaskResponse>> };
 
   beforeEach(() => {
     dummyContact = {
@@ -26,7 +26,7 @@ describe('Digital Task', () => {
     expect(res).toEqual({ status: 'ok' });
   });
 
-  it('accept() throws when contact.accept rejects', async () => {
+  it('accept() throws an error when contact.accept rejects', async () => {
     const error = new Error('Error while performing accept');
     (dummyContact.accept as jest.Mock).mockRejectedValue(error);
     const task = new Digital(dummyContact, dummyData);
