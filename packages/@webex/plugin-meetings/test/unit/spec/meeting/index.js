@@ -1208,8 +1208,76 @@ describe('plugin-meetings', () => {
             reason: 'joinWithMedia failure',
           });
         });
-      });
 
+        it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              videoEnabled: false,
+              sendVideo: true,
+              receiveVideo: true,
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWithMatch(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.has('videoEnabled', false)
+                        .and(sinon.match.has('allowMediaInLobby', true))
+          );
+        });
+
+        it('should ignore sendAudio/receiveAudio when audioEnabled is false', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              audioEnabled: false,
+              sendAudio: true, 
+              receiveAudio: false, 
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWithMatch(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.has('audioEnabled', false)
+                        .and(sinon.match.has('allowMediaInLobby', true))
+          );
+        });        
+
+        
+        it('should use provided send/receive values when videoEnabled/audioEnabled are true or not set', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              sendVideo: true,
+              receiveVideo: false,
+              sendAudio: false,
+              receiveAudio: true,
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWith(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match({
+              sendVideo: true,
+              receiveVideo: false,
+              sendAudio: false,
+              receiveAudio: true,
+            })
+          );
+        });
+      });
       describe('#isTranscriptionSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {
           meeting.locusInfo.controls = {transcribe: {caption: false}};

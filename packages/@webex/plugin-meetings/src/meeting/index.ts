@@ -231,6 +231,14 @@ export type AddMediaOptions = {
   remoteMediaManagerConfig?: RemoteMediaManagerConfiguration; // applies only to multistream meetings
   bundlePolicy?: BundlePolicy; // applies only to multistream meetings
   allowMediaInLobby?: boolean; // allows adding media when in the lobby
+  additionalMediaOptions?: AdditionalMediaOptions; // allows adding additional options like send/receive audio/video
+};
+
+export type AdditionalMediaOptions = {
+  sendVideo?: boolean; // if not specified, default value of videoEnabled is used
+  receiveVideo?: boolean; // if not specified, default value of videoEnabled is used
+  sendAudio?: boolean; // if not specified, default value of audioEnabled true is used
+  receiveAudio?: boolean; // if not specified, default value of audioEnabled true is used
 };
 
 export type CallStateForMetrics = {
@@ -7757,7 +7765,20 @@ export default class Meeting extends StatelessWebexPlugin {
       shareVideoEnabled = true,
       remoteMediaManagerConfig,
       bundlePolicy = 'max-bundle',
+      additionalMediaOptions = {},
     } = options;
+
+    const {
+      sendVideo: rawSendVideo,
+      receiveVideo: rawReceiveVideo,
+      sendAudio: rawSendAudio,
+      receiveAudio: rawReceiveAudio,
+    } = additionalMediaOptions;
+
+    const sendVideo = videoEnabled && (rawSendVideo ?? true);
+    const receiveVideo = videoEnabled && (rawReceiveVideo ?? true);
+    const sendAudio = audioEnabled && (rawSendAudio ?? true);
+    const receiveAudio = audioEnabled && (rawReceiveAudio ?? true);
 
     this.allowMediaInLobby = options?.allowMediaInLobby;
 
@@ -7794,11 +7815,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // when audioEnabled/videoEnabled is true, we set sendAudio/sendVideo to true even before any streams are published
     // to avoid doing an extra SDP exchange when they are published for the first time
     this.mediaProperties.setMediaDirection({
-      sendAudio: audioEnabled,
-      sendVideo: videoEnabled,
+      sendAudio,
+      sendVideo,
       sendShare: false,
-      receiveAudio: audioEnabled,
-      receiveVideo: videoEnabled,
+      receiveAudio,
+      receiveVideo,
       receiveShare: shareAudioEnabled || shareVideoEnabled,
     });
 
