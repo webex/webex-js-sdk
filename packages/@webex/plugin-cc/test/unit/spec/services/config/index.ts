@@ -1,10 +1,6 @@
 import {WebexSDK} from '../../../../../src/types';
 import AgentConfigService from '../../../../../src/services/config';
-<<<<<<< HEAD
-import HttpRequest from '../../../../../src/services/core/HttpRequest';
-=======
 import WebexRequest from '../../../../../src/services/core/WebexRequest';
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 import {WCC_API_GATEWAY} from '../../../../../src/services/constants';
 import {CONFIG_FILE_NAME} from '../../../../../src/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -24,11 +20,7 @@ jest.mock('../../../../../src/logger-proxy', () => ({
 describe('AgentConfigService', () => {
   let agentConfigService: AgentConfigService;
   let webex: WebexSDK;
-<<<<<<< HEAD
-  let mockHttpRequest: HttpRequest;
-=======
   let mockWebexRequest: WebexRequest;
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
   const mockAgentId = 'agent123';
   const mockOrgId = 'org123';
   const mockWccAPIURL = WCC_API_GATEWAY;
@@ -42,13 +34,8 @@ describe('AgentConfigService', () => {
       },
     });
 
-<<<<<<< HEAD
-    mockHttpRequest = HttpRequest.getInstance({webex});
-    mockHttpRequest.request = jest.fn();
-=======
     mockWebexRequest = WebexRequest.getInstance({webex});
     mockWebexRequest.request = jest.fn();
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
     agentConfigService = new AgentConfigService();
   });
@@ -69,32 +56,21 @@ describe('AgentConfigService', () => {
           teamIds: ['123', '456'],
         },
       };
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
-
-      const result = await agentConfigService.getUserUsingCI(mockOrgId, mockAgentId);
-
-      expect(mockHttpRequest.request).toHaveBeenCalledWith({
-=======
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await agentConfigService.getUserUsingCI(mockOrgId, mockAgentId);
 
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         service: mockWccAPIURL,
         resource: `organization/${mockOrgId}/user/by-ci-user-id/${mockAgentId}`,
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-<<<<<<< HEAD
-=======
       
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching user data using CI', {
         module: CONFIG_FILE_NAME,
         method: 'getUserUsingCI',
       });
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       expect(LoggerProxy.log).toHaveBeenCalledWith('getUserUsingCI api success.', {
         module: CONFIG_FILE_NAME,
         method: 'getUserUsingCI',
@@ -103,11 +79,7 @@ describe('AgentConfigService', () => {
 
     it('should throw an error if the API call fails', async () => {
       const mockError = new Error('API call failed');
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockRejectedValue(mockError);
-=======
       (mockWebexRequest.request as jest.Mock).mockRejectedValue(mockError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getUserUsingCI(mockOrgId, mockAgentId)).rejects.toThrow(
         'API call failed'
@@ -118,11 +90,7 @@ describe('AgentConfigService', () => {
       const mockResponse = {
         statusCode: 400,
       };
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
-=======
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       try {
         await agentConfigService.getUserUsingCI(mockOrgId, mockAgentId);
@@ -146,32 +114,21 @@ describe('AgentConfigService', () => {
           idleCodes: ['idle1', 'idle2'],
         },
       };
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
-
-      const result = await agentConfigService.getDesktopProfileById(mockOrgId, desktopProfileId);
-
-      expect(mockHttpRequest.request).toHaveBeenCalledWith({
-=======
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await agentConfigService.getDesktopProfileById(mockOrgId, desktopProfileId);
 
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         service: mockWccAPIURL,
         resource: `organization/${mockOrgId}/agent-profile/${desktopProfileId}`,
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-<<<<<<< HEAD
-=======
       
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching desktop profile', {
         module: CONFIG_FILE_NAME,
         method: 'getDesktopProfileById',
       });
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       expect(LoggerProxy.log).toHaveBeenCalledWith('getDesktopProfileById api success.', {
         module: CONFIG_FILE_NAME,
         method: 'getDesktopProfileById',
@@ -180,11 +137,7 @@ describe('AgentConfigService', () => {
 
     it('should throw an error if the API call fails', async () => {
       const mockError = new Error('API call failed');
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockRejectedValue(mockError);
-=======
       (mockWebexRequest.request as jest.Mock).mockRejectedValue(mockError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       try {
         await agentConfigService.getDesktopProfileById(mockOrgId, desktopProfileId);
@@ -197,11 +150,7 @@ describe('AgentConfigService', () => {
       const mockResponse = {
         statusCode: 400,
       };
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
-=======
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       try {
         await agentConfigService.getDesktopProfileById(mockOrgId, desktopProfileId);
@@ -215,10 +164,6 @@ describe('AgentConfigService', () => {
     const page = 0;
     const pageSize = 10;
     const filter: string[] = ['123'];
-<<<<<<< HEAD
-    const attributes: string[] = ['id'];
-=======
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
     it('should return team on success', async () => {
       const mockResponse = {
@@ -228,28 +173,12 @@ describe('AgentConfigService', () => {
           {id: '12345', name: 'Team 2'},
         ],
       };
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
-=======
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       const result = await agentConfigService.getListOfTeams(
         mockOrgId,
         page,
         pageSize,
-<<<<<<< HEAD
-        filter,
-        attributes
-      );
-
-      expect(mockHttpRequest.request).toHaveBeenCalledWith({
-        service: mockWccAPIURL,
-        resource: `organization/${mockOrgId}/v2/team?page=${page}&pageSize=${pageSize}&filter=id=in=(${filter})&attributes=${attributes}`,
-        method: 'GET',
-      });
-      expect(result).toEqual(mockResponse.body);
-=======
         filter
       );
 
@@ -264,7 +193,6 @@ describe('AgentConfigService', () => {
         module: CONFIG_FILE_NAME,
         method: 'getListOfTeams',
       });
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       expect(LoggerProxy.log).toHaveBeenCalledWith('getListOfTeams api success.', {
         module: CONFIG_FILE_NAME,
         method: 'getListOfTeams',
@@ -273,17 +201,10 @@ describe('AgentConfigService', () => {
 
     it('should throw an error if the API call fails', async () => {
       const mockError = new Error('API call failed');
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockRejectedValue(mockError);
-
-      try {
-        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter, attributes);
-=======
       (mockWebexRequest.request as jest.Mock).mockRejectedValue(mockError);
 
       try {
         await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       } catch (error) {
         expect(error).toEqual(mockError);
       }
@@ -293,17 +214,10 @@ describe('AgentConfigService', () => {
       const mockResponse = {
         statusCode: 400,
       };
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
-
-      try {
-        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter, attributes);
-=======
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
       try {
         await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       } catch (error) {
         expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
       }
@@ -342,11 +256,7 @@ describe('AgentConfigService', () => {
           ],
         },
       };
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
-=======
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       const result = await agentConfigService.getListOfAuxCodes(
         mockOrgId,
@@ -356,24 +266,17 @@ describe('AgentConfigService', () => {
         attributes
       );
 
-<<<<<<< HEAD
-      expect(mockHttpRequest.request).toHaveBeenCalledWith({
-=======
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         service: mockWccAPIURL,
         resource: `organization/${mockOrgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=(${filter})&attributes=${attributes}`,
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-<<<<<<< HEAD
-=======
       
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching list of aux codes', {
         module: CONFIG_FILE_NAME,
         method: 'getListOfAuxCodes',
       });
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       expect(LoggerProxy.log).toHaveBeenCalledWith('getListOfAuxCodes api success.', {
         module: CONFIG_FILE_NAME,
         method: 'getListOfAuxCodes',
@@ -382,11 +285,7 @@ describe('AgentConfigService', () => {
 
     it('should throw an error if the API call fails', async () => {
       const mockError = new Error('API call failed');
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockRejectedValue(mockError);
-=======
       (mockWebexRequest.request as jest.Mock).mockRejectedValue(mockError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       try {
         await agentConfigService.getListOfAuxCodes(mockOrgId, page, pageSize, filter, attributes);
       } catch (error) {
@@ -398,11 +297,7 @@ describe('AgentConfigService', () => {
       const mockResponse = {
         statusCode: 400,
       };
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
-=======
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       try {
         await agentConfigService.getListOfAuxCodes(mockOrgId, page, pageSize, filter, attributes);
@@ -425,11 +320,7 @@ describe('AgentConfigService', () => {
           created: '2021-01-01',
         },
       };
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-=======
       mockWebexRequest.request.mockResolvedValue(mockResponse);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       const result = await agentConfigService.getOrgInfo(mockOrgId);
       expect(result).toEqual(mockResponse.body);
@@ -441,11 +332,7 @@ describe('AgentConfigService', () => {
 
     it('should throw an error if API call returns non-200 status code', async () => {
       const mockError = {statusCode: 500};
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockError);
-=======
       mockWebexRequest.request.mockResolvedValue(mockError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
@@ -458,11 +345,7 @@ describe('AgentConfigService', () => {
 
     it('should handle network errors gracefully', async () => {
       const networkError = new Error('Network Error');
-<<<<<<< HEAD
-      mockHttpRequest.request.mockRejectedValue(networkError);
-=======
       mockWebexRequest.request.mockRejectedValue(networkError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow('Network Error');
       expect(LoggerProxy.error).toHaveBeenCalledWith(
@@ -473,11 +356,7 @@ describe('AgentConfigService', () => {
 
     it('should handle timeout errors gracefully', async () => {
       const timeoutError = new Error('Timeout Error');
-<<<<<<< HEAD
-      mockHttpRequest.request.mockRejectedValue(timeoutError);
-=======
       mockWebexRequest.request.mockRejectedValue(timeoutError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow('Timeout Error');
       expect(LoggerProxy.error).toHaveBeenCalledWith(
@@ -490,11 +369,7 @@ describe('AgentConfigService', () => {
   describe('getOrganizationSetting', () => {
     it('should return organization settings successfully', async () => {
       const mockResponse = {statusCode: 200, body: {data: [{}]}}; // Adjust data accordingly
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-=======
       mockWebexRequest.request.mockResolvedValue(mockResponse);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       const result = await agentConfigService.getOrganizationSetting();
       expect(result).toEqual(mockResponse.body.data[0]);
@@ -506,11 +381,7 @@ describe('AgentConfigService', () => {
 
     it('should throw an error if API call returns non-200 status code', async () => {
       const mockError = {statusCode: 500};
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockError);
-=======
       mockWebexRequest.request.mockResolvedValue(mockError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
@@ -523,11 +394,7 @@ describe('AgentConfigService', () => {
 
     it('should handle network errors gracefully', async () => {
       const networkError = new Error('Network Error');
-<<<<<<< HEAD
-      mockHttpRequest.request.mockRejectedValue(networkError);
-=======
       mockWebexRequest.request.mockRejectedValue(networkError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
         'Network Error'
@@ -540,11 +407,7 @@ describe('AgentConfigService', () => {
 
     it('should handle timeout errors gracefully', async () => {
       const timeoutError = new Error('Timeout Error');
-<<<<<<< HEAD
-      mockHttpRequest.request.mockRejectedValue(timeoutError);
-=======
       mockWebexRequest.request.mockRejectedValue(timeoutError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
         'Timeout Error'
@@ -559,11 +422,7 @@ describe('AgentConfigService', () => {
   describe('getTenantData', () => {
     it('should return tenant successfully', async () => {
       const mockResponse = {statusCode: 200, body: {data: [{}]}}; // Adjust data accordingly
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-=======
       mockWebexRequest.request.mockResolvedValue(mockResponse);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       const result = await agentConfigService.getTenantData(mockOrgId);
       expect(result).toEqual(mockResponse.body.data[0]);
@@ -575,11 +434,7 @@ describe('AgentConfigService', () => {
 
     it('should throw an error if API call returns non-200 status code', async () => {
       const mockError = {statusCode: 500};
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockError);
-=======
       mockWebexRequest.request.mockResolvedValue(mockError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getTenantData(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
@@ -592,11 +447,7 @@ describe('AgentConfigService', () => {
 
     it('should handle network errors gracefully', async () => {
       const networkError = new Error('Network Error');
-<<<<<<< HEAD
-      mockHttpRequest.request.mockRejectedValue(networkError);
-=======
       mockWebexRequest.request.mockRejectedValue(networkError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getTenantData(mockOrgId)).rejects.toThrow('Network Error');
       expect(LoggerProxy.error).toHaveBeenCalledWith(
@@ -609,11 +460,7 @@ describe('AgentConfigService', () => {
   describe(`getURLMapping`, () => {
     it('should return URL mapping successfully', async () => {
       const mockResponse = {statusCode: 200, body: {data: {}}}; // Adjust data accordingly
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-=======
       mockWebexRequest.request.mockResolvedValue(mockResponse);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       const result = await agentConfigService.getURLMapping(mockOrgId);
       expect(result).toEqual(mockResponse.body.data);
@@ -625,11 +472,7 @@ describe('AgentConfigService', () => {
 
     it('should throw an error if API call returns non-200 status code', async () => {
       const mockError = {statusCode: 500};
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockError);
-=======
       mockWebexRequest.request.mockResolvedValue(mockError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getURLMapping(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
@@ -642,11 +485,7 @@ describe('AgentConfigService', () => {
 
     it('should handle network errors gracefully', async () => {
       const networkError = new Error('Network Error');
-<<<<<<< HEAD
-      mockHttpRequest.request.mockRejectedValue(networkError);
-=======
       mockWebexRequest.request.mockRejectedValue(networkError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getURLMapping(mockOrgId)).rejects.toThrow('Network Error');
       expect(LoggerProxy.error).toHaveBeenCalledWith(
@@ -659,11 +498,7 @@ describe('AgentConfigService', () => {
   describe(`getDialPlanData`, () => {
     it('should return dial plan data successfully', async () => {
       const mockResponse = {statusCode: 200, body: {data: {}}}; // Adjust data accordingly
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-=======
       mockWebexRequest.request.mockResolvedValue(mockResponse);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       const result = await agentConfigService.getDialPlanData(mockOrgId);
       expect(result).toEqual(mockResponse.body);
@@ -675,11 +510,7 @@ describe('AgentConfigService', () => {
 
     it('should throw an error if API call returns non-200 status code', async () => {
       const mockError = {statusCode: 500};
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockError);
-=======
       mockWebexRequest.request.mockResolvedValue(mockError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getDialPlanData(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
@@ -692,11 +523,7 @@ describe('AgentConfigService', () => {
 
     it('should handle network errors gracefully', async () => {
       const networkError = new Error('Network Error');
-<<<<<<< HEAD
-      mockHttpRequest.request.mockRejectedValue(networkError);
-=======
       mockWebexRequest.request.mockRejectedValue(networkError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getDialPlanData(mockOrgId)).rejects.toThrow('Network Error');
       expect(LoggerProxy.error).toHaveBeenCalledWith(
@@ -725,11 +552,7 @@ describe('AgentConfigService', () => {
         },
         statusCode: 200,
       };
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock)
-=======
       (mockWebexRequest.request as jest.Mock)
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         .mockResolvedValueOnce(mockResponseFirst)
         .mockResolvedValue(mockResponseOther);
 
@@ -763,11 +586,7 @@ describe('AgentConfigService', () => {
       const attributes = ['attribute1'];
 
       const mockError = {statusCode: 500};
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockError);
-=======
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(
         agentConfigService.getAllTeams(mockOrgId, pageSize, filter, attributes)
@@ -798,11 +617,7 @@ describe('AgentConfigService', () => {
         },
         statusCode: 200,
       };
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock)
-=======
       (mockWebexRequest.request as jest.Mock)
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         .mockResolvedValueOnce(mockResponseFirst)
         .mockResolvedValue(mockResponseOther);
 
@@ -841,11 +656,7 @@ describe('AgentConfigService', () => {
       const attributes = ['attribute1'];
 
       const mockError = {statusCode: 500};
-<<<<<<< HEAD
-      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockError);
-=======
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(
         agentConfigService.getAllAuxCodes(mockOrgId, pageSize, filter, attributes)
@@ -912,11 +723,7 @@ describe('AgentConfigService', () => {
       const mockOrgInfo = {
         tenantId: 'tenant123',
         timezone: 'GMT',
-<<<<<<< HEAD
-      };
-=======
       }
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       const mockOrgSettings = {
         campaignManagerEnabled: true,
@@ -924,15 +731,12 @@ describe('AgentConfigService', () => {
         maskSensitiveData: false,
       };
 
-<<<<<<< HEAD
-=======
       const mockSiteInfo = {
         id: "c6a5451f-5ba7-49a1-aee8-fbef70c19ece",
         name: "Site-1",
         multimediaProfileId: "c5888e6f-5661-4871-9936-cbcec7658d41",
       }
 
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       const mockTenantData = {
         timeoutDesktopInactivityEnabled: false,
         timeoutDesktopInactivityMins: 15,
@@ -960,10 +764,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
       agentConfigService.getOrgInfo = jest.fn().mockResolvedValue(mockOrgInfo);
       agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue(mockOrgSettings);
-<<<<<<< HEAD
-=======
       agentConfigService.getSiteInfo = jest.fn().mockResolvedValue(mockSiteInfo);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       agentConfigService.getTenantData = jest.fn().mockResolvedValue(mockTenantData);
       agentConfigService.getURLMapping = jest.fn().mockResolvedValue(mockURLMapping);
       agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
@@ -973,11 +774,7 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-<<<<<<< HEAD
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched user data', {
-=======
       expect(LoggerProxy.info).toHaveBeenCalledWith(`Fetched user data, userId: ${mockUserConfig.ciUserId}`, {
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         module: CONFIG_FILE_NAME,
         method: 'getAgentConfig',
       });
@@ -1005,10 +802,7 @@ describe('AgentConfigService', () => {
         agentProfileData: mockAgentProfile,
         dialPlanData: mockDialPlanData,
         urlMapping: mockURLMapping,
-<<<<<<< HEAD
-=======
         multimediaProfileId: mockSiteInfo.multimediaProfileId
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       });
     });
 
@@ -1073,15 +867,12 @@ describe('AgentConfigService', () => {
         maskSensitiveData: true,
       };
 
-<<<<<<< HEAD
-=======
       const mockSiteInfo = {
         id: "c6a5451f-5ba7-49a1-aee8-fbef70c19ece",
         name: "Site-1",
         multimediaProfileId: "c5888e6f-5661-4871-9936-cbcec7658d41",
       }
 
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       const mockTenantData = {
         timeoutDesktopInactivityEnabled: true,
         timeoutDesktopInactivityMins: 15,
@@ -1110,10 +901,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
       agentConfigService.getOrgInfo = jest.fn().mockResolvedValue(mockOrgInfo);
       agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue(mockOrgSettings);
-<<<<<<< HEAD
-=======
       agentConfigService.getSiteInfo = jest.fn().mockResolvedValue(mockSiteInfo);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       agentConfigService.getTenantData = jest.fn().mockResolvedValue(mockTenantData);
       agentConfigService.getURLMapping = jest.fn().mockResolvedValue(mockURLMapping);
       agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
@@ -1123,11 +911,7 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-<<<<<<< HEAD
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched user data', {
-=======
       expect(LoggerProxy.info).toHaveBeenCalledWith(`Fetched user data, userId: ${mockUserConfig.ciUserId}`, {
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         module: CONFIG_FILE_NAME,
         method: 'getAgentConfig',
       });
@@ -1155,10 +939,7 @@ describe('AgentConfigService', () => {
         agentProfileData: mockAgentProfile,
         dialPlanData: mockDialPlanData,
         urlMapping: mockURLMapping,
-<<<<<<< HEAD
-=======
         multimediaProfileId: mockSiteInfo.multimediaProfileId
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       });
     });
 
@@ -1195,32 +976,21 @@ describe('AgentConfigService', () => {
 
     it('should return a list of queues successfully', async () => {
       const mockResponse = {statusCode: 200, body: {data: mockQueues}};
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-
-      const result = await agentConfigService.getQueues(mockOrgId, 0, 100, 'queue', 'id==someid');
-
-      expect(mockHttpRequest.request).toHaveBeenCalledWith({
-=======
       mockWebexRequest.request.mockResolvedValue(mockResponse);
 
       const result = await agentConfigService.getQueues(mockOrgId, 0, 100, 'queue', 'id==someid');
 
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         service: mockWccAPIURL,
         resource: `organization/${mockOrgId}/v2/contact-service-queue?page=0&pageSize=100&desktopProfileFilter=true&search=queue&filter=id==someid`,
         method: 'GET',
       });
       expect(result).toEqual(mockQueues);
-<<<<<<< HEAD
-=======
       
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queue list', {
         module: CONFIG_FILE_NAME,
         method: 'getQueues',
       });
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       expect(LoggerProxy.log).toHaveBeenCalledWith('getQueues API success.', {
         module: CONFIG_FILE_NAME,
         method: 'getQueues',
@@ -1228,11 +998,7 @@ describe('AgentConfigService', () => {
     });
 
     it('should throw an error if the API call fails', async () => {
-<<<<<<< HEAD
-      mockHttpRequest.request.mockRejectedValue(mockError);
-=======
       mockWebexRequest.request.mockRejectedValue(mockError);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getQueues(mockOrgId, 0, 100)).rejects.toThrow(
         'API call failed'
@@ -1241,11 +1007,7 @@ describe('AgentConfigService', () => {
         'getQueues API call failed with Error: API call failed',
         {module: CONFIG_FILE_NAME, method: 'getQueues'}
       );
-<<<<<<< HEAD
-      expect(mockHttpRequest.request).toHaveBeenCalledWith({
-=======
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         service: mockWccAPIURL,
         resource: `organization/${mockOrgId}/v2/contact-service-queue?page=0&pageSize=100&desktopProfileFilter=true`,
         method: 'GET',
@@ -1254,11 +1016,7 @@ describe('AgentConfigService', () => {
 
     it('should throw an error if the API call returns a non-200 status code', async () => {
       const mockResponse = {statusCode: 500};
-<<<<<<< HEAD
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-=======
       mockWebexRequest.request.mockResolvedValue(mockResponse);
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       await expect(agentConfigService.getQueues(mockOrgId, 0, 100)).rejects.toThrow(
         'API call failed with 500'
@@ -1267,11 +1025,7 @@ describe('AgentConfigService', () => {
         'getQueues API call failed with Error: API call failed with 500',
         {module: CONFIG_FILE_NAME, method: 'getQueues'}
       );
-<<<<<<< HEAD
-      expect(mockHttpRequest.request).toHaveBeenCalledWith({
-=======
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         service: mockWccAPIURL,
         resource: `organization/${mockOrgId}/v2/contact-service-queue?page=0&pageSize=100&desktopProfileFilter=true`,
         method: 'GET',
