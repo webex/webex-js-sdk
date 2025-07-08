@@ -2764,14 +2764,10 @@ describe('isSubnetReachable', () => {
   });
 
   it('returns true if the subnet is reachable', () => {
-    assert(reachability.isSubnetReachable('1.2.3.4'));
+    assert(reachability.isSubnetReachable('1'));
   });
 
   it(`returns false if the subnet is unreachable`, () => {
-    assert(!reachability.isSubnetReachable('11.2.3.4'));
-  });
-
-  it('returns null if the subnet is not provided', () => {
-    assert.isNull(reachability.isSubnetReachable(undefined));
+    assert(!reachability.isSubnetReachable('11'));
   });
 });

@@ -872,6 +872,7 @@ const remoteVideoResElm = document.getElementById('remote-video-resolution');
 
 
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
+const toggleAdditionalMediaDirection = document.querySelectorAll('[name=ts-additional-media-direction]');
 const toggleSourcesQualityStatus = document.querySelector('#ts-sending-quality-status');
 const toggleSourcesMeetingLevel = document.querySelector('#ts-sending-qualities-list');
 
@@ -918,6 +919,7 @@ function updateMultistreamUI() {
 // NOTE: remember to set currentMediaSettings after promises resolves in the case when below method is used
 function getMediaSettings(compareLastSettings = false) {
   const settings = {};
+  const additionalMediaOptions = {};
 
   toggleSourcesMediaDirection.forEach((options) => {
     if (compareLastSettings) {
@@ -928,7 +930,11 @@ function getMediaSettings(compareLastSettings = false) {
       settings[options.value] = options.checked;
     }
   });
-
+  toggleAdditionalMediaDirection.forEach((options)=>{
+      additionalMediaOptions[options.value] = options.checked;
+  }
+  )
+  settings.additionalMediaOptions = additionalMediaOptions;
   settings.allowMediaInLobby = meetingsMediaInLobbySupportElm.checked;
   settings.bundlePolicy = 'max-bundle';
 
