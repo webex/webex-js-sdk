@@ -9,7 +9,7 @@ import Meetings from '@webex/plugin-meetings';
 import MembersRequest from '@webex/plugin-meetings/src/members/request';
 import membersUtil from '@webex/plugin-meetings/src/members/util';
 import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
-import { merge } from 'lodash';
+import {merge} from 'lodash';
 
 const {assert} = chai;
 
@@ -65,10 +65,7 @@ describe('plugin-meetings', () => {
 
   const checkRequest = (expectedParams) => {
     assert.calledOnceWithExactly(locusDeltaRequestSpy, expectedParams);
-    assert.calledOnceWithExactly(
-      membersRequest.request,
-      merge(expectedParams, {body: {sequence}})
-    );
+    assert.calledOnceWithExactly(membersRequest.request, merge(expectedParams, {body: {sequence}}));
   };
 
   describe('members request library', () => {
@@ -98,8 +95,8 @@ describe('plugin-meetings', () => {
             },
             device: {
               url,
-            }
-          }
+            },
+          },
         });
       });
     });
@@ -120,9 +117,9 @@ describe('plugin-meetings', () => {
           uri: url1,
           body: {
             alertIfActive: undefined,
-            invitees: [{address: '+18578675309'}]
-          }
-        })
+            invitees: [{address: '+18578675309'}],
+          },
+        });
       });
     });
 
@@ -133,16 +130,16 @@ describe('plugin-meetings', () => {
           memberIds: ['1', '2'],
         };
 
-        await membersRequest.admitMember(options)
+        await membersRequest.admitMember(options);
 
         checkRequest({
           method: 'PUT',
           uri: 'https://example.com/12345/controls',
           body: {
             admit: {
-              participantIds: options.memberIds
-            }
-          }
+              participantIds: options.memberIds,
+            },
+          },
         });
       });
     });
@@ -160,7 +157,7 @@ describe('plugin-meetings', () => {
           method: 'PUT',
           uri: 'https://example.com/12345/participant/member1/leave',
           body: {
-            reason: undefined
+            reason: undefined,
           },
         });
       });
@@ -224,6 +221,29 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#cancelSIPInvite', () => {
+      const memberId = uuid.v4();
+      it('sends a PUT to the locus endpoint', async () => {
+        const options = {
+          invitee: {
+            memberId,
+          },
+          locusUrl: url1,
+        };
+
+        await membersRequest.cancelSIPInvite(options);
+
+        checkRequest({
+          method: 'PUT',
+          uri: url1,
+          body: {
+            actionType: 'REMOVE',
+            invitees: [{address: memberId}],
+          },
+        });
+      });
+    });
+
     describe('#assignRolesMember', () => {
       it('sends a assignRolesMember PATCH to the locus endpoint', async () => {
         const locusUrl = url1;
@@ -247,9 +267,9 @@ describe('plugin-meetings', () => {
           uri: `${locusUrl}/participant/${memberId}/controls`,
           body: {
             role: {
-              roles
-            }
-          }
+              roles,
+            },
+          },
         });
       });
     });
@@ -272,9 +292,9 @@ describe('plugin-meetings', () => {
           uri: `${locusUrl}/participant/${memberId}/controls`,
           body: {
             hand: {
-              raised: true
-            }
-          }
+              raised: true,
+            },
+          },
         });
       });
     });
@@ -406,7 +426,33 @@ describe('plugin-meetings', () => {
           body: {
             aliasValue,
             requestingParticipantId,
-          }
+          },
+        });
+      });
+    });
+
+    describe('#moveToLobby', () => {
+      it('sends a moveToLobbyMember PATCH to the locus endpoint', async () => {
+        const locusUrl = url1;
+        const memberId = 'test1';
+        const options = {
+          locusUrl: locusUrl,
+          memberId,
+        };
+        const body = {
+          moveToLobby: {participantIds: [memberId]},
+        };
+
+        const getRequestParamsSpy = sandbox.spy(membersUtil, 'getMoveMemberToLobbyRequestParams');
+
+        await membersRequest.moveToLobbyMember(options, body);
+
+        assert.calledOnceWithExactly(getRequestParamsSpy, options, body);
+
+        checkRequest({
+          method: 'PATCH',
+          uri: `${locusUrl}/participant/${memberId}/controls`,
+          body: {moveToLobby: {participantIds: [memberId]}},
         });
       });
     });

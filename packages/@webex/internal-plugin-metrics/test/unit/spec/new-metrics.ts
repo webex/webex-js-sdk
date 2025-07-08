@@ -19,7 +19,7 @@ describe('internal-plugin-metrics', () => {
     }
   });
 
-  describe('check submitClientEvent when webex is not ready', () => {
+  describe('check submitClientEvent, submitFeatureEvent when webex is not ready', () => {
     let webex;
     //@ts-ignore
     webex = mockWebex();
@@ -34,6 +34,30 @@ describe('internal-plugin-metrics', () => {
       assert.calledWith(
         webex.logger.log,
         'NewMetrics: @submitClientEvent. Attempted to submit before webex.ready. Event name: client.alert.displayed'
+      );
+    });
+
+    it('checks the log', () => {
+      webex.internal.newMetrics.submitFeatureEvent({
+        name: 'client.feature.meeting.summary',
+        options: {
+          meetingId: '123',
+        },
+        payload: {
+          meetingSummaryInfo: {
+            featureName: 'syncSystemMuteStatus',
+            featureActions: [{
+              actionName: 'syncMeetingMicUnmuteStatusToSystem',
+              actionId: '14200',
+              isInitialValue: false,
+              clickCount: '1'
+            }]
+          },
+        },
+      });
+      assert.calledWith(
+        webex.logger.log,
+        'NewMetrics: @submitFeatureEvent. Attempted to submit before webex.ready. Event name: client.feature.meeting.summary'
       );
     });
   });
@@ -65,6 +89,7 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.callDiagnosticMetrics.buildClientEventFetchRequestOptions =
         sinon.stub();
       webex.setTimingsAndFetch = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticMetrics.submitFeatureEvent = sinon.stub();
     });
 
     afterEach(() => {
@@ -104,7 +129,7 @@ describe('internal-plugin-metrics', () => {
         metadata: { foo: 'bar' },
       });
     });
-  
+
     it('submits Client Event successfully', () => {
       webex.internal.newMetrics.submitClientEvent({
         name: 'client.alert.displayed',
@@ -125,6 +150,46 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    it('submits feature Event successfully', () => {
+      webex.internal.newMetrics.submitFeatureEvent({
+        name: 'client.feature.meeting.summary',
+        options: {
+          meetingId: '123',
+        },
+        payload: {
+          meetingSummaryInfo: {
+            featureName: 'syncSystemMuteStatus',
+            featureActions: [{
+              actionName: 'syncMeetingMicUnmuteStatusToSystem',
+              actionId: '14200',
+              isInitialValue: false,
+              clickCount: '1'
+            }]
+          },
+        },
+      });
+
+      assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+        key: 'client.feature.meeting.summary',
+        options: {meetingId: '123'},
+      });
+      assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitFeatureEvent, {
+        name: 'client.feature.meeting.summary',
+        payload: {
+          meetingSummaryInfo: {
+            featureName: 'syncSystemMuteStatus',
+            featureActions: [{
+              actionName: 'syncMeetingMicUnmuteStatusToSystem',
+              actionId: '14200',
+              isInitialValue: false,
+              clickCount: '1'
+            }]
+          },
+        },
+        options: {meetingId: '123'},
+        delaySubmitEvent: false,
+      });
+    });
 
     it('submits MQE successfully', () => {
       webex.internal.newMetrics.submitMQE({
@@ -264,19 +329,43 @@ describe('internal-plugin-metrics', () => {
     describe('#setDelaySubmitClientEvents', () => {
       it('sets delaySubmitClientEvents correctly and calls submitDelayedClientEvents when set to false', () => {
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
+        sinon.assert.match(webex.internal.newMetrics.delayedClientEventsOverrides, {});
 
-        webex.internal.newMetrics.setDelaySubmitClientEvents(true);
+        webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: true});
 
         assert.notCalled(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
 
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, true);
+        sinon.assert.match(webex.internal.newMetrics.delayedClientEventsOverrides, {});
 
-        webex.internal.newMetrics.setDelaySubmitClientEvents(false);
+        webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: false, overrides: {foo: 'bar'}});
 
         assert.calledOnce(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
-        assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
+        assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents, {foo: 'bar'});
 
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
+        sinon.assert.match(webex.internal.newMetrics.delayedClientEventsOverrides, {foo: 'bar'});
+      });
+
+      it('should not fail when called before webex is ready', () => {
+
+        // Create mock
+        webex = mockWebex()
+
+        webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
+        webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps = sinon.stub();
+        webex.setTimingsAndFetch = sinon.stub();
+
+        sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
+
+        // Call the method before webex is ready, will not throw error
+        webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: false});
+        webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: true});
+
+        webex.internal.newMetrics.setDelaySubmitClientEvents({shouldDelay: false});
+        // Webex is ready
+        webex.emit('ready');
+
       });
     });
   });

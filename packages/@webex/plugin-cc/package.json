@@ -1,8 +1,27 @@
 {
   "name": "@webex/plugin-cc",
   "description": "This package provides a set of APIs to perform various operations for the Agent flow within Webex Contact Center",
-  "main": "dist/index.js",
+  "contributors": [
+    "Adhwaith Menon <adhmenon@cisco.com>",
+    "Bharath Balan <bhabalan@cisco.com>",
+    "Kesava Krishnan Madavan <kmadavan@cisco.com>",
+    "Priya Kesari <pkesari@cisco.com>",
+    "Rajesh Kumar <rarajes2@cisco.com>",
+    "Ravi Chandra Sekhar Sarika <rsarika@cisco.com>",
+    "Shreyas Sharma <shreysh2@cisco.com>",
+    "Sreekanth Narayanan <sreenara@cisco.com>"
+  ],
+  "main": "dist/webex.js",
+  "types": "./dist/types/index.d.ts",
   "devMain": "src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/webex.js",
+      "require": "./dist/webex.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./package": "./package.json"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",
@@ -15,11 +34,12 @@
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
     "build": " yarn workspace @webex/calling run build:src && yarn run -T tsc --declaration true --declarationDir ./dist/types",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
+    "build:docs": "typedoc --out ../../../docs/wxcc",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "prebuild": "rimraf dist",
     "test": "yarn test:style && yarn test:unit",
     "test:style": "eslint 'src/**/*.ts'",
-    "test:unit": "NODE_ENV=test webex-legacy-tools test --unit --runner jest",
+    "test:unit": "webex-legacy-tools test --unit --runner jest",
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
@@ -27,9 +47,12 @@
     "@webex/calling": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/internal-plugin-metrics": "workspace:*",
+    "@webex/internal-plugin-support": "workspace:*",
+    "@webex/plugin-authorization": "workspace:*",
+    "@webex/plugin-logger": "workspace:*",
     "@webex/webex-core": "workspace:*",
-    "buffer": "6.0.3",
-    "jest-html-reporters": "3.0.11"
+    "jest-html-reporters": "3.0.11",
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "@babel/preset-typescript": "7.22.11",
@@ -41,7 +64,6 @@
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
     "@webex/test-helper-mock-webex": "workspace:*",
-    "babel-plugin-transform-import-meta": "^2.3.2",
     "eslint": "^8.24.0",
     "eslint-config-airbnb-base": "15.0.0",
     "eslint-config-prettier": "8.3.0",
@@ -53,7 +75,7 @@
     "jest": "27.5.1",
     "jest-junit": "13.0.0",
     "prettier": "2.5.1",
-    "typedoc": "0.23.26",
+    "typedoc": "^0.25.0",
     "typescript": "4.9.5"
   }
 }

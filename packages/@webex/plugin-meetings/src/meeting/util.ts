@@ -573,9 +573,17 @@ const MeetingUtil = {
   canUserRenameSelfAndObserved: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.CAN_RENAME_SELF_AND_OBSERVED),
 
+  requiresPostMeetingDataConsentPrompt: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.SHOW_POST_MEETING_DATA_CONSENT_PROMPT),
+
   canUserRenameOthers: (displayHints) => displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS),
 
-  canShareWhiteBoard: (displayHints) => displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD),
+  // Default empty value for policies if we get an undefined value (ie permissionToken is not available)
+  canShareWhiteBoard: (displayHints, policies = {}) =>
+    displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD) &&
+    !!policies[SELF_POLICY.SUPPORT_WHITEBOARD],
+
+  canMoveToLobby: (displayHints) => displayHints.includes(DISPLAY_HINTS.MOVE_TO_LOBBY),
 
   /**
    * Adds the current locus sequence information to a request body

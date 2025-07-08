@@ -71,7 +71,12 @@ describe('WebCallingService', () => {
       getCallId: jest.fn().mockReturnValue('call-id-123'),
     };
 
+<<<<<<< HEAD
     webRTCCalling.call = mockCall;
+=======
+    // Set the private call property through type assertion for testing
+    (webRTCCalling as any).call = mockCall;
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
   });
 
   afterEach(() => {
@@ -192,7 +197,11 @@ describe('WebCallingService', () => {
       expect(line.register).toHaveBeenCalled();
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `Invalid URL from u2c catalogue: invalid-url so falling back to default domain`,
+<<<<<<< HEAD
         {module: WEB_CALLING_SERVICE_FILE}
+=======
+        {module: WEB_CALLING_SERVICE_FILE, method: 'getRTMSDomain'}
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       );
 
     });
@@ -269,7 +278,14 @@ describe('WebCallingService', () => {
     it('should answer the call and log info when call exists', () => {
       webRTCCalling.answerCall(localAudioStream, 'task-id');
 
+<<<<<<< HEAD
       expect(webex.logger.info).toHaveBeenCalledWith('Call answered: task-id');
+=======
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Call answered: task-id', {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: 'answerCall',
+      });
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       expect(mockCall.answer).toHaveBeenCalledWith(localAudioStream);
     });
 
@@ -280,8 +296,17 @@ describe('WebCallingService', () => {
       });
 
       expect(() => webRTCCalling.answerCall(localAudioStream, 'task-id')).toThrow(error);
+<<<<<<< HEAD
       expect(webex.logger.error).toHaveBeenCalledWith(
         `Failed to answer call for task-id. Error: ${error}`
+=======
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `Failed to answer call for task-id. Error: ${error}`,
+        {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: 'answerCall',
+        }
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       );
     });
 
@@ -289,7 +314,14 @@ describe('WebCallingService', () => {
       webRTCCalling.call = null;
       webRTCCalling.answerCall(localAudioStream, 'task-id');
 
+<<<<<<< HEAD
       expect(webex.logger.log).toHaveBeenCalledWith('Cannot answer a non WebRtc Call: task-id');
+=======
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Cannot answer a non WebRtc Call: task-id', {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: 'answerCall',
+      });
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     });
   });
 
@@ -305,7 +337,14 @@ describe('WebCallingService', () => {
     it('should mute the call and log info when call exists', () => {
       webRTCCalling.muteUnmuteCall(localAudioStream);
 
+<<<<<<< HEAD
       expect(webex.logger.info).toHaveBeenCalledWith('Call mute or unmute requested!');
+=======
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Call mute or unmute requested!', {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: 'muteUnmuteCall',
+      });
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       expect(mockCall.mute).toHaveBeenCalledWith(localAudioStream);
     });
 
@@ -313,7 +352,14 @@ describe('WebCallingService', () => {
       webRTCCalling.call = null;
       webRTCCalling.muteUnmuteCall(localAudioStream);
 
+<<<<<<< HEAD
       expect(webex.logger.log).toHaveBeenCalledWith('Cannot mute a non WebRtc Call');
+=======
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Cannot mute a non WebRtc Call', {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: 'muteUnmuteCall',
+      });
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     });
   });
 
@@ -321,7 +367,14 @@ describe('WebCallingService', () => {
     it('should end the call and log info when call exists', () => {
       webRTCCalling.declineCall('task-id');
 
+<<<<<<< HEAD
       expect(webex.logger.info).toHaveBeenCalledWith('Call end requested: task-id');
+=======
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Call end requested: task-id', {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: 'declineCall',
+      });
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       expect(mockCall.end).toHaveBeenCalled();
     });
 
@@ -332,8 +385,17 @@ describe('WebCallingService', () => {
       });
 
       expect(() => webRTCCalling.declineCall('task-id')).toThrow(error);
+<<<<<<< HEAD
       expect(webex.logger.error).toHaveBeenCalledWith(
         `Failed to end call: task-id. Error: ${error}`
+=======
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `Failed to end call: task-id. Error: ${error}`,
+        {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: 'declineCall',
+        }
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       );
     });
 
@@ -341,7 +403,14 @@ describe('WebCallingService', () => {
       webRTCCalling.call = null;
       webRTCCalling.declineCall('task-id');
 
+<<<<<<< HEAD
       expect(webex.logger.log).toHaveBeenCalledWith('Cannot end a non WebRtc Call: task-id');
+=======
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Cannot end a non WebRtc Call: task-id', {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: 'declineCall',
+      });
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     });
   });
 

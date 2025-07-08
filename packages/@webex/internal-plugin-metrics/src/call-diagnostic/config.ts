@@ -5,6 +5,7 @@
 import {ClientEventError, ClientSubServiceType} from '../metrics.types';
 
 export const CALL_DIAGNOSTIC_LOG_IDENTIFIER = 'call-diagnostic-events -> ';
+export const CALL_FEATURE_LOG_IDENTIFIER = 'call-diagnostic-events-feature -> ';
 
 export const AUTHENTICATION_FAILED_CODE = 1010;
 export const NETWORK_ERROR = 1026;
@@ -133,6 +134,7 @@ export const ERROR_DESCRIPTIONS = {
   SDP_OFFER_CREATION_ERROR: 'SdpOfferCreationError',
   SDP_OFFER_CREATION_ERROR_MISSING_CODEC: 'SdpOfferCreationErrorMissingCodec',
   WDM_RESTRICTED_REGION: 'WdmRestrictedRegion',
+  USER_NOT_ALLOWED_JOIN_WEBINAR: 'UserNotAllowedJoinWebinar',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -151,6 +153,10 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   403004: 4005,
   // Wrong password. Meeting is not allow to access since password error
   403028: 4005,
+  // meeting is not allow to access since require panelist password
+  403025: 4005,
+  // wrong password. Meeting is not allow to access since panelist password error
+  403125: 4005,
   // Wrong or expired permission. Meeting is not allow to access since permissionToken error or expire
   403032: 4005,
   // Meeting is required login for current user
@@ -202,6 +208,24 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   423013: 4005,
   // Too many requests access
   429005: 4100,
+  // Webinar: Meeting registration is required
+  403021: 4104,
+  // Webinar: Meeting registration is still pending
+  403022: 4104,
+  // Webinar: Meeting registration have been rejected
+  403024: 4104,
+  // Webinar: Registration ID verified failure
+  403137: 4104,
+  // Webinar: Registration ID input too many time,please input captcha code
+  423007: 4104,
+  // Webinar: Need to join meeting via webcast
+  403026: 4104,
+  // Webinar: Meeting join required registration ID
+  403037: 4104,
+  // Not reach JBH, can't join meeting
+  403003: 4101,
+  // Attendee email is required
+  403030: 4101,
 
   // ---- Locus ------
   // FREE_USER_MAX_PARTICIPANTS_EXCEEDED
@@ -666,6 +690,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     category: 'expected',
     fatal: true,
   },
+  4104: {
+    errorDescription: ERROR_DESCRIPTIONS.USER_NOT_ALLOWED_JOIN_WEBINAR,
+    category: 'expected',
+    fatal: true,
+  },
   2729: {
     errorDescription: ERROR_DESCRIPTIONS.NO_MEDIA_FOUND,
     category: 'expected',
@@ -710,3 +739,5 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
 };
 
 export const CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND = 'js_sdk_call_diagnostic_event_failed_to_send';
+
+export const CALL_FEATURE_EVENT_FAILED_TO_SEND = 'js_sdk_call_feature_event_failed_to_send';

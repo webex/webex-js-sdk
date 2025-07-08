@@ -32,58 +32,7 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 describe('plugin-meetings', () => {
   let webex;
   let url1;
-  const fakeMembersCollection = {
-    test1: {
-      namespace: 'Meetings',
-      participant: {
-        state: 'JOINED',
-        type: 'USER',
-        person: {
-          id: '6eb08f8b-bf69-3251-a126-b161bead2d21',
-          phoneNumber: '+18578675309',
-          isExternal: true,
-          primaryDisplayString: '+18578675309',
-        },
-        devices: [
-          {
-            url: 'https://fakeURL.com',
-            deviceType: 'SIP',
-            state: 'JOINED',
-            intents: [null],
-            correlationId: '1234',
-            provisionalUrl: 'dialout:///fake',
-            isSparkPstn: true,
-          },
-          {
-            url: 'dialout:///fakeagain',
-            deviceType: 'PROVISIONAL',
-            state: 'JOINED',
-            intents: [null],
-            correlationId: '4321',
-            isVideoCallback: false,
-            clientUrl: 'https://fakeURL',
-            provisionalType: 'DIAL_OUT_ONLY',
-            dialingStatus: 'SUCCESS',
-          },
-        ],
-        status: {
-          audioStatus: 'SENDRECV',
-          videoStatus: 'INACTIVE',
-        },
-        id: 'abc-123-abc-123',
-        guest: true,
-        resourceGuest: false,
-        moderator: false,
-        panelist: false,
-        moveToLobbyNotAllowed: true,
-        deviceUrl: 'https://fakeDeviceurl',
-      },
-      id: 'abc-123-abc-123',
-      status: 'IN_MEETING',
-      type: 'MEETING',
-      isModerator: false,
-    },
-  };
+  let fakeMembersCollection;
 
   describe('members', () => {
     const sandbox = sinon.createSandbox();
@@ -92,6 +41,65 @@ describe('plugin-meetings', () => {
     let membersRequestSpy;
 
     beforeEach(() => {
+      fakeMembersCollection = {
+        test1: {
+          associatedUsers: new Set(),
+          namespace: 'Meetings',
+          participant: {
+            state: 'JOINED',
+            type: 'USER',
+            person: {
+              id: '6eb08f8b-bf69-3251-a126-b161bead2d21',
+              phoneNumber: '+18578675309',
+              isExternal: true,
+              primaryDisplayString: '+18578675309',
+            },
+            devices: [
+              {
+                url: 'https://fakeURL.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                intents: [null],
+                correlationId: '1234',
+                provisionalUrl: 'dialout:///fake',
+                isSparkPstn: true,
+              },
+              {
+                url: 'dialout:///fakeagain',
+                deviceType: 'PROVISIONAL',
+                state: 'JOINED',
+                intents: [null],
+                correlationId: '4321',
+                isVideoCallback: false,
+                clientUrl: 'https://fakeURL',
+                provisionalType: 'DIAL_OUT_ONLY',
+                dialingStatus: 'SUCCESS',
+              },
+            ],
+            status: {
+              audioStatus: 'SENDRECV',
+              videoStatus: 'INACTIVE',
+            },
+            id: 'test1',
+            guest: true,
+            resourceGuest: false,
+            moderator: false,
+            panelist: false,
+            moveToLobbyNotAllowed: true,
+            deviceUrl: 'https://fakeDeviceurl',
+            url: 'fake participant url for test1',
+          },
+          id: 'test1',
+          status: 'IN_MEETING',
+          type: 'USER',
+          isModerator: false,
+          isHost: false,
+          isSelf: false,
+          isContentSharing: false,
+          pairedWith: {},
+        },
+      };
+
       webex = new MockWebex({
         children: {
           meetings: Meetings,
@@ -120,9 +128,9 @@ describe('plugin-meetings', () => {
       meeting = {
         request: sinon.mock().returns(Promise.resolve()),
         locusInfo: {
-          sequence: {}
-        }
-      }
+          sequence: {},
+        },
+      };
 
       createMembers = (options) => new Members({locusUrl: options.url, meeting}, {parent: webex});
     });
@@ -156,6 +164,17 @@ describe('plugin-meetings', () => {
         const members = createMembers({url: false});
 
         assert.isRejected(members.addMember({email: 'test@cisco.com'}));
+      });
+
+      it('should accept valid SIP email addresses', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: 'sip:test@cisco.com'});
+        
+        assert.calledOnce(MembersUtil.isInvalidInvitee);
+        assert.isFalse(MembersUtil.isInvalidInvitee({email: 'sip:test@cisco.com'}), 'SIP email should be valid');
       });
     });
 
@@ -280,6 +299,110 @@ describe('plugin-meetings', () => {
           }
         );
       });
+
+      describe('handles members with paired devices correctly', () => {
+        const runCheck = (propsForUpdate, expectedPropsOnPairedMember) => {
+          const members = createMembers({url: url1});
+
+          const DEVICE_PARTICIPANT_URL = 'fake participant url for test2';
+
+          members.membersCollection.setAll(fakeMembersCollection);
+
+          // simulate a locus update with a member that has a paired device
+          members.locusParticipantsUpdate({
+            ...propsForUpdate,
+            participants: [
+              {
+                id: 'test1',
+                type: 'USER',
+                person: {},
+                devices: [
+                  {
+                    intents: [
+                      {
+                        type: 'OBSERVE',
+                        associatedWith: DEVICE_PARTICIPANT_URL,
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                id: 'test2',
+                type: 'RESOURCE_ROOM',
+                person: {},
+                devices: [
+                  {
+                    state: 'JOINED',
+                    intents: [null],
+                  },
+                ],
+                url: DEVICE_PARTICIPANT_URL,
+              },
+            ],
+          });
+
+          let member = members.membersCollection.get('test1');
+          assert.isDefined(member.pairedWith);
+          assert.strictEqual(member.pairedWith.participantUrl, DEVICE_PARTICIPANT_URL);
+          assert.strictEqual(member.pairedWith.memberId, 'test2');
+
+          let pairedDeviceMember = members.membersCollection.get('test2');
+          assert(pairedDeviceMember.associatedUsers.has(member.id));
+          assert.strictEqual(pairedDeviceMember.associatedUser, member.id);
+          assert.strictEqual(pairedDeviceMember.associatedUsers.size, 1);
+
+          assert.strictEqual(
+            pairedDeviceMember.isPairedWithSelf,
+            expectedPropsOnPairedMember.isPairedWithSelf
+          );
+          assert.strictEqual(pairedDeviceMember.isHost, expectedPropsOnPairedMember.isHost);
+
+          // now simulate the user and paired device leaving the meeting
+          members.locusParticipantsUpdate({
+            ...propsForUpdate,
+            participants: [
+              {
+                id: 'test1',
+                type: 'USER',
+                person: {},
+                devices: [],
+              },
+              {
+                id: 'test2',
+                type: 'RESOURCE_ROOM',
+                person: {},
+                devices: [],
+              },
+            ],
+          });
+
+          // and check that all the relevant properties were reset
+          member = members.membersCollection.get('test1');
+          assert.isDefined(member.pairedWith);
+          assert.isUndefined(member.pairedWith.participantUrl);
+          assert.isUndefined(member.pairedWith.memberId);
+
+          pairedDeviceMember = members.membersCollection.get('test2');
+          assert.strictEqual(pairedDeviceMember.associatedUser, null);
+          assert.strictEqual(pairedDeviceMember.associatedUsers.size, 0);
+
+          assert.strictEqual(pairedDeviceMember.isPairedWithSelf, false);
+          assert.strictEqual(pairedDeviceMember.isHost, false);
+        };
+
+        it('sets the right properties when a member has a paired device', () => {
+          runCheck({}, {isPairedWithSelf: false, isHost: false});
+        });
+
+        it('sets the right properties when a member has a paired device (isSelf)', () => {
+          runCheck({selfId: 'test1'}, {isPairedWithSelf: true, isHost: false});
+        });
+
+        it('sets the right properties when a member has a paired device (isHost)', () => {
+          runCheck({hostId: 'test1'}, {isPairedWithSelf: false, isHost: true});
+        });
+      });
     });
     describe('#sendDialPadKey', () => {
       it('should throw a rejection when calling sendDialPadKey with no tones', async () => {
@@ -342,6 +465,32 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#cancelSIPInvite', () => {
+      const memberId = uuid.v4();
+      it('should invoke cancelSIPInviteOptions from MembersUtil when cancelSIPInvite is called with valid params', async () => {
+        sandbox.spy(MembersUtil, 'cancelSIPInviteOptions');
+
+        const members = createMembers({url: url1});
+
+        await members.cancelSIPInvite({memberId});
+        assert.calledOnce(MembersUtil.cancelSIPInviteOptions);
+      });
+
+      it('should throw a rejection if there is no locus url', async () => {
+        const members = createMembers({url: false});
+
+        assert.isRejected(members.cancelSIPInvite({memberId}));
+      });
+      
+      it('should throw a rejection if memberId is not provided', async () => {
+        const members = createMembers({url: url1});
+
+        assert.isRejected(members.cancelSIPInvite({}));
+        assert.isRejected(members.cancelSIPInvite({memberId: null}));
+        assert.isRejected(members.cancelSIPInvite({memberId: undefined}));
+      });
+    });
+
     describe('#assignRoles', () => {
       const fakeRoles = [
         {type: 'PRESENTER', hasRole: true},
@@ -349,7 +498,7 @@ describe('plugin-meetings', () => {
         {type: 'COHOST', hasRole: true},
       ];
 
-      const resolvedValue = "it worked";
+      const resolvedValue = 'it worked';
 
       const genericMessage = 'Generic error from the API';
 
@@ -364,9 +513,13 @@ describe('plugin-meetings', () => {
         };
 
         if (errorCode) {
-          spies.assignRolesMember = sandbox.stub(members.membersRequest, 'assignRolesMember').rejects({body: {errorCode}, message: genericMessage});
+          spies.assignRolesMember = sandbox
+            .stub(members.membersRequest, 'assignRolesMember')
+            .rejects({body: {errorCode}, message: genericMessage});
         } else {
-          spies.assignRolesMember = sandbox.stub(members.membersRequest, 'assignRolesMember').resolves(resolvedValue);
+          spies.assignRolesMember = sandbox
+            .stub(members.membersRequest, 'assignRolesMember')
+            .resolves(resolvedValue);
         }
 
         return {members, spies};
@@ -378,7 +531,15 @@ describe('plugin-meetings', () => {
         assert.notCalled(spies.assignRolesMember);
       };
 
-      const checkError = async (error, expectedMemberId, expectedRoles, expectedLocusUrl, resultPromise, expectedMessage, spies) => {
+      const checkError = async (
+        error,
+        expectedMemberId,
+        expectedRoles,
+        expectedLocusUrl,
+        resultPromise,
+        expectedMessage,
+        spies
+      ) => {
         await assert.isRejected(resultPromise, error, expectedMessage);
         assert.calledOnceWithExactly(
           spies.generateRoleAssignmentMemberOptions,
@@ -423,7 +584,7 @@ describe('plugin-meetings', () => {
         await checkInvalid(
           resultPromise,
           'The member id must be defined to assign the roles to a member.',
-          spies,
+          spies
         );
       });
 
@@ -435,7 +596,7 @@ describe('plugin-meetings', () => {
         await checkInvalid(
           resultPromise,
           'The associated locus url for this meetings members object must be defined.',
-          spies,
+          spies
         );
       });
 
@@ -452,7 +613,7 @@ describe('plugin-meetings', () => {
           url1,
           resultPromise,
           'Non converged meetings, PSTN or SIP users in converged meetings are not supported currently.',
-          spies,
+          spies
         );
       });
 
@@ -469,7 +630,7 @@ describe('plugin-meetings', () => {
           url1,
           resultPromise,
           'Reclaim Host Role Not Allowed For Other Participants. Participants cannot claim host role in PMR meeting, space instant meeting or escalated instant meeting. However, the original host still can reclaim host role when it manually makes another participant to be the host.',
-          spies,
+          spies
         );
       });
 
@@ -486,7 +647,7 @@ describe('plugin-meetings', () => {
           url1,
           resultPromise,
           'Host Key Not Specified Or Matched. The original host can reclaim the host role without entering the host key. However, any other person who claims the host role must enter the host key to get it.',
-          spies,
+          spies
         );
       });
 
@@ -503,7 +664,7 @@ describe('plugin-meetings', () => {
           url1,
           resultPromise,
           'Participant Having Host Role Already. Participant who sends request to reclaim host role has already a host role.',
-          spies,
+          spies
         );
       });
 
@@ -520,7 +681,7 @@ describe('plugin-meetings', () => {
           url1,
           resultPromise,
           genericMessage,
-          spies,
+          spies
         );
       });
 
@@ -530,13 +691,7 @@ describe('plugin-meetings', () => {
 
         const resultPromise = members.assignRoles(memberId, fakeRoles);
 
-        await checkValid(
-          resultPromise,
-          spies,
-          memberId,
-          fakeRoles,
-          url1,
-        );
+        await checkValid(resultPromise, spies, memberId, fakeRoles, url1);
       });
     });
 
@@ -661,19 +816,19 @@ describe('plugin-meetings', () => {
         spies,
         expectedRequestingMemberId,
         expectedLocusUrl,
-        expectedRoles,
+        expectedRoles
       ) => {
         await assert.isFulfilled(resultPromise);
         assert.calledOnceWithExactly(
           spies.generateLowerAllHandsMemberOptions,
           expectedRequestingMemberId,
           expectedLocusUrl,
-          expectedRoles,
+          expectedRoles
         );
         assert.calledOnceWithExactly(spies.lowerAllHandsMember, {
           requestingParticipantId: expectedRequestingMemberId,
           locusUrl: expectedLocusUrl,
-          ...(expectedRoles !== undefined && { roles: expectedRoles })
+          ...(expectedRoles !== undefined && {roles: expectedRoles}),
         });
         assert.strictEqual(resultPromise, spies.lowerAllHandsMember.getCall(0).returnValue);
       };
@@ -714,7 +869,7 @@ describe('plugin-meetings', () => {
       it('should make the correct request when called with valid requestingMemberId and roles', async () => {
         const requestingMemberId = 'test-member-id';
         const roles = ['panelist', 'attendee'];
-        const { members, spies } = setup('test-locus-url');
+        const {members, spies} = setup('test-locus-url');
 
         const resultPromise = members.lowerAllHands(requestingMemberId, roles);
 
@@ -724,7 +879,7 @@ describe('plugin-meetings', () => {
       it('should handle an empty roles array correctly', async () => {
         const requestingMemberId = 'test-member-id';
         const roles = [];
-        const { members, spies } = setup('test-locus-url');
+        const {members, spies} = setup('test-locus-url');
 
         const resultPromise = members.lowerAllHands(requestingMemberId, roles);
 
@@ -975,6 +1130,77 @@ describe('plugin-meetings', () => {
           members.getCsisForMember('oneWithSomeCsis', 'video', 'main'),
           [1001, 2001]
         );
+      });
+    });
+
+    describe('#moveToLobby', () => {
+      const setup = (locusUrl) => {
+        const members = createMembers({url: locusUrl});
+
+        const spies = {
+          getMoveMemberToLobbyRequestBody: sandbox.spy(
+            MembersUtil,
+            'getMoveMemberToLobbyRequestBody'
+          ),
+          moveToLobbyMember: sandbox.spy(members.membersRequest, 'moveToLobbyMember'),
+        };
+
+        return {members, spies};
+      };
+
+      const checkInvalid = async (resultPromise, expectedMessage, spies) => {
+        await assert.isRejected(resultPromise, ParameterError, expectedMessage);
+        assert.notCalled(spies.getMoveMemberToLobbyRequestBody);
+        assert.notCalled(spies.moveToLobbyMember);
+      };
+
+      const checkValid = async (resultPromise, spies, expectedMemberId, expectedLocusUrl) => {
+        await assert.isFulfilled(resultPromise);
+        assert.calledOnceWithExactly(spies.getMoveMemberToLobbyRequestBody, expectedMemberId);
+        assert.calledOnceWithExactly(
+          spies.moveToLobbyMember,
+          {
+            locusUrl: expectedLocusUrl,
+            memberId: expectedMemberId,
+          },
+          {
+            moveToLobby: {participantIds: [expectedMemberId]},
+          }
+        );
+        assert.strictEqual(resultPromise, spies.moveToLobbyMember.getCall(0).returnValue);
+      };
+
+      it('should not make a request if there is no member id', async () => {
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.moveToLobby();
+
+        await checkInvalid(
+          resultPromise,
+          'The member id must be defined to move the member to lobby.',
+          spies
+        );
+      });
+
+      it('should not make a request if there is no locus url', async () => {
+        const {members, spies} = setup();
+
+        const resultPromise = members.moveToLobby(uuid.v4());
+
+        await checkInvalid(
+          resultPromise,
+          'The associated locus url for this meetings members object must be defined.',
+          spies
+        );
+      });
+
+      it('should make the correct request when called with valid memberId and locusUrl', async () => {
+        const memberId = uuid.v4();
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.moveToLobby(memberId);
+
+        await checkValid(resultPromise, spies, memberId, url1);
       });
     });
   });

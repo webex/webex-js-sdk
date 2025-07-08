@@ -22,6 +22,8 @@ import {
   InternalEvent,
   SubmitClientEventOptions,
   Table,
+  DelayedClientEvent,
+  DelayedClientFeatureEvent,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
@@ -51,6 +53,18 @@ class Metrics extends WebexPlugin {
   delaySubmitClientEvents = false;
 
   /**
+   * Whether or not to delay the submission of feature events.
+   */
+  delaySubmitClientFeatureEvents = false;
+
+  /**
+   * Overrides for delayed client events. E.g. if you want to override the correlationId for all delayed client events, you can set this to { correlationId: 'newCorrelationId' }
+   */
+  delayedClientEventsOverrides: Partial<DelayedClientEvent['options']> = {};
+
+  delayedClientFeatureEventsOverrides: Partial<DelayedClientFeatureEvent['options']> = {};
+
+  /**
    * Constructor
    * @param args
    * @constructor
@@ -74,6 +88,10 @@ class Metrics extends WebexPlugin {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
       this.isReady = true;
+      this.setDelaySubmitClientEvents({
+        shouldDelay: this.delaySubmitClientEvents,
+        overrides: this.delayedClientEventsOverrides,
+      });
     });
   }
 
@@ -265,7 +283,25 @@ class Metrics extends WebexPlugin {
     payload?: RecursivePartial<FeatureEvent['payload']>;
     options: any;
   }) {
-    throw new Error('Not implemented.');
+    if (!this.callDiagnosticLatencies || !this.callDiagnosticMetrics) {
+      // @ts-ignore
+      this.webex.logger.log(
+        `NewMetrics: @submitFeatureEvent. Attempted to submit before webex.ready. Event name: ${name}`
+      );
+
+      return Promise.resolve();
+    }
+    this.callDiagnosticLatencies.saveTimestamp({
+      key: name,
+      options: {meetingId: options?.meetingId},
+    });
+
+    return this.callDiagnosticMetrics.submitFeatureEvent({
+      name,
+      payload,
+      options,
+      delaySubmitEvent: this.delaySubmitClientFeatureEvents,
+    });
   }
 
   /**
@@ -404,13 +440,45 @@ class Metrics extends WebexPlugin {
    * Sets the value of delaySubmitClientEvents. If set to true, client events will be delayed until submitDelayedClientEvents is called. If
    * set to false, delayed client events will be submitted.
    *
-   * @param {boolean} shouldDelay - A boolean value indicating whether to delay the submission of client events.
+   * @param {object} options - {shouldDelay: A boolean value indicating whether to delay the submission of client events, overrides: An object containing overrides for the client events}
    */
-  public setDelaySubmitClientEvents(shouldDelay: boolean) {
+  public setDelaySubmitClientEvents({
+    shouldDelay,
+    overrides,
+  }: {
+    shouldDelay: boolean;
+    overrides?: Partial<DelayedClientEvent['options']>;
+  }) {
     this.delaySubmitClientEvents = shouldDelay;
+    this.delayedClientEventsOverrides = overrides || {};
 
-    if (!shouldDelay) {
-      return this.callDiagnosticMetrics.submitDelayedClientEvents();
+    if (this.isReady && !shouldDelay) {
+      return this.callDiagnosticMetrics.submitDelayedClientEvents(overrides);
+    }
+
+    return Promise.resolve();
+  }
+
+  /**
+   * Sets the value of setDelaySubmitClientFeatureEvents.
+   * If set to true, feature events will be delayed until submitDelayedClientFeatureEvents is called.
+   * If set to false, delayed feature events will be submitted.
+   *
+   * @param {object} options - {shouldDelay: A boolean value indicating whether to delay the submission of feature events,
+   * overrides: An object containing overrides for the feature events}
+   */
+  public setDelaySubmitClientFeatureEvents({
+    shouldDelay,
+    overrides,
+  }: {
+    shouldDelay: boolean;
+    overrides?: Partial<DelayedClientFeatureEvent['options']>;
+  }) {
+    this.delaySubmitClientFeatureEvents = shouldDelay;
+    this.delayedClientFeatureEventsOverrides = overrides || {};
+
+    if (this.isReady && !shouldDelay) {
+      return this.callDiagnosticMetrics.submitDelayedClientFeatureEvents(overrides);
     }
 
     return Promise.resolve();

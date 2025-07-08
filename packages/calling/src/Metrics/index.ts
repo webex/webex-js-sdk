@@ -2,7 +2,7 @@ import {CallError, CallingClientError} from '../Errors';
 import {METRIC_FILE, VERSION} from '../CallingClient/constants';
 import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../common/types';
 import {WebexSDK} from '../SDKConnector/types';
-import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT} from './types';
+import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT, SERVER_TYPE} from './types';
 import {LineError} from '../Errors/catalog/LineError';
 import log from '../Logger';
 
@@ -28,6 +28,65 @@ class MetricManager implements IMetricManager {
     this.serviceIndicator = indicator;
   }
 
+  public submitUploadLogsMetric(
+    name: METRIC_EVENT,
+    action: string,
+    type: METRIC_TYPE,
+    trackingId?: string,
+    feedbackId?: string,
+    correlationId?: string,
+    stack?: string,
+    callId?: string
+  ) {
+    let data;
+
+    switch (name) {
+      case METRIC_EVENT.UPLOAD_LOGS_SUCCESS: {
+        data = {
+          tags: {
+            action,
+            device_id: this.deviceInfo?.device?.deviceId,
+            service_indicator: this.serviceIndicator,
+          },
+          fields: {
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            mobius_url: this.deviceInfo?.device?.uri,
+            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            correlation_id: correlationId,
+            tracking_id: trackingId,
+            feedback_id: feedbackId,
+            call_id: callId,
+          },
+          type,
+        };
+        break;
+      }
+      case METRIC_EVENT.UPLOAD_LOGS_FAILED: {
+        data = {
+          tags: {
+            action,
+            device_id: this.deviceInfo?.device?.deviceId,
+            service_indicator: this.serviceIndicator,
+          },
+          fields: {
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            mobius_url: this.deviceInfo?.device?.uri,
+            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            correlation_id: correlationId,
+            tracking_id: trackingId,
+            feedback_id: feedbackId,
+            error: stack,
+            call_id: callId,
+          },
+          type,
+        };
+      }
+    }
+    if (data) {
+      this.webex.internal.metrics.submitClientMetrics(name, data);
+    }
+  }
+
   /**
    * @param deviceInfo - DeviceInfo object.
    */
@@ -45,7 +104,11 @@ class MetricManager implements IMetricManager {
     name: METRIC_EVENT,
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
-    clientError: LineError | CallingClientError | undefined
+    caller: string,
+    serverType: SERVER_TYPE,
+    trackingId: string,
+    keepaliveCount?: number,
+    clientError?: LineError | CallingClientError
   ) {
     let data;
 
@@ -61,6 +124,9 @@ class MetricManager implements IMetricManager {
             device_url: this.deviceInfo?.device?.clientDeviceUri,
             mobius_url: this.deviceInfo?.device?.uri,
             calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            reg_source: caller,
+            server_type: serverType,
+            trackingId,
           },
           type,
         };
@@ -79,6 +145,10 @@ class MetricManager implements IMetricManager {
               device_url: this.deviceInfo?.device?.clientDeviceUri,
               mobius_url: this.deviceInfo?.device?.uri,
               calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+              reg_source: caller,
+              server_type: serverType,
+              trackingId,
+              keepalive_count: keepaliveCount,
               error: clientError.getError().message,
               error_type: clientError.getError().type,
             },
@@ -368,8 +438,11 @@ class MetricManager implements IMetricManager {
  * @param webex - Webex object to communicate with metrics microservice.
  * @param indicator - Service Indicator.
  */
-export const getMetricManager = (webex: WebexSDK, indicator?: ServiceIndicator): IMetricManager => {
-  if (!metricManager) {
+export const getMetricManager = (
+  webex?: WebexSDK,
+  indicator?: ServiceIndicator
+): IMetricManager => {
+  if (!metricManager && webex) {
     metricManager = new MetricManager(webex, indicator);
   }
 

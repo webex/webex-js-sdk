@@ -1,12 +1,20 @@
 import AqmReqs from '../../../../../src/services/core/aqm-reqs';
+<<<<<<< HEAD
 import HttpRequest from '../../../../../src/services/core/HttpRequest';
+=======
+import WebexRequest from '../../../../../src/services/core/WebexRequest';
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
 import LoggerProxy from '../../../../../src/logger-proxy';
 import {IHttpResponse} from '../../../../../src/types';
 import {AQM_REQS_FILE} from '../../../../../src/constants';
 import {WebSocketManager} from '../../../../../src/services/core/websocket/WebSocketManager';
 
+<<<<<<< HEAD
 jest.mock('../../../../../src/services/core/HttpRequest');
+=======
+jest.mock('../../../../../src/services/core/WebexRequest');
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 jest.mock('../../../../../src/logger-proxy', () => ({
   __esModule: true,
   default: {
@@ -34,6 +42,7 @@ global.window = {
   setTimeout: global.setTimeout,
 } as any;
 
+<<<<<<< HEAD
 const mockHttpRequest = HttpRequest as jest.MockedClass<typeof HttpRequest>;
 const mockWebSocketManager = WebSocketManager as jest.MockedClass<typeof WebSocketManager>;
 
@@ -41,6 +50,15 @@ describe('AqmReqs', () => {
   let httpRequestInstance: jest.Mocked<HttpRequest>;
   let webSocketManagerInstance: jest.Mocked<WebSocketManager>;
   const mockHttpRequestResolvedValue: IHttpResponse = {
+=======
+const mockWebexRequest = WebexRequest as jest.MockedClass<typeof WebexRequest>;
+const mockWebSocketManager = WebSocketManager as jest.MockedClass<typeof WebSocketManager>;
+
+describe('AqmReqs', () => {
+  let webexRequestInstance: jest.Mocked<WebexRequest>;
+  let webSocketManagerInstance: jest.Mocked<WebSocketManager>;
+  const mockWebexRequestResolvedValue: IHttpResponse = {
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     status: 202,
     data: { webSocketUrl: 'fake-url' },
     statusText: 'OK',
@@ -51,8 +69,13 @@ describe('AqmReqs', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+<<<<<<< HEAD
     httpRequestInstance = new HttpRequest() as jest.Mocked<HttpRequest>;
     mockHttpRequest.getInstance = jest.fn().mockReturnValue(httpRequestInstance);
+=======
+    webexRequestInstance = new WebexRequest() as jest.Mocked<WebexRequest>;
+    mockWebexRequest.getInstance = jest.fn().mockReturnValue(webexRequestInstance);
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
     const mockWorker = {
       postMessage: jest.fn(),
@@ -87,7 +110,11 @@ describe('AqmReqs', () => {
   });
 
   it('AqmReqs should be defined', async () => {
+<<<<<<< HEAD
     httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+=======
+    webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
     const req = aqm.req(() => ({
       url: '/url',
@@ -117,7 +144,11 @@ describe('AqmReqs', () => {
 
   describe('Aqm notifs', () => {
     it('AqmReqs notifcancel', async () => {
+<<<<<<< HEAD
       httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+=======
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     
       const req = aqm.req(() => ({
         url: '/url',
@@ -175,7 +206,11 @@ describe('AqmReqs', () => {
     });
 
     it('AqmReqs notif success', async () => {
+<<<<<<< HEAD
       httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+=======
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     
       const req = aqm.req(() => ({
         url: '/url',
@@ -233,7 +268,11 @@ describe('AqmReqs', () => {
     });
 
     it('AqmReqs notif success with async error', async () => {
+<<<<<<< HEAD
       httpRequestInstance.request.mockRejectedValueOnce(new Error('Async error'));
+=======
+      webexRequestInstance.request.mockRejectedValueOnce(new Error('Async error'));
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       const req = aqm.req(() => ({
         url: '/url',
@@ -275,7 +314,11 @@ describe('AqmReqs', () => {
     });
 
     it('AqmReqs notif fail', async () => {
+<<<<<<< HEAD
       httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+=======
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     
       const req = aqm.req(() => ({
         url: '/url',
@@ -335,7 +378,11 @@ describe('AqmReqs', () => {
 
   describe('Event tests', () => {
     it('should handle onMessage events', async () => {
+<<<<<<< HEAD
       httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+=======
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     
       const req = aqm.req(() => ({
         url: '/url',
@@ -451,7 +498,11 @@ describe('AqmReqs', () => {
     });
 
     it('should handle reqEmpty', async () => {
+<<<<<<< HEAD
       httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+=======
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
       const reqEmpty = aqm.reqEmpty(() => ({
         url: '/url',
@@ -480,7 +531,11 @@ describe('AqmReqs', () => {
     });
 
     it('should handle failed request with err function', async () => {
+<<<<<<< HEAD
       httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+=======
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     
       const conf = {
         host: 'fake-host',
@@ -520,7 +575,11 @@ describe('AqmReqs', () => {
     });
 
     it('should handle request with notifCancel', async () => {
+<<<<<<< HEAD
       httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+=======
+      webexRequestInstance.request.mockResolvedValueOnce(mockWebexRequestResolvedValue);
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     
       const conf = {
         host: 'fake-host',

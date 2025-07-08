@@ -36,11 +36,27 @@ This is for compliance purposes with FedRAMP program.
 
 < ENUMERATE TESTS PERFORMED, WHETHER MANUAL OR AUTOMATED >
 
+## The GAI Coding Policy And Copyright Annotation Best Practices ##
+ 
+<!-- **MANDATORY** If Yes, Mention the GAI Coding Policy Copyright Annotation Best Practices followed separated by a comma below the yes checkbox -->
+ 
+- [ ] GAI was not used (or, no additional notation is required)
+- [ ] Code was generated entirely by GAI
+- [ ] GAI was used to create a draft that was subsequently customized or modified
+- [ ] Coder created a draft manually that was non-substantively modified by GAI (e.g., refactoring was performed by GAI on manually written code)
+- [ ] Tool used for AI assistance (GitHub Copilot / Other - specify)
+  - [ ] Github Copilot
+  - [ ] Other - Please Specify
+- [ ] This PR is related to
+  - [ ] Feature
+  - [ ] Defect fix
+  - [ ] Tech Debt
+  - [ ] Automation
+
 ### I certified that
 
 - [ ] I have read and followed [contributing guidelines](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md#submitting-a-pull-request)
 - [ ] I discussed changes with code owners prior to submitting this pull request
-
 - [ ] I have not skipped any automated checks
 - [ ] All existing and new tests passed
 - [ ] I have updated the documentation accordingly

@@ -7,7 +7,7 @@ import Mercury from '@webex/internal-plugin-mercury';
 import LLMChannel from '@webex/internal-plugin-llm';
 
 import VoiceaService from '../../../src/index';
-import {EVENT_TRIGGERS} from '../../../src/constants';
+import {EVENT_TRIGGERS, TOGGLE_MANUAL_CAPTION_STATUS} from '../../../src/constants';
 
 describe('plugin-voicea', () => {
   const locusUrl = 'locusUrl';
@@ -91,6 +91,103 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe('#sendManualClosedCaption', () => {
+      beforeEach(async () => {
+        const mockWebSocket = new MockWebSocket();
+        voiceaService.webex.internal.llm.socket = mockWebSocket;
+        voiceaService.seqNum = 1;
+      });
+
+      it('sends interim manual closed caption when connected', () => {
+        const text = 'Test interim caption';
+        const timeStamp = 1234567890;
+        const csis = [123456];
+        const isFinal = false;
+
+        voiceaService.sendManualClosedCaption(text, timeStamp, csis, isFinal);
+
+        assert.calledOnceWithExactly(
+          voiceaService.webex.internal.llm.socket.send,
+          {
+            id: '1',
+            type: 'publishRequest',
+            recipients: {route: undefined},
+            headers: {},
+            data: {
+              eventType: 'relay.event',
+              relayType: 'client.manual_transcription',
+              transcriptPayload: {
+                type: 'manual_caption_interim_result',
+                id: sinon.match.string,
+                transcripts: [
+                  {
+                    text: 'Test interim caption',
+                    start_millis: 1234567890,
+                    end_millis: 1234567890,
+                    csis: [123456],
+                  },
+                ],
+              },
+            },
+            trackingId: sinon.match.string,
+          }
+        );
+        // seqNum should increment
+        assert.equal(voiceaService.seqNum, 2);
+      });
+
+      it('sends final manual closed caption when connected', () => {
+        const text = 'Test final caption';
+        const timeStamp = 9876543210;
+        const csis = [654321];
+        const isFinal = true;
+
+        voiceaService.sendManualClosedCaption(text, timeStamp, csis, isFinal);
+
+        assert.calledOnceWithExactly(
+          voiceaService.webex.internal.llm.socket.send,
+          {
+            id: '1',
+            type: 'publishRequest',
+            recipients: {route: undefined},
+            headers: {},
+            data: {
+              eventType: 'relay.event',
+              relayType: 'client.manual_transcription',
+              transcriptPayload: {
+                type: 'manual_caption_final_result',
+                id: sinon.match.string,
+                transcripts: [
+                  {
+                    text: 'Test final caption',
+                    start_millis: 9876543210,
+                    end_millis: 9876543210,
+                    csis: [654321],
+                  },
+                ],
+              },
+            },
+            trackingId: sinon.match.string,
+          }
+        );
+        // seqNum should increment
+        assert.equal(voiceaService.seqNum, 2);
+      });
+
+      it('does not send if not connected', () => {
+        voiceaService.webex.internal.llm.isConnected.returns(false);
+
+        const text = 'Should not send';
+        const timeStamp = 111;
+        const csis = [1];
+        const isFinal = true;
+
+        voiceaService.sendManualClosedCaption(text, timeStamp, csis, isFinal);
+
+        assert.notCalled(voiceaService.webex.internal.llm.socket.send);
+      });
+    });
+
     describe('#deregisterEvents', () => {
       beforeEach(async () => {
         const mockWebSocket = new MockWebSocket();
@@ -141,6 +238,7 @@ describe('plugin-voicea', () => {
           captionLanguages: ['af', 'am'],
           spokenLanguages: ['en'],
           maxLanguages: 5,
+          currentSpokenLanguage: 'en',
         });
       });
 
@@ -149,11 +247,13 @@ describe('plugin-voicea', () => {
 
         voiceaService.on(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, spy);
         voiceaService.listenToEvents();
+        voiceaService.currentSpokenLanguage = 'fr';
         await voiceaService.processAnnouncementMessage({});
         assert.calledOnceWithExactly(spy, {
           captionLanguages: [],
           spokenLanguages: [],
           maxLanguages: 0,
+          currentSpokenLanguage: 'fr',
         });
       });
     });
@@ -331,34 +431,34 @@ describe('plugin-voicea', () => {
     });
 
     describe('#turnOnCaptions', () => {
-      let requestTurnOnCaptions, isCaptionProcessing;
+      let requestTurnOnCaptions;
       beforeEach(() => {
         requestTurnOnCaptions = sinon.stub(voiceaService, 'requestTurnOnCaptions');
-        isCaptionProcessing = sinon.stub(voiceaService, 'isCaptionProcessing').returns(false);
+        voiceaService.captionStatus = 'idle';
         voiceaService.webex.internal.llm.isConnected.returns(true);
       });
 
       afterEach(() => {
         requestTurnOnCaptions.restore();
-        isCaptionProcessing.restore();
+        voiceaService.captionStatus = 'idle';
         voiceaService.webex.internal.llm.isConnected.returns(true);
       });
 
       it('call request turn on captions', () => {
-        isCaptionProcessing.returns(false);
+        voiceaService.captionStatus = 'idle';
         voiceaService.turnOnCaptions();
         assert.calledOnce(requestTurnOnCaptions);
       });
 
       it("turns on captions before llm connected", () => {
-        isCaptionProcessing.returns(false);
+        voiceaService.captionStatus = 'idle';
         voiceaService.webex.internal.llm.isConnected.returns(true);
         // assert.throws(() => voiceaService.turnOnCaptions(), "can not turn on captions before llm connected");
         assert.notCalled(requestTurnOnCaptions);
       });
 
       it('should not turn on duplicate when processing', () => {
-        isCaptionProcessing.returns(true);
+        voiceaService.captionStatus = 'sending';
         voiceaService.turnOnCaptions();
         assert.notCalled(voiceaService.requestTurnOnCaptions);
       });
@@ -441,20 +541,10 @@ describe('plugin-voicea', () => {
         const mockWebSocket = new MockWebSocket();
 
         voiceaService.webex.internal.llm.socket = mockWebSocket;
+        voiceaService.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
       });
 
       it('turns on manual caption', async () => {
-        // Turn on captions
-        await voiceaService.turnOnCaptions();
-
-        // eslint-disable-next-line no-underscore-dangle
-        voiceaService.webex.internal.llm._emit('event:relay.event', {
-          headers: {from: 'ws'},
-          data: {relayType: 'voicea.annc', voiceaPayload: {}},
-        });
-
-        voiceaService.listenToEvents();
-
         await voiceaService.toggleManualCaption(true);
         sinon.assert.calledWith(
           voiceaService.request,
@@ -469,10 +559,6 @@ describe('plugin-voicea', () => {
 
 
       it('turns off manual caption', async () => {
-        await voiceaService.toggleManualCaption(true);
-
-        voiceaService.listenToEvents();
-
         await voiceaService.toggleManualCaption(false);
         sinon.assert.calledWith(
           voiceaService.request,
@@ -482,6 +568,14 @@ describe('plugin-voicea', () => {
             body: {manualCaption: {enable: false}},
           })
         );
+
+      });
+
+      it('ignore toggle manual caption', async () => {
+        voiceaService.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.SENDING;
+        await voiceaService.toggleManualCaption(true);
+
+        sinon.assert.notCalled(voiceaService.request);
 
       });
     });
@@ -927,6 +1021,18 @@ describe('plugin-voicea', () => {
       it('works correctly', () => {
         voiceaService.announceStatus = "joined"
         assert.equal(voiceaService.getAnnounceStatus(), "joined");
+      });
+    });
+
+    describe('#onSpokenLanguageUpdate', () => {
+      it('should trigger SPOKEN_LANGUAGE_UPDATE event with correct languageCode', () => {
+        const triggerSpy = sinon.spy();
+        voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
+
+        const languageCode = 'fr';
+        voiceaService.onSpokenLanguageUpdate(languageCode, '123');
+        assert.equal(voiceaService.currentSpokenLanguage, languageCode);
+        assert.calledOnceWithExactly(triggerSpy, {languageCode, meetingId: '123'});
       });
     });
   });

@@ -13,42 +13,109 @@ import {
 import {LoginOption, WebexSDK} from '../types';
 import {TIMEOUT_DURATION, WEB_CALLING_SERVICE_FILE} from '../constants';
 import LoggerProxy from '../logger-proxy';
-import {DEFAULT_RTMS_DOMAIN, POST_AUTH, WCC_CALLING_RTMS_DOMAIN} from './constants';
+import {
+  DEFAULT_RTMS_DOMAIN,
+  POST_AUTH,
+  WCC_CALLING_RTMS_DOMAIN,
+  DEREGISTER_WEBCALLING_LINE_MSG,
+  METHODS,
+} from './constants';
 
+/**
+ * WebCallingService provides WebRTC calling functionality for Contact Center agents.
+ * It handles registration, call management, and media operations for voice interactions.
+ * @internal
+ */
 export default class WebCallingService extends EventEmitter {
+  /**
+   * The CallingClient instance that manages WebRTC calling capabilities
+   * @private
+   */
   private callingClient: ICallingClient;
+
+  /**
+   * The Line instance that handles registration and incoming calls
+   * @private
+   */
   private line: ILine;
+
+  /**
+   * The current active call instance
+   * @private
+   */
   private call: ICall | undefined;
+
+  /**
+   * Reference to the WebexSDK instance
+   * @private
+   */
   private webex: WebexSDK;
+
+  /**
+   * The login option selected for this session
+   * @private
+   */
   public loginOption: LoginOption;
+
+  /**
+   * Map that associates call IDs with task IDs for correlation
+   * @private
+   */
   private callTaskMap: Map<string, string>;
 
+  /**
+   * Creates an instance of WebCallingService.
+   * @param {WebexSDK} webex - The Webex SDK instance
+   */
   constructor(webex: WebexSDK) {
     super();
     this.webex = webex;
     this.callTaskMap = new Map();
   }
 
-  public setLoginOption(loginOption: LoginOption) {
+  /**
+   * Sets the login option for the current session
+   * @param {LoginOption} loginOption - The login option to use
+   * @private
+   */
+  public setLoginOption(loginOption: LoginOption): void {
     this.loginOption = loginOption;
   }
 
-  private handleMediaEvent = (track: MediaStreamTrack) => {
+  /**
+   * Handles remote media track events from the call
+   * @param {MediaStreamTrack} track - The media track received
+   * @private
+   */
+  private handleMediaEvent = (track: MediaStreamTrack): void => {
     this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, track);
   };
 
-  private handleDisconnectEvent = () => {
+  /**
+   * Handles disconnect events from the call
+   * @private
+   */
+  private handleDisconnectEvent = (): void => {
     this.call.end();
     this.cleanUpCall();
   };
 
-  private registerCallListeners() {
+  /**
+   * Registers event listeners for the current call
+   * @private
+   */
+  private registerCallListeners(): void {
     // TODO: Add remaining call listeners here
     this.call.on(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleMediaEvent);
     this.call.on(CALL_EVENT_KEYS.DISCONNECT, this.handleDisconnectEvent);
   }
 
-  public cleanUpCall() {
+  /**
+   * Cleans up resources associated with the current call
+   * Removes event listeners and clears the call-task mapping
+   * @private
+   */
+  public cleanUpCall(): void {
     if (this.call) {
       this.call.off(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleMediaEvent);
       this.call.off(CALL_EVENT_KEYS.DISCONNECT, this.handleDisconnectEvent);
@@ -62,7 +129,13 @@ export default class WebCallingService extends EventEmitter {
     }
   }
 
-  private async getRTMSDomain() {
+  /**
+   * Retrieves the RTMS domain to use for WebRTC connections
+   * First tries to get it from the service catalog, then falls back to default
+   * @private
+   * @returns {Promise<string>} The RTMS domain to use
+   */
+  private async getRTMSDomain(): Promise<string> {
     await this.webex.internal.services.waitForCatalog(POST_AUTH);
 
     const rtmsURL = this.webex.internal.services.get(WCC_CALLING_RTMS_DOMAIN);
@@ -76,6 +149,7 @@ export default class WebCallingService extends EventEmitter {
         `Invalid URL from u2c catalogue: ${rtmsURL} so falling back to default domain`,
         {
           module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.GET_RTMS_DOMAIN,
         }
       );
 
@@ -83,6 +157,14 @@ export default class WebCallingService extends EventEmitter {
     }
   }
 
+  /**
+   * Registers the WebCalling line for receiving calls
+   * Sets up event listeners for line events and initializes the calling client
+   *
+   * @private
+   * @returns {Promise<void>} A promise that resolves when registration is complete
+   * @throws {Error} When registration times out
+   */
   public async registerWebCallingLine(): Promise<void> {
     const rtmsDomain = await this.getRTMSDomain(); // get the RTMS domain from the u2c catalogue
 
@@ -102,7 +184,7 @@ export default class WebCallingService extends EventEmitter {
     this.line.on(LINE_EVENTS.UNREGISTERED, () => {
       LoggerProxy.log(`WxCC-SDK: Desktop unregistered successfully`, {
         module: WEB_CALLING_SERVICE_FILE,
-        method: this.registerWebCallingLine.name,
+        method: METHODS.REGISTER_WEB_CALLING_LINE,
       });
     });
 
@@ -121,7 +203,7 @@ export default class WebCallingService extends EventEmitter {
         clearTimeout(timeout);
         LoggerProxy.log(
           `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`,
-          {module: WEB_CALLING_SERVICE_FILE, method: this.registerWebCallingLine.name}
+          {module: WEB_CALLING_SERVICE_FILE, method: METHODS.REGISTER_WEB_CALLING_LINE}
         );
         resolve();
       });
@@ -129,36 +211,83 @@ export default class WebCallingService extends EventEmitter {
     });
   }
 
-  public async deregisterWebCallingLine() {
+  /**
+   * Deregisters the WebCalling line
+   * Cleans up any active calls and deregisters from the calling service
+   *
+   * @private
+   * @returns {Promise<void>} A promise that resolves when deregistration is complete
+   */
+  public async deregisterWebCallingLine(): Promise<void> {
+    LoggerProxy.log(DEREGISTER_WEBCALLING_LINE_MSG, {
+      module: WEB_CALLING_SERVICE_FILE,
+      method: METHODS.DEREGISTER_WEB_CALLING_LINE,
+    });
+    this.cleanUpCall();
     this.line?.deregister();
   }
 
-  public answerCall(localAudioStream: LocalMicrophoneStream, taskId: string) {
+  /**
+   * Answers an incoming call with the provided audio stream
+   *
+   * @private
+   * @param {LocalMicrophoneStream} localAudioStream - The local microphone stream to use
+   * @param {string} taskId - The task ID associated with this call
+   * @throws {Error} If answering the call fails
+   */
+  public answerCall(localAudioStream: LocalMicrophoneStream, taskId: string): void {
     if (this.call) {
       try {
-        this.webex.logger.info(`Call answered: ${taskId}`);
+        LoggerProxy.info(`Call answered: ${taskId}`, {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.ANSWER_CALL,
+        });
         this.call.answer(localAudioStream);
         this.registerCallListeners();
       } catch (error) {
-        this.webex.logger.error(`Failed to answer call for ${taskId}. Error: ${error}`);
+        LoggerProxy.error(`Failed to answer call for ${taskId}. Error: ${error}`, {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.ANSWER_CALL,
+        });
         // Optionally, throw the error to allow the invoker to handle it
         throw error;
       }
     } else {
-      this.webex.logger.log(`Cannot answer a non WebRtc Call: ${taskId}`);
+      LoggerProxy.log(`Cannot answer a non WebRtc Call: ${taskId}`, {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: METHODS.ANSWER_CALL,
+      });
     }
   }
 
-  public muteUnmuteCall(localAudioStream: LocalMicrophoneStream) {
+  /**
+   * Toggles the mute state of the current call
+   *
+   * @private
+   * @param {LocalMicrophoneStream} localAudioStream - The local microphone stream to control
+   */
+  public muteUnmuteCall(localAudioStream: LocalMicrophoneStream): void {
     if (this.call) {
-      this.webex.logger.info('Call mute or unmute requested!');
+      LoggerProxy.info('Call mute or unmute requested!', {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: METHODS.MUTE_UNMUTE_CALL,
+      });
       this.call.mute(localAudioStream);
     } else {
-      this.webex.logger.log(`Cannot mute a non WebRtc Call`);
+      LoggerProxy.log(`Cannot mute a non WebRtc Call`, {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: METHODS.MUTE_UNMUTE_CALL,
+      });
     }
   }
 
-  public isCallMuted() {
+  /**
+   * Checks if the current call is muted
+   *
+   * @private
+   * @returns {boolean} True if the call is muted, false otherwise or if no call exists
+   */
+  public isCallMuted(): boolean {
     if (this.call) {
       return this.call.isMuted();
     }
@@ -166,26 +295,56 @@ export default class WebCallingService extends EventEmitter {
     return false;
   }
 
-  public declineCall(taskId: string) {
+  /**
+   * Declines or ends the current call
+   *
+   * @private
+   * @param {string} taskId - The task ID associated with this call
+   * @throws {Error} If ending the call fails
+   */
+  public declineCall(taskId: string): void {
     if (this.call) {
       try {
-        this.webex.logger.info(`Call end requested: ${taskId}`);
+        LoggerProxy.info(`Call end requested: ${taskId}`, {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.DECLINE_CALL,
+        });
         this.call.end();
         this.cleanUpCall();
       } catch (error) {
-        this.webex.logger.error(`Failed to end call: ${taskId}. Error: ${error}`);
+        LoggerProxy.error(`Failed to end call: ${taskId}. Error: ${error}`, {
+          module: WEB_CALLING_SERVICE_FILE,
+          method: METHODS.DECLINE_CALL,
+        });
         // Optionally, throw the error to allow the invoker to handle it
         throw error;
       }
     } else {
-      this.webex.logger.log(`Cannot end a non WebRtc Call: ${taskId}`);
+      LoggerProxy.log(`Cannot end a non WebRtc Call: ${taskId}`, {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: METHODS.DECLINE_CALL,
+      });
     }
   }
 
-  public mapCallToTask(callId: string, taskId: string) {
+  /**
+   * Maps a call ID to a task ID for correlation
+   *
+   * @private
+   * @param {string} callId - The unique call identifier
+   * @param {string} taskId - The associated task identifier
+   */
+  public mapCallToTask(callId: string, taskId: string): void {
     this.callTaskMap.set(callId, taskId);
   }
 
+  /**
+   * Gets the task ID associated with a call ID
+   *
+   * @private
+   * @param {string} callId - The call ID to look up
+   * @returns {string|undefined} The associated task ID or undefined if not found
+   */
   public getTaskIdForCall(callId: string): string | undefined {
     return this.callTaskMap.get(callId);
   }

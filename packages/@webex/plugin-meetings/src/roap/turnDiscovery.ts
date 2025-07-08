@@ -4,11 +4,11 @@ import {Defer} from '@webex/common';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import LoggerProxy from '../common/logs/logger-proxy';
-import {ROAP, Enum} from '../constants';
+import {ROAP} from '../constants';
 
 import RoapRequest from './request';
 import Meeting from '../meeting';
-import MeetingUtil from '../meeting/util';
+import {TurnDiscoverySkipReason, TurnServerInfo, TurnDiscoveryResult} from './types';
 
 const TURN_DISCOVERY_TIMEOUT = 10; // in seconds
 
@@ -17,28 +17,6 @@ const TURN_DISCOVERY_TIMEOUT = 10; // in seconds
 // so we can do it with seq=0 or not do it at all and then we create the RoapMediaConnection
 // and do the SDP offer with seq=1
 const TURN_DISCOVERY_SEQ = 0;
-
-const TurnDiscoverySkipReason = {
-  missingHttpResponse: 'missing http response', // when we asked for the TURN discovery response to be in the http response, but it wasn't there
-  reachability: 'reachability', // when udp reachability to public clusters is ok, so we don't need TURN (this doens't apply when joinWithMedia() is used)
-  alreadyInProgress: 'already in progress', // when we try to start TURN discovery while it's already in progress
-} as const;
-
-export type TurnDiscoverySkipReason =
-  | Enum<typeof TurnDiscoverySkipReason> // this is a kind of FYI, because in practice typescript will infer the type of TurnDiscoverySkipReason as a string
-  | string // used in case of errors, contains the error message
-  | undefined; // used when TURN discovery is not skipped
-
-export type TurnServerInfo = {
-  url: string;
-  username: string;
-  password: string;
-};
-
-export type TurnDiscoveryResult = {
-  turnServerInfo?: TurnServerInfo;
-  turnDiscoverySkippedReason: TurnDiscoverySkipReason;
-};
 
 /**
  * Handles the process of finding out TURN server information from Linus.
@@ -53,6 +31,17 @@ export default class TurnDiscovery {
 
   private responseTimer?: ReturnType<typeof setTimeout>;
 
+  /** Resets the turnInfo structure to the defaults
+   * @returns {void}
+   */
+  private resetTurnInfo() {
+    this.turnInfo = {
+      urls: [],
+      username: '',
+      password: '',
+    };
+  }
+
   /**
    * Constructor
    *
@@ -60,11 +49,7 @@ export default class TurnDiscovery {
    */
   constructor(roapRequest: RoapRequest) {
     this.roapRequest = roapRequest;
-    this.turnInfo = {
-      url: '',
-      username: '',
-      password: '',
-    };
+    this.resetTurnInfo();
   }
 
   /**
@@ -134,21 +119,29 @@ export default class TurnDiscovery {
     }
 
     const expectedHeaders = [
-      {headerName: 'x-cisco-turn-url', field: 'url'},
-      {headerName: 'x-cisco-turn-username', field: 'username'},
-      {headerName: 'x-cisco-turn-password', field: 'password'},
+      {headerName: 'x-cisco-turn-url', field: 'urls', multipleAllowed: true},
+      {headerName: 'x-cisco-turn-username', field: 'username', multipleAllowed: false},
+      {headerName: 'x-cisco-turn-password', field: 'password', multipleAllowed: false},
     ];
 
-    let foundHeaders = 0;
+    const foundHeaders = {};
+
+    this.resetTurnInfo();
 
     headers?.forEach((receivedHeader) => {
       // check if it matches any of our expected headers
       expectedHeaders.forEach((expectedHeader) => {
         if (receivedHeader.startsWith(`${expectedHeader.headerName}=`)) {
-          this.turnInfo[expectedHeader.field] = receivedHeader.substring(
-            expectedHeader.headerName.length + 1
-          );
-          foundHeaders += 1;
+          foundHeaders[expectedHeader.headerName] = true;
+
+          const headerValue = receivedHeader.substring(expectedHeader.headerName.length + 1);
+
+          if (expectedHeader.multipleAllowed) {
+            this.turnInfo[expectedHeader.field].push(headerValue);
+          } else {
+            // just store the last one we find
+            this.turnInfo[expectedHeader.field] = headerValue;
+          }
         }
       });
     });
@@ -156,7 +149,7 @@ export default class TurnDiscovery {
     clearTimeout(this.responseTimer);
     this.responseTimer = undefined;
 
-    if (foundHeaders !== expectedHeaders.length) {
+    if (expectedHeaders.some((header) => !foundHeaders[header.headerName])) {
       LoggerProxy.logger.warn(
         `Roap:turnDiscovery#handleTurnDiscoveryResponse --> missing some headers, received ${from}: ${JSON.stringify(
           headers
@@ -169,8 +162,10 @@ export default class TurnDiscovery {
       );
     } else {
       LoggerProxy.logger.info(
-        `Roap:turnDiscovery#handleTurnDiscoveryResponse --> received a valid response ${from}, url=${this.turnInfo.url}`
+        `Roap:turnDiscovery#handleTurnDiscoveryResponse --> received a valid response ${from}, urls=${this.turnInfo.urls}`
       );
+
+      this.turnInfo.urls = this.turnInfo.urls.filter((url) => url !== ''); // remove empty urls, we might get them if we land on video-mesh nodes (VMN)
 
       this.defer.resolve({isOkRequired: !headers?.includes('noOkInTransaction')});
     }

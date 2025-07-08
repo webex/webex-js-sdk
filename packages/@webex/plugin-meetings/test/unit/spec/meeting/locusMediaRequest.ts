@@ -168,6 +168,7 @@ describe('LocusMediaRequest.send()', () => {
     webexRequestStub.resetHistory();
     mockWebex.internal.newMetrics.submitClientEvent.resetHistory();
   };
+<<<<<<< HEAD
 
   const checkMetrics = (expectedMetrics: boolean = true) => {
     if (expectedMetrics) {
@@ -188,6 +189,8 @@ describe('LocusMediaRequest.send()', () => {
       assert.notCalled(mockWebex.internal.newMetrics.submitClientEvent);
     }
   };
+=======
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
   it('sends a roap message', async () => {
     const result = await sendRoapMessage('OFFER');
@@ -201,8 +204,6 @@ describe('LocusMediaRequest.send()', () => {
       upload: sinon.match.instanceOf(EventEmitter),
       download: sinon.match.instanceOf(EventEmitter),
     });
-
-    checkMetrics();
   });
 
   it('sends correct metric event when roap message fails', async () => {
@@ -232,8 +233,6 @@ describe('LocusMediaRequest.send()', () => {
       upload: sinon.match.instanceOf(EventEmitter),
       download: sinon.match.instanceOf(EventEmitter),
     });
-
-    checkMetrics(false);
   });
 
   it('sends a local mute request with sequence', async () => {
@@ -282,8 +281,6 @@ describe('LocusMediaRequest.send()', () => {
       upload: sinon.match.instanceOf(EventEmitter),
       download: sinon.match.instanceOf(EventEmitter),
     });
-
-    checkMetrics(false);
   });
 
   it('sends a local mute request with the last audio/video mute values', async () => {
@@ -303,8 +300,6 @@ describe('LocusMediaRequest.send()', () => {
       upload: sinon.match.instanceOf(EventEmitter),
       download: sinon.match.instanceOf(EventEmitter),
     });
-
-    checkMetrics(false);
   });
 
   it('sends only roap when roap and local mute are requested', async () => {
@@ -324,8 +319,6 @@ describe('LocusMediaRequest.send()', () => {
       upload: sinon.match.instanceOf(EventEmitter),
       download: sinon.match.instanceOf(EventEmitter),
     });
-
-    checkMetrics();
   });
 
   describe('queueing', () => {

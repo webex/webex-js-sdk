@@ -5,7 +5,11 @@ import {SUBSCRIBE_API, WCC_API_GATEWAY} from '../../../../../../src/services/con
 import {WEB_SOCKET_MANAGER_FILE} from '../../../../../../src/constants';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 
+<<<<<<< HEAD
 jest.mock('../../../../../../src/services/core/HttpRequest');
+=======
+jest.mock('../../../../../../src/services/core/WebexRequest');
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 jest.mock('../../../../../../src/logger-proxy', () => ({
   __esModule: true,
   default: {

@@ -15,7 +15,8 @@ describe('TurnDiscovery', () => {
   let mockRoapRequest: RoapRequest;
   let testMeeting: any;
 
-  const FAKE_TURN_URL = 'turns:fakeTurnServer.com:443?transport=tcp';
+  const FAKE_TURN_URL1 = 'turns:fakeTurnServer1.com:443?transport=tcp';
+  const FAKE_TURN_URL2 = 'turns:fakeTurnServer2.com:443?transport=tcp';
   const FAKE_TURN_USERNAME = 'someUsernameFromServer';
   const FAKE_TURN_PASSWORD = 'fakePasswordFromServer';
   const FAKE_LOCUS_ID = '09493311-f5d5-3e58-b491-009cc628162e';
@@ -186,7 +187,8 @@ describe('TurnDiscovery', () => {
             {
               messageType: 'TURN_DISCOVERY_RESPONSE',
               headers: [
-                `x-cisco-turn-url=${FAKE_TURN_URL}`,
+                `x-cisco-turn-url=${FAKE_TURN_URL1}`,
+                `x-cisco-turn-url=${FAKE_TURN_URL2}`,
                 `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
                 `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
               ],
@@ -195,7 +197,7 @@ describe('TurnDiscovery', () => {
           );
 
           await checkResult(result, 'OK', {
-            url: FAKE_TURN_URL,
+            urls: [FAKE_TURN_URL1, FAKE_TURN_URL2],
             username: FAKE_TURN_USERNAME,
             password: FAKE_TURN_PASSWORD,
           });
@@ -220,7 +222,7 @@ describe('TurnDiscovery', () => {
             {
               messageType: 'TURN_DISCOVERY_RESPONSE',
               headers: [
-                `x-cisco-turn-url=${FAKE_TURN_URL}`,
+                `x-cisco-turn-url=${FAKE_TURN_URL1}`,
                 `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
                 `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
                 'noOkInTransaction',
@@ -230,7 +232,7 @@ describe('TurnDiscovery', () => {
           );
 
           await checkResult(result, undefined, {
-            url: FAKE_TURN_URL,
+            urls: [FAKE_TURN_URL1],
             username: FAKE_TURN_USERNAME,
             password: FAKE_TURN_PASSWORD,
           });
@@ -241,7 +243,7 @@ describe('TurnDiscovery', () => {
             mediaConnections: [
               {
                 mediaId: '464ff97f-4bda-466a-ad06-3a22184a2274',
-                remoteSdp: `{"roapMessage": {"messageType":"TURN_DISCOVERY_RESPONSE","seq":"0","headers": ["x-cisco-turn-url=${FAKE_TURN_URL}","x-cisco-turn-username=${FAKE_TURN_USERNAME}","x-cisco-turn-password=${FAKE_TURN_PASSWORD}", "noOkInTransaction"]}}`,
+                remoteSdp: `{"roapMessage": {"messageType":"TURN_DISCOVERY_RESPONSE","seq":"0","headers": ["x-cisco-turn-url=${FAKE_TURN_URL1}","x-cisco-turn-username=${FAKE_TURN_USERNAME}","x-cisco-turn-password=${FAKE_TURN_PASSWORD}", "noOkInTransaction"]}}`,
               },
             ],
           });
@@ -256,7 +258,7 @@ describe('TurnDiscovery', () => {
           mockRoapRequest.sendRoap.resetHistory();
 
           await checkResult(result, undefined, {
-            url: FAKE_TURN_URL,
+            urls: [FAKE_TURN_URL1],
             username: FAKE_TURN_USERNAME,
             password: FAKE_TURN_PASSWORD,
           });
@@ -268,7 +270,7 @@ describe('TurnDiscovery', () => {
             mediaConnections: [
               {
                 mediaId: '464ff97f-4bda-466a-ad06-3a22184a2274',
-                remoteSdp: `{"roapMessage": {"messageType":"TURN_DISCOVERY_RESPONSE","seq":"0","headers": ["x-cisco-turn-url=${FAKE_TURN_URL}","x-cisco-turn-username=${FAKE_TURN_USERNAME}","x-cisco-turn-password=${FAKE_TURN_PASSWORD}"]}}`,
+                remoteSdp: `{"roapMessage": {"messageType":"TURN_DISCOVERY_RESPONSE","seq":"0","headers": ["x-cisco-turn-url=${FAKE_TURN_URL1}","x-cisco-turn-username=${FAKE_TURN_USERNAME}","x-cisco-turn-password=${FAKE_TURN_PASSWORD}"]}}`,
               },
             ],
           };
@@ -290,7 +292,7 @@ describe('TurnDiscovery', () => {
           sendRoapPromiseResolve(sendRoapResult);
 
           await checkResult(result, 'OK', {
-            url: FAKE_TURN_URL,
+            urls: [FAKE_TURN_URL1],
             username: FAKE_TURN_USERNAME,
             password: FAKE_TURN_PASSWORD,
           });
@@ -350,16 +352,17 @@ describe('TurnDiscovery', () => {
             {
               messageType: 'TURN_DISCOVERY_RESPONSE',
               headers: [
-                `x-cisco-turn-url=${FAKE_TURN_URL}`,
+                `x-cisco-turn-url=${FAKE_TURN_URL1}`,
                 `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
                 `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
+                `x-cisco-turn-url=${FAKE_TURN_URL2}`,
               ],
             },
             'from test'
           );
 
           await checkResult(result, 'OK', {
-            url: FAKE_TURN_URL,
+            urls: [FAKE_TURN_URL1, FAKE_TURN_URL2],
             username: FAKE_TURN_USERNAME,
             password: FAKE_TURN_PASSWORD,
           });
@@ -391,6 +394,44 @@ describe('TurnDiscovery', () => {
             'failure: TURN_DISCOVERY_RESPONSE in http response has unexpected messageType: {"seq":"0","messageType":"ERROR"}'
           );
         });
+
+        it('resets turnInfo each time TURN discovery is done', async () => {
+          const runCheck = async (td, turnUrl, expectedResult) => {
+            mockRoapRequest.sendRoap = sinon.fake.resolves({
+              mediaConnections: [
+                {
+                  mediaId: '464ff97f-4bda-466a-ad06-3a22184a2274',
+                  remoteSdp: `{"roapMessage": {"messageType":"TURN_DISCOVERY_RESPONSE","seq":"0","headers": ["x-cisco-turn-url=${turnUrl}","x-cisco-turn-username=${FAKE_TURN_USERNAME}","x-cisco-turn-password=${FAKE_TURN_PASSWORD}", "noOkInTransaction"]}}`,
+                },
+              ],
+            });
+
+            const result = td.doTurnDiscovery(testMeeting, false);
+
+            // check that TURN_DISCOVERY_REQUEST was sent
+            await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
+
+            // @ts-ignore
+            mockRoapRequest.sendRoap.resetHistory();
+
+            await checkResult(result, undefined, expectedResult);
+          };
+
+          const td = new TurnDiscovery(mockRoapRequest);
+
+          await runCheck(td, FAKE_TURN_URL1, {
+            urls: [FAKE_TURN_URL1],
+            username: FAKE_TURN_USERNAME,
+            password: FAKE_TURN_PASSWORD,
+          });
+
+          // call it again with different turn url, the result should not have the previous url
+          await runCheck(td, FAKE_TURN_URL2, {
+            urls: [FAKE_TURN_URL2],
+            username: FAKE_TURN_USERNAME,
+            password: FAKE_TURN_PASSWORD,
+          });
+        });
       });
     });
 
@@ -415,7 +456,7 @@ describe('TurnDiscovery', () => {
         {
           messageType: 'TURN_DISCOVERY_RESPONSE',
           headers: [
-            `x-cisco-turn-url=${FAKE_TURN_URL}`,
+            `x-cisco-turn-url=${FAKE_TURN_URL1}`,
             `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
             `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
           ],
@@ -428,7 +469,7 @@ describe('TurnDiscovery', () => {
 
       const {turnServerInfo, turnDiscoverySkippedReason} = await result;
       assert.deepEqual(turnServerInfo, {
-        url: FAKE_TURN_URL,
+        urls: [FAKE_TURN_URL1],
         username: FAKE_TURN_USERNAME,
         password: FAKE_TURN_PASSWORD,
       });
@@ -455,7 +496,7 @@ describe('TurnDiscovery', () => {
         {
           messageType: 'TURN_DISCOVERY_RESPONSE',
           headers: [
-            `x-cisco-turn-url=${FAKE_TURN_URL}`,
+            `x-cisco-turn-url=${FAKE_TURN_URL1}`,
             `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
             `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
           ],
@@ -471,7 +512,7 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = await result;
 
       assert.deepEqual(turnServerInfo, {
-        url: FAKE_TURN_URL,
+        urls: [FAKE_TURN_URL1],
         username: FAKE_TURN_USERNAME,
         password: FAKE_TURN_PASSWORD,
       });
@@ -493,7 +534,7 @@ describe('TurnDiscovery', () => {
           messageType: 'TURN_DISCOVERY_RESPONSE',
           headers: [
             'x-cisco-turn-unexpected-header=xxx',
-            `x-cisco-turn-url=${FAKE_TURN_URL}`,
+            `x-cisco-turn-url=${FAKE_TURN_URL1}`,
             'x-cisco-some-other-header',
             `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
             `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
@@ -510,7 +551,47 @@ describe('TurnDiscovery', () => {
 
       const {turnServerInfo, turnDiscoverySkippedReason} = await result;
       assert.deepEqual(turnServerInfo, {
-        url: FAKE_TURN_URL,
+        urls: [FAKE_TURN_URL1],
+        username: FAKE_TURN_USERNAME,
+        password: FAKE_TURN_PASSWORD,
+      });
+      assert.isUndefined(turnDiscoverySkippedReason);
+    });
+
+    // this happens when we land on video-mesh nodes (VMN) - we will get a single empty url
+    it('filters out any empty TURN urls', async () => {
+      const td = new TurnDiscovery(mockRoapRequest);
+      const result = td.doTurnDiscovery(testMeeting, false);
+
+      // check that TURN_DISCOVERY_REQUEST was sent
+      await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
+      // @ts-ignore
+      mockRoapRequest.sendRoap.resetHistory();
+
+      // simulate the response with some empty urls, normally there would be just 1, but we put more just for the sake of testing 
+      td.handleTurnDiscoveryResponse(
+        {
+          messageType: 'TURN_DISCOVERY_RESPONSE',
+          headers: [
+            'x-cisco-turn-url=',
+            `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
+            'x-cisco-turn-url=',
+            `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
+            'x-cisco-turn-url=non-empty-url',
+            'x-cisco-turn-url=',
+          ],
+        },
+        'from test'
+      );
+
+      await testUtils.flushPromises();
+
+      // check that we've sent OK and still parsed the headers we care about
+      await checkRoapMessageSent('OK', 0);
+
+      const {turnServerInfo, turnDiscoverySkippedReason} = await result;
+      assert.deepEqual(turnServerInfo, {
+        urls: ['non-empty-url'], // empty urls should be filtered out
         username: FAKE_TURN_USERNAME,
         password: FAKE_TURN_PASSWORD,
       });
@@ -575,7 +656,7 @@ describe('TurnDiscovery', () => {
         {
           messageType: 'TURN_DISCOVERY_RESPONSE',
           headers: [
-            `x-cisco-turn-url=${FAKE_TURN_URL}`,
+            `x-cisco-turn-url=${FAKE_TURN_URL1}`,
             `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
           ],
         },
@@ -587,7 +668,7 @@ describe('TurnDiscovery', () => {
       assert.isUndefined(turnServerInfo);
       assert.equal(
         turnDiscoverySkippedReason,
-        `failure: TURN_DISCOVERY_RESPONSE from test missing some headers: ["x-cisco-turn-url=${FAKE_TURN_URL}","x-cisco-turn-username=${FAKE_TURN_USERNAME}"]`
+        `failure: TURN_DISCOVERY_RESPONSE from test missing some headers: ["x-cisco-turn-url=${FAKE_TURN_URL1}","x-cisco-turn-username=${FAKE_TURN_USERNAME}"]`
       );
       checkFailureMetricsSent();
     });
@@ -655,7 +736,7 @@ describe('TurnDiscovery', () => {
         {
           messageType: 'TURN_DISCOVERY_RESPONSE',
           headers: [
-            `x-cisco-turn-url=${FAKE_TURN_URL}`,
+            `x-cisco-turn-url=${FAKE_TURN_URL1}`,
             `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
             `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
           ],
@@ -707,7 +788,7 @@ describe('TurnDiscovery', () => {
         {
           messageType: 'TURN_DISCOVERY_RESPONSE',
           headers: [
-            `x-cisco-turn-url=${FAKE_TURN_URL}`,
+            `x-cisco-turn-url=${FAKE_TURN_URL1}`,
             `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
             `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
           ],
@@ -816,7 +897,8 @@ describe('TurnDiscovery', () => {
         errorType: undefined,
         errorCause: undefined,
         headers: [
-          `x-cisco-turn-url=${FAKE_TURN_URL}`,
+          `x-cisco-turn-url=${FAKE_TURN_URL1}`,
+          `x-cisco-turn-url=${FAKE_TURN_URL2}`,
           `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
           `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
           'noOkInTransaction',
@@ -902,7 +984,7 @@ describe('TurnDiscovery', () => {
 
       assert.deepEqual(result, {
         turnServerInfo: {
-          url: FAKE_TURN_URL,
+          urls: [FAKE_TURN_URL1, FAKE_TURN_URL2],
           username: FAKE_TURN_USERNAME,
           password: FAKE_TURN_PASSWORD,
         },
@@ -914,7 +996,7 @@ describe('TurnDiscovery', () => {
 
     it('works as expected when httpResponse is missing some headers', async () => {
       roapMessage.headers = [
-        `x-cisco-turn-url=${FAKE_TURN_URL}`, // missing headers for username and password
+        `x-cisco-turn-url=${FAKE_TURN_URL1}`, // missing headers for username and password
       ];
 
       const httpResponse = {mediaConnections: [{remoteSdp: JSON.stringify({roapMessage})}]};
@@ -930,7 +1012,7 @@ describe('TurnDiscovery', () => {
       assert.deepEqual(result, {
         turnServerInfo: undefined,
         turnDiscoverySkippedReason:
-          'failure: TURN_DISCOVERY_RESPONSE in http response missing some headers: ["x-cisco-turn-url=turns:fakeTurnServer.com:443?transport=tcp"]',
+          'failure: TURN_DISCOVERY_RESPONSE in http response missing some headers: ["x-cisco-turn-url=turns:fakeTurnServer1.com:443?transport=tcp"]',
       });
       assert.calledOnceWithExactly(handleTurnDiscoveryResponseSpy, roapMessage, 'in http response');
 
@@ -939,7 +1021,7 @@ describe('TurnDiscovery', () => {
 
     it('sends OK when required', async () => {
       roapMessage.headers = [
-        `x-cisco-turn-url=${FAKE_TURN_URL}`,
+        `x-cisco-turn-url=${FAKE_TURN_URL1}`,
         `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
         `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
         // noOkInTransaction is missing
@@ -951,7 +1033,7 @@ describe('TurnDiscovery', () => {
 
       assert.deepEqual(result, {
         turnServerInfo: {
-          url: FAKE_TURN_URL,
+          urls: [FAKE_TURN_URL1],
           username: FAKE_TURN_USERNAME,
           password: FAKE_TURN_PASSWORD,
         },
@@ -982,7 +1064,7 @@ describe('TurnDiscovery', () => {
           mediaConnections: [
             {
               mediaId: '464ff97f-4bda-466a-ad06-3a22184a2274',
-              remoteSdp: `{"roapMessage": {"messageType":"TURN_DISCOVERY_RESPONSE","seq":"0","headers": ["x-cisco-turn-url=${FAKE_TURN_URL}","x-cisco-turn-username=${FAKE_TURN_USERNAME}","x-cisco-turn-password=${FAKE_TURN_PASSWORD}", "noOkInTransaction"]}}`,
+              remoteSdp: `{"roapMessage": {"messageType":"TURN_DISCOVERY_RESPONSE","seq":"0","headers": ["x-cisco-turn-url=${FAKE_TURN_URL1}","x-cisco-turn-username=${FAKE_TURN_USERNAME}","x-cisco-turn-password=${FAKE_TURN_PASSWORD}", "noOkInTransaction"]}}`,
             },
           ],
         });

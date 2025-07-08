@@ -16,11 +16,13 @@ import {
   LocalMicrophoneStream,
 } from '@webex/media-helpers';
 import {RtcMetrics} from '@webex/internal-plugin-metrics';
+import {BrowserInfo} from '@webex/web-capabilities';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
 import StaticConfig from '../common/config';
 import BrowserDetection from '../common/browser-detection';
+import {TurnServerInfo} from '../roap/types';
 
 const {isBrowser} = BrowserDetection();
 
@@ -138,13 +140,12 @@ Media.createMediaConnection = (
     remoteQualityLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
     enableRtx?: boolean;
     enableExtmap?: boolean;
-    turnServerInfo?: {
-      url: string;
-      username: string;
-      password: string;
-    };
+    turnServerInfo?: TurnServerInfo;
     bundlePolicy?: BundlePolicy;
     iceCandidatesTimeout?: number;
+    disableAudioMainDtx?: boolean;
+    enableAudioTwcc?: boolean;
+    stopIceGatheringAfterFirstRelayCandidate?: boolean;
   }
 ) => {
   const {
@@ -156,28 +157,18 @@ Media.createMediaConnection = (
     turnServerInfo,
     bundlePolicy,
     iceCandidatesTimeout,
+    disableAudioMainDtx,
+    enableAudioTwcc,
+    stopIceGatheringAfterFirstRelayCandidate,
   } = options;
 
   const iceServers = [];
 
-  // we might not have any TURN server if TURN discovery failed or wasn't done or
-  // we might get an empty TURN url if we land on a video mesh node
-  if (turnServerInfo?.url) {
-    if (!isBrowser('firefox')) {
-      let bareTurnServer = turnServerInfo.url;
-      bareTurnServer = bareTurnServer.replace('turns:', 'turn:');
-      bareTurnServer = bareTurnServer.replace('443', '5004');
-
-      iceServers.push({
-        urls: bareTurnServer,
-        username: turnServerInfo.username || '',
-        credential: turnServerInfo.password || '',
-      });
-    }
-
+  // we might not have any TURN server if TURN discovery failed or wasn't done or we land on a video mesh node
+  if (turnServerInfo?.urls.length > 0) {
     // TURN-TLS server
     iceServers.push({
-      urls: turnServerInfo.url,
+      urls: turnServerInfo.urls,
       username: turnServerInfo.username || '',
       credential: turnServerInfo.password || '',
     });
@@ -186,10 +177,21 @@ Media.createMediaConnection = (
   if (isMultistream) {
     const config: MultistreamConnectionConfig = {
       iceServers,
+      disableAudioTwcc: !enableAudioTwcc,
     };
 
     if (bundlePolicy) {
       config.bundlePolicy = bundlePolicy;
+    }
+
+    if (disableAudioMainDtx !== undefined) {
+      config.disableAudioMainDtx = disableAudioMainDtx;
+    }
+
+    if (BrowserInfo.isFirefox()) {
+      config.doFullIce = true;
+
+      config.stopIceGatheringAfterFirstRelayCandidate = stopIceGatheringAfterFirstRelayCandidate;
     }
 
     return new MultistreamRoapMediaConnection(
@@ -237,8 +239,8 @@ Media.createMediaConnection = (
         screenShareAudio: shareAudioStream?.outputStream?.getTracks()[0], // TODO: add type for screenShareAudio in internal-media-core SPARK-446923
       } as unknown,
       direction: {
-        audio: Media.getDirection(true, mediaDirection.receiveAudio, mediaDirection.sendAudio),
-        video: Media.getDirection(true, mediaDirection.receiveVideo, mediaDirection.sendVideo),
+        audio: Media.getDirection(false, mediaDirection.receiveAudio, mediaDirection.sendAudio),
+        video: Media.getDirection(false, mediaDirection.receiveVideo, mediaDirection.sendVideo),
         screenShareVideo: Media.getDirection(
           false,
           mediaDirection.receiveShare,

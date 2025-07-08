@@ -182,6 +182,15 @@ describe('plugin-meetings', () => {
         metrics: {
           submitClientMetrics: sinon.stub().returns(Promise.resolve()),
         },
+        newMetrics: {
+          submitClientEvent: sinon.stub(),
+          callDiagnosticLatencies: {
+            measureLatency: sinon.stub().returns(Promise.resolve()),
+          },
+          callDiagnosticMetrics: {
+            clearErrorCache: sinon.stub(),
+          },
+        },
       });
       webex.emit('ready');
     });
@@ -391,6 +400,45 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_toggleDisableAudioMainDtx', () => {
+      it('should have _toggleDisableAudioMainDtx', () => {
+        assert.equal(typeof webex.meetings._toggleDisableAudioMainDtx, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings to disable audio main dtx', () => {
+          webex.meetings._toggleDisableAudioMainDtx(true);
+          assert.equal(webex.meetings.config.experimental.disableAudioMainDtx, true);
+        });
+      });
+    });
+
+    describe('#_toggleEnableAudioTwccForMultistream', () => {
+      it('should have _toggleEnableAudioTwccForMultistream', () => {
+        assert.equal(typeof webex.meetings._toggleEnableAudioTwccForMultistream, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings to enable audio twcc support', () => {
+          webex.meetings._toggleEnableAudioTwccForMultistream(true);
+          assert.equal(webex.meetings.config.enableAudioTwccForMultistream, true);
+        });
+      });
+    });
+
+    describe('#_toggleStopIceGatheringAfterFirstRelayCandidate', () => {
+      it('should have _toggleStopIceGatheringAfterFirstRelayCandidate', () => {
+        assert.equal(typeof webex.meetings._toggleStopIceGatheringAfterFirstRelayCandidate, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings to stop ICE candidates gathering after first relay candidate', () => {
+          webex.meetings._toggleStopIceGatheringAfterFirstRelayCandidate(true);
+          assert.equal(webex.meetings.config.stopIceGatheringAfterFirstRelayCandidate, true);
+        });
+      });
+    });
+
     describe('Public API Contracts', () => {
       describe('#register', () => {
         it('emits an event and resolves when register succeeds', async () => {
@@ -583,6 +631,27 @@ describe('plugin-meetings', () => {
           await assert.isRejected(webex.meetings.unregister());
         });
 
+<<<<<<< HEAD
+=======
+        it('does not reject when device.unregister fails with statusCode 404', (done) => {
+          webex.meetings.registered = true;
+          webex.internal.device.unregister = sinon.stub().rejects({statusCode: 404});
+          webex.meetings.unregister().then(() => {
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meetings),
+              {
+                file: 'meetings',
+                function: 'unregister',
+              },
+              'meetings:unregistered'
+            );
+            assert.isFalse(webex.meetings.registered);
+            done();
+          });
+        });
+
+>>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         it('rejects when mercury.disconnect fails', async () => {
           webex.meetings.registered = true;
           webex.internal.mercury.disconnect = sinon.stub().returns(Promise.reject());
@@ -631,6 +700,7 @@ describe('plugin-meetings', () => {
             quality: 'LOW',
             authToken: 'fake_token',
             mirror: false,
+            canvasResolutionScaling: 1,
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
@@ -646,6 +716,7 @@ describe('plugin-meetings', () => {
             quality: 'HIGH',
             blurStrength: 'STRONG',
             bgImageUrl: 'https://test.webex.com/landscape.5a535788.jpg',
+            canvasResolutionScaling: 1,
           };
 
           const result = await webex.meetings.createVirtualBackgroundEffect(effectOptions);
@@ -680,7 +751,6 @@ describe('plugin-meetings', () => {
             audioContext: {},
             authToken: 'fake_token',
             mode: 'WORKLET',
-            env: 'prod',
             avoidSimd: false,
           });
           assert.exists(result.enable);

@@ -369,6 +369,10 @@ export const EVENT_TRIGGERS = {
   MEETING_CONTROLS_MEETING_FULL_UPDATED: 'meeting:controls:meeting-full:updated',
   MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED:
     'meeting:controls:practice-session-status:updated',
+  MEETING_CONTROLS_ANNOTATION_UPDATED: 'meeting:controls:annotation:updated',
+  MEETING_CONTROLS_REMOTE_DESKTOP_CONTROL_UPDATED:
+    'meeting:controls:remote-desktop-control:updated',
+  MEETING_CONTROLS_POLLING_QA_UPDATED: 'meeting:controls:polling-qa:updated',
   // Locus URL changed
   MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
   MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
@@ -376,8 +380,10 @@ export const EVENT_TRIGGERS = {
   MEETING_TRANSCRIPTION_CONNECTED: 'meeting:transcription:connected',
   MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
   MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
+  MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED: 'meeting:transcription:spokenLanguageUpdate',
   MEETING_MANUAL_CAPTION_UPDATED: 'meeting:manualCaptionControl:updated',
   MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
+  MEETING_PARTICIPANT_REASON_CHANGED: 'meeting:participant-reason-changed',
 };
 
 export const EVENT_TYPES = {
@@ -695,6 +701,8 @@ export const LOCUSINFO = {
     CONTROLS_MEETING_LAYOUT_UPDATED: 'CONTROLS_MEETING_LAYOUT_UPDATED',
     CONTROLS_RECORDING_UPDATED: 'CONTROLS_RECORDING_UPDATED',
     CONTROLS_MEETING_TRANSCRIBE_UPDATED: 'CONTROLS_MEETING_TRANSCRIBE_UPDATED',
+    CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED:
+      'CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED',
     CONTROLS_MEETING_MANUAL_CAPTION_UPDATED: 'CONTROLS_MEETING_MANUAL_CAPTION_UPDATED',
     CONTROLS_MEETING_BREAKOUT_UPDATED: 'CONTROLS_MEETING_BREAKOUT_UPDATED',
     CONTROLS_MEETING_CONTAINER_UPDATED: 'CONTROLS_MEETING_CONTAINER_UPDATED',
@@ -711,6 +719,9 @@ export const LOCUSINFO = {
     CONTROLS_PRACTICE_SESSION_STATUS_UPDATED: 'CONTROLS_PRACTICE_SESSION_STATUS_UPDATED',
     CONTROLS_VIDEO_CHANGED: 'CONTROLS_VIDEO_CHANGED',
     CONTROLS_STAGE_VIEW_UPDATED: 'CONTROLS_STAGE_VIEW_UPDATED',
+    CONTROLS_ANNOTATION_CHANGED: 'CONTROLS_ANNOTATION_CHANGED',
+    CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED: 'CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED',
+    CONTROLS_POLLING_QA_CHANGED: 'CONTROLS_POLLING_QA_CHANGED',
     SELF_UNADMITTED_GUEST: 'SELF_UNADMITTED_GUEST',
     SELF_ADMITTED_GUEST: 'SELF_ADMITTED_GUEST',
     SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED: 'SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED',
@@ -738,6 +749,7 @@ export const LOCUSINFO = {
     MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
     LINKS_SERVICES: 'LINKS_SERVICES',
     LINKS_RESOURCES: 'LINKS_RESOURCES',
+    PARTICIPANT_REASON_CHANGED: 'PARTICIPANT_REASON_CHANGED',
   },
 };
 
@@ -906,6 +918,7 @@ export enum SELF_POLICY {
   SUPPORT_NETWORK_BASED_RECORD = 'supportNetworkBasedRecord',
   SUPPORT_PREMISE_RECORD = 'supportPremiseRecord',
   SUPPORT_REALTIME_CLOSE_CAPTION = 'supportRealtimeCloseCaption',
+  SUPPORT_REALTIME_CLOSE_CAPTION_MANUAL = 'supportRealtimeCloseCaptionManual',
   SUPPORT_CHAT = 'supportChat',
   SUPPORT_DESKTOP_SHARE_REMOTE = 'supportDesktopShareRemote',
   SUPPORT_DESKTOP_SHARE = 'supportDesktopShare',
@@ -973,6 +986,7 @@ export const DISPLAY_HINTS = {
   PRESENTER_CONTROL: 'PRESENTER_CONTROL',
   CAN_RENAME_SELF_AND_OBSERVED: 'CAN_RENAME_SELF_AND_OBSERVED',
   CAN_RENAME_OTHERS: 'CAN_RENAME_OTHERS',
+  MOVE_TO_LOBBY: 'MOVE_TO_LOBBY',
 
   // breakout session
   BREAKOUT_MANAGEMENT: 'BREAKOUT_MANAGEMENT',
@@ -1026,6 +1040,21 @@ export const DISPLAY_HINTS = {
   PRACTICE_SESSION_OFF: 'PRACTICE_SESSION_OFF',
   SHOW_PRACTICE_SESSION_START: 'SHOW_PRACTICE_SESSION_START',
   SHOW_PRACTICE_SESSION_STOP: 'SHOW_PRACTICE_SESSION_STOP',
+
+  // Explicit consent for post meeting data
+  SHOW_POST_MEETING_DATA_CONSENT_PROMPT: 'SHOW_POST_MEETING_DATA_CONSENT_PROMPT',
+
+  // Annotations
+  ENABLE_ANNOTATION_MEETING_OPTION: 'ENABLE_ANNOTATION_MEETING_OPTION',
+  DISABLE_ANNOTATION_MEETING_OPTION: 'DISABLE_ANNOTATION_MEETING_OPTION',
+
+  // Remote Desktop Control
+  ENABLE_RDC_MEETING_OPTION: 'ENABLE_RDC_MEETING_OPTION',
+  DISABLE_RDC_MEETING_OPTION: 'DISABLE_RDC_MEETING_OPTION',
+
+  // Polling QA
+  ENABLE_ATTENDEE_START_POLLING_QA: 'ENABLE_ATTENDEE_START_POLLING_QA',
+  DISABLE_ATTENDEE_START_POLLING_QA: 'DISABLE_ATTENDEE_START_POLLING_QA',
 };
 
 export const INTERSTITIAL_DISPLAY_HINTS = [DISPLAY_HINTS.VOIP_IS_ENABLED];
@@ -1149,96 +1178,6 @@ export const NETWORK_STATUS = {
 } as const;
 
 export type NETWORK_STATUS = Enum<typeof NETWORK_STATUS>;
-
-export const NETWORK_TYPE = {
-  VPN: 'vpn',
-  UNKNOWN: 'unknown',
-  WIFI: 'wifi',
-  ETHERNET: 'ethernet',
-};
-
-export const STATS = {
-  SEND_DIRECTION: 'send',
-  RECEIVE_DIRECTION: 'recv',
-  REMOTE: 'remote',
-  LOCAL: 'local',
-};
-
-export const MQA_STATS = {
-  MQA_SIZE: 120, // MQA is done on 60 second intervals by server def, add a buffer for missed events
-  CA_TYPE: 'MQA',
-  DEFAULT_IP: '0.0.0.0',
-  DEFAULT_SHARE_SENDER_STATS: {
-    common: {
-      common: {
-        direction: 'sendrecv', // TODO: parse from SDP and save globally
-        isMain: false, // always true for share sender
-        mariFecEnabled: false, // unavailable
-        mariRtxEnabled: false, // unavailable
-        mariLiteEnabled: false, // unavailable
-        mariQosEnabled: false, // unavailable
-        multistreamEnabled: false, // unavailable
-      },
-      availableBitrate: 0,
-      dtlsBitrate: 0, // unavailable
-      dtlsPackets: 0, // unavailable
-      fecBitrate: 0, // unavailable
-      fecPackets: 0, // unavailable
-      maxBitrate: 0, // unavailable
-      queueDelay: 0, // unavailable
-      remoteJitter: 0, // unavailable
-      remoteLossRate: 0,
-      roundTripTime: 0,
-      rtcpBitrate: 0, // unavailable
-      rtcpPackets: 0, // unavailable
-      rtpBitrate: 0, // unavailable
-      rtpPackets: 0,
-      stunBitrate: 0, // unavailable
-      stunPackets: 0, // unavailable
-      transportType: 'UDP', // TODO: parse the transport type from the SDP and save globally
-    },
-    streams: [
-      {
-        common: {
-          codec: 'H264', // TODO: parse the codec from the SDP and save globally
-          duplicateSsci: 0, // unavailable
-          requestedBitrate: 0, // unavailable
-          requestedFrames: 0, // unavailable
-          rtpPackets: 0,
-          ssci: 0, // unavailable
-          transmittedBitrate: 0,
-          transmittedFrameRate: 0,
-        },
-        h264CodecProfile: 'BP', // TODO: parse the profile level from h264 in the SDP and save globally
-        localConfigurationChanges: 0, // unavailable
-        remoteConfigurationChanges: 0, // unavailable
-        requestedFrameSize: 0, // unavailable
-        requestedKeyFrames: 0, // unavailable
-        transmittedFrameSize: 0, // unavailable
-        transmittedHeight: 0,
-        transmittedKeyFrames: 0,
-        transmittedWidth: 0,
-      },
-    ],
-  },
-  intervalMetadata: {
-    memoryUsage: {
-      cpuBitWidth: 0,
-      mainProcessMaximumMemoryBytes: 0,
-      osBitWidth: 0,
-      processAverageMemoryUsage: 0,
-      processMaximumMemoryBytes: 0,
-      processMaximumMemoryUsage: 0,
-      systemAverageMemoryUsage: 0,
-      systemMaximumMemoryUsage: 0,
-    },
-    peerReflexiveIP: 'NULL', // TODO: save after ice trickling completes and use as a global variable
-    processAverageCPU: 0,
-    processMaximumCPU: 0,
-    systemAverageCPU: 0,
-    systemMaximumCPU: 0,
-  },
-};
 
 // ****** MEDIA QUALITY CONSTANTS ****** //
 
