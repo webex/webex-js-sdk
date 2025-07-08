@@ -332,44 +332,6 @@ export class ClusterReachability extends EventsScope {
   }
 
   /**
-   * Determines NAT Type.
-   *
-   * @param {RTCIceCandidate} candidate
-   * @returns {void}
-   */
-  private determineNatType(candidate: RTCIceCandidate) {
-    this.srflxIceCandidates.push(candidate);
-
-    if (this.srflxIceCandidates.length > 1) {
-      const portsFound: Record<string, Set<number>> = {};
-
-      this.srflxIceCandidates.forEach((c) => {
-        const key = `${c.address}:${c.relatedPort}`;
-        if (!portsFound[key]) {
-          portsFound[key] = new Set();
-        }
-        portsFound[key].add(c.port);
-      });
-
-      Object.entries(portsFound).forEach(([, ports]) => {
-        if (ports.size > 1) {
-          // Found candidates with the same address and relatedPort, but different ports
-          this.emit(
-            {
-              file: 'clusterReachability',
-              function: 'determineNatType',
-            },
-            Events.natTypeUpdated,
-            {
-              natType: NatType.SymmetricNat,
-            }
-          );
-        }
-      });
-    }
-  }
-
-  /**
    * Registers a listener for the icecandidate event
    *
    * @returns {void}
