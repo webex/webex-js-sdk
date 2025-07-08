@@ -17,7 +17,7 @@
         "directory": "packages/webex-node"
     },
     "engines": {
-        "node": ">=22"
+        "node": ">=16"
     },
     "scripts": {
         "build": "yarn build:src",
