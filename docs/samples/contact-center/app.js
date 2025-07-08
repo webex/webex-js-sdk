@@ -570,7 +570,7 @@ function registerTaskListeners(task) {
   task.on('task:consultCreated', (task) => {
     console.info('Consult created');
     if (currentTask.data.interactionId === task.data.interactionId) {
-      setUIControls(task);
+      updateTaskList();
     }
   });
 
@@ -586,13 +586,13 @@ function registerTaskListeners(task) {
   task.on('task:consultAccepted', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
       // use UI controls for consult acceptance
-      setUIControls(task);
+      updateTaskList();
     }
   });
 
   task.on('task:consulting', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
-      setUIControls(task);
+      updateTaskList();
     }
   });
 
@@ -600,7 +600,7 @@ function registerTaskListeners(task) {
     // When trying to consult queue fails
     if (currentTask.data.interactionId === task.data.interactionId) {
       console.error(`Received task:consultQueueFailed for task: ${task.data.interactionId}`);
-      setUIControls(task);
+      updateTaskList();
     }
   });
 
@@ -609,13 +609,13 @@ function registerTaskListeners(task) {
       // When we manually cancel consult to queue before it is accepted by other agent
       console.log(`Received task:consultQueueCancelled for task: ${currentTask.data.interactionId}`);
       currentConsultQueueId = null;
-      setUIControls(task);
+      updateTaskList();
     }
   });
 
   task.on('task:consultEnd', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
-      setUIControls(task);
+      updateTaskList();
       currentConsultQueueId = null;
       if (task.data.isConsulted) {
         incomingDetailsElm.innerText = '';
@@ -630,15 +630,15 @@ function registerTaskListeners(task) {
   });
 
   task.on('task:wrappedup', (task) => {
-    setUIControls(task);
+    updateTaskList();
   });
 
   task.on('task:hold', (task) => {
-    setUIControls(task);
+    updateTaskList();
   });
 
   task.on('task:unhold', (task) => {
-    setUIControls(task);
+    updateTaskList();
   });
 }
 
