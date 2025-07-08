@@ -247,13 +247,13 @@ describe('plugin-voicea', () => {
 
         voiceaService.on(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, spy);
         voiceaService.listenToEvents();
-        voiceaService.onSpokenLanguageUpdate('fr-FR');
+        voiceaService.currentSpokenLanguage = 'fr';
         await voiceaService.processAnnouncementMessage({});
         assert.calledOnceWithExactly(spy, {
           captionLanguages: [],
           spokenLanguages: [],
           maxLanguages: 0,
-          currentSpokenLanguage: 'fr-FR',
+          currentSpokenLanguage: 'fr',
         });
       });
     });
@@ -1029,10 +1029,10 @@ describe('plugin-voicea', () => {
         const triggerSpy = sinon.spy();
         voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
 
-        const languageCode = 'fr-FR';
-        voiceaService.onSpokenLanguageUpdate(languageCode);
+        const languageCode = 'fr';
+        voiceaService.onSpokenLanguageUpdate(languageCode, '123');
         assert.equal(voiceaService.currentSpokenLanguage, languageCode);
-        assert.calledOnceWithExactly(triggerSpy, {languageCode});
+        assert.calledOnceWithExactly(triggerSpy, {languageCode, meetingId: '123'});
       });
     });
   });

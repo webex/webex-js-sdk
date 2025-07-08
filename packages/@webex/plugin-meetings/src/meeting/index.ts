@@ -2770,7 +2770,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
           }
           // @ts-ignore
-          this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage);
+          this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage, this.id);
 
           Trigger.trigger(
             this,
@@ -2779,7 +2779,7 @@ export default class Meeting extends StatelessWebexPlugin {
               function: 'setupLocusControlsListener',
             },
             EVENT_TRIGGERS.MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
-            {spokenLanguage}
+            {spokenLanguage, meetingId: this.id}
           );
         }
       }
