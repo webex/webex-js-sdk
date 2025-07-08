@@ -1,6 +1,8 @@
 /* eslint-disable no-await-in-loop */
+import ExtendedError from 'Errors/catalog/ExtendedError';
 import {
   FAILURE_MESSAGE,
+  METHOD_START_MESSAGE,
   SCIM_ENTERPRISE_USER,
   SCIM_WEBEXIDENTITY_USER,
   STATUS_CODE,
@@ -19,6 +21,7 @@ import {
   DEFAULT_GROUP_NAME,
   ENCRYPT_FILTER,
   GROUP_FILTER,
+  METHODS,
   OR,
   SCIM_ID_FILTER,
   USERS,
@@ -35,7 +38,7 @@ import {
   GroupType,
 } from './types';
 
-import {scimQuery, serviceErrorCodeHandler} from '../common/Utils';
+import {scimQuery, serviceErrorCodeHandler, uploadLogs} from '../common/Utils';
 
 /**
  * `ContactsClient` module is designed to offer a set of APIs for retrieving and updating contacts and groups from the contacts-service.
@@ -332,8 +335,10 @@ export class ContactsClient implements IContacts {
   public async getContacts(): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: 'getContacts',
+      method: METHODS.GET_CONTACTS,
     };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     const contactList: Contact[] = [];
     const cloudContactsMap: ContactIdContactInfo = {};
@@ -418,10 +423,15 @@ export class ContactsClient implements IContacts {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log('Successfully fetched contacts and groups', loggerContext);
+
       return contactResponse;
     } catch (err: unknown) {
       const errorInfo = err as WebexRequestPayload;
+      const extendedError = new Error(`Error fetching contacts: ${err}`) as ExtendedError;
+      log.error(extendedError, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      await uploadLogs();
 
       return errorStatus;
     }
@@ -435,8 +445,10 @@ export class ContactsClient implements IContacts {
   private async createNewEncryptionKeyUrl(): Promise<string> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: this.createNewEncryptionKeyUrl.name,
+      method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
     };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
 
     let unboundedKeyUri = '';
 
@@ -455,6 +467,13 @@ export class ContactsClient implements IContacts {
    * @returns EncryptionKeyUrl as a Promise.
    */
   private async fetchEncryptionKeyUrl(): Promise<string> {
+    const loggerContext = {
+      file: CONTACTS_FILE,
+      method: METHODS.FETCH_ENCRYPTION_KEY_URL,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     if (this.encryptionKeyUrl) {
       return this.encryptionKeyUrl;
     }
@@ -469,7 +488,7 @@ export class ContactsClient implements IContacts {
     }
 
     this.encryptionKeyUrl = await this.createNewEncryptionKeyUrl();
-    log.info(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
+    log.log(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
       file: CONTACTS_FILE,
       method: this.fetchEncryptionKeyUrl.name,
     });
@@ -480,6 +499,10 @@ export class ContactsClient implements IContacts {
 
     if (response.data.group?.groupId) {
       this.defaultGroupId = response.data.group?.groupId;
+      log.log(`Successfully created default group with ID: ${this.defaultGroupId}`, {
+        file: CONTACTS_FILE,
+        method: this.fetchEncryptionKeyUrl.name,
+      });
     }
 
     return this.encryptionKeyUrl;
@@ -491,7 +514,19 @@ export class ContactsClient implements IContacts {
    * @returns GroupId of default group.
    */
   private async fetchDefaultGroup(): Promise<string> {
+    const loggerContext = {
+      file: CONTACTS_FILE,
+      method: METHODS.FETCH_DEFAULT_GROUP,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     if (this.defaultGroupId) {
+      log.log(`Using existing default group with ID: ${this.defaultGroupId}`, {
+        file: CONTACTS_FILE,
+        method: this.fetchDefaultGroup.name,
+      });
+
       return this.defaultGroupId;
     }
 
@@ -500,13 +535,17 @@ export class ContactsClient implements IContacts {
       for (let i = 0; i < this.groups.length; i += 1) {
         if (this.groups[i].displayName === DEFAULT_GROUP_NAME) {
           this.defaultGroupId = this.groups[i].groupId;
+          log.log(`Found default group with ID: ${this.defaultGroupId}`, {
+            file: CONTACTS_FILE,
+            method: this.fetchDefaultGroup.name,
+          });
 
           return this.defaultGroupId;
         }
       }
     }
 
-    log.info('No default group found.', {
+    log.log('No default group found.', {
       file: CONTACTS_FILE,
       method: this.fetchDefaultGroup.name,
     });
@@ -516,7 +555,13 @@ export class ContactsClient implements IContacts {
     const {group} = response.data;
 
     if (group) {
-      return group.groupId;
+      const groupId = group.groupId;
+      log.log(`Successfully created new default group with ID: ${groupId}`, {
+        file: CONTACTS_FILE,
+        method: this.fetchDefaultGroup.name,
+      });
+
+      return groupId;
     }
 
     return '';
@@ -536,10 +581,10 @@ export class ContactsClient implements IContacts {
   ): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: this.createContactGroup.name,
+      method: METHODS.CREATE_CONTACT_GROUP,
     };
 
-    log.info(`Creating contact group ${displayName}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with displayName: ${displayName}`, loggerContext);
 
     const encryptionKeyUrlFinal = encryptionKeyUrl || (await this.fetchEncryptionKeyUrl());
 
@@ -595,12 +640,15 @@ export class ContactsClient implements IContacts {
       };
 
       this.groups?.push(group);
+      log.log(`Contact group ${displayName} successfully created`, loggerContext);
 
       return contactResponse;
     } catch (err: unknown) {
-      log.warn('Unable to create contact group.', loggerContext);
       const errorInfo = err as WebexRequestPayload;
+      const extendedError = new Error(`Unable to create contact group: ${err}`) as ExtendedError;
+      log.error(extendedError, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      await uploadLogs();
 
       return errorStatus;
     }
@@ -613,8 +661,10 @@ export class ContactsClient implements IContacts {
   public async deleteContactGroup(groupId: string) {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: this.deleteContactGroup.name,
+      method: METHODS.DELETE_CONTACT_GROUP,
     };
+
+    log.info(`${METHOD_START_MESSAGE} with groupId: ${groupId}`, loggerContext);
 
     try {
       log.info(`Deleting contact group: ${groupId}`, loggerContext);
@@ -639,11 +689,17 @@ export class ContactsClient implements IContacts {
         this.defaultGroupId = '';
       }
 
+      log.log(`Contact group ${groupId} successfully deleted`, loggerContext);
+
       return contactResponse;
     } catch (err: unknown) {
-      log.warn(`Unable to delete contact group ${groupId}`, loggerContext);
       const errorInfo = err as WebexRequestPayload;
+      const extendedError = new Error(
+        `Unable to delete contact group ${groupId}: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      await uploadLogs();
 
       return errorStatus;
     }
@@ -656,10 +712,10 @@ export class ContactsClient implements IContacts {
   public async createContact(contactInfo: Contact): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: this.createContact.name,
+      method: METHODS.CREATE_CONTACT,
     };
 
-    log.info(`Request to create contact: contactType: ${contactInfo.contactType}`, loggerContext);
+    log.info(`${METHOD_START_MESSAGE} with contactType: ${contactInfo.contactType}`, loggerContext);
 
     try {
       const contact = {...contactInfo};
@@ -742,15 +798,15 @@ export class ContactsClient implements IContacts {
       } else {
         this.contacts?.push(contact);
       }
+      log.log(`Contact successfully created`, loggerContext);
 
       return contactResponse;
     } catch (err: unknown) {
-      log.warn('Failed to create contact.', {
-        file: CONTACTS_FILE,
-        method: this.createContact.name,
-      });
       const errorInfo = err as WebexRequestPayload;
+      const extendedError = new Error(`Failed to create contact: ${err}`) as ExtendedError;
+      log.error(extendedError, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      await uploadLogs();
 
       return errorStatus;
     }
@@ -763,8 +819,10 @@ export class ContactsClient implements IContacts {
   public async deleteContact(contactId: string): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: this.deleteContact.name,
+      method: METHODS.DELETE_CONTACT,
     };
+
+    log.info(`${METHOD_START_MESSAGE} with contactId: ${contactId}`, loggerContext);
 
     try {
       log.info(`Deleting contact : ${contactId}`, loggerContext);
@@ -788,11 +846,17 @@ export class ContactsClient implements IContacts {
         this.contacts?.splice(contactToDelete, 1);
       }
 
+      log.log(`Contact ${contactId} successfully deleted`, loggerContext);
+
       return contactResponse;
     } catch (err: unknown) {
-      log.warn(`Unable to delete contact ${contactId}`, loggerContext);
       const errorInfo = err as WebexRequestPayload;
+      const extendedError = new Error(
+        `Unable to delete contact ${contactId}: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      await uploadLogs();
 
       return errorStatus;
     }

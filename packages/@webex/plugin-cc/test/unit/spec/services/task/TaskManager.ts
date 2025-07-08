@@ -414,7 +414,50 @@ describe('TaskManager', () => {
       );
   });
 
-  it('should emit TASK_HYDRATE event on AGENT_CONTACT event', () => {
+
+  it('should not emit TASK_HYDRATE if task is already present in taskManager', () => {
+    const payload = {
+      data: {
+        ...initalPayload.data,
+        type: CC_EVENTS.AGENT_CONTACT,
+      },
+    };
+    const taskEmitSpy = jest.spyOn(taskManager, 'emit');
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(taskEmitSpy).not.toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_HYDRATE,
+      taskManager.getTask(taskId)
+    );
+    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(
+      taskManager.getTask(taskId)
+    );
+  });
+
+  it('should emit TASK_INCOMING event on AGENT_CONTACT event if task is new and not in the taskManager ', () => {
+    taskManager.taskCollection = [];
+    const payload = {
+      data: {
+        ...initalPayload.data,
+        interaction: {mediaType: 'telephony', state: 'new'},
+        type: CC_EVENTS.AGENT_CONTACT,
+      },
+    };
+
+    const taskEmitSpy = jest.spyOn(taskManager, 'emit');
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_INCOMING,
+      taskManager.getTask(taskId)
+    );
+    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(
+      taskManager.getTask(taskId)
+    );
+  });
+
+  it('should emit TASK_HYDRATE event on AGENT_CONTACT event if task is connected and not in the taskManager ', () => {
+    taskManager.taskCollection = [];
     const payload = {
       data: {
         ...initalPayload.data,
@@ -426,7 +469,9 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, taskManager.getTask(taskId));
-    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(taskManager.getTask(taskId));
+    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(
+      taskManager.getTask(taskId)
+    );
   });
 
   it('should emit TASK_END event on AGENT_WRAPUP event', () => {
@@ -446,14 +491,18 @@ describe('TaskManager', () => {
         destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
         owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
         queueMgr: 'aqm',
+        wrapUpRequired: true
       },
     };
 
-    const updateTaskDataSpy = jest.spyOn(taskManager.getTask(taskId), 'updateTaskData');
+    const task = taskManager.getTask(taskId);
+    const updateTaskDataSpy = jest.spyOn(task, 'updateTaskData');
+    const taskEmitSpy = jest.spyOn(task, 'emit');
 
     webSocketManagerMock.emit('message', JSON.stringify(wrapupPayload));
 
     expect(updateTaskDataSpy).toHaveBeenCalledWith(wrapupPayload.data);
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END, task);
   });
 
   it('should emit TASK_HOLD event on AGENT_CONTACT_HELD event', () => {
@@ -485,7 +534,7 @@ describe('TaskManager', () => {
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HOLD, taskManager.getTask(taskId));
   });
 
-  it('should emit TASK_UNHOLD event on AGENT_CONTACT_UNHELD event', () => {
+  it('should emit TASK_RESUME event on AGENT_CONTACT_UNHELD event', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
     const payload = {
@@ -509,7 +558,7 @@ describe('TaskManager', () => {
     const taskUpdateTaskDataSpy = jest.spyOn(taskManager.getTask(taskId), 'updateTaskData');
     webSocketManagerMock.emit('message', JSON.stringify(payload));
     expect(taskUpdateTaskDataSpy).toHaveBeenCalledWith(payload.data);
-    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_UNHOLD, taskManager.getTask(taskId));
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_RESUME, taskManager.getTask(taskId));
   });
 
   it('handle AGENT_CONSULT_CREATED event', () => {

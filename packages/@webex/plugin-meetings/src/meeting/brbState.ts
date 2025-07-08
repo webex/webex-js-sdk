@@ -109,9 +109,11 @@ export class BrbState {
         // need to check if a new sync is required, because this.state.client may have changed while we were doing the current sync
         this.applyClientStateToServer(sendSlotManager);
       })
-      .catch((e) => {
+      .catch((error) => {
         this.state.syncToServerInProgress = false;
-        LoggerProxy.logger.warn(`Meeting:brbState#applyClientStateToServer: error: ${e}`);
+        LoggerProxy.logger.warn(`Meeting:brbState#applyClientStateToServer: Error: ${error}`);
+
+        return Promise.reject(error);
       });
   }
 

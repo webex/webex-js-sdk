@@ -259,3 +259,17 @@ export interface SCIMListResponse {
   startIndex: number;
   Resources: Resource[];
 }
+
+export type LogsMetaData = {
+  callId?: string;
+  feedbackId?: string;
+  correlationId?: string;
+};
+
+export type UploadLogsResponse = {
+  trackingid?: string;
+  url?: string;
+  userId?: string;
+  feedbackId: string;
+  correlationId?: string;
+};

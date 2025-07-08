@@ -337,6 +337,30 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Click To Interstitial With User Delay
+   * @returns - latency
+   */
+  public getClickToInterstitialWithUserDelay() {
+    // for normal join (where green join button exists before interstitial, i.e reminder, space list etc)
+    if (this.latencyTimestamps.get('internal.client.meeting.click.joinbutton')) {
+      return this.getDiffBetweenTimestamps(
+        'internal.client.meeting.click.joinbutton',
+        'internal.client.meeting.interstitial-window.showed'
+      );
+    }
+
+    const clickToInterstitialWithUserDelayLatency = this.precomputedLatencies.get(
+      'internal.click.to.interstitial.with.user.delay'
+    );
+
+    if (typeof clickToInterstitialWithUserDelayLatency === 'number') {
+      return clickToInterstitialWithUserDelayLatency;
+    }
+
+    return undefined;
+  }
+
+  /**
    * Interstitial To Join Ok
    * @returns - latency
    */
@@ -396,6 +420,24 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Total JMT With User Delay
+   * @returns - latency
+   */
+  public getTotalJMTWithUserDelay() {
+    const clickToInterstitialWithUserDelay = this.getClickToInterstitialWithUserDelay();
+    const interstitialToJoinOk = this.getInterstitialToJoinOK();
+
+    if (
+      typeof clickToInterstitialWithUserDelay === 'number' &&
+      typeof interstitialToJoinOk === 'number'
+    ) {
+      return clickToInterstitialWithUserDelay + interstitialToJoinOk;
+    }
+
+    return undefined;
+  }
+
+  /**
    * Join Conf JMT
    * @returns - latency
    */
@@ -427,6 +469,22 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       }
 
       return totalMediaJMT - lobbyTime;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Total Media JMT With User Delay
+   * @returns - latency
+   */
+  public getTotalMediaJMTWithUserDelay() {
+    const clickToInterstitialWithUserDelay = this.getClickToInterstitialWithUserDelay();
+    const interstitialToJoinOk = this.getInterstitialToJoinOK();
+    const joinConfJMT = this.getJoinConfJMT();
+
+    if (clickToInterstitialWithUserDelay && interstitialToJoinOk && joinConfJMT) {
+      return clickToInterstitialWithUserDelay + interstitialToJoinOk + joinConfJMT;
     }
 
     return undefined;

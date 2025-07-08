@@ -1,5 +1,6 @@
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
+import ExtendedError from '../Errors/catalog/ExtendedError';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
@@ -19,7 +20,12 @@ import {
   DeleteCallHistoryRecordsResponse,
 } from './types';
 import log from '../Logger';
-import {serviceErrorCodeHandler, getVgActionEndpoint, getCallingBackEnd} from '../common/Utils';
+import {
+  serviceErrorCodeHandler,
+  getVgActionEndpoint,
+  getCallingBackEnd,
+  uploadLogs,
+} from '../common/Utils';
 import {
   APPLICATION_JSON,
   CALL_HISTORY_FILE,
@@ -39,8 +45,15 @@ import {
   DELETE_CALL_HISTORY_RECORDS_ENDPOINT,
   SET_DELETE_CALL_RECORDS_SUCCESS_MESSAGE,
   SET_DELETE_CALL_RECORDS_INVALID_DATE_FORMAT_MESSAGE,
+  METHODS,
 } from './constants';
-import {FAILURE_MESSAGE, STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
+import {
+  FAILURE_MESSAGE,
+  METHOD_START_MESSAGE,
+  STATUS_CODE,
+  SUCCESS_MESSAGE,
+  USER_SESSIONS,
+} from '../common/constants';
 import {
   COMMON_EVENT_KEYS,
   CallHistoryEventTypes,
@@ -75,7 +88,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
   private loggerContext = {
     file: CALL_HISTORY_FILE,
-    method: 'getCallHistoryData',
+    method: METHODS.GET_CALL_HISTORY_DATA,
   };
 
   private userSessions: UserSession[] | undefined;
@@ -119,10 +132,13 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const sortByParam = Object.values(SORT_BY).includes(sortBy) ? sortBy : SORT_BY.DEFAULT;
     const sortParam = Object.values(SORT).includes(sort) ? sort : SORT.DEFAULT;
 
-    log.log(`Janus API URL ${this.janusUrl}`, this.loggerContext);
+    log.info(
+      `${METHOD_START_MESSAGE} with days=${days}, limit=${limit}, sort=${sortParam}, sortBy=${sortByParam}`,
+      this.loggerContext
+    );
+
+    log.info(`Janus API URL: ${this.janusUrl}`, this.loggerContext);
     log.info(`Call history from date : ${this.fromDate}`, this.loggerContext);
-    log.info(`Call history sort type : ${sortParam}`, this.loggerContext);
-    log.info(`Call history sortby type : ${sortByParam}`, this.loggerContext);
     const url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}`;
 
     try {
@@ -193,8 +209,17 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(
+        `Successfully retrieved call history data with ${this.userSessions[USER_SESSIONS].length} records`,
+        this.loggerContext
+      );
+
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(`Failed to get call history: ${err}`) as ExtendedError;
+      log.error(extendedError, {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA});
+      await uploadLogs();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, this.loggerContext);
 
@@ -212,7 +237,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   ): Promise<UpdateMissedCallsResponse> {
     const loggerContext = {
       file: CALL_HISTORY_FILE,
-      method: 'updateMissedCalls',
+      method: METHODS.UPDATE_MISSED_CALLS,
     };
     // Convert endTime to milliseconds for each session
     const santizedSessionIds: SanitizedEndTimeAndSessionId[] = endTimeSessionIds.map((session) => ({
@@ -222,6 +247,11 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const requestBody = {
       endTimeSessionIds: santizedSessionIds,
     };
+
+    log.info(
+      `${METHOD_START_MESSAGE} with sessions: ${JSON.stringify(santizedSessionIds)}`,
+      loggerContext
+    );
     try {
       const updateMissedCallContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${UPDATE_MISSED_CALLS_ENDPOINT}`;
       // Make a POST request to update missed calls
@@ -238,7 +268,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       }
 
       const data: UpdateMissedCallsResponse = await response.json();
-      log.info(`Missed calls are succesfully read by the user`, loggerContext);
+      log.log(`Missed calls are successfully read by the user`, loggerContext);
       const responseDetails: UpdateMissedCallsResponse = {
         statusCode: data.statusCode as number,
         data: {
@@ -247,8 +277,14 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(`Successfully updated ${santizedSessionIds?.length} missed calls`, loggerContext);
+
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(`Failed to update missed calls: ${err}`) as ExtendedError;
+      log.error(extendedError, {file: CALL_HISTORY_FILE, method: METHODS.UPDATE_MISSED_CALLS});
+      await uploadLogs();
+
       // Catch the 401 error from try block, return the error object to user
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',
@@ -266,13 +302,14 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   private async fetchUCMLinesData(): Promise<UCMLinesResponse> {
     const loggerContext = {
       file: CALL_HISTORY_FILE,
-      method: 'fetchLinesData',
+      method: METHODS.FETCH_UCM_LINES_DATA,
     };
     const vgEndpoint = getVgActionEndpoint(this.webex, CALLING_BACKEND.UCM);
     const userId = this.webex.internal.device.userId;
     const orgId = this.webex.internal.device.orgId;
     const linesURIForUCM = `${vgEndpoint}/${VERSION_1}/${UNIFIED_COMMUNICATIONS}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
 
+    log.info(`${METHOD_START_MESSAGE} with URL: ${linesURIForUCM}`, loggerContext);
     try {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${linesURIForUCM}`,
@@ -287,10 +324,14 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         message: SUCCESS_MESSAGE,
       };
 
-      log.info(`Line details fetched successfully`, loggerContext);
+      log.log(`Line details fetched successfully`, loggerContext);
 
       return ucmLineDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(`Failed to fetch UCM lines data: ${err}`) as ExtendedError;
+      log.error(extendedError, {file: CALL_HISTORY_FILE, method: METHODS.FETCH_UCM_LINES_DATA});
+      await uploadLogs();
+
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
@@ -308,12 +349,17 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   ): Promise<DeleteCallHistoryRecordsResponse> {
     const loggerContext = {
       file: CALL_HISTORY_FILE,
-      method: 'deleteCallHistoryRecords',
+      method: METHODS.DELETE_CALL_HISTORY_RECORDS,
     };
 
     // Collect all sessions with invalid dates (endTime) in an array
     const invalidSessions = deleteSessionIds.filter((session) =>
       Number.isNaN(new Date(session.endTime).getTime())
+    );
+
+    log.info(
+      `${METHOD_START_MESSAGE} with sessions: ${JSON.stringify(deleteSessionIds)}`,
+      loggerContext
     );
 
     if (invalidSessions.length > 0) {
@@ -341,6 +387,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const deleteRequestBody = {
       deleteSessionIds: santizedSessionIds,
     };
+
     try {
       const deleteCallHistoryRecordContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${DELETE_CALL_HISTORY_RECORDS_ENDPOINT}`;
       // Make a POST request to delete call history records
@@ -357,7 +404,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       }
 
       const data: DeleteCallHistoryRecordsResponse = await response.json();
-      log.info(`Call history records are succesfully deleted by the user`, loggerContext);
+      log.log(
+        `Successfully deleted ${santizedSessionIds?.length} call history records`,
+        loggerContext
+      );
       const responseDetails: DeleteCallHistoryRecordsResponse = {
         statusCode: data.statusCode as number,
         data: {
@@ -368,6 +418,15 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
       return responseDetails;
     } catch (err: unknown) {
+      const extendedError = new Error(
+        `Failed to delete call history records: ${err}`
+      ) as ExtendedError;
+      log.error(extendedError, {
+        file: CALL_HISTORY_FILE,
+        method: METHODS.DELETE_CALL_HISTORY_RECORDS,
+      });
+      await uploadLogs();
+
       // Catch the 401 error from try block, return the error object to user
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',

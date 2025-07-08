@@ -1,4 +1,5 @@
 import uuid from 'uuid';
+import {has} from 'lodash';
 import {
   HTTP_VERBS,
   CONTROLS,
@@ -47,6 +48,9 @@ const MembersUtil = {
         address:
           options.invitee.emailAddress || options.invitee.email || options.invitee.phoneNumber,
         ...(options.invitee.roles ? {roles: options.invitee.roles} : {}),
+        ...(has(options.invitee, 'isInternalNumber')
+          ? {isInternalNumber: options.invitee.isInternalNumber}
+          : {}),
       },
     ],
     alertIfActive: options.alertIfActive,
@@ -107,10 +111,17 @@ const MembersUtil = {
     }
 
     if (invitee.phoneNumber) {
+      if (invitee.isInternalNumber) {
+        return !DIALER_REGEX.INTERNAL_NUMBER.test(invitee.phoneNumber);
+      }
+
       return !DIALER_REGEX.E164_FORMAT.test(invitee.phoneNumber);
     }
 
-    return !VALID_EMAIL_ADDRESS.test(invitee.email || invitee.emailAddress);
+    return !(
+      VALID_EMAIL_ADDRESS.test(invitee.email || invitee.emailAddress) ||
+      DIALER_REGEX.SIP_ADDRESS.test(invitee.email || invitee.emailAddress)
+    );
   },
 
   getRemoveMemberRequestParams: (options) => {
@@ -356,6 +367,32 @@ const MembersUtil = {
       invitees: [
         {
           address: options.invitee.phoneNumber,
+        },
+      ],
+    };
+    const requestParams = {
+      method: HTTP_VERBS.PUT,
+      uri: options.locusUrl,
+      body,
+    };
+
+    return requestParams;
+  },
+
+  cancelInviteByMemberIdOptions: (invitee, locusUrl) => ({
+    invitee,
+    locusUrl,
+  }),
+
+  generateCancelInviteByMemberIdRequestParams: (options) => {
+    const {memberId, isInternalNumber} = options.invitee;
+    const hasIsInternalNumberProp = has(options.invitee, 'isInternalNumber');
+    const body = {
+      actionType: _REMOVE_,
+      invitees: [
+        {
+          address: memberId,
+          ...(hasIsInternalNumberProp ? {isInternalNumber} : {}),
         },
       ],
     };

@@ -119,9 +119,11 @@ export class MuteState {
    * @returns {void}
    */
   public enable(meeting: any, enable: boolean) {
-    this.state.client.enabled = enable;
+    if (enable !== this.state.client.enabled) {
+      this.state.client.enabled = enable;
 
-    this.applyClientStateToServer(meeting);
+      this.applyClientStateToServer(meeting);
+    }
   }
 
   /**

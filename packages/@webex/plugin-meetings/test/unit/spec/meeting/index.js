@@ -614,6 +614,22 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.members.cancelPhoneInvite, uuid1);
         });
       });
+      describe('#cancelInviteByMemberId', () => {
+        it('should have #cancelInviteByMemberId', () => {
+          assert.exists(meeting.cancelInviteByMemberId);
+        });
+        beforeEach(() => {
+          meeting.members.cancelInviteByMemberId = sinon.stub().returns(Promise.resolve(test1));
+        });
+        it('should proxy members #cancelInviteByMemberId and return a promise', async () => {
+          const cancel = meeting.cancelInviteByMemberId({memberId: uuid1});
+
+          assert.exists(cancel.then);
+          await cancel;
+          assert.calledOnce(meeting.members.cancelInviteByMemberId);
+          assert.calledWith(meeting.members.cancelInviteByMemberId, {memberId: uuid1});
+        });
+      });
       describe('#admit', () => {
         it('should have #admit', () => {
           assert.exists(meeting.admit);
@@ -1192,8 +1208,76 @@ describe('plugin-meetings', () => {
             reason: 'joinWithMedia failure',
           });
         });
-      });
 
+        it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              videoEnabled: false,
+              sendVideo: true,
+              receiveVideo: true,
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWithMatch(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.has('videoEnabled', false)
+                        .and(sinon.match.has('allowMediaInLobby', true))
+          );
+        });
+
+        it('should ignore sendAudio/receiveAudio when audioEnabled is false', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              audioEnabled: false,
+              sendAudio: true, 
+              receiveAudio: false, 
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWithMatch(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.has('audioEnabled', false)
+                        .and(sinon.match.has('allowMediaInLobby', true))
+          );
+        });        
+
+        
+        it('should use provided send/receive values when videoEnabled/audioEnabled are true or not set', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              sendVideo: true,
+              receiveVideo: false,
+              sendAudio: false,
+              receiveAudio: true,
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWith(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match({
+              sendVideo: true,
+              receiveVideo: false,
+              sendAudio: false,
+              receiveAudio: true,
+            })
+          );
+        });
+      });
       describe('#isTranscriptionSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {
           meeting.locusInfo.controls = {transcribe: {caption: false}};
@@ -1204,6 +1288,46 @@ describe('plugin-meetings', () => {
           meeting.locusInfo.controls = {transcribe: {caption: true}};
 
           assert.equal(meeting.isTranscriptionSupported(), true);
+        });
+      });
+
+      describe('#update spoken language', () => {
+        beforeEach(() => {
+          webex.internal.voicea.onSpokenLanguageUpdate = sinon.stub();
+          meeting.transcription = {languageOptions: {currentSpokenLanguage: 'en'}};
+        });
+        afterEach(() => {
+          // Restore the original methods after each test
+          sinon.restore();
+        });
+        it('should call voicea.onSpokenLanguageUpdate when joined', async () => {
+
+          meeting.joinedWith = {state: 'JOINED'};
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+            {spokenLanguage: 'fr'},
+          );
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr', meeting.id);
+          assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'fr');
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED
+          );
+        });
+
+        it('should also call voicea.onSpokenLanguageUpdate when not joined', async () => {
+
+          meeting.joinedWith = {state: 'NOT_JOINED'};
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+            {spokenLanguage: 'de'},
+          );
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'de');
+          assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'de');
         });
       });
 
@@ -2171,7 +2295,9 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
-              isSubnetReachable: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
               numTransports: 1,
               iceCandidatesCount: 0,
             }
@@ -2218,7 +2344,9 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
-              isSubnetReachable: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             })
           );
 
@@ -2284,7 +2412,9 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
-              isSubnetReachable: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             }
           );
         });
@@ -2342,7 +2472,9 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
-              isSubnetReachable: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             })
           );
 
@@ -2400,7 +2532,9 @@ describe('plugin-meetings', () => {
               signalingState: 'have-local-offer',
               connectionState: 'connecting',
               iceConnectionState: 'checking',
-              isSubnetReachable: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             })
           );
 
@@ -2922,7 +3056,9 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               iceCandidatesCount: 0,
-              isSubnetReachable: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             },
           ]);
 
@@ -3129,7 +3265,9 @@ describe('plugin-meetings', () => {
               retriedWithTurnServer: true,
               isJoinWithMediaRetry: false,
               iceCandidatesCount: 0,
-              isSubnetReachable: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
             },
           ]);
           meeting.roap.doTurnDiscovery;
@@ -3260,6 +3398,11 @@ describe('plugin-meetings', () => {
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(true),
           };
+          meeting.mediaConnections = [
+            {
+              mediaAgentCluster: 'some.cluster',
+            }
+          ]
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
           meeting.iceCandidateErrors.set('701_turn_host_lookup_received_error', 1);
@@ -3287,7 +3430,9 @@ describe('plugin-meetings', () => {
               iceCandidatesCount: 3,
               '701_error': 3,
               '701_turn_host_lookup_received_error': 1,
-              isSubnetReachable: null,
+              subnet_reachable: null,
+              selected_cluster: 'some.cluster',
+              selected_subnet: null,
             }
           );
 
@@ -3350,7 +3495,9 @@ describe('plugin-meetings', () => {
               iceConnectionState: 'unknown',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
-              isSubnetReachable: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
               iceCandidatesCount: 0,
             }
           );
@@ -3412,7 +3559,9 @@ describe('plugin-meetings', () => {
               numTransports: 1,
               '701_error': 2,
               '701_turn_host_lookup_received_error': 1,
-              isSubnetReachable: null,
+              subnet_reachable: null,
+              selected_cluster: null,
+              selected_subnet: null,
               iceCandidatesCount: 0,
             }
           );
@@ -3420,7 +3569,7 @@ describe('plugin-meetings', () => {
           assert.isOk(errorThrown);
         });
 
-        it('should send valid isSubnetReachability if media connection success', async () => {
+        it('should send subnet reachablity metrics if media connection success', async () => {
           meeting.roap.doTurnDiscovery = sinon.stub().returns({
             turnServerInfo: undefined,
             turnDiscoverySkippedReason: undefined,
@@ -3434,6 +3583,12 @@ describe('plugin-meetings', () => {
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(false),
           };
+          meeting.mediaServerIp =  '1.2.3.4';
+          meeting.mediaConnections = [
+            {
+              mediaAgentCluster: 'some.cluster',
+            }
+          ]
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -3461,11 +3616,13 @@ describe('plugin-meetings', () => {
             isJoinWithMediaRetry: false,
             iceCandidatesCount: 0,
             reachability_public_udp_success: 5,
-            isSubnetReachable: false,
+            subnet_reachable: false,
+            selected_cluster: 'some.cluster',
+            selected_subnet: '1.X.X.X',
           });
         });
 
-        it('should send valid isSubnetReachability if media connection fails', async () => {
+        it('should send subnet reachablity metrics if media connection fails', async () => {
           let errorThrown = undefined;
 
           meeting.roap.doTurnDiscovery = sinon.stub().returns({
@@ -3481,6 +3638,12 @@ describe('plugin-meetings', () => {
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(true),
           };
+          meeting.mediaServerIp =  '1.2.3.4';
+          meeting.mediaConnections = [
+            {
+              mediaAgentCluster: 'some.cluster',
+            }
+          ]
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -3522,7 +3685,9 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               reachability_public_udp_success: 5,
-              isSubnetReachable: true,
+              subnet_reachable: true,
+              selected_cluster: 'some.cluster',
+              selected_subnet: '1.X.X.X',
               iceCandidatesCount: 0,
             }
           );
@@ -4119,7 +4284,7 @@ describe('plugin-meetings', () => {
           meeting.deviceUrl = 'device url';
           meeting.selfId = 'self id';
           meeting.brbState = createBrbState(meeting, false);
-          meeting.brbState.enable = sinon.stub().resolves();
+          sinon.stub(meeting.brbState, 'enable').resolves();
         });
 
         afterEach(() => {
@@ -4182,6 +4347,19 @@ describe('plugin-meetings', () => {
             await meeting.beRightBack(false);
 
             assert.notCalled(meeting.audio.handleServerRemoteMuteUpdate);
+          });
+
+          it('should reject when brb enable fails', async () => {
+            meeting.brbState.enable.restore();
+
+            const error = new Error();
+            meeting.meetingRequest.setBrb = sinon.stub().rejects(error);
+
+            await expect(
+              meeting.beRightBack(true)
+            ).to.be.rejectedWith(error);
+
+            assert.isFalse(meeting.brbState.state.syncToServerInProgress);
           });
         });
       });
@@ -9978,6 +10156,24 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to CONTROLS_POLLING_QA_CHANGED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_POLLING_QA_UPDATED,
+            {state}
+          );
+        });
+
         it('listens to the locus interpretation update event', () => {
           const interpretation = {
             siLanguages: [{languageCode: 20, languageName: 'en'}],
@@ -11568,6 +11764,14 @@ describe('plugin-meetings', () => {
           });
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.DISABLE_RDC_MEETING_OPTION],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_ATTENDEE_START_POLLING_QA],
+            displayHints: userDisplayHints,
+          });
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA],
             displayHints: userDisplayHints,
           });
 

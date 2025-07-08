@@ -18,6 +18,8 @@ export enum METRIC_EVENT {
   REGISTRATION_ERROR = 'web-calling-sdk-registration-error',
   VOICEMAIL = 'web-calling-sdk-voicemail',
   VOICEMAIL_ERROR = 'web-calling-sdk-voicemail-error',
+  UPLOAD_LOGS_SUCCESS = 'web-calling-sdk-upload-logs-success',
+  UPLOAD_LOGS_FAILED = 'web-calling-sdk-upload-logs-failed',
 }
 
 export enum REG_ACTION {
@@ -41,13 +43,21 @@ export enum VOICEMAIL_ACTION {
   TRANSCRIPT = 'transcript',
 }
 
+export type SERVER_TYPE = 'PRIMARY' | 'BACKUP' | 'UNKNOWN';
+
+export const UPLOAD_LOGS_ACTION = 'upload_logs';
+
 export interface IMetricManager {
   setDeviceInfo: (deviceInfo: IDeviceInfo) => void;
   submitRegistrationMetric: (
     name: METRIC_EVENT,
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
-    error: LineError | CallingClientError | undefined
+    caller: string,
+    serverType: SERVER_TYPE,
+    trackingId: string,
+    keepaliveCount?: number,
+    error?: LineError | CallingClientError
   ) => void;
   submitBNRMetric: (
     name: METRIC_EVENT,
@@ -80,5 +90,15 @@ export interface IMetricManager {
     messageId?: string,
     voicemailError?: string,
     statusCode?: number
+  ) => void;
+  submitUploadLogsMetric: (
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    trackingId?: string,
+    feedbackId?: string,
+    correlationId?: string,
+    stack?: string,
+    callId?: string
   ) => void;
 }

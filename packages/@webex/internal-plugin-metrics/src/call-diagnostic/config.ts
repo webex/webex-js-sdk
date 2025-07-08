@@ -5,6 +5,7 @@
 import {ClientEventError, ClientSubServiceType} from '../metrics.types';
 
 export const CALL_DIAGNOSTIC_LOG_IDENTIFIER = 'call-diagnostic-events -> ';
+export const CALL_FEATURE_LOG_IDENTIFIER = 'call-diagnostic-events-feature -> ';
 
 export const AUTHENTICATION_FAILED_CODE = 1010;
 export const NETWORK_ERROR = 1026;
@@ -223,6 +224,8 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   403037: 4104,
   // Not reach JBH, can't join meeting
   403003: 4101,
+  // Attendee email is required
+  403030: 4101,
 
   // ---- Locus ------
   // FREE_USER_MAX_PARTICIPANTS_EXCEEDED
@@ -736,3 +739,5 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
 };
 
 export const CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND = 'js_sdk_call_diagnostic_event_failed_to_send';
+
+export const CALL_FEATURE_EVENT_FAILED_TO_SEND = 'js_sdk_call_feature_event_failed_to_send';

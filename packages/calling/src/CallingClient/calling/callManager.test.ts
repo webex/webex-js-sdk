@@ -9,6 +9,7 @@ import {Call} from './call';
 import log from '../../Logger';
 import {ILine} from '../line/types';
 import {LINE_EVENT_KEYS} from '../../Events/types';
+import * as utils from '../../common/Utils';
 
 const webex = getTestUtilsWebex();
 const defaultServiceIndicator = ServiceIndicator.CALLING;
@@ -175,6 +176,8 @@ describe('Call Manager Tests with respect to calls', () => {
       },
     });
 
+    const logSpy = jest.spyOn(log, 'log');
+
     expect(callManager).toBeTruthy();
     const call = await callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
@@ -183,6 +186,7 @@ describe('Call Manager Tests with respect to calls', () => {
     expect(call).toBeTruthy();
     expect(call.getCallId()).toStrictEqual('8a67806f-fc4d-446b-a131-31e71ea5b020');
     expect(call.lineId).toStrictEqual(mockLineId);
+    expect(logSpy).toHaveBeenCalledWith('Creating call object', {});
   });
 
   it('Accept an incoming call from Mobius where Call Setup was the first message', async () => {
@@ -267,7 +271,9 @@ describe('Call Manager Tests with respect to calls', () => {
     dummyResponse.statusCode = 503;
     patchMock.mockRejectedValue(dummyResponse);
 
-    const warnSpy = jest.spyOn(log, 'warn');
+    const errorSpy = jest.spyOn(log, 'error');
+    const logSpy = jest.spyOn(log, 'log');
+    const uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
 
     await callManager['dequeueWsEvents'](mediaEvent);
     await waitForMsecs(50);
@@ -275,10 +281,28 @@ describe('Call Manager Tests with respect to calls', () => {
     await waitForMsecs(50);
 
     expect(patchMock).toHaveBeenCalledWith(MobiusCallState.ALERTING);
-    expect(warnSpy).toHaveBeenCalledWith('Failed to signal call progression', {
-      file: 'call',
-      method: 'handleOutgoingCallAlerting',
-    });
+    expect(errorSpy).toHaveBeenCalledWith(
+      Error(`Failed to signal call progression: ${dummyResponse}`),
+      {
+        file: 'call',
+        method: 'handleOutgoingCallAlerting',
+      }
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      `Received call media mobiusEvent for call: ${mediaEvent.data.correlationId}`,
+      expect.objectContaining({
+        file: 'callManager',
+        method: 'dequeueWsEvents',
+      })
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      `ROAP message from mobius with type:  ${mediaEvent.data.message?.messageType}, seq: ${mediaEvent.data.message?.seq} , version: ${mediaEvent.data.message?.version}`,
+      expect.objectContaining({
+        file: 'callManager',
+        method: 'dequeueWsEvents',
+      })
+    );
+    expect(uploadLogsSpy).toHaveBeenCalled();
     /* No calls should have been added as call progress failed */
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(0);
   });
@@ -387,6 +411,8 @@ describe('Coverage for Events listener', () => {
   });
 
   beforeEach(() => {
+    jest.clearAllMocks();
+
     callManager = getCallManager(webex, defaultServiceIndicator);
     callManager.removeAllListeners(LINE_EVENT_KEYS.INCOMING_CALL);
     call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
@@ -400,15 +426,16 @@ describe('Coverage for Events listener', () => {
 
   it('When Offer is received', async () => {
     mediaEvent.data.callId = dummyCallId;
-
+    jest.clearAllMocks();
     await callManager['dequeueWsEvents'](mediaEvent);
     const eventData = {data: mediaEvent.data.message, type: 'E_RECV_ROAP_OFFER'};
-
-    expect(funcSpy).toHaveBeenLastCalledWith(eventData);
+    expect(funcSpy).toHaveBeenCalledWith(eventData);
   });
 
   it('When Answer is received', async () => {
     mediaEvent.data.message.messageType = 'ANSWER';
+    jest.clearAllMocks();
+
     await callManager['dequeueWsEvents'](mediaEvent);
 
     const eventData = {data: mediaEvent.data.message, type: 'E_RECV_ROAP_ANSWER'};
@@ -418,6 +445,7 @@ describe('Coverage for Events listener', () => {
 
   it('When Offer Request is received', async () => {
     mediaEvent.data.message.messageType = 'OFFER_REQUEST';
+    jest.clearAllMocks();
     await callManager['dequeueWsEvents'](mediaEvent);
 
     const eventData = {data: mediaEvent.data.message, type: 'E_RECV_ROAP_OFFER_REQUEST'};
@@ -427,6 +455,7 @@ describe('Coverage for Events listener', () => {
 
   it('When OK is received', async () => {
     mediaEvent.data.message.messageType = 'OK';
+    jest.clearAllMocks();
     await callManager['dequeueWsEvents'](mediaEvent);
 
     const mediaOK = {received: true, message: mediaEvent.data.message};
@@ -437,9 +466,29 @@ describe('Coverage for Events listener', () => {
 
   it('When Error is Received', async () => {
     mediaEvent.data.message.messageType = 'ERROR';
+    jest.clearAllMocks();
+    const infoSpy = jest.spyOn(log, 'info');
     await callManager['dequeueWsEvents'](mediaEvent);
 
+    expect(logSpy).toHaveBeenCalledWith(
+      `Received call media mobiusEvent for call: ${mediaEvent.data.correlationId}`,
+      {
+        file: 'callManager',
+        method: 'dequeueWsEvents',
+      }
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      `ROAP message from mobius with type:  ${mediaEvent.data.message?.messageType}, seq: ${mediaEvent.data.message?.seq} , version: ${mediaEvent.data.message?.version}`,
+      {
+        file: 'callManager',
+        method: 'dequeueWsEvents',
+      }
+    );
     expect(logSpy).toHaveBeenCalledWith('Received Error...', {
+      file: 'callManager',
+      method: 'dequeueWsEvents',
+    });
+    expect(infoSpy).toHaveBeenCalledWith(`SDP from mobius ${mediaEvent.data.message?.sdp}`, {
       file: 'callManager',
       method: 'dequeueWsEvents',
     });
@@ -447,9 +496,29 @@ describe('Coverage for Events listener', () => {
 
   it('When Unknown event is Received', async () => {
     mediaEvent.data.message.messageType = 'UNKNOWN';
+    jest.clearAllMocks();
+    const infoSpy = jest.spyOn(log, 'info');
     await callManager['dequeueWsEvents'](mediaEvent);
 
+    expect(logSpy).toHaveBeenCalledWith(
+      `Received call media mobiusEvent for call: ${mediaEvent.data.correlationId}`,
+      {
+        file: 'callManager',
+        method: 'dequeueWsEvents',
+      }
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      `ROAP message from mobius with type:  ${mediaEvent.data.message?.messageType}, seq: ${mediaEvent.data.message?.seq} , version: ${mediaEvent.data.message?.version}`,
+      {
+        file: 'callManager',
+        method: 'dequeueWsEvents',
+      }
+    );
     expect(logSpy).toHaveBeenCalledWith('Unknown Media mobiusEvent: UNKNOWN ', {
+      file: 'callManager',
+      method: 'dequeueWsEvents',
+    });
+    expect(infoSpy).toHaveBeenCalledWith(`SDP from mobius ${mediaEvent.data.message?.sdp}`, {
       file: 'callManager',
       method: 'dequeueWsEvents',
     });
@@ -489,7 +558,9 @@ describe('Coverage for Events listener', () => {
 
   it('When Unknown Call event is Received', async () => {
     setupEvent.data.eventType = 'mobius.callunknown';
+    jest.clearAllMocks();
     await callManager['dequeueWsEvents'](setupEvent);
+
     expect(logSpy).toHaveBeenCalledWith('Unknown Call Event mobiusEvent: mobius.callunknown', {
       file: 'callManager',
       method: 'dequeueWsEvents',
