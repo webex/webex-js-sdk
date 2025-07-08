@@ -5,19 +5,19 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {Services, ServiceRegistry, ServiceState} from '@webex/webex-core';
+import {ServicesV2} from '@webex/webex-core';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
+import {formattedServiceHostmapV2, serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
 
 const waitForAsync = () =>
-  new Promise((resolve) =>
+  new Promise<void>((resolve) =>
     setImmediate(() => {
       return resolve();
     })
   );
 
-/* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
-  describe('Services', () => {
+  describe('ServicesV2', () => {
     let webex;
     let services;
     let catalog;
@@ -25,7 +25,7 @@ describe('webex-core', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          services: Services,
+          services: ServicesV2,
           newMetrics: NewMetrics,
         },
       });
@@ -179,34 +179,6 @@ describe('webex-core', () => {
       });
     });
 
-    describe('class members', () => {
-      describe('#registries', () => {
-        it('should be a weakmap', () => {
-          assert.instanceOf(services.registries, WeakMap);
-        });
-      });
-
-      describe('#states', () => {
-        it('should be a weakmap', () => {
-          assert.instanceOf(services.states, WeakMap);
-        });
-      });
-    });
-
-    describe('class methods', () => {
-      describe('#getRegistry', () => {
-        it('should be a service registry', () => {
-          assert.instanceOf(services.getRegistry(), ServiceRegistry);
-        });
-      });
-
-      describe('#getState', () => {
-        it('should be a service state', () => {
-          assert.instanceOf(services.getState(), ServiceState);
-        });
-      });
-    });
-
     describe('#namespace', () => {
       it('is accurate to plugin name', () => {
         assert.equal(services.namespace, 'Services');
@@ -228,25 +200,6 @@ describe('webex-core', () => {
     describe('#initFailed', () => {
       it('is a boolean', () => {
         assert.isFalse(services.initFailed);
-      });
-    });
-
-    describe('#list()', () => {
-      let serviceList;
-
-      beforeEach(() => {
-        serviceList = services.list();
-      });
-
-      it('must return an object', () => {
-        assert.typeOf(serviceList, 'object');
-      });
-
-      it('returned list must be of shape {Record<string, string>}', () => {
-        Object.keys(serviceList).forEach((key) => {
-          assert.typeOf(key, 'string');
-          assert.typeOf(serviceList[key], 'string');
-        });
       });
     });
 
@@ -318,19 +271,19 @@ describe('webex-core', () => {
     describe('#updateCatalog', () => {
       it('updates the catalog', async () => {
         const serviceGroup = 'postauth';
-        const hostmap = {hostmap: 'hostmap'};
+        const hostmap = [{hostmap: 'hostmap'}];
 
-        services._formatReceivedHostmap = sinon.stub().returns({some: 'hostmap'});
+        services._formatReceivedHostmap = sinon.stub().returns([{some: 'hostmap'}]);
 
-        catalog.updateServiceUrls = sinon.stub().returns(Promise.resolve({some: 'value'}));
+        catalog.updateServiceGroups = sinon.stub().returns(Promise.resolve([{some: 'value'}]));
 
         const result = await services.updateCatalog(serviceGroup, hostmap);
 
         assert.calledWith(services._formatReceivedHostmap, hostmap);
 
-        assert.calledWith(catalog.updateServiceUrls, serviceGroup, {some: 'hostmap'});
+        assert.calledWith(catalog.updateServiceGroups, serviceGroup, [{some: 'hostmap'}]);
 
-        assert.deepEqual(result, {some: 'value'});
+        assert.deepEqual(result, [{some: 'value'}]);
       });
     });
 
@@ -357,7 +310,8 @@ describe('webex-core', () => {
           method: 'GET',
           service: 'u2c',
           resource: '/limited/catalog',
-          qs: {format: 'hostmap'},
+          qs: {format: 'U2CV2'},
+          headers: {},
         });
         assert.calledOnceWithExactly(
           webex.internal.newMetrics.callDiagnosticLatencies.measureLatency,
@@ -383,7 +337,8 @@ describe('webex-core', () => {
           method: 'GET',
           service: 'u2c',
           resource: '/limited/catalog',
-          qs: {format: 'hostmap'},
+          qs: {format: 'U2CV2'},
+          headers: {},
         });
         assert.calledOnceWithExactly(
           webex.internal.newMetrics.callDiagnosticLatencies.measureLatency,
@@ -403,26 +358,13 @@ describe('webex-core', () => {
       });
 
       it('returns the same uri if the hostmap does not contain the host', () => {
-        services._hostCatalog = {
-          'not-example.com': [
-            {
-              host: 'example-1.com',
-              ttl: -1,
-              priority: 5,
-              id: '0:0:0:example',
-            },
-          ],
-        };
-
-        const uri = 'http://example.com';
-
-        assert.equal(services.replaceHostFromHostmap(uri), uri);
-      });
-
-      it('returns the original uri if the hostmap has no hosts for the host', () => {
-        services._hostCatalog = {
-          'example.com': [],
-        };
+        catalog.updateServiceGroups('preauth', [
+          {
+            id: 'example-1',
+            serviceName: 'example-1',
+            serviceUrls: [{host: 'example-1.com', baseUrl: 'http://example-1.com', priority: 1}],
+          },
+        ]);
 
         const uri = 'http://example.com';
 
@@ -430,16 +372,16 @@ describe('webex-core', () => {
       });
 
       it('returns the replaces the host in the uri with the host from the hostmap', () => {
-        services._hostCatalog = {
-          'example.com': [
-            {
-              host: 'example-1.com',
-              ttl: -1,
-              priority: 5,
-              id: '0:0:0:example',
-            },
-          ],
-        };
+        catalog.updateServiceGroups('preauth', [
+          {
+            id: 'example-1',
+            serviceName: 'example-1',
+            serviceUrls: [
+              {host: 'example-1.com', baseUrl: 'http://example-1.com', priority: 1},
+              {host: 'example.com', baseUrl: 'http://example.com', priority: 2},
+            ],
+          },
+        ]);
 
         const uri = 'http://example.com/somepath';
 
@@ -452,178 +394,32 @@ describe('webex-core', () => {
       let formattedHM;
 
       beforeEach(() => {
-        serviceHostmap = {
-          serviceLinks: {
-            'example-a': 'https://example-a.com/api/v1',
-            'example-b': 'https://example-b.com/api/v1',
-            'example-c': 'https://example-c.com/api/v1',
-            'example-d': 'https://example-d.com/api/v1',
-            'example-e': 'https://example-e.com/api/v1',
-            'example-f': 'https://example-f.com/api/v1',
-            'example-g': 'https://example-g.com/api/v1',
-          },
-          hostCatalog: {
-            'example-a.com': [
-              {
-                host: 'example-a-1.com',
-                ttl: -1,
-                priority: 5,
-                id: '0:0:0:example-a',
-              },
-              {
-                host: 'example-a-2.com',
-                ttl: -1,
-                priority: 3,
-                id: '0:0:0:example-a',
-              },
-              {
-                host: 'example-a-3.com',
-                ttl: -1,
-                priority: 1,
-                id: '0:0:0:example-a-x',
-              },
-            ],
-            'example-b.com': [
-              {
-                host: 'example-b-1.com',
-                ttl: -1,
-                priority: 5,
-                id: '0:0:0:example-b',
-              },
-              {
-                host: 'example-b-2.com',
-                ttl: -1,
-                priority: 3,
-                id: '0:0:0:example-b',
-              },
-              {
-                host: 'example-b-3.com',
-                ttl: -1,
-                priority: 1,
-                id: '0:0:0:example-b-x',
-              },
-            ],
-            'example-c.com': [
-              {
-                host: 'example-c-1.com',
-                ttl: -1,
-                priority: 5,
-                id: '0:0:0:example-c',
-              },
-              {
-                host: 'example-c-2.com',
-                ttl: -1,
-                priority: 3,
-                id: '0:0:0:example-c',
-              },
-              {
-                host: 'example-c-3.com',
-                ttl: -1,
-                priority: 1,
-                id: '0:0:0:example-c-x',
-              },
-            ],
-            'example-d.com': [
-              {
-                host: 'example-c-1.com',
-                ttl: -1,
-                priority: 5,
-                id: '0:0:0:example-d',
-              },
-              {
-                host: 'example-c-2.com',
-                ttl: -1,
-                priority: 3,
-                id: '0:0:0:example-d',
-              },
-              {
-                host: 'example-c-3.com',
-                ttl: -1,
-                priority: 1,
-                id: '0:0:0:example-d-x',
-              },
-            ],
-            'example-e.com': [
-              {
-                host: 'example-e-1.com',
-                ttl: -1,
-                priority: 5,
-                id: '0:0:0:different-e',
-              },
-              {
-                host: 'example-e-2.com',
-                ttl: -1,
-                priority: 3,
-                id: '0:0:0:different-e',
-              },
-              {
-                host: 'example-e-3.com',
-                ttl: -1,
-                priority: 1,
-                id: '0:0:0:different-e',
-              },
-            ],
-            'example-e-1.com': [
-              {
-                host: 'example-e-4.com',
-                ttl: -1,
-                priority: 5,
-                id: '0:0:0:different-e',
-              },
-              {
-                host: 'example-e-5.com',
-                ttl: -1,
-                priority: 3,
-                id: '0:0:0:different-e',
-              },
-              {
-                host: 'example-e-3.com',
-                ttl: -1,
-                priority: 1,
-                id: '0:0:0:different-e-x',
-              },
-            ],
-            'example-f.com': [],
-          },
-          format: 'hostmap',
-        };
+        serviceHostmap = serviceHostmapV2;
       });
 
-      it('creates a formmatted host map that contains the same amount of entries as the original received hostmap', () => {
+      it('creates a formmatted hostmap that contains the same amount of entries as the original received hostmap', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         assert(
-          Object.keys(serviceHostmap.serviceLinks).length >= formattedHM.length,
+          serviceHostmap.services.length >= formattedHM.length,
           'length is not equal or less than'
         );
-      });
-
-      it('creates an array of equal or less length of hostMap', () => {
-        formattedHM = services._formatReceivedHostmap(serviceHostmap);
-
-        assert(
-          Object.keys(serviceHostmap.hostCatalog).length >= formattedHM.length,
-          'length is not equal or less than'
-        );
-      });
-
-      it('creates an array with matching url data', () => {
-        formattedHM = services._formatReceivedHostmap(serviceHostmap);
-
-        formattedHM.forEach((entry) => {
-          assert.equal(serviceHostmap.serviceLinks[entry.name], entry.defaultUrl);
-        });
       });
 
       it('has all keys in host map hosts', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         formattedHM.forEach((service) => {
-          service.hosts.forEach((host) => {
+          assert.hasAllKeys(
+            service,
+            ['id', 'serviceName', 'serviceUrls'],
+            `${service.serviceName} has an invalid host shape`
+          );
+          service.serviceUrls.forEach((serviceUrl) => {
             assert.hasAllKeys(
-              host,
-              ['homeCluster', 'host', 'id', 'priority', 'ttl'],
-              `${service.name} has an invalid host shape`
+              serviceUrl,
+              ['host', 'baseUrl', 'priority'],
+              `${service.serviceName} has an invalid host shape`
             );
           });
         });
@@ -633,172 +429,31 @@ describe('webex-core', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         formattedHM.forEach((service) => {
-          const foundServiceKey = Object.keys(serviceHostmap.serviceLinks).find(
-            (key) => service.name === key
+          const foundServiceKey = Object.keys(serviceHostmap.activeServices).find(
+            (key) => service.serviceName === key
           );
 
           assert.isDefined(foundServiceKey);
         });
       });
 
-      it('creates an array with matching names', () => {
-        formattedHM = services._formatReceivedHostmap(serviceHostmap);
-
-        assert.hasAllKeys(
-          serviceHostmap.serviceLinks,
-          formattedHM.map((item) => item.name)
-        );
-      });
-
       it('creates the expected formatted host map', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        assert.deepEqual(formattedHM, [
-          {
-            defaultHost: 'example-a.com',
-            defaultUrl: 'https://example-a.com/api/v1',
-            hosts: [
-              {
-                homeCluster: true,
-                host: 'example-a-1.com',
-                id: '0:0:0:example-a',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-a-2.com',
-                id: '0:0:0:example-a',
-                priority: 3,
-                ttl: -1,
-              },
-            ],
-            name: 'example-a',
-          },
-          {
-            defaultHost: 'example-b.com',
-            defaultUrl: 'https://example-b.com/api/v1',
-            hosts: [
-              {
-                homeCluster: true,
-                host: 'example-b-1.com',
-                id: '0:0:0:example-b',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-b-2.com',
-                id: '0:0:0:example-b',
-                priority: 3,
-                ttl: -1,
-              },
-            ],
-            name: 'example-b',
-          },
-          {
-            defaultHost: 'example-c.com',
-            defaultUrl: 'https://example-c.com/api/v1',
-            hosts: [
-              {
-                homeCluster: true,
-                host: 'example-c-1.com',
-                id: '0:0:0:example-c',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-c-2.com',
-                id: '0:0:0:example-c',
-                priority: 3,
-                ttl: -1,
-              },
-            ],
-            name: 'example-c',
-          },
-          {
-            defaultHost: 'example-d.com',
-            defaultUrl: 'https://example-d.com/api/v1',
-            hosts: [
-              {
-                homeCluster: true,
-                host: 'example-c-1.com',
-                id: '0:0:0:example-d',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-c-2.com',
-                id: '0:0:0:example-d',
-                priority: 3,
-                ttl: -1,
-              },
-            ],
-            name: 'example-d',
-          },
-          {
-            defaultHost: 'example-e.com',
-            defaultUrl: 'https://example-e.com/api/v1',
-            hosts: [
-              {
-                homeCluster: true,
-                host: 'example-e-1.com',
-                id: '0:0:0:different-e',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-e-2.com',
-                id: '0:0:0:different-e',
-                priority: 3,
-                ttl: -1,
-              },
-              {
-                homeCluster: true,
-                host: 'example-e-3.com',
-                id: '0:0:0:different-e',
-                priority: 1,
-                ttl: -1,
-              },
-              {
-                homeCluster: false,
-                host: 'example-e-4.com',
-                id: '0:0:0:different-e',
-                priority: 5,
-                ttl: -1,
-              },
-              {
-                homeCluster: false,
-                host: 'example-e-5.com',
-                id: '0:0:0:different-e',
-                priority: 3,
-                ttl: -1,
-              },
-            ],
-            name: 'example-e',
-          },
-          {
-            defaultHost: 'example-f.com',
-            defaultUrl: 'https://example-f.com/api/v1',
-            hosts: [],
-            name: 'example-f',
-          },
-          {
-            defaultHost: 'example-g.com',
-            defaultUrl: 'https://example-g.com/api/v1',
-            hosts: [],
-            name: 'example-g',
-          },
-        ]);
+        assert.deepEqual(formattedHM, formattedServiceHostmapV2);
       });
 
       it('has hostCatalog updated', () => {
+        services._services = [
+          {id: 'urn:TEAM:us-east-2_a:conversation'},
+          {id: 'test-left-over-services'},
+        ];
         services._formatReceivedHostmap(serviceHostmap);
 
-        assert.deepStrictEqual(services._hostCatalog, serviceHostmap.hostCatalog);
+        assert.deepStrictEqual(services._services, [
+          ...serviceHostmapV2.services,
+          {id: 'test-left-over-services'},
+        ]);
       });
     });
 
@@ -810,12 +465,24 @@ describe('webex-core', () => {
       };
 
       beforeEach(async () => {
-        const servicesList = {
-          idbroker: 'https://idbroker.webex.com',
-          identity: 'https://identity.webex.com/',
-        };
+        const servicesList = [
+          {
+            id: 'idbroker',
+            name: 'idbroker',
+            serviceUrls: [
+              {baseUrl: 'https://idbroker.webex.com/', host: 'idbroker.webex.com', priority: 1},
+            ],
+          },
+          {
+            id: 'identity',
+            name: 'identity',
+            serviceUrls: [
+              {baseUrl: 'https://identity.webex.com/', host: 'identity.webex.com', priority: 1},
+            ],
+          },
+        ];
 
-        catalog.list = sinon.stub().returns(servicesList);
+        catalog.updateServiceGroups('preauth', servicesList);
         await services.updateCredentialsConfig();
       });
 
@@ -847,4 +514,3 @@ describe('webex-core', () => {
     });
   });
 });
-/* eslint-enable no-underscore-dangle */

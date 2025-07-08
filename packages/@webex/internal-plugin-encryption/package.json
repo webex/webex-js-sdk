@@ -50,7 +50,7 @@
     "isomorphic-webcrypto": "^2.3.8",
     "lodash": "^4.17.21",
     "node-jose": "^2.2.0",
-    "node-kms": "^0.4.0",
+    "node-kms": "^0.4.1",
     "node-scr": "^0.3.0",
     "pkijs": "^2.1.84",
     "safe-buffer": "^5.2.0",

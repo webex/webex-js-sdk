@@ -238,6 +238,7 @@ describe('plugin-voicea', () => {
           captionLanguages: ['af', 'am'],
           spokenLanguages: ['en'],
           maxLanguages: 5,
+          currentSpokenLanguage: 'en',
         });
       });
 
@@ -246,11 +247,13 @@ describe('plugin-voicea', () => {
 
         voiceaService.on(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, spy);
         voiceaService.listenToEvents();
+        voiceaService.currentSpokenLanguage = 'fr';
         await voiceaService.processAnnouncementMessage({});
         assert.calledOnceWithExactly(spy, {
           captionLanguages: [],
           spokenLanguages: [],
           maxLanguages: 0,
+          currentSpokenLanguage: 'fr',
         });
       });
     });
@@ -428,34 +431,34 @@ describe('plugin-voicea', () => {
     });
 
     describe('#turnOnCaptions', () => {
-      let requestTurnOnCaptions, isCaptionProcessing;
+      let requestTurnOnCaptions;
       beforeEach(() => {
         requestTurnOnCaptions = sinon.stub(voiceaService, 'requestTurnOnCaptions');
-        isCaptionProcessing = sinon.stub(voiceaService, 'isCaptionProcessing').returns(false);
+        voiceaService.captionStatus = 'idle';
         voiceaService.webex.internal.llm.isConnected.returns(true);
       });
 
       afterEach(() => {
         requestTurnOnCaptions.restore();
-        isCaptionProcessing.restore();
+        voiceaService.captionStatus = 'idle';
         voiceaService.webex.internal.llm.isConnected.returns(true);
       });
 
       it('call request turn on captions', () => {
-        isCaptionProcessing.returns(false);
+        voiceaService.captionStatus = 'idle';
         voiceaService.turnOnCaptions();
         assert.calledOnce(requestTurnOnCaptions);
       });
 
       it("turns on captions before llm connected", () => {
-        isCaptionProcessing.returns(false);
+        voiceaService.captionStatus = 'idle';
         voiceaService.webex.internal.llm.isConnected.returns(true);
         // assert.throws(() => voiceaService.turnOnCaptions(), "can not turn on captions before llm connected");
         assert.notCalled(requestTurnOnCaptions);
       });
 
       it('should not turn on duplicate when processing', () => {
-        isCaptionProcessing.returns(true);
+        voiceaService.captionStatus = 'sending';
         voiceaService.turnOnCaptions();
         assert.notCalled(voiceaService.requestTurnOnCaptions);
       });
@@ -1020,6 +1023,17 @@ describe('plugin-voicea', () => {
         assert.equal(voiceaService.getAnnounceStatus(), "joined");
       });
     });
+
+    describe('#onSpokenLanguageUpdate', () => {
+      it('should trigger SPOKEN_LANGUAGE_UPDATE event with correct languageCode', () => {
+        const triggerSpy = sinon.spy();
+        voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
+
+        const languageCode = 'fr';
+        voiceaService.onSpokenLanguageUpdate(languageCode, '123');
+        assert.equal(voiceaService.currentSpokenLanguage, languageCode);
+        assert.calledOnceWithExactly(triggerSpy, {languageCode, meetingId: '123'});
+      });
+    });
   });
 });
-

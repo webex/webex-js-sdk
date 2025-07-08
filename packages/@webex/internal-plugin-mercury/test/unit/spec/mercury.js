@@ -77,6 +77,7 @@ describe('plugin-mercury', () => {
         markFailedUrl: sinon.stub().returns(Promise.resolve()),
       };
       webex.internal.metrics.submitClientMetrics = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
       webex.trackingId = 'fakeTrackingId';
       webex.config.mercury = mercuryConfig.mercury;
 
@@ -110,17 +111,31 @@ describe('plugin-mercury', () => {
 
     describe('#listen()', () => {
       it('proxies to #connect()', () => {
-        sinon.stub(mercury, 'connect');
-        mercury.listen();
-        assert.called(mercury.connect);
+        const connectStub = sinon.stub(mercury, 'connect').callThrough();
+        return mercury.listen().then(() => {
+          assert.called(connectStub);
+          assert.calledWith(
+            webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus,
+            true
+          );
+        });
       });
     });
 
     describe('#stopListening()', () => {
       it('proxies to #disconnect()', () => {
-        sinon.stub(mercury, 'connect');
-        mercury.listen();
-        assert.called(mercury.connect);
+        return mercury.connect().then(() => {
+          webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus.resetHistory();
+          const disconnectStub = sinon.stub(mercury, 'disconnect').callThrough();
+
+          mercury.stopListening();
+          assert.called(disconnectStub);
+          mockWebSocket.emit('close', {code: 1000, reason: 'test'});
+          assert.calledWith(
+            webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus,
+            false
+          );
+        });
       });
     });
 

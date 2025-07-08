@@ -74,9 +74,11 @@ const engageElm = document.querySelector('#engageWidget');
 let isBundleLoaded = false; // this is just to check before loading/using engage widgets
 const uploadLogsButton = document.getElementById('upload-logs');
 const uploadLogsResultElm = document.getElementById('upload-logs-result');
+const agentLoginGenericError = document.getElementById('agent-login-generic-error');
+const agentLoginInputError = document.getElementById('agent-login-input-error');
 const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProfile');
-const changeEnv = document.querySelector('#changeEnv');
-
+const autoWrapupTimerElm = document.getElementById('autoWrapupTimer');
+const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
 deregisterBtn.style.backgroundColor = 'red';
 let enableProd = true;
 
@@ -196,7 +198,13 @@ function initOauth() {
   }
 
   webex = window.webex = Webex.init({
-    config: webexConfig
+    config: generateWebexConfig({
+      credentials: {
+        client_id: 'C04ef08ffce356c3161bb66b15dbdd98d26b6c683c5ce1a1a89efad545fdadd74',
+        redirect_uri: redirectUri,
+        scope: requestedScopes,
+      }
+    })
   });
 
   localStorage.setItem('OAuth', true);
@@ -702,6 +710,11 @@ function registerTaskListeners(task) {
     console.info('Task is rejected with reason:', reason);
     showAgentStatePopup(reason);
   });
+
+  task.on('task:wrappedup', task => {
+    currentTask = undefined;
+    updateTaskList(); // Update the task list UI to have latest tasks
+  });
 }
 
 function disableAllCallControls() {
@@ -725,9 +738,13 @@ function updateCallControlUI(task) {
     callProcessingDetails
   } = interaction;
   
-
+  autoWrapupTimerElm.style.display = 'none';
+  
   if (task.data.wrapUpRequired) {
     updateButtonsPostEndCall();
+    if (task.autoWrapup && task.autoWrapup.isRunning()) {
+      startAutoWrapupTimer(task);
+    }
     return;
   }
   wrapupElm.disabled = true;
@@ -878,10 +895,51 @@ function startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp) 
 }
 
 function updateUnregisterButtonState() {  
-  const isLoggedIn = webex?.cc?.agentProfile?.isAgentLoggedIn || 
+  const isLoggedIn = webex?.cc?.agentConfig?.isAgentLoggedIn || 
     !logoutAgentElm.classList.contains('hidden');
   
   deregisterBtn.disabled = isLoggedIn;  
+}
+
+let autoWrapupInterval;
+
+function startAutoWrapupTimer(task) {
+  if (!task || !task.autoWrapup || !task.autoWrapup.isRunning()) {
+    return;
+  }
+  
+  // Clear any existing interval
+  if (autoWrapupInterval) {
+    clearInterval(autoWrapupInterval);
+  }
+  
+  // Show the timer element
+  autoWrapupTimerElm.style.display = 'block';
+  
+  // Update timer value immediately
+  const timeLeftInSeconds = task.autoWrapup.getTimeLeftSeconds();
+  timerValueElm.textContent = formatTimeRemaining(timeLeftInSeconds);
+  
+  // Set up the interval to update every second
+  autoWrapupInterval = setInterval(() => {
+    if (task) {
+      const remainingSeconds = task.autoWrapup?.getTimeLeftSeconds();
+      timerValueElm.textContent = formatTimeRemaining(remainingSeconds);
+      
+      if (remainingSeconds <= 0) {
+        clearInterval(autoWrapupInterval);
+        autoWrapupTimerElm.style.display = 'none';
+      }
+    } else {
+      // If auto wrapup is no longer running, clear the interval
+      clearInterval(autoWrapupInterval);
+      autoWrapupTimerElm.style.display = 'none';
+    }
+  }, 1000);
+}
+
+function formatTimeRemaining(seconds) {
+  return seconds > 0 ? `${seconds}s` : '0s';
 }
 
 function register() {
@@ -1099,6 +1157,9 @@ async function handleAgentLogin(e) {
 }
 
 function doAgentLogin() {
+  agentLoginInputError.style.display = 'none';
+  agentLoginGenericError.style.display = 'none';
+  
   webex.cc.stationLogin({
     teamId: teamsDropdown.value,
     loginOption: agentDeviceType,
@@ -1120,6 +1181,13 @@ function doAgentLogin() {
     
   }).catch((error) => {
     console.log('Agent Login failed', error);
+    if(['EXTENSION', 'AGENT_DN'].includes(error.data.fieldName))  {
+      agentLoginInputError.innerText = error.data.message;
+      agentLoginInputError.style.display = 'block';
+    } else {
+      agentLoginGenericError.innerText = error.data.message;
+      agentLoginGenericError.style.display = 'block';
+    }
   });
 }
 
@@ -1493,6 +1561,7 @@ function renderTaskList(taskList) {
     disableAllCallControls();
     wrapupElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
+    autoWrapupTimerElm.style.display = 'none';
     taskListContainer.innerHTML = '<p>No tasks available</p>';
     engageElm.innerHTML = ``;
     currentTask = undefined;
@@ -1503,6 +1572,15 @@ function renderTaskList(taskList) {
   let lastTask = null;
   let lastTaskId = null;
   let hasSelectedTask = false;
+  
+  // Check if the current task still exists in the task list
+  if (currentTask) {
+    const currentTaskStillExists = taskList[currentTask.data.interactionId];
+    if (!currentTaskStillExists) {
+      // Current task was removed, we'll need to select another one
+      currentTask = undefined;
+    }
+  }
   
   for (const [taskId, task] of Object.entries(taskList)) {
     const taskElement = document.createElement('div');
@@ -1561,9 +1639,12 @@ function renderTaskList(taskList) {
     const lastTaskElement = document.querySelector(`.task-item[data-task-id="${lastTaskId}"]`);
     if (lastTaskElement) {
       lastTaskElement.classList.add('selected');
+      console.log('Selecting last task as default:', lastTaskId);
+      currentTask = lastTask; // Update the current task
       handleTaskSelect(lastTask);
     }
-  } else {
+  } else if (hasSelectedTask && currentTask) {
+    // We have a selected task, ensure UI is updated correctly
     handleTaskSelect(currentTask);
   }
 

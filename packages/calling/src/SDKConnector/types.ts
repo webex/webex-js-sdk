@@ -1,4 +1,11 @@
-import {KmsKey, KmsResourceObject, PeopleListResponse, WebexRequestPayload} from '../common/types';
+import {
+  KmsKey,
+  KmsResourceObject,
+  LogsMetaData,
+  PeopleListResponse,
+  UploadLogsResponse,
+  WebexRequestPayload,
+} from '../common/types';
 /* eslint-disable no-shadow */
 
 type Listener = (e: string, data?: unknown) => void;
@@ -44,6 +51,10 @@ export type ClientRegionInfo = {
 };
 
 export type Logger = {
+  config?: {
+    level: string;
+    bufferLogLevel: string;
+  };
   log: (payload: string) => void;
   error: (payload: string) => void;
   warn: (payload: string) => void;
@@ -96,7 +107,13 @@ export interface WebexSDK {
     };
     presence: unknown;
     support: {
-      submitLogs: (info: object) => Promise<void>;
+      submitLogs: (
+        metaData: LogsMetaData,
+        logs?: string,
+        options?: {
+          type: 'diff' | 'full';
+        }
+      ) => Promise<UploadLogsResponse>;
     };
     services: {
       _hostCatalog: Record<string, ServiceHost[]>;

@@ -1,6 +1,7 @@
 import {CallId} from '@webex/calling/dist/types/common/types';
 import EventEmitter from 'events';
 import {Msg} from '../core/GlobalTypes';
+import AutoWrapup from './AutoWrapup';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -158,13 +159,13 @@ export enum TASK_EVENTS {
    * Triggered when a task is resumed from hold
    * @example
    * ```typescript
-   * task.on(TASK_EVENTS.TASK_UNHOLD, (task: ITask) => {
+   * task.on(TASK_EVENTS.TASK_RESUME, (task: ITask) => {
    *   console.log('Task resumed from hold:', task.data.interactionId);
    *   // Update UI to show active state
    * });
    * ```
    */
-  TASK_UNHOLD = 'task:unhold',
+  TASK_RESUME = 'task:resume',
 
   /**
    * Triggered when a consultation session ends
@@ -990,6 +991,21 @@ export interface ITask extends EventEmitter {
    * Map associating tasks with their corresponding call identifiers.
    */
   webCallMap: Record<TaskId, CallId>;
+
+  /**
+   * Auto-wrapup timer for the task
+   * This is used to automatically wrap up tasks after a specified duration
+   * as defined in {@link AutoWrapup}
+   */
+  autoWrapup?: AutoWrapup;
+
+  /**
+   * cancels the auto-wrapup timer for the task
+   * This method stops the auto-wrapup process if it is currently active
+   * Note: This is supported only in single session mode. Not supported in multi-session mode.
+   * @returns void
+   */
+  cancelAutoWrapupTimer(): void;
 
   /**
    * Deregisters all web call event listeners

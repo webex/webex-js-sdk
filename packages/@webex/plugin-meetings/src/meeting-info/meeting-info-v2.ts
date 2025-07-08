@@ -617,6 +617,7 @@ export default class MeetingInfoV2 {
    * @param {Object} extraParams
    * @param {Object} options
    * @param {String} registrationId
+   * @param {String} fullSiteUrl
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -633,7 +634,8 @@ export default class MeetingInfoV2 {
     locusId = null,
     extraParams: object = {},
     options: {meetingId?: string; sendCAevents?: boolean} = {},
-    registrationId: string = null
+    registrationId: string = null,
+    fullSiteUrl: string = null
   ) {
     const {meetingId, sendCAevents} = options;
 
@@ -659,6 +661,7 @@ export default class MeetingInfoV2 {
       locusId,
       extraParams,
       registrationId,
+      disableWebRedirect: true,
     });
 
     // If the body only contains the default properties, we don't have enough to
@@ -684,7 +687,9 @@ export default class MeetingInfoV2 {
 
     const directURI = await MeetingInfoUtil.getDirectMeetingInfoURI(destinationType);
 
-    if (directURI) {
+    if (fullSiteUrl) {
+      requestOptions.uri = `https://${fullSiteUrl}/wbxappapi/v1/meetingInfo`;
+    } else if (directURI) {
       requestOptions.uri = directURI;
     } else {
       requestOptions.service = WBXAPPAPI_SERVICE;

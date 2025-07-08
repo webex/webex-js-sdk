@@ -34,6 +34,9 @@ class Calling extends EventEmitter {
 
     if (webex) {
       this.webex = webex;
+      if (callingConfig.logger.level) {
+        this.webex.logger.config.level = callingConfig.logger.level; // override the webex logger level
+      }
       this.log.setWebexLogger(this.webex.logger);
     } else {
       webexConfig.config = merge({}, config, webexConfig.config);
@@ -41,6 +44,9 @@ class Calling extends EventEmitter {
       this.webex = new Webex(webexConfig);
 
       this.webex.once('ready', () => {
+        if (callingConfig.logger.level) {
+          this.webex.logger.config.level = callingConfig.logger.level; // override the webex logger level
+        }
         this.log.setWebexLogger(this.webex.logger);
         this.emit('ready');
         this.log = this.webex.logger;
