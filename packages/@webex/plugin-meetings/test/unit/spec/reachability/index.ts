@@ -3,9 +3,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import EventEmitter from 'events';
 import testUtils from '../../../utils/testUtils';
-import Reachability, {
-  ReachabilityResultsForBackend,
-} from '@webex/plugin-meetings/src/reachability/';
+import Reachability, {ReachabilityResultsForBackend} from '@webex/plugin-meetings/src/reachability/';
 import {ClusterNode} from '../../../../src/reachability/request';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import * as ClusterReachabilityModule from '@webex/plugin-meetings/src/reachability/clusterReachability';
@@ -1955,10 +1953,7 @@ describe('gatherReachability', () => {
         receivedEvents[event] = receivedEvents[event] + 1 || 1;
       });
     };
-<<<<<<< HEAD
-=======
     
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     it('works as expected', async () => {
       setListener('reachability:stopped');
       setListener('reachability:done');
@@ -2020,8 +2015,6 @@ describe('gatherReachability', () => {
       assert.equal(receivedEvents['reachability:done'], undefined);
       assert.equal(receivedEvents['reachability:firstResultAvailable'], undefined);
     });
-<<<<<<< HEAD
-=======
 
     it('does not fallback when no clusters were reached and min clusters were specified', async () => {
       setListener('reachability:stopped');
@@ -2075,7 +2068,6 @@ describe('gatherReachability', () => {
 
       assert.notCalled(gatherReachabilityFallbackSpy);
     });
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
   });
 });
 

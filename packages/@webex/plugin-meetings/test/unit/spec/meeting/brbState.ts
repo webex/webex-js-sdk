@@ -1,24 +1,14 @@
 import sinon from 'sinon';
-<<<<<<< HEAD
-import {assert} from '@webex/test-helper-chai';
-
-import testUtils from '../../../utils/testUtils';
-import {BrbState, createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
-=======
 import {assert, expect} from '@webex/test-helper-chai';
 
 import testUtils from '../../../utils/testUtils';
 import {BrbState, createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
 describe('plugin-meetings', () => {
   let meeting: any;
   let brbState: BrbState;
-<<<<<<< HEAD
-=======
   let setBrbStub: sinon.SinonStub;  
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
   beforeEach(async () => {
     meeting = {
@@ -33,30 +23,20 @@ describe('plugin-meetings', () => {
         setSourceStateOverride: sinon.stub(),
       },
       meetingRequest: {
-<<<<<<< HEAD
-        setBrb: sinon.stub().resolves(),
-      },
-    };
-
-=======
         setBrb: () => {}
       },
     };
 
     setBrbStub = sinon.stub(meeting.meetingRequest, 'setBrb').resolves();
 
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     brbState = new BrbState(meeting, false);
     await testUtils.flushPromises();
   });
 
-<<<<<<< HEAD
-=======
   afterEach(() => {
     sinon.restore();
   });
 
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
   describe('brbState library', () => {
     it('takes into account current status when instantiated', async () => {
       // create a new BrbState instance
@@ -138,8 +118,6 @@ describe('plugin-meetings', () => {
 
       assert.isTrue(brbState.state.server.enabled);
     });
-<<<<<<< HEAD
-=======
 
     it('invokes handleServerBrbUpdate with correct client state after syncing with server', async () => {
       const sendLocalBrbStateToServerStub = sinon
@@ -170,6 +148,5 @@ describe('plugin-meetings', () => {
 
       assert.isFalse(brbState.state.syncToServerInProgress);
     });
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
   });
 });

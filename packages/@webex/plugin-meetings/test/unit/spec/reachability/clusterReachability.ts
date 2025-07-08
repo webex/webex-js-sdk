@@ -424,13 +424,10 @@ describe('ClusterReachability', () => {
         candidate: {type: 'relay', address: 'someTurnRelayIp', port: 443},
       });
 
-<<<<<<< HEAD
-=======
       fakePeerConnection.iceGatheringState = 'complete';
       fakePeerConnection.onicegatheringstatechange();
       await clock.tickAsync(10);
 
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
@@ -443,8 +440,6 @@ describe('ClusterReachability', () => {
         xtls: {result: 'reachable', latencyInMilliseconds: 20},
       });
     });
-<<<<<<< HEAD
-=======
 
     it('should gather correctly reached subnets', async () => {
       const promise = clusterReachability.start();
@@ -477,6 +472,5 @@ describe('ClusterReachability', () => {
 
       assert.deepEqual(Array.from(clusterReachability.reachedSubnets), ['1.2.3.4']);
     });
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
   });
 });

@@ -88,8 +88,6 @@ describe('MediaProperties', () => {
       assert.equal(numTransports, 0);
     });
 
-<<<<<<< HEAD
-=======
     describe('ipVersion', () => {
       it('returns ipVersion=undefined if getStats() returns no candidate pairs', async () => {
         mockMC.getStats.resolves([{type: 'something', id: '1234'}]);
@@ -213,7 +211,6 @@ describe('MediaProperties', () => {
       });
     });
 
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     describe('selectedCandidatePairChanges and numTransports', () => {
       it('returns correct values when getStats() returns no transport stats at all', async () => {
         mockMC.getStats.resolves([{type: 'something', id: '1234'}]);

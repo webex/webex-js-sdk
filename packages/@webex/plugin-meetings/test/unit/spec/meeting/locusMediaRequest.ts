@@ -168,29 +168,6 @@ describe('LocusMediaRequest.send()', () => {
     webexRequestStub.resetHistory();
     mockWebex.internal.newMetrics.submitClientEvent.resetHistory();
   };
-<<<<<<< HEAD
-
-  const checkMetrics = (expectedMetrics: boolean = true) => {
-    if (expectedMetrics) {
-      assert.calledWith(mockWebex.internal.newMetrics.submitClientEvent, {
-        name: 'client.locus.media.request',
-        options: {
-          meetingId: 'meetingId',
-        },
-      });
-
-      assert.calledWith(mockWebex.internal.newMetrics.submitClientEvent, {
-        name: 'client.locus.media.response',
-        options: {
-          meetingId: 'meetingId',
-        },
-      });
-    } else {
-      assert.notCalled(mockWebex.internal.newMetrics.submitClientEvent);
-    }
-  };
-=======
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
   it('sends a roap message', async () => {
     const result = await sendRoapMessage('OFFER');

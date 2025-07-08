@@ -52,13 +52,8 @@ To utilize the basic functionality of the services plugin, the following scopes 
 
 The following environment variables are used by this plugin:
 
-<<<<<<< HEAD
-- `HYDRA_SERVICE_URL` - Stores the public hydra api url for managing Webex resources.
-- `U2C_SERVICE_URL` - Stores the service catalog collecting url, typically the **U2C** service.
-=======
 - `HYDRA_SERVICE_URL` - Stores the public hydra api url for managing Webex resources
 - `U2C_SERVICE_URL` - Stores the service catalog collecting url, typically the U2C service
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 - `SQDISCOVERY_SERVICE_URL` - Stores the URL for client region information, such as country code and timezone
 
 ### Advanced Configuration
@@ -94,11 +89,6 @@ const webex = new WebexCore({
 
 The default configuration includes the following service urls:
 
-<<<<<<< HEAD
-- `U2C_SERVICE_URL` [ **U2C** ] - `https://u2c.wbx2.com/u2c/api/v1`
-- `HYDRA_SERVICE_URL` [ **Hydra** ] - `https://api.ciscospark.com/v1`
-- `SQDISCOVERY_SERVICE_URL` [ **SQDISCOVERY** ] - `https://ds.ciscospark.com/v1/region`
-=======
 - `U2C_SERVICE_URL` [U2C] - `https://u2c.wbx2.com/u2c/api/v1`
 - `HYDRA_SERVICE_URL` [Hydra] - `https://webexapis.com/v1`
 - `SQDISCOVERY_SERVICE_URL` [SQDISCOVERY] - `https://ds.ciscospark.com/v1/region`
@@ -138,7 +128,6 @@ webex.storage.get('key').then(value => console.log(value));
 ```
 
 This package is the foundation for all Webex SDK functionality and is required for most other Webex SDK packages.
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
 ## Maintainers
 

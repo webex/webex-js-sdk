@@ -465,10 +465,6 @@ describe('plugin-meetings', () => {
         });
       });
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
       it('#Should call `meetingRequest.joinMeeting and handle a date header in the response : isoLocalClientMeetingJoinedTime', async () => {
         meeting.isMultistream = true;
 
@@ -479,21 +475,6 @@ describe('plugin-meetings', () => {
           id: 'fake client media preferences',
         };
 
-<<<<<<< HEAD
-        webex.meetings.reachability.getReachabilityReportToAttachToRoap.resolves(FAKE_REACHABILITY_REPORT);
-        webex.meetings.reachability.getClientMediaPreferences.resolves(FAKE_CLIENT_MEDIA_PREFERENCES);
-
-        sinon
-          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
-          .get(() => true);
-        sinon
-          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
-          .get(() => true);
-
-        meeting.meetingRequest.joinMeeting.resolves({
-          headers: {
-            date: 'test'
-=======
         webex.meetings.reachability.getReachabilityReportToAttachToRoap.resolves(
           FAKE_REACHABILITY_REPORT
         );
@@ -507,26 +488,17 @@ describe('plugin-meetings', () => {
         meeting.meetingRequest.joinMeeting.resolves({
           headers: {
             date: 'test',
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
           },
           body: {
             mediaConnections: [{mediaId: 'test'}],
             locus: {
               url: 'test',
               self: {
-<<<<<<< HEAD
-                id: 'test'
-              }
-            }
-          }
-        })
-=======
                 id: 'test',
               },
             },
           },
         });
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
         await MeetingUtil.joinMeeting(meeting, {
           reachability: 'reachability',

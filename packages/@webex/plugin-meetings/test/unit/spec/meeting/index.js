@@ -116,15 +116,9 @@ import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagno
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
-<<<<<<< HEAD
-import { createBrbState } from '@webex/plugin-meetings/src/meeting/brbState';
-import JoinForbiddenError from '../../../../src/common/errors/join-forbidden-error';
-import { EventEmitter } from 'stream';
-=======
 import {createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
 import JoinForbiddenError from '../../../../src/common/errors/join-forbidden-error';
 import {EventEmitter} from 'stream';
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -260,10 +254,7 @@ describe('plugin-meetings', () => {
       getReachabilityResults: sinon.stub().resolves(undefined),
       getReachabilityMetrics: sinon.stub().resolves({}),
       stopReachability: sinon.stub(),
-<<<<<<< HEAD
-=======
       isSubnetReachable: sinon.stub().returns(true),
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
     };
     webex.internal.llm.on = sinon.stub();
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
@@ -294,11 +285,7 @@ describe('plugin-meetings', () => {
     testDestination = `testDestination-${uuid.v4()}`;
     correlationId = uuid.v4();
     uploadEvent = new EventEmitter();
-<<<<<<< HEAD
-    uploadEvent.addListener('progress', () => {})
-=======
     uploadEvent.addListener('progress', () => {});
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
     meeting = new Meeting(
       {
@@ -1220,8 +1207,6 @@ describe('plugin-meetings', () => {
             resourceId: undefined,
             reason: 'joinWithMedia failure',
           });
-<<<<<<< HEAD
-=======
         });
 
         it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
@@ -1291,7 +1276,6 @@ describe('plugin-meetings', () => {
               receiveAudio: true,
             })
           );
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         });
       });
       describe('#isTranscriptionSupported', () => {
@@ -2255,10 +2239,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
             }),
             stopReachability: sinon.stub(),
-<<<<<<< HEAD
-=======
             isSubnetReachable: sinon.stub().returns(false),
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
           };
 
           const forceRtcMetricsSend = sinon.stub().resolves();
@@ -2889,14 +2870,9 @@ describe('plugin-meetings', () => {
               sinon.stub().returns(FAKE_ERROR));
           webex.meetings.reachability = {
             isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
-<<<<<<< HEAD
-            getReachabilityMetrics: sinon.stub().resolves(),
-            stopReachability: sinon.stub(),
-=======
             getReachabilityMetrics: sinon.stub().resolves({}),
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(true),
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
           };
           const MOCK_CLIENT_ERROR_CODE = 2004;
           const generateClientErrorCodeForIceFailureStub = sinon
@@ -3113,10 +3089,7 @@ describe('plugin-meetings', () => {
               .resolves(false),
             getReachabilityMetrics: sinon.stub().resolves({}),
             stopReachability: sinon.stub(),
-<<<<<<< HEAD
-=======
             isSubnetReachable: sinon.stub().returns(true),
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
           };
           const getErrorPayloadForClientErrorCodeStub =
             (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
@@ -3423,10 +3396,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
             }),
             stopReachability: sinon.stub(),
-<<<<<<< HEAD
-=======
             isSubnetReachable: sinon.stub().returns(true),
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
           };
           meeting.mediaConnections = [
             {
@@ -4033,11 +4003,7 @@ describe('plugin-meetings', () => {
               },
             };
             sinon.stub(meeting, 'getMembers').returns({membersCollection: fakeMembersCollection});
-<<<<<<< HEAD
-            const fakeData = {intervalMetadata: {}, networkType: 'wifi'};
-=======
             const fakeData = {intervalMetadata: {}};
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
             statsAnalyzerStub.emit(
               {file: 'test', function: 'test'},
@@ -4318,11 +4284,7 @@ describe('plugin-meetings', () => {
           meeting.deviceUrl = 'device url';
           meeting.selfId = 'self id';
           meeting.brbState = createBrbState(meeting, false);
-<<<<<<< HEAD
-          meeting.brbState.enable = sinon.stub().resolves();
-=======
           sinon.stub(meeting.brbState, 'enable').resolves();
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         });
 
         afterEach(() => {
@@ -4366,8 +4328,6 @@ describe('plugin-meetings', () => {
               assert.isRejected(Promise.reject());
             }
           });
-<<<<<<< HEAD
-=======
 
           it('updates remote mute state when brb is enabled', async () => {
             meeting.audio = {handleServerRemoteMuteUpdate: sinon.stub()};
@@ -4401,7 +4361,6 @@ describe('plugin-meetings', () => {
 
             assert.isFalse(meeting.brbState.state.syncToServerInProgress);
           });
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         });
       });
 
@@ -4561,17 +4520,11 @@ describe('plugin-meetings', () => {
               .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
               .returns(fakeMultistreamRoapMediaConnection);
 
-<<<<<<< HEAD
-            locusMediaRequestStub = sinon
-              .stub(WebexPlugin.prototype, 'request')
-              .resolves({body: {locus: {fullState: {}}}, upload: sinon.match.instanceOf(EventEmitter), download: sinon.match.instanceOf(EventEmitter)});
-=======
             locusMediaRequestStub = sinon.stub(WebexPlugin.prototype, 'request').resolves({
               body: {locus: {fullState: {}}},
               upload: sinon.match.instanceOf(EventEmitter),
               download: sinon.match.instanceOf(EventEmitter),
             });
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
 
             // setup some things and mocks so that the call to join() works
             // (we need to call join() because it creates the LocusMediaRequest instance
@@ -8057,31 +8010,17 @@ describe('plugin-meetings', () => {
         });
       });
 
-<<<<<<< HEAD
-      describe('#setIsoLocalClientMeetingJoinTime', () => {      
-=======
       describe('#setIsoLocalClientMeetingJoinTime', () => {
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         it('should fallback to system clock ISO string when given an undefined value', () => {
           const currentSystemTime = new Date().toISOString();
           meeting.isoLocalClientMeetingJoinTime = undefined;
           assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
         });
-<<<<<<< HEAD
-      
-=======
-
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         it('should fallback to system clock ISO string when given an invalid value', () => {
           const currentSystemTime = new Date().toISOString();
           meeting.isoLocalClientMeetingJoinTime = 'invalid-date';
           assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
         });
-<<<<<<< HEAD
-      
-=======
-
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
         it('should set the isoLocalClientMeetingJoinTime correctly for a valid date string', () => {
           const validDateString = 'Tue, 01 Apr 2025 13:00:36 GMT';
           const expectedISOString = new Date(validDateString).toISOString();
@@ -9255,11 +9194,6 @@ describe('plugin-meetings', () => {
             meeting.deferSDPAnswer = {
               reject: sinon.stub(),
             };
-<<<<<<< HEAD
-            
-=======
-
->>>>>>> 973305b33f5c07decca9bddb8990b26dc7e6d4d3
             const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
 
             const fakeError = new Errors.SdpAnswerHandlingError(fakeErrorMessage, {
