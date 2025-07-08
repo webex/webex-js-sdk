@@ -23,6 +23,7 @@ export default class WebRTC extends Voice implements IWebRTC {
     super(contact, data, callOptions);
     this.updateTaskUiControls({accept: [true, true], decline: [true, true]});
     this.webCallingService = webCallingService;
+    this.registerWebCallListeners();
   }
 
   private registerWebCallListeners() {

@@ -77,6 +77,7 @@ const uploadLogsResultElm = document.getElementById('upload-logs-result');
 const agentLoginGenericError = document.getElementById('agent-login-generic-error');
 const agentLoginInputError = document.getElementById('agent-login-input-error');
 const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProfile');
+const remoteAudioElem = document.querySelector('#remote-audio');
 
 deregisterBtn.style.backgroundColor = 'red';
 
@@ -211,26 +212,6 @@ const taskEvents = new CustomEvent('task:incoming', {
     task: currentTask,
   },
 });
-
-function updateButtonsPostEndCall() {
-  disableAllCallControls();
-
-  if (currentTask) {
-    setUIControls(currentTask);
-
-    const wctrl = currentTask.taskUiControls.wrapup;
-    wrapupElm.style.display = wctrl.visible ? 'inline-block' : 'none';
-    wrapupElm.disabled = !wctrl.enabled;
-    wrapupCodesDropdownElm.style.display = wctrl.visible ? 'inline-block' : 'none';
-    wrapupCodesDropdownElm.disabled = !wctrl.enabled;
-  }
-  else {
-    wrapupElm.style.display = 'none';
-    wrapupElm.disabled = true;
-    wrapupCodesDropdownElm.style.display = 'none';
-    wrapupCodesDropdownElm.disabled = true;
-  }
-}
 
 function showInitiateConsultDialog() {
   initiateConsultDialog.showModal();
@@ -412,7 +393,6 @@ async function handleQueueConsult(consultPayload) {
     console.error('Failed to initiate queue consult', error);
     alert('Failed to initiate queue consult');
     // Restore UI state
-    refreshUIPostConsult();
     setUIControls(currentTask);
     currentConsultQueueId = null;
   }
@@ -421,7 +401,7 @@ async function handleQueueConsult(consultPayload) {
 // Updates UI state for queue consult initiation (have to do this as queue consult is initially UI)
 function updateConsultUI() {
   disableCallControlPostConsult();
-  disableTransferControls();
+  transferElm.disabled = true;
   endElm.style.display = 'none';
   endElm.disabled = true;
   endConsultBtn.style.display = 'inline-block';
@@ -449,7 +429,6 @@ async function initiateTransfer() {
   try {
     await currentTask.transfer(transferPayload);
     console.log('Transfer initiated successfully');
-    disableTransferControls();
     toggleTransferOptions(); // Hide the transfer options
   } catch (error) {
     console.error('Failed to initiate transfer', error);
@@ -500,7 +479,6 @@ async function endConsult() {
   try {
     await currentTask.endConsult(consultEndPayload);
     console.log('Consult ended successfully');
-    setUIControls(currentTask);
   } catch (error) {
     console.error('Failed to end consult', error);
     alert('Failed to end consult');
@@ -542,45 +520,11 @@ function pressKey(value) {
   document.getElementById('outBoundDialNumber').value += value;
 }
 
-// Enable consult button after task is accepted
-function enableConsultControls() {
-  consultTabBtn.disabled = false;
-  consultTabBtn.style.display = 'inline-block';
-  endConsultBtn.style.display = 'none';
-}
-
-// Disable consult button after task is accepted
-function disableConsultControls() {
-  consultTabBtn.disabled = true;
-}
-
-// Enable transfer button after task is accepted
-function enableTransferControls() {
-  transferElm.disabled = false;
-}
-
-// Disable transfer button after task is accepted
-function disableTransferControls() {
-  transferElm.disabled = true;
-}
-
-// Disable all buttons post consulting
+// Disable all buttons post consulting (needed for queue consult UI changes)
 function disableCallControlPostConsult() {
   holdResumeElm.disabled = true;
   pauseResumeRecordingElm.disabled = true;
   endElm.disabled = true;
-}
-
-// Enable all buttons post consulting
-function enableCallControlPostConsult() {
-  holdResumeElm.disabled = false;
-  pauseResumeRecordingElm.disabled = false;
-  endElm.disabled = false;
-}
-
-function refreshUIPostConsult() {
-  enableCallControlPostConsult();
-  enableTransferControls();
 }
 
 // Register task listeners
@@ -595,7 +539,8 @@ function registerTaskListeners(task) {
     }
   });
   task.on('task:media', (track) => {
-    document.getElementById('remote-audio').srcObject = new MediaStream([track]);
+    remoteAudioElem.srcObject = new MediaStream([track]);
+    remoteAudioElem.play().catch(() => {});
   });
   task.on('task:end', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
@@ -624,7 +569,7 @@ function registerTaskListeners(task) {
   task.on('task:consultCreated', (task) => {
     console.info('Consult created');
     if (currentTask.data.interactionId === task.data.interactionId) {
-      setUIControls(task);
+      updateTaskList();
     }
   });
 
@@ -632,24 +577,24 @@ function registerTaskListeners(task) {
     console.info('Received consult offer from another agent');
   });
 
+  task.on('task:offerContact', (task) => {
+    console.info('Received task offer');
+    updateTaskList();
+  });
+
   task.on('task:consultAccepted', (task) => {
-    if (currentTask.data.interactionId === task.data.interactionId) {
-      // use UI controls for consult acceptance
-      setUIControls(task);
-    }
+    updateTaskList();
   });
 
   task.on('task:consulting', (task) => {
-    if (currentTask.data.interactionId === task.data.interactionId) {
-      setUIControls(task);
-    }
+    updateTaskList();
   });
 
   task.on('task:consultQueueFailed', (task) => {
     // When trying to consult queue fails
     if (currentTask.data.interactionId === task.data.interactionId) {
       console.error(`Received task:consultQueueFailed for task: ${task.data.interactionId}`);
-      setUIControls(task);
+      updateTaskList();
     }
   });
 
@@ -658,19 +603,19 @@ function registerTaskListeners(task) {
       // When we manually cancel consult to queue before it is accepted by other agent
       console.log(`Received task:consultQueueCancelled for task: ${currentTask.data.interactionId}`);
       currentConsultQueueId = null;
-      setUIControls(task);
+      updateTaskList();
     }
   });
 
   task.on('task:consultEnd', (task) => {
-    if (currentTask.data.interactionId === task.data.interactionId) {
+    currentConsultQueueId = null;
+    if (task.data.isConsulted) {
+      // Explicitly set the UI controls for the task
       setUIControls(task);
-      currentConsultQueueId = null;
-      if (task.data.isConsulted) {
-        incomingDetailsElm.innerText = '';
-        task = undefined;
-      }
+      incomingDetailsElm.innerText = '';
+      task = undefined;
     }
+    updateTaskList();
   });
   
   task.on('task:rejected', (reason) => {
@@ -679,7 +624,15 @@ function registerTaskListeners(task) {
   });
 
   task.on('task:wrappedup', (task) => {
-    setUIControls(task);
+    updateTaskList();
+  });
+
+  task.on('task:hold', (task) => {
+    updateTaskList();
+  });
+
+  task.on('task:unhold', (task) => {
+    updateTaskList();
   });
 }
 
@@ -720,53 +673,6 @@ function setUIControls(task) {
   // wrapup‐codes dropdown mirrors wrapup control
   wrapupCodesDropdownElm.style.display = ctrls.wrapup.visible ? 'inline-block' : 'none';
   wrapupCodesDropdownElm.disabled = !ctrls.wrapup.enabled;
-}
-
-function updateCallControlUI(task) {
-  const { data } = task;
-  const { interaction, participants } = data.interaction
-    ? { interaction: data.interaction, participants: data.interaction.participants, callProcessingDetails: data.interaction.callProcessingDetails }
-    : {};
-  const hasParticipants = participants && Object.keys(participants).length > 1;
-  const isNew = data.interaction.state === 'new';
-  const digitalChannels = ['chat', 'email', 'social'];
-
-  if (data.wrapUpRequired) {
-    updateButtonsPostEndCall();
-    return;
-  }
-
-  wrapupElm.disabled = true;
-  wrapupCodesDropdownElm.disabled = true;
-
-  if (isNew) {
-    disableAllCallControls();
-  } else if (digitalChannels.includes(interaction.mediaType)) {
-    holdResumeElm.disabled = true;
-    muteElm.disabled = true;
-    pauseResumeRecordingElm.disabled = true;
-    consultTabBtn.disabled = true;
-    declineElm.disabled = true;
-    transferElm.disabled = false;
-    endElm.disabled = !hasParticipants;
-    pauseResumeRecordingElm.disabled = true;
-  }
-  else if (interaction.mediaType === 'telephony') {
-    // apply UI controls driven by task.taskUiControls
-    setUIControls(task);
-
-    // leave consult‐to‐queue UI unchanged
-    const { consultMediaResourceId, destAgentId, destinationType } = data;
-    if (consultMediaResourceId && destAgentId && destinationType) {
-      const destination = participants[destAgentId];
-      destinationTypeDropdown.value = destinationType;
-      consultDestinationInput.value = destination.dn;
-
-      consultTabBtn.style.display = 'none';
-      endConsultBtn.style.display = 'inline-block';
-      consultTransferBtn.style.display = 'inline-block';
-    }
-  }
 }
 
 function generateWebexConfig({credentials}) {
@@ -1272,18 +1178,45 @@ async function fetchBuddyAgentsNodeList() {
 incomingCallListener.addEventListener('task:incoming', (event) => {
   currentTask = event.detail.task;
   updateTaskList();
-  taskId = event.detail.task.data.interactionId;
+  taskId = currentTask.data.interactionId;
 
   registerTaskListeners(currentTask);
 
-  if (currentTask.data.interaction.mediaType === 'telephony') {
-    setUIControls(currentTask);
-  } else {
-    enableAnswerDeclineButtons(currentTask);
+  // drive all UI via task.taskUiControls; still show type‐specific incoming text
+  setUIControls(currentTask);
+  const { mediaType, callAssociatedDetails } = currentTask.data.interaction;
+  const callerDisplay = callAssociatedDetails?.ani;
+  const label = mediaType === 'email'
+    ? 'Email'
+    : ['chat','social'].includes(mediaType)
+      ? 'Chat'
+      : 'Call';
+  if (mediaType === 'telephony' && webex.cc.taskManager.webCallingService.loginOption !== 'BROWSER') {
+    incomingDetailsElm.innerText = `${label} from ${callerDisplay}… please answer on your registered endpoint`;
   }
-
-  incomingDetailsElm.innerText = `Call from ${currentTask.data.interaction.callAssociatedDetails?.ani}`;
+  else {
+    incomingDetailsElm.innerText = `${label} from ${callerDisplay}`;
+  }
 });
+
+/**
+ * Build the incoming details line for any task.
+ */
+function buildIncomingText(task) {
+  const {mediaType, callAssociatedDetails} = task.data.interaction;
+  const caller = callAssociatedDetails?.ani;
+  let label = 'Call';
+  if (['chat','social'].includes(mediaType)) label = 'Chat';
+  else if (mediaType === 'email')       label = 'Email';
+
+  const nonBrowserHint =
+    mediaType === 'telephony' &&
+    webex.cc.taskManager.webCallingService.loginOption !== 'BROWSER'
+      ? '… please answer on your registered endpoint'
+      : '';
+
+  return `${label} from ${caller}${nonBrowserHint}`;
+}
 
  async function answer() {
   answerElm.disabled = true;
@@ -1484,9 +1417,8 @@ function renderTaskList(taskList) {
   taskListContainer.innerHTML = ''; // Clear existing tasks
 
   if (!taskList || Object.keys(taskList).length === 0) {
-    disableAnswerDeclineButtons();
-    incomingDetailsElm.innerText = '';
     disableAllCallControls();
+    incomingDetailsElm.innerText = '';
     wrapupElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
     taskListContainer.innerHTML = '<p>No tasks available</p>';
@@ -1595,39 +1527,15 @@ function renderTaskList(taskList) {
   });
 }
 
-function enableAnswerDeclineButtons(task) {
-  const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani;
-  const isNew = task.data.interaction.state === 'new'
-  const chatAndSocial = ['chat', 'social'];
-  if (task.data.interaction.mediaType === 'telephony') {
-    if (webex.cc.taskManager.webCallingService.loginOption === 'BROWSER') {
-      answerElm.disabled = !isNew;
-      declineElm.disabled = !isNew;
-  
-      incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
-    } else {
-      incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
-    }
-  } else if (chatAndSocial.includes(task.data.interaction.mediaType)) {
-    answerElm.disabled = !isNew;
-    declineElm.disabled = true;
-    incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
-  } else if (task.data.interaction.mediaType === 'email') {
-    answerElm.disabled = !isNew;
-    declineElm.disabled = true;
-    incomingDetailsElm.innerText = `Email from ${callerDisplay}`;
-  }
-}
-
-function disableAnswerDeclineButtons() {
-  answerElm.disabled = true;
-  declineElm.disabled = true;
-}
-
 function handleTaskSelect(task) {
   // Handle the task click event
   console.log('Task clicked:', task);
-  enableAnswerDeclineButtons(task);
+  // drive all button visibility via setUIControls
+  setUIControls(task);
+
+  // update incoming details messaging
+  incomingDetailsElm.innerText = buildIncomingText(task);
+
   engageElm.innerHTML = ``;
   engageElm.style.height = "100px"
   const chatAndSocial = ['chat', 'social'];
@@ -1637,7 +1545,6 @@ function handleTaskSelect(task) {
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {
     loadEmailWidget(task);
   }
-  updateCallControlUI(task); // Enable/disable transfer controls
 }
 
 function loadChatWidget(task) {

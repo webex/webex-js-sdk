@@ -4,6 +4,7 @@ import {MEDIA_CHANNEL, TaskData} from '../../../../../src/services/task/types';
 import {LoginOption} from '../../../../../src/types';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import {ConfigFlags} from '../../../../../src/types';
+import register from '@babel/register';
 
 describe('TaskFactory', () => {
   const dummyContact = {} as any;
@@ -13,7 +14,11 @@ describe('TaskFactory', () => {
   };
 
   const makeSvc = (loginOption: LoginOption) =>
-    ({loginOption} as unknown) as WebCallingService;
+    ({
+      loginOption,
+      on: jest.fn(),
+      off: jest.fn?.(),
+    } as unknown) as WebCallingService;
 
   const configFlags: ConfigFlags = {
     isEndCallEnabled: true,
