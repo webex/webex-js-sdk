@@ -5,6 +5,7 @@ on:
   push:
     branches: # White-list of deployable tags and branches. Note that all white-listed branches cannot include any `/` characters
       - next
+      - web-workers-keepalive
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}

@@ -17,6 +17,7 @@
     "./calling": "./dist/calling.js",
     ".": "./dist/index.js",
     "./meetings": "./dist/meetings.js",
+    "./contact-center": "./dist/contact-center.js",
     "./package": "./package.json"
   },
   "devMain": "src/index.js",

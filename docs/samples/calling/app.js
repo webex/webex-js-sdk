@@ -259,6 +259,14 @@ async function initCalling(e) {
     };
   }
 
+  if (fedrampBox.checked) {
+    webexConfig.config.services = {
+      discovery: {
+        u2c: 'https://u2c.gov.ciscospark.com/u2c/api/v1',
+      },
+    };
+  }
+
   const clientConfig = {
     calling: !fedrampBox.checked,
     contact: !fedrampBox.checked,

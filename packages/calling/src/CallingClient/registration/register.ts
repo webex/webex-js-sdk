@@ -76,9 +76,7 @@ export class Registration implements IRegistration {
   private failbackTimer?: NodeJS.Timer;
   private activeMobiusUrl!: string;
 
-  private keepaliveTimer: NodeJS.Timer | undefined;
   private rehomingIntervalMin: number;
-
   private rehomingIntervalMax: number;
   private mutex: Mutex;
   private metricManager: IMetricManager;
@@ -801,7 +799,7 @@ export class Registration implements IRegistration {
 
                 if (!abort) {
                   /* In case of non-final error, re-attempt registration */
-                  await this.reconnectOnFailure(this.startKeepaliveTimer.name);
+                  await this.reconnectOnFailure(KEEPALIVE_UTIL);
                 }
               } else {
                 this.lineEmitter(LINE_EVENTS.RECONNECTING);

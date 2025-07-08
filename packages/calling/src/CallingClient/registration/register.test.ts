@@ -19,7 +19,6 @@ import {URL, mockDeleteResponse, mockPostResponse} from './registerFixtures';
 import {filterMobiusUris} from '../../common';
 import {ERROR_TYPE} from '../../Errors/types';
 import {
-  CALLS_CLEARED_HANDLER_UTIL,
   DEFAULT_REHOMING_INTERVAL_MAX,
   DEFAULT_REHOMING_INTERVAL_MIN,
   FAILBACK_UTIL,
@@ -1030,16 +1029,14 @@ describe('Registration Tests', () => {
       jest.useFakeTimers();
       await reg.triggerRegistration();
       expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      expect(reg.webWorker).toBeDefined();
     };
 
     afterEach(() => {
       jest.clearAllTimers();
       jest.clearAllMocks();
 
-      if (reg.keepaliveTimer) {
-        clearInterval(reg.keepaliveTimer);
-        reg.keepaliveTimer = undefined;
-      }
+      reg.clearKeepaliveTimer();
       reg.reconnectPending = false;
       const calls = Object.values(reg.callManager.getActiveCalls()) as ICall[];
 

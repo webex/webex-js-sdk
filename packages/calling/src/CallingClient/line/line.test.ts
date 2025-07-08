@@ -44,6 +44,8 @@ describe('Line Tests', () => {
   };
 
   const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
+  // Simulate node fetch by adding the mock webex.request
+  global.fetch = webex.request;
 
   jest.clearAllMocks();
 
@@ -113,6 +115,7 @@ describe('Line Tests', () => {
 
       jest.advanceTimersByTime(30 * 1000);
       await Promise.resolve();
+
       jest.useRealTimers();
     });
 
