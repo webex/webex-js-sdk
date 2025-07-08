@@ -2089,6 +2089,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/runtime@npm:^7.27.6":
+  version: 7.27.6
+  resolution: "@babel/runtime@npm:7.27.6"
+  checksum: 3f7b879df1823c0926bd5dbc941c62f5d60faa790c1aab9758c04799e1f04ee8d93553be9ec059d4e5882f19fe03cbe8933ee4f46212dced0f6d8205992c9c9a
+  languageName: node
+  linkType: hard
+
 "@babel/runtime@npm:^7.8.4":
   version: 7.20.7
   resolution: "@babel/runtime@npm:7.20.7"
@@ -4520,79 +4527,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@protobufjs/aspromise@npm:^1.1.1, @protobufjs/aspromise@npm:^1.1.2":
-  version: 1.1.2
-  resolution: "@protobufjs/aspromise@npm:1.1.2"
-  checksum: 011fe7ef0826b0fd1a95935a033a3c0fd08483903e1aa8f8b4e0704e3233406abb9ee25350ec0c20bbecb2aad8da0dcea58b392bbd77d6690736f02c143865d2
-  languageName: node
-  linkType: hard
-
-"@protobufjs/base64@npm:^1.1.2":
-  version: 1.1.2
-  resolution: "@protobufjs/base64@npm:1.1.2"
-  checksum: 67173ac34de1e242c55da52c2f5bdc65505d82453893f9b51dc74af9fe4c065cf4a657a4538e91b0d4a1a1e0a0642215e31894c31650ff6e3831471061e1ee9e
-  languageName: node
-  linkType: hard
-
-"@protobufjs/codegen@npm:^2.0.4":
-  version: 2.0.4
-  resolution: "@protobufjs/codegen@npm:2.0.4"
-  checksum: 59240c850b1d3d0b56d8f8098dd04787dcaec5c5bd8de186fa548de86b86076e1c50e80144b90335e705a044edf5bc8b0998548474c2a10a98c7e004a1547e4b
-  languageName: node
-  linkType: hard
-
-"@protobufjs/eventemitter@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@protobufjs/eventemitter@npm:1.1.0"
-  checksum: 0369163a3d226851682f855f81413cbf166cd98f131edb94a0f67f79e75342d86e89df9d7a1df08ac28be2bc77e0a7f0200526bb6c2a407abbfee1f0262d5fd7
-  languageName: node
-  linkType: hard
-
-"@protobufjs/fetch@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@protobufjs/fetch@npm:1.1.0"
-  dependencies:
-    "@protobufjs/aspromise": "npm:^1.1.1"
-    "@protobufjs/inquire": "npm:^1.1.0"
-  checksum: 3fce7e09eb3f1171dd55a192066450f65324fd5f7cc01a431df01bb00d0a895e6bfb5b0c5561ce157ee1d886349c90703d10a4e11a1a256418ff591b969b3477
-  languageName: node
-  linkType: hard
-
-"@protobufjs/float@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "@protobufjs/float@npm:1.0.2"
-  checksum: 5781e1241270b8bd1591d324ca9e3a3128d2f768077a446187a049e36505e91bc4156ed5ac3159c3ce3d2ba3743dbc757b051b2d723eea9cd367bfd54ab29b2f
-  languageName: node
-  linkType: hard
-
-"@protobufjs/inquire@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@protobufjs/inquire@npm:1.1.0"
-  checksum: ca06f02eaf65ca36fb7498fc3492b7fc087bfcc85c702bac5b86fad34b692bdce4990e0ef444c1e2aea8c034227bd1f0484be02810d5d7e931c55445555646f4
-  languageName: node
-  linkType: hard
-
-"@protobufjs/path@npm:^1.1.2":
-  version: 1.1.2
-  resolution: "@protobufjs/path@npm:1.1.2"
-  checksum: 856eeb532b16a7aac071cacde5c5620df800db4c80cee6dbc56380524736205aae21e5ae47739114bf669ab5e8ba0e767a282ad894f3b5e124197cb9224445ee
-  languageName: node
-  linkType: hard
-
-"@protobufjs/pool@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@protobufjs/pool@npm:1.1.0"
-  checksum: d6a34fbbd24f729e2a10ee915b74e1d77d52214de626b921b2d77288bd8f2386808da2315080f2905761527cceffe7ec34c7647bd21a5ae41a25e8212ff79451
-  languageName: node
-  linkType: hard
-
-"@protobufjs/utf8@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@protobufjs/utf8@npm:1.1.0"
-  checksum: f9bf3163d13aaa3b6f5e6fbf37a116e094ea021c0e1f2a7ccd0e12a29e2ce08dafba4e8b36e13f8ed7397e1591610ce880ed1289af4d66cf4ace8a36a9557278
-  languageName: node
-  linkType: hard
-
 "@puppeteer/browsers@npm:1.4.6":
   version: 1.4.6
   resolution: "@puppeteer/browsers@npm:1.4.6"
@@ -4845,6 +4779,13 @@ __metadata:
 "@rollup/rollup-linux-x64-gnu@npm:4.19.0":
   version: 4.19.0
   resolution: "@rollup/rollup-linux-x64-gnu@npm:4.19.0"
+  conditions: os=linux & cpu=x64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@rollup/rollup-linux-x64-gnu@npm:4.36.0":
+  version: 4.36.0
+  resolution: "@rollup/rollup-linux-x64-gnu@npm:4.36.0"
   conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
@@ -6136,15 +6077,6 @@ __metadata:
   version: 20.5.1
   resolution: "@types/node@npm:20.5.1"
   checksum: 3dbe611cd67afa987102c8558ee70f848949c5dcfee5f60abc073e55c0d7b048e391bf06bb1e0dc052cb7210ca97136ac496cbaf6e89123c989de6bd125fde82
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:>=13.7.0":
-  version: 20.11.0
-  resolution: "@types/node@npm:20.11.0"
-  dependencies:
-    undici-types: "npm:~5.26.4"
-  checksum: 1bd6890db7e0404d11c33d28f46f19f73256f0ba35d19f0ef2a0faba09f366f188915fb9338eebebcc472075c1c4941e17c7002786aa69afa44980737846b200
   languageName: node
   linkType: hard
 
@@ -7877,7 +7809,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.4.5
-    "@webex/internal-media-core": 2.14.7
+    "@webex/internal-media-core": 2.18.3
     "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/media-helpers": "workspace:*"
     async-mutex: 0.4.0
@@ -8078,17 +8010,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/event-dictionary-ts@npm:^1.0.1688":
-  version: 1.0.1688
-  resolution: "@webex/event-dictionary-ts@npm:1.0.1688"
+"@webex/event-dictionary-ts@npm:^1.0.1819":
+  version: 1.0.1819
+  resolution: "@webex/event-dictionary-ts@npm:1.0.1819"
   dependencies:
     amf-client-js: ^5.2.6
     json-schema-to-typescript: ^12.0.0
     minimist: ^1.2.8
-    ramldt2jsonschema: ^1.2.3
     shelljs: ^0.8.5
     webapi-parser: ^0.5.0
-  checksum: efc5ee43367595c8943416997bfb6b63b2718163c9432f55974bb79af664daa1281453e270437def85fabd2c44cfea4dca349f894b006c8038c51126206cbff2
+  checksum: 89ecf888b1caec2c5965f8e66ea00996b52b3b8ab51ca1cf6c81da789fdb0c7e68d3e9beea3026a4e1307b8bec866343c63413d24574037bccdf4c6204da50fe
   languageName: node
   linkType: hard
 
@@ -8170,24 +8101,49 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.14.7":
-  version: 2.14.7
-  resolution: "@webex/internal-media-core@npm:2.14.7"
+"@webex/internal-media-core@npm:2.18.3":
+  version: 2.18.3
+  resolution: "@webex/internal-media-core@npm:2.18.3"
   dependencies:
     "@babel/runtime": ^7.18.9
     "@babel/runtime-corejs2": ^7.25.0
     "@webex/rtcstats": ^1.5.0
     "@webex/ts-sdp": 1.7.0
-    "@webex/web-capabilities": ^1.4.1
-    "@webex/web-client-media-engine": 3.30.2
+    "@webex/web-capabilities": ^1.6.0
+    "@webex/web-client-media-engine": 3.33.3
     events: ^3.3.0
+    ip-anonymize: ^0.1.0
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
     webrtc-adapter: ^8.1.2
     xstate: ^4.30.6
-  checksum: 74aa21cafd03892a572a7a8538d0e0e3df4a094ed2921ef95bd7bea6d02b515f3af2aa4b4c2c2946339e5fdae72f1aa07fe94b71f09fb755ba8867b634d68bc4
+  checksum: 31559c8cc9c4846eab391266b83ec388b4ff0f1f43e63f2e0a563d2db146a54e2dbf29adabece41af2650e9439abb64a87a167131339788ebfa30444604834b4
   languageName: node
   linkType: hard
+
+"@webex/internal-plugin-ai-assistant@workspace:packages/@webex/internal-plugin-ai-assistant":
+  version: 0.0.0-use.local
+  resolution: "@webex/internal-plugin-ai-assistant@workspace:packages/@webex/internal-plugin-ai-assistant"
+  dependencies:
+    "@babel/core": ^7.17.10
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/common-timers": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
+    eslint: ^8.24.0
+    lodash: ^4.17.21
+    prettier: ^2.7.1
+    sinon: ^9.2.4
+    uuid: ^3.3.2
+  languageName: unknown
+  linkType: soft
 
 "@webex/internal-plugin-avatar@workspace:*, @webex/internal-plugin-avatar@workspace:packages/@webex/internal-plugin-avatar":
   version: 0.0.0-use.local
@@ -8412,7 +8368,7 @@ __metadata:
     isomorphic-webcrypto: ^2.3.8
     lodash: ^4.17.21
     node-jose: ^2.2.0
-    node-kms: ^0.4.0
+    node-kms: ^0.4.1
     node-scr: ^0.3.0
     pkijs: ^2.1.84
     prettier: ^2.7.1
@@ -8587,7 +8543,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.1688
+    "@webex/event-dictionary-ts": ^1.0.1819
     "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
@@ -8860,12 +8816,27 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/ladon-ts@npm:^4.3.0":
-  version: 4.3.0
-  resolution: "@webex/ladon-ts@npm:4.3.0"
+"@webex/ladon-ts@npm:^5.5.1":
+  version: 5.5.1
+  resolution: "@webex/ladon-ts@npm:5.5.1"
   dependencies:
-    onnxruntime-web: "npm:^1.15.1"
-  checksum: d606e2d4d2875380ba58bc29f31a26b126a49c8d6a9ad807b6274ee91704043853078f1009a78639becc096c4b408370b23b2028ecf537d592ee0aaeacbd0e18
+    "@rollup/rollup-linux-x64-gnu": 4.36.0
+  dependenciesMeta:
+    "@rollup/rollup-linux-x64-gnu":
+      optional: true
+  checksum: 2dbe15cce061f66dc6fa79f8d64156f379f3f6b6503d2690ea4d046db8933475abb21319b55c3f6ee2c3299ece4a292355cf8ecbdc0bfc37d2a832a458508a93
+  languageName: node
+  linkType: hard
+
+"@webex/ladon-ts@npm:^5.7.1":
+  version: 5.9.0
+  resolution: "@webex/ladon-ts@npm:5.9.0"
+  dependencies:
+    "@rollup/rollup-linux-x64-gnu": 4.36.0
+  dependenciesMeta:
+    "@rollup/rollup-linux-x64-gnu":
+      optional: true
+  checksum: 1efac5fcb9398c424eabcfe4a9010e69d8e83b3d7b804a7a97003249428614fe11010b94398dd57682596395b7fd24fd9c429f6c3f83c4f7470d368fb92b4785
   languageName: node
   linkType: hard
 
@@ -8945,13 +8916,13 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.14.7
+    "@webex/internal-media-core": 2.18.3
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/ts-events": ^1.1.0
-    "@webex/web-media-effects": 2.19.0
+    "@webex/web-media-effects": 2.27.1
     eslint: ^8.24.0
     jsdom-global: 3.0.2
     sinon: ^9.2.4
@@ -9137,12 +9108,13 @@ __metadata:
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/internal-plugin-mercury": "workspace:*"
     "@webex/internal-plugin-metrics": "workspace:*"
+    "@webex/internal-plugin-support": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-authorization": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/webex-core": "workspace:*"
-    babel-plugin-transform-import-meta: ^2.3.2
-    buffer: 6.0.3
     eslint: ^8.24.0
     eslint-config-airbnb-base: 15.0.0
     eslint-config-prettier: 8.3.0
@@ -9154,8 +9126,9 @@ __metadata:
     jest: 27.5.1
     jest-html-reporters: 3.0.11
     jest-junit: 13.0.0
+    lodash: ^4.17.21
     prettier: 2.5.1
-    typedoc: 0.23.26
+    typedoc: ^0.25.0
     typescript: 4.9.5
   languageName: unknown
   linkType: soft
@@ -9184,6 +9157,31 @@ __metadata:
     lodash: ^4.17.21
     prettier: ^2.7.1
     uuid: ^3.3.2
+  languageName: unknown
+  linkType: soft
+
+"@webex/plugin-encryption@workspace:*, @webex/plugin-encryption@workspace:packages/@webex/plugin-encryption":
+  version: 0.0.0-use.local
+  resolution: "@webex/plugin-encryption@workspace:packages/@webex/plugin-encryption"
+  dependencies:
+    "@babel/preset-typescript": 7.22.11
+    "@types/jsdom": ^21
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/webex-core": "workspace:*"
+    eslint: ^8.24.0
+    jest-html-reporters: 3.0.11
+    jest-junit: 13.0.0
+    jsdom: 19.0.0
+    jsdom-global: 3.0.2
+    prettier: ^2.7.1
+    typed-emitter: ^2.1.0
+    typedoc: 0.23.26
+    typescript: ^4.9.5
   languageName: unknown
   linkType: soft
 
@@ -9218,8 +9216,8 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.1688
-    "@webex/internal-media-core": 2.14.7
+    "@webex/event-dictionary-ts": ^1.0.1819
+    "@webex/internal-media-core": 2.18.3
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
@@ -9239,7 +9237,8 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
-    "@webex/web-capabilities": ^1.4.0
+    "@webex/ts-sdp": ^1.8.1
+    "@webex/web-capabilities": ^1.6.0
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
@@ -9916,7 +9915,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/ts-sdp@npm:1.8.1":
+"@webex/ts-sdp@npm:1.8.1, @webex/ts-sdp@npm:^1.8.1":
   version: 1.8.1
   resolution: "@webex/ts-sdp@npm:1.8.1"
   checksum: de9d23826c27b31f35907fa8066ff4d762fe72e6fb19e43d74dc28261d3bd126b181e057a341d4ab41c64f267c7341608be25ed186e2cc7d444a6efc940625d7
@@ -9929,58 +9928,61 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/web-capabilities@npm:^1.1.0, @webex/web-capabilities@npm:^1.4.0, @webex/web-capabilities@npm:^1.4.1":
-  version: 1.4.1
-  resolution: "@webex/web-capabilities@npm:1.4.1"
+"@webex/web-capabilities@npm:^1.6.0":
+  version: 1.6.0
+  resolution: "@webex/web-capabilities@npm:1.6.0"
   dependencies:
     bowser: ^2.11.0
-  checksum: 53333816edd02b27162c891bc24bad9135ec7bc2173a7929b316aa3be50e1d191b0a6a328840e71b5c5bd8842dfcae81b107d7fcf06167b097b71368c904b265
+  checksum: 18473b9f63cd12b13534f69aadee26d737401025a6e8de1485eee778c6f6a87fd7d1fab60d66f8ae3c15bcd7b3db0ffe614994bdaef5dc199261175448980330
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:3.30.2":
-  version: 3.30.2
-  resolution: "@webex/web-client-media-engine@npm:3.30.2"
+"@webex/web-client-media-engine@npm:3.33.3":
+  version: 3.33.3
+  resolution: "@webex/web-client-media-engine@npm:3.33.3"
   dependencies:
     "@webex/json-multistream": ^2.2.1
     "@webex/rtcstats": ^1.5.0
     "@webex/ts-events": ^1.0.1
     "@webex/ts-sdp": 1.8.1
-    "@webex/web-capabilities": ^1.4.0
-    "@webex/web-media-effects": 2.18.1
-    "@webex/webrtc-core": 2.12.0
+    "@webex/web-capabilities": ^1.6.0
+    "@webex/web-media-effects": 2.28.2
+    "@webex/webrtc-core": 2.13.2
     async: ^3.2.4
     js-logger: ^1.6.1
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
-  checksum: 04827fb93a4458b2ed14d1ff112fd5c7398cfe5b4a924a5a58b3a89f211ccd4991c62b6ee3bed5f90b8f81ce6b1074d372da76b25b52e6e7bfb720e9a910027d
+  checksum: b30392d6edc0c4092bff7bac665da9698cbd1578b3614568ddd884ddc6a54875afded9164e8b0c48cab93323a9cd33ec1b5c4d6dfb5a615f93e6f64802afa9d9
   languageName: node
   linkType: hard
 
-"@webex/web-media-effects@npm:2.18.1":
-  version: 2.18.1
-  resolution: "@webex/web-media-effects@npm:2.18.1"
+"@webex/web-media-effects@npm:2.27.1":
+  version: 2.27.1
+  resolution: "@webex/web-media-effects@npm:2.27.1"
   dependencies:
-    "@webex/ladon-ts": ^4.3.0
-    events: ^3.3.0
-    js-logger: ^1.6.1
-    typed-emitter: ^1.4.0
-    uuid: ^9.0.1
-  checksum: c60bf96a9d3efc579101de05dce26c9b03b7d1b8629b02294408e5cb3bc17e50ceed7c33bfdd78248894ce3ab728702549cb103cc3e9c886aaa702531d026c62
-  languageName: node
-  linkType: hard
-
-"@webex/web-media-effects@npm:2.19.0":
-  version: 2.19.0
-  resolution: "@webex/web-media-effects@npm:2.19.0"
-  dependencies:
-    "@webex/ladon-ts": ^4.3.0
+    "@webex/ladon-ts": ^5.5.1
     events: ^3.3.0
     js-logger: ^1.6.1
     typed-emitter: ^1.4.0
     uuid: ^9.0.1
     worker-timers: ^8.0.2
-  checksum: 04c100b8eb01fbe05cc5ee1b1898c54f2ef537a9e367c7693767f6fb1df1d085c00ba91ee42d7bb9e9df55baeccd43d4ea979dcd486223a4dc3a82c61769494f
+    yarn: ^1.22.22
+  checksum: e8bfb73860bfc25fa730d13b713a5cf3851d861cf6616343f4ce84d68cb085f2d2251e6788735f4671499324bee6e35b9d708fe1fdb0770695c116e2b55227e6
+  languageName: node
+  linkType: hard
+
+"@webex/web-media-effects@npm:2.28.2":
+  version: 2.28.2
+  resolution: "@webex/web-media-effects@npm:2.28.2"
+  dependencies:
+    "@webex/ladon-ts": ^5.7.1
+    events: ^3.3.0
+    js-logger: ^1.6.1
+    typed-emitter: ^1.4.0
+    uuid: ^9.0.1
+    worker-timers: ^8.0.21
+    yarn: ^1.22.22
+  checksum: bc16791b2c3eb0937d8d4f25c0e22673f45bb2e6580a829f43d04ad34095e71b7983e3fb5a5c5e4454f04256cc46e3fcd4816aab6bfb493e5a39ee303ebd89f5
   languageName: node
   linkType: hard
 
@@ -10074,18 +10076,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/webrtc-core@npm:2.12.0":
-  version: 2.12.0
-  resolution: "@webex/webrtc-core@npm:2.12.0"
+"@webex/webrtc-core@npm:2.13.2":
+  version: 2.13.2
+  resolution: "@webex/webrtc-core@npm:2.13.2"
   dependencies:
     "@webex/ts-events": ^1.1.0
-    "@webex/web-capabilities": ^1.1.0
-    "@webex/web-media-effects": 2.18.1
+    "@webex/web-capabilities": ^1.6.0
+    "@webex/web-media-effects": 2.28.2
     events: ^3.3.0
     js-logger: ^1.6.1
     typed-emitter: ^2.1.0
     webrtc-adapter: ^8.1.2
-  checksum: 7209532b175b752279a72a7f014a7746c6b72a00c62a98036042700ce58451549e66dcaaccf13a4e52c0a0911c9e9fca3816d613931a50249aacdd068601ac95
+  checksum: b99851334fefff890722e7dc3d31746fc47e6ef2eea34c5f1e6693941888d74a0daa0878ab3b494c762c191f3c7459533aab574241e708d462abfd81d1d151eb
   languageName: node
   linkType: hard
 
@@ -10478,18 +10480,6 @@ __metadata:
     json-schema-traverse: "npm:^0.4.1"
     uri-js: "npm:^4.2.1"
   checksum: ac8590895952e6387f923cf7e130e2b4fac13e175caa2934c7792e8a54f2a619e805f769d6f1b5d26d75401fccbe69e5b1fe31ebae39f300c5660a78597ee2fb
-  languageName: node
-  linkType: hard
-
-"ajv@npm:^5.0.0":
-  version: 5.5.2
-  resolution: "ajv@npm:5.5.2"
-  dependencies:
-    co: "npm:^4.6.0"
-    fast-deep-equal: "npm:^1.0.0"
-    fast-json-stable-stringify: "npm:^2.0.0"
-    json-schema-traverse: "npm:^0.3.0"
-  checksum: a69645c843e1676b0ae1c5192786e546427f808f386d26127c6585479378066c64341ceec0b127b6789d79628e71d2a732d402f575b98f9262db230d7b715a94
   languageName: node
   linkType: hard
 
@@ -12062,6 +12052,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"broker-factory@npm:^3.1.7":
+  version: 3.1.7
+  resolution: "broker-factory@npm:3.1.7"
+  dependencies:
+    "@babel/runtime": ^7.27.6
+    fast-unique-numbers: ^9.0.22
+    tslib: ^2.8.1
+    worker-factory: ^7.0.43
+  checksum: 42540284bc47acf600d91c37bd0ecc3daf5eb23e7c6cd506cb1beb61d9ebe96904fd20026d5a8f7774d2b089f0e3f40538c17bf7692eae0d914c81926ffd29e9
+  languageName: node
+  linkType: hard
+
 "brorand@npm:^1.0.1, brorand@npm:^1.1.0":
   version: 1.1.0
   resolution: "brorand@npm:1.1.0"
@@ -13592,13 +13594,6 @@ __metadata:
   version: 4.1.1
   resolution: "commander@npm:4.1.1"
   checksum: d7b9913ff92cae20cb577a4ac6fcc121bd6223319e54a40f51a14740a681ad5c574fd29a57da478a5f234a6fa6c52cbf0b7c641353e03c648b1ae85ba670b977
-  languageName: node
-  linkType: hard
-
-"commander@npm:^5.0.0":
-  version: 5.1.0
-  resolution: "commander@npm:5.1.0"
-  checksum: 0b7fec1712fbcc6230fcb161d8d73b4730fa91a21dc089515489402ad78810547683f058e2a9835929c212fead1d6a6ade70db28bbb03edbc2829a9ab7d69447
   languageName: node
   linkType: hard
 
@@ -17818,13 +17813,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-deep-equal@npm:^1.0.0":
-  version: 1.1.0
-  resolution: "fast-deep-equal@npm:1.1.0"
-  checksum: 69b4c9534d9805f13a341aa72f69641d0b9ae3cc8beb25c64e68a257241c7bb34370266db27ae4fc3c4da0518448c01a5f587a096a211471c86a38facd9a1486
-  languageName: node
-  linkType: hard
-
 "fast-deep-equal@npm:^2.0.1":
   version: 2.0.1
   resolution: "fast-deep-equal@npm:2.0.1"
@@ -17891,6 +17879,16 @@ __metadata:
   version: 2.1.1
   resolution: "fast-safe-stringify@npm:2.1.1"
   checksum: a851cbddc451745662f8f00ddb622d6766f9bd97642dabfd9a405fb0d646d69fc0b9a1243cbf67f5f18a39f40f6fa821737651ff1bceeba06c9992ca2dc5bd3d
+  languageName: node
+  linkType: hard
+
+"fast-unique-numbers@npm:^9.0.22":
+  version: 9.0.22
+  resolution: "fast-unique-numbers@npm:9.0.22"
+  dependencies:
+    "@babel/runtime": ^7.27.6
+    tslib: ^2.8.1
+  checksum: 11691251108f7d62beb8ec09e329b1b95a51974731987474f1b07f6e1586ba61f197648fe305811f4f6c0509a383fb541d49055533286cf1c94e06a8a3d28fe2
   languageName: node
   linkType: hard
 
@@ -18353,13 +18351,6 @@ __metadata:
   bin:
     flat: cli.js
   checksum: 12a1536ac746db74881316a181499a78ef953632ddd28050b7a3a43c62ef5462e3357c8c29d76072bb635f147f7a9a1f0c02efef6b4be28f8db62ceb3d5c7f5d
-  languageName: node
-  linkType: hard
-
-"flatbuffers@npm:^1.12.0":
-  version: 1.12.0
-  resolution: "flatbuffers@npm:1.12.0"
-  checksum: 8a6461ec80a8f850c623439fbc3d031bac52dfd7dee27fbadf1d850e96fd92cbd782c28bf2a08f2d852a3ac329cc31e2ad21e133ab68993cf0df69d3dd32fd12
   languageName: node
   linkType: hard
 
@@ -19490,13 +19481,6 @@ __metadata:
   version: 1.4.0
   resolution: "graphemer@npm:1.4.0"
   checksum: bab8f0be9b568857c7bec9fda95a89f87b783546d02951c40c33f84d05bb7da3fd10f863a9beb901463669b6583173a8c8cc6d6b306ea2b9b9d5d3d943c3a673
-  languageName: node
-  linkType: hard
-
-"guid-typescript@npm:^1.0.9":
-  version: 1.0.9
-  resolution: "guid-typescript@npm:1.0.9"
-  checksum: 829dd87866800a5138aafa0873994028bbc446eb20ff4cae6452d471a2a3d26f7025bed3eb980692c0f022fd22f95ea7396122b46b45a4b5084958505a4fc50c
   languageName: node
   linkType: hard
 
@@ -22763,7 +22747,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"js-yaml@npm:3.x, js-yaml@npm:^3.13.1, js-yaml@npm:^3.14.0":
+"js-yaml@npm:3.x, js-yaml@npm:^3.13.1":
   version: 3.14.1
   resolution: "js-yaml@npm:3.14.1"
   dependencies:
@@ -23023,15 +23007,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"json-schema-migrate@npm:^0.2.0":
-  version: 0.2.0
-  resolution: "json-schema-migrate@npm:0.2.0"
-  dependencies:
-    ajv: "npm:^5.0.0"
-  checksum: fc5b3ed2cfc5d02059836120653b63f846a18037ec554b47267f9c104750f8fa3f3acb38d0129f116fd2db017c69cc90456cfae66930aa1d328fe12a422c0125
-  languageName: node
-  linkType: hard
-
 "json-schema-to-typescript@npm:^12.0.0":
   version: 12.0.0
   resolution: "json-schema-to-typescript@npm:12.0.0"
@@ -23053,13 +23028,6 @@ __metadata:
   bin:
     json2ts: dist/src/cli.js
   checksum: 4d662dd433b08f7a727fc6d464145e273bc347790537305c776f53321994f83d64242d0fe5b3a68d0cf81d866738df78ed4f8300a51d4c79a24657cac8f5e915
-  languageName: node
-  linkType: hard
-
-"json-schema-traverse@npm:^0.3.0":
-  version: 0.3.1
-  resolution: "json-schema-traverse@npm:0.3.1"
-  checksum: a685c36222023471c25c86cddcff506306ecb8f8941922fd356008419889c41c38e1c16d661d5499d0a561b34f417693e9bb9212ba2b2b2f8f8a345a49e4ec1a
   languageName: node
   linkType: hard
 
@@ -24436,13 +24404,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"long@npm:^5.0.0, long@npm:^5.2.3":
-  version: 5.2.3
-  resolution: "long@npm:5.2.3"
-  checksum: 885ede7c3de4facccbd2cacc6168bae3a02c3e836159ea4252c87b6e34d40af819824b2d4edce330bfb5c4d6e8ce3ec5864bdcf9473fa1f53a4f8225860e5897
-  languageName: node
-  linkType: hard
-
 "long@npm:^5.2.0":
   version: 5.2.1
   resolution: "long@npm:5.2.1"
@@ -24734,7 +24695,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"marked@npm:^4.2.12":
+"marked@npm:^4.2.12, marked@npm:^4.3.0":
   version: 4.3.0
   resolution: "marked@npm:4.3.0"
   bin:
@@ -25612,7 +25573,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimatch@npm:^9.0.0, minimatch@npm:^9.0.4, minimatch@npm:^9.0.5":
+"minimatch@npm:^9.0.0, minimatch@npm:^9.0.3, minimatch@npm:^9.0.4, minimatch@npm:^9.0.5":
   version: 9.0.5
   resolution: "minimatch@npm:9.0.5"
   dependencies:
@@ -26346,16 +26307,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-kms@npm:^0.4.0":
-  version: 0.4.0
-  resolution: "node-kms@npm:0.4.0"
+"node-kms@npm:^0.4.1":
+  version: 0.4.1
+  resolution: "node-kms@npm:0.4.1"
   dependencies:
     es6-promise: ^2.0.1
     lodash.clone: ^3.0.2
     lodash.clonedeep: ^3.0.1
-    node-jose: ^2.0.0
+    node-jose: ^2.2.0
     uuid: ^2.0.1
-  checksum: 00d27958ec84c1dac786ddcaccf227e619bbd201943467620a18df4128d1e79f3a69742f9bdf1fd9a4cafe1e3a554b99b353c718c55063bf75f71b2b66af8fad
+  checksum: e68542feac20ef35e575811c4ad6255b41ae5888c9c5a5b68604fc964c956a5b9f478fe5ee587f172d697e57121b78cecd6101a0dc007bd627a9c4d23dd5707f
   languageName: node
   linkType: hard
 
@@ -26790,27 +26751,6 @@ __metadata:
   version: 0.0.2
   resolution: "only@npm:0.0.2"
   checksum: d399710db867a1ef436dd3ce74499c87ece794aa81ab0370b5d153968766ee4aed2f98d3f92fc87c963e45b7a74d400d6f463ef651a5e7cfb861b15e88e9efe6
-  languageName: node
-  linkType: hard
-
-"onnxruntime-common@npm:~1.16.3":
-  version: 1.16.3
-  resolution: "onnxruntime-common@npm:1.16.3"
-  checksum: b8b83fd318576ef39d86f264ef0edbda2a837f2830a9a3d4f82b2d969328fe7b813f3a8ab24c4dc767f01355294790268bd0d327b9c8e2765d99b2ccedb53245
-  languageName: node
-  linkType: hard
-
-"onnxruntime-web@npm:^1.15.1":
-  version: 1.16.3
-  resolution: "onnxruntime-web@npm:1.16.3"
-  dependencies:
-    flatbuffers: "npm:^1.12.0"
-    guid-typescript: "npm:^1.0.9"
-    long: "npm:^5.2.3"
-    onnxruntime-common: "npm:~1.16.3"
-    platform: "npm:^1.3.6"
-    protobufjs: "npm:^7.2.4"
-  checksum: e8b71733f907928f4907c481a70e809499b930c072df67f0157c76bce14ef06c7c790843c31116e6aed11f1659a13d815375b1fe9e632358ee754c1e8b7d1a08
   languageName: node
   linkType: hard
 
@@ -27788,7 +27728,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"platform@npm:1.3.6, platform@npm:^1.3.3, platform@npm:^1.3.6, platform@npm:~1.3.6":
+"platform@npm:1.3.6, platform@npm:^1.3.3, platform@npm:~1.3.6":
   version: 1.3.6
   resolution: "platform@npm:1.3.6"
   checksum: 6f472a09c61d418c7e26c1c16d0bdc029549d512dbec6526216a1e59ec68100d07007d0097dcba69dddad883d6f2a83361b4bdfe0094a3d9a2af24158643d85e
@@ -28062,26 +28002,6 @@ __metadata:
   version: 1.2.4
   resolution: "proto-list@npm:1.2.4"
   checksum: 4d4826e1713cbfa0f15124ab0ae494c91b597a3c458670c9714c36e8baddf5a6aad22842776f2f5b137f259c8533e741771445eb8df82e861eea37a6eaba03f7
-  languageName: node
-  linkType: hard
-
-"protobufjs@npm:^7.2.4":
-  version: 7.2.5
-  resolution: "protobufjs@npm:7.2.5"
-  dependencies:
-    "@protobufjs/aspromise": "npm:^1.1.2"
-    "@protobufjs/base64": "npm:^1.1.2"
-    "@protobufjs/codegen": "npm:^2.0.4"
-    "@protobufjs/eventemitter": "npm:^1.1.0"
-    "@protobufjs/fetch": "npm:^1.1.0"
-    "@protobufjs/float": "npm:^1.0.2"
-    "@protobufjs/inquire": "npm:^1.1.0"
-    "@protobufjs/path": "npm:^1.1.2"
-    "@protobufjs/pool": "npm:^1.1.0"
-    "@protobufjs/utf8": "npm:^1.1.0"
-    "@types/node": "npm:>=13.7.0"
-    long: "npm:^5.0.0"
-  checksum: 3770a072114061faebbb17cfd135bc4e187b66bc6f40cd8bac624368b0270871ec0cfb43a02b9fb4f029c8335808a840f1afba3c2e7ede7063b98ae6b98a703f
   languageName: node
   linkType: hard
 
@@ -28487,21 +28407,6 @@ __metadata:
   version: 7.5.0
   resolution: "rambda@npm:7.5.0"
   checksum: ad608a9a4160d0b6b0921047cea1329276bf239ff58d439135288712dcdbbf0df47c76591843ad249d89e7c5a9109ce86fe099aa54aef0dc0aa92a9b4dd1b8eb
-  languageName: node
-  linkType: hard
-
-"ramldt2jsonschema@npm:^1.2.3":
-  version: 1.2.3
-  resolution: "ramldt2jsonschema@npm:1.2.3"
-  dependencies:
-    commander: "npm:^5.0.0"
-    js-yaml: "npm:^3.14.0"
-    json-schema-migrate: "npm:^0.2.0"
-    webapi-parser: "npm:^0.5.0"
-  bin:
-    dt2js: bin/dt2js.js
-    js2dt: bin/js2dt.js
-  checksum: db6b89f4c088184290ea27448cfd64985e253543209e0b80bfb12b0b9640253b59418b671164af9055143018ef4be010c5f52ca853386636267269208f2f3512
   languageName: node
   linkType: hard
 
@@ -30496,6 +30401,18 @@ __metadata:
     vscode-oniguruma: ^1.7.0
     vscode-textmate: ^8.0.0
   checksum: 41d847817cfc9bb6d8bf190316896698d250303656546446659cc02caed8dcc171b10cd113bb5da82425b51d0032e87aafcdc36c3dd61dadc123170b438da736
+  languageName: node
+  linkType: hard
+
+"shiki@npm:^0.14.7":
+  version: 0.14.7
+  resolution: "shiki@npm:0.14.7"
+  dependencies:
+    ansi-sequence-parser: ^1.1.0
+    jsonc-parser: ^3.2.0
+    vscode-oniguruma: ^1.7.0
+    vscode-textmate: ^8.0.0
+  checksum: 2aec3b3519df977c4391df9e1825cb496e9a4d7e11395f05a0da77e4fa2f7c3d9d6e6ee94029ac699533017f2b25637ee68f6d39f05f311535c2704d0329b520
   languageName: node
   linkType: hard
 
@@ -32808,6 +32725,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"typedoc@npm:^0.25.0":
+  version: 0.25.13
+  resolution: "typedoc@npm:0.25.13"
+  dependencies:
+    lunr: ^2.3.9
+    marked: ^4.3.0
+    minimatch: ^9.0.3
+    shiki: ^0.14.7
+  peerDependencies:
+    typescript: 4.6.x || 4.7.x || 4.8.x || 4.9.x || 5.0.x || 5.1.x || 5.2.x || 5.3.x || 5.4.x
+  bin:
+    typedoc: bin/typedoc
+  checksum: 703d1f48137300b0ef3df1998a25ae745db3ca0b126f8dd1f7262918f11243a94d24dfc916cdba2baeb5a7d85d5a94faac811caf7f4fa6b7d07144dc02f7639f
+  languageName: node
+  linkType: hard
+
 "typescript-eslint@npm:^8.8.1":
   version: 8.8.1
   resolution: "typescript-eslint@npm:8.8.1"
@@ -34299,6 +34232,7 @@ __metadata:
     "@webex/plugin-attachment-actions": "workspace:*"
     "@webex/plugin-authorization": "workspace:*"
     "@webex/plugin-device-manager": "workspace:*"
+    "@webex/plugin-encryption": "workspace:*"
     "@webex/plugin-logger": "workspace:*"
     "@webex/plugin-memberships": "workspace:*"
     "@webex/plugin-messages": "workspace:*"
@@ -34334,6 +34268,7 @@ __metadata:
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-dss": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
     "@webex/internal-plugin-presence": "workspace:*"
     "@webex/internal-plugin-support": "workspace:*"
     "@webex/internal-plugin-voicea": "workspace:*"
@@ -34343,6 +34278,7 @@ __metadata:
     "@webex/plugin-authorization": "workspace:*"
     "@webex/plugin-cc": "workspace:*"
     "@webex/plugin-device-manager": "workspace:*"
+    "@webex/plugin-encryption": "workspace:*"
     "@webex/plugin-logger": "workspace:*"
     "@webex/plugin-meetings": "workspace:*"
     "@webex/plugin-memberships": "workspace:*"
@@ -34361,6 +34297,7 @@ __metadata:
     "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
+    safe-buffer: ^5.2.0
     sinon: ^9.2.4
     webex: "workspace:*"
   languageName: unknown
@@ -34776,6 +34713,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"worker-factory@npm:^7.0.43":
+  version: 7.0.43
+  resolution: "worker-factory@npm:7.0.43"
+  dependencies:
+    "@babel/runtime": ^7.27.6
+    fast-unique-numbers: ^9.0.22
+    tslib: ^2.8.1
+  checksum: 299e78d2d01ac34e5c18a428260fd8741f5f31967eb1875b9a9bd571d9e4d1907947df1569f82865c6e2dfc8e909fcd8a1a89c69d26bdc34673df07de799eb49
+  languageName: node
+  linkType: hard
+
 "worker-timers-broker@npm:^7.1.2":
   version: 7.1.2
   resolution: "worker-timers-broker@npm:7.1.2"
@@ -34785,6 +34733,19 @@ __metadata:
     tslib: ^2.7.0
     worker-timers-worker: ^8.0.4
   checksum: ec2deb097662ef2331cdf4681023fe970504cd30b58cbf13ceab0741d05fd21a49e518c73f03b20a01e2684d9b8d6d59787aed82d05e615be99c8dc0229623c4
+  languageName: node
+  linkType: hard
+
+"worker-timers-broker@npm:^8.0.8":
+  version: 8.0.8
+  resolution: "worker-timers-broker@npm:8.0.8"
+  dependencies:
+    "@babel/runtime": ^7.27.6
+    broker-factory: ^3.1.7
+    fast-unique-numbers: ^9.0.22
+    tslib: ^2.8.1
+    worker-timers-worker: ^9.0.8
+  checksum: a916a669e0a03737fb5fadbae7f15354445f35fab169d0e9d54e16b50dc44b0737ecc1fdfd7362e18a5bb01e5226d48b9a23064bde1e937548981aa981e50056
   languageName: node
   linkType: hard
 
@@ -34798,6 +34759,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"worker-timers-worker@npm:^9.0.8":
+  version: 9.0.8
+  resolution: "worker-timers-worker@npm:9.0.8"
+  dependencies:
+    "@babel/runtime": ^7.27.6
+    tslib: ^2.8.1
+    worker-factory: ^7.0.43
+  checksum: a9ed8b37b712c8bf09bacdcecbe5052980762ce58c03f6c8d3bcd72ca9d09f3f91168c236ce0a31373d71104dd4007345132b521eb8c7e7125703fcfb9d8c645
+  languageName: node
+  linkType: hard
+
 "worker-timers@npm:^8.0.2":
   version: 8.0.5
   resolution: "worker-timers@npm:8.0.5"
@@ -34807,6 +34779,18 @@ __metadata:
     worker-timers-broker: ^7.1.2
     worker-timers-worker: ^8.0.4
   checksum: e8c00e33e5af252a37472c0fc1bc3c3b26cdd174e179ab1b301364b880db7e560f6f3eb82a4438970fe113c1e9a4855569df0ef61edc6d5de613a51789587ef4
+  languageName: node
+  linkType: hard
+
+"worker-timers@npm:^8.0.21":
+  version: 8.0.22
+  resolution: "worker-timers@npm:8.0.22"
+  dependencies:
+    "@babel/runtime": ^7.27.6
+    tslib: ^2.8.1
+    worker-timers-broker: ^8.0.8
+    worker-timers-worker: ^9.0.8
+  checksum: e9fe71148456be2bb5aa679d112850f36b8fd5613feef804bfa59482d25d3ad7be0034f6a9b9d2f5b49885896f64b82729397bf1970675695dac9a6cefb2bff0
   languageName: node
   linkType: hard
 
@@ -35264,6 +35248,16 @@ __metadata:
     yarn-install: bin/yarn-install.js
     yarn-remove: bin/yarn-remove.js
   checksum: b9301c1db6d9025aabad1d995413a75559e3156b54e86d3cbf03313a163a793ca6f2419516ad1b2ae8677dbe39a97adb451b10123fe32bc2e2c39d3900e2b216
+  languageName: node
+  linkType: hard
+
+"yarn@npm:^1.22.22":
+  version: 1.22.22
+  resolution: "yarn@npm:1.22.22"
+  bin:
+    yarn: bin/yarn.js
+    yarnpkg: bin/yarn.js
+  checksum: 59aeef5ccfd3347287f939448e6d3594f0a42f74025b9bdc2a277641c1d4070c07a38b6e7c35e695f77410b0269a5a43c78535786564f86f39c9f781e6efa311
   languageName: node
   linkType: hard
 

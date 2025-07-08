@@ -3,9 +3,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import EventEmitter from 'events';
 import testUtils from '../../../utils/testUtils';
-import Reachability, {
-  ReachabilityResultsForBackend,
-} from '@webex/plugin-meetings/src/reachability/';
+import Reachability, {ReachabilityResultsForBackend} from '@webex/plugin-meetings/src/reachability/';
 import {ClusterNode} from '../../../../src/reachability/request';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import * as ClusterReachabilityModule from '@webex/plugin-meetings/src/reachability/clusterReachability';
@@ -1955,6 +1953,7 @@ describe('gatherReachability', () => {
         receivedEvents[event] = receivedEvents[event] + 1 || 1;
       });
     };
+    
     it('works as expected', async () => {
       setListener('reachability:stopped');
       setListener('reachability:done');
@@ -2015,6 +2014,59 @@ describe('gatherReachability', () => {
       assert.equal(receivedEvents['reachability:stopped'], undefined);
       assert.equal(receivedEvents['reachability:done'], undefined);
       assert.equal(receivedEvents['reachability:firstResultAvailable'], undefined);
+    });
+
+    it('does not fallback when no clusters were reached and min clusters were specified', async () => {
+      setListener('reachability:stopped');
+      setListener('reachability:done');
+      setListener('reachability:firstResultAvailable');
+
+      const mockGetClustersResult = {
+        discoveryOptions: {
+          ['early-call-min-clusters']: 1,
+        },
+        clusters: {
+          clusterA: {
+            udp: [],
+            tcp: [],
+            xtls: [],
+            isVideoMesh: false,
+          },
+          clusterB: {
+            udp: [],
+            tcp: [],
+            xtls: [],
+            isVideoMesh: false,
+          },
+        },
+        joinCookie: {id: 'id'},
+      };
+
+      reachability.reachabilityRequest.getClusters = sinon.stub().returns(mockGetClustersResult);
+
+      const gatherReachabilityFallbackSpy = sinon.spy(reachability, 'gatherReachabilityFallback');
+
+      const resultPromise = reachability.gatherReachability('test');
+
+      await testUtils.flushPromises();
+
+      reachability.stopReachability();
+
+      await resultPromise;
+
+      // simulate a lot of time passing to check that all timers were stopped and nothing else happens
+      clock.tick(99000);
+
+      assert.calledOnceWithExactly(mockClusterReachabilityInstances['clusterA'].abort);
+      assert.calledOnceWithExactly(mockClusterReachabilityInstances['clusterB'].abort);
+
+      assert.calledOnceWithExactly(sendMetricSpy, true);
+
+      assert.equal(receivedEvents['reachability:stopped'], 1);
+      assert.equal(receivedEvents['reachability:done'], undefined);
+      assert.equal(receivedEvents['reachability:firstResultAvailable'], undefined);
+
+      assert.notCalled(gatherReachabilityFallbackSpy);
     });
   });
 });
@@ -2684,5 +2736,36 @@ describe('sendMetric', () => {
       public_xtls_protocol: 'xtls',
       public_xtls_isVideoMesh: false,
     });
+  });
+});
+
+describe('isSubnetReachable', () => {
+  let webex;
+  let reachability;
+
+  beforeEach(() => {
+    webex = new MockWebex();
+    reachability = new TestReachability(webex);
+
+    reachability.setFakeClusterReachability({
+      cluster1: {
+        reachedSubnets: new Set(['1.2.3.4', '2.3.4.5']),
+      },
+      cluster2: {
+        reachedSubnets: new Set(['3.4.5.6', '4.5.6.7']),
+      },
+    });
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it('returns true if the subnet is reachable', () => {
+    assert(reachability.isSubnetReachable('1'));
+  });
+
+  it(`returns false if the subnet is unreachable`, () => {
+    assert(!reachability.isSubnetReachable('11'));
   });
 });

@@ -81,6 +81,8 @@ interface IInMeetingActions {
   canShareDesktop?: boolean;
   canShareContent?: boolean;
   canTransferFile?: boolean;
+  canRealtimeCloseCaption?: boolean;
+  canRealtimeCloseCaptionManual?: boolean;
   canChat?: boolean;
   canDoVideo?: boolean;
   canAnnotate?: boolean;
@@ -99,6 +101,14 @@ interface IInMeetingActions {
   isPracticeSessionOff?: boolean;
   canStartPracticeSession?: boolean;
   canStopPracticeSession?: boolean;
+  requiresPostMeetingDataConsentPrompt?: boolean;
+  canEnableAnnotation?: boolean;
+  canDisableAnnotation?: boolean;
+  canEnableRemoteDesktopControl?: boolean;
+  canDisableRemoteDesktopControl?: boolean;
+  canMoveToLobby?: boolean;
+  canEnablePollingQA?: boolean;
+  canDisablePollingQA?: boolean;
 }
 
 /**
@@ -249,6 +259,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canTransferFile = null;
 
+  canRealtimeCloseCaption = null;
+
+  canRealtimeCloseCaptionManual = null;
+
   canChat = null;
 
   canDoVideo = null;
@@ -284,6 +298,22 @@ export default class InMeetingActions implements IInMeetingActions {
   canStartPracticeSession = null;
 
   canStopPracticeSession = null;
+
+  requiresPostMeetingDataConsentPrompt = null;
+
+  canEnableAnnotation = null;
+
+  canDisableAnnotation = null;
+
+  canEnableRemoteDesktopControl = null;
+
+  canDisableRemoteDesktopControl = null;
+
+  canMoveToLobby = null;
+
+  canEnablePollingQA = null;
+
+  canDisablePollingQA = null;
 
   /**
    * Returns all meeting action options
@@ -361,6 +391,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canShareDesktop: this.canShareDesktop,
     canShareContent: this.canShareContent,
     canTransferFile: this.canTransferFile,
+    canRealtimeCloseCaption: this.canRealtimeCloseCaption,
+    canRealtimeCloseCaptionManual: this.canRealtimeCloseCaptionManual,
     canChat: this.canChat,
     canDoVideo: this.canDoVideo,
     canAnnotate: this.canAnnotate,
@@ -379,6 +411,14 @@ export default class InMeetingActions implements IInMeetingActions {
     isPracticeSessionOff: this.isPracticeSessionOff,
     canStartPracticeSession: this.canStartPracticeSession,
     canStopPracticeSession: this.canStopPracticeSession,
+    requiresPostMeetingDataConsentPrompt: this.requiresPostMeetingDataConsentPrompt,
+    canEnableAnnotation: this.canEnableAnnotation,
+    canDisableAnnotation: this.canDisableAnnotation,
+    canEnableRemoteDesktopControl: this.canEnableRemoteDesktopControl,
+    canDisableRemoteDesktopControl: this.canDisableRemoteDesktopControl,
+    canMoveToLobby: this.canMoveToLobby,
+    canEnablePollingQA: this.canEnablePollingQA,
+    canDisablePollingQA: this.canDisablePollingQA,
   });
 
   /**

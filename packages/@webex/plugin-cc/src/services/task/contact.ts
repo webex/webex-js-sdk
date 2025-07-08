@@ -28,6 +28,7 @@ export default function routingContact(aqm: AqmReqs) {
      */
     accept: aqm.req((p: {interactionId: string}) => ({
       url: `${TASK_API}${p.interactionId}/accept`,
+      host: WCC_API_GATEWAY,
       data: {},
       err,
       notifSuccess: {

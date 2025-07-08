@@ -357,5 +357,80 @@ describe('plugin-meetings', () => {
         });
       });
     });
+
+    describe('#getMoveMemberToLobbyRequestBody', () => {
+      it('returns the correct options', () => {
+        const memberId = 'test1';
+        assert.deepEqual(MembersUtil.getMoveMemberToLobbyRequestBody(memberId), {
+          moveToLobby: {
+            participantIds: [memberId],
+          },
+        });
+      });
+    });
+
+    describe('#getMoveMemberToLobbyRequestParams', () => {
+      it('returns the correct params', () => {
+        const locusUrl = 'TestLocusUrl';
+        const memberId = 'test1';
+        const options = {
+          locusUrl: locusUrl,
+          memberId,
+        };
+        const body = {
+          moveToLobby: {participantIds: [memberId]},
+        };
+
+        const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
+
+        assert.deepEqual(MembersUtil.getMoveMemberToLobbyRequestParams(options, body), {
+          method: HTTP_VERBS.PATCH,
+          uri,
+          body,
+        });
+      });
+    });
+
+    describe('#cancelSIPInviteOptions', () => {
+      it('returns the correct options', () => {
+        const locusUrl = 'TestLocusUrl';
+        const memberId = 'test';
+        const invitee = {memberId};
+
+        assert.deepEqual(
+          MembersUtil.cancelSIPInviteOptions(
+            invitee,
+            locusUrl
+          ),
+          {
+            invitee,
+            locusUrl,
+          }
+        );
+      });
+    });
+
+    describe('#generateCancelSIPInviteRequestParams', () => {
+      it('returns the correct params', () => {
+        const locusUrl = 'TestLocusUrl';
+        const memberId = 'test';
+        const options = {
+          locusUrl,
+          invitee: {memberId}
+        };
+        const body = {
+          actionType: 'REMOVE',
+          invitees: [{address: options.invitee.memberId}],
+        };
+
+        const uri = options.locusUrl;
+
+        assert.deepEqual(MembersUtil.generateCancelSIPInviteRequestParams(options), {
+          method: HTTP_VERBS.PUT,
+          uri,
+          body,
+        });
+      });
+    });
   });
 });

@@ -41,6 +41,9 @@ import {
   ClientSubServiceType,
   BrowserLaunchMethodType,
   DelayedClientEvent,
+  DelayedClientFeatureEvent,
+  FeatureEvent,
+  ClientFeatureEventPayload,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
@@ -58,6 +61,8 @@ import {
   AUTHENTICATION_FAILED_CODE,
   WEBEX_SUB_SERVICE_TYPES,
   SDP_OFFER_CREATION_ERROR_MAP,
+  CALL_FEATURE_LOG_IDENTIFIER,
+  CALL_FEATURE_EVENT_FAILED_TO_SEND,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -97,6 +102,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private hasLoggedBrowserSerial: boolean;
   private device: any;
   private delayedClientEvents: DelayedClientEvent[] = [];
+  private delayedClientFeatureEvents: DelayedClientFeatureEvent[] = [];
+  private eventErrorCache: WeakMap<any, any> = new WeakMap();
+  private isMercuryConnected = false;
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -147,6 +155,16 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     return undefined;
+  }
+
+  /**
+   * Sets mercury connected status for event data object in CA events
+   * @public
+   * @param status - boolean value indicating mercury connection status
+   * @return {void}
+   */
+  public setMercuryConnectedStatus(status: boolean): void {
+    this.isMercuryConnected = status;
   }
 
   /**
@@ -415,12 +433,97 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * TODO: NOT IMPLEMENTED
-   * Submit Feature Event
+   * Create feature event
+   * @param name
+   * @param payload
+   * @param options
    * @returns
    */
-  public submitFeatureEvent() {
-    throw Error('Not implemented');
+  private prepareClientFeatureEvent({
+    name,
+    payload,
+    options,
+  }: {
+    name: FeatureEvent['name'];
+    payload?: ClientFeatureEventPayload;
+    options?: SubmitClientEventOptions;
+  }) {
+    const {meetingId, correlationId} = options;
+    let featureEventObject: FeatureEvent['payload'];
+
+    // events that will most likely happen in join phase
+    if (meetingId) {
+      featureEventObject = this.createFeatureEventObjectInMeeting({name, options});
+    } else {
+      throw new Error('Not implemented');
+    }
+
+    // merge any new properties, or override existing ones
+    featureEventObject = merge(featureEventObject, payload);
+
+    // append client event data to the call diagnostic event
+    const featureEvent = this.prepareDiagnosticEvent(featureEventObject, options);
+
+    return featureEvent;
+  }
+
+  /**
+   * Submit Feature Event
+   * submit to business_ucf
+   * @returns
+   */
+  public submitFeatureEvent({
+    name,
+    payload,
+    options,
+    delaySubmitEvent,
+  }: {
+    name: FeatureEvent['name'];
+    payload?: ClientFeatureEventPayload;
+    options?: SubmitClientEventOptions;
+    delaySubmitEvent?: boolean;
+  }) {
+    if (delaySubmitEvent) {
+      // Preserve the time when the event was triggered if delaying the submission to Call Features
+      const delayedOptions = {
+        ...options,
+        triggeredTime: new Date().toISOString(),
+      };
+
+      this.delayedClientFeatureEvents.push({
+        name,
+        payload,
+        options: delayedOptions,
+      });
+
+      return Promise.resolve();
+    }
+
+    this.logger.log(
+      CALL_FEATURE_LOG_IDENTIFIER,
+      'CallFeatureMetrics: @submitFeatureEvent. Submit Client Feature Event CA event.',
+      `name: ${name}`
+    );
+    const featureEvent = this.prepareClientFeatureEvent({name, payload, options});
+
+    this.validator({type: 'ce', event: featureEvent});
+
+    return this.submitToCallFeatures(featureEvent);
+  }
+
+  /**
+   * Submit Feature Event
+   * type is business
+   * @param event
+   */
+  submitToCallFeatures(event: Event): Promise<any> {
+    // build metrics-a event type
+    const finalEvent = {
+      eventPayload: event,
+      type: ['business'],
+    };
+
+    return this.callDiagnosticEventsBatcher.request(finalEvent);
   }
 
   /**
@@ -556,15 +659,30 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Clear the error cache
+   */
+  clearErrorCache() {
+    this.eventErrorCache = new WeakMap();
+  }
+
+  /**
    * Generate error payload for Client Event
    * @param rawError
    */
   generateClientEventErrorPayload(rawError: any) {
+    const cachedError = this.eventErrorCache.get(rawError);
+
+    if (cachedError) {
+      return [cachedError, true];
+    }
+
     const rawErrorMessage = rawError.message;
     const httpStatusCode = rawError.statusCode;
+    let payload;
+
     if (rawError.name) {
       if (isBrowserMediaErrorName(rawError.name)) {
-        return this.getErrorPayloadForClientErrorCode({
+        payload = this.getErrorPayloadForClientErrorCode({
           serviceErrorCode: undefined,
           clientErrorCode: BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name],
           serviceErrorName: rawError.name,
@@ -574,11 +692,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       }
     }
 
-    if (isSdpOfferCreationError(rawError)) {
+    if (isSdpOfferCreationError(rawError) && !payload) {
       // error code is 30005, but that's not specific enough. we also need to check error.cause.type
       const causeType = rawError.cause?.type;
 
-      return this.getErrorPayloadForClientErrorCode({
+      payload = this.getErrorPayloadForClientErrorCode({
         serviceErrorCode: undefined,
         clientErrorCode:
           SDP_OFFER_CREATION_ERROR_MAP[causeType] || SDP_OFFER_CREATION_ERROR_MAP.GENERAL,
@@ -596,8 +714,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     if (serviceErrorCode) {
       const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[serviceErrorCode];
-      if (clientErrorCode) {
-        return this.getErrorPayloadForClientErrorCode({
+      if (clientErrorCode && !payload) {
+        payload = this.getErrorPayloadForClientErrorCode({
           clientErrorCode,
           serviceErrorCode,
           rawErrorMessage,
@@ -606,8 +724,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       }
 
       // by default, if it is locus error, return new locus err
-      if (isLocusServiceErrorCode(serviceErrorCode)) {
-        return this.getErrorPayloadForClientErrorCode({
+      if (isLocusServiceErrorCode(serviceErrorCode) && !payload) {
+        payload = this.getErrorPayloadForClientErrorCode({
           clientErrorCode: NEW_LOCUS_ERROR_CLIENT_CODE,
           serviceErrorCode,
           rawErrorMessage,
@@ -616,8 +734,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       }
     }
 
-    if (isMeetingInfoServiceError(rawError)) {
-      return this.getErrorPayloadForClientErrorCode({
+    if (isMeetingInfoServiceError(rawError) && !payload) {
+      payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
         serviceErrorCode,
         rawErrorMessage,
@@ -625,8 +743,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
-    if (isNetworkError(rawError)) {
-      return this.getErrorPayloadForClientErrorCode({
+    if (isNetworkError(rawError) && !payload) {
+      payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: NETWORK_ERROR,
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
@@ -635,8 +753,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
-    if (isUnauthorizedError(rawError)) {
-      return this.getErrorPayloadForClientErrorCode({
+    if (isUnauthorizedError(rawError) && !payload) {
+      payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: AUTHENTICATION_FAILED_CODE,
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
@@ -645,32 +763,39 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
-    // otherwise return unkown error but passing serviceErrorCode and serviceErrorName so that we know the issue
-    return this.getErrorPayloadForClientErrorCode({
-      clientErrorCode: UNKNOWN_ERROR,
-      serviceErrorCode: serviceErrorCode || UNKNOWN_ERROR,
-      serviceErrorName: rawError?.name,
-      payloadOverrides: rawError.payloadOverrides,
-      rawErrorMessage,
-      httpStatusCode,
-    });
+    if (!payload) {
+      // otherwise return unkown error but passing serviceErrorCode and serviceErrorName so that we know the issue
+      payload = this.getErrorPayloadForClientErrorCode({
+        clientErrorCode: UNKNOWN_ERROR,
+        serviceErrorCode: serviceErrorCode || UNKNOWN_ERROR,
+        serviceErrorName: rawError?.name,
+        payloadOverrides: rawError.payloadOverrides,
+        rawErrorMessage,
+        httpStatusCode,
+      });
+    }
+
+    // cache the payload for future use
+    this.eventErrorCache.set(rawError, payload);
+
+    return [payload, false];
   }
 
   /**
-   * Create client event object for in meeting events
-   * @param arg - create args
-   * @param arg.event - event key
-   * @param arg.options - options
+   * Create common object for in meeting events
+   * @param name
+   * @param options
+   * @param eventType - 'client' | 'feature'
    * @returns object
    */
-  private createClientEventObjectInMeeting({
+  private createCommonEventObjectInMeeting({
     name,
     options,
-    errors,
+    eventType = 'client',
   }: {
-    name: ClientEvent['name'];
+    name: string;
     options?: SubmitClientEventOptions;
-    errors?: ClientEventPayloadError;
+    eventType?: 'client' | 'feature';
   }) {
     const {
       meetingId,
@@ -685,16 +810,21 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     if (!meeting) {
       console.warn(
-        'Attempt to send client event but no meeting was found...',
+        'Attempt to send common event but no meeting was found...',
         `name: ${name}, meetingId: ${meetingId}`
       );
       // @ts-ignore
-      this.webex.internal.metrics.submitClientMetrics(CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND, {
-        fields: {
-          meetingId,
-          name,
-        },
-      });
+      this.webex.internal.metrics.submitClientMetrics(
+        eventType === 'feature'
+          ? CALL_FEATURE_EVENT_FAILED_TO_SEND
+          : CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND,
+        {
+          fields: {
+            meetingId,
+            name,
+          },
+        }
+      );
 
       return undefined;
     }
@@ -708,12 +838,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       sessionCorrelationId,
     });
 
-    // create client event object
-    const clientEventObject: ClientEvent['payload'] = {
+    // create common event object structur
+    const commonEventObject = {
       name,
       canProceed: true,
       identifiers,
-      errors,
       eventData: {
         webClientDomain: window.location.hostname,
       },
@@ -734,18 +863,80 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
     if (joinFlowVersion) {
-      clientEventObject.joinFlowVersion = joinFlowVersion;
+      // @ts-ignore
+      commonEventObject.joinFlowVersion = joinFlowVersion;
     }
     const meetingJoinedTime = meeting.isoLocalClientMeetingJoinTime;
     if (meetingJoinedTime) {
-      clientEventObject.meetingJoinedTime = meetingJoinedTime;
+      // @ts-ignore
+      commonEventObject.meetingJoinedTime = meetingJoinedTime;
     }
 
     if (options.meetingJoinPhase) {
-      clientEventObject.meetingJoinPhase = options.meetingJoinPhase;
+      // @ts-ignore
+      commonEventObject.meetingJoinPhase = options.meetingJoinPhase;
     }
 
-    return clientEventObject;
+    return commonEventObject;
+  }
+
+  /**
+   * Create client event object for in meeting events
+   * @param arg - create args
+   * @param arg.event - event key
+   * @param arg.options - options
+   * @returns object
+   */
+  private createClientEventObjectInMeeting({
+    name,
+    options,
+    errors,
+  }: {
+    name: ClientEvent['name'];
+    options?: SubmitClientEventOptions;
+    errors?: ClientEventPayloadError;
+  }) {
+    const commonObject = this.createCommonEventObjectInMeeting({
+      name,
+      options,
+      eventType: 'client',
+    });
+    if (!commonObject) return undefined;
+
+    return {
+      ...commonObject,
+      errors,
+      eventData: {
+        ...commonObject.eventData,
+        isMercuryConnected: this.isMercuryConnected,
+      },
+    } as ClientEvent['payload'];
+  }
+
+  /**
+   * Create feature event object for in meeting function event
+   * @param name
+   * @param options
+   * @returns object
+   */
+  private createFeatureEventObjectInMeeting({
+    name,
+    options,
+  }: {
+    name: FeatureEvent['name'];
+    options?: SubmitClientEventOptions;
+  }) {
+    const commonObject = this.createCommonEventObjectInMeeting({
+      name,
+      options,
+      eventType: 'feature',
+    });
+    if (!commonObject) return undefined;
+
+    return {
+      ...commonObject,
+      key: 'UcfFeatureUsage',
+    } as FeatureEvent['payload'];
   }
 
   /**
@@ -784,6 +975,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers,
       eventData: {
         webClientDomain: window.location.hostname,
+        isMercuryConnected: this.isMercuryConnected,
       },
       loginType: this.getCurLoginType(),
       // @ts-ignore
@@ -834,14 +1026,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const errors: ClientEventPayloadError = [];
 
     if (rawError) {
-      const generatedError = this.generateClientEventErrorPayload(rawError);
+      const [generatedError, cached] = this.generateClientEventErrorPayload(rawError);
       if (generatedError) {
         errors.push(generatedError);
       }
       this.logger.log(
         CALL_DIAGNOSTIC_LOG_IDENTIFIER,
         'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-        `generatedError: ${JSON.stringify(generatedError)}`
+        `generatedError (cached: ${cached}): ${JSON.stringify(generatedError)}`
       );
     }
 
@@ -919,7 +1111,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   /**
    * Submit Delayed Client Event CA events. Clears delayedClientEvents array after submission.
    */
-  public submitDelayedClientEvents() {
+  public submitDelayedClientEvents(overrides?: Partial<DelayedClientEvent['options']>) {
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @submitDelayedClientEvents. Submitting delayed client events.'
@@ -930,10 +1122,38 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     const promises = this.delayedClientEvents.map((delayedSubmitClientEventParams) => {
-      return this.submitClientEvent(delayedSubmitClientEventParams);
+      const {name, payload, options} = delayedSubmitClientEventParams;
+      const optionsWithOverrides: DelayedClientEvent['options'] = {...options, ...overrides};
+
+      return this.submitClientEvent({name, payload, options: optionsWithOverrides});
     });
 
     this.delayedClientEvents = [];
+
+    return Promise.all(promises);
+  }
+
+  /**
+   * Submit Delayed feature Event CA events. Clears submitDelayedClientFeatureEvents array after submission.
+   */
+  public submitDelayedClientFeatureEvents(overrides?: Partial<DelayedClientEvent['options']>) {
+    this.logger.log(
+      CALL_FEATURE_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @submitDelayedClientFeatureEvents. Submitting delayed feature events.'
+    );
+
+    if (this.delayedClientFeatureEvents.length === 0) {
+      return Promise.resolve();
+    }
+
+    const promises = this.delayedClientFeatureEvents.map((delayedSubmitClientEventParams) => {
+      const {name, payload, options} = delayedSubmitClientEventParams;
+      const optionsWithOverrides: DelayedClientEvent['options'] = {...options, ...overrides};
+
+      return this.submitFeatureEvent({name, payload, options: optionsWithOverrides});
+    });
+
+    this.delayedClientFeatureEvents = [];
 
     return Promise.all(promises);
   }

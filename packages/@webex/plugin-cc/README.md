@@ -13,7 +13,6 @@
 ## Getting Started
 The `ContactCenter` package is designed to provide a set of APIs to perform various operations for the Agent flow within Webex Contact Center.
 
-TODO: Add the documentation links once ready
 - [Introduction to the Webex Web Calling SDK]()
 - [Quickstart guide]().
  

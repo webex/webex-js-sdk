@@ -12,6 +12,9 @@ enum Control {
   shareControl = 'shareControl',
   video = 'video',
   viewTheParticipantList = 'viewTheParticipantList',
+  annotation = 'annotation',
+  rdc = 'rdc',
+  pollingQA = 'pollingQA',
 }
 
 export {Control, Setting};

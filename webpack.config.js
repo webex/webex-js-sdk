@@ -39,6 +39,13 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
         type: 'umd',
       },
     },
+    encryption: {
+      import: `${path.resolve(__dirname)}/packages/@webex/plugin-encryption/src/webex.js`,
+      library: {
+        name: 'Webex',
+        type: 'umd',
+      },
+    },
     calling: {
       import: `${path.resolve(__dirname)}/packages/webex/src/calling.js`,
       library: {
@@ -48,7 +55,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
       },
     },
     'contact-center': {
-      import: `${path.resolve(__dirname)}/packages/webex/src/contact-center.js`,
+      import: `${path.resolve(__dirname)}/packages/@webex/plugin-cc/src/webex.js`,
       library: {
         name: 'Webex',
         type: 'umd',
@@ -143,7 +150,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
             ATLAS_SERVICE_URL: 'https://atlas-intb.ciscospark.com/admin/api/v1',
             CONVERSATION_SERVICE: 'https://conversation-intb.ciscospark.com/conversation/api/v1',
             ENCRYPTION_SERVICE_URL: 'https://encryption-intb.ciscospark.com/encryption/api/v1',
-            HYDRA_SERVICE_URL: 'https://apialpha.ciscospark.com/v1/',
+            HYDRA_SERVICE_URL: 'https://hydra-intb.ciscospark.com/v1/',
             IDBROKER_BASE_URL: 'https://idbrokerbts.webex.com',
             IDENTITY_BASE_URL: 'https://identitybts.webex.com',
             U2C_SERVICE_URL: 'https://u2c-intb.ciscospark.com/u2c/api/v1',

@@ -1,4 +1,5 @@
 import 'jsdom-global/register';
+import {v4 as uuidv4} from 'uuid';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -205,7 +206,7 @@ describe('plugin-meetings', () => {
           roapMessage,
           reachability,
           permissionToken,
-          clientMediaPreferences
+          clientMediaPreferences,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
@@ -626,6 +627,36 @@ describe('plugin-meetings', () => {
             },
             requestingParticipantId,
           },
+        });
+      });
+    });
+
+    describe('#setPostMeetingDataConsent', () => {
+      [true, false].forEach((consent) => {
+        it(`sends request to set post meeting data consent with ${consent}`, async () => {
+          const locusUrl = `https://locus-test.wbx2.com/locus/api/v1/loci/${consent}`;
+          const selfId = uuidv4();
+          const deviceUrl = `https://wdm-test.wbx2.com/wdm/api/v1/devices/${consent}`;
+
+          const consentPromise = meetingsRequest.setPostMeetingDataConsent({
+            postMeetingDataConsent: consent,
+            locusUrl,
+            selfId,
+            deviceUrl,
+          });
+          assert.exists(consentPromise.then);
+          await consentPromise;
+
+          checkRequest({
+            method: 'PATCH',
+            uri: `${locusUrl}/participant/${selfId}/controls`,
+            body: {
+              consent: {
+                postMeetingDataConsent: consent,
+                deviceUrl,
+              },
+            },
+          });
         });
       });
     });

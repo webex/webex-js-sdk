@@ -21,10 +21,12 @@ import {ERROR_TYPE} from '../../Errors/types';
 import {
   DEFAULT_REHOMING_INTERVAL_MAX,
   DEFAULT_REHOMING_INTERVAL_MIN,
-  FAILBACK_429_RETRY_UTIL,
   FAILBACK_UTIL,
+  FAILOVER_UTIL,
   MINUTES_TO_SEC_MFACTOR,
   REGISTRATION_FILE,
+  REGISTRATION_UTIL,
+  REG_429_RETRY_UTIL,
   REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
   REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
   SEC_TO_MSEC_MFACTOR,
@@ -33,16 +35,18 @@ import {ICall} from '../calling/types';
 import {LINE_EVENTS} from '../line/types';
 import {createLineError} from '../../Errors/catalog/LineError';
 import {IRegistration} from './types';
+import {METRIC_EVENT, REG_ACTION, METRIC_TYPE} from '../../Metrics/types';
 
 const webex = getTestUtilsWebex();
 const MockServiceData = {
   indicator: ServiceIndicator.CALLING,
   domain: '',
 };
-const logSpy = jest.spyOn(log, 'info');
+const logSpy = jest.spyOn(log, 'log');
+const infoSpy = jest.spyOn(log, 'info');
 const warnSpy = jest.spyOn(log, 'warn');
 const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
-
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
 describe('Registration Tests', () => {
   const originalProcessNextTick = process.nextTick;
   function flushPromises() {
@@ -82,23 +86,58 @@ describe('Registration Tests', () => {
   const failurePayload = <WebexRequestPayload>(<unknown>{
     statusCode: 500,
     body: mockPostResponse,
+    headers: {
+      trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+    },
   });
 
-  const failurePayload429 = <WebexRequestPayload>(<unknown>{
+  const failurePayload429One = <WebexRequestPayload>(<unknown>{
     statusCode: 429,
     body: mockPostResponse,
+    headers: {
+      'retry-after': 42,
+    },
+  });
+
+  const failurePayload429Two = <WebexRequestPayload>(<unknown>{
+    statusCode: 429,
+    body: mockPostResponse,
+    headers: {
+      'retry-after': 33,
+    },
+  });
+
+  const failurePayload429Three = <WebexRequestPayload>(<unknown>{
+    statusCode: 429,
+    body: mockPostResponse,
+    headers: {
+      'retry-after': 136,
+    },
+  });
+
+  const failurePayload429Four = <WebexRequestPayload>(<unknown>{
+    statusCode: 429,
+    body: mockPostResponse,
+    headers: {
+      'retry-after': 81,
+    },
   });
 
   const successPayload = <WebexRequestPayload>(<unknown>{
     statusCode: 200,
     body: mockPostResponse,
+    headers: {
+      trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+    },
   });
 
   let reg: IRegistration;
   let restartSpy;
-  let failbackRetry429Spy;
   let restoreSpy;
   let postRegistrationSpy;
+  let failoverSpy;
+  let retry429Spy;
+  let metricSpy;
 
   const setupRegistration = (mockServiceData) => {
     const mutex = new Mutex();
@@ -106,9 +145,11 @@ describe('Registration Tests', () => {
     reg.setMobiusServers(mobiusUris.primary, mobiusUris.backup);
     jest.clearAllMocks();
     restartSpy = jest.spyOn(reg, 'restartRegistration');
-    failbackRetry429Spy = jest.spyOn(reg, FAILBACK_429_RETRY_UTIL);
     restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
     postRegistrationSpy = jest.spyOn(reg, 'postRegistration');
+    failoverSpy = jest.spyOn(reg, 'startFailoverTimer');
+    retry429Spy = jest.spyOn(reg, 'handle429Retry');
+    metricSpy = jest.spyOn(reg.metricManager, 'submitRegistrationMetric');
   };
 
   beforeEach(() => {
@@ -125,6 +166,9 @@ describe('Registration Tests', () => {
   it('verify successful registration', async () => {
     webex.request.mockReturnValueOnce({
       body: mockPostResponse,
+      headers: {
+        trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+      },
     });
 
     await reg.triggerRegistration();
@@ -138,12 +182,32 @@ describe('Registration Tests', () => {
     expect(lineEmitter).toBeCalledTimes(2);
     expect(lineEmitter).toBeCalledWith(LINE_EVENTS.CONNECTING);
     expect(lineEmitter).toBeCalledWith(LINE_EVENTS.REGISTERED, mockPostResponse);
+
+    // Check that log.log was called for successful registration
+    expect(logSpy).toBeCalledWith(
+      `Registration successful for deviceId: ${mockPostResponse.device.deviceId} userId: ${mockPostResponse.userId}`,
+      expect.objectContaining({
+        file: REGISTRATION_FILE,
+        method: expect.any(String),
+      })
+    );
+    expect(metricSpy).toBeCalledWith(
+      METRIC_EVENT.REGISTRATION,
+      REG_ACTION.REGISTER,
+      METRIC_TYPE.BEHAVIORAL,
+      REGISTRATION_UTIL,
+      'PRIMARY',
+      'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+      undefined,
+      undefined
+    );
   });
 
   it('verify failure registration', async () => {
     webex.request.mockRejectedValue({
       body: mockPostResponse,
       statusCode: 401,
+      headers: {},
     });
 
     await reg.triggerRegistration();
@@ -164,6 +228,16 @@ describe('Registration Tests', () => {
     expect(lineEmitter).toBeCalledTimes(2);
     expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.CONNECTING);
     expect(lineEmitter).nthCalledWith(2, LINE_EVENTS.ERROR, undefined, error);
+    expect(metricSpy).toBeCalledWith(
+      METRIC_EVENT.REGISTRATION_ERROR,
+      REG_ACTION.REGISTER,
+      METRIC_TYPE.BEHAVIORAL,
+      REGISTRATION_UTIL,
+      'PRIMARY',
+      '',
+      undefined,
+      error
+    );
   });
 
   it('verify failure registration 403-101', async () => {
@@ -179,6 +253,9 @@ describe('Registration Tests', () => {
       .mockResolvedValueOnce({
         statusCode: 200,
         body: mockPostResponse,
+        headers: {
+          trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+        },
       });
 
     global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
@@ -196,8 +273,8 @@ describe('Registration Tests', () => {
     });
 
     expect(warnSpy).toBeCalledWith('User device limit exceeded', expect.anything());
-    expect(logSpy).toBeCalledWith('Registration restoration in progress.', expect.anything());
-    expect(logSpy).toBeCalledWith('Registration restored successfully.', expect.anything());
+    expect(infoSpy).toBeCalledWith('Registration restoration in progress.', expect.anything());
+    expect(infoSpy).toBeCalledWith('Registration restored successfully.', expect.anything());
 
     expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
     expect(lineEmitter).toBeCalledTimes(4);
@@ -205,6 +282,446 @@ describe('Registration Tests', () => {
     expect(lineEmitter).nthCalledWith(2, LINE_EVENTS.UNREGISTERED);
     expect(lineEmitter).nthCalledWith(3, LINE_EVENTS.CONNECTING);
     expect(lineEmitter).nthCalledWith(4, LINE_EVENTS.REGISTERED, mockPostResponse);
+    expect(metricSpy).toBeCalledWith(
+      METRIC_EVENT.REGISTRATION,
+      REG_ACTION.REGISTER,
+      METRIC_TYPE.BEHAVIORAL,
+      REGISTRATION_UTIL,
+      'UNKNOWN',
+      'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+      undefined,
+      undefined
+    );
+  });
+
+  describe('429 handling tests', () => {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: FAILOVER_UTIL,
+    };
+    const logSpy = jest.spyOn(log, 'log');
+
+    beforeEach(() => {
+      mobiusUris.backup.pop();
+    });
+
+    afterEach(() => {
+      mobiusUris.backup.push(URL);
+      jest.clearAllMocks();
+    });
+
+    it('handle 429 received during initial registration failure and first attempt with primary', async () => {
+      jest.useFakeTimers();
+      logSpy.mockClear();
+      webex.request
+        .mockRejectedValueOnce(failurePayload429One)
+        .mockRejectedValueOnce(failurePayload429Two)
+        .mockRejectedValueOnce(failurePayload);
+
+      await reg.triggerRegistration();
+
+      /* Initial registration failed with 429 with higher retyrAfter, interval should be updtaed with retryAfter.
+       * The first attempt to register with primary should be made after retryAfter seconds.
+       */
+
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(retry429Spy).toBeCalledOnceWith(
+        failurePayload429One.headers['retry-after'],
+        'triggerRegistration'
+      );
+      expect(reg.retryAfter).toEqual(failurePayload429One.headers['retry-after']);
+      expect(failoverSpy).toBeCalledOnceWith();
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in ${failurePayload429One.headers['retry-after']} seconds, number of attempts : 1`,
+        loggerContext
+      );
+
+      retry429Spy.mockClear();
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(
+        Number(failurePayload429One.headers['retry-after']) * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      /* The first attempt to register with primary failed with 429 with lower retryAfter, interval should remain the same.
+       * The second attempt to register with primary will be scheduled as per the interval calculated.
+       */
+
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).toBeCalledOnceWith(
+        failurePayload429Two.headers['retry-after'],
+        'startFailoverTimer'
+      );
+      expect(reg.retryAfter).toEqual(failurePayload429Two.headers['retry-after']);
+      expect(failoverSpy).toBeCalledOnceWith(2, failurePayload429One.headers['retry-after']);
+
+      retry429Spy.mockClear();
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(43 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      /* The second attempt to register with primary failed with 500, the retryAfter should be undefined.
+       * The third attempt to register with primary will be scheduled as per the interval calculated.
+       */
+      expect(webex.request).toHaveBeenNthCalledWith(3, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).not.toBeCalled();
+      expect(reg.retryAfter).toEqual(undefined);
+      expect(failoverSpy).toBeCalledOnceWith(3, 85);
+    });
+
+    it('handle 429 received with higher retryAfter than the interval when interval with elapsedTime is already reaching threshold timer so we failover immediately', async () => {
+      reg.isCCFlow = true;
+      jest
+        .spyOn(reg as any, 'getRegRetryInterval')
+        .mockReturnValueOnce(33)
+        .mockReturnValueOnce(40)
+        .mockReturnValueOnce(47)
+        .mockReturnValueOnce(52);
+      jest.useFakeTimers();
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload429One)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.triggerRegistration();
+
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(retry429Spy).not.toBeCalled();
+      expect(failoverSpy).toBeCalledOnceWith();
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in 33 seconds, number of attempts : 1`,
+        loggerContext
+      );
+
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(33 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).not.toBeCalled();
+      expect(failoverSpy).toBeCalledOnceWith(2, 33);
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in 40 seconds, number of attempts : 2`,
+        loggerContext
+      );
+
+      logSpy.mockClear();
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toHaveBeenNthCalledWith(3, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).toBeCalledOnceWith(
+        failurePayload429One.headers['retry-after'],
+        'startFailoverTimer'
+      );
+      expect(failoverSpy).toBeCalledOnceWith(3, 73);
+
+      expect(logSpy).not.toBeCalledWith(
+        `Scheduled retry with primary in ${failurePayload429One.headers['retry-after']} seconds, number of attempts : 3`,
+        loggerContext
+      );
+
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+
+      expect(webex.request).toHaveBeenNthCalledWith(4, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+    });
+
+    it('handle 429 received while the last attempt for primary', async () => {
+      reg.isCCFlow = true;
+      jest
+        .spyOn(reg as any, 'getRegRetryInterval')
+        .mockReturnValueOnce(33)
+        .mockReturnValueOnce(40)
+        .mockReturnValueOnce(47)
+        .mockReturnValueOnce(52);
+      jest.useFakeTimers();
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload429One)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.triggerRegistration();
+
+      /* Initial registration and first 2 attempts with primary failed with non-final 5xx error responses.
+       * Last attempt with primary failed with 429, the retryAfter should be used to schedule the next attempt but
+       * the failover is triggered before the scheduling logic kicks in.
+       */
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(retry429Spy).not.toBeCalled();
+      expect(failoverSpy).toBeCalledOnceWith();
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in 33 seconds, number of attempts : 1`,
+        loggerContext
+      );
+
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(33 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).not.toBeCalled();
+      expect(failoverSpy).toBeCalledOnceWith(2, 33);
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in 40 seconds, number of attempts : 2`,
+        loggerContext
+      );
+
+      logSpy.mockClear();
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toHaveBeenNthCalledWith(3, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).not.toBeCalled();
+      expect(failoverSpy).toBeCalledOnceWith(3, 73);
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in 41 seconds, number of attempts : 3`,
+        loggerContext
+      );
+
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(41 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toHaveBeenNthCalledWith(4, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(retry429Spy).toBeCalledOnceWith(
+        failurePayload429One.headers['retry-after'],
+        'startFailoverTimer'
+      );
+      expect(failoverSpy).toBeCalledOnceWith(4, 114);
+
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+
+      expect(webex.request).toHaveBeenNthCalledWith(5, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+    });
+
+    it('handle 429 received while failing over to backup server for CC flow', async () => {
+      reg.isCCFlow = true;
+      jest.useFakeTimers();
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload429One)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.triggerRegistration();
+
+      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+      expect(webex.request).toBeCalledTimes(3);
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      /* Failover to backup server failed with 429, the retryAfter is used to schedule the next attempt with backup server.
+       * Interval will be updated with retryAfter as interval calculated is less than the retryAfter.
+       */
+      expect(webex.request).toHaveBeenNthCalledWith(3, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+
+      expect(retry429Spy).toBeCalledOnceWith(
+        failurePayload429One.headers['retry-after'],
+        'startFailoverTimer'
+      );
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with backup servers in ${failurePayload429One.headers['retry-after']} seconds.`,
+        loggerContext
+      );
+
+      webex.request.mockClear();
+      jest.advanceTimersByTime(
+        Number(failurePayload429One.headers['retry-after']) * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      expect(webex.request).toBeCalledOnceWith({
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+    });
+
+    it('checking the retryAfter exceeding the threshold timers in first attempt itself', async () => {
+      reg.isCCFlow = true;
+      jest.useFakeTimers();
+      jest.spyOn(reg as any, 'getRegRetryInterval').mockReturnValueOnce(40);
+      webex.request.mockRejectedValueOnce(failurePayload429Three);
+
+      await reg.triggerRegistration();
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(failoverSpy).toBeCalledOnceWith();
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+
+      expect(logSpy).not.toBeCalledWith(
+        `Scheduled retry with primary in 40 seconds, number of attempts : 1`,
+        loggerContext
+      );
+
+      expect(logSpy).not.toBeCalledWith(
+        `Scheduled retry with primary in ${failurePayload429Three.headers['retry-after']} seconds, number of attempts : 1`,
+        loggerContext
+      );
+
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+    });
+
+    it('checking the retryAfter exceeding the threshold timers in later attempts', async () => {
+      reg.isCCFlow = true;
+      jest.useFakeTimers();
+      jest
+        .spyOn(reg as any, 'getRegRetryInterval')
+        .mockReturnValueOnce(39)
+        .mockReturnValueOnce(43);
+      webex.request
+        .mockRejectedValueOnce(failurePayload429One)
+        .mockRejectedValueOnce(failurePayload429Four)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.triggerRegistration();
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(failoverSpy).toBeCalledOnceWith();
+
+      expect(logSpy).toBeCalledWith(
+        `Scheduled retry with primary in ${failurePayload429One.headers['retry-after']} seconds, number of attempts : 1`,
+        loggerContext
+      );
+
+      failoverSpy.mockClear();
+      jest.advanceTimersByTime(
+        Number(failurePayload429One.headers['retry-after']) * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      expect(webex.request).toHaveBeenNthCalledWith(2, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+      expect(failoverSpy).toBeCalledOnceWith(2, failurePayload429One.headers['retry-after']);
+
+      expect(logSpy).not.toBeCalledWith(
+        `Scheduled retry with primary in 43 seconds, number of attempts : 2`,
+        loggerContext
+      );
+
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+
+      expect(logSpy).not.toBeCalledWith(
+        `Scheduled retry with primary in ${failurePayload429Four.headers['retry-after']} seconds, number of attempts : 2`,
+        loggerContext
+      );
+
+      expect(infoSpy).toBeCalledWith(`Failing over to backup servers.`, loggerContext);
+
+      expect(webex.request).toHaveBeenNthCalledWith(3, {
+        ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+    });
   });
 
   describe('Registration failover tests', () => {
@@ -235,6 +752,17 @@ describe('Registration Tests', () => {
       expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
       /* Active Url must match with the backup url as per the test */
       expect(reg.getActiveMobiusUrl()).toEqual(mobiusUris.backup[0]);
+      expect(metricSpy).toHaveBeenNthCalledWith(
+        3,
+        METRIC_EVENT.REGISTRATION,
+        REG_ACTION.REGISTER,
+        METRIC_TYPE.BEHAVIORAL,
+        FAILOVER_UTIL,
+        'BACKUP',
+        'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+        undefined,
+        undefined
+      );
     });
 
     it('cc: verify unreachable primary with reachable backup server', async () => {
@@ -338,7 +866,7 @@ describe('Registration Tests', () => {
       // delete should be successful
       global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
 
-      postRegistrationSpy.mockRejectedValue(failurePayload429);
+      postRegistrationSpy.mockRejectedValue(failurePayload429Two);
 
       /* Wait for failback to be triggered. */
       jest.advanceTimersByTime(
@@ -346,16 +874,22 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+      expect(infoSpy).toBeCalledWith(`Attempting failback to primary.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
 
-      expect(failbackRetry429Spy).toBeCalledOnceWith();
+      jest.advanceTimersByTime(10000);
+      await flushPromises();
+
+      expect(retry429Spy).toBeCalledWith(
+        failurePayload429Two.headers['retry-after'],
+        'executeFailback'
+      );
       expect(reg.failback429RetryAttempts).toBe(0);
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(restoreSpy).toBeCalledOnceWith(FAILBACK_429_RETRY_UTIL);
-      expect(restartSpy).toBeCalledOnceWith(FAILBACK_429_RETRY_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(REG_429_RETRY_UTIL);
+      expect(restartSpy).toBeCalledOnceWith(REG_429_RETRY_UTIL);
       expect(reg.failbackTimer).toBe(undefined);
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
       expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
@@ -370,12 +904,13 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+      expect(infoSpy).toBeCalledWith(`Attempting failback to primary.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(restoreSpy).toBeCalledOnceWith(FAILBACK_UTIL);
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(restartSpy).toBeCalledOnceWith(FAILBACK_UTIL);
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
       expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
@@ -396,7 +931,7 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+      expect(infoSpy).toBeCalledWith(`Attempting failback to primary.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
@@ -417,7 +952,7 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+      expect(infoSpy).toBeCalledWith(`Attempting failback to primary.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
@@ -439,7 +974,7 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Attempting failback to primary.`, {
+      expect(infoSpy).toBeCalledWith(`Attempting failback to primary.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
@@ -466,7 +1001,7 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(logSpy).toBeCalledWith(`Active calls present, deferring failback to next cycle.`, {
+      expect(infoSpy).toBeCalledWith(`Active calls present, deferring failback to next cycle.`, {
         method: 'executeFailback',
         file: REGISTRATION_FILE,
       });
@@ -477,7 +1012,7 @@ describe('Registration Tests', () => {
       expect(restoreSpy).not.toBeCalled();
       expect(restartSpy).not.toBeCalled();
 
-      expect(logSpy).toBeCalledWith('Active calls present, deferring failback to next cycle.', {
+      expect(infoSpy).toBeCalledWith('Active calls present, deferring failback to next cycle.', {
         file: REGISTRATION_FILE,
         method: FAILBACK_UTIL,
       });

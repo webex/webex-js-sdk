@@ -76,6 +76,8 @@ describe('plugin-meetings', () => {
         canShareDesktop: null,
         canShareContent: null,
         canTransferFile: null,
+        canRealtimeCloseCaption: null,
+        canRealtimeCloseCaptionManual: null,
         canChat: null,
         canDoVideo: null,
         canAnnotate: null,
@@ -90,10 +92,18 @@ describe('plugin-meetings', () => {
         canShowStageView: null,
         canEnableStageView: null,
         canDisableStageView: null,
-        isPracticeSessionOn : null,
-        isPracticeSessionOff : null,
+        isPracticeSessionOn: null,
+        isPracticeSessionOff: null,
         canStartPracticeSession: null,
         canStopPracticeSession: null,
+        requiresPostMeetingDataConsentPrompt: null,
+        canEnableAnnotation: null,
+        canDisableAnnotation: null,
+        canEnableRemoteDesktopControl: null,
+        canDisableRemoteDesktopControl: null,
+        canMoveToLobby: null,
+        canEnablePollingQA: null,
+        canDisablePollingQA: null,
 
         ...expected,
       };
@@ -176,6 +186,8 @@ describe('plugin-meetings', () => {
       'canShareDesktop',
       'canShareContent',
       'canTransferFile',
+      'canRealtimeCloseCaption',
+      'canRealtimeCloseCaptionManual',
       'canChat',
       'canDoVideo',
       'canAnnotate',
@@ -194,8 +206,15 @@ describe('plugin-meetings', () => {
       'isPracticeSessionOff',
       'canStartPracticeSession',
       'canStopPracticeSession',
-
-  ].forEach((key) => {
+      'requiresPostMeetingDataConsentPrompt',
+      'canEnableAnnotation',
+      'canDisableAnnotation',
+      'canEnableRemoteDesktopControl',
+      'canDisableRemoteDesktopControl',
+      'canMoveToLobby',
+      'canEnablePollingQA',
+      'canDisablePollingQA',
+    ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();
 

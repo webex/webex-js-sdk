@@ -6,7 +6,6 @@
     "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
     "Arun Ganeshan <arungane@cisco.com>",
     "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
-    "Dipanshu Sharma <dipashar@cisco.com>",
     "Kesava Krishnan Madavan <kmadavan@cisco.com>",
     "Priya Kesari <pkesari@cisco.com>",
     "Rajesh Kumar <rarajes2@cisco.com>",
@@ -74,6 +73,7 @@
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-dss": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",
+    "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/internal-plugin-presence": "workspace:*",
     "@webex/internal-plugin-support": "workspace:*",
     "@webex/internal-plugin-voicea": "workspace:*",
@@ -81,6 +81,7 @@
     "@webex/plugin-authorization": "workspace:*",
     "@webex/plugin-cc": "workspace:*",
     "@webex/plugin-device-manager": "workspace:*",
+    "@webex/plugin-encryption": "workspace:*",
     "@webex/plugin-logger": "workspace:*",
     "@webex/plugin-meetings": "workspace:*",
     "@webex/plugin-memberships": "workspace:*",
@@ -92,6 +93,7 @@
     "@webex/plugin-webhooks": "workspace:*",
     "@webex/storage-adapter-local-storage": "workspace:*",
     "@webex/webex-core": "workspace:*",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "safe-buffer": "^5.2.0"
   }
 }

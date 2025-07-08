@@ -1,5 +1,5 @@
 import {isEqual} from 'lodash';
-import {BREAKOUTS} from '../constants';
+import {BREAKOUTS, MEETING_STATE} from '../constants';
 
 const ControlsUtils: any = {};
 
@@ -40,6 +40,7 @@ ControlsUtils.parse = (controls: any) => {
     parsedControls.transcribe = {
       transcribing: controls.transcribe.transcribing,
       caption: controls.transcribe.caption,
+      spokenLanguage: controls.transcribe.spokenLanguage,
     };
   }
 
@@ -111,6 +112,24 @@ ControlsUtils.parse = (controls: any) => {
     };
   }
 
+  if (controls?.annotationControl) {
+    parsedControls.annotationControl = {
+      enabled: controls.annotationControl.enabled,
+    };
+  }
+
+  if (controls?.rdcControl) {
+    parsedControls.rdcControl = {
+      enabled: controls.rdcControl.enabled,
+    };
+  }
+
+  if (controls?.pollingQAControl) {
+    parsedControls.pollingQAControl = {
+      enabled: controls.pollingQAControl.enabled,
+    };
+  }
+
   return parsedControls;
 };
 
@@ -174,6 +193,11 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         !isEqual(previous?.transcribe?.transcribing, current?.transcribe?.transcribing) && // upon first join, previous?.record?.recording = undefined; thus, never going to be equal and will always return true
         (previous?.transcribe?.transcribing || current?.transcribe?.transcribing), // therefore, condition added to prevent false firings of #meeting:recording:stopped upon first joining a meeting
 
+      hasTranscribeSpokenLanguageChanged:
+        current?.transcribe &&
+        !isEqual(previous?.transcribe?.spokenLanguage, current?.transcribe?.spokenLanguage) &&
+        !!(previous?.transcribe?.spokenLanguage || current?.transcribe?.spokenLanguage),
+
       hasManualCaptionChanged:
         current?.manualCaptionControl &&
         !isEqual(previous?.manualCaptionControl?.enabled, current?.manualCaptionControl?.enabled) &&
@@ -211,6 +235,15 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
       ),
 
       hasStageViewChanged: !isEqual(previous?.videoLayout, current?.videoLayout),
+
+      hasAnnotationControlChanged:
+        current?.annotationControl?.enabled !== previous?.annotationControl?.enabled,
+
+      hasRemoteDesktopControlChanged:
+        current?.rdcControl?.enabled !== previous?.rdcControl?.enabled,
+
+      hasPollingQAControlChanged:
+        current?.pollingQAControl?.enabled !== previous?.pollingQAControl?.enabled,
     },
   };
 };
@@ -242,30 +275,42 @@ ControlsUtils.isNeedReplaceMembers = (oldControls: any, controls: any) => {
   }
 
   return (
-    oldControls.breakout.groupId !== controls.breakout.groupId ||
-    oldControls.breakout.sessionId !== controls.breakout.sessionId
+    oldControls?.breakout?.groupId !== controls?.breakout?.groupId ||
+    oldControls?.breakout?.sessionId !== controls?.breakout?.sessionId
   );
 };
 
 /**
  * determine the switch status between breakout session and main session.
- * @param {LocusControls} oldControls
- * @param {LocusControls} controls
+ * @param {LocusInfo} oldLocus
+ * @param {LocusInfo} newLocus
  * @returns {Object}
  */
-ControlsUtils.getSessionSwitchStatus = (oldControls: any, controls: any) => {
+ControlsUtils.getSessionSwitchStatus = (oldLocus: any, newLocus: any) => {
   const status = {isReturnToMain: false, isJoinToBreakout: false};
   // no breakout case
-  if (!oldControls?.breakout || !controls?.breakout) {
+  if (!oldLocus.controls?.breakout || !newLocus.controls?.breakout) {
     return status;
   }
 
-  status.isReturnToMain =
-    oldControls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
-    controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN;
+  // It is used to fix the timing issue triggered when the creator leaves session to ensure that the member list is complete
+  const needUseCache = !!(
+    oldLocus.self?.isCreator &&
+    newLocus.participants?.length === 1 &&
+    newLocus.participants?.[0].isCreator &&
+    newLocus.participants?.[0].state === MEETING_STATE.STATES.JOINED &&
+    newLocus.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.MAIN &&
+    newLocus.controls?.breakout?.groups?.length
+  );
+
+  const isReturnToMain =
+    oldLocus.controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+    newLocus.controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN;
+
+  status.isReturnToMain = needUseCache || isReturnToMain;
   status.isJoinToBreakout =
-    oldControls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN &&
-    controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+    oldLocus.controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.MAIN &&
+    newLocus.controls.breakout.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
 
   return status;
 };

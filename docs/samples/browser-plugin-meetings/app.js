@@ -108,7 +108,7 @@ function generateWebexConfig({credentials}) {
       services: {
         discovery: {
           u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
-          hydra: 'https://apialpha.ciscospark.com/v1/'
+          hydra: 'https://hydra-intb.ciscospark.com/v1/'
         }
       }
     }),
@@ -872,6 +872,7 @@ const remoteVideoResElm = document.getElementById('remote-video-resolution');
 
 
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
+const toggleAdditionalMediaDirection = document.querySelectorAll('[name=ts-additional-media-direction]');
 const toggleSourcesQualityStatus = document.querySelector('#ts-sending-quality-status');
 const toggleSourcesMeetingLevel = document.querySelector('#ts-sending-qualities-list');
 
@@ -918,6 +919,7 @@ function updateMultistreamUI() {
 // NOTE: remember to set currentMediaSettings after promises resolves in the case when below method is used
 function getMediaSettings(compareLastSettings = false) {
   const settings = {};
+  const additionalMediaOptions = {};
 
   toggleSourcesMediaDirection.forEach((options) => {
     if (compareLastSettings) {
@@ -928,7 +930,11 @@ function getMediaSettings(compareLastSettings = false) {
       settings[options.value] = options.checked;
     }
   });
-
+  toggleAdditionalMediaDirection.forEach((options)=>{
+      additionalMediaOptions[options.value] = options.checked;
+  }
+  )
+  settings.additionalMediaOptions = additionalMediaOptions;
   settings.allowMediaInLobby = meetingsMediaInLobbySupportElm.checked;
   settings.bundlePolicy = 'max-bundle';
 
@@ -3381,8 +3387,8 @@ async function toggleBrb({unmuteAudio = false, unmuteVideo = false}) {
       isBrb = enableBrb;
 
       if (enableBrb) {
-        localMediaCameraMuted = localMedia.cameraStream.userMuted;
-        localMediaMicMuted = localMedia.microphoneStream.userMuted;
+        localMediaCameraMuted = localMedia.cameraStream?.userMuted;
+        localMediaMicMuted = localMedia.microphoneStream?.userMuted;
 
         // stop sharing and disable buttons to use it in brb
         await stopScreenShare();
@@ -3391,8 +3397,8 @@ async function toggleBrb({unmuteAudio = false, unmuteVideo = false}) {
         startShareBtn.disabled = true;
         handleBrbShareMessage(true);
 
-        localMedia.cameraStream.setUserMuted(true);
-        localMedia.microphoneStream.setUserMuted(true);
+        localMedia.cameraStream?.setUserMuted(true);
+        localMedia.microphoneStream?.setUserMuted(true);
       } else {
         if (unmuteAudio) {
           localMedia.microphoneStream.setUserMuted(false);
