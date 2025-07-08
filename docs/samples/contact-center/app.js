@@ -479,7 +479,6 @@ async function endConsult() {
   try {
     await currentTask.endConsult(consultEndPayload);
     console.log('Consult ended successfully');
-    setUIControls(currentTask);
   } catch (error) {
     console.error('Failed to end consult', error);
     alert('Failed to end consult');
@@ -584,16 +583,11 @@ function registerTaskListeners(task) {
   });
 
   task.on('task:consultAccepted', (task) => {
-    if (currentTask.data.interactionId === task.data.interactionId) {
-      // use UI controls for consult acceptance
-      updateTaskList();
-    }
+    updateTaskList();
   });
 
   task.on('task:consulting', (task) => {
-    if (currentTask.data.interactionId === task.data.interactionId) {
-      updateTaskList();
-    }
+    updateTaskList();
   });
 
   task.on('task:consultQueueFailed', (task) => {
@@ -614,14 +608,14 @@ function registerTaskListeners(task) {
   });
 
   task.on('task:consultEnd', (task) => {
-    if (currentTask.data.interactionId === task.data.interactionId) {
-      updateTaskList();
-      currentConsultQueueId = null;
-      if (task.data.isConsulted) {
-        incomingDetailsElm.innerText = '';
-        task = undefined;
-      }
+    currentConsultQueueId = null;
+    if (task.data.isConsulted) {
+      // Explicitly set the UI controls for the task
+      setUIControls(task);
+      incomingDetailsElm.innerText = '';
+      task = undefined;
     }
+    updateTaskList();
   });
   
   task.on('task:rejected', (reason) => {
@@ -679,28 +673,6 @@ function setUIControls(task) {
   // wrapup‐codes dropdown mirrors wrapup control
   wrapupCodesDropdownElm.style.display = ctrls.wrapup.visible ? 'inline-block' : 'none';
   wrapupCodesDropdownElm.disabled = !ctrls.wrapup.enabled;
-}
-
-function updateCallControlUI(task) {
-  const { data } = task;
-  const { interaction, participants } = data.interaction
-    ? { interaction: data.interaction, participants: data.interaction.participants, callProcessingDetails: data.interaction.callProcessingDetails }
-    : {};
-
-  setUIControls(task);
-  if (interaction.mediaType === 'telephony') {
-    // leave consult‐to‐queue UI unchanged
-    const { consultMediaResourceId, destAgentId, destinationType } = data;
-    if (consultMediaResourceId && destAgentId && destinationType) {
-      const destination = participants[destAgentId];
-      destinationTypeDropdown.value = destinationType;
-      consultDestinationInput.value = destination.dn;
-
-      consultTabBtn.style.display = 'none';
-      endConsultBtn.style.display = 'inline-block';
-      consultTransferBtn.style.display = 'inline-block';
-    }
-  }
 }
 
 function generateWebexConfig({credentials}) {
@@ -1573,7 +1545,6 @@ function handleTaskSelect(task) {
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {
     loadEmailWidget(task);
   }
-  updateCallControlUI(task); // Enable/disable transfer controls
 }
 
 function loadChatWidget(task) {
