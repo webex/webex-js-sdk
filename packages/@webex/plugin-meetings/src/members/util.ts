@@ -379,12 +379,12 @@ const MembersUtil = {
     return requestParams;
   },
 
-  cancelInviteOptions: (invitee, locusUrl) => ({
+  cancelInviteByMemberIdOptions: (invitee, locusUrl) => ({
     invitee,
     locusUrl,
   }),
 
-  generateCancelSipPhoneInviteRequestParams: (options) => {
+  generateCancelInviteByMemberIdRequestParams: (options) => {
     const {memberId, isInternalNumber} = options.invitee;
     const hasIsInternalNumberProp = has(options.invitee, 'isInternalNumber');
     const body = {

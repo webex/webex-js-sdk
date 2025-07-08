@@ -853,7 +853,7 @@ export default class Members extends StatelessWebexPlugin {
    * @returns {Promise}
    * @memberof Members
    */
-  cancelInvite(invitee: {memberId: string; isInternalNumber?: boolean}) {
+  cancelInviteByMemberId(invitee: {memberId: string; isInternalNumber?: boolean}) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError('The associated locus url for this meeting object must be defined.')
@@ -864,9 +864,9 @@ export default class Members extends StatelessWebexPlugin {
         new ParameterError('The invitee must be defined with a memberId property.')
       );
     }
-    const options = MembersUtil.cancelInviteOptions(invitee, this.locusUrl);
+    const options = MembersUtil.cancelInviteByMemberIdOptions(invitee, this.locusUrl);
 
-    return this.membersRequest.cancelInvite(options);
+    return this.membersRequest.cancelInviteByMemberId(options);
   }
 
   /**

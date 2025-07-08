@@ -3865,12 +3865,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {Object} invitee
    * @param {String} invitee.memberId
    * @param {Boolean} [invitee.isInternalNumber] - When cancel phone invitation, if the number is internal
-   * @returns {Promise} see #members.cancelInvite
+   * @returns {Promise} see #members.cancelInviteByMemberId
    * @public
    * @memberof Meeting
    */
-  public cancelInvite(invitee: {memberId: string; isInternalNumber?: boolean}) {
-    return this.members.cancelInvite(invitee);
+  public cancelInviteByMemberId(invitee: {memberId: string; isInternalNumber?: boolean}) {
+    return this.members.cancelInviteByMemberId(invitee);
   }
 
   /**

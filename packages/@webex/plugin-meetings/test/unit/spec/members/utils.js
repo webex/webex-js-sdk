@@ -411,14 +411,14 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#cancelInviteOptions', () => {
+    describe('#cancelInviteByMemberIdOptions', () => {
       it('returns the correct options', () => {
         const locusUrl = 'TestLocusUrl';
         const memberId = 'test';
         const invitee = {memberId, isInternalNumber: false};
 
         assert.deepEqual(
-          MembersUtil.cancelInviteOptions(
+          MembersUtil.cancelInviteByMemberIdOptions(
             invitee,
             locusUrl
           ),
@@ -430,7 +430,7 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#generateCancelSipPhoneInviteRequestParams', () => {
+    describe('#generateCancelInviteByMemberIdRequestParams', () => {
       it('returns the correct params', () => {
         const locusUrl = 'TestLocusUrl';
         const memberId = 'test';
@@ -445,7 +445,7 @@ describe('plugin-meetings', () => {
 
         const uri = options.locusUrl;
 
-        assert.deepEqual(MembersUtil.generateCancelSipPhoneInviteRequestParams(options), {
+        assert.deepEqual(MembersUtil.generateCancelInviteByMemberIdRequestParams(options), {
           method: HTTP_VERBS.PUT,
           uri,
           body,

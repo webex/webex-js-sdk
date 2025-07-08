@@ -614,20 +614,20 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.members.cancelPhoneInvite, uuid1);
         });
       });
-      describe('#cancelInvite', () => {
-        it('should have #cancelInvite', () => {
-          assert.exists(meeting.cancelInvite);
+      describe('#cancelInviteByMemberId', () => {
+        it('should have #cancelInviteByMemberId', () => {
+          assert.exists(meeting.cancelInviteByMemberId);
         });
         beforeEach(() => {
-          meeting.members.cancelInvite = sinon.stub().returns(Promise.resolve(test1));
+          meeting.members.cancelInviteByMemberId = sinon.stub().returns(Promise.resolve(test1));
         });
-        it('should proxy members #cancelInvite and return a promise', async () => {
-          const cancel = meeting.cancelInvite({memberId: uuid1});
+        it('should proxy members #cancelInviteByMemberId and return a promise', async () => {
+          const cancel = meeting.cancelInviteByMemberId({memberId: uuid1});
 
           assert.exists(cancel.then);
           await cancel;
-          assert.calledOnce(meeting.members.cancelInvite);
-          assert.calledWith(meeting.members.cancelInvite, {memberId: uuid1});
+          assert.calledOnce(meeting.members.cancelInviteByMemberId);
+          assert.calledWith(meeting.members.cancelInviteByMemberId, {memberId: uuid1});
         });
       });
       describe('#admit', () => {

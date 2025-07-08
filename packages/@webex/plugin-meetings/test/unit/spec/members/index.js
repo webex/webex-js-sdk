@@ -479,38 +479,38 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#cancelInvite', () => {
+    describe('#cancelInviteByMemberId', () => {
       const memberId = uuid.v4();
-      it('should invoke cancelInviteOptions from MembersUtil when cancelInvite is called with valid params', async () => {
-        sandbox.spy(MembersUtil, 'cancelInviteOptions');
+      it('should invoke cancelInviteByMemberIdOptions from MembersUtil when cancelInviteByMemberId is called with valid params', async () => {
+        sandbox.spy(MembersUtil, 'cancelInviteByMemberIdOptions');
 
         const members = createMembers({url: url1});
 
-        await members.cancelInvite({memberId});
-        assert.calledOnce(MembersUtil.cancelInviteOptions);
+        await members.cancelInviteByMemberId({memberId});
+        assert.calledOnce(MembersUtil.cancelInviteByMemberIdOptions);
       });
 
-      it('should invoke cancelInviteOptions from MembersUtil when cancelInvite is called with isInternalNumber', async () => {
-        sandbox.spy(MembersUtil, 'cancelInviteOptions');
+      it('should invoke cancelInviteByMemberIdOptions from MembersUtil when cancelInviteByMemberId is called with isInternalNumber', async () => {
+        sandbox.spy(MembersUtil, 'cancelInviteByMemberIdOptions');
 
         const members = createMembers({url: url1});
 
-        await members.cancelInvite({memberId, isInternalNumber: true});
-        assert.calledOnce(MembersUtil.cancelInviteOptions);
+        await members.cancelInviteByMemberId({memberId, isInternalNumber: true});
+        assert.calledOnce(MembersUtil.cancelInviteByMemberIdOptions);
       });
 
       it('should throw a rejection if there is no locus url', async () => {
         const members = createMembers({url: false});
 
-        assert.isRejected(members.cancelInvite({memberId}));
+        assert.isRejected(members.cancelInviteByMemberId({memberId}));
       });
       
       it('should throw a rejection if memberId is not provided', async () => {
         const members = createMembers({url: url1});
 
-        assert.isRejected(members.cancelInvite({}));
-        assert.isRejected(members.cancelInvite({memberId: null}));
-        assert.isRejected(members.cancelInvite({memberId: undefined}));
+        assert.isRejected(members.cancelInviteByMemberId({}));
+        assert.isRejected(members.cancelInviteByMemberId({memberId: null}));
+        assert.isRejected(members.cancelInviteByMemberId({memberId: undefined}));
       });
     });
 
