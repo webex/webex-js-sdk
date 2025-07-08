@@ -127,6 +127,7 @@ describe('plugin-voicea', () => {
                     csis: [123456],
                   },
                 ],
+                transcript_id: sinon.match.string,
               },
             },
             trackingId: sinon.match.string,
