@@ -3,7 +3,6 @@
  */
 import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_, _OBSERVE_} from '../constants';
 import {IExternalRoles, IMediaStatus, Participant, ParticipantUrl} from './types';
-
 import MemberUtil from './util';
 
 export type MemberId = string;

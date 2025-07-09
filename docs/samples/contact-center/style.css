@@ -463,13 +463,11 @@ legend {
   font-size: 18px;
   margin-bottom: 10px;
 }
-
 .keys {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
-
 .key {
   width: 60px;
   height: 60px;
@@ -482,7 +480,6 @@ legend {
   border-radius: 50%;
   cursor: pointer;
 }
-
 .call-btn {
   margin-top: 10px;
   background: green;
