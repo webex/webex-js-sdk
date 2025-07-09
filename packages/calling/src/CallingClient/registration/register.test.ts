@@ -1369,6 +1369,7 @@ describe('Registration Tests', () => {
       expect(restartRegSpy).not.toHaveBeenCalled();
       expect(reg.reconnectPending).toStrictEqual(false);
       expect(reg.keepaliveTimer).toBe(undefined);
+      expect(reg.webWorker).toBeUndefined();
     });
   });
 });
