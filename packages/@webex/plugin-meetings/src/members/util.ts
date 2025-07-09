@@ -1,4 +1,5 @@
 import uuid from 'uuid';
+import {has} from 'lodash';
 import {
   HTTP_VERBS,
   CONTROLS,
@@ -47,6 +48,9 @@ const MembersUtil = {
         address:
           options.invitee.emailAddress || options.invitee.email || options.invitee.phoneNumber,
         ...(options.invitee.roles ? {roles: options.invitee.roles} : {}),
+        ...(has(options.invitee, 'isInternalNumber')
+          ? {isInternalNumber: options.invitee.isInternalNumber}
+          : {}),
       },
     ],
     alertIfActive: options.alertIfActive,
@@ -107,6 +111,10 @@ const MembersUtil = {
     }
 
     if (invitee.phoneNumber) {
+      if (invitee.isInternalNumber) {
+        return !DIALER_REGEX.INTERNAL_NUMBER.test(invitee.phoneNumber);
+      }
+
       return !DIALER_REGEX.E164_FORMAT.test(invitee.phoneNumber);
     }
 
@@ -371,17 +379,20 @@ const MembersUtil = {
     return requestParams;
   },
 
-  cancelSIPInviteOptions: (invitee, locusUrl) => ({
+  cancelInviteByMemberIdOptions: (invitee, locusUrl) => ({
     invitee,
     locusUrl,
   }),
 
-  generateCancelSIPInviteRequestParams: (options) => {
+  generateCancelInviteByMemberIdRequestParams: (options) => {
+    const {memberId, isInternalNumber} = options.invitee;
+    const hasIsInternalNumberProp = has(options.invitee, 'isInternalNumber');
     const body = {
       actionType: _REMOVE_,
       invitees: [
         {
-          address: options.invitee.memberId,
+          address: memberId,
+          ...(hasIsInternalNumberProp ? {isInternalNumber} : {}),
         },
       ],
     };
