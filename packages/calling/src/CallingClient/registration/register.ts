@@ -742,7 +742,9 @@ export class Registration implements IRegistration {
 
         if (!this.webWorker) {
           const blob = new Blob([webWorkerStr], {type: 'application/javascript'});
-          this.webWorker = new Worker(URL.createObjectURL(blob));
+          const blobUrl = URL.createObjectURL(blob);
+          this.webWorker = new Worker(blobUrl);
+          URL.revokeObjectURL(blobUrl);
 
           this.webWorker.postMessage({
             type: WorkerMessageType.START_KEEPALIVE,
