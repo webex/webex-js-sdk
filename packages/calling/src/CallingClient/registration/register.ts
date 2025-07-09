@@ -2,6 +2,7 @@ import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
+import webWorkerStr from './webWorkerStr';
 
 import {
   IMetricManager,
@@ -89,9 +90,9 @@ export class Registration implements IRegistration {
   private jwe?: string;
   private isCCFlow = false;
   private failoverImmediately = false;
-  private webWorker: Worker | undefined;
   private retryAfter: number | undefined;
   private scheduled429Retry = false;
+  private webWorker: Worker | undefined;
 
   /**
    */
@@ -740,7 +741,10 @@ export class Registration implements IRegistration {
         const accessToken = await this.webex.credentials.getUserToken();
 
         if (!this.webWorker) {
-          this.webWorker = new Worker(new URL('./webWorker.js', import.meta.url));
+          const blob = new Blob([webWorkerStr], {type: 'application/javascript'});
+          const blobUrl = URL.createObjectURL(blob);
+          this.webWorker = new Worker(blobUrl);
+          URL.revokeObjectURL(blobUrl);
 
           this.webWorker.postMessage({
             type: WorkerMessageType.START_KEEPALIVE,
