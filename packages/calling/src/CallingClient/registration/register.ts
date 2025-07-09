@@ -776,6 +776,7 @@ export class Registration implements IRegistration {
                   if (finalError) {
                     this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
                   }
+
                   this.metricManager.submitRegistrationMetric(
                     METRIC_EVENT.REGISTRATION,
                     REG_ACTION.KEEPALIVE_FAILURE,

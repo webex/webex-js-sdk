@@ -1333,9 +1333,8 @@ describe('Registration Tests', () => {
       expect(reg.reconnectPending).toStrictEqual(false);
     });
 
-    it('verify final error for keep-alive', async () => {
+    it('checks for keep-alive failure with final error: 404', async () => {
       await beforeEachSetupForKeepalive();
-      const threshold = reg.isCCFlow ? 4 : 5;
       const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
       const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
       const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
@@ -1346,11 +1345,22 @@ describe('Registration Tests', () => {
         data: {
           type: WorkerMessageType.KEEPALIVE_FAILURE,
           err: {statusCode: 404},
-          keepAliveRetryCount: threshold,
+          keepAliveRetryCount: 1,
         },
       } as MessageEvent);
       await flushPromises();
 
+      expect(warnSpy).toBeCalledWith(
+        'Keep-alive missed 1 times. Status -> 404 ',
+        expect.objectContaining({
+          file: REGISTRATION_FILE,
+          method: 'startKeepaliveTimer',
+        })
+      );
+      expect(handleErrorSpy).toBeCalledOnceWith({statusCode: 404}, expect.anything(), {
+        file: REGISTRATION_FILE,
+        method: KEEPALIVE_UTIL,
+      });
       expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
       expect(clearTimerSpy).toBeCalledTimes(1);
@@ -1359,17 +1369,6 @@ describe('Registration Tests', () => {
       expect(restartRegSpy).not.toHaveBeenCalled();
       expect(reg.reconnectPending).toStrictEqual(false);
       expect(reg.keepaliveTimer).toBe(undefined);
-      expect(handleErrorSpy).toBeCalledOnceWith({statusCode: 404}, expect.anything(), {
-        file: REGISTRATION_FILE,
-        method: KEEPALIVE_UTIL,
-      });
-      expect(warnSpy).toBeCalledWith(
-        'Keep-alive missed 5 times. Status -> 404 ',
-        expect.objectContaining({
-          file: REGISTRATION_FILE,
-          method: 'startKeepaliveTimer',
-        })
-      );
     });
   });
 });
