@@ -18,12 +18,17 @@ global.Worker = class {
   terminate() {}
 };
 
-global.URL = {
-  createObjectURL: jest.fn(() => 'mocked-blob-url'),
-  revokeObjectURL: jest.fn(),
-};
+const OriginalURL = global.URL || URL;
 
-// Add Blob mocking if needed
+global.URL = jest.fn().mockImplementation((url, base) => {
+  // Use the actual URL constructor for normal URL operations
+  return new OriginalURL(url, base);
+});
+
+// Add the static methods you need for blob handling
+global.URL.createObjectURL = jest.fn(() => 'mocked-blob-url');
+global.URL.revokeObjectURL = jest.fn();
+
 global.Blob = class {
   constructor(content, options) {
     this.content = content;
