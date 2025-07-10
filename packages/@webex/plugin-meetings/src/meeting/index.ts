@@ -231,6 +231,14 @@ export type AddMediaOptions = {
   remoteMediaManagerConfig?: RemoteMediaManagerConfiguration; // applies only to multistream meetings
   bundlePolicy?: BundlePolicy; // applies only to multistream meetings
   allowMediaInLobby?: boolean; // allows adding media when in the lobby
+  additionalMediaOptions?: AdditionalMediaOptions; // allows adding additional options like send/receive audio/video
+};
+
+export type AdditionalMediaOptions = {
+  sendVideo?: boolean; // if not specified, default value of videoEnabled is used
+  receiveVideo?: boolean; // if not specified, default value of videoEnabled is used
+  sendAudio?: boolean; // if not specified, default value of audioEnabled true is used
+  receiveAudio?: boolean; // if not specified, default value of audioEnabled true is used
 };
 
 export type CallStateForMetrics = {
@@ -2758,9 +2766,11 @@ export default class Meeting extends StatelessWebexPlugin {
       LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
       ({spokenLanguage}) => {
         if (spokenLanguage) {
-          this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
+          if (this.transcription?.languageOptions) {
+            this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
+          }
           // @ts-ignore
-          this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage);
+          this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage, this.id);
 
           Trigger.trigger(
             this,
@@ -2769,7 +2779,7 @@ export default class Meeting extends StatelessWebexPlugin {
               function: 'setupLocusControlsListener',
             },
             EVENT_TRIGGERS.MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
-            {spokenLanguage}
+            {spokenLanguage, meetingId: this.id}
           );
         }
       }
@@ -3851,15 +3861,16 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Cancel an SIP call invitation made during a meeting
+   * Cancel an SIP/phone call invitation made during a meeting
    * @param {Object} invitee
    * @param {String} invitee.memberId
-   * @returns {Promise} see #members.cancelSIPInvite
+   * @param {Boolean} [invitee.isInternalNumber] - When cancel phone invitation, if the number is internal
+   * @returns {Promise} see #members.cancelInviteByMemberId
    * @public
    * @memberof Meeting
    */
-  public cancelSIPInvite(invitee: {memberId: string}) {
-    return this.members.cancelSIPInvite(invitee);
+  public cancelInviteByMemberId(invitee: {memberId: string; isInternalNumber?: boolean}) {
+    return this.members.cancelInviteByMemberId(invitee);
   }
 
   /**
@@ -7755,7 +7766,20 @@ export default class Meeting extends StatelessWebexPlugin {
       shareVideoEnabled = true,
       remoteMediaManagerConfig,
       bundlePolicy = 'max-bundle',
+      additionalMediaOptions = {},
     } = options;
+
+    const {
+      sendVideo: rawSendVideo,
+      receiveVideo: rawReceiveVideo,
+      sendAudio: rawSendAudio,
+      receiveAudio: rawReceiveAudio,
+    } = additionalMediaOptions;
+
+    const sendVideo = videoEnabled && (rawSendVideo ?? true);
+    const receiveVideo = videoEnabled && (rawReceiveVideo ?? true);
+    const sendAudio = audioEnabled && (rawSendAudio ?? true);
+    const receiveAudio = audioEnabled && (rawReceiveAudio ?? true);
 
     this.allowMediaInLobby = options?.allowMediaInLobby;
 
@@ -7792,11 +7816,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // when audioEnabled/videoEnabled is true, we set sendAudio/sendVideo to true even before any streams are published
     // to avoid doing an extra SDP exchange when they are published for the first time
     this.mediaProperties.setMediaDirection({
-      sendAudio: audioEnabled,
-      sendVideo: videoEnabled,
+      sendAudio,
+      sendVideo,
       sendShare: false,
-      receiveAudio: audioEnabled,
-      receiveVideo: videoEnabled,
+      receiveAudio,
+      receiveVideo,
       receiveShare: shareAudioEnabled || shareVideoEnabled,
     });
 

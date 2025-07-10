@@ -2,9 +2,12 @@ import {
   ClientEvent as RawClientEvent,
   Event as RawEvent,
   MediaQualityEvent as RawMediaQualityEvent,
+  FeatureEvent as RawFeatureEvent,
 } from '@webex/event-dictionary-ts';
 
-export type Event = Omit<RawEvent, 'event'> & {event: RawClientEvent | RawMediaQualityEvent};
+export type Event = Omit<RawEvent, 'event'> & {
+  event: RawClientEvent | RawMediaQualityEvent | RawFeatureEvent;
+};
 
 export type ClientEventError = NonNullable<RawClientEvent['errors']>[0];
 
@@ -212,10 +215,9 @@ export type BehavioralEvent = TaggedEvent;
 export type OperationalEvent = TaggedEvent;
 
 export interface FeatureEvent {
-  // TODO: not implemented
-  name: never;
-  payload?: never;
-  options?: never;
+  name: RawFeatureEvent['name'];
+  payload?: RawFeatureEvent;
+  options?: SubmitClientEventOptions;
 }
 
 export interface MediaQualityEvent {
@@ -250,6 +252,8 @@ export type ClientSubServiceType = ClientEvent['payload']['webexSubServiceType']
 export type ClientEventPayload = RecursivePartial<ClientEvent['payload']>;
 export type ClientEventLeaveReason = ClientEvent['payload']['leaveReason'];
 export type ClientEventPayloadError = ClientEvent['payload']['errors'];
+
+export type ClientFeatureEventPayload = RecursivePartial<FeatureEvent['payload']>;
 
 export type MediaQualityEventAudioSetupDelayPayload = NonNullable<
   MediaQualityEvent['payload']
@@ -338,5 +342,17 @@ export interface IMetricsAttributes {
 export interface DelayedClientEvent {
   name: ClientEvent['name'];
   payload?: RecursivePartial<ClientEvent['payload']>;
+  options?: SubmitClientEventOptions;
+}
+
+export type SubmitFeatureEvent = (args: {
+  name: FeatureEvent['name'];
+  payload?: RecursivePartial<FeatureEvent['payload']>;
+  options?: SubmitClientEventOptions;
+}) => Promise<any>;
+
+export interface DelayedClientFeatureEvent {
+  name: FeatureEvent['name'];
+  payload?: RecursivePartial<FeatureEvent['payload']>;
   options?: SubmitClientEventOptions;
 }

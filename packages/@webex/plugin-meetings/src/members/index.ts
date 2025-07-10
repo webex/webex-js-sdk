@@ -846,12 +846,14 @@ export default class Members extends StatelessWebexPlugin {
   }
 
   /**
-   * Cancels an SIP call to the associated meeting
-   * @param {String} invitee
+   * Cancels an SIP/phone call to the associated meeting
+   * @param {Object} invitee
+   * @param {String} invitee.memberId - The memberId of the invitee
+   * @param {Boolean} [invitee.isInternalNumber] - When cancel phone invitation, if the number is internal
    * @returns {Promise}
    * @memberof Members
    */
-  cancelSIPInvite(invitee: any) {
+  cancelInviteByMemberId(invitee: {memberId: string; isInternalNumber?: boolean}) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError('The associated locus url for this meeting object must be defined.')
@@ -862,9 +864,9 @@ export default class Members extends StatelessWebexPlugin {
         new ParameterError('The invitee must be defined with a memberId property.')
       );
     }
-    const options = MembersUtil.cancelSIPInviteOptions(invitee, this.locusUrl);
+    const options = MembersUtil.cancelInviteByMemberIdOptions(invitee, this.locusUrl);
 
-    return this.membersRequest.cancelSIPInvite(options);
+    return this.membersRequest.cancelInviteByMemberId(options);
   }
 
   /**

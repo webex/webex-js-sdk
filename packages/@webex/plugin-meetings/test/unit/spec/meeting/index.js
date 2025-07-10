@@ -614,20 +614,20 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.members.cancelPhoneInvite, uuid1);
         });
       });
-      describe('#cancelSIPInvite', () => {
-        it('should have #cancelSIPInvite', () => {
-          assert.exists(meeting.cancelSIPInvite);
+      describe('#cancelInviteByMemberId', () => {
+        it('should have #cancelInviteByMemberId', () => {
+          assert.exists(meeting.cancelInviteByMemberId);
         });
         beforeEach(() => {
-          meeting.members.cancelSIPInvite = sinon.stub().returns(Promise.resolve(test1));
+          meeting.members.cancelInviteByMemberId = sinon.stub().returns(Promise.resolve(test1));
         });
-        it('should proxy members #cancelSIPInvite and return a promise', async () => {
-          const cancel = meeting.cancelSIPInvite({memberId: uuid1});
+        it('should proxy members #cancelInviteByMemberId and return a promise', async () => {
+          const cancel = meeting.cancelInviteByMemberId({memberId: uuid1});
 
           assert.exists(cancel.then);
           await cancel;
-          assert.calledOnce(meeting.members.cancelSIPInvite);
-          assert.calledWith(meeting.members.cancelSIPInvite, {memberId: uuid1});
+          assert.calledOnce(meeting.members.cancelInviteByMemberId);
+          assert.calledWith(meeting.members.cancelInviteByMemberId, {memberId: uuid1});
         });
       });
       describe('#admit', () => {
@@ -1208,8 +1208,76 @@ describe('plugin-meetings', () => {
             reason: 'joinWithMedia failure',
           });
         });
-      });
 
+        it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              videoEnabled: false,
+              sendVideo: true,
+              receiveVideo: true,
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWithMatch(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.has('videoEnabled', false)
+                        .and(sinon.match.has('allowMediaInLobby', true))
+          );
+        });
+
+        it('should ignore sendAudio/receiveAudio when audioEnabled is false', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              audioEnabled: false,
+              sendAudio: true, 
+              receiveAudio: false, 
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWithMatch(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.has('audioEnabled', false)
+                        .and(sinon.match.has('allowMediaInLobby', true))
+          );
+        });        
+
+        
+        it('should use provided send/receive values when videoEnabled/audioEnabled are true or not set', async () => {
+          await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions: {
+              sendVideo: true,
+              receiveVideo: false,
+              sendAudio: false,
+              receiveAudio: true,
+              allowMediaInLobby: true,
+            },
+          });
+        
+          assert.calledWith(
+            meeting.addMediaInternal,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match({
+              sendVideo: true,
+              receiveVideo: false,
+              sendAudio: false,
+              receiveAudio: true,
+            })
+          );
+        });
+      });
       describe('#isTranscriptionSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {
           meeting.locusInfo.controls = {transcribe: {caption: false}};
@@ -1240,7 +1308,7 @@ describe('plugin-meetings', () => {
             LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
             {spokenLanguage: 'fr'},
           );
-          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr');
+          assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr', meeting.id);
           assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'fr');
           assert.calledWith(
             TriggerProxy.trigger,
@@ -4286,11 +4354,11 @@ describe('plugin-meetings', () => {
 
             const error = new Error();
             meeting.meetingRequest.setBrb = sinon.stub().rejects(error);
-        
+
             await expect(
               meeting.beRightBack(true)
-            ).to.be.rejectedWith(error);  
-             
+            ).to.be.rejectedWith(error);
+
             assert.isFalse(meeting.brbState.state.syncToServerInProgress);
           });
         });
