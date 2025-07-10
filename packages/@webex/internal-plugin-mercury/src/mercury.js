@@ -68,6 +68,17 @@ const Mercury = WebexPlugin.extend({
         this.webex.internal.feature.updateFeature(envelope.data.featureToggle);
       }
     });
+
+    // subject to change
+    this.on('event:ActiveClusterStatusEvent', (envelope) => {
+      if (
+        typeof this.webex.internal.services?.switchActiveClusterIds === 'function' &&
+        envelope &&
+        envelope.data
+      ) {
+        this.webex.internal.services.switchActiveClusterIds(envelope.data?.activeClusters);
+      }
+    });
   },
 
   /**

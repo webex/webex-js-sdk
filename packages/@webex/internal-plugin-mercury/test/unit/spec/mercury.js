@@ -75,6 +75,7 @@ describe('plugin-mercury', () => {
       webex.internal.services = {
         convertUrlToPriorityHostUrl: sinon.stub().returns(Promise.resolve('ws://example-2.com')),
         markFailedUrl: sinon.stub().returns(Promise.resolve()),
+        switchActiveClusterIds: sinon.stub(),
       };
       webex.internal.metrics.submitClientMetrics = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
@@ -155,10 +156,17 @@ describe('plugin-mercury', () => {
       it('connects to Mercury using default url', () => {
         webex.internal.feature.updateFeature = sinon.stub();
         const promise = mercury.connect();
-        const envelope = {
+        const featureToggleEnvelope = {
           data: {
             featureToggle: {
               'feature-name': true,
+            },
+          },
+        };
+        const activeClusterEventEnvelope = {
+          data: {
+            activeClusters: {
+              wdm: 'wdm-cluster-id.com',
             },
           },
         };
@@ -171,23 +179,32 @@ describe('plugin-mercury', () => {
           assert.isTrue(mercury.connected, 'Mercury is connected');
           assert.isFalse(mercury.connecting, 'Mercury is not connecting');
           assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.any);
-          mercury._emit('event:featureToggle_update', envelope);
+          mercury._emit('event:featureToggle_update', featureToggleEnvelope);
           assert.calledOnceWithExactly(
             webex.internal.feature.updateFeature,
-            envelope.data.featureToggle
+            featureToggleEnvelope.data.featureToggle
+          );
+
+          mercury._emit('event:ActiveClusterStatusEvent', activeClusterEventEnvelope);
+          assert.calledOnceWithExactly(
+            webex.internal.services.switchActiveClusterIds,
+            activeClusterEventEnvelope.data.activeClusters
           );
           sinon.restore();
         });
       });
 
-      it('connects to Mercury but does not call updateFeature', () => {
+      it('connects to Mercury but does not call updateFeature or switchActiveClusterIds', () => {
         webex.internal.feature.updateFeature = sinon.stub();
         const promise = mercury.connect();
         const envelope = {};
 
         return promise.then(() => {
           mercury._emit('event:featureToggle_update', envelope);
+          mercury._emit('event:ActiveClusterStatusEvent', envelope);
           assert.notCalled(webex.internal.feature.updateFeature);
+          assert.notCalled(webex.internal.services.switchActiveClusterIds);
+
           sinon.restore();
         });
       });

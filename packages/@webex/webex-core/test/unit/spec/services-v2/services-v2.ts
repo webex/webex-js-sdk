@@ -268,6 +268,48 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#switchActiveClusterIds', () => {
+      let serviceHostmap;
+      let formattedHM;
+
+      beforeEach(() => {
+        serviceHostmap = serviceHostmapV2;
+        formattedHM = services._formatReceivedHostmap(serviceHostmap);
+      });
+
+      it('switches properly when id exists', async () => {
+        services.updateServices = sinon.stub();
+        services._updateActiveServices = sinon.stub().callsFake((data) => {
+          Object.assign(services._activeServices, data);
+        });
+
+        await services.switchActiveClusterIds({
+          conversation: 'urn:TEAM:me-central-1_d:conversation',
+        });
+
+        assert.notCalled(services.updateServices);
+
+        assert.calledWith(services._updateActiveServices, {
+          conversation: 'urn:TEAM:me-central-1_d:conversation',
+        });
+
+        assert.equal(services._activeServices.conversation, 'urn:TEAM:me-central-1_d:conversation');
+      });
+
+      it('makes request to fetch when id does not exist', async () => {
+        services.updateServices = sinon.stub();
+        services._updateActiveServices = sinon.stub().callsFake((data) => {
+          Object.assign(services._activeServices, data);
+        });
+
+        await services.switchActiveClusterIds({
+          conversation: 'urn:TEAM:me-central-1_asdf:conversation',
+        });
+
+        assert.calledWith(services.updateServices, {forceRefresh: true});
+      });
+    });
+
     describe('#updateCatalog', () => {
       it('updates the catalog', async () => {
         const serviceGroup = 'postauth';
