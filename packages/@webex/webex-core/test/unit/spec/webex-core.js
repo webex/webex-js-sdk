@@ -181,7 +181,7 @@ describe('Webex', () => {
       [
         'defaults to existing interceptors if undefined',
         undefined,
-        17,
+        18,
         [
           'RequestTimingInterceptor',
           'RequestEventInterceptor',
@@ -189,6 +189,7 @@ describe('Webex', () => {
           'RateLimitInterceptor',
           'ServiceInterceptor',
           'UserAgentInterceptor',
+          'ProxyInterceptor',
           'WebexUserAgentInterceptor',
           'AuthInterceptor',
           'PayloadTransformerInterceptor',
