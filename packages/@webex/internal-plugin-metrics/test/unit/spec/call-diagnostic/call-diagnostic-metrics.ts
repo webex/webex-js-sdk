@@ -185,7 +185,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           environment: 'meeting_evn',
@@ -218,7 +218,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
             clientLaunchMethod: 'url-handler',
           },
@@ -253,7 +253,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
             clientLaunchMethod: 'url-handler',
           },
@@ -288,7 +288,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
             clientLaunchMethod: 'url-handler',
             browserLaunchMethod: 'thinclient',
@@ -316,7 +316,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           name: 'endpoint',
@@ -345,7 +345,7 @@ describe('internal-plugin-metrics', () => {
             majorVersion: 43,
             minorVersion: 9,
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           environment: 'meeting_evn',
@@ -368,7 +368,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.3.4.0',
             localNetworkPrefix: undefined,
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           name: 'endpoint',
@@ -2539,7 +2539,7 @@ describe('internal-plugin-metrics', () => {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',
               mediaEngineSoftwareType: 'browser',
-              mediaEngineSoftwareVersion: getOSVersion(),
+              mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
               startTime: now.toISOString(),
             },
           },
@@ -2578,7 +2578,7 @@ describe('internal-plugin-metrics', () => {
                 applicationSoftwareType: 'webex-js-sdk',
                 applicationSoftwareVersion: 'webex-version',
                 mediaEngineSoftwareType: 'browser',
-                mediaEngineSoftwareVersion: getOSVersion(),
+                mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
                 startTime: now.toISOString(),
               },
             },
@@ -2615,7 +2615,7 @@ describe('internal-plugin-metrics', () => {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',
               mediaEngineSoftwareType: 'browser',
-              mediaEngineSoftwareVersion: getOSVersion(),
+              mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
               startTime: now.toISOString(),
             },
           },
@@ -3466,7 +3466,7 @@ describe('internal-plugin-metrics', () => {
                       localNetworkPrefix: '192.168.1.80',
                       publicNetworkPrefix: '1.3.4.0',
                       os: getOSNameInternal() || 'unknown',
-                      osVersion: getOSVersion(),
+                      osVersion: getOSVersion() || 'unknown',
                       subClientType: 'WEB_APP',
                     },
                     environment: 'meeting_evn',
@@ -3805,6 +3805,221 @@ describe('internal-plugin-metrics', () => {
 
         // should not call submitClientEvent again if delayedClientEvents was cleared
         assert.notCalled(submitClientEventSpy);
+      });
+    });
+
+    describe('#submitFeatureEvent', () => {
+      it('should submit feature event successfully with meetingId', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallFeaturesSpy = sinon.spy(cd, 'submitToCallFeatures');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        const options = {
+          meetingId: fakeMeeting.id,
+        };
+        cd.setMercuryConnectedStatus(true);
+
+        cd.submitFeatureEvent({
+          name: 'client.feature.meeting.summary',
+          payload: {
+            meetingSummaryInfo: {
+              featureName: 'syncSystemMuteStatus',
+              featureActions: [{
+                actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                actionId: '14200',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+          },
+          options,
+        });
+
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            name: 'client.feature.meeting.summary',
+            canProceed: true,
+            identifiers: {
+              correlationId: 'correlationId',
+              userId: 'userId',
+              deviceId: 'deviceUrl',
+              orgId: 'orgId',
+              locusUrl: 'locus/url',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+            },
+            eventData: { webClientDomain: 'whatever'},
+            userType: 'host',
+            loginType: 'login-ci',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+            meetingSummaryInfo: {
+              featureName: 'syncSystemMuteStatus',
+              featureActions: [{
+                actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                actionId: '14200',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+            key: "UcfFeatureUsage",
+          },
+          options
+        );
+
+        assert.calledWith(submitToCallFeaturesSpy, {
+          eventId: 'my-fake-id',
+          version: 1,
+          origin: {
+            origin: 'fake-origin',
+          },
+          event: {
+            canProceed: true,
+            eventData: { webClientDomain: 'whatever'},
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.feature.meeting.summary',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+            meetingSummaryInfo: {
+              featureName: 'syncSystemMuteStatus',
+              featureActions: [{
+                actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                actionId: '14200',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+            key: "UcfFeatureUsage",
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events-feature -> ',
+          'CallFeatureMetrics: @submitFeatureEvent. Submit Client Feature Event CA event.',
+          `name: client.feature.meeting.summary`,
+        ]);
+      });
+    });
+
+    describe('#submitDelayedClientFeatureEvents', () => {
+      it('does not call submitFeatureEvent if there were no delayed events', () => {
+        const submitFeatureEventSpy = sinon.spy(cd, 'submitFeatureEvent');
+
+        cd.submitDelayedClientFeatureEvents();
+
+        assert.notCalled(submitFeatureEventSpy);
+      });
+
+      it('calls submitFeatureEvent for every delayed event and clears delayedClientFeatureEvents array', () => {
+        const submitFeatureEventSpy = sinon.spy(cd, 'submitFeatureEvent');
+        const submitToCallFeaturesSpy = sinon.spy(cd, 'submitToCallFeatures');
+
+        const options = {
+          meetingId: 'meetingId',
+        };
+
+        cd.submitFeatureEvent({
+          name: 'client.feature.meeting.summary',
+          options,
+          payload: {
+            meetingSummaryInfo: {
+              featureName: 'syncSystemMuteStatus',
+              featureActions: [{
+                actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                actionId: '14200',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+          },
+          delaySubmitEvent: true,
+        });
+
+        cd.submitFeatureEvent({
+          name: 'client.feature.meeting.summary',
+          options,
+          payload: {
+            meetingSummaryInfo: {
+              featureName: 'syncSystemVideoStatus',
+              featureActions: [{
+                actionName: 'syncMeetingVideoUnmuteStatusToSystem',
+                actionId: '13400',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+          },
+          delaySubmitEvent: true,
+        });
+
+        assert.notCalled(submitToCallFeaturesSpy);
+        assert.calledTwice(submitFeatureEventSpy);
+        submitFeatureEventSpy.resetHistory();
+
+        cd.submitDelayedClientFeatureEvents();
+
+        assert.calledTwice(submitFeatureEventSpy);
+        assert.calledWith(submitFeatureEventSpy.firstCall, {
+          name: 'client.feature.meeting.summary',
+          payload: {
+            meetingSummaryInfo: {
+              featureName: 'syncSystemMuteStatus',
+              featureActions: [{
+                actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                actionId: '14200',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+          },
+          options: {
+            meetingId: 'meetingId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        assert.calledWith(submitFeatureEventSpy.secondCall, {
+          name: 'client.feature.meeting.summary',
+          payload: {
+            meetingSummaryInfo: {
+              featureName: 'syncSystemVideoStatus',
+              featureActions: [{
+                actionName: 'syncMeetingVideoUnmuteStatusToSystem',
+                actionId: '13400',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+          },
+          options: {
+            meetingId: 'meetingId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        submitFeatureEventSpy.resetHistory();
+
+        cd.submitDelayedClientFeatureEvents();
+
+        // should not call submitFeatureEventSpy again if delayedClientFeatureEvents was cleared
+        assert.notCalled(submitFeatureEventSpy);
       });
     });
   });
