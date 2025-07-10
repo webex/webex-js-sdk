@@ -7,10 +7,20 @@ import {
   StreamState,
 } from '@webex/internal-media-core';
 
+/**
+ * This class is used to manage the sendSlots for the given media types.
+ */
 export default class SendSlotManager {
   private readonly slots: Map<MediaType, SendSlot> = new Map();
   private readonly LoggerProxy: any;
+  private readonly sourceStateOverrides: Map<MediaType, StreamState> = new Map();
 
+  /**
+   * Constructor for SendSlotManager
+   *
+   * @param {any} LoggerProxy is used to log the messages
+   * @constructor
+   */
   constructor(LoggerProxy: any) {
     this.LoggerProxy = LoggerProxy;
   }
@@ -93,7 +103,7 @@ export default class SendSlotManager {
   public setSourceStateOverride(mediaType: MediaType, state: StreamState | null) {
     if (mediaType !== MediaType.VideoMain) {
       throw new Error(
-        `sendSlotManager cannot set source state override which media type is ${mediaType}`
+        `Invalid media type '${mediaType}'. Source state overrides are only applicable to ${MediaType.VideoMain}.`
       );
     }
 
@@ -103,15 +113,37 @@ export default class SendSlotManager {
       throw new Error(`Slot for ${mediaType} does not exist`);
     }
 
+    const currentStateOverride = this.getSourceStateOverride(mediaType);
+    if (currentStateOverride === state) {
+      return;
+    }
+
     if (state) {
       slot.setSourceStateOverride(state);
+      this.sourceStateOverrides.set(mediaType, state);
     } else {
       slot.clearSourceStateOverride();
+      this.sourceStateOverrides.delete(mediaType);
     }
 
     this.LoggerProxy.logger.info(
-      `SendSlotsManager->setSourceStateOverride#set source state override for ${mediaType} to ${state}`
+      `SendSlotManager->setSourceStateOverride#set source state override for ${mediaType} to ${state}`
     );
+  }
+
+  /**
+   * Gets the source state override for the given media type.
+   * @param {MediaType} mediaType - The type of media to get the source state override for.
+   * @returns {StreamState | null} - The current source state override or null if not set.
+   */
+  private getSourceStateOverride(mediaType: MediaType): StreamState | null {
+    if (mediaType !== MediaType.VideoMain) {
+      throw new Error(
+        `Invalid media type '${mediaType}'. Source state overrides are only applicable to ${MediaType.VideoMain}.`
+      );
+    }
+
+    return this.sourceStateOverrides.get(mediaType) || null;
   }
 
   /**

@@ -360,6 +360,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
               csis,
             },
           ],
+          transcript_id: uuid.v4(),
         },
       },
       trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
@@ -436,7 +437,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {Promise}
    */
   public turnOnCaptions = async (spokenLanguage?): undefined | Promise<void> => {
-    if (this.isCaptionProcessing()) return undefined;
+    if (this.captionStatus === TURN_ON_CAPTION_STATUS.SENDING) return undefined;
     // @ts-ignore
     if (!this.webex.internal.llm.isConnected()) {
       throw new Error('can not turn on captions before llm connected');
@@ -510,11 +511,12 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   /**
    * In meeting Spoken Language changed event
    * @param {string} languageCode
+   * @param {string} meetingId
    * @returns {void}
    */
-  public onSpokenLanguageUpdate = (languageCode: string): void => {
+  public onSpokenLanguageUpdate = (languageCode: string, meetingId): void => {
     // @ts-ignore
-    this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode});
+    this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode, meetingId});
     this.currentSpokenLanguage = languageCode;
   };
 
