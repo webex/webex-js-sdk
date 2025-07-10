@@ -47,10 +47,10 @@ export function convertStunUrlToTurnTls(stunUrl: string) {
 /**
  * Checks if the given server IP is a domain name.
  *
- * @param {string} serverIps - The server IP or domain name to check.
+ * @param {string} serverIp - The server IP or domain name to check.
  * @returns {boolean} true if the server IP is a domain name, false otherwise.
  */
-export function isDomainName(serverIps: string): boolean {
+export function isDomainName(serverIp: string): boolean {
   // Regex to match IPv4 addresses
   const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
 
@@ -58,7 +58,7 @@ export function isDomainName(serverIps: string): boolean {
   const ipv6Regex = /^(\[)?([a-fA-F0-9:]+)(\])?$/;
 
   // Check if the input matches IPv4 or IPv6
-  if (ipv4Regex.test(serverIps) || ipv6Regex.test(serverIps)) {
+  if (ipv4Regex.test(serverIp) || ipv6Regex.test(serverIp)) {
     return false; // It's an IP address
   }
 
@@ -69,17 +69,17 @@ export function isDomainName(serverIps: string): boolean {
 /**
  * Constructs a unique key for a subnet using server IP, port, and protocol.
  *
- * @param {string} serverIps - The server IP or domain name.
+ * @param {string} serverIp - The server IP or domain name.
  * @param {number} port - The port number.
  * @param {string} protocol - The protocol (e.g., 'udp', 'tcp', 'xtls').
  * @returns {string} The constructed subnet key.
  */
-export function constructSubnetKey(serverIps: string, port: number, protocol: string): string {
-  return `${serverIps}:${port}:${protocol}`;
+export function constructSubnetKey(serverIp: string, port: number, protocol: string): string {
+  return `${serverIp}:${port}:${protocol}`;
 }
 
 /**
- * Processes protocol subnets by segregating details and domain names.
+ * Processes protocol subnets by changing serverIp to serverIps.
  *
  * @param {Array<any>} subnets - List of subnets.
  * @param {string} protocol - Protocol to process (e.g., 'udp', 'tcp', 'xtls').
@@ -87,17 +87,15 @@ export function constructSubnetKey(serverIps: string, port: number, protocol: st
  */
 export function processProtocol(subnets: Array<any>, protocol: string) {
   return {
-    details: subnets.filter((subnet) => subnet.protocol === protocol),
-    domainNames: subnets
-      .filter((subnet) => subnet.protocol === protocol && isDomainName(subnet.serverIps))
-      .map((subnet) => ({
-        serverIps: subnet.serverIps,
-        port: subnet.port,
-        protocol: subnet.protocol,
-        reachable: subnet.reachable,
-        'answered-tx': subnet['answered-tx'],
-        'lost-tx': subnet['lost-tx'],
-        latencies: subnet.latencies,
-      })),
+    details: subnets
+      .filter((subnet) => subnet.protocol === protocol)
+      .map((subnet) => {
+        const {serverIp, ...rest} = subnet;
+
+        return {
+          ...rest,
+          serverIps: serverIp, // Replace serverIp with serverIp for storage and to send to backend
+        };
+      }),
   };
 }

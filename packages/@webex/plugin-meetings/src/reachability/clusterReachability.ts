@@ -11,7 +11,7 @@ import {
 import EventsScope from '../common/events/events-scope';
 
 import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
-import {ClusterReachabilityResult, NatType} from './reachability.types';
+import {ClusterReachabilityResult, NatType, SubnetDetails} from './reachability.types';
 
 // data for the Events.resultReady event
 export type ResultEventData = {
@@ -59,15 +59,24 @@ export class ClusterReachability extends EventsScope {
   public subnets: Map<
     string,
     {
-      serverIps?: string;
-      port?: number;
-      protocol?: string;
-      reachable?: boolean;
-      'answered-tx'?: number;
-      'lost-tx'?: number;
+      serverIp: string;
+      port: number;
+      protocol: string;
+      reachable: 'true' | 'false';
+      'answered-tx': number;
+      'lost-tx': number;
       latencies: number[];
     }
   > = new Map();
+
+  // Convert `serverIp` to `serverIp` for TransportResultForBackend
+  public getBackendDetails(): SubnetDetails[] {
+    return Array.from(this.subnets.values()).map((subnet) => ({
+      ...subnet,
+      protocol: subnet.protocol as 'udp' | 'tcp' | 'xtls', // Cast protocol to the correct type
+      serverIp: subnet.serverIp, // Keeping serverIp for internal use
+    }));
+  }
 
   /**
    * Constructor for ClusterReachability
@@ -92,24 +101,21 @@ export class ClusterReachability extends EventsScope {
         latencyInMilliseconds: undefined,
         clientMediaIPs: [],
         minLatency: undefined,
-        domainNames: [], // Initialize domainNames as an empty array
-        details: [], // Initialize details as an empty array
+        details: [],
       },
       tcp: {
         result: 'untested',
         latencyInMilliseconds: undefined,
         clientMediaIPs: [],
         minLatency: undefined,
-        domainNames: [], // Initialize domainNames as an empty array
-        details: [], // Initialize details as an empty array
+        details: [],
       },
       xtls: {
         result: 'untested',
         latencyInMilliseconds: undefined,
         clientMediaIPs: [],
         minLatency: undefined,
-        domainNames: [], // Initialize domainNames as an empty array
-        details: [], // Initialize details as an empty array
+        details: [],
       },
     };
   }
@@ -186,6 +192,11 @@ export class ClusterReachability extends EventsScope {
    * @returns {ClusterReachabilityResult} reachability result for this cluster
    */
   getResult() {
+    const subnetsArray = Array.from(this.subnets.values());
+    ['udp', 'tcp', 'xtls'].forEach((protocol) => {
+      this.result[protocol].details = subnetsArray.filter((s) => s.protocol === protocol);
+    });
+
     return this.result;
   }
 
@@ -329,34 +340,34 @@ export class ClusterReachability extends EventsScope {
       const subnet = this.subnets.get(subnetKey);
 
       if (subnet) {
-        subnet.reachable = true;
+        subnet.reachable = 'true';
         subnet['answered-tx'] = 1;
         subnet['lost-tx'] = 0;
-        subnet.latencies.push(latency);
+        subnet.latencies = [latency];
 
         // Replace domain name with resolved IP for all protocols, if applicable
-        const isDomain = isDomainName(subnet.serverIps || '');
-        if (isDomain && serverIp !== subnet.serverIps) {
+        const isDomain = isDomainName(subnet.serverIp || '');
+        if (isDomain && serverIp !== subnet.serverIp) {
           LoggerProxy.logger.log(
-            `Reachability:index#saveResult --> Replacing domain name ${subnet.serverIps} with resolved IP ${serverIp}`
+            `Reachability:index#saveResult --> Replacing domain name ${subnet.serverIp} with resolved IP ${serverIp}`
           );
-          subnet.serverIps = serverIp;
+          subnet.serverIp = serverIp;
         }
       } else {
-        // Add a new subnet to the map
+        // Adding a new subnet to the map as its not already present and might be domain name while prepopulate
         const isDomain = isDomainName(serverIp || '');
         LoggerProxy.logger.log(
           `Reachability:index#saveResult --> Adding new subnet: serverIp=${serverIp}, isDomain=${isDomain}`
         );
 
         this.subnets.set(subnetKey, {
-          serverIps: serverIp,
+          serverIp,
           port,
           protocol,
-          reachable: false, // Retain domain name for failures
-          'answered-tx': 0,
-          'lost-tx': 1,
-          latencies: [],
+          reachable: 'true',
+          'answered-tx': 1,
+          'lost-tx': 0,
+          latencies: [latency],
         });
       }
     }
@@ -420,14 +431,13 @@ export class ClusterReachability extends EventsScope {
           let serverIp = null;
           let port = null;
           if ('url' in e.candidate) {
-            // const stunServerUrlRegex = /stun:([\d.]+):(\d+)/;
             const stunServerUrlRegex = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
 
             const match = (e.candidate as any).url.match(stunServerUrlRegex);
             if (match) {
-              const [, extractedServerIp, portString] = match; // Destructure match array
+              const [, extractedServerIp, portString] = match;
               serverIp = extractedServerIp;
-              port = Number(portString); // Convert port to a number if it exists
+              port = Number(portString);
             }
           }
 
@@ -456,11 +466,6 @@ export class ClusterReachability extends EventsScope {
    *
    * @returns {Promise}
    */
-  /**
-   * Starts the process of doing UDP, TCP, and XTLS reachability checks on the media cluster.
-   *
-   * @returns {Promise<ClusterReachabilityResult>} The reachability result for this cluster.
-   */
   async start(): Promise<ClusterReachabilityResult> {
     if (!this.pc) {
       LoggerProxy.logger.warn(
@@ -476,15 +481,14 @@ export class ClusterReachability extends EventsScope {
     protocols.forEach((protocol) => {
       const subnets = this.clusterInfo[protocol]
         .map((url) => {
-          // const match = url.match(/stun:([\w-.]+):(\d+)/); // Match domain name or IP and port
           const stunServerUrlRegex = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
           const match = url.match(stunServerUrlRegex);
-          if (match) {
+          if (match && !isDomainName(match[1])) {
             return {
-              serverIps: match[1],
+              serverIp: match[1],
               port: Number(match[2]),
               protocol,
-              reachable: false,
+              reachable: 'false' as const,
               'answered-tx': 0,
               'lost-tx': 1,
               latencies: [],
@@ -496,7 +500,7 @@ export class ClusterReachability extends EventsScope {
         .filter(Boolean);
 
       subnets.forEach((subnet) => {
-        const subnetKey = constructSubnetKey(subnet.serverIps, subnet.port, subnet.protocol);
+        const subnetKey = constructSubnetKey(subnet.serverIp, subnet.port, subnet.protocol);
         this.subnets.set(subnetKey, subnet);
       });
     });
@@ -534,8 +538,27 @@ export class ClusterReachability extends EventsScope {
     } catch (error) {
       LoggerProxy.logger.warn(`Reachability:ClusterReachability#start --> Error: `, error);
     }
+    this.updateOverallResult();
 
     return this.result;
+  }
+
+  /**
+   * Returns the list of URLs (FQDNs or IPs) for the cluster.
+   * This is useful for displaying the list of attempted FQDNs and IPs.
+   *
+   * @returns {Array<string>} List of URLs for the cluster.
+   */
+  public getClusterUrls(): Array<string> {
+    const protocols: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
+
+    const urls: Array<string> = [];
+
+    protocols.forEach((protocol) => {
+      urls.push(...this.clusterInfo[protocol]);
+    });
+
+    return urls;
   }
 
   /**
@@ -548,5 +571,27 @@ export class ClusterReachability extends EventsScope {
     this.registerIceCandidateListener();
 
     return this.defer.promise;
+  }
+
+  /**
+   * Updates the overall result for each protocol based on the subnets reachability
+   *
+   * @returns {void}
+   */
+  private updateOverallResult() {
+    ['udp', 'tcp', 'xtls'].forEach((protocol) => {
+      // Only mark as reachable if there is at least one subnet with reachable: 'true'
+      const hasReachable = Array.from(this.subnets.values()).some(
+        (subnet) => subnet.protocol === protocol && subnet.reachable === 'true'
+      );
+      if (hasReachable) {
+        this.result[protocol].result = 'reachable';
+      } else if (this.result[protocol].result === 'untested') {
+        this.result[protocol].result = 'untested';
+      } else {
+        this.result[protocol].result = 'unreachable';
+      }
+      this.result[protocol].reachable = hasReachable ? 'true' : 'false';
+    });
   }
 }

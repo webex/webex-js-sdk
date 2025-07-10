@@ -6,19 +6,19 @@ export type TransportResult = {
   latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
   clientMediaIPs?: string[];
   minLatency?: number;
-  domainNames?: SubnetDetails[];
   details?: SubnetDetails[];
 };
 
 // New type to represent the result for each subnet IP address
 export type SubnetDetails = {
-  serverIps?: string; // IP address of the subnet being tested
-  port?: number; // Port used for the test
-  'answered-tx'?: number; // 1 if reachable, 0 otherwise
-  'lost-tx'?: number; // 1 if unreachable, 0 otherwise
-  latencies?: number[]; // latency for subnet IP address
-  protocol?: 'udp' | 'tcp' | 'xtls'; // Protocol used for the test
-  reachable?: boolean; // Result for this specific address
+  serverIp: string; // IP address of the subnet being tested
+  serverIps?: string; // IP address of the subnet for backend purpose
+  port: number; // Port used for the test
+  'answered-tx': number; // 1 if reachable, 0 otherwise
+  'lost-tx': number; // 1 if unreachable, 0 otherwise
+  latencies: number[]; // latency for subnet IP address
+  protocol: 'udp' | 'tcp' | 'xtls'; // Protocol used for the test
+  reachable: 'true' | 'false'; // Result for this specific address
 };
 
 export enum NatType {
@@ -57,7 +57,7 @@ export type TransportResultForBackend = {
   clientMediaIPs?: string[];
   latencyInMilliseconds?: string; // amount of time it took to get the first ICE candidate
   reachable?: 'true' | 'false';
-  details?: SubnetDetails[];
+  details?: Array<Omit<SubnetDetails, 'serverIp'> & {serverIps: string}>; // Replace serverIp with serverIps for sending to backend
   minLatency?: number;
   untested?: 'true';
 };

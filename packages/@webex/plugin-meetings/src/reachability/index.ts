@@ -166,7 +166,7 @@ export default class Reachability extends EventsScope {
         let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
         for (let i = 0; i < subnetsArray.length; i += 1) {
           const subnet = subnetsArray[i];
-          const reachedSubnetFirstOctet = subnet.serverIps.split('.')[0];
+          const reachedSubnetFirstOctet = subnet.serverIp.split('.')[0];
 
           if (subnetFirstOctet === reachedSubnetFirstOctet) {
             acc.add(cluster.name);
@@ -471,17 +471,6 @@ export default class Reachability extends EventsScope {
           acc[protocol] = {
             ...this.mapTransportResultToBackendDataFormat(protocolResult),
             details: details.filter((subnet) => !isDomainName(subnet.serverIps)),
-            domainNames: details
-              .filter((subnet) => isDomainName(subnet.serverIps))
-              .map((subnet) => ({
-                serverIps: subnet.serverIps,
-                port: subnet.port,
-                protocol,
-                reachable: subnet.reachable,
-                'answered-tx': subnet['answered-tx'],
-                'lost-tx': subnet['lost-tx'],
-                latencies: subnet.latencies,
-              })),
           };
 
           return acc;
@@ -491,7 +480,7 @@ export default class Reachability extends EventsScope {
       });
 
       // Clean up domain names and details before returning
-      results = this.cleanUpDomainNames(results);
+      results = this.calculateMinLatency(results);
 
       // @ts-ignore
       await this.webex.boundedStorage.put(
@@ -511,61 +500,30 @@ export default class Reachability extends EventsScope {
   }
 
   /**
-   * Cleaning up the details array by removing domain names and ensuring they are only in the domainNames array.
-   * Also updates the minLatency for each protocol based on the cleaned-up details.
+   * Updates the minLatency for each protocol among all the protocols.
    * @param {ReachabilityResultsForBackend} allResults - The reachability results for all clusters.
-   * @returns {ReachabilityResultsForBackend} The updated results with segregated domain names, IPs, and minLatency.
+   * @returns {ReachabilityResultsForBackend} The updated results with minLatency set.
    */
-  private cleanUpDomainNames(
+  private calculateMinLatency(
     allResults: ReachabilityResultsForBackend
   ): ReachabilityResultsForBackend {
-    // Iterate over each cluster in the results
     Object.keys(allResults).forEach((clusterKey) => {
       const clusterResult = allResults[clusterKey];
 
-      // Process each protocol (udp, tcp, xtls) for the current cluster
       ['udp', 'tcp', 'xtls'].forEach((protocol) => {
         const protocolResult = clusterResult[protocol];
 
-        if (protocolResult && protocolResult.details) {
-          // Filter out domain names from the details array
-          const filteredDetails = protocolResult.details.filter(
-            (subnet) => !isDomainName(subnet.serverIps)
-          );
-
-          // Extract domain names from the details array
-          const domainNamesFromDetails = protocolResult.details.filter((subnet) =>
-            isDomainName(subnet.serverIps)
-          );
-
-          // Ensure domain names are unique in the domainNames array
-          const uniqueDomainNames = [
-            ...(protocolResult.domainNames || []),
-            ...domainNamesFromDetails,
-          ].filter(
-            (domain, index, self) =>
-              index ===
-              self.findIndex((d) => d.serverIps === domain.serverIps && d.port === domain.port)
-          );
-
-          // Update the protocol result with segregated details and domainNames
-          protocolResult.details = filteredDetails;
-          protocolResult.domainNames = uniqueDomainNames;
-
-          // Update minLatency based on the cleaned-up details
-          if (filteredDetails.length > 0) {
-            const latencies = filteredDetails
-              .map((subnet) => Math.min(...(subnet.latencies || [])))
-              .filter((latency) => !Number.isNaN(latency)); // Use Number.isNaN instead of isNaN
-
-            if (latencies.length > 0) {
-              protocolResult.minLatency = Math.min(...latencies);
-            } else {
-              protocolResult.minLatency = undefined; // No valid latencies
-            }
+        if (protocolResult && protocolResult.details && protocolResult.details.length > 0) {
+          const allLatencies = protocolResult.details
+            .flatMap((subnet) => subnet.latencies || [])
+            .filter((latency) => typeof latency === 'number' && !Number.isNaN(latency));
+          if (allLatencies.length > 0) {
+            protocolResult.minLatency = Math.min(...allLatencies);
           } else {
-            protocolResult.minLatency = undefined; // No details to calculate minLatency
+            protocolResult.minLatency = undefined;
           }
+        } else {
+          protocolResult.minLatency = undefined;
         }
       });
     });
@@ -921,9 +879,9 @@ export default class Reachability extends EventsScope {
   private async storeResults(results: ReachabilityResults) {
     const resultsWithDetails = mapValues(results, (clusterResult, clusterKey) => {
       const clusterReachability = this.clusterReachability[clusterKey];
-      const subnets = clusterReachability ? Array.from(clusterReachability.subnets.values()) : [];
+      const subnets = clusterReachability ? clusterReachability.getBackendDetails() : [];
 
-      return {
+      const processedResult = {
         ...clusterResult,
         udp: {
           ...clusterResult.udp,
@@ -938,6 +896,8 @@ export default class Reachability extends EventsScope {
           ...processProtocol(subnets, 'xtls'),
         },
       };
+
+      return processedResult;
     });
 
     // @ts-ignore
@@ -1205,5 +1165,47 @@ export default class Reachability extends EventsScope {
 
     // for version 1 we don't attach anything to Roap messages, reachability report is sent inside clientMediaPreferences
     return undefined;
+  }
+
+  /**
+   * Gets the list of attempted URLs (domain names only) grouped by cluster and protocol for the network checker.
+   *
+   * @returns {Promise<Record<string, Record<string, string[]>>>} A promise that resolves to an object containing clusters as keys, protocols as nested keys, and domain names as arrays.
+   * @public
+   * @memberof Reachability
+   */
+  public async getNetworkCheckerData(): Promise<Record<string, Record<string, string[]>>> {
+    const result: Record<string, Record<string, string[]>> = {};
+
+    // Iterate over each cluster in clusterReachability
+    Object.entries(this.clusterReachability).forEach(([clusterName, clusterReachability]) => {
+      const protocols: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
+
+      // Initialize the cluster in the result object
+      if (!result[clusterName]) {
+        result[clusterName] = {};
+      }
+
+      protocols.forEach((protocol) => {
+        const urls = clusterReachability.clusterInfo[protocol];
+
+        // Filter URLs to include only domain names
+        const domainNames = urls
+          .map((url) => {
+            const stunServerUrlRegex = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
+            const match = url.match(stunServerUrlRegex);
+
+            return match && isDomainName(match[1]) ? match[1] : null; // Extract domain name if valid
+          })
+          .filter(Boolean); // Remove null values
+
+        // Add domain names to the protocol inside the cluster
+        if (domainNames.length > 0) {
+          result[clusterName][protocol] = domainNames;
+        }
+      });
+    });
+
+    return result;
   }
 }
