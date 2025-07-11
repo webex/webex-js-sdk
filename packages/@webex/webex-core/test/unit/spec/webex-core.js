@@ -177,7 +177,7 @@ describe('Webex', () => {
 
   describe('initializes with interceptors', () => {
     [
-      // 4 pre, 4 post, 9 remaining default = 17
+      // 4 pre, 4 post, 10 remaining default = 18
       [
         'defaults to existing interceptors if undefined',
         undefined,

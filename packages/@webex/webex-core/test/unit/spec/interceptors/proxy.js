@@ -3,7 +3,7 @@
  */
 
 import {assert} from '@webex/test-helper-chai';
-import {skipInBrowser} from '@webex/test-helper-mocha';
+import {inBrowser} from '@webex/test-helper-mocha';
 import {ProxyInterceptor} from '@webex/webex-core';
 
 import pkg from '../../../../package';
@@ -11,41 +11,41 @@ import pkg from '../../../../package';
 describe('webex-core', () => {
   describe('Interceptors', () => {
     describe('ProxyInterceptor', () => {
-      // Do not set proxy for browsers
-      skipInBrowser(describe)('#onRequest', () => {
-        it('default proxy', () => {
-          const interceptor = Reflect.apply(
-            ProxyInterceptor.create,
-            {
-              version: pkg.version,
+      it('default proxy', () => {
+        const interceptor = Reflect.apply(
+          ProxyInterceptor.create,
+          {
+            version: pkg.version,
+          },
+          []
+        );
+        const options = {};
+
+        interceptor.onRequest(options);
+
+        assert.isUndefined(options.proxy);
+      });
+
+      it('custom proxy', () => {
+        const interceptor = Reflect.apply(
+          ProxyInterceptor.create,
+          {
+            version: pkg.version,
+            config: {
+              proxy: 'http://proxy.company.com'
             },
-            []
-          );
-          const options = {};
+          },
+          []
+        );
+        const options = {};
 
-          interceptor.onRequest(options);
-
+        interceptor.onRequest(options);
+        if (inBrowser()) {
           assert.isUndefined(options.proxy);
-        });
-
-        it('custom proxy', () => {
-          const interceptor = Reflect.apply(
-            ProxyInterceptor.create,
-            {
-              version: pkg.version,
-              config: {
-                proxy: 'http://proxy.company.com'
-              },
-            },
-            []
-          );
-          const options = {};
-
-          interceptor.onRequest(options);
-
+        } else {
           assert.property(options, 'proxy');
           assert.equal(options.proxy, 'http://proxy.company.com');
-        });
+        }
       });
     });
   });
