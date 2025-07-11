@@ -19,7 +19,10 @@ import WebexCore, {
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
 import sinon from 'sinon';
-import {formattedServiceHostmapEntryConv} from '../../../fixtures/host-catalog-v2';
+import {
+  formattedServiceHostmapEntryConv,
+  serviceHostmapV2,
+} from '../../../fixtures/host-catalog-v2';
 
 // /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
@@ -491,6 +494,28 @@ describe('webex-core', () => {
         const lastPriorityUrl = priorityServiceUrl._getPriorityHostUrl();
 
         assert.equal(firstPriorityUrl, lastPriorityUrl);
+      });
+    });
+
+    describe('#invalidateCache', () => {
+      let requestStub;
+
+      beforeEach(() => {
+        services._formatReceivedHostmap(serviceHostmapV2);
+      });
+
+      afterEach(() => {
+        requestStub.restore();
+      });
+
+      it('fetches new catalog when timestamp is newer than current timestamp', () => {
+        requestStub = sinon
+          .stub(webex.internal.newMetrics.callDiagnosticLatencies, 'measureLatency')
+          .returns(Promise.resolve());
+
+        services.invalidateCache(Date.now());
+
+        assert.calledOnce(requestStub);
       });
     });
 

@@ -75,6 +75,7 @@ describe('plugin-mercury', () => {
       webex.internal.services = {
         convertUrlToPriorityHostUrl: sinon.stub().returns(Promise.resolve('ws://example-2.com')),
         markFailedUrl: sinon.stub().returns(Promise.resolve()),
+        invalidateCache: sinon.stub(),
       };
       webex.internal.metrics.submitClientMetrics = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
@@ -162,6 +163,11 @@ describe('plugin-mercury', () => {
             },
           },
         };
+        const cacheInvalidationEventEnvelope = {
+          data: {
+            timestamp: '1',
+          },
+        };
 
         assert.isFalse(mercury.connected, 'Mercury is not connected');
         assert.isTrue(mercury.connecting, 'Mercury is connecting');
@@ -176,18 +182,25 @@ describe('plugin-mercury', () => {
             webex.internal.feature.updateFeature,
             envelope.data.featureToggle
           );
+          mercury._emit('event:u2c.cache-invalidation', cacheInvalidationEventEnvelope);
+          assert.calledOnceWithExactly(
+            webex.internal.services.invalidateCache,
+            envelope.data.timestamp
+          );
           sinon.restore();
         });
       });
 
-      it('connects to Mercury but does not call updateFeature', () => {
+      it('connects to Mercury but does not call updateFeature or invalidateCache', () => {
         webex.internal.feature.updateFeature = sinon.stub();
         const promise = mercury.connect();
         const envelope = {};
 
         return promise.then(() => {
           mercury._emit('event:featureToggle_update', envelope);
+          mercury._emit('event:u2c.cache-invalidation', envelope);
           assert.notCalled(webex.internal.feature.updateFeature);
+          assert.notCalled(webex.internal.services.invalidateCache);
           sinon.restore();
         });
       });

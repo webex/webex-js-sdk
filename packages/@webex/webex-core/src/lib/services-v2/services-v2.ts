@@ -45,6 +45,8 @@ const Services = WebexPlugin.extend({
 
   _services: [],
 
+  _timestamp: 0,
+
   /**
    * @private
    * Get the current catalog based on the assocaited
@@ -120,6 +122,15 @@ const Services = WebexPlugin.extend({
    */
   _updateServices(services: Array<Service>): void {
     this._services = unionBy(services, this._services, 'id');
+  },
+
+  /**
+   * saves the timestamp of the last catalog update
+   * @param {number} timestamp
+   * @returns {void}
+   */
+  _updateTimestamp(timestamp: number): void {
+    this._timestamp = timestamp;
   },
 
   /**
@@ -698,10 +709,11 @@ const Services = WebexPlugin.extend({
    * catalog endpoint.
    * @returns {Array<Service>}
    */
-  _formatReceivedHostmap({services, activeServices}) {
+  _formatReceivedHostmap({services, activeServices, timestamp}) {
     const formattedHostmap = services.map((service) => this._formatHostMapEntry(service));
     this._updateActiveServices(activeServices);
     this._updateServices(services);
+    this._updateTimestamp(timestamp);
 
     return formattedHostmap;
   },
@@ -819,6 +831,22 @@ const Services = WebexPlugin.extend({
     newUrl.host = priortyHost;
 
     return newUrl.href;
+  },
+
+  /**
+   * @param {number} timestamp - the timestamp to compare against
+   * @returns {Promise<void>}
+   */
+  invalidateCache(timestamp: number): Promise<void> {
+    if (timestamp > this._timestamp) {
+      this.logger.info('services: invalidating cache, timestamp is newer than current timestamp');
+
+      return this.updateServices({forceRefresh: true});
+    }
+
+    this.logger.info('services: not invalidating cache, timestamp is older than current timestamp');
+
+    return Promise.resolve();
   },
 
   /**

@@ -68,6 +68,17 @@ const Mercury = WebexPlugin.extend({
         this.webex.internal.feature.updateFeature(envelope.data.featureToggle);
       }
     });
+
+    // subject to change
+    this.on('event:u2c.cache-invalidation', (envelope) => {
+      if (
+        typeof this.webex.internal.services?.invalidateCache === 'function' &&
+        envelope &&
+        envelope.data
+      ) {
+        this.webex.internal.services.invalidateCache(envelope.data?.timestamp);
+      }
+    });
   },
 
   /**

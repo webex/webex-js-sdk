@@ -268,6 +268,32 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#invalidateCache', () => {
+      let serviceHostmap;
+      let formattedHM;
+
+      beforeEach(() => {
+        serviceHostmap = serviceHostmapV2;
+        formattedHM = services._formatReceivedHostmap(serviceHostmap);
+      });
+
+      it('makes request to fetch when timestamp is newer', async () => {
+        services.updateServices = sinon.stub();
+
+        await services.invalidateCache(Date.now());
+
+        assert.calledWith(services.updateServices, {forceRefresh: true});
+      });
+
+      it('does not make request when timestamp is older', async () => {
+        services.updateServices = sinon.stub();
+
+        await services.invalidateCache(0);
+
+        assert.notCalled(services.updateServices);
+      });
+    });
+
     describe('#updateCatalog', () => {
       it('updates the catalog', async () => {
         const serviceGroup = 'postauth';
