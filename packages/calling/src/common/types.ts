@@ -260,6 +260,20 @@ export interface SCIMListResponse {
   Resources: Resource[];
 }
 
+export enum WorkerMessageType {
+  START_KEEPALIVE = 'START_KEEPALIVE',
+  CLEAR_KEEPALIVE = 'CLEAR_KEEPALIVE',
+  KEEPALIVE_SUCCESS = 'KEEPALIVE_SUCCESS',
+  KEEPALIVE_FAILURE = 'KEEPALIVE_FAILURE',
+}
+
+export type KeepaliveStatusMessage = {
+  type: WorkerMessageType.KEEPALIVE_SUCCESS | WorkerMessageType.KEEPALIVE_FAILURE;
+  err?: unknown;
+  keepAliveRetryCount?: number;
+  statusCode?: number;
+};
+
 export type LogsMetaData = {
   callId?: string;
   feedbackId?: string;
