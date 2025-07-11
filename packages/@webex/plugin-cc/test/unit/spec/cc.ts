@@ -794,7 +794,6 @@ describe('webex.cc', () => {
           },
         },
       };
-
       jest.spyOn(webex.cc.services.agent, 'stationLogin').mockRejectedValue(error);
 
       await expect(webex.cc.stationLogin(options)).rejects.toThrow(error.details.data.reason);

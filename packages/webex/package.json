@@ -17,6 +17,7 @@
     "./calling": "./dist/calling.js",
     ".": "./dist/index.js",
     "./meetings": "./dist/meetings.js",
+    "./contact-center": "./dist/contact-center.js",
     "./package": "./package.json"
   },
   "devMain": "src/index.js",
@@ -70,6 +71,7 @@
     "@webex/common": "workspace:*",
     "@webex/internal-plugin-calendar": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
+    "@webex/internal-plugin-dss": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/internal-plugin-presence": "workspace:*",

@@ -48,7 +48,7 @@
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types && yarn run build:src",
     "build:docs": "typedoc --out ../../../docs/presence",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
-    "deploy:npm": "yarn npm publish",
+    "deploy:npm:broken": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
     "test:browser:broken": "webex-legacy-tools test --integration --runner karma",
     "test:style": "eslint ./src/**/*.*",
