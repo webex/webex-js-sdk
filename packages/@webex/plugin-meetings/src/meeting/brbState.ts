@@ -58,7 +58,12 @@ export class BrbState {
   public enable(enabled: boolean, sendSlotManager: SendSlotManager) {
     this.state.client.enabled = enabled;
 
-    return this.applyClientStateToServer(sendSlotManager);
+    return this.applyClientStateToServer(sendSlotManager).finally(() => {
+      sendSlotManager.setSourceStateOverride(
+        MediaType.VideoMain,
+        this.state.client.enabled ? 'away' : null
+      );
+    });
   }
 
   /**
@@ -92,7 +97,7 @@ export class BrbState {
 
     this.state.syncToServerInProgress = true;
 
-    return this.sendLocalBrbStateToServer(sendSlotManager)
+    return this.sendLocalBrbStateToServer()
       .then(() => {
         this.state.syncToServerInProgress = false;
 
@@ -120,10 +125,9 @@ export class BrbState {
   /**
    * Send the local brb state to the server
    *
-   * @param {SendSlotManager} sendSlotManager
    * @returns {Promise}
    */
-  private async sendLocalBrbStateToServer(sendSlotManager: SendSlotManager) {
+  private async sendLocalBrbStateToServer() {
     const {enabled} = this.state.client;
 
     if (!this.meeting.isMultistream) {
@@ -152,9 +156,6 @@ export class BrbState {
         locusUrl: this.meeting.locusUrl,
         deviceUrl: this.meeting.deviceUrl,
         selfId: this.meeting.selfId,
-      })
-      .then(() => {
-        sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
       })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:brbState#sendLocalBrbStateToServer: Error ', error);

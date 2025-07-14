@@ -176,6 +176,20 @@ describe('plugin-meetings', () => {
         assert.calledOnce(MembersUtil.isInvalidInvitee);
         assert.isFalse(MembersUtil.isInvalidInvitee({email: 'sip:test@cisco.com'}), 'SIP email should be valid');
       });
+
+      it('should accept valid phone with isInternalNumber', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({phoneNumber: '+8618578675309', isInternalNumber: false});
+        
+        assert.calledOnce(MembersUtil.isInvalidInvitee);
+        assert.isFalse(MembersUtil.isInvalidInvitee({ phoneNumber: '+8618578675309', isInternalNumber: false }));
+        assert.isTrue(MembersUtil.isInvalidInvitee({ phoneNumber: '18578675309', isInternalNumber: false }));
+        assert.isFalse(MembersUtil.isInvalidInvitee({phoneNumber: '18578675309', isInternalNumber: true}));
+        assert.isTrue(MembersUtil.isInvalidInvitee({phoneNumber: '+8618578675309', isInternalNumber: true}));
+      });
     });
 
     describe('#admitMembers', () => {
@@ -465,29 +479,38 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#cancelSIPInvite', () => {
+    describe('#cancelInviteByMemberId', () => {
       const memberId = uuid.v4();
-      it('should invoke cancelSIPInviteOptions from MembersUtil when cancelSIPInvite is called with valid params', async () => {
-        sandbox.spy(MembersUtil, 'cancelSIPInviteOptions');
+      it('should invoke cancelInviteByMemberIdOptions from MembersUtil when cancelInviteByMemberId is called with valid params', async () => {
+        sandbox.spy(MembersUtil, 'cancelInviteByMemberIdOptions');
 
         const members = createMembers({url: url1});
 
-        await members.cancelSIPInvite({memberId});
-        assert.calledOnce(MembersUtil.cancelSIPInviteOptions);
+        await members.cancelInviteByMemberId({memberId});
+        assert.calledOnce(MembersUtil.cancelInviteByMemberIdOptions);
+      });
+
+      it('should invoke cancelInviteByMemberIdOptions from MembersUtil when cancelInviteByMemberId is called with isInternalNumber', async () => {
+        sandbox.spy(MembersUtil, 'cancelInviteByMemberIdOptions');
+
+        const members = createMembers({url: url1});
+
+        await members.cancelInviteByMemberId({memberId, isInternalNumber: true});
+        assert.calledOnce(MembersUtil.cancelInviteByMemberIdOptions);
       });
 
       it('should throw a rejection if there is no locus url', async () => {
         const members = createMembers({url: false});
 
-        assert.isRejected(members.cancelSIPInvite({memberId}));
+        assert.isRejected(members.cancelInviteByMemberId({memberId}));
       });
       
       it('should throw a rejection if memberId is not provided', async () => {
         const members = createMembers({url: url1});
 
-        assert.isRejected(members.cancelSIPInvite({}));
-        assert.isRejected(members.cancelSIPInvite({memberId: null}));
-        assert.isRejected(members.cancelSIPInvite({memberId: undefined}));
+        assert.isRejected(members.cancelInviteByMemberId({}));
+        assert.isRejected(members.cancelInviteByMemberId({memberId: null}));
+        assert.isRejected(members.cancelInviteByMemberId({memberId: undefined}));
       });
     });
 
