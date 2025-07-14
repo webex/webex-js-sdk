@@ -1,5 +1,3 @@
-const test = process.env.NODE_ENV === 'test';
-
 module.exports = {
   presets: [
     [
@@ -12,5 +10,4 @@ module.exports = {
     ],
     '@babel/preset-typescript',
   ],
-  plugins: [...(test ? ['babel-plugin-transform-import-meta'] : [])],
 };
