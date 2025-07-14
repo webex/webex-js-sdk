@@ -69,15 +69,6 @@ export class ClusterReachability extends EventsScope {
     }
   > = new Map();
 
-  // Convert `serverIp` to `serverIp` for TransportResultForBackend
-  public getBackendDetails(): SubnetDetails[] {
-    return Array.from(this.subnets.values()).map((subnet) => ({
-      ...subnet,
-      protocol: subnet.protocol as 'udp' | 'tcp' | 'xtls', // Cast protocol to the correct type
-      serverIp: subnet.serverIp, // Keeping serverIp for internal use
-    }));
-  }
-
   /**
    * Constructor for ClusterReachability
    * @param {string} name cluster name

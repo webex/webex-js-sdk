@@ -871,7 +871,7 @@ export default class Reachability extends EventsScope {
   private async storeResults(results: ReachabilityResults) {
     const resultsWithDetails = mapValues(results, (clusterResult, clusterKey) => {
       const clusterReachability = this.clusterReachability[clusterKey];
-      const subnets = clusterReachability ? clusterReachability.getBackendDetails() : [];
+      const subnets = clusterReachability ? Array.from(clusterReachability.subnets.values()) : [];
 
       const processedResult = {
         ...clusterResult,
@@ -1102,6 +1102,7 @@ export default class Reachability extends EventsScope {
 
       this.clusterReachability[key].start(); // not awaiting on purpose
     });
+    await this.storeResults(results);
   }
 
   /**
