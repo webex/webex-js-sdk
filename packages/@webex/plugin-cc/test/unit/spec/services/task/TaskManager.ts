@@ -5,6 +5,7 @@ import {CALL_EVENT_KEYS, CallingClientConfig, LINE_EVENTS} from '@webex/calling'
 import {CC_AGENT_EVENTS, CC_EVENTS} from '../../../../../src/services/config/types';
 import TaskManager from '../../../../../src/services/task/TaskManager';
 import * as contact from '../../../../../src/services/task/contact';
+import Task from '../../../../../src/services/task';
 import {TASK_EVENTS} from '../../../../../src/services/task/types';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import config from '../../../../../src/config';

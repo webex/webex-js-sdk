@@ -3,7 +3,9 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import EventEmitter from 'events';
 import testUtils from '../../../utils/testUtils';
-import Reachability, {ReachabilityResultsForBackend} from '@webex/plugin-meetings/src/reachability/';
+import Reachability, {
+  ReachabilityResultsForBackend,
+} from '@webex/plugin-meetings/src/reachability/';
 import {ClusterNode} from '../../../../src/reachability/request';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import * as ClusterReachabilityModule from '@webex/plugin-meetings/src/reachability/clusterReachability';
