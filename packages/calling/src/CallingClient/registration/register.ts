@@ -372,7 +372,39 @@ export class Registration implements IRegistration {
    * Returns true if device is registered with a backup mobius.
    */
   private isFailbackRequired(): boolean {
-    return this.isDeviceRegistered() && this.primaryMobiusUris.indexOf(this.activeMobiusUrl) === -1;
+    let status = 'down';
+    for (const mobiusUrl of this.primaryMobiusUris) {
+      const response = <WebexRequestPayload>this.webex.request({
+        uri: `${mobiusUrl}/ping`,
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CISCO_DEVICE_URL]: this.webex.internal.device.url,
+          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+        },
+        service: ALLOWED_SERVICES.MOBIUS,
+      });
+
+      if (response.statusCode === 200) {
+        log.info(`Ping successful for primary Mobius: ${mobiusUrl}`, {
+          file: REGISTRATION_FILE,
+          method: FAILBACK_UTIL,
+        });
+        status = 'up';
+        break;
+      } else {
+        log.warn(`Ping failed for primary Mobius: ${mobiusUrl}`, {
+          file: REGISTRATION_FILE,
+          method: FAILBACK_UTIL,
+        });
+        status = 'down';
+      }
+    }
+
+    return (
+      this.isDeviceRegistered() &&
+      this.primaryMobiusUris.indexOf(this.activeMobiusUrl) === -1 &&
+      status === 'up'
+    );
   }
 
   /**
