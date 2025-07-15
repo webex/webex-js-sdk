@@ -506,6 +506,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('detect a network flap in mercury connection', async () => {
+      warnSpy.mockClear();
       expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       /* Set mercury connection to be down and execute a delay of 2.5 seconds */
@@ -610,6 +611,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('Simulate a network flap before initial registration is done', async () => {
+      warnSpy.mockClear();
       const handleConnectionRestoreSpy = jest.spyOn(reg, 'handleConnectionRestoration');
       reg.setStatus(RegistrationStatus.IDLE);
 
