@@ -229,6 +229,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Fetches countryCode and region of the client.
    */
   private async getClientRegionInfo(): Promise<RegionInfo> {
+    let abort;
+    let retryTimer;
     log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.GET_CLIENT_REGION_INFO,
@@ -278,7 +280,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           file: CALLING_CLIENT_FILE,
         });
 
-        handleCallingClientErrors(
+        // eslint-disable-next-line no-await-in-loop
+        abort = await handleCallingClientErrors(
           err as WebexRequestPayload,
           (clientError) => {
             this.metricManager.submitRegistrationMetric(
@@ -293,10 +296,25 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
             );
             this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
           },
-          {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
+          {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE},
+          retryTimer
         );
         regionInfo.clientRegion = '';
         regionInfo.countryCode = '';
+      }
+
+      if (abort) {
+        return regionInfo;
+      }
+      if (retryTimer) {
+        log.warn(
+          `Retrying to get client region info after ${retryTimer} seconds`,
+          '' as LogContext
+        );
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => {
+          setTimeout(resolve, retryTimer * 1000);
+        });
       }
     }
 

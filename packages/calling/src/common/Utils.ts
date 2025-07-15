@@ -506,14 +506,47 @@ export async function handleRegistrationErrors(
 export async function handleCallingClientErrors(
   err: WebexRequestPayload,
   emitterCb: CallingClientErrorEmitterCallback,
-  loggerContext: LogContext
+  loggerContext: LogContext,
+  retryTimer?: number
 ): Promise<boolean> {
   const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
-  const finalError = false;
+  let finalError = false;
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
   switch (errorCode) {
+    case ERROR_CODE.UNAUTHORIZED: {
+      finalError = true;
+      log.warn(`401 Unauthrized`, loggerContext);
+      updateErrorContext(
+        loggerContext,
+        ERROR_TYPE.TOKEN_ERROR,
+        'User is unauthorized due to an expired token',
+        clientError
+      );
+
+      emitterCb(clientError, finalError);
+      break;
+    }
+
+    case ERROR_CODE.TOO_MANY_REQUESTS: {
+      log.warn(`429 Too Many Requests`, loggerContext);
+      updateErrorContext(
+        loggerContext,
+        ERROR_TYPE.TOKEN_ERROR,
+        'Server is handling too many request at the time. Wait a moment and try again',
+        clientError
+      );
+
+      if (err.headers) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        retryTimer = Number(err.headers['retry-after']);
+      }
+
+      emitterCb(clientError, finalError);
+      break;
+    }
+
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
       log.warn(`500 Internal Server Error`, loggerContext);
       updateErrorContext(
