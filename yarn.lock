@@ -8233,7 +8233,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-dss@workspace:packages/@webex/internal-plugin-dss":
+"@webex/internal-plugin-dss@workspace:*, @webex/internal-plugin-dss@workspace:packages/@webex/internal-plugin-dss":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-dss@workspace:packages/@webex/internal-plugin-dss"
   dependencies:
@@ -34196,6 +34196,7 @@ __metadata:
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/internal-plugin-calendar": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-dss": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
     "@webex/internal-plugin-mercury": "workspace:*"
     "@webex/internal-plugin-presence": "workspace:*"
