@@ -109,6 +109,7 @@ export const REG_TRY_BACKUP_TIMER_VAL_IN_SEC = 1200;
 export const REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC = 114;
 export const REG_FAILBACK_429_MAX_RETRIES = 5;
 export const RETRY_TIMER_UPPER_LIMIT = 60;
+export const REGISTRATION_UTIL = 'triggerRegistration';
 export const REGISTER_UTIL = 'attemptRegistrationWithServers';
 export const GET_MOBIUS_SERVERS_UTIL = 'getMobiusServers';
 export const KEEPALIVE_UTIL = 'startKeepaliveTimer';

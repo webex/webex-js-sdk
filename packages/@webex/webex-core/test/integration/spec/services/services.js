@@ -10,6 +10,10 @@ import WebexCore, {
   ServiceCatalog,
   ServiceRegistry,
   ServiceState,
+  Services,
+  ServiceInterceptor,
+  ServerErrorInterceptor,
+  registerInternalPlugin,
   ServiceUrl,
   serviceConstants,
 } from '@webex/webex-core';
@@ -50,6 +54,13 @@ describe('webex-core', () => {
     );
 
     beforeEach('create webex instance', () => {
+      registerInternalPlugin('services', Services, {
+        interceptors: {
+          ServiceInterceptor: ServiceInterceptor.create,
+          ServerErrorInterceptor: ServerErrorInterceptor.create,
+        },
+        replace: true,
+      });
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
       webexEU = new WebexCore({credentials: {supertoken: webexUserEU.token}});
       services = webex.internal.services;

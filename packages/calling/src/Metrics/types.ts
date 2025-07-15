@@ -43,6 +43,8 @@ export enum VOICEMAIL_ACTION {
   TRANSCRIPT = 'transcript',
 }
 
+export type SERVER_TYPE = 'PRIMARY' | 'BACKUP' | 'UNKNOWN';
+
 export const UPLOAD_LOGS_ACTION = 'upload_logs';
 
 export interface IMetricManager {
@@ -51,7 +53,11 @@ export interface IMetricManager {
     name: METRIC_EVENT,
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
-    error: LineError | CallingClientError | undefined
+    caller: string,
+    serverType: SERVER_TYPE,
+    trackingId: string,
+    keepaliveCount?: number,
+    error?: LineError | CallingClientError
   ) => void;
   submitBNRMetric: (
     name: METRIC_EVENT,
