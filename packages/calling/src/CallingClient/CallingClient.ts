@@ -230,7 +230,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    */
   private async getClientRegionInfo(): Promise<RegionInfo> {
     let abort;
-    let retryTimer;
+    let retryTimer = 0;
+    let retryDiscovery = false;
     log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.GET_CLIENT_REGION_INFO,
@@ -240,81 +241,88 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     for (const mobius of this.mobiusClusters) {
       this.mobiusHost = `https://${mobius.host}${API_V1}`;
 
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        const temp = <WebexRequestPayload>await this.webex.request({
-          uri: `${this.mobiusHost}${URL_ENDPOINT}${IP_ENDPOINT}`,
-          method: HTTP_METHODS.GET,
-          headers: {
-            [CISCO_DEVICE_URL]: this.webex.internal.device.url,
-            [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-          },
-          service: ALLOWED_SERVICES.MOBIUS,
-        });
+      do {
+        retryTimer = 0;
+        try {
+          let myIP;
+          if (!retryDiscovery) {
+            // eslint-disable-next-line no-await-in-loop
+            const temp = <WebexRequestPayload>await this.webex.request({
+              uri: `${this.mobiusHost}${URL_ENDPOINT}${IP_ENDPOINT}`,
+              method: HTTP_METHODS.GET,
+              headers: {
+                [CISCO_DEVICE_URL]: this.webex.internal.device.url,
+                [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+              },
+              service: ALLOWED_SERVICES.MOBIUS,
+            });
 
-        const myIP = (temp.body as IpInfo).ipv4;
-        // eslint-disable-next-line no-await-in-loop
-        const response = <WebexRequestPayload>await this.webex.request({
-          uri: `${DISCOVERY_URL}/${myIP}`,
-          method: HTTP_METHODS.GET,
-          addAuthHeader: false,
-          headers: {
-            [SPARK_USER_AGENT]: null,
-          },
-        });
+            myIP = (temp.body as IpInfo).ipv4;
+          }
 
-        const clientRegionInfo = response.body as ClientRegionInfo;
+          // eslint-disable-next-line no-await-in-loop
+          const response = <WebexRequestPayload>await this.webex.request({
+            uri: `${DISCOVERY_URL}/${myIP}`,
+            method: HTTP_METHODS.GET,
+            addAuthHeader: false,
+            headers: {
+              [SPARK_USER_AGENT]: null,
+            },
+          });
 
-        regionInfo.clientRegion = clientRegionInfo?.clientRegion
-          ? clientRegionInfo.clientRegion
-          : '';
+          const clientRegionInfo = response.body as ClientRegionInfo;
 
-        regionInfo.countryCode = clientRegionInfo?.countryCode ? clientRegionInfo.countryCode : '';
-        break;
-      } catch (err: unknown) {
-        const extendedError = new Error(
-          `Failed to get client region info: ${err}`
-        ) as ExtendedError;
-        log.error(extendedError, {
-          method: METHODS.GET_CLIENT_REGION_INFO,
-          file: CALLING_CLIENT_FILE,
-        });
+          regionInfo.clientRegion = clientRegionInfo?.clientRegion
+            ? clientRegionInfo.clientRegion
+            : '';
 
-        // eslint-disable-next-line no-await-in-loop
-        abort = await handleCallingClientErrors(
-          err as WebexRequestPayload,
-          (clientError) => {
-            this.metricManager.submitRegistrationMetric(
-              METRIC_EVENT.REGISTRATION_ERROR,
-              REG_ACTION.REGISTER,
-              METRIC_TYPE.BEHAVIORAL,
-              GET_MOBIUS_SERVERS_UTIL,
-              'UNKNOWN',
-              (err as WebexRequestPayload).headers?.trackingId ?? '',
-              undefined,
-              clientError
-            );
-            this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
-          },
-          {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE},
-          retryTimer
-        );
-        regionInfo.clientRegion = '';
-        regionInfo.countryCode = '';
-      }
+          regionInfo.countryCode = clientRegionInfo?.countryCode
+            ? clientRegionInfo.countryCode
+            : '';
+          break;
+        } catch (err: unknown) {
+          const extendedError = new Error(
+            `Failed to get client region info: ${err}`
+          ) as ExtendedError;
+          log.error(extendedError, {
+            method: METHODS.GET_CLIENT_REGION_INFO,
+            file: CALLING_CLIENT_FILE,
+          });
+
+          // eslint-disable-next-line no-await-in-loop
+          abort = await handleCallingClientErrors(
+            err as WebexRequestPayload,
+            (clientError) => {
+              this.metricManager.submitRegistrationMetric(
+                METRIC_EVENT.REGISTRATION_ERROR,
+                REG_ACTION.REGISTER,
+                METRIC_TYPE.BEHAVIORAL,
+                GET_MOBIUS_SERVERS_UTIL,
+                'UNKNOWN',
+                (err as WebexRequestPayload).headers?.trackingId ?? '',
+                undefined,
+                clientError
+              );
+              this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
+            },
+            {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE},
+            retryTimer
+          );
+          regionInfo.clientRegion = '';
+          regionInfo.countryCode = '';
+
+          if (retryTimer) {
+            // eslint-disable-next-line no-await-in-loop, no-loop-func
+            await new Promise((resolve) => {
+              setTimeout(resolve, retryTimer * 1000);
+            });
+            retryDiscovery = (err as WebexRequestPayload)?.uri?.includes(DISCOVERY_URL) ?? false;
+          }
+        }
+      } while (retryTimer > 0 && !abort);
 
       if (abort) {
         return regionInfo;
-      }
-      if (retryTimer) {
-        log.warn(
-          `Retrying to get client region info after ${retryTimer} seconds`,
-          '' as LogContext
-        );
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise((resolve) => {
-          setTimeout(resolve, retryTimer * 1000);
-        });
       }
     }
 
