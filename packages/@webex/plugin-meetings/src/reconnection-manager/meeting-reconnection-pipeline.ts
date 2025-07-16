@@ -10,6 +10,7 @@ export default class MeetingReconnectionPipeline extends ReconnectionPipeline {
    *
    * @param {Object} options - Options for the reconnection.
    * @param {boolean} options.networkDisconnect - Indicates if the reconnection is due to a network disconnect.
+   *
    * @returns {Promise<void>}
    */
   startMeetingReconnection(): Promise<void> {
@@ -19,16 +20,26 @@ export default class MeetingReconnectionPipeline extends ReconnectionPipeline {
       .then(() => this.doTurnDiscovery())
       .then((iceServers) => this.waitForMediaReconnection(iceServers))
       .then(() => this.maybeResendMediaRequest())
-      .catch((error) => {
-        this.iceServersDefer.reject();
+      .catch((error) => this.handleReconnectionError(error));
+  }
 
-        LoggerProxy.logger.error(
-          'MeetingReconnectionPipeline#start --> Error during reconnection pipeline:',
-          error
-        );
+  /**
+   * Handles errors that occur during the meeting reconnection pipeline.
+   *
+   * @param {Error} error - The error that occurred during the reconnection pipeline.
+   *
+   * @throws {Error} - Throws the error after logging it.
+   *
+   * @returns {void}
+   */
+  private handleReconnectionError(error: Error): void {
+    this.cleanupOnError();
 
-        throw error;
-      });
+    LoggerProxy.logger.error(
+      'MeetingReconnectionPipeline#handleReconnectionError --> Error during reconnection pipeline'
+    );
+
+    throw error;
   }
 
   /**

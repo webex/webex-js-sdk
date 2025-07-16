@@ -10,6 +10,7 @@ export default class MediaReconnectionPipeline extends ReconnectionPipeline {
    *
    * @param {Object} options - Options for the reconnection.
    * @param {boolean} options.networkDisconnect - Indicates if the reconnection is due to a network disconnect.
+   *
    * @returns {Promise<void>}
    */
   startMediaReconnection(options = {networkDisconnect: false}): Promise<void> {
@@ -22,15 +23,25 @@ export default class MediaReconnectionPipeline extends ReconnectionPipeline {
       .then(() => this.doTurnDiscovery())
       .then((iceServers) => this.waitForMediaReconnection(iceServers))
       .then(() => this.maybeResendMediaRequest())
-      .catch((error) => {
-        this.iceServersDefer.reject();
+      .catch((error) => this.handleReconnectionError(error));
+  }
 
-        LoggerProxy.logger.error(
-          'MediaReconnectionPipeline#start --> Error during reconnection pipeline:',
-          error
-        );
+  /**
+   * Handles errors that occur during the media reconnection pipeline.
+   *
+   * @param {Error} error - The error that occurred during the reconnection pipeline.
+   *
+   * @throws {Error} - Throws the error after logging it.
+   *
+   * @returns {void}
+   */
+  private handleReconnectionError(error: Error): void {
+    this.cleanupOnError();
 
-        throw error;
-      });
+    LoggerProxy.logger.error(
+      'MediaReconnectionPipeline#handleReconnectionError --> Error during reconnection pipeline'
+    );
+
+    throw error;
   }
 }

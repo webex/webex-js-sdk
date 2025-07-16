@@ -171,6 +171,7 @@ export default class ReconnectionPipeline {
    * Verifies the current state of the meeting before proceeding with reconnection.
    *
    * @throws {Error} If the meeting is in a state that cannot be reconnected to, such as LEFT or if it has been deleted.
+   *
    * @returns {Promise<void>}
    */
   protected async verifyMeetingState(): Promise<void> {
@@ -220,10 +221,13 @@ export default class ReconnectionPipeline {
    * Waits for media reconnection to complete.
    *
    * @param {RTCIceServer[]} iceServers - The ICE servers to use for the reconnection.
+   *
    * @returns {Promise<void>}
    */
   protected async waitForMediaReconnection(iceServers: RTCIceServer[]): Promise<void> {
     this.iceServersDefer.resolve(iceServers);
+
+    await this.reconnectionPromise;
 
     await this.meeting.waitForRemoteSDPAnswer();
     await this.meeting.waitForMediaConnectionConnected();
@@ -260,6 +264,15 @@ export default class ReconnectionPipeline {
         }
       );
     }
+  }
+
+  /**
+   * Handles cleanup in case of an error during the reconnection pipeline.
+   *
+   * @returns {void}
+   */
+  protected cleanupOnError() {
+    this.iceServersDefer.reject();
   }
 
   /**
