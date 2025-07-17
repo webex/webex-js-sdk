@@ -12,8 +12,8 @@ import MeetingUtil from '../meeting/util';
 import {IP_VERSION, REACHABILITY} from '../constants';
 
 import ReachabilityRequest, {ClusterList} from './request';
-import {isDomainName, processProtocol} from './util';
 import {
+  ClusterUrlsWithPort,
   ClusterReachabilityResult,
   TransportResult,
   ClientMediaPreferences,
@@ -26,6 +26,7 @@ import {
   GetClustersTrigger,
   NatType,
 } from './reachability.types';
+
 import {
   ClientMediaIpsUpdatedEventData,
   ClusterReachability,
@@ -153,11 +154,15 @@ export default class Reachability extends EventsScope {
 
     const matchingReachedClusters = Object.values(this.clusterReachability).reduce(
       (acc, cluster) => {
-        const subnetsArray = Array.from(cluster.subnets.values());
+        const detailsArrays = [
+          ...(cluster.getResult().udp.details || []),
+          ...(cluster.getResult().tcp.details || []),
+          ...(cluster.getResult().xtls.details || []),
+        ];
 
         let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
-        for (let i = 0; i < subnetsArray.length; i += 1) {
-          const subnet = subnetsArray[i];
+        for (let i = 0; i < detailsArrays.length; i += 1) {
+          const subnet = detailsArrays[i];
           const reachedSubnetFirstOctet = subnet.serverIp.split('.')[0];
 
           if (selectedSubnetFirstOctet === reachedSubnetFirstOctet) {
@@ -165,7 +170,7 @@ export default class Reachability extends EventsScope {
           }
 
           logMessage += `${JSON.stringify(subnet)}`;
-          if (i < subnetsArray.length - 1) {
+          if (i < detailsArrays.length - 1) {
             logMessage += ',';
           }
         }
@@ -428,6 +433,23 @@ export default class Reachability extends EventsScope {
         case 'latencyInMilliseconds':
           output.latencyInMilliseconds = value.toString();
           break;
+        // Transforming serverIp to serverIPs
+        case 'details':
+          if (Array.isArray(value)) {
+            output.details = value.map((subnet) => {
+              // Use serverIp if present, otherwise use serverIps
+              // const serverIp = subnet.serverIp ?? subnet.serverIps;
+              const {serverIp, serverIps, ...rest} = subnet;
+
+              return {
+                ...rest,
+                serverIps: serverIp ?? serverIps,
+              };
+            });
+          } else {
+            output.details = [];
+          }
+          break;
         default:
           output[key] = value;
       }
@@ -453,33 +475,13 @@ export default class Reachability extends EventsScope {
 
       const allClusterResults: ReachabilityResults = JSON.parse(resultsJson);
 
-      // @ts-ignore
-      results = mapValues(allClusterResults, (clusterResult) => {
-        const protocols: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
-        const protocolResults = protocols.reduce((acc, protocol) => {
-          const protocolResult = clusterResult[protocol] || {result: 'untested'};
-          const details = protocolResult.details || [];
-
-          acc[protocol] = {
-            ...this.mapTransportResultToBackendDataFormat(protocolResult),
-            details: details.filter((subnet) => !isDomainName(subnet.serverIps)),
-          };
-
-          return acc;
-        }, {});
-
-        return protocolResults;
-      });
-
-      // Clean up domain names and details before returning
-      results = this.calculateMinLatency(results);
-
-      // @ts-ignore
-      await this.webex.boundedStorage.put(
-        REACHABILITY.namespace,
-        REACHABILITY.localStorageResult,
-        JSON.stringify(results)
-      );
+      results = mapValues(allClusterResults, (clusterResult) => ({
+        udp: this.mapTransportResultToBackendDataFormat(clusterResult.udp || {result: 'untested'}),
+        tcp: this.mapTransportResultToBackendDataFormat(clusterResult.tcp || {result: 'untested'}),
+        xtls: this.mapTransportResultToBackendDataFormat(
+          clusterResult.xtls || {result: 'untested'}
+        ),
+      }));
     } catch (e) {
       // empty storage, that's ok
       LoggerProxy.logger.warn(
@@ -489,38 +491,6 @@ export default class Reachability extends EventsScope {
     }
 
     return results;
-  }
-
-  /**
-   * Updates the minLatency for each protocol among all the protocols.
-   * @param {ReachabilityResultsForBackend} allResults - The reachability results for all clusters.
-   * @returns {ReachabilityResultsForBackend} The updated results with minLatency set.
-   */
-  private calculateMinLatency(
-    allResults: ReachabilityResultsForBackend
-  ): ReachabilityResultsForBackend {
-    Object.keys(allResults).forEach((clusterKey) => {
-      const clusterResult = allResults[clusterKey];
-
-      ['udp', 'tcp', 'xtls'].forEach((protocol) => {
-        const protocolResult = clusterResult[protocol];
-
-        if (protocolResult && protocolResult.details && protocolResult.details.length > 0) {
-          const allLatencies = protocolResult.details
-            .flatMap((subnet) => subnet.latencies || [])
-            .filter((latency) => typeof latency === 'number' && !Number.isNaN(latency));
-          if (allLatencies.length > 0) {
-            protocolResult.minLatency = Math.min(...allLatencies);
-          } else {
-            protocolResult.minLatency = undefined;
-          }
-        } else {
-          protocolResult.minLatency = undefined;
-        }
-      });
-    });
-
-    return allResults;
   }
 
   /**
@@ -871,27 +841,36 @@ export default class Reachability extends EventsScope {
   private async storeResults(results: ReachabilityResults) {
     const resultsWithDetails = mapValues(results, (clusterResult, clusterKey) => {
       const clusterReachability = this.clusterReachability[clusterKey];
-      const subnets = clusterReachability ? Array.from(clusterReachability.subnets.values()) : [];
+      const resultWithDetails = clusterReachability
+        ? clusterReachability.getResult()
+        : clusterResult;
 
-      const processedResult = {
-        ...clusterResult,
-        udp: {
-          ...clusterResult.udp,
-          ...processProtocol(subnets, 'udp'),
-        },
-        tcp: {
-          ...clusterResult.tcp,
-          ...processProtocol(subnets, 'tcp'),
-        },
-        xtls: {
-          ...clusterResult.xtls,
-          ...processProtocol(subnets, 'xtls'),
-        },
-      };
+      const transformed: any = {};
+      for (const protocol of ['udp', 'tcp', 'xtls'] as const) {
+        const protoResult = resultWithDetails[protocol];
+        if (protoResult && Array.isArray(protoResult.details)) {
+          transformed[protocol] = {
+            ...protoResult,
+            details: protoResult.details.map((detail) => {
+              const {serverIp, ...rest} = detail;
 
-      return processedResult;
+              return {
+                ...rest,
+                serverIps: serverIp,
+              };
+            }),
+            minLatency: protoResult.latencyInMilliseconds,
+          };
+        } else {
+          transformed[protocol] = protoResult;
+        }
+      }
+      transformed.isVideoMesh = clusterReachability ? clusterReachability.isVideoMesh : undefined;
+
+      return transformed;
     });
 
+    // Store the transformed results (with serverIps) in localStorage
     // @ts-ignore
     await this.webex.boundedStorage.put(
       this.namespace,
@@ -1161,40 +1140,37 @@ export default class Reachability extends EventsScope {
   }
 
   /**
-   * Gets the list of attempted URLs (domain names only) grouped by cluster and protocol for the network checker.
+   * Gets the list of all cluster URLs (domain names and IPs) grouped by cluster and protocol for the network checker.
    *
-   * @returns {Promise<Record<string, Record<string, string[]>>>} A promise that resolves to an object containing clusters as keys, protocols as nested keys, and domain names as arrays.
+   * @returns {Promise<ClusterUrlsWithPort>} A promise that resolves to an object containing clusters as keys,
+   * protocols as nested keys, and address/port objects as arrays.
    * @public
    * @memberof Reachability
    */
-  public async getNetworkCheckerData(): Promise<Record<string, Record<string, string[]>>> {
-    const result: Record<string, Record<string, string[]>> = {};
-
-    // Iterate over each cluster in clusterReachability
+  public async getAllClusterUrls(): Promise<ClusterUrlsWithPort> {
+    const result: ClusterUrlsWithPort = {};
     Object.entries(this.clusterReachability).forEach(([clusterName, clusterReachability]) => {
       const protocols: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
 
-      // Initialize the cluster in the result object
-      if (!result[clusterName]) {
-        result[clusterName] = {};
-      }
+      result[clusterName] = {};
 
       protocols.forEach((protocol) => {
         const urls = clusterReachability.clusterInfo[protocol];
 
-        // Filter URLs to include only domain names
-        const domainNames = urls
+        const clusterObjs = urls
           .map((url) => {
             const stunServerUrlRegex = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
             const match = url.match(stunServerUrlRegex);
+            if (match) {
+              return {urlAddress: match[1], port: Number(match[2])};
+            }
 
-            return match && isDomainName(match[1]) ? match[1] : null; // Extract domain name if valid
+            return null;
           })
-          .filter(Boolean); // Remove null values
+          .filter(Boolean) as Array<{urlAddress: string; port: number}>;
 
-        // Add domain names to the protocol inside the cluster
-        if (domainNames.length > 0) {
-          result[clusterName][protocol] = domainNames;
+        if (clusterObjs.length > 0) {
+          result[clusterName][protocol] = clusterObjs;
         }
       });
     });

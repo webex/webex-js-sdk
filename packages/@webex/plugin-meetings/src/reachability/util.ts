@@ -45,57 +45,23 @@ export function convertStunUrlToTurnTls(stunUrl: string) {
 }
 
 /**
- * Checks if the given server IP is a domain name.
+ * Checks if the given server address is a domain name.
  *
- * @param {string} serverIp - The server IP or domain name to check.
+ * @param {string} url - The server IP or domain name to check.
  * @returns {boolean} true if the server IP is a domain name, false otherwise.
  */
-export function isDomainName(serverIp: string): boolean {
+export function isDomainName(url: string): boolean {
   // Regex to match IPv4 addresses
   const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
 
   // Regex to match IPv6 addresses (enclosed in square brackets or plain format)
-  const ipv6Regex = /^(\[)?([a-fA-F0-9:]+)(\])?$/;
+  const ipv6Regex = /^\[?([a-fA-F0-9]{0,4}:){2,7}[a-fA-F0-9]{0,4}\]?$/;
 
   // Check if the input matches IPv4 or IPv6
-  if (ipv4Regex.test(serverIp) || ipv6Regex.test(serverIp)) {
+  if (ipv4Regex.test(url) || ipv6Regex.test(url)) {
     return false; // It's an IP address
   }
 
   // If it doesn't match IPv4 or IPv6, assume it's a domain name
   return true;
-}
-
-/**
- * Constructs a unique key for a subnet using server IP, port, and protocol.
- *
- * @param {string} serverIp - The server IP or domain name.
- * @param {number} port - The port number.
- * @param {string} protocol - The protocol (e.g., 'udp', 'tcp', 'xtls').
- * @returns {string} The constructed subnet key.
- */
-export function constructSubnetKey(serverIp: string, port: number, protocol: string): string {
-  return `${serverIp}:${port}:${protocol}`;
-}
-
-/**
- * Processes protocol subnets by changing serverIp to serverIps.
- *
- * @param {Array<any>} subnets - List of subnets.
- * @param {string} protocol - Protocol to process (e.g., 'udp', 'tcp', 'xtls').
- * @returns {Object} Processed protocol data with segregated details and domain names.
- */
-export function processProtocol(subnets: Array<any>, protocol: string) {
-  return {
-    details: subnets
-      .filter((subnet) => subnet.protocol === protocol)
-      .map((subnet) => {
-        const {serverIp, ...rest} = subnet;
-
-        return {
-          ...rest,
-          serverIps: serverIp, // Replace serverIp with serverIp for storage and to send to backend
-        };
-      }),
-  };
 }
