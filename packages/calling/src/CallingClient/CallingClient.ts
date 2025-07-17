@@ -150,6 +150,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
     }
 
+    // TODO: This is a temp fix - https://jira-eng-sjc12.cisco.com/jira/browse/CAI-6809
     if (this.webex.internal.services._hostCatalog) {
       this.mobiusClusters =
         (mobiusServiceHost && this.webex.internal.services._hostCatalog[mobiusServiceHost]) ||
