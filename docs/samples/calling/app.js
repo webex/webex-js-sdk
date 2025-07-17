@@ -217,6 +217,7 @@ async function initCalling(e) {
   authStatusElm.innerText = 'initializing...';
 
   const webexConfig = {
+    integration: !enableProd,
     fedramp: fedrampBox.checked,
     config: {
       fedramp: fedrampBox.checked,

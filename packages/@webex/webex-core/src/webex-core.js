@@ -112,6 +112,7 @@ const WebexCore = AmpState.extend({
             access_token: attrs,
           },
         },
+        integration: attrs.integration,
       };
     } else {
       // Reminder: order is important here

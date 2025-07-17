@@ -7,13 +7,7 @@ import * as constants from './constants';
 import Services from './services';
 import ServerErrorInterceptor from './interceptors/server-error';
 import ServiceInterceptor from './interceptors/service';
-
-registerInternalPlugin('services', Services, {
-  interceptors: {
-    ServiceInterceptor: ServiceInterceptor.create,
-    ServerErrorInterceptor: ServerErrorInterceptor.create,
-  },
-});
+import {ServicesV2} from '../services-v2';
 
 export {constants};
 export {default as ServiceInterceptor} from './interceptors/service';
@@ -25,3 +19,14 @@ export {default as ServiceRegistry} from './service-registry';
 export {default as ServiceState} from './service-state';
 export {default as ServiceHost} from './service-host';
 export {default as ServiceUrl} from './service-url';
+
+export function initServices(config) {
+  const service = config.integration ? Services : ServicesV2;
+
+  registerInternalPlugin('services', service, {
+    interceptors: {
+      ServiceInterceptor: ServiceInterceptor.create,
+      ServerErrorInterceptor: ServerErrorInterceptor.create,
+    },
+  });
+}

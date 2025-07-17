@@ -11,6 +11,8 @@ require('@webex/internal-plugin-support');
 const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;
 
+const {initServices} = require('@webex/webex-core');
+
 const config = require('./config');
 
 const Webex = WebexCore.extend({
@@ -40,7 +42,7 @@ class Calling extends EventEmitter {
       this.log.setWebexLogger(this.webex.logger);
     } else {
       webexConfig.config = merge({}, config, webexConfig.config);
-
+      initServices(webexConfig.config);
       this.webex = new Webex(webexConfig);
 
       this.webex.once('ready', () => {

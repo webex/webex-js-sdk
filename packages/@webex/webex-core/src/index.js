@@ -11,11 +11,11 @@
 
 import './plugins/logger';
 import './lib/credentials';
-import './lib/services';
 
 export {Credentials, filterScope, grantErrors, sortScope, Token} from './lib/credentials';
 
 export {
+  initServices,
   constants as serviceConstants,
   ServiceCatalog,
   ServiceRegistry,
