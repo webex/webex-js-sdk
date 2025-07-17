@@ -6,22 +6,28 @@ import WebCallingService from '../WebCallingService';
 import {ITask, MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {METHODS} from './constants';
-import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
+import {CC_EVENTS, CC_TASK_EVENTS, WrapupData} from '../config/types';
 import {LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
+/** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
   private contact: ReturnType<typeof routingContact>;
+  /**
+   * Collection of tasks indexed by TaskId
+   * @type {Record<TaskId, ITask>}
+   * @private
+   */
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
   private metricsManager: MetricsManager;
   private static taskManager;
-
+  private wrapupData: WrapupData;
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
@@ -40,6 +46,10 @@ export default class TaskManager extends EventEmitter {
     this.metricsManager = MetricsManager.getInstance();
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
+  }
+
+  public setWrapupData(wrapupData: WrapupData) {
+    this.wrapupData = wrapupData;
   }
 
   private handleIncomingWebCall = (call: ICall) => {
@@ -83,19 +93,68 @@ export default class TaskManager extends EventEmitter {
         });
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
-            task = new Task(this.contact, this.webCallingService, {
-              ...payload.data,
-              wrapUpRequired:
-                payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp || false,
-            });
-            this.taskCollection[payload.data.interactionId] = task;
-            this.emit(TASK_EVENTS.TASK_HYDRATE, task);
+            // Case1 : Task is already present in taskCollection
+            if (this.taskCollection[payload.data.interactionId]) {
+              LoggerProxy.log(`Got AGENT_CONTACT: Task already exists in collection`, {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              });
+              break;
+            } else if (!this.taskCollection[payload.data.interactionId]) {
+              // Case2 : Task is not present in taskCollection
+              LoggerProxy.log(`Got AGENT_CONTACT : Creating new task in taskManager`, {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              });
+              task = new Task(
+                this.contact,
+                this.webCallingService,
+                {
+                  ...payload.data,
+                  wrapUpRequired:
+                    payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp ||
+                    false,
+                },
+                this.wrapupData
+              );
+              this.taskCollection[payload.data.interactionId] = task;
+              // Condition 1: The state is=new i.e it is a incoming task
+              if (payload.data.interaction.state === 'new') {
+                LoggerProxy.log(
+                  `Got AGENT_CONTACT for a task with state=new, sending TASK_INCOMING event`,
+                  {
+                    module: TASK_MANAGER_FILE,
+                    method: METHODS.REGISTER_TASK_LISTENERS,
+                    interactionId: payload.data.interactionId,
+                  }
+                );
+                this.emit(TASK_EVENTS.TASK_INCOMING, task);
+              } else {
+                // Condition 2: The state is anything else i.e the task was connected
+                LoggerProxy.log(
+                  `Got AGENT_CONTACT for a task with state=${payload.data.interaction.state}, sending TASK_HYDRATE event`,
+                  {
+                    module: TASK_MANAGER_FILE,
+                    method: METHODS.REGISTER_TASK_LISTENERS,
+                    interactionId: payload.data.interactionId,
+                  }
+                );
+                this.emit(TASK_EVENTS.TASK_HYDRATE, task);
+              }
+            }
             break;
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            task = new Task(this.contact, this.webCallingService, {
-              ...payload.data,
-              isConsulted: false,
-            }); // Ensure isConsulted prop exists
+            task = new Task(
+              this.contact,
+              this.webCallingService,
+              {
+                ...payload.data,
+                isConsulted: false,
+              },
+              this.wrapupData
+            ); // Ensure isConsulted prop exists
             this.taskCollection[payload.data.interactionId] = task;
             if (
               this.webCallingService.loginOption !== LoginOption.BROWSER ||
@@ -230,9 +289,11 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED, task);
             break;
           case CC_EVENTS.AGENT_WRAPUP:
-            task = this.updateTaskData(task, payload.data);
+            task = this.updateTaskData(task, {...payload.data, wrapUpRequired: true});
+            task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
+            task.cancelAutoWrapupTimer();
             this.removeTaskFromCollection(task);
             task.emit(TASK_EVENTS.TASK_WRAPPEDUP, task);
             break;

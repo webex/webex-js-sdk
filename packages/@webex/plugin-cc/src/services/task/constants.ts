@@ -1,3 +1,9 @@
+/**
+ * Constants for Task Service
+ * @module @webex/plugin-cc/services/task/constants
+ * @ignore
+ */
+
 export const TASK_MESSAGE_TYPE = 'RoutingMessage';
 export const TASK_API = '/v1/tasks/';
 export const HOLD = '/hold';
@@ -41,4 +47,6 @@ export const METHODS = {
   GET_TASK: 'getTask',
   GET_ALL_TASKS: 'getAllTasks',
   GET_TASK_MANAGER: 'getTaskManager',
+  SETUP_AUTO_WRAPUP_TIMER: 'setupAutoWrapupTimer',
+  CANCEL_AUTO_WRAPUP_TIMER: 'cancelAutoWrapupTimer',
 };

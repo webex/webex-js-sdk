@@ -413,6 +413,32 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_toggleEnableAudioTwccForMultistream', () => {
+      it('should have _toggleEnableAudioTwccForMultistream', () => {
+        assert.equal(typeof webex.meetings._toggleEnableAudioTwccForMultistream, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings to enable audio twcc support', () => {
+          webex.meetings._toggleEnableAudioTwccForMultistream(true);
+          assert.equal(webex.meetings.config.enableAudioTwccForMultistream, true);
+        });
+      });
+    });
+
+    describe('#_toggleStopIceGatheringAfterFirstRelayCandidate', () => {
+      it('should have _toggleStopIceGatheringAfterFirstRelayCandidate', () => {
+        assert.equal(typeof webex.meetings._toggleStopIceGatheringAfterFirstRelayCandidate, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings to stop ICE candidates gathering after first relay candidate', () => {
+          webex.meetings._toggleStopIceGatheringAfterFirstRelayCandidate(true);
+          assert.equal(webex.meetings.config.stopIceGatheringAfterFirstRelayCandidate, true);
+        });
+      });
+    });
+
     describe('Public API Contracts', () => {
       describe('#register', () => {
         it('emits an event and resolves when register succeeds', async () => {

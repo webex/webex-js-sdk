@@ -77,6 +77,7 @@ describe('internal-plugin-metrics', () => {
                       clickToInterstitial: undefined,
                       refreshCaptchaServiceReqResp: undefined,
                       downloadIntelligenceModelsReqResp: undefined,
+                      clickToInterstitialWithUserDelay: undefined,
                     },
                     name: 'client.interstitial-window.launched',
                   },

@@ -13,9 +13,12 @@ import {
 } from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
-import { glob } from 'glob';
-import { expect } from 'chai';
-import { ClientEmailInput, ClientUserNameInput } from '@webex/internal-plugin-metrics/src/metrics.types';
+import {glob} from 'glob';
+import {expect} from 'chai';
+import {
+  ClientEmailInput,
+  ClientUserNameInput,
+} from '@webex/internal-plugin-metrics/src/metrics.types';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
@@ -65,14 +68,14 @@ describe('internal-plugin-metrics', () => {
       ...fakeMeeting,
       id: '4',
       isoLocalClientMeetingJoinTime: 'testTimeString',
-    }
+    };
     const fakeMeeting5 = {
       ...fakeMeeting,
       id: '5',
       correlationId: 'correlationId5',
       sessionCorrelationId: 'sessionCorrelationId5',
       userNameInput: 'test',
-      emailInput: 'test@test.com'
+      emailInput: 'test@test.com',
     };
 
     const fakeMeetings = {
@@ -182,7 +185,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           environment: 'meeting_evn',
@@ -215,7 +218,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
             clientLaunchMethod: 'url-handler',
           },
@@ -250,7 +253,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
             clientLaunchMethod: 'url-handler',
           },
@@ -285,7 +288,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
             clientLaunchMethod: 'url-handler',
             browserLaunchMethod: 'thinclient',
@@ -313,7 +316,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           name: 'endpoint',
@@ -342,7 +345,7 @@ describe('internal-plugin-metrics', () => {
             majorVersion: 43,
             minorVersion: 9,
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           environment: 'meeting_evn',
@@ -365,7 +368,7 @@ describe('internal-plugin-metrics', () => {
             publicNetworkPrefix: '1.3.4.0',
             localNetworkPrefix: undefined,
             os: getOSNameInternal(),
-            osVersion: getOSVersion(),
+            osVersion: getOSVersion() || 'unknown',
             subClientType: 'WEB_APP',
           },
           name: 'endpoint',
@@ -823,6 +826,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
+        cd.setMercuryConnectedStatus(true);
 
         cd.submitClientEvent({
           name: 'client.alert.displayed',
@@ -844,6 +848,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -870,6 +875,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -907,6 +913,146 @@ describe('internal-plugin-metrics', () => {
               canProceed: true,
               eventData: {
                 webClientDomain: 'whatever',
+                isMercuryConnected: true,
+              },
+              identifiers: {
+                correlationId: 'correlationId',
+                deviceId: 'deviceUrl',
+                locusId: 'url',
+                locusStartTime: 'lastActive',
+                locusUrl: 'locus/url',
+                mediaAgentAlias: 'alias',
+                mediaAgentGroupId: '1',
+                orgId: 'orgId',
+                userId: 'userId',
+              },
+              loginType: 'login-ci',
+              name: 'client.alert.displayed',
+              userType: 'host',
+              isConvergedArchitectureEnabled: undefined,
+              webexSubServiceType: undefined,
+              webClientPreload: undefined,
+            },
+            eventId: 'my-fake-id',
+            origin: {
+              origin: 'fake-origin',
+            },
+            originTime: {
+              sent: 'not_defined_yet',
+              triggered: now.toISOString(),
+            },
+            senderCountryCode: 'UK',
+            version: 1,
+          },
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+      });
+
+      it('should submit client event correctly when mercury is not connected', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const validatorSpy = sinon.spy(cd, 'validator');
+        const options = {
+          meetingId: fakeMeeting.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+        cd.setMercuryConnectedStatus(false);
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.called(getIdentifiersSpy);
+        assert.calledWith(getIdentifiersSpy, {
+          meeting: fakeMeeting,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          webexConferenceIdStr: undefined,
+          sessionCorrelationId: undefined,
+          globalMeetingId: undefined,
+        });
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: false,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: false,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+        assert.calledWith(validatorSpy, {
+          type: 'ce',
+          event: {
+            event: {
+              canProceed: true,
+              eventData: {
+                webClientDomain: 'whatever',
+                isMercuryConnected: false,
               },
               identifiers: {
                 correlationId: 'correlationId',
@@ -959,7 +1105,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting3.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -980,6 +1126,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId3',
@@ -1007,6 +1154,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId3',
@@ -1045,6 +1193,7 @@ describe('internal-plugin-metrics', () => {
               canProceed: true,
               eventData: {
                 webClientDomain: 'whatever',
+                isMercuryConnected: true,
               },
               identifiers: {
                 correlationId: 'correlationId3',
@@ -1097,7 +1246,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting4.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1119,6 +1268,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1146,6 +1296,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1184,6 +1335,7 @@ describe('internal-plugin-metrics', () => {
               canProceed: true,
               eventData: {
                 webClientDomain: 'whatever',
+                isMercuryConnected: true,
               },
               identifiers: {
                 correlationId: 'correlationId',
@@ -1235,7 +1387,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting5.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1256,6 +1408,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId5',
@@ -1285,6 +1438,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId5',
@@ -1325,6 +1479,7 @@ describe('internal-plugin-metrics', () => {
               canProceed: true,
               eventData: {
                 webClientDomain: 'whatever',
+                isMercuryConnected: true,
               },
               identifiers: {
                 correlationId: 'correlationId5',
@@ -1436,7 +1591,7 @@ describe('internal-plugin-metrics', () => {
           globalMeetingId: 'globalMeetingId1',
           sessionCorrelationId: 'sessionCorrelationId1',
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1457,6 +1612,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1470,7 +1626,7 @@ describe('internal-plugin-metrics', () => {
             },
             loginType: 'login-ci',
             name: 'client.alert.displayed',
-            webClientPreload: undefined
+            webClientPreload: undefined,
           },
           options
         );
@@ -1479,6 +1635,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1492,7 +1649,7 @@ describe('internal-plugin-metrics', () => {
             },
             loginType: 'login-ci',
             name: 'client.alert.displayed',
-            webClientPreload: undefined
+            webClientPreload: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1524,7 +1681,7 @@ describe('internal-plugin-metrics', () => {
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-
+        cd.setMercuryConnectedStatus(true);
         const options = {
           correlationId: 'correlationId',
           webexConferenceIdStr: 'webexConferenceIdStr1',
@@ -1553,6 +1710,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1592,7 +1750,7 @@ describe('internal-plugin-metrics', () => {
                 webexConferenceIdStr: 'webexConferenceIdStr1',
                 globalMeetingId: 'globalMeetingId1',
               },
-              eventData: {webClientDomain: 'whatever'},
+              eventData: {webClientDomain: 'whatever', isMercuryConnected: true},
               loginType: 'login-ci',
               webClientPreload: undefined,
             },
@@ -1610,7 +1768,7 @@ describe('internal-plugin-metrics', () => {
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-
+        cd.setMercuryConnectedStatus(true);
         const options = {
           correlationId: 'correlationId',
           webexConferenceIdStr: 'webexConferenceIdStr1',
@@ -1641,6 +1799,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1682,7 +1841,7 @@ describe('internal-plugin-metrics', () => {
                 webexConferenceIdStr: 'webexConferenceIdStr1',
                 globalMeetingId: 'globalMeetingId1',
               },
-              eventData: {webClientDomain: 'whatever'},
+              eventData: {webClientDomain: 'whatever', isMercuryConnected: true},
               loginType: 'login-ci',
               userNameInput: 'current',
               emailInput: 'current',
@@ -1700,7 +1859,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting2.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1711,6 +1870,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId2',
@@ -1752,7 +1912,7 @@ describe('internal-plugin-metrics', () => {
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
           sessionCorrelationId: 'sessionCorrelationId1',
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1763,6 +1923,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId2',
@@ -1811,7 +1972,7 @@ describe('internal-plugin-metrics', () => {
           globalMeetingId: 'globalMeetingId1',
           sessionCorrelationId: 'sessionCorrelationId1',
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1824,6 +1985,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1846,6 +2008,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1889,7 +2052,7 @@ describe('internal-plugin-metrics', () => {
             },
           },
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1900,6 +2063,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -1968,7 +2132,7 @@ describe('internal-plugin-metrics', () => {
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
           rawError: new Error('bad times'),
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -1979,6 +2143,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -2047,7 +2212,7 @@ describe('internal-plugin-metrics', () => {
           correlationId: 'correlationId',
           rawError: new Error('bad times'),
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -2058,6 +2223,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -2124,7 +2290,7 @@ describe('internal-plugin-metrics', () => {
             },
           },
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           options,
@@ -2135,6 +2301,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -2194,7 +2361,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
         };
-
+        cd.setMercuryConnectedStatus(true);
         cd.submitClientEvent({
           name: 'client.alert.displayed',
           payload: {
@@ -2215,6 +2382,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
+              isMercuryConnected: true,
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -2371,7 +2539,7 @@ describe('internal-plugin-metrics', () => {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',
               mediaEngineSoftwareType: 'browser',
-              mediaEngineSoftwareVersion: getOSVersion(),
+              mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
               startTime: now.toISOString(),
             },
           },
@@ -2410,7 +2578,7 @@ describe('internal-plugin-metrics', () => {
                 applicationSoftwareType: 'webex-js-sdk',
                 applicationSoftwareVersion: 'webex-version',
                 mediaEngineSoftwareType: 'browser',
-                mediaEngineSoftwareVersion: getOSVersion(),
+                mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
                 startTime: now.toISOString(),
               },
             },
@@ -2447,7 +2615,7 @@ describe('internal-plugin-metrics', () => {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',
               mediaEngineSoftwareType: 'browser',
-              mediaEngineSoftwareVersion: getOSVersion(),
+              mediaEngineSoftwareVersion: getOSVersion() || 'unknown',
               startTime: now.toISOString(),
             },
           },
@@ -2574,7 +2742,7 @@ describe('internal-plugin-metrics', () => {
           name: 'other',
           rawErrorMessage: 'bad times',
           errorDescription: 'UnknownError',
-        }
+        };
 
         const [res, cached] = cd.generateClientEventErrorPayload(error);
         assert.isFalse(cached);
@@ -2903,7 +3071,10 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should return unknown error otherwise', () => {
-        const [res, cached] = cd.generateClientEventErrorPayload({something: 'new', message: 'bad times'});
+        const [res, cached] = cd.generateClientEventErrorPayload({
+          something: 'new',
+          message: 'bad times',
+        });
         assert.deepEqual(res, {
           category: 'other',
           errorDescription: 'UnknownError',
@@ -3251,7 +3422,7 @@ describe('internal-plugin-metrics', () => {
             meetingId: fakeMeeting.id,
             preLoginId,
           };
-
+          cd.setMercuryConnectedStatus(true);
           const triggered = new Date();
           const fetchOptions = await cd.buildClientEventFetchRequestOptions({
             name: 'client.exit.app',
@@ -3267,6 +3438,7 @@ describe('internal-plugin-metrics', () => {
                     canProceed: false,
                     eventData: {
                       webClientDomain: 'whatever',
+                      isMercuryConnected: true,
                     },
                     identifiers: {
                       correlationId: 'correlationId',
@@ -3294,7 +3466,7 @@ describe('internal-plugin-metrics', () => {
                       localNetworkPrefix: '192.168.1.80',
                       publicNetworkPrefix: '1.3.4.0',
                       os: getOSNameInternal() || 'unknown',
-                      osVersion: getOSVersion(),
+                      osVersion: getOSVersion() || 'unknown',
                       subClientType: 'WEB_APP',
                     },
                     environment: 'meeting_evn',
@@ -3573,7 +3745,7 @@ describe('internal-plugin-metrics', () => {
 
         const overrides = {
           correlationId: 'newCorrelationId',
-        }
+        };
 
         cd.submitClientEvent({
           name: 'client.alert.displayed',
@@ -3633,6 +3805,221 @@ describe('internal-plugin-metrics', () => {
 
         // should not call submitClientEvent again if delayedClientEvents was cleared
         assert.notCalled(submitClientEventSpy);
+      });
+    });
+
+    describe('#submitFeatureEvent', () => {
+      it('should submit feature event successfully with meetingId', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallFeaturesSpy = sinon.spy(cd, 'submitToCallFeatures');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        const options = {
+          meetingId: fakeMeeting.id,
+        };
+        cd.setMercuryConnectedStatus(true);
+
+        cd.submitFeatureEvent({
+          name: 'client.feature.meeting.summary',
+          payload: {
+            meetingSummaryInfo: {
+              featureName: 'syncSystemMuteStatus',
+              featureActions: [{
+                actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                actionId: '14200',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+          },
+          options,
+        });
+
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            name: 'client.feature.meeting.summary',
+            canProceed: true,
+            identifiers: {
+              correlationId: 'correlationId',
+              userId: 'userId',
+              deviceId: 'deviceUrl',
+              orgId: 'orgId',
+              locusUrl: 'locus/url',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+            },
+            eventData: { webClientDomain: 'whatever'},
+            userType: 'host',
+            loginType: 'login-ci',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+            meetingSummaryInfo: {
+              featureName: 'syncSystemMuteStatus',
+              featureActions: [{
+                actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                actionId: '14200',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+            key: "UcfFeatureUsage",
+          },
+          options
+        );
+
+        assert.calledWith(submitToCallFeaturesSpy, {
+          eventId: 'my-fake-id',
+          version: 1,
+          origin: {
+            origin: 'fake-origin',
+          },
+          event: {
+            canProceed: true,
+            eventData: { webClientDomain: 'whatever'},
+            identifiers: {
+              correlationId: 'correlationId',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.feature.meeting.summary',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+            meetingSummaryInfo: {
+              featureName: 'syncSystemMuteStatus',
+              featureActions: [{
+                actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                actionId: '14200',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+            key: "UcfFeatureUsage",
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events-feature -> ',
+          'CallFeatureMetrics: @submitFeatureEvent. Submit Client Feature Event CA event.',
+          `name: client.feature.meeting.summary`,
+        ]);
+      });
+    });
+
+    describe('#submitDelayedClientFeatureEvents', () => {
+      it('does not call submitFeatureEvent if there were no delayed events', () => {
+        const submitFeatureEventSpy = sinon.spy(cd, 'submitFeatureEvent');
+
+        cd.submitDelayedClientFeatureEvents();
+
+        assert.notCalled(submitFeatureEventSpy);
+      });
+
+      it('calls submitFeatureEvent for every delayed event and clears delayedClientFeatureEvents array', () => {
+        const submitFeatureEventSpy = sinon.spy(cd, 'submitFeatureEvent');
+        const submitToCallFeaturesSpy = sinon.spy(cd, 'submitToCallFeatures');
+
+        const options = {
+          meetingId: 'meetingId',
+        };
+
+        cd.submitFeatureEvent({
+          name: 'client.feature.meeting.summary',
+          options,
+          payload: {
+            meetingSummaryInfo: {
+              featureName: 'syncSystemMuteStatus',
+              featureActions: [{
+                actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                actionId: '14200',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+          },
+          delaySubmitEvent: true,
+        });
+
+        cd.submitFeatureEvent({
+          name: 'client.feature.meeting.summary',
+          options,
+          payload: {
+            meetingSummaryInfo: {
+              featureName: 'syncSystemVideoStatus',
+              featureActions: [{
+                actionName: 'syncMeetingVideoUnmuteStatusToSystem',
+                actionId: '13400',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+          },
+          delaySubmitEvent: true,
+        });
+
+        assert.notCalled(submitToCallFeaturesSpy);
+        assert.calledTwice(submitFeatureEventSpy);
+        submitFeatureEventSpy.resetHistory();
+
+        cd.submitDelayedClientFeatureEvents();
+
+        assert.calledTwice(submitFeatureEventSpy);
+        assert.calledWith(submitFeatureEventSpy.firstCall, {
+          name: 'client.feature.meeting.summary',
+          payload: {
+            meetingSummaryInfo: {
+              featureName: 'syncSystemMuteStatus',
+              featureActions: [{
+                actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                actionId: '14200',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+          },
+          options: {
+            meetingId: 'meetingId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        assert.calledWith(submitFeatureEventSpy.secondCall, {
+          name: 'client.feature.meeting.summary',
+          payload: {
+            meetingSummaryInfo: {
+              featureName: 'syncSystemVideoStatus',
+              featureActions: [{
+                actionName: 'syncMeetingVideoUnmuteStatusToSystem',
+                actionId: '13400',
+                isInitialValue: false,
+                clickCount: '1'
+              }]
+            },
+          },
+          options: {
+            meetingId: 'meetingId',
+            triggeredTime: now.toISOString(),
+          },
+        });
+        submitFeatureEventSpy.resetHistory();
+
+        cd.submitDelayedClientFeatureEvents();
+
+        // should not call submitFeatureEventSpy again if delayedClientFeatureEvents was cleared
+        assert.notCalled(submitFeatureEventSpy);
       });
     });
   });

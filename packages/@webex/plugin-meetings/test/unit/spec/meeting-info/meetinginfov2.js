@@ -511,6 +511,7 @@ describe('plugin-meetings', () => {
             password: 'abc',
             captchaID: '999',
             captchaVerifyCode: 'aabbcc11',
+            disableWebRedirect: true,
           },
         });
         assert.deepEqual(result, requestResponse);
@@ -544,6 +545,7 @@ describe('plugin-meetings', () => {
             supportCountryList: true,
             meetingKey: '1234323',
             installedOrgID,
+            disableWebRedirect: true,
           },
         });
         assert.deepEqual(result, requestResponse);
@@ -578,6 +580,7 @@ describe('plugin-meetings', () => {
             supportCountryList: true,
             meetingKey: '1234323',
             locusId,
+            disableWebRedirect: true,
           },
         });
         assert.deepEqual(result, requestResponse);
@@ -613,6 +616,7 @@ describe('plugin-meetings', () => {
             supportCountryList: true,
             meetingKey: '1234323',
             ...extraParams,
+            disableWebRedirect: true,
           },
         });
         assert.deepEqual(result, requestResponse);
@@ -843,6 +847,7 @@ describe('plugin-meetings', () => {
                 supportCountryList: true,
                 meetingKey: '1234323',
                 ...extraParams,
+                disableWebRedirect: true,
               },
             });
             assert.deepEqual(result, requestResponse);
@@ -922,6 +927,7 @@ describe('plugin-meetings', () => {
             supportCountryList: true,
             meetingKey: '1234323',
             ...extraParams,
+            disableWebRedirect: true,
           },
         });
         assert.deepEqual(result, requestResponse);
@@ -1064,6 +1070,41 @@ describe('plugin-meetings', () => {
           await runTest(423001, false);
         });
       });
+
+      describe('should stop call fetchMeetingInfo if siteFullUrl is empty for 404 response', () => {
+
+        const runTest = async (wbxAppApiCode, expectedIsPasswordRequired) => {
+          webex.request = sinon.stub().rejects({
+            statusCode: 404,
+            body: {
+              code: wbxAppApiCode,
+              message: 'Alternate Meeting Server',
+              data: {
+                'siteFullUrl': ''
+              }
+            },
+          });
+
+
+          try {
+            await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, 'abc', {
+              id: '999',
+              code: 'aabbcc11',
+            });
+            assert.fail('fetchMeetingInfo should have thrown, but has not done that');
+          } catch (err) {
+            assert(Metrics.sendBehavioralMetric.calledOnce);
+            assert.deepEqual(err.body.data, {
+              siteFullUrl: ''
+            });
+          }
+        };
+
+        it('should throw MeetingInfoV2CaptchaError for 404 response (wbxappapi code 404100)', async () => {
+          await runTest(404100, false);
+        });
+      });
+
 
       it('should throw an error and not fetch with an "empty" body', async () => {
         const body = {supportHostKey: 'foo', supportCountryList: 'bar'};

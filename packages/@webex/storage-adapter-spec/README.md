@@ -1,14 +1,6 @@
 # @webex/storage-adapter-spec
 
-[![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-
-> Blackbox test suite for storage adapters
-
-- [Install](#install)
-- [Usage](#usage)
-- [Contribute](#contribute)
-- [Maintainers](#maintainers)
-- [License](#license)
+Test suite for storage adapter implementations in the Webex SDK.
 
 ## Install
 
@@ -18,6 +10,8 @@ npm install --save-dev @webex/storage-adapter-spec
 
 ## Usage
 
+This package provides a standard test suite to verify storage adapter implementations.
+
 ```js
 import runAbstractStorageAdapterSpec from '@webex/storage-adapter-spec';
 import MyStorageAdapter from './my-storage-adapter';
@@ -25,16 +19,27 @@ import MyStorageAdapter from './my-storage-adapter';
 describe('MyStorageAdapter', () => {
   runAbstractStorageAdapterSpec(new MyStorageAdapter('test'));
 });
-
-## Maintainers
-
-This package is maintained by [Cisco Webex for Developers](https://developer.webex.com/).
-
-## Contribute
-
-Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md) for more details.
-
-## License
-
-© 2016-2020 Cisco and/or its affiliates. All Rights Reserved.
 ```
+
+## What it Tests
+
+The test suite verifies that your storage adapter correctly implements:
+
+- Data storage and retrieval
+- Key-value operations (put, get, del)
+- Namespace isolation
+- Error handling for missing keys
+- Clear functionality
+
+## Creating Custom Adapters
+
+Your storage adapter should implement:
+
+- `bind(namespace, options)` - Return a bound storage interface
+- Bound interface methods: `put(key, value)`, `get(key)`, `del(key)`, `clear()`
+
+The test suite will validate these operations work correctly and handle edge cases properly.
+
+## Usage in Testing
+
+Include this spec in your adapter's test suite to ensure compatibility with the Webex SDK storage system.

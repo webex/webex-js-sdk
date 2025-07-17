@@ -302,6 +302,26 @@ describe('plugin-meetings', () => {
         });
       });
 
+      it('returns the correct body with phone number and isInternalNumber', () => {
+        const options = {
+          invitee: {
+            phoneNumber: '1234567890',
+            isInternalNumber: false
+          },
+          alertIfActive: false,
+        };
+
+        assert.deepEqual(MembersUtil.getAddMemberBody(options), {
+          invitees: [
+            {
+              address: '1234567890',
+              isInternalNumber: false
+            },
+          ],
+          alertIfActive: false,
+        });
+      });
+
       it('returns the correct body with fallback to email', () => {
         const options = {
           invitee: {
@@ -385,6 +405,48 @@ describe('plugin-meetings', () => {
 
         assert.deepEqual(MembersUtil.getMoveMemberToLobbyRequestParams(options, body), {
           method: HTTP_VERBS.PATCH,
+          uri,
+          body,
+        });
+      });
+    });
+
+    describe('#cancelInviteByMemberIdOptions', () => {
+      it('returns the correct options', () => {
+        const locusUrl = 'TestLocusUrl';
+        const memberId = 'test';
+        const invitee = {memberId, isInternalNumber: false};
+
+        assert.deepEqual(
+          MembersUtil.cancelInviteByMemberIdOptions(
+            invitee,
+            locusUrl
+          ),
+          {
+            invitee,
+            locusUrl,
+          }
+        );
+      });
+    });
+
+    describe('#generateCancelInviteByMemberIdRequestParams', () => {
+      it('returns the correct params', () => {
+        const locusUrl = 'TestLocusUrl';
+        const memberId = 'test';
+        const options = {
+          locusUrl,
+          invitee: {memberId, isInternalNumber: false}
+        };
+        const body = {
+          actionType: 'REMOVE',
+          invitees: [{address: options.invitee.memberId, isInternalNumber: false}],
+        };
+
+        const uri = options.locusUrl;
+
+        assert.deepEqual(MembersUtil.generateCancelInviteByMemberIdRequestParams(options), {
+          method: HTTP_VERBS.PUT,
           uri,
           body,
         });
