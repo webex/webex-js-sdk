@@ -13,6 +13,7 @@ import WebexCore, {
 } from '@webex/webex-core';
 import {set} from 'lodash';
 import {version} from '@webex/webex-core/package';
+import {initServices} from '@webex/webex-core';
 // TODO:  fix circular dependency core->metrics->core https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-515520
 require('@webex/internal-plugin-metrics');
 
@@ -231,6 +232,7 @@ describe('Webex', () => {
       ([message, interceptorsConfig, expectedNumberOfInterceptors, expectedInterceptorNames]) => {
         it(message, async () => {
           const requestOptions = {method: 'GET', url: 'https://fake-url.webex.com'};
+          initServices({integration: false});
           const webex = new WebexCore({
             config: interceptorsConfig,
           });

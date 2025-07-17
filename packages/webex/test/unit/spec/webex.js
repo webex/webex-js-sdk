@@ -5,6 +5,7 @@ import 'jsdom-global/register';
 
 import {assert} from '@webex/test-helper-chai';
 import Webex from 'webex';
+import {initServices} from '@webex/webex-core';
 // As part of npm its trying to pull all the dependencies, internal-media-core
 // tries to access the winow object which causes the test to fail. Mocking the
 // whole plugin-meetings package.
@@ -58,6 +59,7 @@ describe('webex', () => {
       });
 
       it('sets correct services when fedramp is true', () => {
+        initServices({integration: false});
         webex = Webex.init({
           config: {
             fedramp: true,
