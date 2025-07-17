@@ -509,6 +509,7 @@ export async function handleCallingClientErrors(
   loggerContext: LogContext,
   retryTimer?: number
 ): Promise<boolean> {
+  console.debug('Failed with error in utils: ', err);
   const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
@@ -525,6 +526,7 @@ export async function handleCallingClientErrors(
         clientError
       );
 
+      console.debug('failed with 401');
       emitterCb(clientError, finalError);
       break;
     }

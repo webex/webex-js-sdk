@@ -232,6 +232,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     let abort;
     let retryTimer = 0;
     let retryDiscovery = false;
+    let success = false;
     log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.GET_CLIENT_REGION_INFO,
@@ -279,6 +280,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           regionInfo.countryCode = clientRegionInfo?.countryCode
             ? clientRegionInfo.countryCode
             : '';
+          success = true;
           break;
         } catch (err: unknown) {
           const extendedError = new Error(
@@ -308,21 +310,26 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
             {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE},
             retryTimer
           );
+
           regionInfo.clientRegion = '';
           regionInfo.countryCode = '';
 
+          if (abort) {
+            return regionInfo;
+          }
+
           if (retryTimer) {
+            retryDiscovery = (err as WebexRequestPayload)?.uri?.includes(DISCOVERY_URL) ?? false;
+            console.debug('retry timer received: ', retryTimer, retryDiscovery);
             // eslint-disable-next-line no-await-in-loop, no-loop-func
             await new Promise((resolve) => {
               setTimeout(resolve, retryTimer * 1000);
             });
-            retryDiscovery = (err as WebexRequestPayload)?.uri?.includes(DISCOVERY_URL) ?? false;
           }
         }
       } while (retryTimer > 0 && !abort);
-
-      if (abort) {
-        return regionInfo;
+      if (success) {
+        break;
       }
     }
 
