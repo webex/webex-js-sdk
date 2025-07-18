@@ -461,7 +461,7 @@ export default class Reachability extends EventsScope {
   /**
    * Reachability results as an object in the format that backend expects
    *
-   * @returns {Promise<ReachabilityResultsForBackend | undefined>} reachability results that need to be sent to the backend
+   * @returns {any} reachability results that need to be sent to the backend
    */
   async getReachabilityResults(): Promise<ReachabilityResultsForBackend | undefined> {
     let results: ReachabilityResultsForBackend;
@@ -870,7 +870,6 @@ export default class Reachability extends EventsScope {
       return transformed;
     });
 
-    // Store the transformed results (with serverIps) in localStorage
     // @ts-ignore
     await this.webex.boundedStorage.put(
       this.namespace,

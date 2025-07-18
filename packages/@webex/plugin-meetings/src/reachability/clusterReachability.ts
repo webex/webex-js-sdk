@@ -324,7 +324,6 @@ export class ClusterReachability extends EventsScope {
       this.addPublicIP(protocol, publicIp);
     }
 
-    // Updating the details array directly
     const subnet = this.result[protocol].details.find(
       (s) => s.serverIp === serverIp && s.port === port
     );
@@ -450,6 +449,8 @@ export class ClusterReachability extends EventsScope {
       return this.result;
     }
 
+    // Initialize each protocol in this.result as saying that nothing is reachable.
+    // It will get updated as we go along and successfully gather ICE candidates.
     this.result.udp.result = this.numUdpUrls > 0 ? 'unreachable' : 'untested';
     this.result.tcp.result = this.numTcpUrls > 0 ? 'unreachable' : 'untested';
     this.result.xtls.result = this.numXTlsUrls > 0 ? 'unreachable' : 'untested';
