@@ -99,6 +99,7 @@ export default class LocusInfo extends EventsScope {
   private doLocusSync(meeting: any) {
     let isDelta;
     let url;
+    let meetingDestroyed = false;
 
     if (this.locusParser.workingCopy.syncUrl) {
       url = this.locusParser.workingCopy.syncUrl;
@@ -134,18 +135,27 @@ export default class LocusInfo extends EventsScope {
 
           isDelta = false;
 
-          return meeting.meetingRequest.getLocusDTO({url: meeting.locusUrl}).catch((err) => {
-            LoggerProxy.logger.info(
-              'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
-            );
-            this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
-            throw err;
-          });
+          // Locus sometimes returns 403, for example if meeting has ended, no point trying the fallback to full sync in that case
+          if (e.statusCode !== 403) {
+            return meeting.meetingRequest.getLocusDTO({url: meeting.locusUrl}).catch((err) => {
+              LoggerProxy.logger.info(
+                'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
+              );
+              this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+              meetingDestroyed = true;
+              throw err;
+            });
+          }
+          LoggerProxy.logger.info(
+            'Locus-info:index#doLocusSync --> got 403 from Locus, skipping fallback to full sync, destroying the meeting'
+          );
+        } else {
+          LoggerProxy.logger.info(
+            'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
+          );
         }
-        LoggerProxy.logger.info(
-          'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
-        );
         this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+        meetingDestroyed = true;
         throw e;
       })
       .then((res) => {
@@ -176,9 +186,11 @@ export default class LocusInfo extends EventsScope {
         });
       })
       .finally(() => {
-        // Notify parser to resume processing delta events.
-        // Any deltas in the queue that have now been superseded by this sync will simply be ignored
-        this.locusParser.resume();
+        if (!meetingDestroyed) {
+          // Notify parser to resume processing delta events.
+          // Any deltas in the queue that have now been superseded by this sync will simply be ignored
+          this.locusParser.resume();
+        }
       });
   }
 

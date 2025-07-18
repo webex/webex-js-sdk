@@ -2,6 +2,7 @@ import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
+import webWorkerStr from './webWorkerStr';
 
 import {
   IMetricManager,
@@ -25,6 +26,7 @@ import {
   ServiceData,
   ServiceIndicator,
   WebexRequestPayload,
+  WorkerMessageType,
 } from '../../common/types';
 import {ISDKConnector, WebexSDK} from '../../SDKConnector/types';
 import {
@@ -74,9 +76,7 @@ export class Registration implements IRegistration {
   private failbackTimer?: NodeJS.Timer;
   private activeMobiusUrl!: string;
 
-  private keepaliveTimer: NodeJS.Timer | undefined;
   private rehomingIntervalMin: number;
-
   private rehomingIntervalMax: number;
   private mutex: Mutex;
   private metricManager: IMetricManager;
@@ -92,6 +92,7 @@ export class Registration implements IRegistration {
   private failoverImmediately = false;
   private retryAfter: number | undefined;
   private scheduled429Retry = false;
+  private webWorker: Worker | undefined;
 
   /**
    */
@@ -144,22 +145,6 @@ export class Registration implements IRegistration {
     log.log(METHOD_START_MESSAGE, {method: METHODS.SET_MOBIUS_SERVERS, file: REGISTRATION_FILE});
     this.primaryMobiusUris = primaryMobiusUris;
     this.backupMobiusUris = backupMobiusUris;
-  }
-
-  /**
-   *  Implementation of sending keepalive.
-   *
-   */
-  private async postKeepAlive(url: string) {
-    return <WebexRequestPayload>this.webex.request({
-      uri: `${url}/status`,
-      method: HTTP_METHODS.POST,
-      headers: {
-        [CISCO_DEVICE_URL]: this.webex.internal.device.url,
-        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-      },
-      service: ALLOWED_SERVICES.MOBIUS,
-    });
   }
 
   /**
@@ -747,81 +732,96 @@ export class Registration implements IRegistration {
    * This method sets up a timer to periodically send keep-alive requests to maintain a connection.
    * It handles retries, error handling, and re-registration attempts based on the response, ensuring continuous connectivity with the server.
    */
-  private startKeepaliveTimer(url: string, interval: number, serverType: SERVER_TYPE) {
-    let keepAliveRetryCount = 0;
+  private async startKeepaliveTimer(url: string, interval: number, serverType: SERVER_TYPE) {
     this.clearKeepaliveTimer();
     const RETRY_COUNT_THRESHOLD = this.isCCFlow ? 4 : 5;
 
-    this.keepaliveTimer = setInterval(async () => {
-      const logContext = {
-        file: REGISTRATION_FILE,
-        method: KEEPALIVE_UTIL,
-      };
-      await this.mutex.runExclusive(async () => {
-        if (this.isDeviceRegistered() && keepAliveRetryCount < RETRY_COUNT_THRESHOLD) {
-          try {
-            const res = await this.postKeepAlive(url);
-            log.log(`Sent Keepalive, status: ${res.statusCode}`, logContext);
-            if (keepAliveRetryCount > 0) {
+    await this.mutex.runExclusive(async () => {
+      if (this.isDeviceRegistered()) {
+        const accessToken = await this.webex.credentials.getUserToken();
+
+        if (!this.webWorker) {
+          const blob = new Blob([webWorkerStr], {type: 'application/javascript'});
+          const blobUrl = URL.createObjectURL(blob);
+          this.webWorker = new Worker(blobUrl);
+          URL.revokeObjectURL(blobUrl);
+
+          this.webWorker.postMessage({
+            type: WorkerMessageType.START_KEEPALIVE,
+            accessToken: String(accessToken),
+            deviceUrl: String(this.webex.internal.device.url),
+            interval,
+            retryCountThreshold: RETRY_COUNT_THRESHOLD,
+            url,
+          });
+
+          this.webWorker.onmessage = async (event: MessageEvent) => {
+            const logContext = {
+              file: REGISTRATION_FILE,
+              method: this.startKeepaliveTimer.name,
+            };
+            if (event.data.type === WorkerMessageType.KEEPALIVE_SUCCESS) {
+              log.info(`Sent Keepalive, status: ${event.data.statusCode}`, logContext);
               this.lineEmitter(LINE_EVENTS.RECONNECTED);
             }
-            keepAliveRetryCount = 0;
-          } catch (err: unknown) {
-            keepAliveRetryCount += 1;
-            const error = <WebexRequestPayload>err;
 
-            log.warn(
-              `Keep-alive missed ${keepAliveRetryCount} times. Status -> ${error.statusCode} `,
-              logContext
-            );
+            if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
+              const error = <WebexRequestPayload>event.data.err;
+              log.warn(
+                `Keep-alive missed ${event.data.keepAliveRetryCount} times. Status -> ${error.statusCode} `,
+                logContext
+              );
 
-            const abort = await handleRegistrationErrors(
-              error,
-              (clientError, finalError) => {
-                if (finalError) {
-                  this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+              const abort = await handleRegistrationErrors(
+                error,
+                (clientError, finalError) => {
+                  if (finalError) {
+                    this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+                  }
+
+                  this.metricManager.submitRegistrationMetric(
+                    METRIC_EVENT.REGISTRATION,
+                    REG_ACTION.KEEPALIVE_FAILURE,
+                    METRIC_TYPE.BEHAVIORAL,
+                    KEEPALIVE_UTIL,
+                    serverType,
+                    error.headers?.trackingid ?? '',
+                    event.data.keepAliveRetryCount,
+                    clientError
+                  );
+                },
+                {method: KEEPALIVE_UTIL, file: REGISTRATION_FILE}
+              );
+
+              if (abort || event.data.keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
+                this.failoverImmediately = this.isCCFlow;
+                this.setStatus(RegistrationStatus.INACTIVE);
+                this.clearKeepaliveTimer();
+                this.clearFailbackTimer();
+                this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+
+                if (!abort) {
+                  /* In case of non-final error, re-attempt registration */
+                  await this.reconnectOnFailure(KEEPALIVE_UTIL);
                 }
-                this.metricManager.submitRegistrationMetric(
-                  METRIC_EVENT.REGISTRATION,
-                  REG_ACTION.KEEPALIVE_FAILURE,
-                  METRIC_TYPE.BEHAVIORAL,
-                  KEEPALIVE_UTIL,
-                  serverType,
-                  error.headers?.trackingid ?? '',
-                  keepAliveRetryCount,
-                  clientError
-                );
-              },
-              {method: KEEPALIVE_UTIL, file: REGISTRATION_FILE}
-            );
-
-            if (abort || keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
-              this.failoverImmediately = this.isCCFlow;
-              this.setStatus(RegistrationStatus.INACTIVE);
-              this.clearKeepaliveTimer();
-              this.clearFailbackTimer();
-              this.lineEmitter(LINE_EVENTS.UNREGISTERED);
-
-              if (!abort) {
-                /* In case of non-final error, re-attempt registration */
-                await this.reconnectOnFailure(KEEPALIVE_UTIL);
+              } else {
+                this.lineEmitter(LINE_EVENTS.RECONNECTING);
               }
-            } else {
-              this.lineEmitter(LINE_EVENTS.RECONNECTING);
             }
-          }
+          };
         }
-      });
-    }, interval * 1000);
+      }
+    });
   }
 
   /**
    * Clears the keepalive timer if running.
    */
   public clearKeepaliveTimer() {
-    if (this.keepaliveTimer) {
-      clearInterval(this.keepaliveTimer);
-      this.keepaliveTimer = undefined;
+    if (this.webWorker) {
+      this.webWorker.postMessage({type: WorkerMessageType.CLEAR_KEEPALIVE});
+      this.webWorker.terminate();
+      this.webWorker = undefined;
     }
   }
 
