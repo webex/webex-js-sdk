@@ -341,16 +341,10 @@ describe('CallingClient Tests', () => {
         method: 'GET',
       });
 
-      console.debug(handleErrorSpy.mock.calls);
-      expect(handleErrorSpy).toBeCalledWith(
-        failurePayload,
-        expect.anything(),
-        {
-          file: CALLING_CLIENT_FILE,
-          method: 'getMobiusServers',
-        },
-        expect.anything()
-      );
+      expect(handleErrorSpy).toBeCalledWith(failurePayload, expect.anything(), {
+        file: CALLING_CLIENT_FILE,
+        method: 'getMobiusServers',
+      });
 
       expect(callingClient.primaryMobiusUris).toEqual([
         `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
@@ -377,15 +371,10 @@ describe('CallingClient Tests', () => {
         method: 'GET',
       });
 
-      expect(handleErrorSpy).toBeCalledOnceWith(
-        failurePayload,
-        expect.anything(),
-        {
-          file: CALLING_CLIENT_FILE,
-          method: 'getMobiusServers',
-        },
-        expect.anything()
-      );
+      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
+        file: CALLING_CLIENT_FILE,
+        method: 'getMobiusServers',
+      });
 
       expect(callingClient.primaryMobiusUris).toEqual([
         `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
@@ -483,6 +472,45 @@ describe('CallingClient Tests', () => {
           [SPARK_USER_AGENT]: null,
         },
       });
+
+      expect(warnSpy).toBeCalledWith(
+        `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
+        ''
+      );
+    });
+
+    it('case when discovery failed with 401', async () => {
+      const failurePayload = {
+        statusCode: 401,
+      };
+
+      webex.request.mockResolvedValueOnce(ipPayload).mockRejectedValueOnce(failurePayload);
+
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(webex.request).nthCalledWith(1, {
+        ...getMockRequestTemplate(),
+        uri: 'https://mobius-us-east-1.prod.infra.webex.com/api/v1/calling/web/myip',
+        method: 'GET',
+      });
+
+      expect(webex.request).nthCalledWith(2, {
+        method: 'GET',
+        uri: `${DISCOVERY_URL}/${myIP}`,
+        addAuthHeader: false,
+        headers: {
+          [SPARK_USER_AGENT]: null,
+        },
+      });
+
+      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
+        file: CALLING_CLIENT_FILE,
+        method: 'getMobiusServers',
+      });
+
+      expect(callingClient.primaryMobiusUris).toEqual([
+        `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
+      ]);
 
       expect(warnSpy).toBeCalledWith(
         `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,

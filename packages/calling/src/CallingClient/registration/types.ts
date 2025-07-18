@@ -11,8 +11,6 @@ export type restoreRegistrationCallBack = (
 
 export type retry429CallBack = (retryAfter: number, caller: string) => void;
 
-export type retry429Cb = (retryAfter: number) => void;
-
 /**
  * Represents an interface for managing registration-related operations.
  */

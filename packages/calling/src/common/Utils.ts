@@ -5,11 +5,7 @@ import * as platform from 'platform';
 import {METRIC_EVENT, METRIC_TYPE, UPLOAD_LOGS_ACTION} from '../Metrics/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 import {getMetricManager} from '../Metrics';
-import {
-  restoreRegistrationCallBack,
-  retry429CallBack,
-  retry429Cb,
-} from '../CallingClient/registration/types';
+import {restoreRegistrationCallBack, retry429CallBack} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
 import {
@@ -510,8 +506,7 @@ export async function handleRegistrationErrors(
 export async function handleCallingClientErrors(
   err: WebexRequestPayload,
   emitterCb: CallingClientErrorEmitterCallback,
-  loggerContext: LogContext,
-  set429RetryTimer?: retry429Cb
+  loggerContext: LogContext
 ): Promise<boolean> {
   const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
@@ -533,26 +528,26 @@ export async function handleCallingClientErrors(
       break;
     }
 
-    case ERROR_CODE.TOO_MANY_REQUESTS: {
-      log.warn(`429 Too Many Requests`, loggerContext);
-      updateErrorContext(
-        loggerContext,
-        ERROR_TYPE.TOO_MANY_REQUESTS,
-        'Server is handling too many request at the time. Wait a moment and try again',
-        clientError
-      );
+    // case ERROR_CODE.TOO_MANY_REQUESTS: {
+    //   log.warn(`429 Too Many Requests`, loggerContext);
+    //   updateErrorContext(
+    //     loggerContext,
+    //     ERROR_TYPE.TOO_MANY_REQUESTS,
+    //     'Server is handling too many request at the time. Wait a moment and try again',
+    //     clientError
+    //   );
 
-      if (err.headers) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const retryTimer = Number(err.headers['retry-after']);
-        if (set429RetryTimer) {
-          set429RetryTimer(retryTimer);
-        }
-      }
+    //   if (err.headers) {
+    //     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    //     const retryTimer = Number(err.headers['retry-after']);
+    //     if (set429RetryTimer) {
+    //       set429RetryTimer(retryTimer);
+    //     }
+    //   }
 
-      emitterCb(clientError, finalError);
-      break;
-    }
+    //   emitterCb(clientError, finalError);
+    //   break;
+    // }
 
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
       log.warn(`500 Internal Server Error`, loggerContext);
