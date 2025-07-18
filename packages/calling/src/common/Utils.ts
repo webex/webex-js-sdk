@@ -5,7 +5,11 @@ import * as platform from 'platform';
 import {METRIC_EVENT, METRIC_TYPE, UPLOAD_LOGS_ACTION} from '../Metrics/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 import {getMetricManager} from '../Metrics';
-import {restoreRegistrationCallBack, retry429CallBack} from '../CallingClient/registration/types';
+import {
+  restoreRegistrationCallBack,
+  retry429CallBack,
+  retry429Cb,
+} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
 import {
@@ -507,9 +511,8 @@ export async function handleCallingClientErrors(
   err: WebexRequestPayload,
   emitterCb: CallingClientErrorEmitterCallback,
   loggerContext: LogContext,
-  retryTimer?: number
+  set429RetryTimer?: retry429Cb
 ): Promise<boolean> {
-  console.debug('Failed with error in utils: ', err);
   const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
@@ -518,7 +521,7 @@ export async function handleCallingClientErrors(
   switch (errorCode) {
     case ERROR_CODE.UNAUTHORIZED: {
       finalError = true;
-      log.warn(`401 Unauthrized`, loggerContext);
+      log.warn(`401 Unauthorized`, loggerContext);
       updateErrorContext(
         loggerContext,
         ERROR_TYPE.TOKEN_ERROR,
@@ -526,7 +529,6 @@ export async function handleCallingClientErrors(
         clientError
       );
 
-      console.debug('failed with 401');
       emitterCb(clientError, finalError);
       break;
     }
@@ -535,14 +537,17 @@ export async function handleCallingClientErrors(
       log.warn(`429 Too Many Requests`, loggerContext);
       updateErrorContext(
         loggerContext,
-        ERROR_TYPE.TOKEN_ERROR,
+        ERROR_TYPE.TOO_MANY_REQUESTS,
         'Server is handling too many request at the time. Wait a moment and try again',
         clientError
       );
 
       if (err.headers) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        retryTimer = Number(err.headers['retry-after']);
+        const retryTimer = Number(err.headers['retry-after']);
+        if (set429RetryTimer) {
+          set429RetryTimer(retryTimer);
+        }
       }
 
       emitterCb(clientError, finalError);

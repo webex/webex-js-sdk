@@ -96,6 +96,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   private lineDict: Record<string, ILine> = {};
 
+  private retryAfter?: number;
+
   /**
    * @ignore
    */
@@ -225,12 +227,15 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }, NETWORK_FLAP_TIMEOUT);
   }
 
+  private set429RetryAfterCb = (retryAfter: number) => {
+    this.retryAfter = retryAfter;
+  };
+
   /**
    * Fetches countryCode and region of the client.
    */
   private async getClientRegionInfo(): Promise<RegionInfo> {
     let abort;
-    let retryTimer = 0;
     let retryDiscovery = false;
     let success = false;
     log.info(METHOD_START_MESSAGE, {
@@ -243,7 +248,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.mobiusHost = `https://${mobius.host}${API_V1}`;
 
       do {
-        retryTimer = 0;
+        this.set429RetryAfterCb(0);
         try {
           let myIP;
           if (!retryDiscovery) {
@@ -308,7 +313,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
             },
             {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE},
-            retryTimer
+            (retryAfter: number) => this.set429RetryAfterCb(retryAfter)
           );
 
           regionInfo.clientRegion = '';
@@ -318,16 +323,19 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
             return regionInfo;
           }
 
-          if (retryTimer) {
+          console.debug('retry timer received: ', this.retryAfter);
+
+          if (this.retryAfter) {
+            console.debug('retry timer received: ', this.retryAfter, retryDiscovery);
             retryDiscovery = (err as WebexRequestPayload)?.uri?.includes(DISCOVERY_URL) ?? false;
-            console.debug('retry timer received: ', retryTimer, retryDiscovery);
+
             // eslint-disable-next-line no-await-in-loop, no-loop-func
             await new Promise((resolve) => {
-              setTimeout(resolve, retryTimer * 1000);
+              setTimeout(resolve, (this.retryAfter ?? 0) * 1000);
             });
           }
         }
-      } while (retryTimer > 0 && !abort);
+      } while (this.retryAfter && !abort);
       if (success) {
         break;
       }

@@ -349,7 +349,7 @@ describe('CallingClient Tests', () => {
           file: CALLING_CLIENT_FILE,
           method: 'getMobiusServers',
         },
-        0
+        expect.anything()
       );
 
       expect(callingClient.primaryMobiusUris).toEqual([
@@ -371,7 +371,6 @@ describe('CallingClient Tests', () => {
 
       callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
 
-      console.debug(webex.request.mock.calls);
       expect(webex.request).toBeCalledOnceWith({
         ...getMockRequestTemplate(),
         uri: 'https://mobius-us-east-1.prod.infra.webex.com/api/v1/calling/web/myip',
@@ -385,7 +384,7 @@ describe('CallingClient Tests', () => {
           file: CALLING_CLIENT_FILE,
           method: 'getMobiusServers',
         },
-        0
+        expect.anything()
       );
 
       expect(callingClient.primaryMobiusUris).toEqual([
@@ -399,6 +398,7 @@ describe('CallingClient Tests', () => {
     });
 
     it.skip('case when /myIP failed with 429', async () => {
+      jest.useFakeTimers();
       const failurePayload = {
         statusCode: 429,
         headers: {
@@ -428,6 +428,7 @@ describe('CallingClient Tests', () => {
 
       handleErrorSpy.mockClear();
       jest.advanceTimersByTime(10000);
+      await flushPromises();
 
       expect(webex.request).nthCalledWith(2, {
         ...getMockRequestTemplate(),
