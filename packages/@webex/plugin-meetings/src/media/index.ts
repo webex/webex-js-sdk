@@ -239,8 +239,8 @@ Media.createMediaConnection = (
         screenShareAudio: shareAudioStream?.outputStream?.getTracks()[0], // TODO: add type for screenShareAudio in internal-media-core SPARK-446923
       } as unknown,
       direction: {
-        audio: Media.getDirection(true, mediaDirection.receiveAudio, mediaDirection.sendAudio),
-        video: Media.getDirection(true, mediaDirection.receiveVideo, mediaDirection.sendVideo),
+        audio: Media.getDirection(false, mediaDirection.receiveAudio, mediaDirection.sendAudio),
+        video: Media.getDirection(false, mediaDirection.receiveVideo, mediaDirection.sendVideo),
         screenShareVideo: Media.getDirection(
           false,
           mediaDirection.receiveShare,

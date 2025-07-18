@@ -33,287 +33,240 @@ describe('webex-core', () => {
       catalog = services._getCatalog();
     });
 
-    // describe('#initialize', () => {
-    //   it('initFailed is false when initialization succeeds and credentials are available', async () => {
-    //     services.listenToOnce = sinon.stub();
-    //     services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
-    //     services.webex.credentials = {
-    //       supertoken: {
-    //         access_token: 'token',
-    //       },
-    //     };
+    describe('#initialize', () => {
+      it('initFailed is false when initialization succeeds and credentials are available', async () => {
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+        services.webex.credentials = {
+          supertoken: {
+            access_token: 'token',
+          },
+        };
 
-    //     services.initialize();
+        services.initialize();
 
-    //     // call the onReady callback
-    //     services.listenToOnce.getCall(1).args[2]();
-    //     await waitForAsync();
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
 
-    //     assert.isFalse(services.initFailed);
-    //   });
+        assert.isFalse(services.initFailed);
+      });
 
-    //   it('initFailed is false when initialization succeeds no credentials are available', async () => {
-    //     services.listenToOnce = sinon.stub();
-    //     services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+      it('initFailed is false when initialization succeeds no credentials are available', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
 
-    //     services.initialize();
+        services.initialize();
 
-    //     // call the onReady callback
-    //     services.listenToOnce.getCall(1).args[2]();
-    //     await waitForAsync();
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
 
-    //     assert.isFalse(services.initFailed);
-    //   });
+        assert.isFalse(services.initFailed);
+      });
 
-    //   it.each([
-    //     {error: new Error('failed'), expectedMessage: 'failed'},
-    //     {error: undefined, expectedMessage: undefined},
-    //   ])(
-    //     'sets initFailed to true when collectPreauthCatalog errors',
-    //     async ({error, expectedMessage}) => {
-    //       services.collectPreauthCatalog = sinon.stub().callsFake(() => {
-    //         return Promise.reject(error);
-    //       });
+      it.each([
+        {error: new Error('failed'), expectedMessage: 'failed'},
+        {error: undefined, expectedMessage: undefined},
+      ])(
+        'sets initFailed to true when collectPreauthCatalog errors',
+        async ({error, expectedMessage}) => {
+          services.collectPreauthCatalog = sinon.stub().callsFake(() => {
+            return Promise.reject(error);
+          });
 
-    //       services.listenToOnce = sinon.stub();
-    //       services.logger.error = sinon.stub();
+          services.listenToOnce = sinon.stub();
+          services.logger.error = sinon.stub();
 
-    //       services.initialize();
+          services.initialize();
 
-    //       // call the onReady callback
-    //       services.listenToOnce.getCall(1).args[2]();
+          // call the onReady callback
+          services.listenToOnce.getCall(1).args[2]();
 
-    //       await waitForAsync();
+          await waitForAsync();
 
-    //       assert.isTrue(services.initFailed);
-    //       sinon.assert.calledWith(
-    //         services.logger.error,
-    //         `services: failed to init initial services when no credentials available, ${expectedMessage}`
-    //       );
-    //     }
-    //   );
+          assert.isTrue(services.initFailed);
+          sinon.assert.calledWith(
+            services.logger.error,
+            `services: failed to init initial services when no credentials available, ${expectedMessage}`
+          );
+        }
+      );
 
-    //   it.each([
-    //     {error: new Error('failed'), expectedMessage: 'failed'},
-    //     {error: undefined, expectedMessage: undefined},
-    //   ])(
-    //     'sets initFailed to true when initServiceCatalogs errors',
-    //     async ({error, expectedMessage}) => {
-    //       services.initServiceCatalogs = sinon.stub().callsFake(() => {
-    //         return Promise.reject(error);
-    //       });
-    //       services.webex.credentials = {
-    //         supertoken: {
-    //           access_token: 'token',
-    //         },
-    //       };
+      it.each([
+        {error: new Error('failed'), expectedMessage: 'failed'},
+        {error: undefined, expectedMessage: undefined},
+      ])(
+        'sets initFailed to true when initServiceCatalogs errors',
+        async ({error, expectedMessage}) => {
+          services.initServiceCatalogs = sinon.stub().callsFake(() => {
+            return Promise.reject(error);
+          });
+          services.webex.credentials = {
+            supertoken: {
+              access_token: 'token',
+            },
+          };
 
-    //       services.listenToOnce = sinon.stub();
-    //       services.logger.error = sinon.stub();
+          services.listenToOnce = sinon.stub();
+          services.logger.error = sinon.stub();
 
-    //       services.initialize();
+          services.initialize();
 
-    //       // call the onReady callback
-    //       services.listenToOnce.getCall(1).args[2]();
+          // call the onReady callback
+          services.listenToOnce.getCall(1).args[2]();
 
-    //       await waitForAsync();
+          await waitForAsync();
 
-    //       assert.isTrue(services.initFailed);
-    //       sinon.assert.calledWith(
-    //         services.logger.error,
-    //         `services: failed to init initial services when credentials available, ${expectedMessage}`
-    //       );
-    //     }
-    //   );
-    // });
+          assert.isTrue(services.initFailed);
+          sinon.assert.calledWith(
+            services.logger.error,
+            `services: failed to init initial services when credentials available, ${expectedMessage}`
+          );
+        }
+      );
+    });
 
-    // describe('#initServiceCatalogs', () => {
-    //   it('does not set initFailed to true when updateServices succeeds', async () => {
-    //     services.webex.credentials = {
-    //       getOrgId: sinon.stub().returns('orgId'),
-    //       canAuthorize: true,
-    //     };
+    describe('#initServiceCatalogs', () => {
+      it('does not set initFailed to true when updateServices succeeds', async () => {
+        services.webex.credentials = {
+          getOrgId: sinon.stub().returns('orgId'),
+          canAuthorize: true,
+        };
 
-    //     services.collectPreauthCatalog = sinon.stub().callsFake(() => {
-    //       return Promise.resolve();
-    //     });
+        services.collectPreauthCatalog = sinon.stub().callsFake(() => {
+          return Promise.resolve();
+        });
 
-    //     services.updateServices = sinon.stub().callsFake(() => {
-    //       return Promise.resolve();
-    //     });
+        services.updateServices = sinon.stub().callsFake(() => {
+          return Promise.resolve();
+        });
 
-    //     services.logger.error = sinon.stub();
+        services.logger.error = sinon.stub();
 
-    //     await services.initServiceCatalogs();
+        await services.initServiceCatalogs();
 
-    //     assert.isFalse(services.initFailed);
+        assert.isFalse(services.initFailed);
 
-    //     sinon.assert.calledWith(services.collectPreauthCatalog, {orgId: 'orgId'});
-    //     sinon.assert.notCalled(services.logger.warn);
-    //   });
+        sinon.assert.calledWith(services.collectPreauthCatalog, {orgId: 'orgId'});
+        sinon.assert.notCalled(services.logger.warn);
+      });
 
-    //   it('sets initFailed to true when updateServices errors', async () => {
-    //     const error = new Error('failed');
+      it('sets initFailed to true when updateServices errors', async () => {
+        const error = new Error('failed');
 
-    //     services.webex.credentials = {
-    //       getOrgId: sinon.stub().returns('orgId'),
-    //       canAuthorize: true,
-    //     };
+        services.webex.credentials = {
+          getOrgId: sinon.stub().returns('orgId'),
+          canAuthorize: true,
+        };
 
-    //     services.collectPreauthCatalog = sinon.stub().callsFake(() => {
-    //       return Promise.resolve();
-    //     });
+        services.collectPreauthCatalog = sinon.stub().callsFake(() => {
+          return Promise.resolve();
+        });
 
-    //     services.updateServices = sinon.stub().callsFake(() => {
-    //       return Promise.reject(error);
-    //     });
+        services.updateServices = sinon.stub().callsFake(() => {
+          return Promise.reject(error);
+        });
 
-    //     services.logger.error = sinon.stub();
+        services.logger.error = sinon.stub();
 
-    //     await services.initServiceCatalogs();
+        await services.initServiceCatalogs();
 
-    //     assert.isTrue(services.initFailed);
+        assert.isTrue(services.initFailed);
 
-    //     sinon.assert.calledWith(services.collectPreauthCatalog, {orgId: 'orgId'});
-    //     sinon.assert.calledWith(services.logger.warn, 'services: cannot retrieve postauth catalog');
-    //   });
-    // });
+        sinon.assert.calledWith(services.collectPreauthCatalog, {orgId: 'orgId'});
+        sinon.assert.calledWith(services.logger.warn, 'services: cannot retrieve postauth catalog');
+      });
+    });
 
-    // describe('class members', () => {
-    //   describe('#registries', () => {
-    //     it('should be a weakmap', () => {
-    //       assert.instanceOf(services.registries, WeakMap);
-    //     });
-    //   });
+    describe('#namespace', () => {
+      it('is accurate to plugin name', () => {
+        assert.equal(services.namespace, 'Services');
+      });
+    });
 
-    //   describe('#states', () => {
-    //     it('should be a weakmap', () => {
-    //       assert.instanceOf(services.states, WeakMap);
-    //     });
-    //   });
-    // });
+    describe('#_catalogs', () => {
+      it('is a weakmap', () => {
+        assert.typeOf(services._catalogs, 'weakmap');
+      });
+    });
 
-    // describe('class methods', () => {
-    //   describe('#getRegistry', () => {
-    //     it('should be a service registry', () => {
-    //       assert.instanceOf(services.getRegistry(), ServiceRegistry);
-    //     });
-    //   });
+    describe('#validateDomains', () => {
+      it('is a boolean', () => {
+        assert.isBoolean(services.validateDomains);
+      });
+    });
 
-    //   describe('#getState', () => {
-    //     it('should be a service state', () => {
-    //       assert.instanceOf(services.getState(), ServiceState);
-    //     });
-    //   });
-    // });
+    describe('#initFailed', () => {
+      it('is a boolean', () => {
+        assert.isFalse(services.initFailed);
+      });
+    });
 
-    // describe('#namespace', () => {
-    //   it('is accurate to plugin name', () => {
-    //     assert.equal(services.namespace, 'Services');
-    //   });
-    // });
+    describe('#fetchClientRegionInfo', () => {
+      beforeEach(() => {
+        services.webex.config = {
+          services: {
+            discovery: {
+              sqdiscovery: 'https://test.ciscospark.com/v1/region',
+            },
+          },
+        };
+      });
 
-    // describe('#_catalogs', () => {
-    //   it('is a weakmap', () => {
-    //     assert.typeOf(services._catalogs, 'weakmap');
-    //   });
-    // });
+      it('successfully resolves with undefined if fetch request failed', () => {
+        webex.request = sinon.stub().returns(Promise.reject());
 
-    // describe('#validateDomains', () => {
-    //   it('is a boolean', () => {
-    //     assert.isBoolean(services.validateDomains);
-    //   });
-    // });
+        return services.fetchClientRegionInfo().then((r) => {
+          assert.isUndefined(r);
+        });
+      });
 
-    // describe('#initFailed', () => {
-    //   it('is a boolean', () => {
-    //     assert.isFalse(services.initFailed);
-    //   });
-    // });
+      it('successfully resolves with true if fetch request succeeds', () => {
+        webex.request = sinon.stub().returns(Promise.resolve({body: true}));
 
-    // describe('#list()', () => {
-    //   let serviceList;
+        return services.fetchClientRegionInfo().then((r) => {
+          assert.equal(r, true);
+          assert.calledWith(webex.request, {
+            uri: 'https://test.ciscospark.com/v1/region',
+            addAuthHeader: false,
+            headers: {'spark-user-agent': null},
+            timeout: 5000,
+          });
+        });
+      });
+    });
 
-    //   beforeEach(() => {
-    //     serviceList = services.list();
-    //   });
+    describe('#getMeetingPreferences', () => {
+      it('Fetch login users information ', async () => {
+        const userPreferences = {userPreferences: 'userPreferences'};
 
-    //   it('must return an object', () => {
-    //     assert.typeOf(serviceList, 'object');
-    //   });
+        webex.request = sinon.stub().returns(Promise.resolve({body: userPreferences}));
 
-    //   it('returned list must be of shape {Record<string, string>}', () => {
-    //     Object.keys(serviceList).forEach((key) => {
-    //       assert.typeOf(key, 'string');
-    //       assert.typeOf(serviceList[key], 'string');
-    //     });
-    //   });
-    // });
+        const res = await services.getMeetingPreferences();
 
-    // describe('#fetchClientRegionInfo', () => {
-    //   beforeEach(() => {
-    //     services.webex.config = {
-    //       services: {
-    //         discovery: {
-    //           sqdiscovery: 'https://test.ciscospark.com/v1/region',
-    //         },
-    //       },
-    //     };
-    //   });
+        assert.calledWith(webex.request, {
+          method: 'GET',
+          service: 'hydra',
+          resource: 'meetingPreferences',
+        });
+        assert.isDefined(res);
+        assert.equal(res, userPreferences);
+      });
 
-    //   it('successfully resolves with undefined if fetch request failed', () => {
-    //     webex.request = sinon.stub().returns(Promise.reject());
+      it('Resolve getMeetingPreferences if the api request fails ', async () => {
+        webex.request = sinon.stub().returns(Promise.reject());
 
-    //     return services.fetchClientRegionInfo().then((r) => {
-    //       assert.isUndefined(r);
-    //     });
-    //   });
+        const res = await services.getMeetingPreferences();
 
-    //   it('successfully resolves with true if fetch request succeeds', () => {
-    //     webex.request = sinon.stub().returns(Promise.resolve({body: true}));
-
-    //     return services.fetchClientRegionInfo().then((r) => {
-    //       assert.equal(r, true);
-    //       assert.calledWith(webex.request, {
-    //         uri: 'https://test.ciscospark.com/v1/region',
-    //         addAuthHeader: false,
-    //         headers: {'spark-user-agent': null},
-    //         timeout: 5000,
-    //       });
-    //     });
-    //   });
-    // });
-
-    // describe('#getMeetingPreferences', () => {
-    //   it('Fetch login users information ', async () => {
-    //     const userPreferences = {userPreferences: 'userPreferences'};
-
-    //     webex.request = sinon.stub().returns(Promise.resolve({body: userPreferences}));
-
-    //     const res = await services.getMeetingPreferences();
-
-    //     assert.calledWith(webex.request, {
-    //       method: 'GET',
-    //       service: 'hydra',
-    //       resource: 'meetingPreferences',
-    //     });
-    //     assert.isDefined(res);
-    //     assert.equal(res, userPreferences);
-    //   });
-
-    //   it('Resolve getMeetingPreferences if the api request fails ', async () => {
-    //     webex.request = sinon.stub().returns(Promise.reject());
-
-    //     const res = await services.getMeetingPreferences();
-
-    //     assert.calledWith(webex.request, {
-    //       method: 'GET',
-    //       service: 'hydra',
-    //       resource: 'meetingPreferences',
-    //     });
-    //     assert.isUndefined(res);
-    //   });
-    // });
+        assert.calledWith(webex.request, {
+          method: 'GET',
+          service: 'hydra',
+          resource: 'meetingPreferences',
+        });
+        assert.isUndefined(res);
+      });
+    });
 
     describe('#updateCatalog', () => {
       it('updates the catalog', async () => {
@@ -334,118 +287,107 @@ describe('webex-core', () => {
       });
     });
 
-    // describe('#_fetchNewServiceHostmap()', () => {
-    //   beforeEach(() => {
-    //     sinon.spy(webex.internal.newMetrics.callDiagnosticLatencies, 'measureLatency');
-    //   });
+    describe('#_fetchNewServiceHostmap()', () => {
+      beforeEach(() => {
+        sinon.spy(webex.internal.newMetrics.callDiagnosticLatencies, 'measureLatency');
+      });
 
-    //   afterEach(() => {
-    //     sinon.restore();
-    //   });
+      afterEach(() => {
+        sinon.restore();
+      });
 
-    //   it('checks service request resolves', async () => {
-    //     const mapResponse = 'map response';
+      it('checks service request resolves', async () => {
+        const mapResponse = 'map response';
 
-    //     sinon.stub(services, '_formatReceivedHostmap').resolves(mapResponse);
-    //     sinon.stub(services, 'request').resolves({});
+        sinon.stub(services, '_formatReceivedHostmap').resolves(mapResponse);
+        sinon.stub(services, 'request').resolves({});
 
-    //     const mapResult = await services._fetchNewServiceHostmap({from: 'limited'});
+        const mapResult = await services._fetchNewServiceHostmap({from: 'limited'});
 
-    //     assert.deepEqual(mapResult, mapResponse);
+        assert.deepEqual(mapResult, mapResponse);
 
-    //     assert.calledOnceWithExactly(services.request, {
-    //       method: 'GET',
-    //       service: 'u2c',
-    //       resource: '/limited/catalog',
-    //       qs: {format: 'hostmap'},
-    //     });
-    //     assert.calledOnceWithExactly(
-    //       webex.internal.newMetrics.callDiagnosticLatencies.measureLatency,
-    //       sinon.match.func,
-    //       'internal.get.u2c.time'
-    //     );
-    //   });
+        assert.calledOnceWithExactly(services.request, {
+          method: 'GET',
+          service: 'u2c',
+          resource: '/limited/catalog',
+          qs: {format: 'U2CV2'},
+          headers: {},
+        });
+        assert.calledOnceWithExactly(
+          webex.internal.newMetrics.callDiagnosticLatencies.measureLatency,
+          sinon.match.func,
+          'internal.get.u2c.time'
+        );
+      });
 
-    //   it('checks service request rejects', async () => {
-    //     const error = new Error('some error');
+      it('checks service request rejects', async () => {
+        const error = new Error('some error');
 
-    //     sinon.spy(services, '_formatReceivedHostmap');
-    //     sinon.stub(services, 'request').rejects(error);
+        sinon.spy(services, '_formatReceivedHostmap');
+        sinon.stub(services, 'request').rejects(error);
 
-    //     const promise = services._fetchNewServiceHostmap({from: 'limited'});
-    //     const rejectedValue = await assert.isRejected(promise);
+        const promise = services._fetchNewServiceHostmap({from: 'limited'});
+        const rejectedValue = await assert.isRejected(promise);
 
-    //     assert.deepEqual(rejectedValue, error);
+        assert.deepEqual(rejectedValue, error);
 
-    //     assert.notCalled(services._formatReceivedHostmap);
+        assert.notCalled(services._formatReceivedHostmap);
 
-    //     assert.calledOnceWithExactly(services.request, {
-    //       method: 'GET',
-    //       service: 'u2c',
-    //       resource: '/limited/catalog',
-    //       qs: {format: 'hostmap'},
-    //     });
-    //     assert.calledOnceWithExactly(
-    //       webex.internal.newMetrics.callDiagnosticLatencies.measureLatency,
-    //       sinon.match.func,
-    //       'internal.get.u2c.time'
-    //     );
-    //   });
-    // });
+        assert.calledOnceWithExactly(services.request, {
+          method: 'GET',
+          service: 'u2c',
+          resource: '/limited/catalog',
+          qs: {format: 'U2CV2'},
+          headers: {},
+        });
+        assert.calledOnceWithExactly(
+          webex.internal.newMetrics.callDiagnosticLatencies.measureLatency,
+          sinon.match.func,
+          'internal.get.u2c.time'
+        );
+      });
+    });
 
-    // describe('replaceHostFromHostmap', () => {
-    //   it('returns the same uri if the hostmap is not set', () => {
-    //     services._hostCatalog = null;
+    describe('replaceHostFromHostmap', () => {
+      it('returns the same uri if the hostmap is not set', () => {
+        services._hostCatalog = null;
 
-    //     const uri = 'http://example.com';
+        const uri = 'http://example.com';
 
-    //     assert.equal(services.replaceHostFromHostmap(uri), uri);
-    //   });
+        assert.equal(services.replaceHostFromHostmap(uri), uri);
+      });
 
-    //   it('returns the same uri if the hostmap does not contain the host', () => {
-    //     services._hostCatalog = {
-    //       'not-example.com': [
-    //         {
-    //           host: 'example-1.com',
-    //           ttl: -1,
-    //           priority: 5,
-    //           id: '0:0:0:example',
-    //         },
-    //       ],
-    //     };
+      it('returns the same uri if the hostmap does not contain the host', () => {
+        catalog.updateServiceGroups('preauth', [
+          {
+            id: 'example-1',
+            serviceName: 'example-1',
+            serviceUrls: [{host: 'example-1.com', baseUrl: 'http://example-1.com', priority: 1}],
+          },
+        ]);
 
-    //     const uri = 'http://example.com';
+        const uri = 'http://example.com';
 
-    //     assert.equal(services.replaceHostFromHostmap(uri), uri);
-    //   });
+        assert.equal(services.replaceHostFromHostmap(uri), uri);
+      });
 
-    //   it('returns the original uri if the hostmap has no hosts for the host', () => {
-    //     services._hostCatalog = {
-    //       'example.com': [],
-    //     };
+      it('returns the replaces the host in the uri with the host from the hostmap', () => {
+        catalog.updateServiceGroups('preauth', [
+          {
+            id: 'example-1',
+            serviceName: 'example-1',
+            serviceUrls: [
+              {host: 'example-1.com', baseUrl: 'http://example-1.com', priority: 1},
+              {host: 'example.com', baseUrl: 'http://example.com', priority: 2},
+            ],
+          },
+        ]);
 
-    //     const uri = 'http://example.com';
+        const uri = 'http://example.com/somepath';
 
-    //     assert.equal(services.replaceHostFromHostmap(uri), uri);
-    //   });
-
-    //   it('returns the replaces the host in the uri with the host from the hostmap', () => {
-    //     services._hostCatalog = {
-    //       'example.com': [
-    //         {
-    //           host: 'example-1.com',
-    //           ttl: -1,
-    //           priority: 5,
-    //           id: '0:0:0:example',
-    //         },
-    //       ],
-    //     };
-
-    //     const uri = 'http://example.com/somepath';
-
-    //     assert.equal(services.replaceHostFromHostmap(uri), 'http://example-1.com/somepath');
-    //   });
-    // });
+        assert.equal(services.replaceHostFromHostmap(uri), 'http://example-1.com/somepath');
+      });
+    });
 
     describe('#_formatReceivedHostmap()', () => {
       let serviceHostmap;
@@ -515,48 +457,60 @@ describe('webex-core', () => {
       });
     });
 
-    //   describe('#updateCredentialsConfig()', () => {
-    //     // updateCredentialsConfig must remove `/` if exist. so expected serviceList must be.
-    //     const expectedServiceList = {
-    //       idbroker: 'https://idbroker.webex.com',
-    //       identity: 'https://identity.webex.com',
-    //     };
+    describe('#updateCredentialsConfig()', () => {
+      // updateCredentialsConfig must remove `/` if exist. so expected serviceList must be.
+      const expectedServiceList = {
+        idbroker: 'https://idbroker.webex.com',
+        identity: 'https://identity.webex.com',
+      };
 
-    //     beforeEach(async () => {
-    //       const servicesList = {
-    //         idbroker: 'https://idbroker.webex.com',
-    //         identity: 'https://identity.webex.com/',
-    //       };
+      beforeEach(async () => {
+        const servicesList = [
+          {
+            id: 'idbroker',
+            name: 'idbroker',
+            serviceUrls: [
+              {baseUrl: 'https://idbroker.webex.com/', host: 'idbroker.webex.com', priority: 1},
+            ],
+          },
+          {
+            id: 'identity',
+            name: 'identity',
+            serviceUrls: [
+              {baseUrl: 'https://identity.webex.com/', host: 'identity.webex.com', priority: 1},
+            ],
+          },
+        ];
 
-    //       catalog.list = sinon.stub().returns(servicesList);
-    //       await services.updateCredentialsConfig();
-    //     });
+        catalog.updateServiceGroups('preauth', servicesList);
+        await services.updateCredentialsConfig();
+      });
 
-    //     it('sets the idbroker url properly when trailing slash is not present', () => {
-    //       assert.equal(webex.config.credentials.idbroker.url, expectedServiceList.idbroker);
-    //     });
+      it('sets the idbroker url properly when trailing slash is not present', () => {
+        assert.equal(webex.config.credentials.idbroker.url, expectedServiceList.idbroker);
+      });
 
-    //     it('sets the identity url properly when a trailing slash is present', () => {
-    //       assert.equal(webex.config.credentials.identity.url, expectedServiceList.identity);
-    //     });
+      it('sets the identity url properly when a trailing slash is present', () => {
+        assert.equal(webex.config.credentials.identity.url, expectedServiceList.identity);
+      });
 
-    //     it('sets the authorize url properly when authorization string is not provided', () => {
-    //       assert.equal(
-    //         webex.config.credentials.authorizeUrl,
-    //         `${expectedServiceList.idbroker}/idb/oauth2/v1/authorize`
-    //       );
-    //     });
+      it('sets the authorize url properly when authorization string is not provided', () => {
+        assert.equal(
+          webex.config.credentials.authorizeUrl,
+          `${expectedServiceList.idbroker}/idb/oauth2/v1/authorize`
+        );
+      });
 
-    //     it('should retain the authorize url property when authorization string is provided', () => {
-    //       const authUrl = 'http://example-auth-url.com/resource';
+      it('should retain the authorize url property when authorization string is provided', () => {
+        const authUrl = 'http://example-auth-url.com/resource';
 
-    //       webex.config.credentials.authorizationString = authUrl;
-    //       webex.config.credentials.authorizeUrl = authUrl;
+        webex.config.credentials.authorizationString = authUrl;
+        webex.config.credentials.authorizeUrl = authUrl;
 
-    //       services.updateCredentialsConfig();
+        services.updateCredentialsConfig();
 
-    //       assert.equal(webex.config.credentials.authorizeUrl, authUrl);
-    //     });
-    //   });
+        assert.equal(webex.config.credentials.authorizeUrl, authUrl);
+      });
+    });
   });
 });

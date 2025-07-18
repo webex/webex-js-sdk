@@ -5,6 +5,7 @@
 import {ClientEventError, ClientSubServiceType} from '../metrics.types';
 
 export const CALL_DIAGNOSTIC_LOG_IDENTIFIER = 'call-diagnostic-events -> ';
+export const CALL_FEATURE_LOG_IDENTIFIER = 'call-diagnostic-events-feature -> ';
 
 export const AUTHENTICATION_FAILED_CODE = 1010;
 export const NETWORK_ERROR = 1026;
@@ -738,3 +739,5 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
 };
 
 export const CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND = 'js_sdk_call_diagnostic_event_failed_to_send';
+
+export const CALL_FEATURE_EVENT_FAILED_TO_SEND = 'js_sdk_call_feature_event_failed_to_send';
