@@ -528,27 +528,6 @@ export async function handleCallingClientErrors(
       break;
     }
 
-    // case ERROR_CODE.TOO_MANY_REQUESTS: {
-    //   log.warn(`429 Too Many Requests`, loggerContext);
-    //   updateErrorContext(
-    //     loggerContext,
-    //     ERROR_TYPE.TOO_MANY_REQUESTS,
-    //     'Server is handling too many request at the time. Wait a moment and try again',
-    //     clientError
-    //   );
-
-    //   if (err.headers) {
-    //     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    //     const retryTimer = Number(err.headers['retry-after']);
-    //     if (set429RetryTimer) {
-    //       set429RetryTimer(retryTimer);
-    //     }
-    //   }
-
-    //   emitterCb(clientError, finalError);
-    //   break;
-    // }
-
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
       log.warn(`500 Internal Server Error`, loggerContext);
       updateErrorContext(

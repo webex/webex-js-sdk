@@ -227,10 +227,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }, NETWORK_FLAP_TIMEOUT);
   }
 
-  private set429RetryAfterCb = (retryAfter: number) => {
-    this.retryAfter = retryAfter;
-  };
-
   /**
    * Fetches countryCode and region of the client.
    */
@@ -244,6 +240,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     for (const mobius of this.mobiusClusters) {
       this.mobiusHost = `https://${mobius.host}${API_V1}`;
+
       try {
         // eslint-disable-next-line no-await-in-loop
         const temp = <WebexRequestPayload>await this.webex.request({

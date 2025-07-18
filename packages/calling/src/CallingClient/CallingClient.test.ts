@@ -55,15 +55,6 @@ global.crypto = {
   randomUUID: () => '12345678-1234-5678-1234-567812345678',
 } as unknown as Crypto;
 
-// jest.mock('../common/Utils', () => {
-//   const originalModule = jest.requireActual('../common/Utils');
-
-//   return {
-//     ...originalModule,
-//     uploadLogs: jest.fn().mockImplementation(() => Promise.resolve(undefined)),
-//   };
-// });
-
 jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
 
 describe('CallingClient Tests', () => {
@@ -386,56 +377,6 @@ describe('CallingClient Tests', () => {
       );
     });
 
-    it.skip('case when /myIP failed with 429', async () => {
-      jest.useFakeTimers();
-      const failurePayload = {
-        statusCode: 429,
-        headers: {
-          'retry-after': '10',
-        },
-      };
-
-      webex.request.mockRejectedValue(failurePayload);
-
-      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-
-      expect(webex.request).nthCalledWith(1, {
-        ...getMockRequestTemplate(),
-        uri: 'https://mobius-us-east-1.prod.infra.webex.com/api/v1/calling/web/myip',
-        method: 'GET',
-      });
-
-      expect(handleErrorSpy).toBeCalledOnceWith(
-        failurePayload,
-        expect.anything(),
-        {
-          file: CALLING_CLIENT_FILE,
-          method: 'getMobiusServers',
-        },
-        0
-      );
-
-      handleErrorSpy.mockClear();
-      jest.advanceTimersByTime(10000);
-      await flushPromises();
-
-      expect(webex.request).nthCalledWith(2, {
-        ...getMockRequestTemplate(),
-        uri: 'https://mobius-us-east-1.prod.infra.webex.com/api/v1/calling/web/myip',
-        method: 'GET',
-      });
-
-      expect(handleErrorSpy).toBeCalledOnceWith(
-        failurePayload,
-        expect.anything(),
-        {
-          file: CALLING_CLIENT_FILE,
-          method: 'getMobiusServers',
-        },
-        0
-      );
-    });
-
     it('when region discovery succeeds but region based mobius url discovery fails', async () => {
       const failurePayload = {
         statusCode: 500,
@@ -516,46 +457,6 @@ describe('CallingClient Tests', () => {
         `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
         ''
       );
-    });
-
-    it.skip('case when discovery fails with 429', async () => {
-      const failurePayload = {
-        statusCode: 429,
-        headers: {
-          'retry-after': '10',
-        },
-      };
-
-      webex.request.mockResolvedValueOnce(ipPayload).mockRejectedValueOnce(failurePayload);
-
-      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-
-      expect(webex.request).nthCalledWith(1, {
-        ...getMockRequestTemplate(),
-        uri: 'https://mobius-us-east-1.prod.infra.webex.com/api/v1/calling/web/myip',
-        method: 'GET',
-      });
-
-      expect(webex.request).nthCalledWith(2, {
-        method: 'GET',
-        uri: `${DISCOVERY_URL}/${myIP}`,
-        addAuthHeader: false,
-        headers: {
-          [SPARK_USER_AGENT]: null,
-        },
-      });
-
-      expect(handleErrorSpy).toBeCalledOnceWith(
-        failurePayload,
-        expect.anything(),
-        {
-          file: CALLING_CLIENT_FILE,
-          method: 'getMobiusServers',
-        },
-        0
-      );
-
-      jest.advanceTimersByTime(10000);
     });
 
     it('Verify successful mobius server url discovery after initializing callingClient through a config', async () => {
