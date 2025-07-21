@@ -446,10 +446,8 @@ export class Registration implements IRegistration {
   private async executeFailback() {
     await this.mutex.runExclusive(async () => {
       if (this.isFailbackRequired()) {
-        if (
-          Object.keys(this.callManager.getActiveCalls()).length === 0 &&
-          (await this.isPrimaryActive())
-        ) {
+        const primaryServerStatus = await this.isPrimaryActive();
+        if (Object.keys(this.callManager.getActiveCalls()).length === 0 && primaryServerStatus) {
           log.info(`Attempting failback to primary.`, {
             file: REGISTRATION_FILE,
             method: this.executeFailback.name,
