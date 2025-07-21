@@ -3,7 +3,8 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
-import {v4 as uuid} from 'uuid';
+import ExtendedError from 'Errors/catalog/ExtendedError';
+import {METHOD_START_MESSAGE} from '../common/constants';
 import {
   filterMobiusUris,
   handleCallingClientErrors,
@@ -30,6 +31,7 @@ import {
   MobiusServers,
   WebexRequestPayload,
   RegistrationStatus,
+  UploadLogsResponse,
 } from '../common/types';
 import {ICallingClient, CallingClientConfig} from './types';
 import {ICall, ICallManager} from './calling/types';
@@ -51,6 +53,7 @@ import {
   MOBIUS_EU_PROD,
   MOBIUS_US_INT,
   MOBIUS_EU_INT,
+  METHODS,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -102,6 +105,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
+      if (config?.logger?.level && webex.logger.config) {
+        webex.logger.config.level = config.logger.level; // override the webex logger level
+      }
+      log.setWebexLogger(webex.logger);
     }
     this.mutex = new Mutex();
     this.webex = this.sdkConnector.getWebex();
@@ -143,12 +150,22 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
     }
 
-    this.mobiusClusters =
-      (mobiusServiceHost && this.webex.internal.services._hostCatalog[mobiusServiceHost]) ||
-      this.webex.internal.services._hostCatalog[MOBIUS_US_PROD] ||
-      this.webex.internal.services._hostCatalog[MOBIUS_EU_PROD] ||
-      this.webex.internal.services._hostCatalog[MOBIUS_US_INT] ||
-      this.webex.internal.services._hostCatalog[MOBIUS_EU_INT];
+    // TODO: This is a temp fix - https://jira-eng-sjc12.cisco.com/jira/browse/CAI-6809
+    if (this.webex.internal.services._hostCatalog) {
+      this.mobiusClusters =
+        (mobiusServiceHost && this.webex.internal.services._hostCatalog[mobiusServiceHost]) ||
+        this.webex.internal.services._hostCatalog[MOBIUS_US_PROD] ||
+        this.webex.internal.services._hostCatalog[MOBIUS_EU_PROD] ||
+        this.webex.internal.services._hostCatalog[MOBIUS_US_INT] ||
+        this.webex.internal.services._hostCatalog[MOBIUS_EU_INT];
+    } else {
+      // @ts-ignore
+      const mobiusObject = this.webex.internal.services._services.find(
+        // @ts-ignore
+        (item) => item.serviceName === 'mobius'
+      );
+      this.mobiusClusters = [mobiusObject.serviceUrls[0].baseUrl];
+    }
     this.mobiusHost = '';
 
     this.registerSessionsListener();
@@ -182,6 +199,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Register callbacks for network changes.
    */
   private async detectNetworkChange() {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.DETECT_NETWORK_CHANGE,
+    });
     let retry = false;
 
     // this is a temporary logic to get registration obj
@@ -196,7 +217,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       ) {
         log.warn(`Network has flapped, waiting for mercury connection to be up`, {
           file: CALLING_CLIENT_FILE,
-          method: this.detectNetworkChange.name,
+          method: METHODS.DETECT_NETWORK_CHANGE,
         });
 
         line.registration.clearKeepaliveTimer();
@@ -218,10 +239,18 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Fetches countryCode and region of the client.
    */
   private async getClientRegionInfo(): Promise<RegionInfo> {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.GET_CLIENT_REGION_INFO,
+    });
     const regionInfo = {} as RegionInfo;
 
     for (const mobius of this.mobiusClusters) {
-      this.mobiusHost = `https://${mobius.host}${API_V1}`;
+      if (mobius.host) {
+        this.mobiusHost = `https://${mobius.host}${API_V1}`;
+      } else {
+        this.mobiusHost = mobius as unknown as string;
+      }
 
       try {
         // eslint-disable-next-line no-await-in-loop
@@ -255,6 +284,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         regionInfo.countryCode = clientRegionInfo?.countryCode ? clientRegionInfo.countryCode : '';
         break;
       } catch (err: unknown) {
+        const extendedError = new Error(
+          `Failed to get client region info: ${err}`
+        ) as ExtendedError;
+        log.error(extendedError, {
+          method: METHODS.GET_CLIENT_REGION_INFO,
+          file: CALLING_CLIENT_FILE,
+        });
+
         handleCallingClientErrors(
           err as WebexRequestPayload,
           (clientError) => {
@@ -262,6 +299,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               METRIC_EVENT.REGISTRATION_ERROR,
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
+              GET_MOBIUS_SERVERS_UTIL,
+              'UNKNOWN',
+              (err as WebexRequestPayload).headers?.trackingId ?? '',
+              undefined,
               clientError
             );
             this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
@@ -280,6 +321,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Local method for finding the mobius servers.
    */
   private async getMobiusServers() {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.GET_MOBIUS_SERVERS,
+    });
     /* Following operations are performed in a synchronous way ->
 
         1. Get RegionInfo
@@ -295,7 +340,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     let countryCode: string;
 
     if (this.sdkConfig?.discovery?.country && this.sdkConfig?.discovery?.region) {
-      log.info('Updating region and country from the SDK config', {
+      log.log('Updating region and country from the SDK config', {
         file: CALLING_CLIENT_FILE,
         method: GET_MOBIUS_SERVERS_UTIL,
       });
@@ -303,7 +348,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       countryCode = this.sdkConfig?.discovery?.country;
       this.mobiusHost = this.webex.internal.services._serviceUrls.mobius;
     } else {
-      log.info('Updating region and country through Region discovery', {
+      log.log('Updating region and country through Region discovery', {
         file: CALLING_CLIENT_FILE,
         method: GET_MOBIUS_SERVERS_UTIL,
       });
@@ -344,6 +389,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           '' as LogContext
         );
       } catch (err: unknown) {
+        const extendedError = new Error(`Failed to get Mobius servers: ${err}`) as ExtendedError;
+        log.error(extendedError, {
+          method: METHODS.GET_MOBIUS_SERVERS,
+          file: CALLING_CLIENT_FILE,
+        });
+
         handleCallingClientErrors(
           err as WebexRequestPayload,
           (clientError) => {
@@ -351,6 +402,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               METRIC_EVENT.REGISTRATION_ERROR,
               REG_ACTION.REGISTER,
               METRIC_TYPE.BEHAVIORAL,
+              GET_MOBIUS_SERVERS_UTIL,
+              'UNKNOWN',
+              (err as WebexRequestPayload).headers?.trackingId ?? '',
+              undefined,
               clientError
             );
             this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
@@ -385,12 +440,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * present on sdk are cleaned up.
    */
   private registerCallsClearedListener() {
-    const logContext = {
+    log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
-      method: this.registerCallsClearedListener.name,
-    };
+      method: METHODS.REGISTER_CALLS_CLEARED_LISTENER,
+    });
 
-    log.log('Registering listener for all calls cleared event', logContext);
     this.callManager.on(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED, this.callsClearedHandler);
   }
 
@@ -402,6 +456,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * calls are cleaned up.
    */
   private callsClearedHandler = async () => {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.CALLS_CLEARED_HANDLER,
+    });
     // this is a temporary logic to get registration obj
     // it will change once we have proper lineId and multiple lines as well
     const {registration} = Object.values(this.lineDict)[0];
@@ -409,7 +467,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     if (!registration.isDeviceRegistered()) {
       await this.mutex.runExclusive(async () => {
         if (registration.isReconnectPending()) {
-          log.log('All calls cleared, reconnecting', {
+          log.info('All calls cleared, reconnecting', {
             file: CALLING_CLIENT_FILE,
             method: CALLS_CLEARED_HANDLER_UTIL,
           });
@@ -436,6 +494,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   private registerSessionsListener() {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.REGISTER_SESSIONS_LISTENER,
+    });
     this.sdkConnector.registerListener<CallSessionEvent>(
       MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE,
       async (event?: CallSessionEvent) => {
@@ -464,6 +526,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * NOTE: currently multiple lines are not supported
    */
   private async createLine(): Promise<void> {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.CREATE_LINE,
+    });
     const line = new Line(
       this.webex.internal.device.userId,
       this.webex.internal.device.url,
@@ -520,16 +586,22 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   /**
-   * uploads logs to backend for trouble shooting
-   * @param data
+   * Uploads logs to help troubleshoot SDK issues.
+   *
+   * This method collects the current SDK logs including network requests, WebSocket
+   * messages, and client-side events, then securely submits them to Webex's diagnostics
+   * service. The returned tracking ID, feedbackID can be provided to Webex support for faster
+   * issue resolution.
+   * @returns Promise<UploadLogsResponse>
+   * @throws Error
    */
-  public async uploadLogs(data: {feedbackId?: string} = {}) {
-    if (!data.feedbackId) {
-      // spread the data object to avoid mutation
-      data = {...data, feedbackId: uuid()};
+  public async uploadLogs(): Promise<UploadLogsResponse> {
+    const result = await uploadLogs({}, true);
+    if (!result) {
+      throw new Error('Failed to upload logs: No response received.');
     }
 
-    return uploadLogs(data);
+    return result;
   }
 }
 

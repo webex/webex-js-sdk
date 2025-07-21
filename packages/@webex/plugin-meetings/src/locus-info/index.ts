@@ -1,4 +1,4 @@
-import {isEqual, assignWith, cloneDeep, isEmpty} from 'lodash';
+import {isEqual, assignWith, cloneDeep, isEmpty, forEach} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -99,6 +99,7 @@ export default class LocusInfo extends EventsScope {
   private doLocusSync(meeting: any) {
     let isDelta;
     let url;
+    let meetingDestroyed = false;
 
     if (this.locusParser.workingCopy.syncUrl) {
       url = this.locusParser.workingCopy.syncUrl;
@@ -134,35 +135,77 @@ export default class LocusInfo extends EventsScope {
 
           isDelta = false;
 
-          return meeting.meetingRequest.getLocusDTO({url: meeting.locusUrl}).catch((err) => {
-            LoggerProxy.logger.info(
-              'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
-            );
-            this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
-            throw err;
-          });
+          // Locus sometimes returns 403, for example if meeting has ended, no point trying the fallback to full sync in that case
+          if (e.statusCode !== 403) {
+            return meeting.meetingRequest.getLocusDTO({url: meeting.locusUrl}).catch((err) => {
+              LoggerProxy.logger.info(
+                'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
+              );
+              this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+              meetingDestroyed = true;
+              throw err;
+            });
+          }
+          LoggerProxy.logger.info(
+            'Locus-info:index#doLocusSync --> got 403 from Locus, skipping fallback to full sync, destroying the meeting'
+          );
+        } else {
+          LoggerProxy.logger.info(
+            'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
+          );
         }
-        LoggerProxy.logger.info(
-          'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
-        );
         this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+        meetingDestroyed = true;
         throw e;
       })
       .then((res) => {
-        if (isDelta) {
-          if (!isEmpty(res.body)) {
-            meeting.locusInfo.handleLocusDelta(res.body, meeting);
-          } else {
+        if (isEmpty(res.body)) {
+          if (isDelta) {
             LoggerProxy.logger.info(
               'Locus-info:index#doLocusSync --> received empty body from syncUrl, so we already have latest Locus DTO'
             );
+          } else {
+            LoggerProxy.logger.info(
+              'Locus-info:index#doLocusSync --> received empty body from full DTO sync request'
+            );
           }
-        } else {
-          meeting.locusInfo.onFullLocus(res.body);
+
+          return;
         }
-        // Notify parser to resume processing delta events.
-        // Any deltas in the queue that have now been superseded by this sync will simply be ignored
-        this.locusParser.resume();
+
+        if (isDelta) {
+          if (res.body.baseSequence) {
+            meeting.locusInfo.handleLocusDelta(res.body, meeting);
+
+            return;
+          }
+          // in some cases Locus might return us full DTO even when we asked for a delta
+          LoggerProxy.logger.info(
+            'Locus-info:index#doLocusSync --> got full DTO when we asked for delta'
+          );
+        }
+        meeting.locusInfo.onFullLocus(res.body);
+      })
+      .catch((e) => {
+        LoggerProxy.logger.info(
+          `Locus-info:index#doLocusSync --> getLocusDTO succeeded but failed to handle result, locus parser will resume but not all data may be synced (${e.toString()})`
+        );
+
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_SYNC_HANDLING_FAILED, {
+          correlationId: meeting.correlationId,
+          url,
+          reason: e.message,
+          errorName: e.name,
+          stack: e.stack,
+          code: e.code,
+        });
+      })
+      .finally(() => {
+        if (!meetingDestroyed) {
+          // Notify parser to resume processing delta events.
+          // Any deltas in the queue that have now been superseded by this sync will simply be ignored
+          this.locusParser.resume();
+        }
       });
   }
 
@@ -264,7 +307,7 @@ export default class LocusInfo extends EventsScope {
     this.updateMeetingInfo(locus.info);
     this.updateEmbeddedApps(locus.embeddedApps);
     // self and participants generate sipUrl for 1:1 meeting
-    this.updateSelf(locus.self, locus.participants);
+    this.updateSelf(locus.self);
     this.updateHostInfo(locus.host);
     this.updateMediaShares(locus.mediaShares);
     this.updateServices(locus.links?.services);
@@ -422,6 +465,7 @@ export default class LocusInfo extends EventsScope {
    */
   onDeltaLocus(locus: any) {
     const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
+    this.mergeParticipants(this.participants, locus.participants);
     this.updateLocusInfo(locus);
     this.updateParticipants(locus.participants, isReplaceMembers);
     this.isMeetingActive();
@@ -449,7 +493,7 @@ export default class LocusInfo extends EventsScope {
     this.updateMediaShares(locus.mediaShares);
     this.updateParticipantsUrl(locus.participantsUrl);
     this.updateReplace(locus.replace);
-    this.updateSelf(locus.self, locus.participants);
+    this.updateSelf(locus.self);
     this.updateLocusUrl(locus.url);
     this.updateAclUrl(locus.aclUrl);
     this.updateBasequence(locus.baseSequence);
@@ -783,6 +827,23 @@ export default class LocusInfo extends EventsScope {
         isReplace,
       }
     );
+
+    if (participants && Array.isArray(participants) && participants.length > 0) {
+      for (const participant of participants) {
+        if (participant && participant?.reason === 'FAILURE') {
+          this.emitScoped(
+            {
+              file: 'locus-info',
+              function: 'updateParticipants',
+            },
+            LOCUSINFO.EVENTS.PARTICIPANT_REASON_CHANGED,
+            {
+              displayName: participant?.person?.primaryDisplayString,
+            }
+          );
+        }
+      }
+    }
   }
 
   /**
@@ -800,6 +861,7 @@ export default class LocusInfo extends EventsScope {
           hasRecordingPausedChanged,
           hasMeetingContainerChanged,
           hasTranscribeChanged,
+          hasTranscribeSpokenLanguageChanged,
           hasManualCaptionChanged,
           hasEntryExitToneChanged,
           hasBreakoutChanged,
@@ -819,6 +881,7 @@ export default class LocusInfo extends EventsScope {
           hasStageViewChanged,
           hasAnnotationControlChanged,
           hasRemoteDesktopControlChanged,
+          hasPollingQAControlChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
@@ -934,6 +997,21 @@ export default class LocusInfo extends EventsScope {
           {
             transcribing,
             caption,
+          }
+        );
+      }
+
+      if (hasTranscribeSpokenLanguageChanged) {
+        const {spokenLanguage} = current.transcribe;
+
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+          {
+            spokenLanguage,
           }
         );
       }
@@ -1067,6 +1145,14 @@ export default class LocusInfo extends EventsScope {
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED,
           {state: current.rdcControl}
+        );
+      }
+
+      if (hasPollingQAControlChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED,
+          {state: current.pollingQAControl}
         );
       }
 
@@ -1357,17 +1443,20 @@ export default class LocusInfo extends EventsScope {
 
   /**
    * handles when the locus.self is updated
-   * @param {Object} self the locus.mediaShares property
-   * @param {Array} participants the locus.participants property
+   * @param {Object} self the new locus.self
    * @returns {undefined}
    * @memberof LocusInfo
    * emits internal events self_admitted_guest, self_unadmitted_guest, locus_info_update_self
    */
-  updateSelf(self: any, participants: Array<any>) {
-    // @ts-ignore - check where this.self come from
-    if (self && !isEqual(this.self, self)) {
+  updateSelf(self: any) {
+    if (self) {
       // @ts-ignore
-      const parsedSelves = SelfUtils.getSelves(this.self, self, this.webex.internal.device.url);
+      const parsedSelves = SelfUtils.getSelves(
+        this.parsedLocus.self,
+        self,
+        this.webex.internal.device.url,
+        this.participants // using this.participants instead of locus.participants here, because with delta DTOs locus.participants will only contain a small subset of participants
+      );
 
       this.updateMeeting(parsedSelves.current);
       this.parsedLocus.self = parsedSelves.current;
@@ -1381,7 +1470,7 @@ export default class LocusInfo extends EventsScope {
       // TODO: check if we need to save the sipUri here as well
       // this.emit(LOCUSINFO.EVENTS.MEETING_UPDATE, SelfUtils.getSipUrl(this.getLocusPartner(participants, self), this.parsedLocus.fullState.type, this.parsedLocus.info.sipUri));
       const result = SelfUtils.getSipUrl(
-        this.getLocusPartner(participants, self),
+        this.getLocusPartner(this.participants, self),
         this.parsedLocus.fullState.type,
         this.parsedLocus.info.sipUri
       );
@@ -1527,7 +1616,7 @@ export default class LocusInfo extends EventsScope {
           {}
         );
       }
-      if (parsedSelves.updates.isUserUnadmitted) {
+      if (parsedSelves.updates.hasUserEnteredLobby) {
         this.emitScoped(
           {
             file: 'locus-info',
@@ -1537,7 +1626,7 @@ export default class LocusInfo extends EventsScope {
           self
         );
       }
-      if (parsedSelves.updates.isUserAdmitted) {
+      if (parsedSelves.updates.hasUserBeenAdmitted) {
         this.emitScoped(
           {
             file: 'locus-info',

@@ -5,6 +5,7 @@ import {
   ENTITLEMENT_BASIC,
   ENTITLEMENT_BROADWORKS_CONN,
   ENTITLEMENT_STANDARD,
+  METHOD_START_MESSAGE,
   NATIVE_SIP_CALL_TO_UCM,
   NATIVE_WEBEX_TEAMS_CALLING,
 } from '../common/constants';
@@ -15,9 +16,24 @@ import {BroadworksBackendConnector} from './BroadworksBackendConnector';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import {VOICEMAIL_ACTION, METRIC_EVENT, METRIC_TYPE} from '../Metrics/types';
 import {resolveContactArgs} from './voicemailFixture';
+import log from '../Logger';
+import {METHODS} from './constants';
 
 describe('Voicemail Client tests', () => {
   const webex = getTestUtilsWebex();
+  let infoSpy;
+  let logSpy;
+  let errorSpy;
+
+  beforeEach(() => {
+    infoSpy = jest.spyOn(log, 'info');
+    logSpy = jest.spyOn(log, 'log');
+    errorSpy = jest.spyOn(log, 'error');
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
   describe('createVoicemailClient tests', () => {
     /**
@@ -95,6 +111,23 @@ describe('Voicemail Client tests', () => {
         expect(connectorResponse).toBeTruthy();
         expect(contactResponse).toBeTruthy();
 
+        expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
+          file: 'VoicemailClient',
+          method: METHODS.INIT,
+        });
+        expect(logSpy).toHaveBeenCalledWith('Voicemail connector initialized successfully', {
+          file: 'VoicemailClient',
+          method: METHODS.INIT,
+        });
+        expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
+          file: 'VoicemailClient',
+          method: METHODS.RESOLVE_CONTACT,
+        });
+        expect(logSpy).toHaveBeenCalledWith('Contact resolution completed successfully', {
+          file: 'VoicemailClient',
+          method: METHODS.RESOLVE_CONTACT,
+        });
+
         switch (data.callingBehavior) {
           case NATIVE_SIP_CALL_TO_UCM:
             expect(voicemailClient['callingBackend']).toStrictEqual(CALLING_BACKEND.UCM);
@@ -148,31 +181,31 @@ describe('Voicemail Client tests', () => {
     }[] = [
       {
         metricAction: VOICEMAIL_ACTION.GET_VOICEMAILS,
-        method: voicemailClient.getVoicemailList.name,
+        method: 'getVoicemailList',
       },
       {
         metricAction: VOICEMAIL_ACTION.GET_VOICEMAIL_CONTENT,
-        method: voicemailClient.getVoicemailContent.name,
+        method: 'getVoicemailContent',
       },
       {
         metricAction: VOICEMAIL_ACTION.MARK_READ,
-        method: voicemailClient.voicemailMarkAsRead.name,
+        method: 'voicemailMarkAsRead',
       },
       {
         metricAction: VOICEMAIL_ACTION.MARK_UNREAD,
-        method: voicemailClient.voicemailMarkAsUnread.name,
+        method: 'voicemailMarkAsUnread',
       },
       {
         metricAction: VOICEMAIL_ACTION.DELETE,
-        method: voicemailClient.deleteVoicemail.name,
+        method: 'deleteVoicemail',
       },
       {
         metricAction: VOICEMAIL_ACTION.TRANSCRIPT,
-        method: voicemailClient.getVMTranscript.name,
+        method: 'getVMTranscript',
       },
       {
         metricAction: VOICEMAIL_ACTION.GET_VOICEMAIL_SUMMARY,
-        method: voicemailClient.getVoicemailSummary.name,
+        method: 'getVoicemailSummary',
       },
     ].map((stat) =>
       Object.assign(stat, {
@@ -198,7 +231,123 @@ describe('Voicemail Client tests', () => {
       voicemailClient['backendConnector'][data.method].mockResolvedValue(response);
       await voicemailClient[data.method](...args);
 
-      expect(metricSpy).toBeCalledOnceWith(
+      // Check logging for success case
+      // Check for specific log messages based on method called
+      if (data.method === 'getVoicemailList') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('invoking with: offset='),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_LIST,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Successfully retrieved voicemail list'),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_LIST,
+          })
+        );
+      } else if (data.method === 'getVoicemailSummary') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          METHOD_START_MESSAGE,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_SUMMARY,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Successfully retrieved voicemail summary'),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_SUMMARY,
+          })
+        );
+      } else if (data.method === 'getVoicemailContent') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          `${METHOD_START_MESSAGE} with: messageId=${messageId}`,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_CONTENT,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `Successfully retrieved voicemail content for messageId=${messageId}`
+          ),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_CONTENT,
+          })
+        );
+      } else if (data.method === 'voicemailMarkAsRead') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          `${METHOD_START_MESSAGE} with: messageId=${messageId}`,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.VOICEMAIL_MARK_AS_READ,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining(`Successfully marked voicemail as read: messageId=${messageId}`),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.VOICEMAIL_MARK_AS_READ,
+          })
+        );
+      } else if (data.method === 'voicemailMarkAsUnread') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          `${METHOD_START_MESSAGE} with: messageId=${messageId}`,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `Successfully marked voicemail as unread: messageId=${messageId}`
+          ),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
+          })
+        );
+      } else if (data.method === 'deleteVoicemail') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          `${METHOD_START_MESSAGE} with: messageId=${messageId}`,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.DELETE_VOICEMAIL,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining(`Successfully deleted voicemail: messageId=${messageId}`),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.DELETE_VOICEMAIL,
+          })
+        );
+      } else if (data.method === 'getVMTranscript') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          `${METHOD_START_MESSAGE} with: messageId=${messageId}`,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VM_TRANSCRIPT,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `Successfully retrieved voicemail transcript: messageId=${messageId}`
+          ),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VM_TRANSCRIPT,
+          })
+        );
+      }
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.VOICEMAIL,
         data.metricAction,
         METRIC_TYPE.BEHAVIORAL,
@@ -217,9 +366,128 @@ describe('Voicemail Client tests', () => {
       response.statusCode = errorCode;
       response.data = {error: errorMessage};
 
+      infoSpy.mockClear();
+      logSpy.mockClear();
+      errorSpy.mockClear();
+
       await voicemailClient[data.method](...args);
 
-      expect(metricSpy).toBeCalledOnceWith(
+      // Check for error case logging with specific message checks
+      if (data.method === 'getVoicemailList') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          expect.stringContaining('invoking with: offset='),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_LIST,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Successfully retrieved voicemail list'),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_LIST,
+          })
+        );
+      } else if (data.method === 'getVoicemailSummary') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          METHOD_START_MESSAGE,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_SUMMARY,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Successfully retrieved voicemail summary'),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_SUMMARY,
+          })
+        );
+      } else if (data.method === 'getVoicemailContent') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          `${METHOD_START_MESSAGE} with: messageId=${messageId}`,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_CONTENT,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `Successfully retrieved voicemail content for messageId=${messageId}`
+          ),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VOICEMAIL_CONTENT,
+          })
+        );
+      } else if (data.method === 'voicemailMarkAsRead') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          `${METHOD_START_MESSAGE} with: messageId=${messageId}`,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.VOICEMAIL_MARK_AS_READ,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining(`Successfully marked voicemail as read: messageId=${messageId}`),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.VOICEMAIL_MARK_AS_READ,
+          })
+        );
+      } else if (data.method === 'voicemailMarkAsUnread') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          `${METHOD_START_MESSAGE} with: messageId=${messageId}`,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `Successfully marked voicemail as unread: messageId=${messageId}`
+          ),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.VOICEMAIL_MARK_AS_UNREAD,
+          })
+        );
+      } else if (data.method === 'deleteVoicemail') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          `${METHOD_START_MESSAGE} with: messageId=${messageId}`,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.DELETE_VOICEMAIL,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining(`Successfully deleted voicemail: messageId=${messageId}`),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.DELETE_VOICEMAIL,
+          })
+        );
+      } else if (data.method === 'getVMTranscript') {
+        expect(infoSpy).toHaveBeenCalledWith(
+          `${METHOD_START_MESSAGE} with: messageId=${messageId}`,
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VM_TRANSCRIPT,
+          })
+        );
+        expect(logSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `Successfully retrieved voicemail transcript: messageId=${messageId}`
+          ),
+          expect.objectContaining({
+            file: 'VoicemailClient',
+            method: METHODS.GET_VM_TRANSCRIPT,
+          })
+        );
+      }
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.VOICEMAIL_ERROR,
         data.metricAction,
         METRIC_TYPE.BEHAVIORAL,

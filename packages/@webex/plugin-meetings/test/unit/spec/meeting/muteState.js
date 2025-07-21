@@ -776,5 +776,78 @@ describe('plugin-meetings', () => {
         })
       );
     });
+
+    describe('#enable', () => {
+      let locusLocalMuteStub;
+      let locusRemoteMuteStub;
+
+      const resetStubHistory = () => {
+        locusLocalMuteStub.resetHistory();
+        locusRemoteMuteStub.resetHistory();
+      };
+
+      beforeEach(async () => {
+        locusLocalMuteStub = MeetingUtil.remoteUpdateAudioVideo;
+        locusRemoteMuteStub = meeting.members.muteMember;
+
+        // initialise the MuteState with the stream
+        audio.handleLocalStreamChange(meeting);
+        await testUtils.flushPromises();
+
+        resetStubHistory();
+      });
+
+      it('does not do anything if current state is already the same', async () => {
+        // set it up so that we are remotely muted (so that a sync to server would do a remote unmute)
+        audio.handleServerRemoteMuteUpdate(meeting, true, true);
+
+        // audio is already enabled and we call to enable it again
+        audio.enable(meeting, true);
+        await testUtils.flushPromises();
+
+        // nothing should happen (especially no remote unmute)
+        assert.notCalled(locusRemoteMuteStub);
+        assert.notCalled(locusLocalMuteStub);
+
+        // now disable audio
+        audio.enable(meeting, false);
+        await testUtils.flushPromises();
+
+        resetStubHistory();
+
+        // disable it again
+        audio.enable(meeting, false);
+        await testUtils.flushPromises();
+
+        // nothing should happen
+        assert.notCalled(locusRemoteMuteStub);
+        assert.notCalled(locusLocalMuteStub);
+      });
+
+      it('does necessary local and remote mute changes when called with a new state', async () => {
+        // initial state is audio enabled with nothing muted
+
+        // now we disable audio
+        audio.enable(meeting, false);
+        await testUtils.flushPromises();
+
+        // so only a local mute should be done
+        assert.notCalled(locusRemoteMuteStub);
+        assert.calledWith(locusLocalMuteStub, meeting, true, undefined);
+
+        resetStubHistory();
+
+        // now simulate additionally a remote mute
+        audio.state.server.remoteMute = true;
+
+        // and enable audio back
+        audio.enable(meeting, true);
+        await testUtils.flushPromises();
+
+        // both local and remote unmute should be done
+        assert.calledWith(locusRemoteMuteStub, meeting.members.selfId, false, true);
+        assert.calledWith(locusLocalMuteStub, meeting, false, undefined);
+      });
+    });
   });
 });
