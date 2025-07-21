@@ -10,8 +10,6 @@ import WebexCore, {
   ServiceDetail,
   registerInternalPlugin,
   ServicesV2,
-  ServiceInterceptorV2,
-  ServerErrorInterceptorV2,
   ServiceInterceptor,
   ServerErrorInterceptor,
   Services,
@@ -19,7 +17,6 @@ import WebexCore, {
 import testUsers from '@webex/test-helper-test-users';
 import {
   formattedServiceHostmapEntryConv,
-  formattedServiceHostmapV2,
   serviceHostmapV2,
 } from '../../../fixtures/host-catalog-v2';
 
@@ -45,8 +42,8 @@ describe('webex-core', () => {
     beforeEach(() => {
       registerInternalPlugin('services', ServicesV2, {
         interceptors: {
-          ServiceInterceptor: ServiceInterceptorV2.create,
-          ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+          ServiceInterceptor: ServiceInterceptor.create,
+          ServerErrorInterceptor: ServerErrorInterceptor.create,
         },
         replace: true,
       });
