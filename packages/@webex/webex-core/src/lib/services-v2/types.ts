@@ -63,7 +63,7 @@ export interface IServiceCatalog {
   }): {name: string; url: string} | undefined;
   findServiceDetailFromUrl(url: string): IServiceDetail | undefined;
   findAllowedDomain(url: string): string | undefined;
-  get(clusterId: ClusterId, serviceGroup: ServiceGroup): string | undefined;
+  get(clusterId: ClusterId, serviceGroup?: ServiceGroup): string | undefined;
   getAllowedDomains(): string[];
   markFailedServiceUrl(url: string): string | undefined;
   setAllowedDomains(allowedDomains: string[]): void;

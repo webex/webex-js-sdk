@@ -332,7 +332,7 @@ const ServiceCatalog = AmpState.extend({
    * @param {number} [timeout] - in seconds
    * @returns {Promise<void>}
    */
-  waitForCatalog(serviceGroup: ServiceGroup, timeout: number): Promise<void> {
+  waitForCatalog(serviceGroup: ServiceGroup, timeout?: number): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       if (this.status[serviceGroup].ready) {
         resolve();

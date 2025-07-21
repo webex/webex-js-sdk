@@ -9,14 +9,12 @@ import {flaky} from '@webex/test-helper-mocha';
 import WebexCore, {
   ServiceCatalogV2,
   ServiceDetail,
-  serviceConstantsV2,
+  serviceConstants,
   registerInternalPlugin,
   Services,
   ServiceInterceptor,
   ServerErrorInterceptor,
   ServicesV2,
-  ServiceInterceptorV2,
-  ServerErrorInterceptorV2,
 } from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
@@ -59,8 +57,8 @@ describe('webex-core', () => {
     beforeEach(() => {
       registerInternalPlugin('services', ServicesV2, {
         interceptors: {
-          ServiceInterceptor: ServiceInterceptorV2.create,
-          ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+          ServiceInterceptor: ServiceInterceptor.create,
+          ServerErrorInterceptor: ServerErrorInterceptor.create,
         },
         replace: true,
       });
@@ -295,10 +293,7 @@ describe('webex-core', () => {
 
         services.initConfig();
 
-        const expectedResult = [
-          ...allowedDomains,
-          ...serviceConstantsV2.COMMERCIAL_ALLOWED_DOMAINS,
-        ];
+        const expectedResult = [...allowedDomains, ...serviceConstants.COMMERCIAL_ALLOWED_DOMAINS];
 
         assert.deepEqual(expectedResult, services._getCatalog().allowedDomains);
       });
