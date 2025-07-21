@@ -429,6 +429,7 @@ describe('CallingClient Tests', () => {
 
       callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
 
+      expect(webex.request).toBeCalledTimes(2);
       expect(webex.request).nthCalledWith(1, {
         ...getMockRequestTemplate(),
         uri: 'https://mobius-us-east-1.prod.infra.webex.com/api/v1/calling/web/myip',

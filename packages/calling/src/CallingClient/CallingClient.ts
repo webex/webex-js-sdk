@@ -96,8 +96,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   private lineDict: Record<string, ILine> = {};
 
-  private retryAfter?: number;
-
   /**
    * @ignore
    */
