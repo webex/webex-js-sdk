@@ -431,7 +431,9 @@ export default class Reachability extends EventsScope {
           }
           break;
         case 'latencyInMilliseconds':
-          output.latencyInMilliseconds = value.toString();
+          if (value !== undefined && value !== null) {
+            output.latencyInMilliseconds = value.toString();
+          }
           break;
         // Transforming serverIp to serverIPs
         case 'details':
@@ -847,23 +849,9 @@ export default class Reachability extends EventsScope {
 
       const transformed: any = {};
       for (const protocol of ['udp', 'tcp', 'xtls'] as const) {
-        const protoResult = resultWithDetails[protocol];
-        if (protoResult && Array.isArray(protoResult.details)) {
-          transformed[protocol] = {
-            ...protoResult,
-            details: protoResult.details.map((detail) => {
-              const {serverIp, ...rest} = detail;
-
-              return {
-                ...rest,
-                serverIps: serverIp,
-              };
-            }),
-            minLatency: protoResult.latencyInMilliseconds,
-          };
-        } else {
-          transformed[protocol] = protoResult;
-        }
+        transformed[protocol] = this.mapTransportResultToBackendDataFormat(
+          resultWithDetails[protocol]
+        );
       }
       transformed.isVideoMesh = clusterReachability ? clusterReachability.isVideoMesh : undefined;
 
