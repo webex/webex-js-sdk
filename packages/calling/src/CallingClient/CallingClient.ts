@@ -150,12 +150,22 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
     }
 
-    this.mobiusClusters =
-      (mobiusServiceHost && this.webex.internal.services._hostCatalog[mobiusServiceHost]) ||
-      this.webex.internal.services._hostCatalog[MOBIUS_US_PROD] ||
-      this.webex.internal.services._hostCatalog[MOBIUS_EU_PROD] ||
-      this.webex.internal.services._hostCatalog[MOBIUS_US_INT] ||
-      this.webex.internal.services._hostCatalog[MOBIUS_EU_INT];
+    // TODO: This is a temp fix - https://jira-eng-sjc12.cisco.com/jira/browse/CAI-6809
+    if (this.webex.internal.services._hostCatalog) {
+      this.mobiusClusters =
+        (mobiusServiceHost && this.webex.internal.services._hostCatalog[mobiusServiceHost]) ||
+        this.webex.internal.services._hostCatalog[MOBIUS_US_PROD] ||
+        this.webex.internal.services._hostCatalog[MOBIUS_EU_PROD] ||
+        this.webex.internal.services._hostCatalog[MOBIUS_US_INT] ||
+        this.webex.internal.services._hostCatalog[MOBIUS_EU_INT];
+    } else {
+      // @ts-ignore
+      const mobiusObject = this.webex.internal.services._services.find(
+        // @ts-ignore
+        (item) => item.serviceName === 'mobius'
+      );
+      this.mobiusClusters = [mobiusObject.serviceUrls[0].baseUrl];
+    }
     this.mobiusHost = '';
 
     this.registerSessionsListener();
@@ -236,7 +246,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     const regionInfo = {} as RegionInfo;
 
     for (const mobius of this.mobiusClusters) {
-      this.mobiusHost = `https://${mobius.host}${API_V1}`;
+      if (mobius.host) {
+        this.mobiusHost = `https://${mobius.host}${API_V1}`;
+      } else {
+        this.mobiusHost = mobius as unknown as string;
+      }
 
       try {
         // eslint-disable-next-line no-await-in-loop
