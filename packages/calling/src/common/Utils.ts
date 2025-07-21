@@ -520,7 +520,7 @@ export async function handleCallingClientErrors(
       updateErrorContext(
         loggerContext,
         ERROR_TYPE.TOKEN_ERROR,
-        'User is unauthorized due to an expired token',
+        'User is unauthorized due to an expired token.',
         clientError
       );
 

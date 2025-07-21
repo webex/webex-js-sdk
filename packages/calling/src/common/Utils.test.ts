@@ -60,6 +60,14 @@ import {
 import {CALL_EVENT_KEYS} from '../Events/types';
 import SDKConnector from '../SDKConnector';
 
+// Mock crypto for Node.js test environment
+Object.defineProperty(global, 'crypto', {
+  value: {
+    randomUUID: jest.fn(() => 'mocked-uuid-12345'),
+  },
+  writable: true,
+});
+
 const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
 const mockRestoreCb = jest.fn();
@@ -367,7 +375,7 @@ describe('CallingClient Error Tests', () => {
 
   it('verify 401 error response for calling client', async () => {
     const statusCode = ERROR_CODE.UNAUTHORIZED;
-    const message = 'User is unauthorized due to an expired token. Sign out, then sign back in.';
+    const message = 'User is unauthorized due to an expired token.';
     const errorType = ERROR_TYPE.TOKEN_ERROR;
     const finalError = true;
 
