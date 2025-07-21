@@ -14,7 +14,7 @@ describe('webex-core', () => {
     let template;
 
     beforeEach(() => {
-      webex = new MockWebex();
+      webex = MockWebex({});
       new ServicesV2(undefined, {parent: webex});
 
       template = formattedServiceHostmapEntryConv;

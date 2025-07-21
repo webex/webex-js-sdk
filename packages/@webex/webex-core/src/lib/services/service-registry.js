@@ -1,4 +1,4 @@
-import {SERVICE_CATALOGS, SERVICE_CATALOGS_ENUM_TYPES} from './constants';
+import {SERVICE_CATALOGS, SERVICE_CATALOGS_ENUM_TYPES} from '../constants';
 import ServiceHost from './service-host';
 
 /**
