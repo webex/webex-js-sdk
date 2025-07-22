@@ -185,7 +185,7 @@ describe('plugin-mercury', () => {
           mercury._emit('event:u2c.cache-invalidation', cacheInvalidationEventEnvelope);
           assert.calledOnceWithExactly(
             webex.internal.services.invalidateCache,
-            envelope.data.timestamp
+            cacheInvalidationEventEnvelope.data.timestamp
           );
           sinon.restore();
         });
