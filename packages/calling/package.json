@@ -21,7 +21,7 @@
     "directory": "packages/calling"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "scripts": {
     "prebuild": "rimraf dist",
@@ -59,7 +59,7 @@
     "@types/chai": "4.2.21",
     "@types/jest": "27.4.1",
     "@types/mocha": "9.0.0",
-    "@types/node": "16.11.9",
+    "@types/node": "22.9.3",
     "@types/uuid": "8.3.4",
     "@typescript-eslint/eslint-plugin": "5.38.1",
     "@typescript-eslint/parser": "5.38.1",

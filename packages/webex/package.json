@@ -26,7 +26,7 @@
     "directory": "packages/webex"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browser": {
     "./dist/config-storage.js": "./dist/config-storage.shim.js",

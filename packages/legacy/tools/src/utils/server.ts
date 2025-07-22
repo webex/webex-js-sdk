@@ -4,6 +4,8 @@
  */
 
 // import * as path from 'path';
+import * as path from 'path';
+import * as fs from 'fs';
 import { spawn } from 'child_process';
 
 const debug = require('debug')('monorepo:test:server');
@@ -37,7 +39,22 @@ export async function startServer(): Promise<void> {
 
   return new Promise((resolve) => {
     // TODO:  move the logic for spawn the server to test-helper-server
-    const serverPath = '../../@webex/test-helper-server';
+    // Find the workspace root by looking for package.json with workspaces
+    let workspaceRoot = process.cwd();
+    while (workspaceRoot !== '/' && workspaceRoot !== '.') {
+      try {
+        const packageJsonPath = path.join(workspaceRoot, 'package.json');
+        const packageJsonContent = fs.readFileSync(packageJsonPath, 'utf8');
+        const packageJson = JSON.parse(packageJsonContent);
+        if (packageJson.workspaces) {
+          break;
+        }
+      } catch (e) {
+        // package.json doesn't exist at this level
+      }
+      workspaceRoot = path.dirname(workspaceRoot);
+    }
+    const serverPath = path.join(workspaceRoot, 'packages/@webex/test-helper-server');
 
     child = spawn(process.argv[0], [serverPath], {
       env: process.env,

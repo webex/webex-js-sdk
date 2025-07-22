@@ -10,7 +10,7 @@
     "directory": "packages/@webex/media-helpers"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "scripts": {
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist",

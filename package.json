@@ -20,8 +20,8 @@
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "author": "devsupport@webex.com",
   "engines": {
-    "node": "16.x",
-    "npm": ">=6.x"
+    "node": "18.x",
+    "npm": ">=10.5"
   },
   "main": "src/index.js",
   "repository": {
