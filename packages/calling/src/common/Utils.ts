@@ -511,9 +511,23 @@ export async function handleCallingClientErrors(
   const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
-  const finalError = false;
+  let finalError = false;
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
   switch (errorCode) {
+    case ERROR_CODE.UNAUTHORIZED: {
+      finalError = true;
+      log.warn(`401 Unauthorized`, loggerContext);
+      updateErrorContext(
+        loggerContext,
+        ERROR_TYPE.TOKEN_ERROR,
+        'User is unauthorized due to an expired token.',
+        clientError
+      );
+
+      emitterCb(clientError, finalError);
+      break;
+    }
+
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
       log.warn(`500 Internal Server Error`, loggerContext);
       updateErrorContext(
