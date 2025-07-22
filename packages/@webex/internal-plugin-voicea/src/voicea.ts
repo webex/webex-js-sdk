@@ -360,6 +360,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
               csis,
             },
           ],
+          transcript_id: uuid.v4(),
         },
       },
       trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,

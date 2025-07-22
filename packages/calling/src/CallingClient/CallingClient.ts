@@ -150,12 +150,22 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
     }
 
-    this.mobiusClusters =
-      (mobiusServiceHost && this.webex.internal.services._hostCatalog[mobiusServiceHost]) ||
-      this.webex.internal.services._hostCatalog[MOBIUS_US_PROD] ||
-      this.webex.internal.services._hostCatalog[MOBIUS_EU_PROD] ||
-      this.webex.internal.services._hostCatalog[MOBIUS_US_INT] ||
-      this.webex.internal.services._hostCatalog[MOBIUS_EU_INT];
+    // TODO: This is a temp fix - https://jira-eng-sjc12.cisco.com/jira/browse/CAI-6809
+    if (this.webex.internal.services._hostCatalog) {
+      this.mobiusClusters =
+        (mobiusServiceHost && this.webex.internal.services._hostCatalog[mobiusServiceHost]) ||
+        this.webex.internal.services._hostCatalog[MOBIUS_US_PROD] ||
+        this.webex.internal.services._hostCatalog[MOBIUS_EU_PROD] ||
+        this.webex.internal.services._hostCatalog[MOBIUS_US_INT] ||
+        this.webex.internal.services._hostCatalog[MOBIUS_EU_INT];
+    } else {
+      // @ts-ignore
+      const mobiusObject = this.webex.internal.services._services.find(
+        // @ts-ignore
+        (item) => item.serviceName === 'mobius'
+      );
+      this.mobiusClusters = [mobiusObject.serviceUrls[0].baseUrl];
+    }
     this.mobiusHost = '';
 
     this.registerSessionsListener();
@@ -229,6 +239,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Fetches countryCode and region of the client.
    */
   private async getClientRegionInfo(): Promise<RegionInfo> {
+    let abort;
     log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.GET_CLIENT_REGION_INFO,
@@ -236,7 +247,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     const regionInfo = {} as RegionInfo;
 
     for (const mobius of this.mobiusClusters) {
-      this.mobiusHost = `https://${mobius.host}${API_V1}`;
+      if (mobius.host) {
+        this.mobiusHost = `https://${mobius.host}${API_V1}`;
+      } else {
+        this.mobiusHost = mobius as unknown as string;
+      }
 
       try {
         // eslint-disable-next-line no-await-in-loop
@@ -251,6 +266,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         });
 
         const myIP = (temp.body as IpInfo).ipv4;
+
         // eslint-disable-next-line no-await-in-loop
         const response = <WebexRequestPayload>await this.webex.request({
           uri: `${DISCOVERY_URL}/${myIP}`,
@@ -278,7 +294,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           file: CALLING_CLIENT_FILE,
         });
 
-        handleCallingClientErrors(
+        // eslint-disable-next-line no-await-in-loop
+        abort = await handleCallingClientErrors(
           err as WebexRequestPayload,
           (clientError) => {
             this.metricManager.submitRegistrationMetric(
@@ -295,8 +312,13 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           },
           {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
         );
+
         regionInfo.clientRegion = '';
         regionInfo.countryCode = '';
+
+        if (abort) {
+          return regionInfo;
+        }
       }
     }
 
