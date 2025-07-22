@@ -29,8 +29,6 @@ export type CallingClientErrorEmitterCallback = (
   finalError?: boolean
 ) => void;
 
-export type retry429CallBack = (retryAfter: number) => void;
-
 /**
  * An interface for the `CallingClient` module.
  * The `CallingClient` module is designed to provide a set of APIs related to line registration and calling functionalities within the SDK.
