@@ -1,6 +1,6 @@
 import Url from 'url';
 
-import {SERVICE_CATALOGS} from './constants';
+import {SERVICE_CATALOGS} from '../constants';
 
 /**
  * The parameter transfer object for {@link ServiceHost#constructor}.

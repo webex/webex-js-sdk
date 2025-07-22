@@ -3,12 +3,12 @@ import {assert, expect} from '@webex/test-helper-chai';
 
 import testUtils from '../../../utils/testUtils';
 import {BrbState, createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
-import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
+import {MediaType} from '@webex/internal-media-core';
 
 describe('plugin-meetings', () => {
   let meeting: any;
   let brbState: BrbState;
-  let setBrbStub: sinon.SinonStub;  
+  let setBrbStub: sinon.SinonStub;
 
   beforeEach(async () => {
     meeting = {
@@ -23,7 +23,7 @@ describe('plugin-meetings', () => {
         setSourceStateOverride: sinon.stub(),
       },
       meetingRequest: {
-        setBrb: () => {}
+        setBrb: () => {},
       },
     };
 
@@ -104,12 +104,12 @@ describe('plugin-meetings', () => {
       assert.isTrue(meeting.meetingRequest.setBrb.calledOnce);
     });
 
-    it('sets source state override when client state does not match server state', async () => {
+    it('updates source state override', async () => {
       brbState.enable(true, meeting.sendSlotManager);
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
 
-      assert.isTrue(meeting.sendSlotManager.setSourceStateOverride.calledOnce);
+      assert.isTrue(meeting.sendSlotManager.setSourceStateOverride.called);
     });
 
     it('handles server update', async () => {
@@ -141,12 +141,14 @@ describe('plugin-meetings', () => {
     it('should reject when sendLocalBrbStateToServer fails', async () => {
       const error = new Error('send failed');
       setBrbStub.rejects(error);
-        
-      await expect(
-        brbState.enable(true, meeting.sendSlotManager)
-      ).to.be.rejectedWith(error); 
+
+      const enablePromise = brbState.enable(true, meeting.sendSlotManager);
+      await expect(enablePromise).to.be.rejectedWith(error);
 
       assert.isFalse(brbState.state.syncToServerInProgress);
+      assert.isTrue(
+        meeting.sendSlotManager.setSourceStateOverride.calledWith(MediaType.VideoMain, 'away')
+      );
     });
   });
 });

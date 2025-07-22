@@ -23,7 +23,7 @@ describe('webex-core', () => {
     let catalog;
 
     beforeEach(() => {
-      webex = new MockWebex({
+      webex = MockWebex({
         children: {
           services: ServicesV2,
           newMetrics: NewMetrics,
@@ -310,6 +310,30 @@ describe('webex-core', () => {
           method: 'GET',
           service: 'u2c',
           resource: '/limited/catalog',
+          qs: {format: 'U2CV2'},
+          headers: {},
+        });
+        assert.calledOnceWithExactly(
+          webex.internal.newMetrics.callDiagnosticLatencies.measureLatency,
+          sinon.match.func,
+          'internal.get.u2c.time'
+        );
+      });
+
+      it('hits correct endpoint for postauth', async () => {
+        const mapResponse = 'map response';
+
+        sinon.stub(services, '_formatReceivedHostmap').resolves(mapResponse);
+        sinon.stub(services, 'request').resolves({});
+
+        const mapResult = await services._fetchNewServiceHostmap({});
+
+        assert.deepEqual(mapResult, mapResponse);
+
+        assert.calledOnceWithExactly(services.request, {
+          method: 'GET',
+          service: 'u2c',
+          resource: '/user/catalog',
           qs: {format: 'U2CV2'},
           headers: {},
         });
