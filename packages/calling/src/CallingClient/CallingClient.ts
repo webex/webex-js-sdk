@@ -239,6 +239,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Fetches countryCode and region of the client.
    */
   private async getClientRegionInfo(): Promise<RegionInfo> {
+    let abort;
     log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.GET_CLIENT_REGION_INFO,
@@ -265,6 +266,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         });
 
         const myIP = (temp.body as IpInfo).ipv4;
+
         // eslint-disable-next-line no-await-in-loop
         const response = <WebexRequestPayload>await this.webex.request({
           uri: `${DISCOVERY_URL}/${myIP}`,
@@ -292,7 +294,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           file: CALLING_CLIENT_FILE,
         });
 
-        handleCallingClientErrors(
+        // eslint-disable-next-line no-await-in-loop
+        abort = await handleCallingClientErrors(
           err as WebexRequestPayload,
           (clientError) => {
             this.metricManager.submitRegistrationMetric(
@@ -309,8 +312,13 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           },
           {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
         );
+
         regionInfo.clientRegion = '';
         regionInfo.countryCode = '';
+
+        if (abort) {
+          return regionInfo;
+        }
       }
     }
 
