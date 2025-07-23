@@ -19,7 +19,10 @@ import WebexCore, {
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
 import sinon from 'sinon';
-import {formattedServiceHostmapEntryConv} from '../../../fixtures/host-catalog-v2';
+import {
+  formattedServiceHostmapEntryConv,
+  formattedServiceHostmapEntryMercury,
+} from '../../../fixtures/host-catalog-v2';
 
 // /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
@@ -427,6 +430,20 @@ describe('webex-core', () => {
 
         assert.isDefined(convertUrl);
         assert.isTrue(convertUrl.includes(testDetail.get()));
+      });
+
+      it('converts the url to a priority host url when paths are different', () => {
+        const mercuryDetail = new ServiceDetail(formattedServiceHostmapEntryMercury);
+        catalog._loadServiceDetails('preauth', [mercuryDetail]);
+
+        const resource = 'path/to/resource';
+        const url = `${mercuryDetail.serviceUrls[1].baseUrl}/${resource}`;
+
+        const convertUrl = services.convertUrlToPriorityHostUrl(url);
+
+        assert.isDefined(convertUrl);
+        assert.isTrue(convertUrl.includes(testDetail.get()));
+        assert.equal(convertUrl, `${testDetail.get()}${resource}`);
       });
 
       it('throws an exception if not a valid service', () => {
