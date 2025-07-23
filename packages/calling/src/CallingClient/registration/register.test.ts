@@ -29,7 +29,6 @@ import {
   REGISTRATION_FILE,
   REGISTRATION_UTIL,
   REG_429_RETRY_UTIL,
-  REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
   REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
   SEC_TO_MSEC_MFACTOR,
 } from '../constants';
@@ -137,6 +136,7 @@ describe('Registration Tests', () => {
   let restartSpy;
   let restoreSpy;
   let postRegistrationSpy;
+  let deregisterSpy;
   let failoverSpy;
   let retry429Spy;
   let metricSpy;
@@ -149,6 +149,7 @@ describe('Registration Tests', () => {
     restartSpy = jest.spyOn(reg, 'restartRegistration');
     restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
     postRegistrationSpy = jest.spyOn(reg, 'postRegistration');
+    deregisterSpy = jest.spyOn(reg, 'deregister');
     failoverSpy = jest.spyOn(reg, 'startFailoverTimer');
     retry429Spy = jest.spyOn(reg, 'handle429Retry');
     metricSpy = jest.spyOn(reg.metricManager, 'submitRegistrationMetric');
@@ -581,7 +582,7 @@ describe('Registration Tests', () => {
 
       await reg.triggerRegistration();
 
-      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC * SEC_TO_MSEC_MFACTOR);
+      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
       expect(webex.request).toBeCalledTimes(3);
       expect(webex.request).toHaveBeenNthCalledWith(1, {
@@ -778,7 +779,7 @@ describe('Registration Tests', () => {
 
       expect(reg.getStatus()).toEqual(RegistrationStatus.IDLE);
       await reg.triggerRegistration();
-      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC * SEC_TO_MSEC_MFACTOR);
+      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_IN_SEC * SEC_TO_MSEC_MFACTOR);
       await flushPromises();
 
       expect(webex.request).toBeCalledTimes(3);
@@ -836,7 +837,10 @@ describe('Registration Tests', () => {
   });
 
   describe('Registration failback tests', () => {
+    let isPrimaryActiveSpy;
     beforeEach(async () => {
+      isPrimaryActiveSpy = jest.spyOn(reg, 'isPrimaryActive');
+      isPrimaryActiveSpy.mockReturnValue(true);
       /* keep keepalive as active so that it wont interfere with the failback tests */
       jest.useFakeTimers();
       postRegistrationSpy
@@ -982,6 +986,7 @@ describe('Registration Tests', () => {
       });
 
       /* Active Url must now match with the primary url */
+      expect(deregisterSpy).toBeCalledOnceWith();
       expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.primary[0]);
       expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
       expect(reg.failbackTimer).toBe(undefined);
@@ -1003,23 +1008,53 @@ describe('Registration Tests', () => {
       );
       await flushPromises();
 
-      expect(infoSpy).toBeCalledWith(`Active calls present, deferring failback to next cycle.`, {
-        method: 'executeFailback',
-        file: REGISTRATION_FILE,
-      });
+      expect(infoSpy).toBeCalledWith(
+        `Active calls present or primary Mobius is down, deferring failback to next cycle.`,
+        {
+          method: 'executeFailback',
+          file: REGISTRATION_FILE,
+        }
+      );
 
       /* Active Url should still match backup url */
       expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.backup[0]);
       expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      expect(deregisterSpy).not.toBeCalled();
       expect(restoreSpy).not.toBeCalled();
       expect(restartSpy).not.toBeCalled();
 
-      expect(infoSpy).toBeCalledWith('Active calls present, deferring failback to next cycle.', {
-        file: REGISTRATION_FILE,
-        method: FAILBACK_UTIL,
-      });
+      expect(infoSpy).toBeCalledWith(
+        'Active calls present or primary Mobius is down, deferring failback to next cycle.',
+        {
+          file: REGISTRATION_FILE,
+          method: FAILBACK_UTIL,
+        }
+      );
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
       expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
+    });
+
+    it('verify unsuccessful failback attempt due to primary server being down', async () => {
+      isPrimaryActiveSpy.mockReturnValue(false);
+
+      /* Wait for failback to be triggered. */
+      jest.advanceTimersByTime(
+        reg.rehomingIntervalMax * MINUTES_TO_SEC_MFACTOR * SEC_TO_MSEC_MFACTOR
+      );
+      await flushPromises();
+
+      expect(infoSpy).toBeCalledWith(
+        `Active calls present or primary Mobius is down, deferring failback to next cycle.`,
+        {
+          method: 'executeFailback',
+          file: REGISTRATION_FILE,
+        }
+      );
+
+      /* Active Url should still match backup url */
+      expect(deregisterSpy).not.toBeCalled();
+      expect(reg.getActiveMobiusUrl()).toStrictEqual(mobiusUris.backup[0]);
+      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
     });
   });
 
@@ -1370,6 +1405,38 @@ describe('Registration Tests', () => {
       expect(reg.reconnectPending).toStrictEqual(false);
       expect(reg.keepaliveTimer).toBe(undefined);
       expect(reg.webWorker).toBeUndefined();
+    });
+  });
+
+  describe('Primary server status checks', () => {
+    it('success: primary server status to be up', async () => {
+      const pingSuccessPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+      });
+      webex.request.mockResolvedValue(pingSuccessPayload);
+      const status = await reg.isPrimaryActive();
+
+      expect(webex.request).toBeCalledWith({
+        method: 'GET',
+        uri: `https://mobius-dfw.webex.com/api/v1/ping`,
+        ...getMockRequestTemplate(),
+      });
+      expect(status).toEqual(true);
+    });
+
+    it('failed: primary server status to be down', async () => {
+      const pingFailurePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 500,
+      });
+      webex.request.mockResolvedValue(pingFailurePayload);
+      const status = await reg.isPrimaryActive();
+
+      expect(webex.request).toBeCalledWith({
+        method: 'GET',
+        uri: `https://mobius-dfw.webex.com/api/v1/ping`,
+        ...getMockRequestTemplate(),
+      });
+      expect(status).toEqual(false);
     });
   });
 });

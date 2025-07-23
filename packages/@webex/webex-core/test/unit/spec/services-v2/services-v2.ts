@@ -320,6 +320,30 @@ describe('webex-core', () => {
         );
       });
 
+      it('hits correct endpoint for postauth', async () => {
+        const mapResponse = 'map response';
+
+        sinon.stub(services, '_formatReceivedHostmap').resolves(mapResponse);
+        sinon.stub(services, 'request').resolves({});
+
+        const mapResult = await services._fetchNewServiceHostmap({});
+
+        assert.deepEqual(mapResult, mapResponse);
+
+        assert.calledOnceWithExactly(services.request, {
+          method: 'GET',
+          service: 'u2c',
+          resource: '/user/catalog',
+          qs: {format: 'U2CV2'},
+          headers: {},
+        });
+        assert.calledOnceWithExactly(
+          webex.internal.newMetrics.callDiagnosticLatencies.measureLatency,
+          sinon.match.func,
+          'internal.get.u2c.time'
+        );
+      });
+
       it('checks service request rejects', async () => {
         const error = new Error('some error');
 
