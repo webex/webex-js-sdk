@@ -59,10 +59,7 @@ export class BrbState {
     this.state.client.enabled = enabled;
 
     return this.applyClientStateToServer(sendSlotManager).finally(() => {
-      sendSlotManager.setSourceStateOverride(
-        MediaType.VideoMain,
-        this.state.client.enabled ? 'away' : null
-      );
+      sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
     });
   }
 
