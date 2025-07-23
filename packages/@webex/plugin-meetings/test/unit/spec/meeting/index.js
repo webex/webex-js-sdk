@@ -12413,7 +12413,7 @@ describe('plugin-meetings', () => {
                 activeSharingId.whiteboard = beneficiaryId;
 
                 eventTrigger.share.push(
-                  meeting.webinar.selfIsAttendee
+                  meeting.webinar.selfIsAttendee || meeting.guest
                     ? {
                         eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                         functionName: 'remoteShare',
@@ -12432,7 +12432,8 @@ describe('plugin-meetings', () => {
                       }
                 );
 
-                shareStatus = meeting.webinar.selfIsAttendee
+                shareStatus =
+                  meeting.webinar.selfIsAttendee || meeting.guest
                   ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
                   : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
               }
@@ -12647,6 +12648,36 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
               assert.equal(meeting.shareCAEventSentStatus.receiveStart, false);
               assert.equal(meeting.shareCAEventSentStatus.receiveStop, false);
+            });
+          });
+
+          describe('Whiteboard Share - User is guest', () => {
+            it('User receives a remote share instead of whiteboard share', () => {
+              // Set the guest flag
+              meeting.guest = true;
+
+              // Step 1: Start sharing whiteboard A
+              const data1 = generateData(
+                blankPayload, // Initial payload
+                true, // isGranting: Granting share
+                false, // isContent: Whiteboard (not content)
+                USER_IDS.REMOTE_A, // Beneficiary ID: Remote user A
+                RESOURCE_URLS.WHITEBOARD_A // Resource URL: Whiteboard A
+              );
+
+              // Step 2: Stop sharing whiteboard A
+              const data2 = generateData(
+                data1.payload, // Updated payload from Step 1
+                false, // isGranting: Stopping share
+                false, // isContent: Whiteboard
+                USER_IDS.REMOTE_A // Beneficiary ID: Remote user A
+              );
+
+              // Validate the payload changes and status updates
+              payloadTestHelper([data1]);
+
+              // Specific assertions for guest
+              assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
             });
           });
 
