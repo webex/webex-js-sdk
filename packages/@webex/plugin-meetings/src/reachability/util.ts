@@ -43,25 +43,3 @@ export function convertStunUrlToTurnTls(stunUrl: string) {
 
   return url.toString();
 }
-
-/**
- * Checks if the given server address is a domain name.
- *
- * @param {string} url - The server IP or domain name to check.
- * @returns {boolean} true if the server IP is a domain name, false otherwise.
- */
-export function isDomainName(url: string): boolean {
-  // Regex to match IPv4 addresses
-  const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-
-  // Regex to match IPv6 addresses (enclosed in square brackets or plain format)
-  const ipv6Regex = /^\[?([a-fA-F0-9]{0,4}:){2,7}[a-fA-F0-9]{0,4}\]?$/;
-
-  // Check if the input matches IPv4 or IPv6
-  if (ipv4Regex.test(url) || ipv6Regex.test(url)) {
-    return false; // It's an IP address
-  }
-
-  // If it doesn't match IPv4 or IPv6, assume it's a domain name
-  return true;
-}

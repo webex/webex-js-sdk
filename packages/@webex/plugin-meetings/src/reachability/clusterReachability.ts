@@ -1,11 +1,12 @@
 import {Defer} from '@webex/common';
+import {isIP} from 'is-ip';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {ClusterNode} from './request';
-import {convertStunUrlToTurn, convertStunUrlToTurnTls, isDomainName} from './util';
+import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 import EventsScope from '../common/events/events-scope';
 
-import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
+import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE, STUN_SERVER_URL_REGEX} from '../constants';
 import {ClusterReachabilityResult, NatType} from './reachability.types';
 
 // data for the Events.resultReady event
@@ -33,6 +34,7 @@ export const Events = {
 } as const;
 
 export type Events = Enum<typeof Events>;
+const protocols: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
 
 /**
  * A class that handles reachability checks for a single cluster.
@@ -69,48 +71,20 @@ export class ClusterReachability extends EventsScope {
     this.pc = this.createPeerConnection(clusterInfo);
 
     this.defer = new Defer();
-
-    // Prepopulate details for each protocol
-    const protocols: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
     this.result = {
       udp: {
         result: 'untested',
-        latencyInMilliseconds: undefined,
-        clientMediaIPs: [],
-        minLatency: undefined,
         details: [],
       },
       tcp: {
         result: 'untested',
-        latencyInMilliseconds: undefined,
-        clientMediaIPs: [],
-        minLatency: undefined,
         details: [],
       },
       xtls: {
         result: 'untested',
-        latencyInMilliseconds: undefined,
-        clientMediaIPs: [],
-        minLatency: undefined,
         details: [],
       },
     };
-
-    protocols.forEach((protocol) => {
-      clusterInfo[protocol].forEach((url) => {
-        const stunServerUrlRegex = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
-        const match = url.match(stunServerUrlRegex);
-        if (match && !isDomainName(match[1])) {
-          this.result[protocol].details.push({
-            serverIp: match[1],
-            port: Number(match[2]),
-            'answered-tx': 0,
-            'lost-tx': 1,
-            latencies: [],
-          });
-        }
-      });
-    });
   }
 
   /**
@@ -304,7 +278,6 @@ export class ClusterReachability extends EventsScope {
       );
       result.latencyInMilliseconds = latency;
       result.result = 'reachable';
-      result.minLatency = latency;
       if (publicIp) {
         result.clientMediaIPs = [publicIp];
       }
@@ -399,9 +372,9 @@ export class ClusterReachability extends EventsScope {
         let serverIp = null;
         let port = null;
         if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          if ('url' in e.candidate && e.candidate.url) {
-            const stunServerUrlRegex = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
-            const match = (e.candidate as any).url.match(stunServerUrlRegex);
+          // @ts-ignore
+          if (e.candidate.url) {
+            const match = (e.candidate as any).url.match(STUN_SERVER_URL_REGEX);
             if (match) {
               [, serverIp, port] = match;
               port = Number(port);
@@ -451,9 +424,33 @@ export class ClusterReachability extends EventsScope {
 
     // Initialize each protocol in this.result as saying that nothing is reachable.
     // It will get updated as we go along and successfully gather ICE candidates.
-    this.result.udp.result = this.numUdpUrls > 0 ? 'unreachable' : 'untested';
-    this.result.tcp.result = this.numTcpUrls > 0 ? 'unreachable' : 'untested';
-    this.result.xtls.result = this.numXTlsUrls > 0 ? 'unreachable' : 'untested';
+    this.result.udp = {
+      result: this.numUdpUrls > 0 ? 'unreachable' : 'untested',
+      details: [],
+    };
+    this.result.tcp = {
+      result: this.numTcpUrls > 0 ? 'unreachable' : 'untested',
+      details: [],
+    };
+    this.result.xtls = {
+      result: this.numXTlsUrls > 0 ? 'unreachable' : 'untested',
+      details: [],
+    };
+
+    protocols.forEach((protocol) => {
+      this.clusterInfo[protocol].forEach((url) => {
+        const match = url.match(STUN_SERVER_URL_REGEX);
+        if (match && isIP(match[1])) {
+          this.result[protocol].details.push({
+            serverIp: match[1],
+            port: Number(match[2]),
+            'answered-tx': 0,
+            'lost-tx': 1,
+            latencies: [],
+          });
+        }
+      });
+    });
 
     try {
       const offer = await this.pc.createOffer({offerToReceiveAudio: true});
@@ -482,8 +479,6 @@ export class ClusterReachability extends EventsScope {
    * @returns {Array<string>} List of URLs for the cluster.
    */
   public getClusterUrls(): Array<string> {
-    const protocols: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
-
     const urls: Array<string> = [];
 
     protocols.forEach((protocol) => {

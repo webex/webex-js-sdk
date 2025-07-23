@@ -5,8 +5,7 @@ export type TransportResult = {
   result: 'reachable' | 'unreachable' | 'untested';
   latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
   clientMediaIPs?: string[];
-  minLatency?: number;
-  details?: SubnetDetails[];
+  details: SubnetDetails[];
 };
 
 // New type to represent the result for each subnet IP address
@@ -116,4 +115,5 @@ export type GetClustersTrigger = 'startup' | 'early-call/no-min-reached';
 // This is the type used to get the cluster URLs.
 // It'll be used to return the URLs(IPs and domain names with ports) grouped by cluster and protocol.
 export type ClusterUrlObj = {urlAddress: string; port: number};
-export type ClusterUrlsWithPort = Record<string, Record<string, ClusterUrlObj[]>>;
+export type ProtocolKey = 'udp' | 'tcp' | 'xtls';
+export type ClusterUrls = Record<string, Record<ProtocolKey, string[]>>;

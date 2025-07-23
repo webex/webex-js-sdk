@@ -1358,3 +1358,6 @@ export const INITIAL_REGISTRATION_STATUS = {
   mercuryConnect: false,
   checkH264Support: false,
 };
+
+// Regular expression to match STUN server URLs
+export const STUN_SERVER_URL_REGEX = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
