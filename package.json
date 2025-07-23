@@ -161,7 +161,7 @@
     "express": "^4.19.2",
     "express-session": "^1.16.2",
     "express-validator": "^5.3.1",
-    "firefox-profile": "^4.0.0",
+    "firefox-profile": "^4.7.0",
     "fs-extra": "^8.1.0",
     "geckodriver": "^4.4.2",
     "glob": "^7.1.4",
