@@ -1126,7 +1126,7 @@ export default class Reachability extends EventsScope {
   }
 
   /**
-   * Gets the list of all cluster URLs (IP addresses or domain names with ports) grouped by cluster and protocol,
+   * Gets the list of all cluster URLs used during the reachability checks (IP addresses or domain names with ports) grouped by cluster and protocol,
    *
    * @returns {Promise<ClusterUrls>} A promise that resolves to an object containing clusters as keys,
    * protocols as nested keys, and arrays of "ip:port" or "domain:port" strings.
