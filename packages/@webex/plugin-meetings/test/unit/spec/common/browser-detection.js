@@ -18,16 +18,6 @@ const USER_AGENT_SAFARI_MAC =
 const USER_AGENT_FIREFOX_MAC =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:87.0) ' + 'Gecko/20100101 Firefox/87.0';
 
-const mockDetectionObject = {
-  /* eslint-disable global-require */
-  getOSName: () => require('os').platform(),
-  getOSVersion: () => require('os').release(),
-  /* eslint-enable global-require */
-  getBrowserName: () => '',
-  getBrowserVersion: () => '',
-  isBrowser: () => false,
-};
-
 describe('common/browser-detection', () => {
   it('returns the correct browser name.', () => {
     assert.equal(
@@ -103,17 +93,10 @@ describe('common/browser-detection', () => {
     );
   });
 
-  it.skip('returns the mock object when there is no userAgent', () => {
-    Object.defineProperty(global.window.navigator, 'userAgent', {
-      get: () => undefined,
-      configurable: true,
-    });
+  it('returns isBrowser as false when no useragent is provided and run in node environment', () => {
 
-    const {getBrowserName, getBrowserVersion, getOSName, getOSVersion} = BrowserDetection(null);
+    const {isBrowser} = BrowserDetection();
 
-    assert.equal(getBrowserName(), mockDetectionObject.getBrowserName());
-    assert.equal(getBrowserVersion(), mockDetectionObject.getBrowserVersion());
-    assert.equal(getOSName(), mockDetectionObject.getOSName());
-    assert.equal(getOSVersion(), mockDetectionObject.getOSVersion());
+    assert.isFalse(isBrowser());
   });
 });
