@@ -120,6 +120,7 @@ export const formattedServiceHostmapV2 = [
     serviceUrls: [
       {
         baseUrl: 'https://mercury-a.wbx2.com/mercury/api/v1',
+        host: 'mercury-a.wbx2.com',
         priority: 1,
       },
     ],
