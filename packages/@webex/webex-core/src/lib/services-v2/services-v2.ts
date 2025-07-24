@@ -843,7 +843,7 @@ const Services = WebexPlugin.extend({
     }
   ): Promise<object> {
     const service = 'u2c';
-    const resource = from ? `/${from}/catalog` : '/user/catalog';
+    const resource = from ? `/${from}/catalog` : '/catalog';
     const qs = {...(query || {}), format: 'U2CV2'};
 
     if (forceRefresh) {

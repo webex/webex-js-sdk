@@ -1,6 +1,7 @@
 {
   "name": "@webex/plugin-cc",
   "description": "This package provides a set of APIs to perform various operations for the Agent flow within Webex Contact Center",
+  "license": "MIT",
   "contributors": [
     "Adhwaith Menon <adhmenon@cisco.com>",
     "Bharath Balan <bhabalan@cisco.com>",
