@@ -15,18 +15,18 @@ export const formattedServiceHostmapEntryConv = {
   ],
 };
 
-export const formattedServiceHostmapEntryMercury = {
-  id: 'urn:TEAM:us-east-2_a:mercury',
-  serviceName: 'mercury',
+export const formattedServiceHostmapEntryTest = {
+  id: 'urn:TEAM:us-east-2_a:test',
+  serviceName: 'test',
   serviceUrls: [
     {
-      baseUrl: 'wss://int-first-mercury.svc.webex.com/mercury-connection-partition0/api/v1',
-      host: 'int-first-mercury.svc.webex.com',
+      baseUrl: 'wss://int-first-test.svc.webex.com/test-connection-partition0/api/v1',
+      host: 'int-first-test.svc.webex.com',
       priority: 1,
     },
     {
-      baseUrl: 'wss://mercury-connection-partition0-intb.ciscospark.com/v1',
-      host: 'mercury-connection-partition0-intb.ciscospark.com',
+      baseUrl: 'wss://test-connection-partition0-intb.ciscospark.com/v1',
+      host: 'test-connection-partition0-intb.ciscospark.com',
       priority: 2,
     },
   ],
@@ -34,7 +34,6 @@ export const formattedServiceHostmapEntryMercury = {
 
 export const formattedServiceHostmapV2 = [
   formattedServiceHostmapEntryConv,
-  formattedServiceHostmapEntryMercury,
   {
     id: 'urn:TEAM:me-central-1_d:conversation',
     serviceName: 'conversation',
@@ -112,6 +111,16 @@ export const formattedServiceHostmapV2 = [
         baseUrl: 'https://conv-d.wbx2.com/locus/api/v1',
         host: 'conv-d.wbx2.com',
         priority: 2,
+      },
+    ],
+  },
+  {
+    id: 'urn:TEAM:us-east-2_a:mercury',
+    serviceName: 'mercury',
+    serviceUrls: [
+      {
+        baseUrl: 'https://mercury-a.wbx2.com/mercury/api/v1',
+        priority: 1,
       },
     ],
   },
