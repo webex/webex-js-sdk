@@ -31,7 +31,7 @@ import WebexUserAgentInterceptor from './interceptors/webex-user-agent';
 import RateLimitInterceptor from './interceptors/rate-limit';
 import EmbargoInterceptor from './interceptors/embargo';
 import DefaultOptionsInterceptor from './interceptors/default-options';
-import HostMapInterceptor from './lib/services/interceptors/hostmap';
+import HostMapInterceptor from './lib/interceptors/hostmap';
 import config from './config';
 import {makeWebexStore} from './lib/storage';
 import mixinWebexCorePlugins from './lib/webex-core-plugin-mixin';

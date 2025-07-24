@@ -10,6 +10,7 @@ export type restoreRegistrationCallBack = (
 ) => Promise<boolean>;
 
 export type retry429CallBack = (retryAfter: number, caller: string) => void;
+
 /**
  * Represents an interface for managing registration-related operations.
  */
