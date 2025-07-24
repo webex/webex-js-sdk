@@ -473,22 +473,6 @@ export class ClusterReachability extends EventsScope {
   }
 
   /**
-   * Returns the list of URLs (FQDNs or IPs) for the cluster.
-   * This is useful for displaying the list of attempted FQDNs and IPs.
-   *
-   * @returns {Array<string>} List of URLs for the cluster.
-   */
-  public getClusterUrls(): Array<string> {
-    const urls: Array<string> = [];
-
-    protocols.forEach((protocol) => {
-      urls.push(...this.clusterInfo[protocol]);
-    });
-
-    return urls;
-  }
-
-  /**
    * Starts the process of gathering ICE candidates
    *
    * @returns {Promise} promise that's resolved once reachability checks for this cluster are completed or timeout is reached
