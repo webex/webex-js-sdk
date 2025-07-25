@@ -58,6 +58,7 @@ export class BrbState {
   public enable(enabled: boolean, sendSlotManager: SendSlotManager) {
     this.state.client.enabled = enabled;
 
+    // Don't set the source state override if enabling brb fails
     return this.applyClientStateToServer(sendSlotManager).then(() => {
       sendSlotManager.setSourceStateOverride(
         MediaType.VideoMain,
