@@ -777,12 +777,15 @@ const Services = WebexPlugin.extend({
       return undefined;
     }
 
-    const urlRet = service.get();
+    const priorityUrl = service.get();
+    const defaultUrl = new URL(
+      service.serviceUrls.find((serviceUrl) => url.startsWith(serviceUrl.baseUrl)).baseUrl
+    ).href;
 
     return {
       name: service.serviceName,
-      priorityUrl: urlRet,
-      defaultUrl: urlRet,
+      priorityUrl,
+      defaultUrl,
     };
   },
 
@@ -813,12 +816,7 @@ const Services = WebexPlugin.extend({
       throw Error(`No service associated with url: [${url}]`);
     }
 
-    const priortyHost = new URL(data.priorityUrl).host;
-    const newUrl = new URL(url);
-
-    newUrl.host = priortyHost;
-
-    return newUrl.href;
+    return url.replace(data.defaultUrl, data.priorityUrl);
   },
 
   /**
@@ -843,7 +841,7 @@ const Services = WebexPlugin.extend({
     }
   ): Promise<object> {
     const service = 'u2c';
-    const resource = from ? `/${from}/catalog` : '/user/catalog';
+    const resource = from ? `/${from}/catalog` : '/catalog';
     const qs = {...(query || {}), format: 'U2CV2'};
 
     if (forceRefresh) {
