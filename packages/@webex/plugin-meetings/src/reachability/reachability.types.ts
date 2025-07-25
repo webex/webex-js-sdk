@@ -113,7 +113,6 @@ export interface ClientMediaPreferences {
 export type GetClustersTrigger = 'startup' | 'early-call/no-min-reached';
 
 // This is the type used to get the cluster URLs.
-// It'll be used to return the URLs(IPs and domain names with ports) grouped by cluster and protocol.
-export type ClusterUrlObj = {urlAddress: string; port: number};
+// Will be used to return the URLs(IPs and domain names with ports) grouped by cluster and protocol.
 export type ProtocolKey = 'udp' | 'tcp' | 'xtls';
 export type ClusterUrls = Record<string, Record<ProtocolKey, string[]>>;
