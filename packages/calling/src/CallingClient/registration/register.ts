@@ -73,7 +73,7 @@ export class Registration implements IRegistration {
 
   private failback429RetryAttempts: number;
   private registrationStatus: RegistrationStatus;
-  private failbackTimer?: NodeJS.Timer;
+  private failbackTimer?: NodeJS.Timeout;
   private activeMobiusUrl!: string;
 
   private rehomingIntervalMin: number;

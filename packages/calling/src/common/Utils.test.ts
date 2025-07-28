@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import {v4 as uuid} from 'uuid';
 import {CallingPartyInfo, MessageInfo} from '../Voicemail/types';
 import {Call} from '../CallingClient/calling';
 import {CallError, CallingClientError} from '../Errors';
@@ -60,13 +61,12 @@ import {
 import {CALL_EVENT_KEYS} from '../Events/types';
 import SDKConnector from '../SDKConnector';
 
-// Mock crypto for Node.js test environment
-Object.defineProperty(global, 'crypto', {
-  value: {
-    randomUUID: jest.fn(() => 'mocked-uuid-12345'),
-  },
-  writable: true,
-});
+// Mock uuid
+jest.mock('uuid', () => ({
+  v4: jest.fn(),
+}));
+
+const mockUuid = uuid as jest.MockedFunction<typeof uuid>;
 
 const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
