@@ -70,27 +70,15 @@
     "forceConsistentCasingInFileNames": true /* Disallow inconsistently-cased references to the same file. */
   },
   "typedocOptions": {
-    "entryPoints": [
-      "./src/api.ts"
-    ],
-    "sort": [
-      "source-order"
-    ],
+    "entryPoints": ["./src/api.ts"],
+    "sort": ["source-order"],
     "name": "Calling SDK (@webex/calling)",
     "disableSources": "true",
     "entryPointStrategy": "expand",
     "excludeExternals": "true",
     "excludePrivate": "true",
-    "hideGenerator": "true",
+    "hideGenerator": "true"
   },
-  "include": [
-    "src/**/*.ts",
-    "jest.global.d.ts"
-  ],
-  "exclude": [
-    "./node_modules/**",
-    "./test",
-    "./docs/examples",
-    "./src/**/*.test.ts"
-  ]
+  "include": ["src/**/*.ts", "jest.global.d.ts"],
+  "exclude": ["./node_modules/**", "./test", "./docs/examples", "./src/**/*.test.ts"]
 }

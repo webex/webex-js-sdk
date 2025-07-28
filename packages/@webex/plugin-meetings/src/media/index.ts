@@ -67,7 +67,7 @@ const Media: any = {};
 Media.getLocalMedia = (options: any, config: object) => {
   const {sendAudio, sendVideo, sendShare, sharePreferences, isSharing} = options;
 
-  if (sendAudio || sendVideo) {
+  if (sendAudio || !sendVideo) {
     return Media.getMedia(sendAudio, sendVideo, config);
   }
 

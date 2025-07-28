@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    // Ensure that Babel can safely transpile files in the TypeScript project
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "alwaysStrict": true,
+    "preserveSymlinks": true,
+    "experimentalDecorators": true,
+    "declaration": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "preserveConstEnums": true,
+    "removeComments": false,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "stripInternal": true,
+    "target": "ES6",
+    "lib": ["ESNext", "DOM"],
+    "strict": false
+  },
+  "include": ["./packages/**/*.*"]
+}

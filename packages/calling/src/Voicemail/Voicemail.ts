@@ -42,7 +42,7 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
   /**
    * @ignore
    */
-  constructor(webex: WebexSDK, public logger: LoggerInterface) {
+  constructor(webex: WebexSDK, logger: LoggerInterface) {
     super();
     this.sdkConnector = SDKConnector;
     if (!this.sdkConnector.getWebex()) {
