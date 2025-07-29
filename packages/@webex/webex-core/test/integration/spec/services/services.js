@@ -320,6 +320,39 @@ describe('webex-core', () => {
 
         assert.isUndefined(serviceObject);
       });
+
+      it('handles case where there is a priority of -1 for a service url', () => {
+        const negativePriorityTemplate = {
+          defaultUrl: 'https://www.example.com/api/v1',
+          hosts: [
+            {
+              host: 'www.example.com',
+              ttl: -1,
+              priority: 1,
+              id: 'exampleClusterId',
+            },
+            {
+              host: 'www.example-p3.com',
+              ttl: -1,
+              priority: -1,
+              id: 'exampleClusterId',
+            },
+          ],
+          name: 'exampleValid',
+        };
+        negativePriorityUrl = new ServiceUrl(negativePriorityTemplate);
+        catalog._loadServiceUrls('preauth', [negativePriorityUrl]);
+
+        const serviceObject = services.getServiceFromUrl('https://www.example.com/api/v1/somepath');
+
+        assert.equal(serviceObject, {
+          name: negativePriorityTemplate.name,
+          priorityUrl: 'www.example.com',
+          defaultUrl: negativePriorityTemplate.defaultUrl,
+        });
+
+        catalog._unloadServiceUrls('preauth', [negativePriorityUrl]);
+      });
     });
 
     describe('#hasService()', () => {
