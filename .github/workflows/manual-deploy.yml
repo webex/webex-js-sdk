@@ -19,8 +19,6 @@ jobs:
   initialize:
     name: Initialize Project
     runs-on: ubuntu-latest
-    # This sets the environment for the job, which can be used to control secrets, environment protection rules, and auditability in GitHub Actions.
-    environment: deployer
 
     steps:
       - name: Validate Version Format
@@ -57,7 +55,6 @@ jobs:
     name: Build Packages
     needs: initialize
     runs-on: ubuntu-latest
-    environment: deployer
 
     steps:
       - name: Checkout Project
@@ -100,7 +97,6 @@ jobs:
     name: Publish - NPM
     needs: build
     runs-on: ubuntu-latest
-    environment: deployer
 
     steps:
       - name: Checkout Project
@@ -157,7 +153,6 @@ jobs:
     name: Publish - Documentation
     needs: publish-npm
     runs-on: ubuntu-latest
-    environment: deployer
 
     steps:
       - name: Documentation Deploy Steps
@@ -235,7 +230,6 @@ jobs:
     name: Publish - Tags
     runs-on: ubuntu-latest
     needs: publish-npm
-    environment: deployer
 
     outputs:
       message: ${{ steps.versionextractor.outputs.message }}
