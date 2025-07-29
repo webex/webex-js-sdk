@@ -305,7 +305,7 @@ describe('plugin-meetings', () => {
           {state: newControls.rdcControl}
         );
       });
-      
+
       it('should trigger the CONTROLS_POLLING_QA_CHANGED event when necessary', () => {
         locusInfo.controls = {};
         locusInfo.emitScoped = sinon.stub();
@@ -2108,6 +2108,42 @@ describe('plugin-meetings', () => {
         assert.isFunction(locusParser.onDeltaAction);
       });
 
+      it('#updateLocusInfo invokes updateLocusUrl before updateMeetingInfo', () => {
+        const callOrder = [];
+        locusInfo.updateControls = sinon.stub();
+        locusInfo.updateConversationUrl = sinon.stub();
+        locusInfo.updateCreated = sinon.stub();
+        locusInfo.updateFullState = sinon.stub();
+        locusInfo.updateHostInfo = sinon.stub();
+        locusInfo.updateMeetingInfo = sinon.stub().callsFake(() => {
+          callOrder.push('updateMeetingInfo');
+        });
+        locusInfo.updateMediaShares = sinon.stub();
+        locusInfo.updateParticipantsUrl = sinon.stub();
+        locusInfo.updateReplace = sinon.stub();
+        locusInfo.updateSelf = sinon.stub();
+        locusInfo.updateLocusUrl = sinon.stub().callsFake(() => {
+          callOrder.push('updateLocusUrl');
+        });
+        locusInfo.updateAclUrl = sinon.stub();
+        locusInfo.updateBasequence = sinon.stub();
+        locusInfo.updateSequence = sinon.stub();
+        locusInfo.updateMemberShip = sinon.stub();
+        locusInfo.updateIdentifiers = sinon.stub();
+        locusInfo.updateEmbeddedApps = sinon.stub();
+        locusInfo.updateResources = sinon.stub();
+        locusInfo.compareAndUpdate = sinon.stub();
+
+        locusInfo.updateLocusInfo(locus);
+
+        // Ensure updateLocusUrl is called before updateMeetingInfo if both are called
+        const idxLocusUrl = callOrder.indexOf('updateLocusUrl');
+        const idxMeetingInfo = callOrder.indexOf('updateMeetingInfo');
+        if (idxLocusUrl !== -1 && idxMeetingInfo !== -1) {
+          assert.isBelow(idxLocusUrl, idxMeetingInfo, 'updateLocusUrl should be called before updateMeetingInfo');
+        }
+      });
+
       it('#updateLocusInfo ignores breakout LEFT message', () => {
         const newLocus = {
           self: {
@@ -2158,6 +2194,8 @@ describe('plugin-meetings', () => {
         assert.notCalled(locusInfo.updateResources);
         assert.notCalled(locusInfo.compareAndUpdate);
       });
+
+
 
       it('onFullLocus() updates the working-copy of locus parser', () => {
         const eventType = 'fakeEvent';
