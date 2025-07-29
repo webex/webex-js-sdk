@@ -323,33 +323,35 @@ describe('webex-core', () => {
 
       it('handles case where there is a priority of -1 for a service url', () => {
         const negativePriorityTemplate = {
-          defaultUrl: 'https://www.example.com/api/v1',
+          defaultUrl: 'https://www.negative-priority.com/api/v1',
           hosts: [
             {
-              host: 'www.example.com',
+              host: 'www.negative-priority.com',
               ttl: -1,
               priority: 1,
-              id: 'exampleClusterId',
+              id: 'exampleClusterId2',
+              homeCluster: true,
             },
             {
-              host: 'www.example-p3.com',
+              host: 'www.negative-p3.com',
               ttl: -1,
               priority: -1,
               id: 'exampleClusterId',
+              homeCluster: true,
             },
           ],
-          name: 'exampleValid',
+          name: 'negative-priority',
         };
-        negativePriorityUrl = new ServiceUrl(negativePriorityTemplate);
+        const negativePriorityUrl = new ServiceUrl(negativePriorityTemplate);
         catalog._loadServiceUrls('preauth', [negativePriorityUrl]);
 
-        const serviceObject = services.getServiceFromUrl('https://www.example.com/api/v1/somepath');
+        const serviceObject = services.getServiceFromUrl(
+          'https://www.negative-priority.com/api/v1/somepath'
+        );
 
-        assert.equal(serviceObject, {
-          name: negativePriorityTemplate.name,
-          priorityUrl: 'www.example.com',
-          defaultUrl: negativePriorityTemplate.defaultUrl,
-        });
+        assert.equal(serviceObject.name, negativePriorityTemplate.name);
+        assert.equal(serviceObject.defaultUrl, negativePriorityTemplate.defaultUrl);
+        assert.equal(serviceObject.priorityUrl, 'https://www.negative-priority.com/api/v1');
 
         catalog._unloadServiceUrls('preauth', [negativePriorityUrl]);
       });
