@@ -60,7 +60,7 @@ const ServiceUrl = AmpState.extend({
       ? this.hosts.filter((host) => host.id === clusterId)
       : this.hosts.filter((host) => host.homeCluster);
 
-    const aliveHosts = filteredHosts.filter((host) => !host.failed && host.priority > 1);
+    const aliveHosts = filteredHosts.filter((host) => !host.failed);
 
     filteredHosts =
       aliveHosts.length === 0
@@ -75,7 +75,9 @@ const ServiceUrl = AmpState.extend({
     return this._generateHostUrl(
       filteredHosts.reduce(
         (previous, current) =>
-          previous.priority > current.priority || !previous.homeCluster ? current : previous,
+          current.priority > 0 && (previous.priority > current.priority || !previous.homeCluster)
+            ? current
+            : previous,
         {}
       ).host
     );
