@@ -2108,40 +2108,36 @@ describe('plugin-meetings', () => {
         assert.isFunction(locusParser.onDeltaAction);
       });
 
-      it('#updateLocusInfo invokes updateLocusUrl before updateMeetingInfo', () => {
+      it("#updateLocusInfo invokes updateLocusUrl before updateMeetingInfo", () => {
         const callOrder = [];
-        locusInfo.updateControls = sinon.stub();
-        locusInfo.updateConversationUrl = sinon.stub();
-        locusInfo.updateCreated = sinon.stub();
-        locusInfo.updateFullState = sinon.stub();
-        locusInfo.updateHostInfo = sinon.stub();
-        locusInfo.updateMeetingInfo = sinon.stub().callsFake(() => {
-          callOrder.push('updateMeetingInfo');
+        sinon.stub(locusInfo, "updateControls");
+        sinon.stub(locusInfo, "updateConversationUrl");
+        sinon.stub(locusInfo, "updateCreated");
+        sinon.stub(locusInfo, "updateFullState");
+        sinon.stub(locusInfo, "updateHostInfo");
+        sinon.stub(locusInfo, "updateMeetingInfo").callsFake(() => {
+          callOrder.push("updateMeetingInfo");
         });
-        locusInfo.updateMediaShares = sinon.stub();
-        locusInfo.updateParticipantsUrl = sinon.stub();
-        locusInfo.updateReplace = sinon.stub();
-        locusInfo.updateSelf = sinon.stub();
-        locusInfo.updateLocusUrl = sinon.stub().callsFake(() => {
-          callOrder.push('updateLocusUrl');
+        sinon.stub(locusInfo, "updateMediaShares");
+        sinon.stub(locusInfo, "updateParticipantsUrl");
+        sinon.stub(locusInfo, "updateReplace");
+        sinon.stub(locusInfo, "updateSelf");
+        sinon.stub(locusInfo, "updateLocusUrl").callsFake(() => {
+          callOrder.push("updateLocusUrl");
         });
-        locusInfo.updateAclUrl = sinon.stub();
-        locusInfo.updateBasequence = sinon.stub();
-        locusInfo.updateSequence = sinon.stub();
-        locusInfo.updateMemberShip = sinon.stub();
-        locusInfo.updateIdentifiers = sinon.stub();
-        locusInfo.updateEmbeddedApps = sinon.stub();
-        locusInfo.updateResources = sinon.stub();
-        locusInfo.compareAndUpdate = sinon.stub();
+        sinon.stub(locusInfo, "updateAclUrl");
+        sinon.stub(locusInfo, "updateBasequence");
+        sinon.stub(locusInfo, "updateSequence");
+        sinon.stub(locusInfo, "updateMemberShip");
+        sinon.stub(locusInfo, "updateIdentifiers");
+        sinon.stub(locusInfo, "updateEmbeddedApps");
+        sinon.stub(locusInfo, "updateResources");
+        sinon.stub(locusInfo, "compareAndUpdate");
 
         locusInfo.updateLocusInfo(locus);
 
         // Ensure updateLocusUrl is called before updateMeetingInfo if both are called
-        const idxLocusUrl = callOrder.indexOf('updateLocusUrl');
-        const idxMeetingInfo = callOrder.indexOf('updateMeetingInfo');
-        if (idxLocusUrl !== -1 && idxMeetingInfo !== -1) {
-          assert.isBelow(idxLocusUrl, idxMeetingInfo, 'updateLocusUrl should be called before updateMeetingInfo');
-        }
+        assert.deepEqual(callOrder, ['updateLocusUrl', 'updateMeetingInfo']);
       });
 
       it('#updateLocusInfo ignores breakout LEFT message', () => {
@@ -3070,8 +3066,8 @@ describe('plugin-meetings', () => {
 
         sinon.stub(locusInfo, 'updateParticipantDeltas');
         sinon.stub(locusInfo, 'updateParticipants');
-        sinon.stub(locusInfo, 'isMeetingActive'),
-          sinon.stub(locusInfo, 'handleOneOnOneEvent'),
+        sinon.stub(locusInfo, 'isMeetingActive');
+          sinon.stub(locusInfo, 'handleOneOnOneEvent');
           (updateLocusInfoStub = sinon.stub(locusInfo, 'updateLocusInfo'));
         syncRequestStub = sinon.stub().resolves({body: {}});
 
