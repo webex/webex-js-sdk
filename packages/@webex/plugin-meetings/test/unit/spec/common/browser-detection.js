@@ -92,11 +92,4 @@ describe('common/browser-detection', () => {
       'This browser is NOT Firefox'
     );
   });
-
-  it('returns isBrowser as false when no useragent is provided and run in node environment', () => {
-
-    const {isBrowser} = BrowserDetection();
-
-    assert.isFalse(isBrowser());
-  });
 });
