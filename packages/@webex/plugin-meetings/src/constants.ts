@@ -1358,3 +1358,9 @@ export const INITIAL_REGISTRATION_STATUS = {
   mercuryConnect: false,
   checkH264Support: false,
 };
+
+export const STAGE_MANAGER_TYPE = {
+  LOGO: 0b001,
+  BACKGROUND: 0b010,
+  NAME_LABEL: 0b100,
+};

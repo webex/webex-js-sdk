@@ -826,4 +826,75 @@ describe('plugin-meetings', () => {
       });
     });
   });
+
+  describe('#synchronizeStage', () => {
+    [
+      ['an unset stage', {overrideDefault: false}],
+      [
+        'a minimally set stage',
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 0,
+          },
+        },
+      ],
+      [
+        'a fully set stage',
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: true,
+          stageParameters: {
+            activeSpeakerProportion: 0.6,
+            importantParticipants: [
+              {mainCsi: 11111111, participantId: uuidv4(), order: 1},
+              {mainCsi: 22222222, participantId: uuidv4(), order: 2},
+              {mainCsi: 33333333, participantId: uuidv4(), order: 3},
+              {mainCsi: 44444444, participantId: uuidv4(), order: 4},
+              {mainCsi: 55555555, participantId: uuidv4(), order: 5},
+              {mainCsi: 66666666, participantId: uuidv4(), order: 6},
+              {mainCsi: 77777777, participantId: uuidv4(), order: 7},
+              {mainCsi: 88888888, participantId: uuidv4(), order: 8},
+            ],
+            showActiveSpeaker: {show: true, order: 0},
+            stageManagerType: 7,
+          },
+          customLayouts: {
+            background: {url: `https://test.wbx2.com/background/${uuidv4()}.jpg`},
+            logo: {url: `https://test.wbx2.com/logo/${uuidv4()}.png`, position: 'UpperMiddle'},
+          },
+          nameLabelStyle: {
+            accentColor: '#00A3FF',
+            background: {color: 'rgba(0, 163, 255, 1)'},
+            border: {color: 'rgba(0, 163, 255, 1)'},
+            content: {
+              displayName: {color: 'rgba(255, 255, 255, 0.95)'},
+              subtitle: {color: 'rgba(255, 255, 255, 0.7)'},
+            },
+            decoration: {color: 'rgba(255, 255, 255, 0.95)'},
+            fadeOut: {delay: 15},
+            type: 'PrimaryInverted',
+          },
+        },
+      ],
+    ].forEach(([description, videoLayout]) => {
+      it(`sends request to synchronize the stage with ${description} video layout`, async () => {
+        const locusUrl = `https://locus-test.wbx2.com/locus/api/v1/loci/${uuidv4()}`;
+
+        const synchronizePromise = meetingsRequest.synchronizeStage(locusUrl, videoLayout);
+
+        assert.exists(synchronizePromise.then);
+        await synchronizePromise;
+
+        checkRequest({
+          method: 'PATCH',
+          uri: `${locusUrl}/controls`,
+          body: {videoLayout},
+        });
+      });
+    });
+  });
 });
