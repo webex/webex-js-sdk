@@ -121,6 +121,7 @@ import {
   WEBINAR_ERROR_REGISTRATION_ID,
   JOIN_BEFORE_HOST,
   REGISTRATION_ID_STATUS,
+  STAGE_MANAGER_TYPE,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -9803,7 +9804,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
       videoLayout.customLayouts.logo = customLogo;
       // eslint-disable-next-line no-bitwise
-      videoLayout.stageParameters.stageManagerType |= 1 << 0;
+      videoLayout.stageParameters.stageManagerType |= STAGE_MANAGER_TYPE.LOGO;
     }
 
     if (customBackground) {
@@ -9812,13 +9813,13 @@ export default class Meeting extends StatelessWebexPlugin {
       }
       videoLayout.customLayouts.background = customBackground;
       // eslint-disable-next-line no-bitwise
-      videoLayout.stageParameters.stageManagerType |= 1 << 1;
+      videoLayout.stageParameters.stageManagerType |= STAGE_MANAGER_TYPE.BACKGROUND;
     }
 
     if (customNameLabel) {
       videoLayout.nameLabelStyle = customNameLabel;
       // eslint-disable-next-line no-bitwise
-      videoLayout.stageParameters.stageManagerType |= 1 << 2;
+      videoLayout.stageParameters.stageManagerType |= STAGE_MANAGER_TYPE.NAME_LABEL;
     }
 
     return this.meetingRequest.synchronizeStage(this.locusUrl, videoLayout);
