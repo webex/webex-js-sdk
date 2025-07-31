@@ -2,12 +2,17 @@ import {Defer} from '@webex/common';
 import {isIP} from 'is-ip';
 
 import LoggerProxy from '../common/logs/logger-proxy';
-import {ClusterNode} from './request';
 import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 import EventsScope from '../common/events/events-scope';
 
 import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE, STUN_SERVER_URL_REGEX} from '../constants';
-import {ClusterReachabilityResult, NatType} from './reachability.types';
+import {ClusterReachabilityResult, NatType, SubnetDetails, ClusterNode} from './reachability.types';
+
+declare global {
+  interface RTCIceCandidate {
+    url: string; // currently only supported in Chrome/Edge
+  }
+}
 
 // data for the Events.resultReady event
 export type ResultEventData = {
@@ -15,6 +20,7 @@ export type ResultEventData = {
   result: 'reachable' | 'unreachable' | 'untested';
   latencyInMilliseconds: number; // amount of time it took to get the ICE candidate
   clientMediaIPs?: string[];
+  details: SubnetDetails[];
 };
 
 // data for the Events.clientMediaIpsUpdated event
@@ -282,6 +288,20 @@ export class ClusterReachability extends EventsScope {
         result.clientMediaIPs = [publicIp];
       }
 
+      const subnet = result.details.find((s) => s.serverIp === serverIp && s.port === port);
+      if (subnet) {
+        subnet['answered-tx'] = 1;
+        subnet['lost-tx'] = 0;
+        subnet.latencies = [latency];
+      } else {
+        result.details.push({
+          serverIp,
+          port,
+          'answered-tx': 1,
+          'lost-tx': 0,
+          latencies: [latency],
+        });
+      }
       this.emit(
         {
           file: 'clusterReachability',
@@ -295,23 +315,6 @@ export class ClusterReachability extends EventsScope {
       );
     } else {
       this.addPublicIP(protocol, publicIp);
-    }
-
-    const subnet = this.result[protocol].details.find(
-      (s) => s.serverIp === serverIp && s.port === port
-    );
-    if (subnet) {
-      subnet['answered-tx'] = 1;
-      subnet['lost-tx'] = 0;
-      subnet.latencies = [latency];
-    } else {
-      this.result[protocol].details.push({
-        serverIp,
-        port,
-        'answered-tx': 1,
-        'lost-tx': 0,
-        latencies: [latency],
-      });
     }
   }
 
@@ -372,7 +375,6 @@ export class ClusterReachability extends EventsScope {
         let serverIp = null;
         let port = null;
         if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          // @ts-ignore
           if (e.candidate.url) {
             const match = (e.candidate as any).url.match(STUN_SERVER_URL_REGEX);
             if (match) {

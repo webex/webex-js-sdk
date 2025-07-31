@@ -1,13 +1,6 @@
 import LoggerProxy from '../common/logs/logger-proxy';
 import {HTTP_VERBS, RESOURCE, API, IP_VERSION} from '../constants';
-import {GetClustersTrigger} from './reachability.types';
-
-export interface ClusterNode {
-  isVideoMesh: boolean;
-  udp: Array<string>;
-  tcp: Array<string>;
-  xtls: Array<string>;
-}
+import {GetClustersTrigger, ClusterNode} from './reachability.types';
 
 export type ClusterList = {
   [key: string]: ClusterNode;

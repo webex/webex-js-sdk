@@ -8,7 +8,7 @@ export type TransportResult = {
   details: SubnetDetails[];
 };
 
-// New type to represent the result for each subnet IP address
+// Type to represent the result for each subnet IP address
 export type SubnetDetails = {
   serverIp: string; // IP address of the subnet being tested
   port: number; // Port used for the test
@@ -112,7 +112,13 @@ export interface ClientMediaPreferences {
 /* Orpheus API supports more triggers, but we don't use them yet */
 export type GetClustersTrigger = 'startup' | 'early-call/no-min-reached';
 
+export interface ClusterNode {
+  isVideoMesh: boolean;
+  udp: Array<string>;
+  tcp: Array<string>;
+  xtls: Array<string>;
+}
+
 // This is the type used to get the cluster URLs.
 // Will be used to return the URLs(IPs and domain names with ports) grouped by cluster and protocol.
-export type ProtocolKey = 'udp' | 'tcp' | 'xtls';
-export type ClusterUrls = Record<string, Record<ProtocolKey, string[]>>;
+export type ClusterUrls = Record<string, ClusterNode>;

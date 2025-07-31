@@ -3,13 +3,13 @@
  */
 
 /* eslint-disable class-methods-use-this */
-import {isEqual, mapValues, mean} from 'lodash';
+import {isEqual, mapValues, mean, cloneDeep} from 'lodash';
 
 import {Defer} from '@webex/common';
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
 
-import {IP_VERSION, REACHABILITY, STUN_SERVER_URL_REGEX} from '../constants';
+import {IP_VERSION, REACHABILITY} from '../constants';
 
 import ReachabilityRequest, {ClusterList} from './request';
 import {
@@ -25,7 +25,6 @@ import {
   GetClustersTrigger,
   NatType,
   ClusterUrls,
-  ProtocolKey,
 } from './reachability.types';
 
 import {
@@ -155,7 +154,7 @@ export default class Reachability extends EventsScope {
 
     const matchingReachedClusters = Object.values(this.clusterReachability).reduce(
       (acc, cluster) => {
-        const detailsArrays = [
+        const reachedSubnetsArray = [
           ...(cluster.getResult().udp.details.filter((subnet) => subnet['answered-tx'] === 1) ||
             []),
           ...(cluster.getResult().tcp.details.filter((subnet) => subnet['answered-tx'] === 1) ||
@@ -164,9 +163,15 @@ export default class Reachability extends EventsScope {
             []),
         ];
 
+        const uniqueSubnetsMap = new Map();
+        reachedSubnetsArray.forEach((subnet) => {
+          uniqueSubnetsMap.set(subnet.serverIp, subnet);
+        });
+        const uniqueReachedSubnetsArray = Array.from(uniqueSubnetsMap.values());
+
         let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
-        for (let i = 0; i < detailsArrays.length; i += 1) {
-          const subnet = detailsArrays[i];
+        for (let i = 0; i < uniqueReachedSubnetsArray.length; i += 1) {
+          const subnet = uniqueReachedSubnetsArray[i];
           const reachedSubnetFirstOctet = subnet.serverIp.split('.')[0];
 
           if (selectedSubnetFirstOctet === reachedSubnetFirstOctet) {
@@ -174,7 +179,7 @@ export default class Reachability extends EventsScope {
           }
 
           logMessage += `${subnet.serverIp}`;
-          if (i < detailsArrays.length - 1) {
+          if (i < uniqueReachedSubnetsArray.length - 1) {
             logMessage += ',';
           }
         }
@@ -440,18 +445,14 @@ export default class Reachability extends EventsScope {
           break;
         // Transforming serverIp to serverIPs
         case 'details':
-          if (Array.isArray(value)) {
-            output.details = value.map((subnet) => {
-              const {serverIp, ...rest} = subnet;
+          output.details = transportResult[key].map((subnet) => {
+            const {serverIp, ...rest} = subnet;
 
-              return {
-                ...rest,
-                serverIps: serverIp,
-              };
-            });
-          } else {
-            output.details = [];
-          }
+            return {
+              ...rest,
+              serverIps: serverIp,
+            };
+          });
           break;
         default:
           output[key] = value;
@@ -478,12 +479,17 @@ export default class Reachability extends EventsScope {
 
       const allClusterResults: ReachabilityResults = JSON.parse(resultsJson);
 
-      // @ts-ignore
-      results = mapValues(allClusterResults, (clusterResult) => ({
-        udp: clusterResult.udp || {result: 'untested', details: []},
-        tcp: clusterResult.tcp || {result: 'untested', details: []},
-        xtls: clusterResult.xtls || {result: 'untested', details: []},
-      }));
+      results = mapValues(allClusterResults, (clusterResult) => {
+        const transformed: any = {};
+        for (const protocol of ['udp', 'tcp', 'xtls'] as const) {
+          transformed[protocol] = this.mapTransportResultToBackendDataFormat(
+            clusterResult[protocol]
+          );
+        }
+        transformed.isVideoMesh = clusterResult.isVideoMesh;
+
+        return transformed;
+      });
     } catch (e) {
       // empty storage, that's ok
       LoggerProxy.logger.warn(
@@ -841,28 +847,11 @@ export default class Reachability extends EventsScope {
    * @returns {Promise<void>}
    */
   private async storeResults(results: ReachabilityResults) {
-    const resultsWithDetails = mapValues(results, (clusterResult, clusterKey) => {
-      const clusterReachability = this.clusterReachability[clusterKey];
-      const resultWithDetails = clusterReachability
-        ? clusterReachability.getResult()
-        : clusterResult;
-
-      const transformed: any = {};
-      for (const protocol of ['udp', 'tcp', 'xtls'] as const) {
-        transformed[protocol] = this.mapTransportResultToBackendDataFormat(
-          resultWithDetails[protocol]
-        );
-      }
-      transformed.isVideoMesh = clusterReachability ? clusterReachability.isVideoMesh : undefined;
-
-      return transformed;
-    });
-
     // @ts-ignore
     await this.webex.boundedStorage.put(
       this.namespace,
       REACHABILITY.localStorageResult,
-      JSON.stringify(resultsWithDetails)
+      JSON.stringify(results)
     );
   }
 
@@ -1005,7 +994,7 @@ export default class Reachability extends EventsScope {
 
       this.clusterReachability[key] = new ClusterReachability(key, cluster);
       this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
-        const {protocol, result, clientMediaIPs, latencyInMilliseconds} = data;
+        const {protocol, result, clientMediaIPs, latencyInMilliseconds, details} = data;
 
         if (isFirstResult[protocol]) {
           this.emit(
@@ -1027,7 +1016,7 @@ export default class Reachability extends EventsScope {
         results[key][protocol].result = result;
         results[key][protocol].clientMediaIPs = clientMediaIPs;
         results[key][protocol].latencyInMilliseconds = latencyInMilliseconds;
-
+        results[key][protocol].details = details;
         await this.storeResults(results);
 
         if (areAllResultsReady) {
@@ -1133,26 +1122,19 @@ export default class Reachability extends EventsScope {
    * @public
    * @memberof Reachability
    */
-  public async getAllClusterUrls(): Promise<ClusterUrls> {
+
+  public async getAllClustersInfo(): Promise<ClusterUrls> {
     const result: ClusterUrls = {};
-    const protocols: ProtocolKey[] = ['udp', 'tcp', 'xtls'];
-
     Object.entries(this.clusterReachability).forEach(([clusterName, clusterReachability]) => {
-      result[clusterName] = {udp: [], tcp: [], xtls: []};
-
-      protocols.forEach((protocol) => {
-        const urls = clusterReachability.clusterInfo[protocol] || [];
-        const ipPortSet = new Set<string>();
-
-        urls.forEach((url) => {
-          const match = url.match(STUN_SERVER_URL_REGEX);
-          if (match) {
-            ipPortSet.add(`${match[1]}:${match[2]}`);
-          }
-        });
-
-        result[clusterName][protocol] = Array.from(ipPortSet);
+      const clusterInfo = cloneDeep(clusterReachability.clusterInfo);
+      ['udp', 'tcp', 'xtls'].forEach((protocol) => {
+        if (Array.isArray(clusterInfo[protocol])) {
+          clusterInfo[protocol] = clusterInfo[protocol].map((url: string) =>
+            url.startsWith('stun:') ? url.slice(5) : url
+          );
+        }
       });
+      result[clusterName] = clusterInfo;
     });
 
     return result;
