@@ -121,6 +121,7 @@ import {
   WEBINAR_ERROR_REGISTRATION_ID,
   JOIN_BEFORE_HOST,
   REGISTRATION_ID_STATUS,
+  STAGE_MANAGER_TYPE,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -164,6 +165,7 @@ import {BrbState, createBrbState} from './brbState';
 import MultistreamNotSupportedError from '../common/errors/multistream-not-supported-error';
 import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
+import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -9763,5 +9765,74 @@ export default class Meeting extends StatelessWebexPlugin {
       selected_cluster: selectedCluster,
       selected_subnet: selectedSubnetFirstOctet ? `${selectedSubnetFirstOctet}.X.X.X` : null,
     };
+  }
+
+  /**
+   * Set the stage for the meeting
+   *
+   * @param {SetStageOptions} options Options to use when setting the stage
+   * @returns {Promise} The locus request
+   */
+  setStage({
+    activeSpeakerProportion = 0.5,
+    customBackground,
+    customLogo,
+    customNameLabel,
+    importantParticipants,
+    lockAttendeeViewOnStage = false,
+    showActiveSpeaker = false,
+  }: SetStageOptions = {}) {
+    const videoLayout: SetStageVideoLayout = {
+      overrideDefault: true,
+      lockAttendeeViewOnStageOnly: lockAttendeeViewOnStage,
+      stageParameters: {
+        activeSpeakerProportion,
+        showActiveSpeaker: {show: showActiveSpeaker, order: 0},
+        stageManagerType: 0,
+      },
+    };
+
+    if (importantParticipants?.length) {
+      videoLayout.stageParameters.importantParticipants = importantParticipants.map(
+        (importantParticipant, index) => ({...importantParticipant, order: index + 1})
+      );
+    }
+
+    if (customLogo) {
+      if (!videoLayout.customLayouts) {
+        videoLayout.customLayouts = {};
+      }
+      videoLayout.customLayouts.logo = customLogo;
+      // eslint-disable-next-line no-bitwise
+      videoLayout.stageParameters.stageManagerType |= STAGE_MANAGER_TYPE.LOGO;
+    }
+
+    if (customBackground) {
+      if (!videoLayout.customLayouts) {
+        videoLayout.customLayouts = {};
+      }
+      videoLayout.customLayouts.background = customBackground;
+      // eslint-disable-next-line no-bitwise
+      videoLayout.stageParameters.stageManagerType |= STAGE_MANAGER_TYPE.BACKGROUND;
+    }
+
+    if (customNameLabel) {
+      videoLayout.nameLabelStyle = customNameLabel;
+      // eslint-disable-next-line no-bitwise
+      videoLayout.stageParameters.stageManagerType |= STAGE_MANAGER_TYPE.NAME_LABEL;
+    }
+
+    return this.meetingRequest.synchronizeStage(this.locusUrl, videoLayout);
+  }
+
+  /**
+   * Unset the stage for the meeting
+   *
+   * @returns {Promise} The locus request
+   */
+  unsetStage() {
+    const videoLayout: UnsetStageVideoLayout = {overrideDefault: false};
+
+    return this.meetingRequest.synchronizeStage(this.locusUrl, videoLayout);
   }
 }
