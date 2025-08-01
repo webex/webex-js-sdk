@@ -811,7 +811,7 @@ export default class Members extends StatelessWebexPlugin {
         new ParameterError('The associated locus url for this meeting object must be defined.')
       );
     }
-    if (MembersUtil.isInvalidInvitee(invitee)) {
+    if (!invitee.skipEmailValidation && MembersUtil.isInvalidInvitee(invitee)) {
       return Promise.reject(
         new ParameterError(
           'The invitee must be defined with either a valid email, emailAddress or phoneNumber property.'

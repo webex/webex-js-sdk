@@ -3832,6 +3832,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {String} invitee.email
    * @param {String} invitee.phoneNumber
    * @param {Boolean} [alertIfActive]
+   * @param {Boolean} [invitee.skipEmailValidation]
+   * @param {Boolean} [invitee.isInternalNumber]
    * @returns {Promise} see #members.addMember
    * @public
    * @memberof Meeting
@@ -3842,6 +3844,8 @@ export default class Meeting extends StatelessWebexPlugin {
       email: string;
       phoneNumber: string;
       roles: Array<string>;
+      skipEmailValidation?: boolean;
+      isInternalNumber?: boolean;
     },
     alertIfActive = true
   ) {

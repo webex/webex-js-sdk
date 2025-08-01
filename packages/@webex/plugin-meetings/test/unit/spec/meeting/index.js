@@ -56,6 +56,7 @@ import * as MeetingRequestImport from '@webex/plugin-meetings/src/meeting/reques
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
+import MembersUtil from '@webex/plugin-meetings/src/members/util';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import Media from '@webex/plugin-meetings/src/media/index';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
@@ -581,13 +582,22 @@ describe('plugin-meetings', () => {
           assert.isFalse(meeting.isLocusCall());
         });
       });
-
       describe('#invite', () => {
-        it('should have #invite', () => {
-          assert.exists(meeting.invite);
-        });
+        let isInvalidInviteeSpy;
+        const invitee = {
+          email: 'non-email-id',
+          roles: ['guest'],
+          skipEmailValidation: true,
+          isInternalNumber: true,
+        };
+
         beforeEach(() => {
+          isInvalidInviteeSpy = sinon.spy(MembersUtil, 'isInvalidInvitee');
           meeting.members.addMember = sinon.stub().returns(Promise.resolve(test1));
+        });
+
+        afterEach(() => {
+          isInvalidInviteeSpy.restore();
         });
         it('should proxy members #addMember and return a promise', async () => {
           const invite = meeting.invite(uuid1, false);
@@ -596,6 +606,14 @@ describe('plugin-meetings', () => {
           await invite;
           assert.calledOnce(meeting.members.addMember);
           assert.calledWith(meeting.members.addMember, uuid1, false);
+        });
+        it('should skip email validation if skipEmailValidation is true', async () => {
+          const result = await meeting.invite(invitee, false);
+
+          assert.calledOnce(meeting.members.addMember);
+          assert.calledWith(meeting.members.addMember, invitee, false);
+          assert.deepEqual(result, test1); 
+          assert.notCalled(isInvalidInviteeSpy);        
         });
       });
       describe('#cancelPhoneInvite', () => {
