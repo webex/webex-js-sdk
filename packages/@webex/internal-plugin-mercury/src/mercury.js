@@ -1,3 +1,9 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-shadow */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable valid-jsdoc */
+/* eslint-disable consistent-return */
+/* eslint-disable no-console */
 /* eslint-disable require-jsdoc */
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
@@ -11,6 +17,8 @@ import {camelCase, get, set} from 'lodash';
 import backoff from 'backoff';
 
 import Socket from './socket';
+import mercuryWorkerStr from './mercury-worker-str';
+import {MercuryWorkerMessageType} from './mercury-worker-types';
 import {
   BadRequest,
   Forbidden,
@@ -40,6 +48,11 @@ const Mercury = WebexPlugin.extend({
       type: 'boolean',
     },
     socket: 'object',
+    mercuryWorker: 'object',
+    useWorker: {
+      default: true,
+      type: 'boolean',
+    },
     localClusterServiceUrls: 'object',
     mercuryTimeOffset: {
       default: undefined,
@@ -126,7 +139,14 @@ const Mercury = WebexPlugin.extend({
         this.backoffCall.abort();
       }
 
-      if (this.socket) {
+      if (this.useWorker && this.mercuryWorker) {
+        this.mercuryWorker.postMessage({
+          type: MercuryWorkerMessageType.DISCONNECT,
+          data: options || {},
+        });
+        this._destroyMercuryWorker();
+        this.once('offline', resolve);
+      } else if (this.socket) {
         this.socket.removeAllListeners('message');
         this.once('offline', resolve);
         resolve(this.socket.close(options || undefined));
@@ -208,6 +228,14 @@ const Mercury = WebexPlugin.extend({
   },
 
   _attemptConnection(socketUrl, callback) {
+    // Use web worker if enabled
+    if (this.useWorker) {
+      console.log('WS: attempting worker connection');
+
+      return this._attemptWorkerConnection(socketUrl, callback);
+    }
+
+    // Fallback to original socket implementation
     const socket = new Socket();
     let attemptWSUrl;
 
@@ -425,6 +453,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   _getEventHandlers(eventType) {
+    console.log('eventType', eventType);
     const [namespace, name] = eventType.split('.');
     const handlers = [];
 
@@ -564,6 +593,269 @@ const Mercury = WebexPlugin.extend({
     this.logger.info(`${this.namespace}: reconnecting`);
 
     return this.connect(webSocketUrl);
+  },
+
+  /**
+   * Creates and manages Mercury web worker
+   */
+  _createMercuryWorker() {
+    if (this.mercuryWorker) {
+      this._destroyMercuryWorker();
+    }
+
+    const blob = new Blob([mercuryWorkerStr], {type: 'application/javascript'});
+    const blobUrl = URL.createObjectURL(blob);
+
+    this.mercuryWorker = new Worker(blobUrl);
+    URL.revokeObjectURL(blobUrl);
+
+    this.mercuryWorker.onmessage = (event) => {
+      console.log('WS: worker message received', event);
+
+      this._handleWorkerMessage(event);
+    };
+
+    this.mercuryWorker.onerror = (error) => {
+      this.logger.error(`${this.namespace}: worker error`, error);
+      this._emit('connection_failed', error);
+    };
+
+    console.log('WS: worker created', this.mercuryWorker);
+
+    return this.mercuryWorker;
+  },
+
+  /**
+   * Destroys Mercury web worker
+   */
+  _destroyMercuryWorker() {
+    if (this.mercuryWorker) {
+      this.mercuryWorker.terminate();
+      this.mercuryWorker = null;
+    }
+  },
+
+  /**
+   * Handles messages from Mercury web worker
+   */
+  _handleWorkerMessage(event) {
+    console.log('WS: worker message received', event);
+
+    const {type, data, timestamp} = event.data;
+
+    switch (type) {
+      case MercuryWorkerMessageType.CONNECTED:
+        this.logger.info(`${this.namespace}: worker connected successfully`);
+        break;
+
+      case MercuryWorkerMessageType.DISCONNECTED:
+        this.logger.info(`${this.namespace}: worker disconnected`, data);
+        this._handleWorkerDisconnection(data);
+        break;
+
+      case MercuryWorkerMessageType.MESSAGE_RECEIVED:
+        this._processMercuryEvent(data);
+        break;
+
+      case MercuryWorkerMessageType.CONNECTION_ERROR:
+        this.logger.error(`${this.namespace}: worker connection error`, data);
+        this._handleWorkerError(data);
+        break;
+
+      case MercuryWorkerMessageType.SEQUENCE_MISMATCH:
+        this.logger.warn(`${this.namespace}: sequence mismatch`, data);
+        this._emit('sequence-mismatch', data.actual, data.expected);
+        break;
+
+      case MercuryWorkerMessageType.PING_PONG_LATENCY:
+        this._emit('ping-pong-latency', data.latency);
+        break;
+
+      case MercuryWorkerMessageType.AUTHORIZATION_COMPLETE:
+        this.logger.info(`${this.namespace}: authorization completed via worker`);
+        break;
+
+      default:
+        this.logger.warn(`${this.namespace}: unknown worker message type: ${type}`);
+    }
+  },
+
+  /**
+   * Processes Mercury event messages from worker
+   */
+  _processMercuryEvent(messageData) {
+    const {data, wsWriteTimestamp} = messageData;
+
+    // Set time offset if available
+    if (typeof wsWriteTimestamp === 'number' && wsWriteTimestamp > 0) {
+      this.mercuryTimeOffset = Date.now() - wsWriteTimestamp;
+    }
+
+    // Some messages might not be Mercury events (e.g., auth responses, pings, etc.)
+    if (!data || !data.eventType) {
+      this.logger.debug(`${this.namespace}: skipping message without eventType`, data);
+
+      return Promise.resolve();
+    }
+
+    this._applyOverrides(data);
+
+    console.log('WS: processing Mercury event', data);
+
+    return this._getEventHandlers(data.eventType)
+      .reduce(
+        (promise, handler) =>
+          promise.then(() => {
+            const {namespace, name} = handler;
+
+            return new Promise((resolve) =>
+              resolve((this.webex[namespace] || this.webex.internal[namespace])[name](data))
+            ).catch((reason) =>
+              this.logger.error(
+                `${this.namespace}: error occurred in autowired event handler for ${data.eventType}`,
+                reason
+              )
+            );
+          }),
+        Promise.resolve()
+      )
+      .then(() => {
+        this._emit('event', {data});
+        const [namespace] = data.eventType.split('.');
+
+        if (namespace === data.eventType) {
+          this._emit(`event:${namespace}`, {data});
+        } else {
+          this._emit(`event:${namespace}`, {data});
+          this._emit(`event:${data.eventType}`, {data});
+        }
+      })
+      .catch((reason) => {
+        this.logger.error(`${this.namespace}: error occurred processing worker message`, reason);
+      });
+  },
+
+  /**
+   * Handles worker disconnection events
+   */
+  _handleWorkerDisconnection(data) {
+    this.connected = false;
+    this._emit('offline', data);
+    this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
+
+    // Handle different close codes similar to _onclose
+    const {code, reason} = data;
+    const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
+
+    switch (code) {
+      case 1003:
+        this.logger.info(
+          `${this.namespace}: Mercury service rejected last message; will not reconnect: ${reason}`
+        );
+        this._emit('offline.permanent', data);
+        break;
+      case 4000:
+        this.logger.info(`${this.namespace}: socket replaced; will not reconnect`);
+        this._emit('offline.replaced', data);
+        break;
+      case 1001:
+      case 1005:
+      case 1006:
+      case 1011:
+        this.logger.info(`${this.namespace}: socket disconnected; reconnecting`);
+        this._emit('offline.transient', data);
+        this._reconnectWorker();
+        break;
+      case 1000:
+      case 3050:
+        if (normalReconnectReasons.includes(reason?.toLowerCase())) {
+          this.logger.info(`${this.namespace}: socket disconnected; reconnecting`);
+          this._emit('offline.transient', data);
+          this._reconnectWorker();
+        } else {
+          this.logger.info(`${this.namespace}: socket disconnected; will not reconnect: ${reason}`);
+          this._emit('offline.permanent', data);
+        }
+        break;
+      default:
+        this.logger.info(`${this.namespace}: socket disconnected unexpectedly; will not reconnect`);
+        this._emit('offline.permanent', data);
+    }
+  },
+
+  /**
+   * Handles worker connection errors
+   */
+  _handleWorkerError(errorData) {
+    this.lastError = errorData;
+    this._emit('connection_failed', errorData);
+  },
+
+  /**
+   * Reconnects using worker
+   */
+  _reconnectWorker() {
+    this.logger.info(`${this.namespace}: reconnecting via worker`);
+
+    return this.connect();
+  },
+
+  /**
+   * Attempts connection using web worker
+   */
+  _attemptWorkerConnection(socketUrl, callback) {
+    if (!this.mercuryWorker) {
+      this._createMercuryWorker();
+    }
+
+    Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()])
+      .then(([webSocketUrl, token]) => {
+        if (!this.backoffCall) {
+          const msg = `${this.namespace}: prevent worker connection when backoffCall no longer defined`;
+          this.logger.info(msg);
+
+          return Promise.reject(new Error(msg));
+        }
+
+        const connectionData = {
+          url: webSocketUrl,
+          token: token.toString(),
+          trackingId: `${this.webex.sessionId}_${Date.now()}`,
+          pingInterval: this.config.pingInterval,
+          pongTimeout: this.config.pongTimeout,
+          forceCloseDelay: this.config.forceCloseDelay,
+          logLevelToken: this.webex.config.defaultMercuryOptions?.logLevelToken,
+        };
+
+        this.mercuryWorker.postMessage({
+          type: MercuryWorkerMessageType.CONNECT,
+          data: connectionData,
+        });
+
+        this.logger.info(`${this.namespace} worker connection initiated: ${webSocketUrl}`);
+
+        // Set up connection success handler
+        const onWorkerConnected = (event) => {
+          if (event.data.type === MercuryWorkerMessageType.AUTHORIZATION_COMPLETE) {
+            this.mercuryWorker.removeEventListener('message', onWorkerConnected);
+            this.logger.info(`${this.namespace}: worker connected and authorized successfully`);
+            this.connected = true;
+            this.hasEverConnected = true;
+            this._emit('online');
+            this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
+            callback();
+          }
+        };
+
+        this.mercuryWorker.addEventListener('message', onWorkerConnected);
+
+        return Promise.resolve();
+      })
+      .catch((reason) => {
+        this.lastError = reason;
+        this.logger.info(`${this.namespace}: worker connection attempt failed`, reason);
+        callback(reason);
+      });
   },
 });
 
