@@ -139,17 +139,13 @@ const Mercury = WebexPlugin.extend({
         this.backoffCall.abort();
       }
 
-      if (this.useWorker && this.mercuryWorker) {
+      if (this.mercuryWorker) {
         this.mercuryWorker.postMessage({
           type: MercuryWorkerMessageType.DISCONNECT,
           data: options || {},
         });
         this._destroyMercuryWorker();
         this.once('offline', resolve);
-      } else if (this.socket) {
-        this.socket.removeAllListeners('message');
-        this.once('offline', resolve);
-        resolve(this.socket.close(options || undefined));
       }
 
       resolve();
@@ -228,141 +224,12 @@ const Mercury = WebexPlugin.extend({
   },
 
   _attemptConnection(socketUrl, callback) {
-    // Use web worker if enabled
+    console.log('WS: attempting connection', this.useWorker);
     if (this.useWorker) {
       console.log('WS: attempting worker connection');
 
       return this._attemptWorkerConnection(socketUrl, callback);
     }
-
-    // Fallback to original socket implementation
-    const socket = new Socket();
-    let attemptWSUrl;
-
-    socket.on('close', (...args) => this._onclose(...args));
-    socket.on('message', (...args) => this._onmessage(...args));
-    socket.on('pong', (...args) => this._setTimeOffset(...args));
-    socket.on('sequence-mismatch', (...args) => this._emit('sequence-mismatch', ...args));
-    socket.on('ping-pong-latency', (...args) => this._emit('ping-pong-latency', ...args));
-
-    Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()])
-      .then(([webSocketUrl, token]) => {
-        if (!this.backoffCall) {
-          const msg = `${this.namespace}: prevent socket open when backoffCall no longer defined`;
-
-          this.logger.info(msg);
-
-          return Promise.reject(new Error(msg));
-        }
-
-        attemptWSUrl = webSocketUrl;
-
-        let options = {
-          forceCloseDelay: this.config.forceCloseDelay,
-          pingInterval: this.config.pingInterval,
-          pongTimeout: this.config.pongTimeout,
-          token: token.toString(),
-          trackingId: `${this.webex.sessionId}_${Date.now()}`,
-          logger: this.logger,
-        };
-
-        // if the consumer has supplied request options use them
-        if (this.webex.config.defaultMercuryOptions) {
-          this.logger.info(`${this.namespace}: setting custom options`);
-          options = {...options, ...this.webex.config.defaultMercuryOptions};
-        }
-
-        // Set the socket before opening it. This allows a disconnect() to close
-        // the socket if it is in the process of being opened.
-        this.socket = socket;
-
-        this.logger.info(`${this.namespace} connection url: ${webSocketUrl}`);
-
-        return socket.open(webSocketUrl, options);
-      })
-      .then(() => {
-        this.logger.info(
-          `${this.namespace}: connected to mercury, success, action: connected, url: ${attemptWSUrl}`
-        );
-        callback();
-
-        return this.webex.internal.feature
-          .getFeature('developer', 'web-high-availability')
-          .then((haMessagingEnabled) => {
-            if (haMessagingEnabled) {
-              return this.webex.internal.device.refresh();
-            }
-
-            return Promise.resolve();
-          });
-      })
-      .catch((reason) => {
-        this.lastError = reason; // remember the last error
-
-        // Suppress connection errors that appear to be network related. This
-        // may end up suppressing metrics during outages, but we might not care
-        // (especially since many of our outages happen in a way that client
-        // metrics can't be trusted).
-        if (reason.code !== 1006 && this.backoffCall && this.backoffCall?.getNumRetries() > 0) {
-          this._emit('connection_failed', reason, {retries: this.backoffCall?.getNumRetries()});
-        }
-        this.logger.info(
-          `${this.namespace}: connection attempt failed`,
-          reason,
-          this.backoffCall?.getNumRetries() === 0 ? reason.stack : ''
-        );
-        // UnknownResponse is produced by IE for any 4XXX; treated it like a bad
-        // web socket url and let WDM handle the token checking
-        if (reason instanceof UnknownResponse) {
-          this.logger.info(
-            `${this.namespace}: received unknown response code, refreshing device registration`
-          );
-
-          return this.webex.internal.device.refresh().then(() => callback(reason));
-        }
-        // NotAuthorized implies expired token
-        if (reason instanceof NotAuthorized) {
-          this.logger.info(`${this.namespace}: received authorization error, reauthorizing`);
-
-          return this.webex.credentials.refresh({force: true}).then(() => callback(reason));
-        }
-        // // NotFound implies expired web socket url
-        // else if (reason instanceof NotFound) {
-        //   this.logger.info(`mercury: received not found error, refreshing device registration`);
-        //   return this.webex.internal.device.refresh()
-        //     .then(() => callback(reason));
-        // }
-        // BadRequest implies current credentials are for a Service Account
-        // Forbidden implies current user is not entitle for Webex
-        if (reason instanceof BadRequest || reason instanceof Forbidden) {
-          this.logger.warn(`${this.namespace}: received unrecoverable response from mercury`);
-          this.backoffCall.abort();
-
-          return callback(reason);
-        }
-        if (reason instanceof ConnectionError) {
-          return this.webex.internal.feature
-            .getFeature('developer', 'web-high-availability')
-            .then((haMessagingEnabled) => {
-              if (haMessagingEnabled) {
-                this.logger.info(
-                  `${this.namespace}: received a generic connection error, will try to connect to another datacenter. failed, action: 'failed', url: ${attemptWSUrl} error: ${reason.message}`
-                );
-
-                return this.webex.internal.services.markFailedUrl(attemptWSUrl);
-              }
-
-              return null;
-            })
-            .then(() => callback(reason));
-        }
-
-        return callback(reason);
-      })
-      .catch((reason) => {
-        this.logger.error(`${this.namespace}: failed to handle connection failure`, reason);
-        callback(reason);
-      });
   },
 
   _connectWithBackoff(webSocketUrl) {
@@ -599,6 +466,7 @@ const Mercury = WebexPlugin.extend({
    * Creates and manages Mercury web worker
    */
   _createMercuryWorker() {
+    console.log('WS: creating worker');
     if (this.mercuryWorker) {
       this._destroyMercuryWorker();
     }
