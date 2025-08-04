@@ -1189,6 +1189,7 @@ export const QUALITY_LEVELS = {
   HIGH: 'HIGH',
   '360p': '360p',
   '480p': '480p',
+  '540p': '540p',
   '720p': '720p',
   '1080p': '1080p',
 };
@@ -1215,6 +1216,18 @@ export const AVAILABLE_RESOLUTIONS = {
       height: {
         max: 480,
         ideal: 480,
+      },
+    },
+  },
+  '540p': {
+    video: {
+      width: {
+        max: 960,
+        ideal: 960,
+      },
+      height: {
+        max: 540,
+        ideal: 540,
       },
     },
   },
