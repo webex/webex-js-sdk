@@ -747,7 +747,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @constructor
    * @memberof Meeting
    */
-  constructor(attrs: any, options: object, callback) {
+  constructor(attrs: any, options: object, callback: (meeting: Meeting) => void) {
     super({}, options);
     /**
      * @instance
