@@ -677,6 +677,7 @@ export class Registration implements IRegistration {
 
       return abort;
     }
+    servers = ["https://mobius.afrawxt-prd-2.prod.infra.webex.com/api/v1/calling/web/"];
     for (const url of servers) {
       const serverType =
         (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
