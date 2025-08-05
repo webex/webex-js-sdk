@@ -905,7 +905,7 @@ describe('MediaRequestManager', () => {
     // request 10 "large" 1080p streams
     addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 10), getMaxFs('large'), true);
 
-    // check that resulting requests are 10 "small" 360p streams
+    // check that resulting requests are 10 "small" 540p streams
     checkMediaRequestsSent([
       {
         policy: 'active-speaker',

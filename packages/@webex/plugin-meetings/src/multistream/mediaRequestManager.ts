@@ -124,7 +124,6 @@ export class MediaRequestManager {
   private getDegradedClientRequests(clientRequests: ClientRequestsMap) {
     const maxFsLimits = [
       MAX_FS_VALUES['1080p'],
-      MAX_FS_VALUES['1080p'],
       MAX_FS_VALUES['720p'],
       MAX_FS_VALUES['540p'],
       MAX_FS_VALUES['360p'],

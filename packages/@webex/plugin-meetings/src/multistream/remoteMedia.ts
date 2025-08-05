@@ -95,7 +95,7 @@ export class RemoteMedia extends EventsScope {
    * Set by setSizeHint() based on video element dimensions.
    * When > 0, this value takes precedence over options.resolution in sendMediaRequest().
    */
-  public maxFrameSize = 0;
+  private maxFrameSize = 0;
 
   /**
    * Constructs RemoteMedia instance

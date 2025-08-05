@@ -276,17 +276,18 @@ describe('RemoteMedia', () => {
 
   describe('getEffectiveMaxFs()', () => {
     it('returns maxFrameSize when it is greater than 0', () => {
-      remoteMedia.maxFrameSize = 1000;
-      
+      remoteMedia.setSizeHint(960, 540);
+
       const result = remoteMedia.getEffectiveMaxFs();
-      
-      assert.strictEqual(result, 1000);
+
+      assert.strictEqual(result, 2040);
     });
 
     it('returns getMaxFs result when maxFrameSize is 0 and resolution is provided', () => {
-      remoteMedia.maxFrameSize = 0;
+      remoteMedia.setSizeHint(0, 0);
+
       // remoteMedia was created with {resolution: 'medium'} in beforeEach
-      
+
       const result = remoteMedia.getEffectiveMaxFs();
       
       // 'medium' resolution should map to 720p which is 3600
@@ -294,7 +295,8 @@ describe('RemoteMedia', () => {
     });
 
     it('returns undefined when maxFrameSize is 0 and no resolution is provided', () => {
-      remoteMedia.maxFrameSize = 0;
+      remoteMedia.setSizeHint(0, 0);
+
       // Create a new RemoteMedia without resolution option
       const remoteMediaWithoutResolution = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager);
       
@@ -304,13 +306,13 @@ describe('RemoteMedia', () => {
     });
 
     it('prioritizes maxFrameSize over resolution option', () => {
-      remoteMedia.maxFrameSize = 500;
+      remoteMedia.setSizeHint(640, 360);
       // remoteMedia was created with {resolution: 'medium'} in beforeEach
-      
+
       const result = remoteMedia.getEffectiveMaxFs();
       
       // Should return maxFrameSize (500) instead of resolution-based value (3600)
-      assert.strictEqual(result, 500);
+      assert.strictEqual(result, 920);
     });
 
     it('works correctly with different resolution options', () => {
@@ -325,8 +327,8 @@ describe('RemoteMedia', () => {
 
       testCases.forEach(({ resolution, expected }) => {
         const testRemoteMedia = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager, { resolution });
-        testRemoteMedia.maxFrameSize = 0; // Ensure maxFrameSize doesn't interfere
-        
+        testRemoteMedia.setSizeHint(0, 0); // Ensure maxFrameSize doesn't interfere
+
         const result = testRemoteMedia.getEffectiveMaxFs();
         
         assert.strictEqual(result, expected, `Failed for resolution: ${resolution}`);
