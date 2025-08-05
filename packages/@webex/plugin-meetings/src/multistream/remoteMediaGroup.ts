@@ -313,7 +313,7 @@ export class RemoteMediaGroup {
     // Get all effective maxFs values from unpinned RemoteMedia instances
     const maxFsValues = this.unpinnedRemoteMedia
       .map((remoteMedia) => remoteMedia.getEffectiveMaxFs())
-      .filter((maxFs): maxFs is number => maxFs !== undefined);
+      .filter((maxFs) => maxFs !== undefined);
 
     // Use the highest maxFs value to ensure we don't under-request resolution for any instance
     if (maxFsValues.length > 0) {
