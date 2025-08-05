@@ -284,13 +284,7 @@ const AIAssistant = WebexPlugin.extend({
           reject(error);
         })
         .then(({body}) => {
-          const {sessionId} = body;
-
-          resolve({
-            requestId,
-            sessionId,
-            streamEventName,
-          });
+          resolve({...body, requestId, streamEventName});
           timer.start();
         });
     });

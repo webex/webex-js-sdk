@@ -191,7 +191,13 @@ describe('plugin-ai-assistant', () => {
       beforeEach(() => {
         webex.request = sinon.stub().resolves({
           body: {
+            id: 'test-message-id',
+            url: 'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/test-session-id/messages/test-message-id',
             sessionId: 'test-session-id',
+            sessionUrl:
+              'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/test-session-id',
+            creatorId: 'test-creator-id',
+            createdAt: '2025-08-05T02:11:12.361Z',
           },
         });
 
@@ -224,8 +230,14 @@ describe('plugin-ai-assistant', () => {
         const result = await requestPromise;
 
         expect(result).to.deep.equal({
-          requestId: 'test-request-id',
+          id: 'test-message-id',
+          url: 'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/test-session-id/messages/test-message-id',
           sessionId: 'test-session-id',
+          sessionUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/test-session-id',
+          creatorId: 'test-creator-id',
+          createdAt: '2025-08-05T02:11:12.361Z',
+          requestId: 'test-request-id',
           streamEventName: 'aiassistant:stream:test-request-id',
         });
       });
