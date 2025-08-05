@@ -1716,6 +1716,7 @@ describe('plugin-meetings', () => {
               {file: 'meetings', function: 'fetchMeetingInfo'},
               'meeting:meetingInfoAvailable'
             );
+            assert.equal(webex.meetings.meetingCollection.get(meeting.id), meeting);
           };
 
           it('creates the meeting from a successful meeting info fetch promise testing', async () => {
