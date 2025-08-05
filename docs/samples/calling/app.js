@@ -263,7 +263,7 @@ async function initCalling(e) {
     calling: !fedrampBox.checked,
     contact: !fedrampBox.checked,
     callHistory: true,
-    callSettings: !fedrampBox.checked,
+    callSettings: true,
     voicemail: true,
   }
 
@@ -1633,31 +1633,31 @@ async function fetchVoicemailSetting() {
     visibility = vmCheckbox.checked ? 'initial' : 'none';
     vmDiv.style.display = visibility;
 
-    form.alwaysCb.checked = voicemail.sendAllCalls.enabled;
+    form.alwaysCb.checked = voicemail.sendAllCalls?.enabled;
     form.alwaysCb.disabled = false;
 
-    form.busyCb.checked = voicemail.sendBusyCalls.enabled;
+    form.busyCb.checked = voicemail.sendBusyCalls?.enabled;
     form.busyCb.disabled = false;
 
-    form.vmNotAnsweredCb.checked = voicemail.sendUnansweredCalls.enabled;
-    form.vmNotAnsweredRings.value = voicemail.sendUnansweredCalls.numberOfRings;
+    form.vmNotAnsweredCb.checked = voicemail.sendUnansweredCalls?.enabled;
+    form.vmNotAnsweredRings.value = voicemail.sendUnansweredCalls?.numberOfRings;
     visibility = form.vmNotAnsweredCb.checked ? 'initial' : 'none';
     form.vmNotAnsweredRings.style.display = visibility;
     form.vmNotAnsweredCb.disabled = false;
     form.vmNotAnsweredRings.disabled = false;
 
-    form.notifCb.checked = voicemail.messageStorage.mwiEnabled;
+    form.notifCb.checked = voicemail.messageStorage?.mwiEnabled;
     form.notifCb.disabled = false;
 
-    form.notifEmailCb.checked = voicemail.notifications.enabled;
-    form.notifEmailId.value = voicemail.notifications.destination;
+    form.notifEmailCb.checked = voicemail.notifications?.enabled;
+    form.notifEmailId.value = voicemail.notifications?.destination;
     visibility = form.notifEmailCb.checked ? 'initial' : 'none';
     form.notifEmailId.style.display = visibility;
     form.notifEmailCb.disabled = false;
     form.notifEmailId.disabled = false;
 
-    form.vmEmailCb.checked = voicemail.emailCopyOfMessage.enabled;
-    form.vmEmailId.value = voicemail.emailCopyOfMessage.emailId;
+    form.vmEmailCb.checked = voicemail.emailCopyOfMessage?.enabled;
+    form.vmEmailId.value = voicemail.emailCopyOfMessage?.emailId;
     visibility = form.vmEmailCb.checked ? 'initial' : 'none';
     form.vmEmailId.style.display = visibility;
     form.vmEmailCb.disabled = false;

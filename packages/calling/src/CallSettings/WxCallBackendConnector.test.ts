@@ -532,6 +532,70 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
       });
     });
 
+    it('Success: Get Call Forward Always setting in Fedramp with limited options in payload', async () => {
+      const responsePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {
+          callForwarding: {
+            always: {
+              enabled: false,
+              destination: '+13015554270',
+              ringReminderEnabled: false,
+              destinationVoicemailEnabled: true,
+            },
+            busy: {
+              enabled: false,
+              destinationVoicemailEnabled: false,
+            },
+            noAnswer: {
+              enabled: false,
+              numberOfRings: 3,
+              systemMaxNumberOfRings: 20,
+              destinationVoicemailEnabled: false,
+            },
+          },
+          businessContinuity: {
+            enabled: false,
+            destination: '+13015554270',
+            destinationVoicemailEnabled: true,
+          },
+        },
+      });
+
+      const voicemailResponsePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {
+          enabled: true,
+          voiceMessageForwardingEnabled: true,
+        },
+      });
+
+      webex.request
+        .mockResolvedValueOnce(responsePayload)
+        .mockResolvedValueOnce(voicemailResponsePayload);
+      const response = await callSettingsClient.getCallForwardAlwaysSetting();
+      const callSetting = response.data.callSetting as CallForwardAlwaysSetting;
+
+      expect(response.statusCode).toBe(200);
+      expect(response.message).toBe(SUCCESS_MESSAGE);
+
+      expect(callSetting.destination).toBe(undefined);
+      expect(callSetting.enabled).toBe(false);
+      expect(callSetting.destinationVoicemailEnabled).toBe(true);
+      expect(callSetting.ringReminderEnabled).toBe(false);
+
+      expect(webex.request).toBeCalledTimes(2);
+      expect(webex.request).toBeCalledWith({
+        method: HTTP_METHODS.GET,
+        uri: callForwardingUri,
+      });
+
+      expect(webex.request).toBeCalledWith({
+        method: HTTP_METHODS.GET,
+        uri: voicemailUri,
+      });
+    });
+
     it('Success: Get Call Forward Always setting when set to disabled and voicemail request fails', async () => {
       callForwardPayload.callForwarding.always.enabled = false;
       const responsePayload = <WebexRequestPayload>(<unknown>{

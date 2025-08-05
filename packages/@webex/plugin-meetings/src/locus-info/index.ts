@@ -489,12 +489,12 @@ export default class LocusInfo extends EventsScope {
     this.updateCreated(locus.created);
     this.updateFullState(locus.fullState);
     this.updateHostInfo(locus.host);
+    this.updateLocusUrl(locus.url);
     this.updateMeetingInfo(locus.info, locus.self);
     this.updateMediaShares(locus.mediaShares);
     this.updateParticipantsUrl(locus.participantsUrl);
     this.updateReplace(locus.replace);
     this.updateSelf(locus.self);
-    this.updateLocusUrl(locus.url);
     this.updateAclUrl(locus.aclUrl);
     this.updateBasequence(locus.baseSequence);
     this.updateSequence(locus.sequence);
