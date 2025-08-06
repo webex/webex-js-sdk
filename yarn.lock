@@ -7743,7 +7743,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.4.5
-    "@webex/internal-media-core": 2.18.4
+    "@webex/internal-media-core": 2.18.5
     "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/media-helpers": "workspace:*"
     async-mutex: 0.4.0
@@ -8034,23 +8034,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.18.4":
-  version: 2.18.4
-  resolution: "@webex/internal-media-core@npm:2.18.4"
+"@webex/internal-media-core@npm:2.18.5":
+  version: 2.18.5
+  resolution: "@webex/internal-media-core@npm:2.18.5"
   dependencies:
     "@babel/runtime": ^7.18.9
     "@babel/runtime-corejs2": ^7.25.0
     "@webex/rtcstats": ^1.5.5
     "@webex/ts-sdp": 1.8.2
     "@webex/web-capabilities": ^1.6.1
-    "@webex/web-client-media-engine": 3.33.4
+    "@webex/web-client-media-engine": 3.34.0
     events: ^3.3.0
     ip-anonymize: ^0.1.0
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
     webrtc-adapter: ^8.1.2
     xstate: ^4.30.6
-  checksum: 4d00d477b50e9c8c0a45713dbb423dcd5a07b1e0a97f800b47caec336cb56801ad643cad9da332f9f64e91b24929ffe11261bab776650af8f38d1f013ecfbcbd
+  checksum: a47003c1b0d0fd370b0321c1c8fe4f58878d77b08ea16340fd1cbef5b247e4c72c7432ea952895984ec621ae159388829b21d58b443805f2ecf048fec3c67b1d
   languageName: node
   linkType: hard
 
@@ -8849,7 +8849,7 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.18.4
+    "@webex/internal-media-core": 2.18.5
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -9150,7 +9150,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.1819
-    "@webex/internal-media-core": 2.18.4
+    "@webex/internal-media-core": 2.18.5
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
@@ -9888,9 +9888,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:3.33.4":
-  version: 3.33.4
-  resolution: "@webex/web-client-media-engine@npm:3.33.4"
+"@webex/web-client-media-engine@npm:3.34.0":
+  version: 3.34.0
+  resolution: "@webex/web-client-media-engine@npm:3.34.0"
   dependencies:
     "@webex/json-multistream": ^2.3.1
     "@webex/rtcstats": ^1.5.5
@@ -9903,7 +9903,7 @@ __metadata:
     js-logger: ^1.6.1
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
-  checksum: dcbfb252c146746d512f4708f5e6bc4147389e49f77426c74f1c21d7301493d18cd9d415fe2962983768aacf547a94dc683bb62ec7f8b15c50eed67408cbad25
+  checksum: aae84de432aa875d242712fabb169664636cd403c8a83fc69ee854acc6282e7afbc88b0cbca0dfb49eb4af1c0c9ab0a4b7b2a3bfc24d340c5bb4ac4cc62b4027
   languageName: node
   linkType: hard
 

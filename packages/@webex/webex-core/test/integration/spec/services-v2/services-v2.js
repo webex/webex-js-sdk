@@ -9,19 +9,21 @@ import {flaky} from '@webex/test-helper-mocha';
 import WebexCore, {
   ServiceCatalogV2,
   ServiceDetail,
-  serviceConstantsV2,
+  serviceConstants,
   registerInternalPlugin,
   Services,
   ServiceInterceptor,
   ServerErrorInterceptor,
   ServicesV2,
-  ServiceInterceptorV2,
-  ServerErrorInterceptorV2,
 } from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
 import sinon from 'sinon';
-import {formattedServiceHostmapEntryConv} from '../../../fixtures/host-catalog-v2';
+import {
+  formattedServiceHostmapEntryConv,
+  formattedServiceHostmapEntryMercury,
+  formattedServiceHostmapEntryTest,
+} from '../../../fixtures/host-catalog-v2';
 
 // /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
@@ -59,8 +61,8 @@ describe('webex-core', () => {
     beforeEach(() => {
       registerInternalPlugin('services', ServicesV2, {
         interceptors: {
-          ServiceInterceptor: ServiceInterceptorV2.create,
-          ServerErrorInterceptor: ServerErrorInterceptorV2.create,
+          ServiceInterceptor: ServiceInterceptor.create,
+          ServerErrorInterceptor: ServerErrorInterceptor.create,
         },
         replace: true,
       });
@@ -295,10 +297,7 @@ describe('webex-core', () => {
 
         services.initConfig();
 
-        const expectedResult = [
-          ...allowedDomains,
-          ...serviceConstantsV2.COMMERCIAL_ALLOWED_DOMAINS,
-        ];
+        const expectedResult = [...allowedDomains, ...serviceConstants.COMMERCIAL_ALLOWED_DOMAINS];
 
         assert.deepEqual(expectedResult, services._getCatalog().allowedDomains);
       });
@@ -432,6 +431,21 @@ describe('webex-core', () => {
 
         assert.isDefined(convertUrl);
         assert.isTrue(convertUrl.includes(testDetail.get()));
+      });
+
+      it('converts the url to a priority host url when paths are different', () => {
+        const detail = new ServiceDetail(formattedServiceHostmapEntryTest);
+        catalog._loadServiceDetails('preauth', [detail]);
+
+        const resource = 'path/to/resource';
+        const url = `${detail.serviceUrls[1].baseUrl}/${resource}`;
+
+        const convertUrl = services.convertUrlToPriorityHostUrl(url);
+
+        assert.isDefined(convertUrl);
+        assert.isTrue(convertUrl.includes(detail.get()));
+        assert.equal(convertUrl, `${detail.get()}/${resource}`);
+        catalog._unloadServiceDetails('preauth', [detail]);
       });
 
       it('throws an exception if not a valid service', () => {

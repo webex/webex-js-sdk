@@ -159,17 +159,32 @@ export default class LocusInfo extends EventsScope {
         throw e;
       })
       .then((res) => {
-        if (isDelta) {
-          if (!isEmpty(res.body)) {
-            meeting.locusInfo.handleLocusDelta(res.body, meeting);
-          } else {
+        if (isEmpty(res.body)) {
+          if (isDelta) {
             LoggerProxy.logger.info(
               'Locus-info:index#doLocusSync --> received empty body from syncUrl, so we already have latest Locus DTO'
             );
+          } else {
+            LoggerProxy.logger.info(
+              'Locus-info:index#doLocusSync --> received empty body from full DTO sync request'
+            );
           }
-        } else {
-          meeting.locusInfo.onFullLocus(res.body);
+
+          return;
         }
+
+        if (isDelta) {
+          if (res.body.baseSequence) {
+            meeting.locusInfo.handleLocusDelta(res.body, meeting);
+
+            return;
+          }
+          // in some cases Locus might return us full DTO even when we asked for a delta
+          LoggerProxy.logger.info(
+            'Locus-info:index#doLocusSync --> got full DTO when we asked for delta'
+          );
+        }
+        meeting.locusInfo.onFullLocus(res.body);
       })
       .catch((e) => {
         LoggerProxy.logger.info(
@@ -474,12 +489,12 @@ export default class LocusInfo extends EventsScope {
     this.updateCreated(locus.created);
     this.updateFullState(locus.fullState);
     this.updateHostInfo(locus.host);
+    this.updateLocusUrl(locus.url);
     this.updateMeetingInfo(locus.info, locus.self);
     this.updateMediaShares(locus.mediaShares);
     this.updateParticipantsUrl(locus.participantsUrl);
     this.updateReplace(locus.replace);
     this.updateSelf(locus.self);
-    this.updateLocusUrl(locus.url);
     this.updateAclUrl(locus.aclUrl);
     this.updateBasequence(locus.baseSequence);
     this.updateSequence(locus.sequence);
