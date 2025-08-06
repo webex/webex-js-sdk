@@ -166,6 +166,7 @@ import MultistreamNotSupportedError from '../common/errors/multistream-not-suppo
 import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
+import {Invitee} from './type';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -3835,7 +3836,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Invite a guest to the call that isn't normally part of this call
-   * @param {Object} invitee
+   * @param {Invitee} invitee
    * @param {String} invitee.emailAddress
    * @param {String} invitee.email
    * @param {String} invitee.phoneNumber
@@ -3846,42 +3847,32 @@ export default class Meeting extends StatelessWebexPlugin {
    * @public
    * @memberof Meeting
    */
-  public invite(
-    invitee: {
-      emailAddress: string;
-      email: string;
-      phoneNumber: string;
-      roles: Array<string>;
-      skipEmailValidation?: boolean;
-      isInternalNumber?: boolean;
-    },
-    alertIfActive = true
-  ) {
+  public invite(invitee: Invitee, alertIfActive = true) {
     return this.members.addMember(invitee, alertIfActive);
   }
 
   /**
    * Cancel an outgoing phone call invitation made during a meeting
-   * @param {Object} invitee
+   * @param {Invitee} invitee
    * @param {String} invitee.phoneNumber
    * @returns {Promise} see #members.cancelPhoneInvite
    * @public
    * @memberof Meeting
    */
-  public cancelPhoneInvite(invitee: {phoneNumber: string}) {
+  public cancelPhoneInvite(invitee: Invitee) {
     return this.members.cancelPhoneInvite(invitee);
   }
 
   /**
    * Cancel an SIP/phone call invitation made during a meeting
-   * @param {Object} invitee
+   * @param {Invitee} invitee
    * @param {String} invitee.memberId
    * @param {Boolean} [invitee.isInternalNumber] - When cancel phone invitation, if the number is internal
    * @returns {Promise} see #members.cancelInviteByMemberId
    * @public
    * @memberof Meeting
    */
-  public cancelInviteByMemberId(invitee: {memberId: string; isInternalNumber?: boolean}) {
+  public cancelInviteByMemberId(invitee: Invitee) {
     return this.members.cancelInviteByMemberId(invitee);
   }
 
