@@ -834,39 +834,6 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('should update the deltaParticipants object', () => {
-        const prev = locusInfo.deltaParticipants;
-
-        locusInfo.updateParticipantDeltas(newParticipants);
-
-        assert.notEqual(locusInfo.deltaParticipants, prev);
-      });
-
-      it('should update the delta property on all changed states', () => {
-        locusInfo.updateParticipantDeltas(newParticipants);
-
-        const [exampleParticipant] = locusInfo.deltaParticipants;
-
-        assert.isTrue(exampleParticipant.delta.audioStatus);
-        assert.isTrue(exampleParticipant.delta.videoSlidesStatus);
-        assert.isTrue(exampleParticipant.delta.videoStatus);
-      });
-
-      it('should include the person details of the changed participant', () => {
-        locusInfo.updateParticipantDeltas(newParticipants);
-
-        const [exampleParticipant] = locusInfo.deltaParticipants;
-
-        assert.equal(exampleParticipant.person, newParticipants[0].person);
-      });
-
-      it('should clear deltaParticipants when no changes occured', () => {
-        locusInfo.participants = [...newParticipants];
-
-        locusInfo.updateParticipantDeltas(locusInfo.participants);
-
-        assert.isTrue(locusInfo.deltaParticipants.length === 0);
-      });
 
       it('should call with participant display name', () => {
         const failureParticipant = [
@@ -2196,7 +2163,6 @@ describe('plugin-meetings', () => {
       it('onFullLocus() updates the working-copy of locus parser', () => {
         const eventType = 'fakeEvent';
 
-        sandbox.stub(locusInfo, 'updateParticipantDeltas');
         sandbox.stub(locusInfo, 'updateLocusInfo');
         sandbox.stub(locusInfo, 'updateParticipants');
         sandbox.stub(locusInfo, 'isMeetingActive');
@@ -2216,7 +2182,6 @@ describe('plugin-meetings', () => {
         const oldWorkingCopy = locusParser.workingCopy;
 
         const spies = [
-          sandbox.stub(locusInfo, 'updateParticipantDeltas'),
           sandbox.stub(locusInfo, 'updateLocusInfo'),
           sandbox.stub(locusInfo, 'updateParticipants'),
           sandbox.stub(locusInfo, 'isMeetingActive'),
@@ -3064,7 +3029,6 @@ describe('plugin-meetings', () => {
       beforeEach(() => {
         clock = sinon.useFakeTimers();
 
-        sinon.stub(locusInfo, 'updateParticipantDeltas');
         sinon.stub(locusInfo, 'updateParticipants');
         sinon.stub(locusInfo, 'isMeetingActive');
           sinon.stub(locusInfo, 'handleOneOnOneEvent');
