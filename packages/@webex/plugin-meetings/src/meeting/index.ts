@@ -743,10 +743,11 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * @param {Object} attrs
    * @param {Object} options
+   * @param {Function} callback - if provided, it will be called with the newly created meeting object as soon as the meeting.id is set
    * @constructor
    * @memberof Meeting
    */
-  constructor(attrs: any, options: object) {
+  constructor(attrs: any, options: object, callback: (meeting: Meeting) => void) {
     super({}, options);
     /**
      * @instance
@@ -772,6 +773,11 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.id = uuid.v4();
+
+    if (callback) {
+      callback(this);
+    }
+
     /**
      * Call state used for metrics
      * @instance
