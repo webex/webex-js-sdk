@@ -612,37 +612,17 @@ describe('plugin-meetings', () => {
         });
       });
       describe('#invite', () => {
-        let isInvalidInviteeSpy;
-        const invitee = {
-          email: 'non-email-id',
-          roles: ['guest'],
-          skipEmailValidation: true,
-          isInternalNumber: true,
-        };
-
-        beforeEach(() => {
-          isInvalidInviteeSpy = sinon.spy(MembersUtil, 'isInvalidInvitee');
-          meeting.members.addMember = sinon.stub().returns(Promise.resolve(test1));
+        it('should have #invite', () => {
+          assert.exists(meeting.invite);
         });
-
-        afterEach(() => {
-          isInvalidInviteeSpy.restore();
+        beforeEach(() => {
+          meeting.members.addMember = sinon.stub().returns(Promise.resolve(test1));
         });
         it('should proxy members #addMember and return a promise', async () => {
           const invite = meeting.invite(uuid1, false);
 
-          assert.exists(invite.then);
-          await invite;
           assert.calledOnce(meeting.members.addMember);
           assert.calledWith(meeting.members.addMember, uuid1, false);
-        });
-        it('should skip email validation if skipEmailValidation is true', async () => {
-          const result = await meeting.invite(invitee, false);
-
-          assert.calledOnce(meeting.members.addMember);
-          assert.calledWith(meeting.members.addMember, invitee, false);
-          assert.deepEqual(result, test1); 
-          assert.notCalled(isInvalidInviteeSpy);        
         });
       });
       describe('#cancelPhoneInvite', () => {

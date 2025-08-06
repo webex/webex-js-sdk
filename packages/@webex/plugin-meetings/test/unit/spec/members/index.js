@@ -177,6 +177,26 @@ describe('plugin-meetings', () => {
         assert.isFalse(MembersUtil.isInvalidInvitee({email: 'sip:test@cisco.com'}), 'SIP email should be valid');
       });
 
+      it('should skip email validation if skipEmailValidation is true', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: '8618578675309', skipEmailValidation: true});
+        
+        assert.notCalled(MembersUtil.isInvalidInvitee);
+      });
+
+      it('should not skip email validation if skipEmailValidation is not equal true', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: '86185786@ds.com'});
+        
+        assert.called(MembersUtil.isInvalidInvitee);
+      });
+
       it('should accept valid phone with isInternalNumber', async () => {
         sandbox.spy(MembersUtil, 'isInvalidInvitee');
 
