@@ -3,7 +3,7 @@ import 'jsdom-global/register';
 import EventEmitter from 'events';
 
 import {MediaType} from '@webex/internal-media-core';
-import {RemoteMedia, RemoteMediaEvents} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import {RemoteMedia, RemoteMediaEvents, RemoteVideoResolution} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import {ReceiveSlotEvents} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
@@ -257,7 +257,9 @@ describe('RemoteMedia', () => {
         {height: 198, fs: 920}, // 360p
         {height: 360, fs: 920},
         {height: 395, fs: 920},
-        {height: 396, fs: 3600}, // 720p
+        {height: 396, fs: 2040}, // 540p
+        {height: 540, fs: 2040},
+        {height: 610, fs: 3600}, // 720p
         {height: 720, fs: 3600},
         {height: 721, fs: 8192}, // 1080p
         {height: 1080, fs: 8192},
@@ -270,5 +272,67 @@ describe('RemoteMedia', () => {
         });
       }
     );
+  });
+
+  describe('getEffectiveMaxFs()', () => {
+    it('returns maxFrameSize when it is greater than 0', () => {
+      remoteMedia.setSizeHint(960, 540);
+
+      const result = remoteMedia.getEffectiveMaxFs();
+
+      assert.strictEqual(result, 2040);
+    });
+
+    it('returns getMaxFs result when maxFrameSize is 0 and resolution is provided', () => {
+      remoteMedia.setSizeHint(0, 0);
+
+      // remoteMedia was created with {resolution: 'medium'} in beforeEach
+
+      const result = remoteMedia.getEffectiveMaxFs();
+      
+      // 'medium' resolution should map to 720p which is 3600
+      assert.strictEqual(result, 3600);
+    });
+
+    it('returns undefined when maxFrameSize is 0 and no resolution is provided', () => {
+      remoteMedia.setSizeHint(0, 0);
+
+      // Create a new RemoteMedia without resolution option
+      const remoteMediaWithoutResolution = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager);
+      
+      const result = remoteMediaWithoutResolution.getEffectiveMaxFs();
+      
+      assert.strictEqual(result, undefined);
+    });
+
+    it('prioritizes maxFrameSize over resolution option', () => {
+      remoteMedia.setSizeHint(640, 360);
+      // remoteMedia was created with {resolution: 'medium'} in beforeEach
+
+      const result = remoteMedia.getEffectiveMaxFs();
+      
+      // Should return maxFrameSize (500) instead of resolution-based value (3600)
+      assert.strictEqual(result, 920);
+    });
+
+    it('works correctly with different resolution options', () => {
+      const testCases: Array<{ resolution: RemoteVideoResolution; expected: number }> = [
+        { resolution: 'thumbnail', expected: 60 },
+        { resolution: 'very small', expected: 240 },
+        { resolution: 'small', expected: 920 },
+        { resolution: 'medium', expected: 3600 },
+        { resolution: 'large', expected: 8192 },
+        { resolution: 'best', expected: 8192 },
+      ];
+
+      testCases.forEach(({ resolution, expected }) => {
+        const testRemoteMedia = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager, { resolution });
+        testRemoteMedia.setSizeHint(0, 0); // Ensure maxFrameSize doesn't interfere
+
+        const result = testRemoteMedia.getEffectiveMaxFs();
+        
+        assert.strictEqual(result, expected, `Failed for resolution: ${resolution}`);
+      });
+    });
   });
 });

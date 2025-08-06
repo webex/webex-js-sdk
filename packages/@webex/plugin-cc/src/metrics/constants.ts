@@ -22,6 +22,7 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @property {string} WEBSOCKET_REGISTER_SUCCESS - Event name for successful websocket registration.
  * @property {string} WEBSOCKET_REGISTER_FAILED - Event name for failed websocket registration.
  * @property {string} AGENT_RONA - Event name for agent RONA (Ring No Answer).
+ * @property {string} AGENT_CONTACT_ASSIGN_FAILED - Event name for failed agent contact assignment.
  *
  * @property {string} TASK_ACCEPT_SUCCESS - Event name for successful task acceptance.
  * @property {string} TASK_ACCEPT_FAILED - Event name for failed task acceptance.
@@ -76,6 +77,7 @@ export const METRIC_EVENT_NAMES = {
   WEBSOCKET_REGISTER_SUCCESS: 'Websocket Register Success',
   WEBSOCKET_REGISTER_FAILED: 'Websocket Register Failed',
   AGENT_RONA: 'Agent RONA',
+  AGENT_CONTACT_ASSIGN_FAILED: 'Agent Contact Assign Failed',
 
   // Basic Tasks
   TASK_ACCEPT_SUCCESS: 'Task Accept Success',
