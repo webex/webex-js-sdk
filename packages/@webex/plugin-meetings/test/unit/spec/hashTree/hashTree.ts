@@ -34,9 +34,9 @@ describe('HashTree', () => {
   it('number of leaves must be 0 or a power of 2', () => {
     const leafData: LeafDataItem[] = [];
     const numLeaves = 3; // Not a power of 2
-    expect(() => new HashTree(leafData, numLeaves)).to.throw('Number of leaves must be 0 or a power of 2');
+    expect(() => new HashTree(leafData, numLeaves)).to.throw('Number of leaves must be a power of 2, saw 3');
     const numLeavesNegative = -1;
-    expect(() => new HashTree(leafData, numLeavesNegative)).to.throw('Number of leaves must be 0 or a power of 2');
+    expect(() => new HashTree(leafData, numLeavesNegative)).to.throw('Number of leaves must be a power of 2, saw -1');
   });
 
   it('should have the correct hashes after putting ObjectIds using constructor', () => {
