@@ -1560,10 +1560,11 @@ export default class Meetings extends WebexPlugin {
       {
         // @ts-ignore
         parent: this.webex,
+      },
+      (newMeeting) => {
+        this.meetingCollection.set(newMeeting);
       }
     );
-
-    this.meetingCollection.set(meeting);
 
     try {
       // if no participant has joined the scheduled meeting (meaning meeting is not active) and we get a locusEvent,
