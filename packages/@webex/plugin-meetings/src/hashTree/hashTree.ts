@@ -1,7 +1,7 @@
 import {XXH3_128} from 'xxh3-ts';
 import {EMPTY_HASH} from './constants';
 
-type LeafDataItem = {
+export type LeafDataItem = {
   type: string;
   id: number;
   version: number;
@@ -182,6 +182,44 @@ class HashTree {
       results.push(removed);
       if (removed && index !== null) {
         changedLeafIndexes.add(index);
+      }
+    });
+
+    changedLeafIndexes.forEach((index) => {
+      this.computeLeafHash(index);
+    });
+
+    return results;
+  }
+
+  /**
+   * Updates multiple items in the hash tree.
+   * This method can handle both adding and removing items based on the `operation` flag.
+   *
+   * @param {object[]} itemUpdates An array of objects containing `operation` flag and the `item` to update.
+   * @returns {boolean[]} An array of booleans indicating success for each operation.
+   */
+  updateItems(itemUpdates: {operation: 'update' | 'remove'; item: LeafDataItem}[]): boolean[] {
+    if (this.numLeaves === 0 && itemUpdates.length > 0) {
+      return itemUpdates.map(() => false);
+    }
+
+    const results: boolean[] = [];
+    const changedLeafIndexes = new Set<number>();
+
+    itemUpdates.forEach(({operation, item}) => {
+      if (operation === 'remove') {
+        const {removed, index} = this._removeItemInternal(item);
+        results.push(removed);
+        if (removed && index !== null) {
+          changedLeafIndexes.add(index);
+        }
+      } else {
+        const {put, index} = this._putItemInternal(item);
+        results.push(put);
+        if (put && index !== null) {
+          changedLeafIndexes.add(index);
+        }
       }
     });
 
