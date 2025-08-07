@@ -1,4 +1,4 @@
-import {XXHash128} from 'xxhash-addon';
+import {XXH3_128} from 'xxh3-ts';
 import {EMPTY_HASH} from './constants';
 
 type LeafDataItem = {
@@ -201,8 +201,12 @@ class HashTree {
   computeLeafHash(index: number) {
     const leafContent = this.leaves[index];
 
-    // create a hasher
-    const hasher = new XXHash128(Buffer.from([0, 0, 0, 0]));
+    const totalItemsCount = Object.keys(leafContent).reduce((count, type) => {
+      return count + Object.keys(leafContent[type]).length;
+    }, 0);
+    const buffer = Buffer.alloc(totalItemsCount * 16);
+
+    let offset = 0;
 
     // iterate through the item types lexicographically
     const itemTypes = Object.keys(leafContent).sort();
@@ -214,18 +218,14 @@ class HashTree {
 
       // add all the items id and version to the hasher
       items.forEach((item: LeafDataItem) => {
-        const idBuffer = Buffer.alloc(8);
-        idBuffer.writeBigInt64LE(BigInt(item.id));
+        buffer.writeBigInt64LE(BigInt(item.id), offset);
+        buffer.writeBigInt64LE(BigInt(item.version), offset + 8);
 
-        const versionBuffer = Buffer.alloc(8);
-        versionBuffer.writeBigInt64LE(BigInt(item.version));
-
-        hasher.update(idBuffer);
-        hasher.update(versionBuffer);
+        offset += 16;
       });
     });
 
-    this.leafHashes[index] = hasher.digest().toString('hex');
+    this.leafHashes[index] = XXH3_128(buffer, BigInt(0)).toString(16);
   }
 
   /**
@@ -248,8 +248,6 @@ class HashTree {
         const leftHash = currentLevelHashes[i];
         const rightHash = i + 1 < currentLevelHashes.length ? currentLevelHashes[i + 1] : leftHash;
 
-        const hasher = new XXHash128(Buffer.from([0, 0, 0, 0]));
-
         const input = Buffer.concat([
           Buffer.from(leftHash, 'hex').subarray(0, 8).reverse(),
           Buffer.from(leftHash, 'hex').subarray(8, 16).reverse(),
@@ -257,9 +255,7 @@ class HashTree {
           Buffer.from(rightHash, 'hex').subarray(8, 16).reverse(),
         ]);
 
-        hasher.update(input);
-
-        nextLevelHashes.push(hasher.digest().toString('hex'));
+        nextLevelHashes.push(XXH3_128(input, BigInt(0)).toString(16));
       }
       currentLevelHashes = nextLevelHashes;
       allHashes.unshift(...currentLevelHashes);
