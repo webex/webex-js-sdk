@@ -812,10 +812,68 @@ describe('TaskManager', () => {
 
     taskManager.taskCollection[taskId] = taskManager.getTask(taskId);
     const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
+    const metricsTrackSpy = jest.spyOn(taskManager.metricsManager, 'trackEvent');
 
     webSocketManagerMock.emit('message', JSON.stringify(ronaPayload));
 
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_REJECT, ronaPayload.data.reason);
+    // Verify the correct metric event name is used for AGENT_CONTACT_OFFER_RONA
+    expect(metricsTrackSpy).toHaveBeenCalled();
+    expect(metricsTrackSpy.mock.calls[0][0]).toBe('Agent RONA');
+  });
+
+  it('should emit TASK_REJECT event on AGENT_CONTACT_ASSIGN_FAILED event', () => {
+    // First, emit AGENT_CONTACT_RESERVED to set up currentTask
+    const reservedPayload = {
+      data: {
+        type: CC_EVENTS.AGENT_CONTACT_RESERVED,
+        agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        eventTime: 1733211616959,
+        eventType: 'RoutingMessage',
+        interaction: {},
+        interactionId: taskId,
+        orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
+        trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(reservedPayload));
+
+    const assignFailedPayload = {
+      data: {
+        type: CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED,
+        agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        eventTime: 1733211616959,
+        eventType: 'RoutingMessage',
+        interaction: {},
+        interactionId: taskId,
+        orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
+        trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
+        reason: 'ASSIGN_FAILED',
+      },
+    };
+
+    taskManager.taskCollection[taskId] = taskManager.getTask(taskId);
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const taskUpdateDataSpy = jest.spyOn(task, 'updateTaskData');
+    const metricsTrackSpy = jest.spyOn(taskManager.metricsManager, 'trackEvent');
+
+    webSocketManagerMock.emit('message', JSON.stringify(assignFailedPayload));
+
+    expect(taskUpdateDataSpy).toHaveBeenCalledWith(assignFailedPayload.data);
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_REJECT, assignFailedPayload.data.reason);
+    // Verify the correct metric event name is used for AGENT_CONTACT_ASSIGN_FAILED
+    expect(metricsTrackSpy).toHaveBeenCalled();
+    expect(metricsTrackSpy.mock.calls[0][0]).toBe('Agent Contact Assign Failed');
   });
 
   it('should remove currentTask from taskCollection on AGENT_WRAPPEDUP event', () => {
