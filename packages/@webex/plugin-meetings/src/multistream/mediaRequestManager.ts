@@ -15,7 +15,7 @@ import {cloneDeepWith, debounce, isEmpty} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
-import {getMaxFs} from './remoteMedia';
+import {MAX_FS_VALUES} from './remoteMedia';
 
 export interface ActiveSpeakerPolicyInfo {
   policy: 'active-speaker';
@@ -123,12 +123,12 @@ export class MediaRequestManager {
 
   private getDegradedClientRequests(clientRequests: ClientRequestsMap) {
     const maxFsLimits = [
-      getMaxFs('best'),
-      getMaxFs('large'),
-      getMaxFs('medium'),
-      getMaxFs('small'),
-      getMaxFs('very small'),
-      getMaxFs('thumbnail'),
+      MAX_FS_VALUES['1080p'],
+      MAX_FS_VALUES['720p'],
+      MAX_FS_VALUES['540p'],
+      MAX_FS_VALUES['360p'],
+      MAX_FS_VALUES['180p'],
+      MAX_FS_VALUES['90p'],
     ];
 
     // reduce max-fs until total macroblocks is below limit
