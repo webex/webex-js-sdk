@@ -3,13 +3,13 @@
  */
 
 /* eslint-disable class-methods-use-this */
-import {isEqual, mapValues, mean, cloneDeep} from 'lodash';
+import {isEqual, mapValues, mean, cloneDeep, uniqBy} from 'lodash';
 
 import {Defer} from '@webex/common';
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
 
-import {IP_VERSION, REACHABILITY} from '../constants';
+import {IP_VERSION, REACHABILITY, PROTOCOLS_LIST} from '../constants';
 
 import ReachabilityRequest, {ClusterList} from './request';
 import {
@@ -163,12 +163,10 @@ export default class Reachability extends EventsScope {
             []),
         ];
 
-        const uniqueSubnetsMap = new Map();
-        reachedSubnetsArray.forEach((subnet) => {
-          uniqueSubnetsMap.set(subnet.serverIp, subnet);
-        });
-        const uniqueReachedSubnetsArray = Array.from(uniqueSubnetsMap.values());
-
+        const uniqueReachedSubnetsArray = uniqBy(
+          reachedSubnetsArray,
+          (subnet) => `${subnet.serverIp}:${subnet.port}`
+        );
         let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
         for (let i = 0; i < uniqueReachedSubnetsArray.length; i += 1) {
           const subnet = uniqueReachedSubnetsArray[i];
@@ -481,9 +479,9 @@ export default class Reachability extends EventsScope {
 
       results = mapValues(allClusterResults, (clusterResult) => {
         const transformed: any = {};
-        for (const protocol of ['udp', 'tcp', 'xtls'] as const) {
+        for (const protocol of PROTOCOLS_LIST) {
           transformed[protocol] = this.mapTransportResultToBackendDataFormat(
-            clusterResult[protocol]
+            clusterResult[protocol] || {result: 'untested', details: []}
           );
         }
         transformed.isVideoMesh = clusterResult.isVideoMesh;
@@ -1122,12 +1120,11 @@ export default class Reachability extends EventsScope {
    * @public
    * @memberof Reachability
    */
-
   public async getAllClustersInfo(): Promise<ClusterUrls> {
     const result: ClusterUrls = {};
     Object.entries(this.clusterReachability).forEach(([clusterName, clusterReachability]) => {
       const clusterInfo = cloneDeep(clusterReachability.clusterInfo);
-      ['udp', 'tcp', 'xtls'].forEach((protocol) => {
+      PROTOCOLS_LIST.forEach((protocol) => {
         if (Array.isArray(clusterInfo[protocol])) {
           clusterInfo[protocol] = clusterInfo[protocol].map((url: string) =>
             url.startsWith('stun:') ? url.slice(5) : url

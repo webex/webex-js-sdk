@@ -1361,3 +1361,5 @@ export const INITIAL_REGISTRATION_STATUS = {
 
 // Regular expression to match STUN server URLs
 export const STUN_SERVER_URL_REGEX = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
+
+export const PROTOCOLS_LIST: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];

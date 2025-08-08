@@ -1,12 +1,17 @@
 import {Defer} from '@webex/common';
-import {isIP} from 'is-ip';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 import EventsScope from '../common/events/events-scope';
 
-import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE, STUN_SERVER_URL_REGEX} from '../constants';
+import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE, STUN_SERVER_URL_REGEX, PROTOCOLS_LIST} from '../constants';
 import {ClusterReachabilityResult, NatType, SubnetDetails, ClusterNode} from './reachability.types';
+
+async function checkIP(ip) {
+  const {isIP} = await import('is-ip');
+
+  return isIP(ip);
+}
 
 declare global {
   interface RTCIceCandidate {
@@ -37,10 +42,10 @@ export const Events = {
   resultReady: 'resultReady', // emitted when a cluster is reached successfully using specific protocol
   clientMediaIpsUpdated: 'clientMediaIpsUpdated', // emitted when more public IPs are found after resultReady was already sent for a given protocol
   natTypeUpdated: 'natTypeUpdated', // emitted when NAT type is determined
+  resultDetailsUpdated: 'resultDetailsUpdated', // emitted when the details of the reachability result are updated
 } as const;
 
 export type Events = Enum<typeof Events>;
-const protocols: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
 
 /**
  * A class that handles reachability checks for a single cluster.
@@ -276,10 +281,10 @@ export class ClusterReachability extends EventsScope {
     port?: number | null
   ) {
     const result = this.result[protocol];
+    const subnet = result.details.find((s) => s.serverIp === serverIp && s.port === port);
 
     if (result.latencyInMilliseconds === undefined) {
       LoggerProxy.logger.log(
-        // @ts-ignore
         `Reachability:index#saveResult --> Successfully reached ${this.name} over ${protocol}: ${latency}ms`
       );
       result.latencyInMilliseconds = latency;
@@ -288,7 +293,6 @@ export class ClusterReachability extends EventsScope {
         result.clientMediaIPs = [publicIp];
       }
 
-      const subnet = result.details.find((s) => s.serverIp === serverIp && s.port === port);
       if (subnet) {
         subnet['answered-tx'] = 1;
         subnet['lost-tx'] = 0;
@@ -314,6 +318,37 @@ export class ClusterReachability extends EventsScope {
         }
       );
     } else {
+      let detailsUpdated = false;
+      if (!subnet) {
+        result.details.push({
+          serverIp,
+          port,
+          'answered-tx': 1,
+          'lost-tx': 0,
+          latencies: [latency],
+        });
+        detailsUpdated = true;
+      } else {
+        subnet['answered-tx'] = 1;
+        subnet['lost-tx'] = 0;
+        subnet.latencies = [latency];
+        detailsUpdated = true;
+      }
+
+      if (detailsUpdated) {
+        this.emit(
+          {
+            file: 'clusterReachability',
+            function: 'saveResult',
+          },
+          Events.resultDetailsUpdated,
+          {
+            protocol,
+            ...result,
+          }
+        );
+      }
+
       this.addPublicIP(protocol, publicIp);
     }
   }
@@ -372,31 +407,30 @@ export class ClusterReachability extends EventsScope {
       const latencyInMilliseconds = this.getElapsedTime();
 
       if (e.candidate) {
-        let serverIp = null;
-        let port = null;
-        if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          if (e.candidate.url) {
-            const match = (e.candidate as any).url.match(STUN_SERVER_URL_REGEX);
-            if (match) {
-              [, serverIp, port] = match;
-              port = Number(port);
-            }
-          }
-          if (!serverIp && e.candidate.address) {
-            serverIp = e.candidate.address;
-          }
-          if (!port && e.candidate.port) {
-            port = e.candidate.port;
-          }
-          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp, port);
+        let serverIp: string | null = null;
+        let port: number | null = null;
 
+        if (e.candidate.url) {
+          const match = (e.candidate as any).url.match(STUN_SERVER_URL_REGEX);
+          if (match) {
+            [, serverIp, port] = match;
+            port = Number(port);
+          }
+        }
+        if (!serverIp && e.candidate.address) {
+          serverIp = e.candidate.address;
+        }
+        if (!port && e.candidate.port) {
+          port = e.candidate.port;
+        }
+
+        if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
+          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp, port);
           this.determineNatType(e.candidate);
         }
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
           const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
-          serverIp = e.candidate.address;
-          port = e.candidate.port;
           this.saveResult(
             protocol,
             latencyInMilliseconds,
@@ -439,20 +473,31 @@ export class ClusterReachability extends EventsScope {
       details: [],
     };
 
-    protocols.forEach((protocol) => {
-      this.clusterInfo[protocol].forEach((url) => {
+    const allChecks: Promise<void>[] = [];
+
+    for (const protocol of PROTOCOLS_LIST) {
+      const urls = this.clusterInfo[protocol];
+      for (const url of urls) {
         const match = url.match(STUN_SERVER_URL_REGEX);
-        if (match && isIP(match[1])) {
-          this.result[protocol].details.push({
-            serverIp: match[1],
-            port: Number(match[2]),
-            'answered-tx': 0,
-            'lost-tx': 1,
-            latencies: [],
-          });
+        if (match) {
+          allChecks.push(
+            (async () => {
+              if (await checkIP(match[1])) {
+                this.result[protocol].details.push({
+                  serverIp: match[1],
+                  port: Number(match[2]),
+                  'answered-tx': 0,
+                  'lost-tx': 1,
+                  latencies: [],
+                });
+              }
+            })()
+          );
         }
-      });
-    });
+      }
+    }
+
+    await Promise.all(allChecks);
 
     try {
       const offer = await this.pc.createOffer({offerToReceiveAudio: true});

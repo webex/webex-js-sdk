@@ -255,7 +255,6 @@
   },
   "packageManager": "yarn@3.4.1",
   "dependencies": {
-    "is-ip": "^5.0.1",
     "querystring-es3": "^0.2.1"
   },
   "//": "Todo: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-490729"
