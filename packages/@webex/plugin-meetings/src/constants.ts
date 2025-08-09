@@ -1189,6 +1189,7 @@ export const QUALITY_LEVELS = {
   HIGH: 'HIGH',
   '360p': '360p',
   '480p': '480p',
+  '540p': '540p',
   '720p': '720p',
   '1080p': '1080p',
 };
@@ -1215,6 +1216,18 @@ export const AVAILABLE_RESOLUTIONS = {
       height: {
         max: 480,
         ideal: 480,
+      },
+    },
+  },
+  '540p': {
+    video: {
+      width: {
+        max: 960,
+        ideal: 960,
+      },
+      height: {
+        max: 540,
+        ideal: 540,
       },
     },
   },
@@ -1363,3 +1376,8 @@ export const INITIAL_REGISTRATION_STATUS = {
 export const STUN_SERVER_URL_REGEX = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
 
 export const PROTOCOLS_LIST: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
+export const STAGE_MANAGER_TYPE = {
+  LOGO: 0b001,
+  BACKGROUND: 0b010,
+  NAME_LABEL: 0b100,
+};
