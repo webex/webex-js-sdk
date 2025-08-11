@@ -9182,6 +9182,7 @@ __metadata:
     eslint: ^8.24.0
     global: ^4.4.0
     ip-anonymize: ^0.1.0
+    is-ip: ^5.0.1
     javascript-state-machine: ^3.1.0
     jsdom: 19.0.0
     jsdom-global: 3.0.2
@@ -34161,7 +34162,6 @@ __metadata:
     humanize-string: ^1.0.2
     husky: ^7.0.4
     intern: ^4.10.1
-    is-ip: ^5.0.1
     istanbul: ^0.4.5
     jasmine: ^4.5.0
     jest: ^29.3.1

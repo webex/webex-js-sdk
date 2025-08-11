@@ -4,7 +4,13 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 import EventsScope from '../common/events/events-scope';
 
-import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE, STUN_SERVER_URL_REGEX, PROTOCOLS_LIST} from '../constants';
+import {
+  CONNECTION_STATE,
+  Enum,
+  ICE_GATHERING_STATE,
+  STUN_SERVER_URL_REGEX,
+  PROTOCOLS_LIST,
+} from '../constants';
 import {ClusterReachabilityResult, NatType, SubnetDetails, ClusterNode} from './reachability.types';
 
 async function checkIP(ip) {
@@ -417,9 +423,11 @@ export class ClusterReachability extends EventsScope {
             port = Number(port);
           }
         }
+
         if (!serverIp && e.candidate.address) {
           serverIp = e.candidate.address;
         }
+
         if (!port && e.candidate.port) {
           port = e.candidate.port;
         }
