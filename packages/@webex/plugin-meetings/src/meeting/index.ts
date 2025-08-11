@@ -3065,12 +3065,16 @@ export default class Meeting extends StatelessWebexPlugin {
       // There is no concept of local/remote share for whiteboard
       // It does not matter who requested to share the whiteboard, everyone gets the same view
       else if (whiteboardShare.disposition === FLOOR_ACTION.GRANTED) {
-        // WHITEBOARD - sharing whiteboard
-        // Webinar attendee should receive whiteboard as remote share
-        newShareStatus =
-          this.locusInfo?.info?.isWebinar && this.webinar?.selfIsAttendee
-            ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
-            : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+        if (this.locusInfo?.info?.isWebinar && this.webinar?.selfIsAttendee) {
+          // WHITEBOARD - sharing whiteboard
+          // Webinar attendee should receive whiteboard as remote share
+          newShareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
+        } else if (this.guest) {
+          // If user is a guest to a meeting, they should receive whiteboard as remote share
+          newShareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
+        } else {
+          newShareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+        }
       }
       // or if content share is either released or null and whiteboard share is either released or null, no one is sharing
       else if (
