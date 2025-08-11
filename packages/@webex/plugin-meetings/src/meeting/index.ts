@@ -1616,9 +1616,11 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.#isoLocalClientMeetingJoinTime = undefined;
 
-    // We clear the error cache of CA events on every new meeting instance
+    // We clear the error cache of CA events, and CA event limits on every new meeting instance
     // @ts-ignore - Fix type
     this.webex.internal.newMetrics.callDiagnosticMetrics.clearErrorCache();
+    // @ts-ignore
+    this.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimits();
 
     /**
      * IP Address of the remote media server

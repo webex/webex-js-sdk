@@ -2431,7 +2431,7 @@ describe('internal-plugin-metrics', () => {
         );
       });
 
-      it('should send behavioral event if meetingId provided but meeting is undefined', () => {
+      it('should send event if meetingId provided but meeting is undefined', () => {
         webex.meetings.getBasicMeetingInformation = sinon.stub().returns(undefined);
 
         cd.submitClientEvent({name: 'client.alert.displayed', options: {meetingId: 'meetingId'}});
@@ -2464,6 +2464,228 @@ describe('internal-plugin-metrics', () => {
         cd.submitClientEvent(testEvent);
         assert.calledWith(cd.submitToCallDiagnosticsPreLogin, testEvent);
         assert.notCalled(cd.submitToCallDiagnostics);
+      });
+
+      describe('Limiting repeated events', () => {
+        beforeEach(() => {
+          cd.clearEventLimits();
+        });
+
+        const createEventLimitRegex = (eventName: string, eventType: string) => {
+          const escapedEventName = eventName.replace(/\./g, '\\.');
+          return new RegExp(`Event limit reached for ${escapedEventName} for ${eventType}`);
+        };
+
+        it('should always send events that are not in the limiting switch cases', () => {
+          const options = {
+            meetingId: fakeMeeting.id,
+          };
+          const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+          const baselineCallCount = webex.logger.log.callCount;
+          cd.submitClientEvent({
+            name: 'client.alert.displayed',
+            options,
+          });
+
+          cd.submitClientEvent({
+            name: 'client.alert.displayed',
+            options,
+          });
+
+          cd.submitClientEvent({
+            name: 'client.alert.displayed',
+            options,
+          });
+
+          assert.calledThrice(submitToCallDiagnosticsStub);
+          });
+
+        [
+          ['client.media.render.start'],
+          ['client.media.render.stop'],
+          ['client.media.rx.start'],
+          ['client.media.rx.stop'],
+          ['client.media.tx.start'],
+          ['client.media.tx.stop']
+        ].forEach(([name]) => {
+          it(`should only send ${name} once per mediaType`, () => {
+            const options = {
+              meetingId: fakeMeeting.id,
+            };
+            const payload = {
+              mediaType: 'video' as const,
+            };
+            const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+            const baselineCallCount = webex.logger.log.callCount;
+            // Send first event
+            cd.submitClientEvent({
+              name: name as any,
+              payload,
+              options,
+            });
+
+            assert.calledOnce(submitToCallDiagnosticsStub);
+            submitToCallDiagnosticsStub.resetHistory();
+
+            // Send second event of same type
+            cd.submitClientEvent({
+              name: name as any,
+              payload,
+              options,
+            });
+
+            assert.notCalled(submitToCallDiagnosticsStub);
+            assert.calledWith(
+              webex.logger.log,
+              'call-diagnostic-events -> ',
+              sinon.match(createEventLimitRegex(name, 'mediaType video'))
+            );
+            webex.logger.log.resetHistory();
+
+            // Send third event of same type
+            cd.submitClientEvent({
+              name: name as any,
+              payload,
+              options,
+            });
+
+            assert.notCalled(submitToCallDiagnosticsStub);
+            assert.neverCalledWithMatch(webex.logger.log,
+              'call-diagnostic-events -> ',
+              sinon.match(createEventLimitRegex(name, 'mediaType video'))
+            );
+
+            // Send fourth event of with different mediaType
+            cd.submitClientEvent({
+              name: name as any,
+              payload: {mediaType: 'audio'},
+              options,
+            });
+
+            assert.calledOnce(submitToCallDiagnosticsStub);
+          });
+
+          it(`should handle share media type with shareInstanceId correctly for ${name}`, () => {
+            const options = {
+              meetingId: fakeMeeting.id,
+            };
+            const payload = {
+              mediaType: 'share' as const,
+              shareInstanceId: 'instance-1',
+            };
+            const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+            const baselineCallCount = webex.logger.log.callCount;
+            // Send first event
+            cd.submitClientEvent({
+              name: 'client.media.render.start',
+              payload,
+              options,
+            });
+
+            // Send second event with same shareInstanceId
+            cd.submitClientEvent({
+              name: 'client.media.render.start',
+              payload,
+              options,
+            });
+
+            // Send event with different shareInstanceId
+            cd.submitClientEvent({
+              name: 'client.media.render.start',
+              payload: { ...payload, shareInstanceId: 'instance-2' },
+              options,
+            });
+
+            assert.calledTwice(submitToCallDiagnosticsStub);
+          });
+        });
+
+                [
+          ['client.roap-message.received'],
+          ['client.roap-message.sent']
+        ].forEach(([name]) => {
+          it(`should not send third event of same type and not log warning again for ${name}`, () => {
+            const options = {
+              meetingId: fakeMeeting.id,
+            };
+            const payload = {
+              roap: {
+                messageType: 'OFFER' as const,
+              },
+            };
+            const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+            // Clear any existing call history to get accurate counts
+            webex.logger.log.resetHistory();
+
+            // Send first event
+            cd.submitClientEvent({
+              name: name as any,
+              payload,
+              options,
+            });
+
+            assert.calledOnce(submitToCallDiagnosticsStub);
+            submitToCallDiagnosticsStub.resetHistory();
+
+            // Send second event (should trigger warning)
+            cd.submitClientEvent({
+              name: name as any,
+              payload,
+              options,
+            });
+
+            assert.notCalled(submitToCallDiagnosticsStub);
+            assert.calledWith(
+              webex.logger.log,
+              'call-diagnostic-events -> ',
+              sinon.match(createEventLimitRegex(name, 'ROAP type OFFER'))
+            );
+            webex.logger.log.resetHistory();
+            
+            cd.submitClientEvent({
+              name: name as any,
+              payload,
+              options,
+            });
+
+            assert.notCalled(submitToCallDiagnosticsStub);
+            assert.neverCalledWithMatch(
+              webex.logger.log,
+              'call-diagnostic-events -> ',
+              sinon.match(createEventLimitRegex(name, 'ROAP type OFFER'))
+            );
+          });
+
+          it(`should handle roap.type instead of roap.messageType for ${name}`, () => {
+            const options = {
+              meetingId: fakeMeeting.id,
+            };
+            const payload = {
+              roap: {
+                type: 'ANSWER' as const,
+              },
+            };
+            const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+            cd.submitClientEvent({
+              name: name as any,
+              payload,
+              options,
+            });
+
+            cd.submitClientEvent({
+              name: name as any,
+              payload,
+              options,
+            });
+
+            assert.calledOnce(submitToCallDiagnosticsStub);
+          });
+        });
       });
     });
 

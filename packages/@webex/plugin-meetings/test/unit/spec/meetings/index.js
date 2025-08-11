@@ -189,6 +189,7 @@ describe('plugin-meetings', () => {
           },
           callDiagnosticMetrics: {
             clearErrorCache: sinon.stub(),
+            clearEventLimits: sinon.stub(),
           },
         },
       });
