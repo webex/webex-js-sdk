@@ -199,11 +199,17 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
           case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED:
+          case CC_EVENTS.AGENT_INVITE_FAILED: {
             task = this.updateTaskData(task, payload.data);
+            let metricEventName: keyof typeof METRIC_EVENT_NAMES = 'AGENT_RONA';
+            if (payload.data.type === CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED) {
+              metricEventName = 'AGENT_CONTACT_ASSIGN_FAILED';
+            } else if (payload.data.type === CC_EVENTS.AGENT_INVITE_FAILED) {
+              metricEventName = 'AGENT_INVITE_FAILED';
+            }
+
             this.metricsManager.trackEvent(
-              payload.data.type === CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED
-                ? METRIC_EVENT_NAMES.AGENT_CONTACT_ASSIGN_FAILED
-                : METRIC_EVENT_NAMES.AGENT_RONA,
+              METRIC_EVENT_NAMES[metricEventName],
               {
                 ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
                 taskId: payload.data.interactionId,
@@ -214,8 +220,8 @@ export default class TaskManager extends EventEmitter {
             this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
+          }
           case CC_EVENTS.CONTACT_ENDED:
-          case CC_EVENTS.AGENT_INVITE_FAILED:
             task = this.updateTaskData(task, {
               ...payload.data,
               wrapUpRequired: payload.data.interaction.state !== 'new',
