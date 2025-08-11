@@ -14,6 +14,7 @@ import {
 } from '../constants';
 
 import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
+import {Invitee} from '../meeting/type';
 
 const MembersUtil = {
   /**
@@ -105,7 +106,7 @@ const MembersUtil = {
     return requestParams;
   },
 
-  isInvalidInvitee: (invitee) => {
+  isInvalidInvitee: (invitee: Invitee) => {
     if (!(invitee && (invitee.email || invitee.emailAddress || invitee.phoneNumber))) {
       return true;
     }
