@@ -201,12 +201,13 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED:
           case CC_EVENTS.AGENT_INVITE_FAILED: {
             task = this.updateTaskData(task, payload.data);
-            let metricEventName: keyof typeof METRIC_EVENT_NAMES = 'AGENT_RONA';
-            if (payload.data.type === CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED) {
-              metricEventName = 'AGENT_CONTACT_ASSIGN_FAILED';
-            } else if (payload.data.type === CC_EVENTS.AGENT_INVITE_FAILED) {
-              metricEventName = 'AGENT_INVITE_FAILED';
-            }
+
+            const eventTypeToMetricMap: Record<string, keyof typeof METRIC_EVENT_NAMES> = {
+              [CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED]: 'AGENT_CONTACT_ASSIGN_FAILED',
+              [CC_EVENTS.AGENT_INVITE_FAILED]: 'AGENT_INVITE_FAILED',
+            };
+            const metricEventName: keyof typeof METRIC_EVENT_NAMES =
+              eventTypeToMetricMap[payload.data.type] || 'AGENT_RONA';
 
             this.metricsManager.trackEvent(
               METRIC_EVENT_NAMES[metricEventName],
