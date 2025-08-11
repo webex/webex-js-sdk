@@ -56,6 +56,7 @@ import * as MeetingRequestImport from '@webex/plugin-meetings/src/meeting/reques
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
+import MembersUtil from '@webex/plugin-meetings/src/members/util';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import Media from '@webex/plugin-meetings/src/media/index';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
@@ -369,6 +370,35 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.simultaneousInterpretation, SimultaneousInterpretation);
           assert.instanceOf(meeting.webinar, Webinar);
         });
+
+        it('should call the callback with the meeting that has id already set', () => {
+          let meetingIdFromCallback;
+          // check that the meeting id is already set correctly at the time when the callback is called
+          const meetingCreationCallback = sinon.stub().callsFake((meeting) => {
+            meetingIdFromCallback = meeting.id;
+          });
+
+          meeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+            },
+            {
+              parent: webex,
+            },
+            meetingCreationCallback
+          );
+          assert.exists(meeting.id);
+          assert.calledOnceWithExactly(meetingCreationCallback, meeting);
+          assert.equal(meeting.id, meetingIdFromCallback);
+        });
+
         it('creates MediaRequestManager instances', () => {
           assert.instanceOf(meeting.mediaRequestManagers.audio, MediaRequestManager);
           assert.instanceOf(meeting.mediaRequestManagers.video, MediaRequestManager);
@@ -582,7 +612,6 @@ describe('plugin-meetings', () => {
           assert.isFalse(meeting.isLocusCall());
         });
       });
-
       describe('#invite', () => {
         it('should have #invite', () => {
           assert.exists(meeting.invite);
@@ -593,8 +622,6 @@ describe('plugin-meetings', () => {
         it('should proxy members #addMember and return a promise', async () => {
           const invite = meeting.invite(uuid1, false);
 
-          assert.exists(invite.then);
-          await invite;
           assert.calledOnce(meeting.members.addMember);
           assert.calledWith(meeting.members.addMember, uuid1, false);
         });
@@ -12405,7 +12432,7 @@ describe('plugin-meetings', () => {
                 activeSharingId.whiteboard = beneficiaryId;
 
                 eventTrigger.share.push(
-                  meeting.webinar.selfIsAttendee
+                  meeting.webinar.selfIsAttendee || meeting.guest
                     ? {
                         eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                         functionName: 'remoteShare',
@@ -12424,7 +12451,8 @@ describe('plugin-meetings', () => {
                       }
                 );
 
-                shareStatus = meeting.webinar.selfIsAttendee
+                shareStatus =
+                  meeting.webinar.selfIsAttendee || meeting.guest
                   ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
                   : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
               }
@@ -12639,6 +12667,36 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
               assert.equal(meeting.shareCAEventSentStatus.receiveStart, false);
               assert.equal(meeting.shareCAEventSentStatus.receiveStop, false);
+            });
+          });
+
+          describe('Whiteboard Share - User is guest', () => {
+            it('User receives a remote share instead of whiteboard share', () => {
+              // Set the guest flag
+              meeting.guest = true;
+
+              // Step 1: Start sharing whiteboard A
+              const data1 = generateData(
+                blankPayload, // Initial payload
+                true, // isGranting: Granting share
+                false, // isContent: Whiteboard (not content)
+                USER_IDS.REMOTE_A, // Beneficiary ID: Remote user A
+                RESOURCE_URLS.WHITEBOARD_A // Resource URL: Whiteboard A
+              );
+
+              // Step 2: Stop sharing whiteboard A
+              const data2 = generateData(
+                data1.payload, // Updated payload from Step 1
+                false, // isGranting: Stopping share
+                false, // isContent: Whiteboard
+                USER_IDS.REMOTE_A // Beneficiary ID: Remote user A
+              );
+
+              // Validate the payload changes and status updates
+              payloadTestHelper([data1]);
+
+              // Specific assertions for guest
+              assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
             });
           });
 

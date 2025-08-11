@@ -198,9 +198,12 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
+          case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED:
             task = this.updateTaskData(task, payload.data);
             this.metricsManager.trackEvent(
-              METRIC_EVENT_NAMES.AGENT_RONA,
+              payload.data.type === CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED
+                ? METRIC_EVENT_NAMES.AGENT_CONTACT_ASSIGN_FAILED
+                : METRIC_EVENT_NAMES.AGENT_RONA,
               {
                 ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
                 taskId: payload.data.interactionId,

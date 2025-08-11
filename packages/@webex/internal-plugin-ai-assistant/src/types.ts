@@ -2,6 +2,11 @@ export interface RequestResponse {
   sessionId: string;
   requestId: string;
   streamEventName: string;
+  id: string;
+  url: string;
+  sessionUrl: string;
+  creatorId: string;
+  createdAt: string;
 }
 
 export interface StreamEvent {

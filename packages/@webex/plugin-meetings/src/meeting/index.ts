@@ -166,6 +166,7 @@ import MultistreamNotSupportedError from '../common/errors/multistream-not-suppo
 import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
+import {Invitee} from './type';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -743,10 +744,11 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * @param {Object} attrs
    * @param {Object} options
+   * @param {Function} callback - if provided, it will be called with the newly created meeting object as soon as the meeting.id is set
    * @constructor
    * @memberof Meeting
    */
-  constructor(attrs: any, options: object) {
+  constructor(attrs: any, options: object, callback: (meeting: Meeting) => void) {
     super({}, options);
     /**
      * @instance
@@ -772,6 +774,11 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.id = uuid.v4();
+
+    if (callback) {
+      callback(this);
+    }
+
     /**
      * Call state used for metrics
      * @instance
@@ -3060,12 +3067,16 @@ export default class Meeting extends StatelessWebexPlugin {
       // There is no concept of local/remote share for whiteboard
       // It does not matter who requested to share the whiteboard, everyone gets the same view
       else if (whiteboardShare.disposition === FLOOR_ACTION.GRANTED) {
-        // WHITEBOARD - sharing whiteboard
-        // Webinar attendee should receive whiteboard as remote share
-        newShareStatus =
-          this.locusInfo?.info?.isWebinar && this.webinar?.selfIsAttendee
-            ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
-            : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+        if (this.locusInfo?.info?.isWebinar && this.webinar?.selfIsAttendee) {
+          // WHITEBOARD - sharing whiteboard
+          // Webinar attendee should receive whiteboard as remote share
+          newShareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
+        } else if (this.guest) {
+          // If user is a guest to a meeting, they should receive whiteboard as remote share
+          newShareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
+        } else {
+          newShareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+        }
       }
       // or if content share is either released or null and whiteboard share is either released or null, no one is sharing
       else if (
@@ -3831,49 +3842,43 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Invite a guest to the call that isn't normally part of this call
-   * @param {Object} invitee
+   * @param {Invitee} invitee
    * @param {String} invitee.emailAddress
    * @param {String} invitee.email
    * @param {String} invitee.phoneNumber
    * @param {Boolean} [alertIfActive]
+   * @param {Boolean} [invitee.skipEmailValidation]
+   * @param {Boolean} [invitee.isInternalNumber]
    * @returns {Promise} see #members.addMember
    * @public
    * @memberof Meeting
    */
-  public invite(
-    invitee: {
-      emailAddress: string;
-      email: string;
-      phoneNumber: string;
-      roles: Array<string>;
-    },
-    alertIfActive = true
-  ) {
+  public invite(invitee: Invitee, alertIfActive = true) {
     return this.members.addMember(invitee, alertIfActive);
   }
 
   /**
    * Cancel an outgoing phone call invitation made during a meeting
-   * @param {Object} invitee
+   * @param {Invitee} invitee
    * @param {String} invitee.phoneNumber
    * @returns {Promise} see #members.cancelPhoneInvite
    * @public
    * @memberof Meeting
    */
-  public cancelPhoneInvite(invitee: {phoneNumber: string}) {
+  public cancelPhoneInvite(invitee: Invitee) {
     return this.members.cancelPhoneInvite(invitee);
   }
 
   /**
    * Cancel an SIP/phone call invitation made during a meeting
-   * @param {Object} invitee
+   * @param {Invitee} invitee
    * @param {String} invitee.memberId
    * @param {Boolean} [invitee.isInternalNumber] - When cancel phone invitation, if the number is internal
    * @returns {Promise} see #members.cancelInviteByMemberId
    * @public
    * @memberof Meeting
    */
-  public cancelInviteByMemberId(invitee: {memberId: string; isInternalNumber?: boolean}) {
+  public cancelInviteByMemberId(invitee: Invitee) {
     return this.members.cancelInviteByMemberId(invitee);
   }
 
