@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Calling SDK Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css"
+    />
+    <style>
+      .hljs-comment { color: #98c379 !important; }
+    </style>
+    <!-- Load Webex core for OAuth -->
+    <script src="https://unpkg.com/webex@next/umd/webex.min.js"></script>
+    <!-- Load Calling UMD (built in samples) -->
+    <script src="../../samples/calling.min.js"></script>
+    <!-- Entry script -->
+    <script type="module" src="./index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <h1>Webex Calling SDK Lab</h1>
+
+    <section id="intro">
+      <p>
+        This lab demonstrates how to build a basic Calling experience using the
+        Webex Calling WebRTC SDK. You'll authenticate, register, acquire media,
+        place/answer calls, and send DTMF digits using a dial pad.
+      </p>
+    </section>
+
+    <!-- Step 1: Authentication -->
+    <section id="auth">
+      <h2>Step 1: Authentication</h2>
+      <p>
+        Initialize the Calling SDK with a Personal Access Token (PAT). The
+        initialized <code>Calling</code> instance is used for all subsequent
+        operations.
+      </p>
+      <fieldset>
+        <legend>Credentials</legend>
+        <input id="access-token" type="text" placeholder="Paste access token" />
+        <div class="s-row">
+          <label class="switch">
+            <input id="fedramp" type="checkbox" />
+            <span>FedRAMP</span>
+          </label>
+          <label class="switch">
+            <input id="integration-env" type="checkbox" />
+            <span>Use Integration Environment</span>
+          </label>
+        </div>
+        <div class="s-row">
+          <button id="btn-init">Initialize Calling</button>
+        </div>
+        <pre id="auth-status">Not initialized</pre>
+      </fieldset>
+      <pre><code class="javascript">// Initialize SDK with a PAT
+const calling = await Calling.init({
+  webexConfig: {
+    credentials: { access_token: 'YOUR_TOKEN' },
+    config: { fedramp: false }
+  },
+  callingConfig: {
+    logger: { level: 'info' }
+  }
+});
+
+calling.on('ready', () => console.log('Calling ready'));</code></pre>
+      <div class="s-row" style="margin-top: 8px;">
+        <button id="btn-oauth">Login via OAuth</button>
+      </div>
+
+      <p><strong>Using OAuth (for production):</strong></p>
+      <p>
+        To use OAuth, first create an Integration in the
+        <a href="https://developer.webex.com/my-apps" target="_blank">Webex Developer Portal</a>.
+        You will receive a <code>Client ID</code> and configure one or more
+        <code>Redirect URIs</code>. For local testing, set your redirect to
+        <code>http://localhost:&lt;PORT&gt;/</code> (matching the port you serve this page on).
+      </p>
+      <p>
+        This lab uses OAuth (implicit) to obtain an access token that is then
+        used to initialize the Calling SDK. The required scopes for Calling are:
+        <code>spark:webrtc_calling spark:calls_read spark:calls_write spark:kms spark:xsi</code>.
+      </p>
+      <pre><code class="javascript">// OAuth (Implicit) flow (Calling scopes)
+const webex = Webex.init({
+  config: {
+    credentials: {
+      client_id: 'YOUR_PUBLIC_CLIENT_ID', // From your Integration
+      redirect_uri: window.location.origin + window.location.pathname, // Must match Integration
+      scope: [
+        'spark:webrtc_calling',
+        'spark:calls_read',
+        'spark:calls_write',
+        'spark:kms',
+        'spark:xsi'
+      ].join(' ')
+    }
+  }
+});
+
+// 1) Initiate OAuth; user is redirected to Webex for login/consent
+await webex.authorization.initiateLogin();
+
+// 2) After redirect back to this page, Webex places the access_token in the URL hash
+//    This lab automatically detects it and initializes Calling with that token.
+//    See: auto-init logic in index.js (autoInitFromHash()).</code></pre>
+    </section>
+
+    <!-- Step 2: Registration -->
+    <section id="registration">
+      <h2>Step 2: Registration</h2>
+      <p>
+        Register and create a <code>line</code> to receive incoming calls and
+        place outgoing calls.
+      </p>
+      <div class="s-row">
+        <button id="btn-register" disabled>Register</button>
+        <button id="btn-deregister" disabled>Deregister</button>
+      </div>
+      <pre id="registration-status">Not registered</pre>
+      <pre><code class="javascript">// Register and get first line
+await calling.register();
+const callingClient = calling.callingClient;
+const line = Object.values(callingClient.getLines())[0];
+// Next step: explicitly register the line (see Step 3)</code></pre>
+    </section>
+
+    <!-- Step 3: Line Registration -->
+    <section id="line-registration">
+      <h2>Step 3: Line Registration</h2>
+      <p>
+        Register the <code>line</code> to enable placing and receiving calls. This
+        must be done after Calling registration.
+      </p>
+      <div class="s-row">
+        <button id="btn-line-register" disabled>Register Line</button>
+      </div>
+      <pre id="line-status">Line not registered</pre>
+      <pre><code class="javascript">// Register the primary line
+line.register();
+line.on('registered', (deviceInfo) => {
+  console.log('Line registered', deviceInfo);
+});</code></pre>
+    </section>
+
+    <!-- Step 4: Media -->
+    <section id="media">
+      <h2>Step 4: Media</h2>
+      <p>Get microphone access and prepare local media for calls.</p>
+      <button id="btn-media" disabled>Get Microphone</button>
+      <div class="media-grid">
+        <fieldset>
+          <legend>Local Audio</legend>
+          <audio id="local-audio" muted autoplay></audio>
+        </fieldset>
+        <fieldset>
+          <legend>Remote Audio</legend>
+          <audio id="remote-audio" autoplay></audio>
+        </fieldset>
+      </div>
+      <pre><code class="javascript">// Acquire microphone stream
+const mic = await Calling.createMicrophoneStream({ audio: true });
+document.getElementById('local-audio').srcObject = mic.outputStream;</code></pre>
+    </section>
+
+    <!-- Step 5: Calling -->
+    <section id="calling">
+      <h2>Step 5: Calling</h2>
+      <fieldset>
+        <legend>Outgoing Call</legend>
+        <div class="s-row">
+          <input id="destination" type="text" placeholder="Destination (SIP/phone)" />
+          <button id="btn-call" disabled>Call</button>
+          <button id="btn-end" disabled>End</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Incoming Call</legend>
+        <pre id="incoming-info">No incoming calls</pre>
+        <div class="s-row">
+          <button id="btn-answer" disabled>Answer</button>
+          <button id="btn-end-incoming" disabled>End</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Call Controls</legend>
+        <div class="call-controls">
+          <button id="btn-mute" disabled>Mute</button>
+          <button id="btn-hold" disabled>Hold</button>
+        </div>
+        <pre><code class="javascript">// Mute / Unmute
+// 'call' is the active call, 'localAudioStream' is the microphone stream
+call.mute(localAudioStream, 'user_mute');
+
+// Hold / Resume (toggles)
+call.doHoldResume();
+
+// Optional: listen for state
+call.on('established', (id) => console.log('Established', id));
+call.on('disconnect', () => console.log('Disconnected'));</code></pre>
+      </fieldset>
+
+      <fieldset>
+        <legend>Transfer</legend>
+        <div class="s-row">
+          <input id="transfer-target" type="text" placeholder="Transfer target (SIP/phone)" />
+          <select id="transfer-type">
+            <option value="BLIND" selected>Blind Transfer</option>
+            <option value="CONSULT">Consult Transfer</option>
+          </select>
+          <button id="btn-transfer" disabled>Transfer</button>
+          <button id="btn-end-second" disabled class="btn--red">End Second Call</button>
+        </div>
+        <p class="note">Consult transfer flow: place the active call on hold, call the target, then click Commit to complete transfer.</p>
+        <pre id="transfer-status">Transfer idle</pre>
+      </fieldset>
+
+      <fieldset>
+        <legend>DTMF Dialer</legend>
+        <div class="dtmf">
+          <input id="dtmf-display" type="text" placeholder="Digits" />
+          <div class="dialpad">
+            <button data-tone="1">1</button>
+            <button data-tone="2">2</button>
+            <button data-tone="3">3</button>
+            <button data-tone="4">4</button>
+            <button data-tone="5">5</button>
+            <button data-tone="6">6</button>
+            <button data-tone="7">7</button>
+            <button data-tone="8">8</button>
+            <button data-tone="9">9</button>
+            <button data-tone="*">*</button>
+            <button data-tone="0">0</button>
+            <button data-tone="#">#</button>
+          </div>
+          <div class="s-row">
+            <button id="btn-send-digits" disabled>Send</button>
+            <button id="btn-clear-digits">Clear</button>
+          </div>
+        </div>
+        <p>
+          Use DTMF when interacting with IVR systems (e.g., “Press 1 for Sales,
+          then enter your account number followed by #”). You can send each key
+          as you press it, or submit a sequence when prompted.
+        </p>
+        <pre><code class="javascript">// Send DTMF during an active call (typical IVR)
+// 1) User hears the IVR prompt: "Press 1 for Sales" →
+call.sendDigit('1');
+
+// 2) IVR asks: "Enter your account number followed by #" →
+const account = '123456';
+call.sendDigit(account + '#');
+
+// Or use the dialpad: per-key presses call sendDigit(key) automatically,
+// and the Send button submits the full input field.
+call.sendDigit('123#'); // or per-key press</code></pre>
+      </fieldset>
+      <pre id="call-status">Call status</pre>
+    </section>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
+      });
+    </script>
+  </body>
+  </html>
+
+
+

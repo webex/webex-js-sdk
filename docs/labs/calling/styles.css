@@ -1,0 +1,45 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  line-height: 1.6;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  color: #333;
+}
+
+h1 {
+  color: #0052bf;
+  border-bottom: 2px solid #0052bf;
+  padding-bottom: 0.5rem;
+}
+
+section {
+  background: #fff;
+  margin: 20px 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 16px;
+}
+
+fieldset { border: 1px solid #ddd; border-radius: 6px; margin: 12px 0; padding: 12px; }
+legend { color: #1a73e8; font-weight: 600; }
+
+.s-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+button { background:#00a6d6; color:#fff; border:none; border-radius:4px; padding:8px 12px; cursor:pointer; }
+button:disabled { background:#ccc; cursor:not-allowed; }
+input[type="text"] { padding:8px; border:1px solid #ddd; border-radius:4px; min-width:260px; }
+
+.media-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 12px; }
+
+.dialpad { display:grid; grid-template-columns: repeat(3, 56px); gap:8px; margin-top:10px; }
+.dialpad button { width:56px; height:40px; font-weight:600; }
+.dtmf { max-width: 360px; }
+
+pre { background:#f8f9fa; padding:12px; border-radius:6px; overflow:auto; }
+
+.call-controls { display:flex; gap:8px; }
+
+.switch { display:flex; align-items:center; gap:6px; }
+
+
+
