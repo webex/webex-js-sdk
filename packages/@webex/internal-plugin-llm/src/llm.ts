@@ -44,37 +44,41 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   namespace = LLM;
 
   /**
-   * If the LLM plugin has been registered and listening
-   * @instance
-   * @type {Boolean}
-   * @public
+   * Map to store connection-specific data for multiple LLM connections
+   * @private
+   * @type {Map<string, {webSocketUrl?: string; binding?: string; locusUrl?: string; datachannelUrl?: string}>}
    */
-
-  private webSocketUrl?: string;
-
-  private binding?: string;
-
-  private locusUrl?: string;
-
-  private datachannelUrl?: string;
+  private connections: Map<
+    string,
+    {
+      webSocketUrl?: string;
+      binding?: string;
+      locusUrl?: string;
+      datachannelUrl?: string;
+    }
+  > = new Map();
 
   /**
    * Register to the websocket
    * @param {string} llmSocketUrl
+   * @param {string} connectionId - Connection identifier (defaults to 'default')
    * @returns {Promise<void>}
    */
-  private register = (llmSocketUrl: string): Promise<void> =>
+  private register = (llmSocketUrl: string, connectionId = 'default'): Promise<void> =>
     this.request({
       method: 'POST',
       url: llmSocketUrl,
       body: {deviceUrl: this.webex.internal.device.url},
     })
       .then((res: {body: {webSocketUrl: string; binding: string}}) => {
-        this.webSocketUrl = res.body.webSocketUrl;
-        this.binding = res.body.binding;
+        // Get or create connection data
+        const connectionData = this.connections.get(connectionId) || {};
+        connectionData.webSocketUrl = res.body.webSocketUrl;
+        connectionData.binding = res.body.binding;
+        this.connections.set(connectionId, connectionData);
       })
       .catch((error: any) => {
-        this.logger.error(`Error connecting to websocket: ${error}`);
+        this.logger.error(`Error connecting to websocket for ${connectionId}: ${error}`);
         throw error;
       });
 
@@ -82,50 +86,136 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Register and connect to the websocket
    * @param {string} locusUrl
    * @param {string} datachannelUrl
+   * @param {string} connectionId - Connection identifier (defaults to 'default')
    * @returns {Promise<void>}
    */
-  public registerAndConnect = (locusUrl: string, datachannelUrl: string): Promise<void> =>
-    this.register(datachannelUrl).then(() => {
+  public registerAndConnect = (
+    locusUrl: string,
+    datachannelUrl: string,
+    connectionId = 'default'
+  ): Promise<void> =>
+    this.register(datachannelUrl, connectionId).then(() => {
       if (!locusUrl || !datachannelUrl) return undefined;
-      this.locusUrl = locusUrl;
-      this.datachannelUrl = datachannelUrl;
-      this.connect(this.webSocketUrl);
+
+      // Get or create connection data
+      const connectionData = this.connections.get(connectionId) || {};
+      connectionData.locusUrl = locusUrl;
+      connectionData.datachannelUrl = datachannelUrl;
+      this.connections.set(connectionId, connectionData);
+
+      return this.connect(connectionData.webSocketUrl, connectionId);
     });
 
   /**
    * Tells if LLM socket is connected
+   * @param {string} connectionId - Connection identifier (defaults to 'default')
    * @returns {boolean} connected
    */
-  public isConnected = (): boolean => this.connected;
+  public isConnected = (connectionId = 'default'): boolean => {
+    const socket = this.getSocket(connectionId);
+
+    return socket ? socket.connected : false;
+  };
 
   /**
    * Tells if LLM socket is binding
+   * @param {string} connectionId - Connection identifier (defaults to 'default')
    * @returns {string} binding
    */
-  public getBinding = (): string => this.binding;
+  public getBinding = (connectionId = 'default'): string => {
+    const connectionData = this.connections.get(connectionId);
+
+    return connectionData?.binding || '';
+  };
 
   /**
    * Get Locus URL for the connection
+   * @param {string} connectionId - Connection identifier (defaults to 'default')
    * @returns {string} locus Url
    */
-  public getLocusUrl = (): string => this.locusUrl;
+  public getLocusUrl = (connectionId = 'default'): string => {
+    const connectionData = this.connections.get(connectionId);
+
+    return connectionData?.locusUrl || '';
+  };
 
   /**
    * Get data channel URL for the connection
+   * @param {string} connectionId - Connection identifier (defaults to 'default')
    * @returns {string} data channel Url
    */
-  public getDatachannelUrl = (): string => this.datachannelUrl;
+  public getDatachannelUrl = (connectionId = 'default'): string => {
+    const connectionData = this.connections.get(connectionId);
+
+    return connectionData?.datachannelUrl || '';
+  };
 
   /**
    * Disconnects websocket connection
    * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
+   * @param {string} connectionId - Connection identifier (defaults to 'default')
    * @returns {Promise<void>}
    */
-  public disconnectLLM = (options: object): Promise<void> =>
-    this.disconnect(options).then(() => {
-      this.locusUrl = undefined;
-      this.datachannelUrl = undefined;
-      this.binding = undefined;
-      this.webSocketUrl = undefined;
+  public disconnectLLM = (
+    options: {code: number; reason: string},
+    connectionId = 'default'
+  ): Promise<void> =>
+    this.disconnect(options, connectionId).then(() => {
+      // Clean up connection data
+      this.connections.delete(connectionId);
     });
+
+  /**
+   * Disconnects all LLM websocket connections
+   * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
+   * @returns {Promise<void>}
+   */
+  public disconnectAllLLM = (options?: {code: number; reason: string}): Promise<void> =>
+    this.disconnectAll(options).then(() => {
+      // Clean up all connection data
+      this.connections.clear();
+    });
+
+  /**
+   * Get all active LLM connections
+   * @returns {Map} Map of connectionId to connection data
+   */
+  public getAllConnections = (): Map<
+    string,
+    {
+      webSocketUrl?: string;
+      binding?: string;
+      locusUrl?: string;
+      datachannelUrl?: string;
+    }
+  > => new Map(this.connections);
+
+  // Legacy properties for backward compatibility with single connection
+  /**
+   * @deprecated Use getBinding() instead
+   */
+  private get webSocketUrl(): string | undefined {
+    return this.connections.get('default')?.webSocketUrl;
+  }
+
+  /**
+   * @deprecated Use getBinding() instead
+   */
+  private get binding(): string | undefined {
+    return this.connections.get('default')?.binding;
+  }
+
+  /**
+   * @deprecated Use getLocusUrl() instead
+   */
+  private get locusUrl(): string | undefined {
+    return this.connections.get('default')?.locusUrl;
+  }
+
+  /**
+   * @deprecated Use getDatachannelUrl() instead
+   */
+  private get datachannelUrl(): string | undefined {
+    return this.connections.get('default')?.datachannelUrl;
+  }
 }
