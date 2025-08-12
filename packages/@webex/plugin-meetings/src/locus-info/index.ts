@@ -220,6 +220,7 @@ export default class LocusInfo extends EventsScope {
 
     switch (action) {
       case USE_INCOMING:
+      case LOCUS_URL_CHANGED:
         meeting.locusInfo.onDeltaLocus(locus);
         break;
       case USE_CURRENT:
@@ -227,7 +228,6 @@ export default class LocusInfo extends EventsScope {
         // do nothing
         break;
       case DESYNC:
-      case LOCUS_URL_CHANGED:
         this.doLocusSync(meeting);
         break;
       default:
