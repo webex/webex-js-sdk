@@ -2580,21 +2580,21 @@ describe('internal-plugin-metrics', () => {
             const baselineCallCount = webex.logger.log.callCount;
             // Send first event
             cd.submitClientEvent({
-              name: 'client.media.render.start',
+              name: name as any,
               payload,
               options,
             });
 
             // Send second event with same shareInstanceId
             cd.submitClientEvent({
-              name: 'client.media.render.start',
+              name: name as any,
               payload,
               options,
             });
 
             // Send event with different shareInstanceId
             cd.submitClientEvent({
-              name: 'client.media.render.start',
+              name: name as any,
               payload: { ...payload, shareInstanceId: 'instance-2' },
               options,
             });
@@ -4242,6 +4242,209 @@ describe('internal-plugin-metrics', () => {
 
         // should not call submitFeatureEventSpy again if delayedClientFeatureEvents was cleared
         assert.notCalled(submitFeatureEventSpy);
+      });
+    });
+
+    describe('#clearEventLimitsForCorrelationId', () => {
+      beforeEach(() => {
+        cd.clearEventLimits();
+      });
+
+      it('should clear event limits for specific correlationId only', () => {
+        const correlationId1 = 'correlationId1';
+        const correlationId2 = 'correlationId2';
+        const options1 = { meetingId: fakeMeeting.id };
+        const options2 = { meetingId: fakeMeeting2.id };
+        const payload = { mediaType: 'video' as const };
+
+        // Set up events for both correlations to trigger limits
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options: options1,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.media.render.start', 
+          payload,
+          options: options2,
+        });
+
+        // Trigger second events to populate warning tracking
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options: options1,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options: options2,
+        });
+
+        // Verify both correlations have tracking data
+        assert.isTrue(cd.eventLimitTracker.size > 0);
+        assert.isTrue(cd.eventLimitWarningsLogged.size > 0);
+
+        // Clear limits for only correlationId1
+        cd.clearEventLimitsForCorrelationId(correlationId1);
+
+        // Verify correlationId1 data is cleared but correlationId2 remains
+        const remainingTrackerKeys = Array.from(cd.eventLimitTracker.keys());
+        const remainingWarningKeys = Array.from(cd.eventLimitWarningsLogged.keys());
+
+        // Should have no keys with correlationId1
+        assert.isFalse(remainingTrackerKeys.some(key => key.includes(correlationId1)));
+        assert.isFalse(remainingWarningKeys.some(key => key.includes(correlationId1)));
+
+        // Should still have keys with correlationId2
+        assert.isTrue(remainingTrackerKeys.some(key => key.includes(correlationId2)));
+        assert.isTrue(remainingWarningKeys.some(key => key.includes(correlationId2)));
+      });
+
+      it('should handle empty correlationId gracefully', () => {
+        const options = { meetingId: fakeMeeting.id };
+        const payload = { mediaType: 'video' as const };
+
+        // Set up some tracking data
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        const initialTrackerSize = cd.eventLimitTracker.size;
+        const initialWarningsSize = cd.eventLimitWarningsLogged.size;
+
+        // Should not clear anything for empty correlationId
+        cd.clearEventLimitsForCorrelationId('');
+        cd.clearEventLimitsForCorrelationId(null as any);
+        cd.clearEventLimitsForCorrelationId(undefined as any);
+
+        assert.equal(cd.eventLimitTracker.size, initialTrackerSize);
+        assert.equal(cd.eventLimitWarningsLogged.size, initialWarningsSize);
+      });
+
+      it('should handle non-existent correlationId gracefully', () => {
+        const options = { meetingId: fakeMeeting.id };
+        const payload = { mediaType: 'video' as const };
+
+        // Set up some tracking data
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        const initialTrackerSize = cd.eventLimitTracker.size;
+        const initialWarningsSize = cd.eventLimitWarningsLogged.size;
+
+        // Should not clear anything for non-existent correlationId
+        cd.clearEventLimitsForCorrelationId('nonExistentCorrelationId');
+
+        assert.equal(cd.eventLimitTracker.size, initialTrackerSize);
+        assert.equal(cd.eventLimitWarningsLogged.size, initialWarningsSize);
+      });
+
+      it('should clear multiple event types for the same correlationId', () => {
+        const correlationId = 'correlationId';
+        const options = { meetingId: fakeMeeting.id };
+        const videoPayload = { mediaType: 'video' as const };
+        const audioPayload = { mediaType: 'audio' as const };
+        const roapPayload = { roap: { messageType: 'OFFER' as const } };
+
+        // Set up multiple event types for the same correlation
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload: videoPayload,
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload: audioPayload,
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.roap-message.sent',
+          payload: roapPayload,
+          options,
+        });
+
+        // Trigger limits
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload: videoPayload,
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload: audioPayload,
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.roap-message.sent',
+          payload: roapPayload,
+          options,
+        });
+
+        assert.isTrue(cd.eventLimitTracker.size > 0);
+        assert.isTrue(cd.eventLimitWarningsLogged.size > 0);
+
+        // Clear all limits for this correlationId
+        cd.clearEventLimitsForCorrelationId(correlationId);
+
+        // Should clear all tracking data for this correlationId
+        assert.equal(cd.eventLimitTracker.size, 0);
+        assert.equal(cd.eventLimitWarningsLogged.size, 0);
+      });
+
+      it('should allow events to be sent again after clearing limits for correlationId', () => {
+        const correlationId = 'correlationId';
+        const options = { meetingId: fakeMeeting.id };
+        const payload = { mediaType: 'video' as const };
+        const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+        // Send first event (should succeed)
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        assert.calledOnce(submitToCallDiagnosticsStub);
+        submitToCallDiagnosticsStub.resetHistory();
+
+        // Send second event (should be blocked)
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        assert.notCalled(submitToCallDiagnosticsStub);
+
+        // Clear limits for this correlationId
+        cd.clearEventLimitsForCorrelationId(correlationId);
+
+        // Send event again (should succeed after clearing)
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        assert.calledOnce(submitToCallDiagnosticsStub);
       });
     });
   });

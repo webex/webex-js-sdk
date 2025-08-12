@@ -681,6 +681,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       return true;
     }
 
+    const limitKeyPrefix = `${eventName}:${correlationId}`;
+
     switch (eventName) {
       case 'client.media.render.start':
       case 'client.media.render.stop':
@@ -694,7 +696,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           if (mediaType === 'share' || mediaType === 'share_audio') {
             const shareInstanceId = event?.shareInstanceId;
             if (shareInstanceId) {
-              const limitKey = `${eventName}:${correlationId}:${mediaType}:${shareInstanceId}`;
+              const limitKey = `${limitKeyPrefix}:${mediaType}:${shareInstanceId}`;
 
               return this.checkAndIncrementEventCount(
                 limitKey,
@@ -703,7 +705,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
               );
             }
           } else {
-            const limitKey = `${eventName}:${correlationId}:${mediaType}`;
+            const limitKey = `${limitKeyPrefix}:${mediaType}`;
 
             return this.checkAndIncrementEventCount(
               limitKey,
@@ -720,7 +722,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         // Send only once per correlationId and roap.messageType/roap.type
         const roapMessageType = event?.roap?.messageType || event?.roap?.type;
         if (roapMessageType) {
-          const limitKey = `${eventName}:${correlationId}:${roapMessageType}`;
+          const limitKey = `${limitKeyPrefix}:${roapMessageType}`;
 
           return this.checkAndIncrementEventCount(
             limitKey,
@@ -779,6 +781,28 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   public clearEventLimits(): void {
     this.eventLimitTracker.clear();
     this.eventLimitWarningsLogged.clear();
+  }
+
+  /**
+   * Clears event limit tracking for a specific correlationId only.
+   * Keeps limits for other meetings intact.
+   */
+  public clearEventLimitsForCorrelationId(correlationId: string): void {
+    if (!correlationId) {
+      return;
+    }
+    // Keys are formatted as "eventName:correlationId:..." across all limiters.
+    const hasCorrIdAtSecondToken = (key: string) => key.split(':')[1] === correlationId;
+    for (const key of Array.from(this.eventLimitTracker.keys())) {
+      if (hasCorrIdAtSecondToken(key)) {
+        this.eventLimitTracker.delete(key);
+      }
+    }
+    for (const key of Array.from(this.eventLimitWarningsLogged.values())) {
+      if (hasCorrIdAtSecondToken(key)) {
+        this.eventLimitWarningsLogged.delete(key);
+      }
+    }
   }
 
   /**
