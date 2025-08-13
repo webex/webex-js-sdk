@@ -2347,23 +2347,15 @@ describe('plugin-meetings', () => {
 
       it('applyLocusDeltaData handles LOCUS_URL_CHANGED action correctly', () => {
         const {LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
-        const fakeDeltaLocus = {id: 'fake delta locus'};
         const meeting = {
-          meetingRequest: {
-            getLocusDTO: sandbox.stub().resolves({body: fakeDeltaLocus}),
-          },
           locusInfo: {
-            handleLocusDelta: sandbox.stub(),
+            onDeltaLocus: sandbox.stub(),
           },
-          locusUrl: 'current locus url',
-        };
-
-        locusInfo.locusParser.workingCopy = {
-          syncUrl: 'current sync url',
         };
 
         locusInfo.applyLocusDeltaData(LOCUS_URL_CHANGED, fakeLocus, meeting);
-        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'current sync url'});
+
+        assert.calledWith(meeting.locusInfo.onDeltaLocus, fakeLocus);
       });
 
       describe('edge cases for sync failing', () => {
