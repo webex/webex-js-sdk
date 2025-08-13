@@ -4251,46 +4251,24 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should clear event limits for specific correlationId only', () => {
-        const correlationId1 = 'correlationId1';
-        const correlationId2 = 'correlationId2';
+        // Use the actual correlationIds from our fakeMeeting fixtures
+        const correlationId1 = fakeMeeting.correlationId;   // e.g. 'correlationId1'
+        const correlationId2 = fakeMeeting2.correlationId;  // e.g. 'correlationId2'
         const options1 = { meetingId: fakeMeeting.id };
         const options2 = { meetingId: fakeMeeting2.id };
         const payload = { mediaType: 'video' as const };
 
         // Set up events for both correlations to trigger limits
-        cd.submitClientEvent({
-          name: 'client.media.render.start',
-          payload,
-          options: options1,
-        });
-
-        cd.submitClientEvent({
-          name: 'client.media.render.start', 
-          payload,
-          options: options2,
-        });
-
-        // Trigger second events to populate warning tracking
-        cd.submitClientEvent({
-          name: 'client.media.render.start',
-          payload,
-          options: options1,
-        });
-
-        cd.submitClientEvent({
-          name: 'client.media.render.start',
-          payload,
-          options: options2,
-        });
-
-        // Verify both correlations have tracking data
+        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options1 });
+        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options2 });
+        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options1 });
+        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options2 });
         assert.isTrue(cd.eventLimitTracker.size > 0);
         assert.isTrue(cd.eventLimitWarningsLogged.size > 0);
 
-        // Clear limits for only correlationId1
+        // Clear limits for only correlationId1 (present)
         cd.clearEventLimitsForCorrelationId(correlationId1);
 
-        // Verify correlationId1 data is cleared but correlationId2 remains
         const remainingTrackerKeys = Array.from(cd.eventLimitTracker.keys());
         const remainingWarningKeys = Array.from(cd.eventLimitWarningsLogged.keys());
 
@@ -4354,7 +4332,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should clear multiple event types for the same correlationId', () => {
-        const correlationId = 'correlationId';
+        const correlationId = fakeMeeting.correlationId;
         const options = { meetingId: fakeMeeting.id };
         const videoPayload = { mediaType: 'video' as const };
         const audioPayload = { mediaType: 'audio' as const };
@@ -4410,7 +4388,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should allow events to be sent again after clearing limits for correlationId', () => {
-        const correlationId = 'correlationId';
+        const correlationId = fakeMeeting.correlationId;
         const options = { meetingId: fakeMeeting.id };
         const payload = { mediaType: 'video' as const };
         const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
