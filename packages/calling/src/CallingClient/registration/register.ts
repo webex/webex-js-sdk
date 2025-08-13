@@ -48,13 +48,13 @@ import {
   DEFAULT_REHOMING_INTERVAL_MIN,
   DEFAULT_REHOMING_INTERVAL_MAX,
   DEFAULT_KEEPALIVE_INTERVAL,
-  REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
   FAILOVER_UTIL,
   REGISTER_UTIL,
   RETRY_TIMER_UPPER_LIMIT,
   KEEPALIVE_UTIL,
   REGISTRATION_UTIL,
   METHODS,
+  URL_ENDPOINT,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -275,9 +275,7 @@ export class Registration implements IRegistration {
 
     let interval = this.getRegRetryInterval(attempt);
 
-    const TIMER_THRESHOLD = this.isCCFlow
-      ? REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC
-      : REG_TRY_BACKUP_TIMER_VAL_IN_SEC;
+    const TIMER_THRESHOLD = REG_TRY_BACKUP_TIMER_VAL_IN_SEC;
 
     if (timeElapsed + interval > TIMER_THRESHOLD) {
       const excessVal = timeElapsed + interval - TIMER_THRESHOLD;
@@ -353,6 +351,43 @@ export class Registration implements IRegistration {
     }
   }
 
+  private async isPrimaryActive() {
+    let status;
+    for (const mobiusUrl of this.primaryMobiusUris) {
+      try {
+        const baseUri = mobiusUrl.replace(URL_ENDPOINT, '/');
+        // eslint-disable-next-line no-await-in-loop
+        const response = await this.webex.request({
+          uri: `${baseUri}ping`,
+          method: HTTP_METHODS.GET,
+          headers: {
+            [CISCO_DEVICE_URL]: this.webex.internal.device.url,
+            [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+          },
+          service: ALLOWED_SERVICES.MOBIUS,
+        });
+
+        const {statusCode} = response as WebexRequestPayload;
+        if (statusCode === 200) {
+          log.info(`Ping successful for primary Mobius: ${mobiusUrl}`, {
+            file: REGISTRATION_FILE,
+            method: FAILBACK_UTIL,
+          });
+          status = 'up';
+          break;
+        }
+      } catch (error) {
+        log.warn(`Ping failed for primary Mobius: ${mobiusUrl} with error: ${error}`, {
+          file: REGISTRATION_FILE,
+          method: FAILBACK_UTIL,
+        });
+        status = 'down';
+      }
+    }
+
+    return status === 'up';
+  }
+
   /**
    * Returns true if device is registered with a backup mobius.
    */
@@ -411,7 +446,8 @@ export class Registration implements IRegistration {
   private async executeFailback() {
     await this.mutex.runExclusive(async () => {
       if (this.isFailbackRequired()) {
-        if (Object.keys(this.callManager.getActiveCalls()).length === 0) {
+        const primaryServerStatus = await this.isPrimaryActive();
+        if (Object.keys(this.callManager.getActiveCalls()).length === 0 && primaryServerStatus) {
           log.info(`Attempting failback to primary.`, {
             file: REGISTRATION_FILE,
             method: this.executeFailback.name,
@@ -438,10 +474,13 @@ export class Registration implements IRegistration {
             this.initiateFailback();
           }
         } else {
-          log.info('Active calls present, deferring failback to next cycle.', {
-            file: REGISTRATION_FILE,
-            method: this.executeFailback.name,
-          });
+          log.info(
+            'Active calls present or primary Mobius is down, deferring failback to next cycle.',
+            {
+              file: REGISTRATION_FILE,
+              method: this.executeFailback.name,
+            }
+          );
           this.failbackTimer = undefined;
           this.initiateFailback();
         }

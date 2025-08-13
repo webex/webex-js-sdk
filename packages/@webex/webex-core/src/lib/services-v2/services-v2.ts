@@ -3,17 +3,17 @@ import sha256 from 'crypto-js/sha256';
 import {union, unionBy} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
-import METRICS from './metrics';
+import METRICS from '../metrics';
 import ServiceCatalog from './service-catalog';
 import fedRampServices from './service-fed-ramp';
-import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
+import {COMMERCIAL_ALLOWED_DOMAINS} from '../constants';
 import {
   ActiveServices,
   IServiceCatalog,
   QueryOptions,
   Service,
-  ServiceGroup,
   ServiceHostmap,
+  ServiceGroup,
 } from './types';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
@@ -742,7 +742,7 @@ const Services = WebexPlugin.extend({
    *  If empty, just return the base URL.
    * @returns {String} url of the service
    */
-  getServiceUrlFromClusterId({cluster = 'us'} = {} as {cluster: string}): string {
+  getServiceUrlFromClusterId({cluster = 'us'}: {cluster?: string} = {}): string {
     let clusterId = cluster === 'us' ? DEFAULT_CLUSTER_IDENTIFIER : cluster;
 
     // Determine if cluster has service name (non-US clusters from hydra do not)
@@ -770,21 +770,22 @@ const Services = WebexPlugin.extend({
    * @returns {object.priorityUrl} - The default url of the found service.
    * @returns {object.defaultUrl} - The default url of the found service.
    */
-  getServiceFromUrl(
-    url = '' as string
-  ): {name: string; priorityUrl: string; defaultUrl: string} | undefined {
+  getServiceFromUrl(url = ''): {name: string; priorityUrl: string; defaultUrl: string} | undefined {
     const service = this._getCatalog().findServiceDetailFromUrl(url);
 
     if (!service) {
       return undefined;
     }
 
-    const urlRet = service.get();
+    const priorityUrl = service.get();
+    const defaultUrl = new URL(
+      service.serviceUrls.find((serviceUrl) => url.startsWith(serviceUrl.baseUrl)).baseUrl
+    ).href;
 
     return {
       name: service.serviceName,
-      priorityUrl: urlRet,
-      defaultUrl: urlRet,
+      priorityUrl,
+      defaultUrl,
     };
   },
 
@@ -815,12 +816,7 @@ const Services = WebexPlugin.extend({
       throw Error(`No service associated with url: [${url}]`);
     }
 
-    const priortyHost = new URL(data.priorityUrl).host;
-    const newUrl = new URL(url);
-
-    newUrl.host = priortyHost;
-
-    return newUrl.href;
+    return url.replace(data.defaultUrl, data.priorityUrl);
   },
 
   /**

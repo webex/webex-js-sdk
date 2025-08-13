@@ -1,4 +1,4 @@
-import {SERVICE_CATALOGS} from './constants';
+import {SERVICE_CATALOGS} from '../constants';
 
 /**
  * The state of a specific catalog to be used by {@link ServiceState}.

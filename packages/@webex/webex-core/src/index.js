@@ -16,28 +16,16 @@ import './lib/services';
 export {Credentials, filterScope, grantErrors, sortScope, Token} from './lib/credentials';
 
 export {
-  constants as serviceConstants,
   ServiceCatalog,
   ServiceRegistry,
   ServiceState,
-  ServiceInterceptor,
-  ServerErrorInterceptor,
   Services,
   ServiceHost,
   ServiceUrl,
-  HostMapInterceptor,
 } from './lib/services';
 
-export {
-  constants as serviceConstantsV2,
-  ServiceCatalogV2,
-  ServiceInterceptorV2,
-  ServerErrorInterceptorV2,
-  ServicesV2,
-  ServiceDetail,
-  HostMapInterceptorV2,
-} from './lib/services-v2';
-
+export {ServiceCatalogV2, ServicesV2, ServiceDetail} from './lib/services-v2';
+export * as serviceConstants from './lib/constants';
 export {
   makeWebexStore,
   makeWebexPluginStore,
@@ -68,6 +56,9 @@ export {default as WebexUserAgentInterceptor} from './interceptors/webex-user-ag
 export {default as RateLimitInterceptor} from './interceptors/rate-limit';
 export {default as EmbargoInterceptor} from './interceptors/embargo';
 export {default as DefaultOptionsInterceptor} from './interceptors/default-options';
+export {default as HostMapInterceptor} from './lib/interceptors/hostmap';
+export {default as ServiceInterceptor} from './lib/interceptors/service';
+export {default as ServerErrorInterceptor} from './lib/interceptors/server-error';
 
 export {default as Batcher} from './lib/batcher';
 export {default as Page} from './lib/page';
