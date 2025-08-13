@@ -307,7 +307,7 @@ describe('plugin-meetings', () => {
           },
           EVENT_TRIGGERS.MEMBERS_UPDATE,
           {
-            delta: {added: [], updated: []},
+            delta: {added: [], updated: [], removedIds: []},
             full: {},
             isReplace: true,
           }

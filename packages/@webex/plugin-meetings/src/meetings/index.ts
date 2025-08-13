@@ -66,6 +66,7 @@ import JoinWebinarError from '../common/errors/join-webinar-error';
 import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 import NoMeetingInfoError from '../common/errors/no-meeting-info';
 import JoinForbiddenError from '../common/errors/join-forbidden-error';
+import {DataSet} from '../hashTree/hashTreeParser';
 
 let mediaLogger;
 
@@ -445,7 +446,10 @@ export default class Meetings extends WebexPlugin {
    * @private
    * @memberof Meetings
    */
-  private handleLocusEvent(data: {locusUrl: string; locus: any}, useRandomDelayForInfo = false) {
+  private handleLocusEvent(
+    data: {locusUrl: string; locus: any; dataSets?: DataSet[]},
+    useRandomDelayForInfo = false
+  ) {
     let meeting = this.getCorrespondingMeetingByLocus(data);
 
     // Special case when locus has got replaced, This only happend once if a replace locus exists
@@ -524,7 +528,7 @@ export default class Meetings extends WebexPlugin {
           meeting = newMeeting;
 
           // It's a new meeting so initialize the locus data
-          meeting.locusInfo.initialSetup(data.locus);
+          meeting.locusInfo.initialSetup(data.locus, data.dataSets);
           this.checkHandleBreakoutLocus(data.locus);
         })
         .catch((e) => {
@@ -1824,7 +1828,10 @@ export default class Meetings extends WebexPlugin {
     }
 
     const associateBreakoutLocus = this.breakoutLocusForHandleLater[existIndex];
-    this.handleLocusEvent({locus: associateBreakoutLocus, locusUrl: associateBreakoutLocus.url});
+    this.handleLocusEvent({
+      locus: associateBreakoutLocus,
+      locusUrl: associateBreakoutLocus.url,
+    });
     this.breakoutLocusForHandleLater.splice(existIndex, 1);
   }
 

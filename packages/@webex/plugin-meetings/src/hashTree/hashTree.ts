@@ -422,6 +422,8 @@ class HashTree {
       return [];
     }
 
+    // todo: why is this not taking advantage of the tree structure and comparing from the root down?
+
     // We are interested in comparing the leaf hashes part.
     // The externalHashes array should also have its leaf hashes at the end.
     const differingLeafIndexes: number[] = [];

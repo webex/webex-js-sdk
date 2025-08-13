@@ -73,7 +73,11 @@ import {ServerRoleShape} from './types';
  * @memberof Members
  */
 
-type UpdatedMembers = {added: Array<Member>; updated: Array<Member>};
+type UpdatedMembers = {
+  added: Array<Member>;
+  updated: Array<Member>;
+  removedIds?: Array<string>; // removed member ids
+};
 /**
  * @class Members
  */
@@ -388,7 +392,11 @@ export default class Members extends StatelessWebexPlugin {
    * @private
    * @memberof Members
    */
-  locusParticipantsUpdate(payload: {participants: object; isReplace?: boolean}) {
+  locusParticipantsUpdate(payload: {
+    participants: object;
+    isReplace?: boolean;
+    removedParticipantIds?: Array<string>;
+  }) {
     if (payload) {
       if (payload.isReplace) {
         this.clearMembers();
@@ -546,8 +554,20 @@ export default class Members extends StatelessWebexPlugin {
   private handleMembersUpdate(membersUpdate: UpdatedMembers) {
     this.constructMembers(membersUpdate.updated, true);
     this.constructMembers(membersUpdate.added, false);
+    this.removeMembers(membersUpdate.removedIds);
 
     return this.membersCollection.getAll();
+  }
+
+  /**
+   * removes members from the collection
+   * @param {Array<string>} removedMembers removed members ids
+   * @returns {void}
+   */
+  private removeMembers(removedMembers: Array<string>) {
+    removedMembers.forEach((memberId) => {
+      this.membersCollection.remove(memberId);
+    });
   }
 
   /**
@@ -598,6 +618,10 @@ export default class Members extends StatelessWebexPlugin {
       );
     }
     const memberUpdate = this.update(payload.participants);
+
+    // this code depends on memberIds being the same as participantIds
+    // if MemberUtil.extractId() ever changes, this will need to be updated
+    memberUpdate.removedIds = payload.removedParticipantIds || [];
 
     return memberUpdate;
   }
