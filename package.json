@@ -17,7 +17,7 @@
     "./packages/legacy/*",
     "./packages/tools/*"
   ],
-  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
+  "license": "Cisco's General Terms (https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html)",
   "author": "devsupport@webex.com",
   "engines": {
     "node": "16.x",

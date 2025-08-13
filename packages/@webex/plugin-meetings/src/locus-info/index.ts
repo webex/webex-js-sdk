@@ -48,7 +48,6 @@ export default class LocusInfo extends EventsScope {
   aclUrl: any;
   baseSequence: any;
   created: any;
-  deltaParticipants: any;
   identities: any;
   membership: any;
   participants: any;
@@ -284,17 +283,6 @@ export default class LocusInfo extends EventsScope {
      * @property {Object} person - Contains person data.
      */
 
-    /**
-     * Stored participant changes between the last event and the current event.
-     * All previously stored events are overwritten between events.
-     *
-     * @instance
-     * @type {Array<DeltaParticipant>}
-     * @private
-     * @member LocusInfo
-     */
-    this.deltaParticipants = [];
-
     this.updateLocusCache(locus);
     // above section only updates the locusInfo object
     // The below section makes sure it updates the locusInfo as well as updates the meeting object
@@ -400,7 +388,6 @@ export default class LocusInfo extends EventsScope {
       return;
     }
 
-    this.updateParticipantDeltas(locus.participants);
     this.scheduledMeeting = locus.meeting || null;
     this.participants = locus.participants;
     const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
@@ -753,55 +740,6 @@ export default class LocusInfo extends EventsScope {
         }
       );
     }
-  }
-
-  /**
-   * Update the deltaParticipants property of this object based on a list of
-   * provided participants.
-   *
-   * @param {Array} [participants] - The participants to update against.
-   * @returns {void}
-   */
-  updateParticipantDeltas(participants: Array<any> = []) {
-    // Used to find a participant within a participants collection.
-    const findParticipant = (participant, collection) =>
-      collection.find((item) => item.person.id === participant.person.id);
-
-    // Generates an object that indicates which state properties have changed.
-    const generateDelta = (prevState: any = {}, newState: any = {}) => {
-      // Setup deltas.
-      const deltas = {
-        audioStatus: prevState.audioStatus !== newState.audioStatus,
-        videoSlidesStatus: prevState.videoSlidesStatus !== newState.videoSlidesStatus,
-        videoStatus: prevState.videoStatus !== newState.videoStatus,
-      };
-
-      // Clean the object
-      Object.keys(deltas).forEach((key) => {
-        if (deltas[key] !== true) {
-          delete deltas[key];
-        }
-      });
-
-      return deltas;
-    };
-
-    this.deltaParticipants = participants.reduce((collection, participant) => {
-      const existingParticipant = findParticipant(participant, this.participants || []) || {};
-
-      const delta = generateDelta(existingParticipant.status, participant.status);
-
-      const changed = Object.keys(delta).length > 0;
-
-      if (changed) {
-        collection.push({
-          person: participant.person,
-          delta,
-        });
-      }
-
-      return collection;
-    }, []);
   }
 
   /**

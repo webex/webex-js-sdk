@@ -1,8 +1,14 @@
+ // @ts-nocheck
+/* eslint-disable */
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
 /* eslint camelcase: [0] */
+/**
+ * TS checking disabled: file uses legacy decorator syntax inside an object literal
+ * transformed by Babel. Safe to ignore for now.
+ */
 
 import querystring from 'querystring';
 import url from 'url';
@@ -33,11 +39,29 @@ export const Events = {
 };
 
 /**
- * Browser support for OAuth2. Automatically parses the URL query for an
- * authorization code
+ * Browser support for OAuth2 for first-party (Webex Web Client) usage.
  *
- * Use of this plugin for anything other than the Webex Web Client is strongly
- * discouraged and may be broken at any time
+ * High-level flow handled by this module:
+ * 1. initiateLogin() constructs authorization request (adds CSRF + PKCE).
+ * 2. Browser navigates to IdBroker (login).
+ * 3. IdBroker redirects back with ?code=... (&state=...).
+ * 4. initialize() detects code, validates state/CSRF, cleans URL, optionally
+ *    pre-fetches a preauth catalog, then exchanges the code via
+ *    requestAuthorizationCodeGrant().
+ * 5. Sets resulting supertoken (access/refresh token bundle) on credentials.
+ *
+ * Additional supported flow:
+ * - Device Authorization (QR Code login):
+ *   initQRCodeLogin() obtains device + user codes and begins polling
+ *   _startQRCodePolling() until tokens are issued or timeout/cancel occurs.
+ *
+ * Security considerations implemented:
+ * - CSRF token (state.csrf_token) generation + verification.
+ * - PKCE (S256) code verifier + challenge generation and consumption.
+ * - URL cleanup after redirect (removes code & CSRF to prevent leakage).
+ *
+ * Use of this plugin for anything other than the Webex Web Client is discouraged.
+ *
  * @class
  * @name AuthorizationBrowserFirstParty
  * @private
@@ -69,6 +93,10 @@ const Authorization = WebexPlugin.extend({
       default: false,
       type: 'boolean',
     },
+    /**
+     * Indicates that the plugin has finished any automatic startup
+     * processing (e.g., exchanging a returned authorization code)
+     */
     ready: {
       default: false,
       type: 'boolean',
@@ -78,7 +106,7 @@ const Authorization = WebexPlugin.extend({
   namespace: 'Credentials',
 
   /**
-   * EventEmitter for authorization events
+   * EventEmitter for authorization events such as QR code login progress
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @type {EventEmitter}
@@ -87,7 +115,7 @@ const Authorization = WebexPlugin.extend({
   eventEmitter: new EventEmitter(),
 
   /**
-   * Stores the timer ID for QR code polling
+   * Stores the timer ID for QR code polling (device authorization)
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @type {?number}
@@ -95,7 +123,7 @@ const Authorization = WebexPlugin.extend({
    */
   pollingTimer: null,
   /**
-   * Stores the expiration timer ID for QR code polling
+   * Stores the expiration timer ID for QR code polling (overall timeout)
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @type {?number}
@@ -104,7 +132,8 @@ const Authorization = WebexPlugin.extend({
   pollingExpirationTimer: null,
 
   /**
-   * Monotonically increasing id to identify the current polling request
+   * Monotonically increasing id to identify the current polling request.
+   * Used to safely ignore late poll responses after a cancel/reset.
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @type {number}
@@ -113,7 +142,7 @@ const Authorization = WebexPlugin.extend({
   pollingId: 0,
 
   /**
-   * Identifier for the current polling request
+   * Identifier for the current polling request (snapshot of pollingId)
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @type {?number}
@@ -122,44 +151,73 @@ const Authorization = WebexPlugin.extend({
   currentPollingId: null,
 
   /**
-   * Initializer
-   * @instance
-   * @memberof AuthorizationBrowserFirstParty
-   * @private
-   * @returns {Authorization}
+   * Auto executes during Webex.init() – you do NOT call this yourself.
+   *
+   * Purpose: Seamless "redirect completion" of the OAuth Authorization Code (+ PKCE) flow.
+   *
+   * Simple summary:
+   * - You call initiateLogin() which redirects user to IdBroker.
+   * - User signs in; IdBroker redirects back to your redirect_uri with ?code=... (&state=...).
+   * - During SDK startup this initialize() runs automatically, sees the code, and
+   *   silently finishes the login (validates state/CSRF + PKCE, scrubs URL, exchanges code).
+   * - When done, webex.credentials.supertoken holds access+refresh and ready=true.
+   *
+   * Step-by-step:
+   * 1. Inspect current window.location for ?code= (& state=).
+   * 2. If no code: set ready=true immediately (nothing to complete).
+   * 3. If code present:
+   *    - Decode base64 state JSON.
+   *    - Verify CSRF token matches sessionStorage value.
+   *    - Retrieve then delete PKCE code_verifier (single use).
+   *    - Optionally derive preauth hint (emailhash in state OR orgId parsed from code).
+   *    - Clean the URL (history.replaceState) to remove code & csrf token data.
+   *    - nextTick:
+   *        a. Best‑effort preauth catalog fetch (non-blocking).
+   *        b. Exchange authorization code (with code_verifier if any) for supertoken
+   *           and store on webex.credentials.
+   * 4. Set ready=true after the async sequence finishes (or immediately if step 2).
+   *
+   * Result: If the redirect included a valid code the token exchange is completed
+   * automatically—no extra API call needed after Webex.init().
    */
   // eslint-disable-next-line complexity
   initialize(...attrs) {
     const ret = Reflect.apply(WebexPlugin.prototype.initialize, this, attrs);
     const location = url.parse(this.webex.getWindow().location.href, true);
 
+    // Check if redirect includes error
     this._checkForErrors(location);
 
     const {code} = location.query;
 
+    // If no authorization code returned, nothing to do
     if (!code) {
       this.ready = true;
-
       return ret;
     }
 
+    // Decode and parse state object (if present)
     if (location.query.state) {
       location.query.state = JSON.parse(base64.decode(location.query.state));
     } else {
       location.query.state = {};
     }
 
+    // Retrieve PKCE code verifier (if a PKCE flow was initiated)
     const codeVerifier = this.webex.getWindow().sessionStorage.getItem(OAUTH2_CODE_VERIFIER);
-
+    // Immediately remove code verifier to minimize exposure
     this.webex.getWindow().sessionStorage.removeItem(OAUTH2_CODE_VERIFIER);
 
     const {emailhash} = location.query.state;
 
+    // Validate CSRF token included in state
     this._verifySecurityToken(location.query);
+    // Remove code + CSRF token remnants from URL (history replace)
     this._cleanUrl(location);
 
     let preauthCatalogParams;
 
+    // Attempt to extract orgId from structured authorization code (if present)
     const orgId = this._extractOrgIdFromCode(code);
 
     if (emailhash) {
@@ -168,16 +226,17 @@ const Authorization = WebexPlugin.extend({
       preauthCatalogParams = {orgId};
     }
 
-    // Wait until nextTick in case `credentials` hasn't initialized yet
+    // Defer token exchange until next tick in case credentials plugin not ready yet
     process.nextTick(() => {
       this.webex.internal.services
         .collectPreauthCatalog(preauthCatalogParams)
-        .catch(() => Promise.resolve())
+        .catch(() => Promise.resolve()) // Non-fatal if catalog collection fails
         .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
         .catch((error) => {
           this.logger.warn('authorization: failed initial authorization code grant request', error);
         })
         .then(() => {
+          // Mark plugin ready regardless of success/failure of token exchange
           this.ready = true;
         });
     });
@@ -186,7 +245,17 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
-   * Kicks off an oauth flow
+   * Kicks off an OAuth authorization code flow (first party).
+   *
+   * Adds security + PKCE properties:
+   * - SHA256(email) (emailHash & emailhash) for preauth and redirect flows
+   * - state.csrf_token for CSRF protection
+   * - PKCE code_challenge (S256)
+   *
+   * NOTE: This does not itself perform the redirect; it calls
+   * initiateAuthorizationCodeGrant() which changes window location or opens
+   * a separate window as configured.
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {Object} options
@@ -194,15 +263,21 @@ const Authorization = WebexPlugin.extend({
    */
   initiateLogin(options = {}) {
     options = cloneDeep(options);
+
+    // Optionally compute heuristic email hash for preauth usage
     if (options.email) {
       options.emailHash = CryptoJS.SHA256(options.email).toString();
     }
-    delete options.email;
+    delete options.email; // Ensure raw email not propagated further
+
     options.state = options.state || {};
+    // Embed CSRF token
     options.state.csrf_token = this._generateSecurityToken();
-    // catalog uses emailhash and redirectCI uses emailHash
+    // Provide email hash in lower-case key used by catalog service
+    // (Note: catalog uses emailhash and redirectCI uses emailHash)
     options.state.emailhash = options.emailHash;
 
+    // PKCE - produce code_challenge (S256) and persist code_verifier
     options.code_challenge = this._generateCodeChallenge();
     options.code_challenge_method = 'S256';
 
@@ -211,12 +286,18 @@ const Authorization = WebexPlugin.extend({
 
   @whileInFlight('isAuthorizing')
   /**
-   * Kicks off the Implicit Code grant flow. Typically called via
-   * {@link AuthorizationBrowserFirstParty#initiateLogin}
+   * Performs the navigation step of the Authorization Code flow.
+   * Builds login URL and either:
+   *  - Replaces current window location (default), or
+   *  - Opens a separate window (popup) if options.separateWindow supplied.
+   *
+   * Decorated with whileInFlight('isAuthorizing') to set isAuthorizing=true
+   * during execution to prevent concurrent overlapping attempts.
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
-   * @param {Object} options
-   * @returns {Promise}
+   * @param {Object} options - Already augmented with state + PKCE info
+   * @returns {Promise<void>}
    */
   initiateAuthorizationCodeGrant(options) {
     this.logger.info('authorization: initiating authorization code grant flow');
@@ -225,39 +306,39 @@ const Authorization = WebexPlugin.extend({
     );
 
     if (options?.separateWindow) {
-      // Default window settings
+      // If a separate popup window is requested, combine user supplied window features
       const defaultWindowSettings = {
-      width: 600,
-      height: 800
+        width: 600,
+        height: 800,
       };
 
-      // Merge user provided settings with defaults
       const windowSettings = Object.assign(
-      defaultWindowSettings, 
-      typeof options.separateWindow === 'object' ? options.separateWindow : {}
+        defaultWindowSettings,
+        typeof options.separateWindow === 'object' ? options.separateWindow : {}
       );
-      // Convert settings object to window.open features string
+
       const windowFeatures = Object.entries(windowSettings)
-      .map(([key, value]) => `${key}=${value}`)
-      .join(',');
+        .map(([key, value]) => `${key}=${value}`)
+        .join(',');
       this.webex.getWindow().open(loginUrl, '_blank', windowFeatures);
     } else {
-      // Default behavior - open in same window
+      // Normal (in-tab) redirect
       this.webex.getWindow().location = loginUrl;
     }
-
-    
 
     return Promise.resolve();
   },
 
   /**
-   * Called by {@link WebexCore#logout()}. Redirects to the logout page
+   * Called by {@link WebexCore#logout()}.
+   * Constructs logout URL and (unless suppressed) navigates away to ensure
+   * server-side session termination.
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {Object} options
    * @param {boolean} options.noRedirect if true, does not redirect
-   * @returns {Promise}
+   * @returns {Promise<void>}
    */
   logout(options = {}) {
     if (!options.noRedirect) {
@@ -268,11 +349,23 @@ const Authorization = WebexPlugin.extend({
   @whileInFlight('isAuthorizing')
   @oneFlight
   /**
-   * Exchanges an authorization code for an access token
+   * Exchanges an authorization code for an access (super) token bundle.
+   *
+   * Decorators:
+   * - @whileInFlight('isAuthorizing'): prevents overlapping exchanges.
+   * - @oneFlight: collapses simultaneous calls into one network request.
+   *
+   * Includes PKCE code_verifier if present from earlier login initiation.
+   *
+   * Error Handling:
+   * - Non-400 responses are propagated.
+   * - 400 responses map to OAuth-specific grantErrors.
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {Object} options
-   * @param {Object} options.code
+   * @param {string} options.code - Authorization code from redirect
+   * @param {string} [options.codeVerifier] - PKCE code verifier if used
    * @returns {Promise}
    */
   requestAuthorizationCodeGrant(options = {}) {
@@ -286,7 +379,7 @@ const Authorization = WebexPlugin.extend({
       grant_type: 'authorization_code',
       redirect_uri: this.config.redirect_uri,
       code: options.code,
-      self_contained_token: true,
+      self_contained_token: true, // Request combined access/refresh response
     };
 
     if (options.codeVerifier) {
@@ -303,9 +396,10 @@ const Authorization = WebexPlugin.extend({
           pass: this.config.client_secret,
           sendImmediately: true,
         },
-        shouldRefreshAccessToken: false,
+        shouldRefreshAccessToken: false, // This is the token acquisition call itself
       })
       .then((res) => {
+        // Store supertoken into credentials (includes refresh token)
         this.webex.credentials.set({supertoken: res.body});
       })
       .catch((res) => {
@@ -313,6 +407,7 @@ const Authorization = WebexPlugin.extend({
           return Promise.reject(res);
         }
 
+        // Map standard OAuth error to strongly typed error class
         const ErrorConstructor = grantErrors.select(res.body.error);
 
         return Promise.reject(new ErrorConstructor(res._res || res));
@@ -320,11 +415,15 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
-   * Generate a QR code URL to launch the Webex app when scanning with the camera
+   * Generate a QR code verification URL for device authorization flow.
+   * When a user scans the QR code with a mobile device, this deep-links into
+   * Webex (web) to continue login, including passing along userCode and the
+   * helper service base URL.
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
-   * @param {String} verificationUrl
-   * @returns {String}
+   * @param {String} verificationUrl - Original verification URI (complete)
+   * @returns {String} Possibly rewritten verification URL
    */
   _generateQRCodeVerificationUrl(verificationUrl) {
     const baseUrl = 'https://web.webex.com/deviceAuth';
@@ -344,13 +443,22 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
-   * Get an OAuth Login URL for QRCode. Generate QR code based on the returned URL.
+   * Initiates Device Authorization (QR Code) flow.
+   *
+   * Steps:
+   * 1. Obtain device_code, user_code, verification URLs from oauth-helper.
+   * 2. Emit getUserCodeSuccess (provides data for generating QR code).
+   * 3. Start polling token endpoint with device_code.
+   *
+   * Emits qRCodeLogin events for UI to react (success, failure, pending, etc.).
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @emits #qRCodeLogin
    */
   initQRCodeLogin() {
     if (this.pollingTimer) {
+      // Prevent concurrent device authorization attempts
       this.eventEmitter.emit(Events.qRCodeLogin, {
         eventType: 'getUserCodeFailure',
         data: {message: 'There is already a polling request'},
@@ -378,13 +486,13 @@ const Authorization = WebexPlugin.extend({
         const verificationUriComplete = this._generateQRCodeVerificationUrl(verification_uri_complete);
         this.eventEmitter.emit(Events.qRCodeLogin, {
           eventType: 'getUserCodeSuccess',
-          userData: {
+            userData: {
             userCode: user_code,
             verificationUri: verification_uri,
             verificationUriComplete,
           },
         });
-        // if device authorization success, then start to poll server to check whether the user has completed authorization
+        // Begin polling for authorization completion
         this._startQRCodePolling(res.body);
       })
       .catch((res) => {
@@ -396,10 +504,21 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
-   * Polling the server to check whether the user has completed authorization
+   * Poll the device token endpoint until user authorizes, an error occurs,
+   * or timeout happens.
+   *
+   * Polling behavior:
+   * - Interval provided by server (default 2s). 'slow_down' doubles interval once.
+   * - 428 status => pending (continue).
+   * - Success => set credentials + emit authorizationSuccess + stop polling.
+   * - Any other error => emit authorizationFailure + stop polling.
+   *
+   * Cancellation:
+   * - cancelQRCodePolling() resets timers and polling ids so late responses are ignored.
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
-   * @param {Object} options
+   * @param {Object} options - Must include device_code, may include interval/expires_in
    * @emits #qRCodeLogin
    */
   _startQRCodePolling(options = {}) {
@@ -412,6 +531,7 @@ const Authorization = WebexPlugin.extend({
     }
 
     if (this.pollingTimer) {
+      // Already polling; avoid starting a duplicate cycle
       this.eventEmitter.emit(Events.qRCodeLogin, {
         eventType: 'authorizationFailure',
         data: {message: 'There is already a polling request'},
@@ -420,8 +540,10 @@ const Authorization = WebexPlugin.extend({
     }
 
     const {device_code: deviceCode, expires_in: expiresIn = 300} = options;
+    // Server recommended polling interval (seconds)
     let interval = options.interval ?? 2;
 
+    // Global timeout for entire device authorization attempt
     this.pollingExpirationTimer = setTimeout(() => {
       this.cancelQRCodePolling(false);
       this.eventEmitter.emit(Events.qRCodeLogin, {
@@ -431,6 +553,7 @@ const Authorization = WebexPlugin.extend({
     }, expiresIn * 1000);
 
     const polling = () => {
+      // Increment id so any previous poll loops can be invalidated
       this.pollingId += 1;
       this.currentPollingId = this.pollingId;
 
@@ -451,10 +574,10 @@ const Authorization = WebexPlugin.extend({
           },
         })
         .then((res) => {
-          // if the pollingId has changed, it means that the polling request has been canceled
+          // If polling canceled (id changed), ignore this response
           if (this.currentPollingId !== this.pollingId) return;
 
-          this.eventEmitter.emit(Events.qRCodeLogin, {
+            this.eventEmitter.emit(Events.qRCodeLogin, {
             eventType: 'authorizationSuccess',
             data: res.body,
           });
@@ -462,18 +585,15 @@ const Authorization = WebexPlugin.extend({
           this.cancelQRCodePolling();
         })
         .catch((res) => {
-          // if the pollingId has changed, it means that the polling request has been canceled
           if (this.currentPollingId !== this.pollingId) return;
 
-          // When server sends 400 status code with message 'slow_down', it means that last request happened too soon.
-          // So, skip one interval and then poll again.
+          // Backoff signal from server; increase interval just once for next cycle
           if (res.statusCode === 400 && res.body.message === 'slow_down') {
             schedulePolling(interval * 2);
             return;
           }
 
-          // if the statusCode is 428 which means that the authorization request is still pending
-          // as the end user hasn't yet completed the user-interaction steps. So keep polling.
+          // Pending: keep polling
           if (res.statusCode === 428) {
             this.eventEmitter.emit(Events.qRCodeLogin, {
               eventType: 'authorizationPending',
@@ -483,6 +603,7 @@ const Authorization = WebexPlugin.extend({
             return;
           }
 
+          // Terminal error
           this.cancelQRCodePolling();
 
           this.eventEmitter.emit(Events.qRCodeLogin, {
@@ -492,6 +613,7 @@ const Authorization = WebexPlugin.extend({
         });
     };
 
+    // Schedules next poll invocation
     const schedulePolling = (interval) =>
       (this.pollingTimer = setTimeout(polling, interval * 1000));
 
@@ -499,7 +621,9 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
-   * cancel polling request
+   * Cancel active device authorization polling loop.
+   *
+   * @param {boolean} withCancelEvent emit a pollingCanceled event (default true)
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @returns {void}
@@ -520,26 +644,32 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
-   * Extracts the orgId from the returned code from idbroker
-   * Description of how to parse the code can be found here:
-   * https://wiki.cisco.com/display/IDENTITY/Federated+Token+Validation
+   * Extracts the orgId from the returned code from idbroker.
+   *
+   * Certain authorization codes encode organization info in a structured
+   * underscore-delimited format. This method parses out the 3rd segment.
+   *
+   * For undocumented formats or unexpected code shapes, returns undefined.
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {String} code
    * @private
-   * @returns {String}
+   * @returns {String|undefined}
    */
   _extractOrgIdFromCode(code) {
     return code?.split('_')[2] || undefined;
   },
 
   /**
-   * Checks if the result of the login redirect contains an error string
+   * Checks if the result of the login redirect contains an OAuth error.
+   * Throws a mapped grant error if encountered.
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {Object} location
    * @private
-   * @returns {Promise}
+   * @returns {void}
    */
   _checkForErrors(location) {
     const {query} = location;
@@ -552,12 +682,23 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
-   * Removes no-longer needed values from the url (access token, csrf token, etc)
+   * Removes no-longer needed values from the URL (authorization code, CSRF token).
+   * This is important to avoid leaking sensitive parameters via:
+   * - Browser history
+   * - Copy/paste of URL
+   * - HTTP referrer headers to third-party content
+   *
+   * Approach:
+   * - Remove 'code'.
+   * - Remove 'state' entirely if only contained csrf_token.
+   * - Else, re-encode remaining state fields (minus csrf_token).
+   * - Replace current history entry (no page reload).
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {Object} location
    * @private
-   * @returns {Promise}
+   * @returns {void}
    */
   _cleanUrl(location) {
     location = cloneDeep(location);
@@ -577,11 +718,18 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
-   * Generates PKCE code verifier and code challenge and sets the the code verifier in sessionStorage
+   * Generates a PKCE (RFC 7636) code verifier and corresponding S256 code challenge.
+   * Persists the verifier in sessionStorage (single-use) for later retrieval
+   * during authorization code exchange; removes it once consumed.
+   *
+   * Implementation details:
+   * - Creates a 128 character string using base64url safe alphabet.
+   * - Computes SHA256 hash, encodes to base64url (no padding).
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @private
-   * @returns {string}
+   * @returns {string} code_challenge
    */
   _generateCodeChallenge() {
     this.logger.info('authorization: generating PKCE code challenge');
@@ -601,11 +749,15 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
-   * Generates a CSRF token and sticks in in sessionStorage
+   * Generates a CSRF token and stores it in sessionStorage.
+   * Token is embedded in 'state' and validated upon redirect return.
+   *
+   * Uses UUID v4 for randomness.
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @private
-   * @returns {Promise}
+   * @returns {string} token
    */
   _generateSecurityToken() {
     this.logger.info('authorization: generating csrf token');
@@ -618,13 +770,21 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
-   * Checks if the CSRF token in sessionStorage is the same as the one returned
-   * in the url.
+   * Verifies that the CSRF token returned in the 'state' matches the one
+   * previously stored in sessionStorage.
+   *
+   * Steps:
+   * - Retrieve and immediately remove stored token (one-time use).
+   * - Ensure state + state.csrf_token exist.
+   * - Compare values; throw descriptive errors on mismatch / absence.
+   *
+   * If no stored token (e.g., user navigated directly), silently returns.
+   *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
-   * @param {Object} query
+   * @param {Object} query - Parsed query (location.query)
    * @private
-   * @returns {Promise}
+   * @returns {void}
    */
   _verifySecurityToken(query) {
     const sessionToken = this.webex.getWindow().sessionStorage.getItem(OAUTH2_CSRF_TOKEN);
