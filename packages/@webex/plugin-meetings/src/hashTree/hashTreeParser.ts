@@ -25,13 +25,17 @@ export const ObjectType = {
 
 export type ObjectType = Enum<typeof ObjectType>;
 
-export interface HashTreeObject {
-  meta: {
+export interface HtMeta {
+  elementId: {
     type: ObjectType;
     id: number;
     version: number;
   };
-  data: any; // todo: can we have a better type here?
+  dataSetNames: string[];
+}
+export interface HashTreeObject {
+  htMeta: HtMeta;
+  data: string;
 }
 
 export interface RootHashMessage {
@@ -39,7 +43,7 @@ export interface RootHashMessage {
 }
 export interface HashTreeMessage {
   dataSets: Array<DataSet>;
-  objects?: Array<HashTreeObject>;
+  locusStateElements?: Array<HashTreeObject>;
 }
 
 interface InternalDataSet extends DataSet {
@@ -88,7 +92,7 @@ class HashTreeParser {
     const leafData: Record<string, Array<{type: string; id: number; version: number}>> = {};
 
     // each dataset exists at a different place in the dto
-    // iterate recursively over the locus and if it has a meta key,
+    // iterate recursively over the locus and if it has a htMeta key,
     // create an object with the type, id and version and add it to the appropriate leafData array
 
     const findAndStoreMetaData = (currentLocusPart: any) => {
@@ -96,11 +100,12 @@ class HashTreeParser {
         return;
       }
 
-      if (currentLocusPart.meta && currentLocusPart.meta.dataSets) {
-        const {type, id, version, dataSets: metaDataSets} = currentLocusPart.meta;
+      if (currentLocusPart.htMeta && currentLocusPart.htMeta.dataSetNames) {
+        const {type, id, version} = currentLocusPart.htMeta.elementId;
+        const {dataSetNames} = currentLocusPart.htMeta;
         const leafInfo = {type, id, version};
 
-        for (const dataSetName of metaDataSets) {
+        for (const dataSetName of dataSetNames) {
           if (!leafData[dataSetName]) {
             leafData[dataSetName] = [];
           }
@@ -202,19 +207,23 @@ class HashTreeParser {
 
           if (hashTree) {
             const appliedChangesList = hashTree.updateItems(
-              message.objects.map((object) =>
-                object.data
-                  ? {operation: 'update', item: object.meta}
-                  : {operation: 'remove', item: object.meta}
-              )
+              message.locusStateElements
+                .filter((object) => object.htMeta.dataSetNames.includes(dataSet.name))
+                .map((object) =>
+                  object.data
+                    ? {operation: 'update', item: object.htMeta.elementId}
+                    : {operation: 'remove', item: object.htMeta.elementId}
+                )
             );
 
-            zip(appliedChangesList, message.objects).forEach(([changeApplied, object]) => {
-              if (changeApplied) {
-                // update the locus with the new object
-                updatedObjects.push(object);
+            zip(appliedChangesList, message.locusStateElements).forEach(
+              ([changeApplied, object]) => {
+                if (changeApplied) {
+                  // update the locus with the new object
+                  updatedObjects.push(object);
+                }
               }
-            });
+            );
           } else {
             LoggerProxy.logger.warn(
               `Locus-info:index#handleHashTreeMessage --> unsupported dataSet ${dataSet.name} received in hash tree message`
@@ -275,64 +284,69 @@ class HashTreeParser {
 
     const delay = dataSet.idleMs + this.getWeightedBackoffTime(dataSet.backoff);
 
-    if (dataSet.timer) {
-      clearTimeout(dataSet.timer);
-    }
+    if (delay > 0) {
+      if (dataSet.timer) {
+        clearTimeout(dataSet.timer);
+      }
 
-    dataSet.timer = setTimeout(async () => {
-      LoggerProxy.logger.info(
-        `HashTreeParser#runSyncAlgorithm --> Sync timer fired for "${dataSet.name}" data set`
-      );
-
-      dataSet.timer = undefined;
-
-      const rootHash = dataSet.hashTree.getRootHash();
-
-      if (dataSet.root !== rootHash) {
+      dataSet.timer = setTimeout(async () => {
         LoggerProxy.logger.info(
-          `HashTreeParser#runSyncAlgorithm --> Root hash mismatch: received=${dataSet.root}, ours=${rootHash}, syncing data set "${dataSet.name}"`
+          `HashTreeParser#runSyncAlgorithm --> Sync timer fired for "${dataSet.name}" data set`
         );
 
-        const mismatchedLeavesData: Record<number, LeafDataItem[]> = {};
+        dataSet.timer = undefined;
 
-        if (dataSet.leafCount !== 1) {
-          let receivedHashes;
+        const rootHash = dataSet.hashTree.getRootHash();
 
-          try {
-            // request hashes from sender
-            receivedHashes = await this.getHashesFromLocus(dataSet.name);
-          } catch (error) {
-            if (error.statusCode === 409) {
-              // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
-              LoggerProxy.logger.info(
-                `HashTreeParser#getHashesFromLocus --> Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
-              );
+        if (dataSet.root !== rootHash) {
+          LoggerProxy.logger.info(
+            `HashTreeParser#runSyncAlgorithm --> Root hash mismatch: received=${dataSet.root}, ours=${rootHash}, syncing data set "${dataSet.name}"`
+          );
 
-              return;
+          const mismatchedLeavesData: Record<number, LeafDataItem[]> = {};
+
+          if (dataSet.leafCount !== 1) {
+            let receivedHashes;
+
+            try {
+              // request hashes from sender
+              receivedHashes = await this.getHashesFromLocus(dataSet.name);
+            } catch (error) {
+              if (error.statusCode === 409) {
+                // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
+                LoggerProxy.logger.info(
+                  `HashTreeParser#getHashesFromLocus --> Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
+                );
+
+                return;
+              }
+              throw error;
             }
-            throw error;
+
+            // identify mismatched leaves
+            const mismatchedLeaveIndexes = dataSet.hashTree.diffHashes(receivedHashes);
+
+            mismatchedLeaveIndexes.forEach((index) => {
+              mismatchedLeavesData[index] = dataSet.hashTree.getLeafData(index);
+            });
+          } else {
+            mismatchedLeavesData[0] = dataSet.hashTree.getLeafData(0);
           }
+          // request sync for mismatched leaves
+          if (Object.keys(mismatchedLeavesData).length > 0) {
+            const updatedObjects = await this.sendSyncRequestToLocus(dataSet, mismatchedLeavesData);
 
-          // identify mismatched leaves
-          const mismatchedLeaveIndexes = dataSet.hashTree.diffHashes(receivedHashes);
-
-          mismatchedLeaveIndexes.forEach((index) => {
-            mismatchedLeavesData[index] = dataSet.hashTree.getLeafData(index);
-          });
-        } else {
-          mismatchedLeavesData[0] = dataSet.hashTree.getLeafData(0);
-        }
-
-        // request sync for mismatched leaves
-        if (Object.keys(mismatchedLeavesData).length > 0) {
-          const updatedObjects = await this.sendSyncRequestToLocus(dataSet, mismatchedLeavesData);
-
-          if (updatedObjects.length > 0) {
-            this.locusInfoUpdateCallback(LocusInfoUpdateType.OBJECTS_UPDATED, {updatedObjects});
+            if (updatedObjects.length > 0) {
+              this.locusInfoUpdateCallback(LocusInfoUpdateType.OBJECTS_UPDATED, {updatedObjects});
+            }
           }
         }
-      }
-    }, delay);
+      }, delay);
+    } else {
+      LoggerProxy.logger.info(
+        `HashTreeParser#runSyncAlgorithm --> No delay for "${dataSet.name}" data set, skipping sync timer reset/setup`
+      );
+    }
   }
 
   /**
@@ -362,13 +376,12 @@ class HashTreeParser {
 
     const url = `${dataSet.url}/hashtree`;
 
-    // todo: docs have some request body.... need to confirm this
     return this.webexRequest({
       method: HTTP_VERBS.GET,
       uri: url,
     })
       .then((response) => {
-        const hashes = response.body?.hashTree?.values;
+        const hashes = response.body?.hashes;
 
         if (!hashes || !Array.isArray(hashes)) {
           throw new Error('Locus returned invalid hashes', response.body);
@@ -408,17 +421,18 @@ class HashTreeParser {
 
     const url = `${dataSet.url}/sync`;
     const body = {
-      meta: {
+      dataSet: {
+        name: dataSet.name,
         leafCount: dataSet.leafCount,
-        rootHash: dataSet.hashTree.getRootHash(), // todo: avoid recalculation
+        root: dataSet.hashTree.getRootHash(), // todo: avoid recalculation
       },
-      leafData: [],
+      leafDataEntries: [],
     };
 
     Object.keys(mismatchedLeavesData).forEach((index) => {
-      body.leafData.push({
+      body.leafDataEntries.push({
         leafIndex: parseInt(index, 10),
-        objectIds: mismatchedLeavesData[index],
+        elementIds: mismatchedLeavesData[index],
       });
     });
 
@@ -432,7 +446,7 @@ class HashTreeParser {
           `HashTreeParser#sendSyncRequestToLocus --> Sync request sent successfully for data set "${dataSet.name}"`
         );
         // todo: handle response body (it may be there or not)
-        if (resp.body === 202) {
+        if (resp.statusCode === 202) {
           LoggerProxy.logger.info(
             `HashTreeParser#sendSyncRequestToLocus --> Got 202 for sync request for data set "${dataSet.name}", data should arrive via messages`
           );

@@ -35,11 +35,12 @@ import HashTreeParser, {
   DataSet,
   HashTreeMessage,
   HashTreeObject,
+  HtMeta,
   LocusInfoUpdateType,
   ObjectType,
 } from '../hashTree/hashTreeParser';
 
-type LocusDTO = {
+export type LocusDTO = {
   controls?: any;
   fullState?: {
     active: boolean;
@@ -59,7 +60,11 @@ type LocusDTO = {
     name: string;
     orgId: string;
   };
+  htMeta?: HtMeta;
   info?: any;
+  jsSdkMeta?: {
+    removedParticipantIds: string[]; // list of ids of participants that are removed in the last update
+  };
   links?: any;
   mediaShares?: any[];
   meetings?: any[];
@@ -180,6 +185,7 @@ export default class LocusInfo extends EventsScope {
   mainSessionLocusCache: any;
   self: any;
   hashTreeParser?: HashTreeParser;
+  hashTreeObjectId2ParticipantId: Map<number, string>;
 
   /**
    * Constructor
@@ -199,6 +205,7 @@ export default class LocusInfo extends EventsScope {
     this.meetingId = meetingId;
     this.updateMeeting = updateMeeting;
     this.locusParser = new LocusDeltaParser();
+    this.hashTreeObjectId2ParticipantId = new Map();
   }
 
   /**
@@ -424,12 +431,13 @@ export default class LocusInfo extends EventsScope {
 
   /**
    * @param {Object} locus
+   * @param {DataSet[]} [dataSets=[]] - Array of data sets
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  initialSetup(locus: object) {
+  initialSetup(locus: object, dataSets: DataSet[] = []) {
     this.updateLocusCache(locus);
-    this.onFullLocus(locus);
+    this.onFullLocus(locus, undefined, dataSets);
 
     // Change it to true after it receives it first locus object
     this.emitChange = true;
@@ -452,9 +460,9 @@ export default class LocusInfo extends EventsScope {
    * @returns {void}
    */
   updateHashTreeObjectInLocus(object: HashTreeObject, locus: LocusDTO): LocusDTO {
-    // todo: handle deletion of objects
-    switch (object.meta.type) {
-      case ObjectType.locus:
+    // todo: handle cases of JSON.parse throwing an error
+    switch (object.htMeta.elementId.type) {
+      case ObjectType.locus: {
         if (!object.data) {
           LoggerProxy.logger.warn(
             `Locus-info:index#updateHashTreeObjectInLocus --> received LOCUS object without data, this is not supported!`
@@ -465,20 +473,27 @@ export default class LocusInfo extends EventsScope {
         // replace the main locus
 
         // the MAIN dataset has empty participants, so removing that to avoid it overriding the ones in our current locus
-        delete object.data.participants;
+        const locusObjectFromData = JSON.parse(object.data);
+        delete locusObjectFromData.participants;
 
         // todo: not sure if MAIN dataset will contain empty self or nothing
 
-        locus = {...locus, ...object.data};
+        locus = {...locus, ...locusObjectFromData, jsSdkMeta: {removedParticipantIds: []}};
+        locus.htMeta = object.htMeta;
         break;
+      }
       case ObjectType.participant:
         if (object.data) {
           if (!locus.participants) {
             locus.participants = [];
           }
-          locus.participants.push(object.data);
+          const participantObject = JSON.parse(object.data);
+          participantObject.htMeta = object.htMeta;
+          locus.participants.push(participantObject);
+          this.hashTreeObjectId2ParticipantId.set(object.htMeta.elementId.id, participantObject.id);
         } else {
-          // todo: handle deletion of participants
+          const participantId = this.hashTreeObjectId2ParticipantId.get(object.htMeta.elementId.id);
+          locus.jsSdkMeta.removedParticipantIds.push(participantId);
         }
         break;
       case ObjectType.self:
@@ -489,7 +504,7 @@ export default class LocusInfo extends EventsScope {
 
           return locus;
         }
-        locus.self = object.data;
+        locus.self = JSON.parse(object.data);
         break;
     }
 
@@ -511,8 +526,7 @@ export default class LocusInfo extends EventsScope {
 
       return;
     }
-
-    if (message.objects === undefined) {
+    if (message.locusStateElements === undefined) {
       // todo: need to see in practice how exactly the heartbeat messages look like
       this.hashTreeParser.handleRootHashHeartBeatMessage(message);
     } else {
@@ -664,6 +678,9 @@ export default class LocusInfo extends EventsScope {
 
     this.scheduledMeeting = locus.meeting || null;
     this.participants = locus.participants;
+    this.participants?.forEach((participant) => {
+      this.hashTreeObjectId2ParticipantId.set(participant.htMeta.elementId.id, participant.id);
+    });
     const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.updateLocusInfo(locus);
     this.updateParticipants(

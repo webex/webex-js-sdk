@@ -10,6 +10,8 @@ const exampleInitialLocus = {
       version: 51118,
       leafCount: 16,
       name: 'main',
+      idleMs: 1000,
+      backoff: {maxMs: 1000, exponent: 2}
     },
     {
       url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
@@ -17,6 +19,8 @@ const exampleInitialLocus = {
       version: 89891,
       leafCount: 1,
       name: 'self',
+      idleMs: 1000,
+      backoff: {maxMs: 1000, exponent: 2}
     },
     {
       url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted',
@@ -24,25 +28,31 @@ const exampleInitialLocus = {
       version: 91277,
       leafCount: 16,
       name: 'atd-unmuted',
+      idleMs: 1000,
+      backoff: {maxMs: 1000, exponent: 2}
     },
   ],
   locus: {
     url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f',
-    meta: {
-      type: 'LOCUS',
-      id: 0,
-      version: 5678,
-      dataSets: ['main'],
+    htMeta: {
+      elementId: {
+        type: 'LOCUS',
+        id: 0,
+        version: 5678,
+      },
+      dataSetNames: ['main'],
     },
     participants: [
       {
         url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/11941033',
         person: {},
-        meta: {
-          type: 'PARTICIPANT',
-          id: 14,
-          version: 5678,
-          dataSets: ['atd-active', 'attendees', 'atd-unmuted'],
+        htMeta: {
+          elementId: {
+            type: 'PARTICIPANT',
+            id: 14,
+            version: 5678,
+          },
+          dataSetNames: ['atd-active', 'attendees', 'atd-unmuted'],
         },
       },
     ],
@@ -50,11 +60,13 @@ const exampleInitialLocus = {
       url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/11941033',
       visibleDataSets: ['main', 'self', 'atd-unmuted'],
       person: {},
-      meta: {
-        type: 'SELF',
-        id: 4,
-        version: 5678,
-        dataSets: ['self'],
+      htMeta: {
+        elementId: {
+          type: 'SELF',
+          id: 4,
+          version: 5678,
+        },
+        dataSetNames: ['self'],
       },
     },
   },
@@ -62,13 +74,13 @@ const exampleInitialLocus = {
 
 describe('HashTreeParser', () => {
   it('should correctly initialize trees from initialLocus data', () => {
-    const parser = new HashTreeParser(exampleInitialLocus);
+    const parser = new HashTreeParser({initialLocus: exampleInitialLocus, webexRequest: () => Promise.resolve(), locusInfoUpdateCallback : () => {}});
 
     // Check that the correct number of trees are created
-    expect(Object.keys(parser.trees).length).to.equal(3);
+    expect(Object.keys(parser.dataSets).length).to.equal(3);
 
     // Verify the 'main' tree
-    const mainTree = parser.trees.main;
+    const mainTree = parser.dataSets.main.hashTree;
     expect(mainTree).to.be.instanceOf(HashTree);
     const expectedMainLeaves = new Array(16).fill(null).map(() => ({}));
     expectedMainLeaves[0 % 16] = { LOCUS: { 0: { type: 'LOCUS', id: 0, version: 5678 } } };
@@ -76,7 +88,7 @@ describe('HashTreeParser', () => {
     expect(mainTree.numLeaves).to.equal(16);
 
     // Verify the 'self' tree
-    const selfTree = parser.trees.self;
+    const selfTree = parser.dataSets.self.hashTree;
     expect(selfTree).to.be.instanceOf(HashTree);
     const expectedSelfLeaves = new Array(1).fill(null).map(() => ({}));
     expectedSelfLeaves[4 % 1] = { SELF: { 4: { type: 'SELF', id: 4, version: 5678 } } };
@@ -84,7 +96,7 @@ describe('HashTreeParser', () => {
     expect(selfTree.numLeaves).to.equal(1);
 
     // Verify the 'atd-unmuted' tree
-    const atdUnmutedTree = parser.trees['atd-unmuted'];
+    const atdUnmutedTree = parser.dataSets['atd-unmuted'].hashTree;
     expect(atdUnmutedTree).to.be.instanceOf(HashTree);
     const expectedAtdUnmutedLeaves = new Array(16).fill(null).map(() => ({}));
     expectedAtdUnmutedLeaves[14 % 16] = { PARTICIPANT: { 14: { type: 'PARTICIPANT', id: 14, version: 5678 } } };
@@ -92,8 +104,8 @@ describe('HashTreeParser', () => {
     expect(atdUnmutedTree.numLeaves).to.equal(16);
 
     // Ensure no other trees were created
-    expect(parser.trees['atd-active']).to.be.undefined;
-    expect(parser.trees.attendees).to.be.undefined;
+    expect(parser.dataSets['atd-active']).to.be.undefined;
+    expect(parser.dataSets.attendees).to.be.undefined;
   });
 
   it('should handle datasets with no corresponding metadata found', () => {
@@ -110,32 +122,32 @@ describe('HashTreeParser', () => {
     });
 
 
-    const parser = new HashTreeParser(modifiedLocus);
+    const parser = new HashTreeParser({initialLocus: modifiedLocus, webexRequest: () => Promise.resolve(), locusInfoUpdateCallback : () => {}});
 
-    expect(Object.keys(parser.trees).length).to.equal(4); // main, self, atd-unmuted (now empty), empty-set
+    expect(Object.keys(parser.dataSets).length).to.equal(4); // main, self, atd-unmuted (now empty), empty-set
 
     // 'main' and 'self' should be populated as before
-    const mainTree = parser.trees.main;
+    const mainTree = parser.dataSets.main.hashTree;
     const expectedMainLeaves = new Array(16).fill(null).map(() => ({}));
     expectedMainLeaves[0 % 16] = { LOCUS: { 0: { type: 'LOCUS', id: 0, version: 5678 } } };
     expect(mainTree.leaves).to.deep.equal(expectedMainLeaves);
     expect(mainTree.numLeaves).to.equal(16);
 
-    const selfTree = parser.trees.self;
+    const selfTree = parser.dataSets.self.hashTree;
     const expectedSelfLeaves = new Array(1).fill(null).map(() => ({}));
     expectedSelfLeaves[4 % 1] = { SELF: { 4: { type: 'SELF', id: 4, version: 5678 } } };
     expect(selfTree.leaves).to.deep.equal(expectedSelfLeaves);
     expect(selfTree.numLeaves).to.equal(1);
-    
+
     // 'atd-unmuted' metadata was removed from locus, so leaves should be empty
-    const atdUnmutedTree = parser.trees['atd-unmuted'];
+    const atdUnmutedTree = parser.dataSets['atd-unmuted'].hashTree;
     expect(atdUnmutedTree).to.be.instanceOf(HashTree);
     const expectedAtdUnmutedEmptyLeaves = new Array(16).fill(null).map(() => ({}));
     expect(atdUnmutedTree.leaves).to.deep.equal(expectedAtdUnmutedEmptyLeaves);
     expect(atdUnmutedTree.numLeaves).to.equal(16); // leafCount from dataSet definition
 
     // 'empty-set' was added to dataSets but has no metadata in locus
-    const emptySetTree = parser.trees['empty-set'];
+    const emptySetTree = parser.dataSets['empty-set'].hashTree;
     expect(emptySetTree).to.be.instanceOf(HashTree);
     const expectedEmptySetLeaves = new Array(4).fill(null).map(() => ({})); // leafCount is 4
     expect(emptySetTree.leaves).to.deep.equal(expectedEmptySetLeaves);

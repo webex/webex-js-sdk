@@ -70,7 +70,7 @@ import Media, {type BundlePolicy} from '../media';
 import MediaProperties from '../media/properties';
 import MeetingStateMachine from './state';
 import {createMuteState} from './muteState';
-import LocusInfo from '../locus-info';
+import LocusInfo, {LocusDTO} from '../locus-info';
 import Metrics from '../metrics';
 import ReconnectionManager from '../reconnection-manager';
 import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
@@ -171,6 +171,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 import {Invitee} from './type';
+import {DataSet} from '../hashTree/hashTreeParser';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -4566,11 +4567,13 @@ export default class Meeting extends StatelessWebexPlugin {
   setLocus(
     locus:
       | {
+          locus: LocusDTO;
           mediaConnections: Array<any>;
           locusUrl: string;
           locusId: string;
           mediaId: string;
           host: object;
+          dataSets: DataSet[];
         }
       | any
   ) {
@@ -4584,7 +4587,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.selfId = locus.selfId;
     this.mediaId = locus.mediaId;
     this.hostId = mtgLocus.host ? mtgLocus.host.id : this.hostId;
-    this.locusInfo.initialSetup(mtgLocus);
+    this.locusInfo.initialSetup(mtgLocus, locus.dataSets);
   }
 
   /**
