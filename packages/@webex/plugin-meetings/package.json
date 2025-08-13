@@ -1,7 +1,7 @@
 {
   "name": "@webex/plugin-meetings",
   "description": "",
-  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
+  "license": "Cisco's General Terms (https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html)",
   "contributors": [
     "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
     "Arun Ganeshan <arungane@cisco.com>",
