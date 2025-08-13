@@ -4535,53 +4535,22 @@ export default class Meeting extends StatelessWebexPlugin {
     Trigger.trigger(this, options, EVENTS.REQUEST_UPLOAD_LOGS, this);
   }
 
-  /**
-   * sets the timer for periodic log upload
-   * @returns {void}
-   */
-  private setLogUploadTimer() {
-    // start with short timeouts and increase them later on so in case users have very long multi-hour meetings we don't get too fragmented logs
-    const LOG_UPLOAD_INTERVALS = [0.1, 15, 30, 60]; // in minutes
+  // /**
+  //  * Starts a periodic upload of logs
+  //  *
+  //  * @returns {undefined}
+  //  */
+  // public startPeriodicLogUpload() {
+  //   // @ts-ignore - config coming from registerPlugin
+  //   if (this.config.logUploadIntervalMultiplicationFactor && !this.uploadLogsTimer) {
+  //     this.logUploadIntervalIndex = 0;
 
-    const delay =
-      1000 *
-      60 *
-      // @ts-ignore - config coming from registerPlugin
-      this.config.logUploadIntervalMultiplicationFactor *
-      LOG_UPLOAD_INTERVALS[this.logUploadIntervalIndex];
-
-    if (this.logUploadIntervalIndex < LOG_UPLOAD_INTERVALS.length - 1) {
-      this.logUploadIntervalIndex += 1;
-    }
-
-    this.uploadLogsTimer = safeSetTimeout(() => {
-      this.uploadLogsTimer = undefined;
-
-      this.uploadLogs();
-
-      // just as an extra precaution, to avoid uploading logs forever in case something goes wrong
-      // and the page remains opened, we stop it if there is no media connection
-      if (!this.mediaProperties.webrtcMediaConnection) {
-        return;
-      }
-
-      this.setLogUploadTimer();
-    }, delay);
-  }
-
-  /**
-   * Starts a periodic upload of logs
-   *
-   * @returns {undefined}
-   */
-  public startPeriodicLogUpload() {
-    // @ts-ignore - config coming from registerPlugin
-    if (this.config.logUploadIntervalMultiplicationFactor && !this.uploadLogsTimer) {
-      this.logUploadIntervalIndex = 0;
-
-      this.setLogUploadTimer();
-    }
-  }
+  //     // Periodic log upload is now handled by the support plugin
+  //     LoggerProxy.logger.info(
+  //       'Meeting:index#startPeriodicLogUpload --> Periodic log upload is now handled by the support plugin'
+  //     );
+  //   }
+  // }
 
   /**
    * Stops the periodic upload of logs
@@ -7942,7 +7911,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // We can log ReceiveSlot SSRCs only after the SDP exchange, so doing it here:
       this.remoteMediaManager?.logAllReceiveSlots();
-      this.startPeriodicLogUpload();
+      // this.startPeriodicLogUpload(); Check if its needed
     } catch (error) {
       LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
 
