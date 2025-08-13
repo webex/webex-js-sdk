@@ -2175,6 +2175,22 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: METHODS.ANSWER,
     });
 
+    // Start periodic log upload for incoming calls
+    try {
+      if (this.webex.internal?.support?.startPeriodicLogUpload) {
+        this.webex.internal.support.startPeriodicLogUpload();
+        log.info('Periodic log upload started for incoming call', {
+          file: CALL_FILE,
+          method: METHODS.ANSWER,
+        });
+      }
+    } catch (error) {
+      log.warn('Failed to start periodic log upload for incoming call', {
+        file: CALL_FILE,
+        method: METHODS.ANSWER,
+      });
+    }
+
     this.localAudioStream = localAudioStream;
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
 
@@ -2217,6 +2233,22 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       file: CALL_FILE,
       method: METHODS.DIAL,
     });
+
+    // Start periodic log upload for outgoing calls
+    try {
+      if (this.webex.internal?.support?.startPeriodicLogUpload) {
+        this.webex.internal.support.startPeriodicLogUpload();
+        log.info('Periodic log upload started for outgoing call', {
+          file: CALL_FILE,
+          method: METHODS.DIAL,
+        });
+      }
+    } catch (error) {
+      log.warn('Failed to start periodic log upload for outgoing call', {
+        file: CALL_FILE,
+        method: METHODS.DIAL,
+      });
+    }
 
     this.localAudioStream = localAudioStream;
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
