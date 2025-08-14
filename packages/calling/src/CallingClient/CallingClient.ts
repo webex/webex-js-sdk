@@ -572,7 +572,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Retrieves call objects for all the active calls present in the client
    */
   public getActiveCalls(): Record<string, ICall[]> {
-    const activeCalls = {};
+    const activeCalls: Record<string, ICall[]> = {};
     const calls = this.callManager.getActiveCalls();
     Object.keys(calls).forEach((correlationId) => {
       const call = calls[correlationId];
@@ -672,7 +672,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         method: 'initializePeriodicLogUpload',
       });
     } catch (error) {
-      log.error('Failed to initialize periodic log upload', {
+      log.error(error as ExtendedError, {
         file: CALLING_CLIENT_FILE,
         method: 'initializePeriodicLogUpload',
       });
@@ -693,7 +693,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         });
       }
     } catch (error) {
-      log.error('Failed to start periodic log upload', {
+      log.error(error as ExtendedError, {
         file: CALLING_CLIENT_FILE,
         method: 'startPeriodicLogUpload',
       });
@@ -714,7 +714,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         });
       }
     } catch (error) {
-      log.error('Failed to stop periodic log upload', {
+      log.error(error as ExtendedError, {
         file: CALLING_CLIENT_FILE,
         method: 'stopPeriodicLogUpload',
       });

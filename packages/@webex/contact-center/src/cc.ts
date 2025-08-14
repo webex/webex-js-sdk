@@ -506,6 +506,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.DEREGISTER,
       });
 
+      // Upload logs automatically for deregister failures
+      this.uploadLogs().catch((uploadError) => {
+        LoggerProxy.error(`Failed to upload logs after deregister error: ${uploadError}`, {
+          module: CC_FILE,
+          method: METHODS.DEREGISTER,
+        });
+      });
+
       throw error;
     }
   }
@@ -1489,10 +1497,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const firstActiveTask = activeTaskArray.length > 0 ? activeTaskArray[0] : null;
 
       return {
-        correlationId: firstActiveTask?.data?.correlationId || this.$webex.sessionId,
-        callStart: firstActiveTask?.data?.callStartTime,
+        correlationId: firstActiveTask?.data?.interactionId || uuidv4(),
         agentId: this.agentConfig?.agentId,
-        deviceId: this.$webex.internal?.device?.deviceId,
         webRtcEnabled: this.agentConfig?.webRtcEnabled,
         interactionId: firstActiveTask?.data?.interactionId,
         sdkVersion: this.$webex.version || 'unknown',
