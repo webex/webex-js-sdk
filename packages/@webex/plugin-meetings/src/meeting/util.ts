@@ -542,13 +542,13 @@ const MeetingUtil = {
   canStartManualCaption: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_START),
 
-  isStartedLocalRecording: (displayHints) =>
+  isLocalRecordingStarted: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.LOCAL_RECORDING_STATUS_STARTED),
 
-  isStoppedLocalRecording: (displayHints) =>
+  isLocalRecordingStopped: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.LOCAL_RECORDING_STATUS_STOPPED),
 
-  isPausedLocalRecording: (displayHints) =>
+  isLocalRecordingPaused: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.LOCAL_RECORDING_STATUS_PAUSED),
 
   canStopManualCaption: (displayHints) => displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STOP),

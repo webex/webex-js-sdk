@@ -851,9 +851,9 @@ describe('plugin-meetings', () => {
       {functionName: 'canStartManualCaption', displayHint: 'MANUAL_CAPTION_START'},
       {functionName: 'canStopManualCaption', displayHint: 'MANUAL_CAPTION_STOP'},
 
-      {functionName: 'isStartedLocalRecording',displayHint:'LOCAL_RECORDING_STATUS_STARTED'},
-      {functionName: 'isStoppedLocalRecording', displayHint: 'LOCAL_RECORDING_STATUS_STOPPED'},
-      {functionName: 'isPausedLocalRecording', displayHint: 'LOCAL_RECORDING_STATUS_PAUSED'},
+      {functionName: 'isLocalRecordingStarted',displayHint:'LOCAL_RECORDING_STATUS_STARTED'},
+      {functionName: 'isLocalRecordingStopped', displayHint: 'LOCAL_RECORDING_STATUS_STOPPED'},
+      {functionName: 'isLocalRecordingPaused', displayHint: 'LOCAL_RECORDING_STATUS_PAUSED'},
 
       {functionName: 'isManualCaptionActive', displayHint: 'MANUAL_CAPTION_STATUS_ACTIVE'},
       {functionName: 'isWebexAssistantActive', displayHint: 'WEBEX_ASSISTANT_STATUS_ACTIVE'},

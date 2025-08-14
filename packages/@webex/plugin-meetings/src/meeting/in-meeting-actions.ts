@@ -38,9 +38,9 @@ interface IInMeetingActions {
   isClosedCaptionActive?: boolean;
   canStartManualCaption?: boolean;
   canStopManualCaption?: boolean;
-  isStartedLocalRecording?: boolean;
-  isStoppedLocalRecording?: boolean;
-  isPausedLocalRecording?: boolean;
+  isLocalRecordingStarted?: boolean;
+  isLocalRecordingStopped?: boolean;
+  isLocalRecordingPaused?: boolean;
 
   isManualCaptionActive?: boolean;
   isSaveTranscriptsEnabled?: boolean;
@@ -177,11 +177,11 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canStopManualCaption = null;
 
-  isStoppedLocalRecording = null;
+  isLocalRecordingStopped = null;
 
-  isStartedLocalRecording = null;
+  isLocalRecordingStarted = null;
 
-  isPausedLocalRecording = null;
+  isLocalRecordingPaused = null;
 
   isManualCaptionActive = null;
 
@@ -357,9 +357,9 @@ export default class InMeetingActions implements IInMeetingActions {
     canStopTranscribing: this.canStopTranscribing,
     isClosedCaptionActive: this.isClosedCaptionActive,
     canStartManualCaption: this.canStartManualCaption,
-    isStartedLocalRecording: this.isStartedLocalRecording,
-    isStoppedLocalRecording: this.isStoppedLocalRecording,
-    isPausedLocalRecording: this.isPausedLocalRecording,
+    isLocalRecordingStarted: this.isLocalRecordingStarted,
+    isLocalRecordingStopped: this.isLocalRecordingStopped,
+    isLocalRecordingPaused: this.isLocalRecordingPaused,
     canStopManualCaption: this.canStopManualCaption,
     isManualCaptionActive: this.isManualCaptionActive,
     isSaveTranscriptsEnabled: this.isSaveTranscriptsEnabled,
