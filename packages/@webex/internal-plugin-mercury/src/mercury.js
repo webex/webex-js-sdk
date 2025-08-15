@@ -22,8 +22,6 @@ import {
 
 const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
 
-// @ts-ignore
-// @ts-ignore
 const Mercury = WebexPlugin.extend({
   namespace: 'Mercury',
   lastError: undefined,
@@ -174,7 +172,8 @@ const Mercury = WebexPlugin.extend({
       const socket = this.sockets.get(connectionId);
       if (socket) {
         socket.removeAllListeners('message');
-        this.once(`offline:${connectionId}`, resolve);
+        socket.connected = false;
+        this.once('offline', resolve);
         resolve(socket.close(options || undefined));
         this.sockets.delete(connectionId);
       } else {
@@ -283,12 +282,8 @@ const Mercury = WebexPlugin.extend({
     socket.on('close', (...args) => this._onclose(connectionId, ...args));
     socket.on('message', (...args) => this._onmessage(connectionId, ...args));
     socket.on('pong', (...args) => this._setTimeOffset(...args));
-    socket.on('sequence-mismatch', (...args) =>
-      this._emit('sequence-mismatch', connectionId, ...args)
-    );
-    socket.on('ping-pong-latency', (...args) =>
-      this._emit('ping-pong-latency', connectionId, ...args)
-    );
+    socket.on('sequence-mismatch', (...args) => this._emit('sequence-mismatch', ...args));
+    socket.on('ping-pong-latency', (...args) => this._emit('ping-pong-latency', ...args));
 
     Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()])
       .then(([webSocketUrl, token]) => {
@@ -351,7 +346,7 @@ const Mercury = WebexPlugin.extend({
         // (especially since many of our outages happen in a way that client
         // metrics can't be trusted).
         if (reason.code !== 1006 && backoffCall && backoffCall?.getNumRetries() > 0) {
-          this._emit('connection_failed', connectionId, reason, {
+          this._emit('connection_failed', reason, {
             retries: backoffCall?.getNumRetries(),
           });
         }
@@ -441,9 +436,15 @@ const Mercury = WebexPlugin.extend({
         }
 
         // Update overall connected status
+        const socket = this.sockets.get(connectionId);
+        if (socket) {
+          socket.connected = true;
+        }
+        // @ts-ignore
+        this.socket = this.sockets.get('default');
         this.connected = this.hasConnectedSockets();
         this.hasEverConnected = true;
-        this._emit('online', connectionId);
+        this._emit('online');
         this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
 
         return resolve();
@@ -552,10 +553,9 @@ const Mercury = WebexPlugin.extend({
 
       // Update overall connected status
       this.connected = this.hasConnectedSockets();
-      this._emit('offline', connectionId, event);
-      this._emit(`offline:${connectionId}`, event);
 
       if (!this.connected) {
+        this._emit('offline', event);
         this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
       }
 
@@ -565,21 +565,21 @@ const Mercury = WebexPlugin.extend({
           this.logger.info(
             `${this.namespace}: Mercury service rejected last message for ${connectionId}; will not reconnect: ${event.reason}`
           );
-          this._emit('offline.permanent', connectionId, event);
+          this._emit('offline.permanent', event);
           break;
         case 4000:
           // metric: disconnect
           this.logger.info(
             `${this.namespace}: socket ${connectionId} replaced; will not reconnect`
           );
-          this._emit('offline.replaced', connectionId, event);
+          this._emit('offline.replaced', event);
           break;
         case 1001:
         case 1005:
         case 1006:
         case 1011:
           this.logger.info(`${this.namespace}: socket ${connectionId} disconnected; reconnecting`);
-          this._emit('offline.transient', connectionId, event);
+          this._emit('offline.transient', event);
           this._reconnect(socketUrl, connectionId);
           // metric: disconnect
           // if (code == 1011 && reason !== ping error) metric: unexpected disconnect
@@ -590,7 +590,7 @@ const Mercury = WebexPlugin.extend({
             this.logger.info(
               `${this.namespace}: socket ${connectionId} disconnected; reconnecting`
             );
-            this._emit('offline.transient', connectionId, event);
+            this._emit('offline.transient', event);
             this._reconnect(socketUrl, connectionId);
             // metric: disconnect
             // if (reason === done forced) metric: force closure
@@ -598,7 +598,7 @@ const Mercury = WebexPlugin.extend({
             this.logger.info(
               `${this.namespace}: socket ${connectionId} disconnected; will not reconnect: ${event.reason}`
             );
-            this._emit('offline.permanent', connectionId, event);
+            this._emit('offline.permanent', event);
           }
           break;
         default:
@@ -606,7 +606,7 @@ const Mercury = WebexPlugin.extend({
             `${this.namespace}: socket ${connectionId} disconnected unexpectedly; will not reconnect`
           );
           // unexpected disconnect
-          this._emit('offline.permanent', connectionId, event);
+          this._emit('offline.permanent', event);
       }
     } catch (error) {
       this.logger.error(
@@ -646,14 +646,14 @@ const Mercury = WebexPlugin.extend({
         Promise.resolve()
       )
       .then(() => {
-        this._emit('event', connectionId, event.data);
+        this._emit('event', event.data);
         const [namespace] = data.eventType.split('.');
 
         if (namespace === data.eventType) {
-          this._emit(`event:${namespace}`, connectionId, envelope);
+          this._emit(`event:${namespace}`, envelope);
         } else {
-          this._emit(`event:${namespace}`, connectionId, envelope);
-          this._emit(`event:${data.eventType}`, connectionId, envelope);
+          this._emit(`event:${namespace}`, envelope);
+          this._emit(`event:${data.eventType}`, envelope);
         }
       })
       .catch((reason) => {
