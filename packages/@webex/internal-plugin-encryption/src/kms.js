@@ -279,7 +279,12 @@ const KMS = WebexPlugin.extend({
    * @param {boolean} options.awsKms enable amazon aws keys
    * @returns {Promise.<UploadCmkResponse>} response of upload CMK api
    */
-  uploadCustomerMasterKey({assignedOrgId, customerMasterKey, awsKms = false, customerMasterKeyBackup = undefined}) {
+  uploadCustomerMasterKey({
+    assignedOrgId,
+    customerMasterKey,
+    awsKms = false,
+    customerMasterKeyBackup = undefined,
+  }) {
     this.logger.info('kms: upload customer master key for byok');
 
     return this.request({
