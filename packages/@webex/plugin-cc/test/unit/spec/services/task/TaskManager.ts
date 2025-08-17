@@ -381,10 +381,11 @@ describe('TaskManager', () => {
     );
   });
 
-  it('should emit TASK_END event on AGENT_INVITE_FAILED event', () => {
+  it('should emit TASK_REJECT event on AGENT_INVITE_FAILED event', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
       const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
+      const metricsTrackSpy = jest.spyOn(taskManager.metricsManager, 'trackEvent');
       const payload = {
         data: {
           type: CC_EVENTS.AGENT_INVITE_FAILED,
@@ -399,6 +400,7 @@ describe('TaskManager', () => {
           destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
           owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
           queueMgr: 'aqm',
+          reason: 'INVITE_FAILED',
         },
       };
 
@@ -409,9 +411,12 @@ describe('TaskManager', () => {
         { ...payload.data}
       );
       expect(taskEmitSpy).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_END, 
-        taskManager.getTask(taskId)
+        TASK_EVENTS.TASK_REJECT, 
+        payload.data.reason
       );
+      // Verify the correct metric event name is used for AGENT_INVITE_FAILED
+      expect(metricsTrackSpy).toHaveBeenCalled();
+      expect(metricsTrackSpy.mock.calls[0][0]).toBe('Agent Invite Failed');
   });
 
 
