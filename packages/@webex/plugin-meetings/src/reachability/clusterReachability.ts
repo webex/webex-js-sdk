@@ -324,7 +324,6 @@ export class ClusterReachability extends EventsScope {
         }
       );
     } else {
-      let detailsUpdated = false;
       if (!subnet) {
         result.details.push({
           serverIp,
@@ -333,27 +332,23 @@ export class ClusterReachability extends EventsScope {
           'lost-tx': 0,
           latencies: [latency],
         });
-        detailsUpdated = true;
       } else {
         subnet['answered-tx'] = 1;
         subnet['lost-tx'] = 0;
         subnet.latencies = [latency];
-        detailsUpdated = true;
       }
 
-      if (detailsUpdated) {
-        this.emit(
-          {
-            file: 'clusterReachability',
-            function: 'saveResult',
-          },
-          Events.resultDetailsUpdated,
-          {
-            protocol,
-            ...result,
-          }
-        );
-      }
+      this.emit(
+        {
+          file: 'clusterReachability',
+          function: 'saveResult',
+        },
+        Events.resultDetailsUpdated,
+        {
+          protocol,
+          ...result,
+        }
+      );
 
       this.addPublicIP(protocol, publicIp);
     }
@@ -413,11 +408,11 @@ export class ClusterReachability extends EventsScope {
       const latencyInMilliseconds = this.getElapsedTime();
 
       if (e.candidate) {
-        let serverIp: string | null = null;
-        let port: number | null = null;
+        let serverIp = null;
+        let port = null;
 
         if (e.candidate.url) {
-          const match = (e.candidate as any).url.match(STUN_SERVER_URL_REGEX);
+          const match = e.candidate.url.match(STUN_SERVER_URL_REGEX);
           if (match) {
             [, serverIp, port] = match;
             port = Number(port);
@@ -439,13 +434,7 @@ export class ClusterReachability extends EventsScope {
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
           const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
-          this.saveResult(
-            protocol,
-            latencyInMilliseconds,
-            e.candidate.relatedAddress,
-            serverIp,
-            port
-          );
+          this.saveResult(protocol, latencyInMilliseconds, null, serverIp, port);
         }
       }
     };
@@ -490,14 +479,21 @@ export class ClusterReachability extends EventsScope {
         if (match) {
           allChecks.push(
             (async () => {
-              if (await checkIP(match[1])) {
-                this.result[protocol].details.push({
-                  serverIp: match[1],
-                  port: Number(match[2]),
-                  'answered-tx': 0,
-                  'lost-tx': 1,
-                  latencies: [],
-                });
+              try {
+                if (await checkIP(match[1])) {
+                  this.result[protocol].details.push({
+                    serverIp: match[1],
+                    port: Number(match[2]),
+                    'answered-tx': 0,
+                    'lost-tx': 1,
+                    latencies: [],
+                  });
+                }
+              } catch (err) {
+                LoggerProxy.logger.error(
+                  'Reachability:ClusterReachability#start --> IP check failed:',
+                  err
+                );
               }
             })()
           );

@@ -155,12 +155,9 @@ export default class Reachability extends EventsScope {
     const matchingReachedClusters = Object.values(this.clusterReachability).reduce(
       (acc, cluster) => {
         const reachedSubnetsArray = [
-          ...(cluster.getResult().udp.details.filter((subnet) => subnet['answered-tx'] === 1) ||
-            []),
-          ...(cluster.getResult().tcp.details.filter((subnet) => subnet['answered-tx'] === 1) ||
-            []),
-          ...(cluster.getResult().xtls.details.filter((subnet) => subnet['answered-tx'] === 1) ||
-            []),
+          ...cluster.getResult().udp.details.filter((subnet) => subnet['answered-tx'] > 0),
+          ...cluster.getResult().tcp.details.filter((subnet) => subnet['answered-tx'] > 0),
+          ...cluster.getResult().xtls.details.filter((subnet) => subnet['answered-tx'] > 0),
         ];
 
         const uniqueReachedSubnetsArray = uniqBy(
@@ -1042,6 +1039,15 @@ export default class Reachability extends EventsScope {
         async (data: ClientMediaIpsUpdatedEventData) => {
           results[key][data.protocol].clientMediaIPs = data.clientMediaIPs;
 
+          await this.storeResults(results);
+        }
+      );
+
+      this.clusterReachability[key].on(
+        Events.resultDetailsUpdated,
+        async (data: ResultEventData) => {
+          const {protocol, details} = data;
+          results[key][protocol].details = details;
           await this.storeResults(results);
         }
       );

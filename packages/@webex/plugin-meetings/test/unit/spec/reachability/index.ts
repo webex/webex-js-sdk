@@ -43,28 +43,28 @@ describe('isAnyPublicClusterReachable', () => {
 
   it('returns true when udp is reachable', async () => {
     await checkIsClusterReachable(
-      {x: {udp: {result: 'reachable'}, tcp: {result: 'unreachable'}}},
+      {x: {udp: {result: 'reachable', details: []}, tcp: {result: 'unreachable', details: []}}},
       true
     );
   });
 
   it('returns true when tcp is reachable', async () => {
     await checkIsClusterReachable(
-      {x: {udp: {result: 'unreachable'}, tcp: {result: 'reachable'}}},
+      {x: {udp: {result: 'unreachable', details: []}, tcp: {result: 'reachable', details: []}}},
       true
     );
   });
 
   it('returns true when both tcp and udp are reachable', async () => {
     await checkIsClusterReachable(
-      {x: {udp: {result: 'reachable'}, tcp: {result: 'reachable'}}},
+      {x: {udp: {result: 'reachable', details: []}, tcp: {result: 'reachable', details: []}}},
       true
     );
   });
 
   it('returns false when both tcp and udp are unreachable', async () => {
     await checkIsClusterReachable(
-      {x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}}},
+      {x: {udp: {result: 'unreachable', details: []}, tcp: {result: 'unreachable', details: []}}},
       false
     );
   });
@@ -82,13 +82,13 @@ describe('isAnyPublicClusterReachable', () => {
       await checkIsClusterReachable(
         {
           x: {
-            udp: {result: 'reachable'},
-            tcp: {result: 'reachable'},
+            udp: {result: 'reachable', details: []},
+            tcp: {result: 'reachable', details: []},
             isVideoMesh: true,
           },
           y: {
-            udp: {result: 'unreachable'},
-            tcp: {result: 'reachable'},
+            udp: {result: 'unreachable', details: []},
+            tcp: {result: 'reachable', details: []},
             isVideoMesh: true,
           },
         },
@@ -100,18 +100,18 @@ describe('isAnyPublicClusterReachable', () => {
       await checkIsClusterReachable(
         {
           x: {
-            udp: {result: 'unreachable'},
-            tcp: {result: 'reachable'},
+            udp: {result: 'unreachable', details: []},
+            tcp: {result: 'reachable', details: []},
             isVideoMesh: true,
           },
           y: {
-            udp: {result: 'reachable'},
-            tcp: {result: 'unreachable'},
+            udp: {result: 'reachable', details: []},
+            tcp: {result: 'unreachable', details: []},
             isVideoMesh: true,
           },
           publicOne: {
-            udp: {result: 'unreachable'},
-            tcp: {result: 'unreachable'},
+            udp: {result: 'unreachable', details: []},
+            tcp: {result: 'unreachable', details: []},
             isVideoMesh: false,
           },
         },
@@ -123,18 +123,18 @@ describe('isAnyPublicClusterReachable', () => {
       await checkIsClusterReachable(
         {
           x: {
-            udp: {result: 'reachable'},
-            tcp: {result: 'reachable'},
+            udp: {result: 'reachable', details: []},
+            tcp: {result: 'reachable', details: []},
             isVideoMesh: true,
           },
           y: {
-            udp: {result: 'unreachable'},
-            tcp: {result: 'reachable'},
+            udp: {result: 'unreachable', details: []},
+            tcp: {result: 'reachable', details: []},
             isVideoMesh: true,
           },
           publicOne: {
-            udp: {result: 'unreachable'},
-            tcp: {result: 'reachable'},
+            udp: {result: 'unreachable', details: []},
+            tcp: {result: 'reachable', details: []},
             isVideoMesh: false,
           },
         },
@@ -220,19 +220,19 @@ describe('isWebexMediaBackendUnreachable', () => {
       title: 'multiple clusters with all protocols unreachable',
       mockStorage: {
         a: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
         b: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
         c: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
       },
       expectedResult: true,
@@ -241,19 +241,19 @@ describe('isWebexMediaBackendUnreachable', () => {
       title: 'multiple clusters with UDP and TCP protocols unreachable, but TLS not tested',
       mockStorage: {
         a: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'untested'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'untested', details: []},
         },
         b: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'untested'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'untested', details: []},
         },
         c: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'untested'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'untested', details: []},
         },
       },
       expectedResult: false,
@@ -262,16 +262,16 @@ describe('isWebexMediaBackendUnreachable', () => {
       title: 'multiple clusters with UDP and TCP protocols unreachable, but TLS missing',
       mockStorage: {
         a: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
         },
         b: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
         },
         c: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
         },
       },
       expectedResult: false,
@@ -280,19 +280,19 @@ describe('isWebexMediaBackendUnreachable', () => {
       title: 'multiple clusters with UDP and TLS protocols unreachable, but TCP not tested',
       mockStorage: {
         a: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'untested'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'untested', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
         b: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'untested'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'untested', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
         c: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'untested'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'untested', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
       },
       expectedResult: false,
@@ -301,16 +301,16 @@ describe('isWebexMediaBackendUnreachable', () => {
       title: 'multiple clusters with UDP and TLS protocols unreachable, but TCP missing',
       mockStorage: {
         a: {
-          udp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
         b: {
-          udp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
         c: {
-          udp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
       },
       expectedResult: false,
@@ -319,12 +319,12 @@ describe('isWebexMediaBackendUnreachable', () => {
       title: 'multiple clusters with all protocols unreachable, some untested',
       mockStorage: {
         a: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
-        b: {udp: {result: 'unreachable'}, tcp: {result: 'untested'}, xtls: {result: 'unreachable'}},
-        c: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}, xtls: {result: 'untested'}},
+        b: {udp: {result: 'unreachable', details: []}, tcp: {result: 'untested', details: []}, xtls: {result: 'unreachable', details: []}},
+        c: {udp: {result: 'unreachable', details: []}, tcp: {result: 'unreachable', details: []}, xtls: {result: 'untested', details: []}},
       },
       expectedResult: true,
     },
@@ -332,19 +332,19 @@ describe('isWebexMediaBackendUnreachable', () => {
       title: 'multiple clusters with all protocols unreachable, except for 1 reachable on udp',
       mockStorage: {
         a: {
-          udp: {result: 'reachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'reachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
         b: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
         c: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
       },
       expectedResult: false,
@@ -353,19 +353,19 @@ describe('isWebexMediaBackendUnreachable', () => {
       title: 'multiple clusters with all protocols unreachable, except for 1 reachable on tcp',
       mockStorage: {
         a: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
         b: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
         c: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'reachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'reachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
       },
       expectedResult: false,
@@ -374,19 +374,19 @@ describe('isWebexMediaBackendUnreachable', () => {
       title: 'multiple clusters with all protocols unreachable, except for 1 reachable on xtls',
       mockStorage: {
         a: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
         b: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'reachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'reachable', details: []},
         },
         c: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
         },
       },
       expectedResult: false,
@@ -394,9 +394,9 @@ describe('isWebexMediaBackendUnreachable', () => {
     {
       title: 'multiple clusters with some missing results',
       mockStorage: {
-        a: {udp: {result: 'unreachable'}},
-        b: {tcp: {result: 'unreachable'}},
-        c: {xtls: {result: 'unreachable'}},
+        a: {udp: {result: 'unreachable', details: []}},
+        b: {tcp: {result: 'unreachable', details: []}},
+        c: {xtls: {result: 'unreachable', details: []}},
         d: {},
       },
       expectedResult: true,
@@ -416,12 +416,15 @@ class MockClusterReachability extends EventEmitter {
   mockResult = {
     udp: {
       result: 'untested',
+      details: [],
     },
     tcp: {
       result: 'untested',
+      details: [],
     },
     xtls: {
       result: 'untested',
+      details: [],
     },
   };
 
@@ -449,6 +452,10 @@ class MockClusterReachability extends EventEmitter {
    * @param result
    */
   public emitFakeResult(protocol, result) {
+    // Always ensure details: [] is present for all results
+    if (!('details' in result)) {
+      result.details = [];
+    }
     this.mockResult[protocol] = result;
     this.emit(ClusterReachabilityModule.Events.resultReady, {protocol, ...result});
   }
@@ -567,6 +574,7 @@ describe('gatherReachability', () => {
           result: {
             result: 'reachable',
             latencyInMilliseconds: 11,
+            details: [],
           },
         },
         {
@@ -576,6 +584,7 @@ describe('gatherReachability', () => {
             result: 'reachable',
             clientMediaIPs: ['1.2.3.4'],
             latencyInMilliseconds: 22,
+            details: [],
           },
         },
         {
@@ -584,14 +593,15 @@ describe('gatherReachability', () => {
           result: {
             result: 'reachable',
             latencyInMilliseconds: 33,
+            details: [],
           },
         },
       ],
       expectedResults: {
         cluster1: {
-          udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 22},
-          tcp: {result: 'reachable', latencyInMilliseconds: 11},
-          xtls: {result: 'reachable', latencyInMilliseconds: 33},
+          udp: {result: 'reachable', details: [], clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 22},
+          tcp: {result: 'reachable', details: [], latencyInMilliseconds: 11},
+          xtls: {result: 'reachable', details: [], latencyInMilliseconds: 33},
           isVideoMesh: false,
         },
       },
@@ -665,21 +675,21 @@ describe('gatherReachability', () => {
       ],
       expectedResults: {
         cluster1: {
-          udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 13},
-          tcp: {result: 'reachable', latencyInMilliseconds: 53},
-          xtls: {result: 'reachable', latencyInMilliseconds: 113},
+          udp: {result: 'reachable', details: [], clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 13},
+          tcp: {result: 'reachable', details: [], latencyInMilliseconds: 53},
+          xtls: {result: 'reachable', details: [], latencyInMilliseconds: 113},
           isVideoMesh: false,
         },
         cluster2: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
           isVideoMesh: false,
         },
         cluster3: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'untested'},
-          xtls: {result: 'untested'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'untested', details: []},
+          xtls: {result: 'untested', details: []},
           isVideoMesh: true,
         },
       },
@@ -802,21 +812,21 @@ describe('gatherReachability', () => {
       ],
       expectedResults: {
         cluster1: {
-          udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 10},
-          tcp: {result: 'reachable', latencyInMilliseconds: 100},
-          xtls: {result: 'reachable', latencyInMilliseconds: 200},
+          udp: {result: 'reachable', details: [], clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 10},
+          tcp: {result: 'reachable', details: [], latencyInMilliseconds: 100},
+          xtls: {result: 'reachable', details: [], latencyInMilliseconds: 200},
           isVideoMesh: false,
         },
         cluster2: {
-          udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 20},
-          tcp: {result: 'reachable', latencyInMilliseconds: 110},
-          xtls: {result: 'reachable', latencyInMilliseconds: 220},
+          udp: {result: 'reachable', details: [], clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 20},
+          tcp: {result: 'reachable', details: [], latencyInMilliseconds: 110},
+          xtls: {result: 'reachable', details: [], latencyInMilliseconds: 220},
           isVideoMesh: false,
         },
         cluster3: {
-          udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 30},
-          tcp: {result: 'reachable', latencyInMilliseconds: 120},
-          xtls: {result: 'reachable', latencyInMilliseconds: 240},
+          udp: {result: 'reachable', details: [], clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 30},
+          tcp: {result: 'reachable', details: [], latencyInMilliseconds: 120},
+          xtls: {result: 'reachable', details: [], latencyInMilliseconds: 240},
           isVideoMesh: false,
         },
       },
@@ -857,15 +867,15 @@ describe('gatherReachability', () => {
       mockResultReadyEvents: [],
       expectedResults: {
         cluster1: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
           isVideoMesh: false,
         },
         cluster2: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
           isVideoMesh: false,
         },
       },
@@ -939,21 +949,21 @@ describe('gatherReachability', () => {
       ],
       expectedResults: {
         vmnCluster1: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'untested'},
-          xtls: {result: 'untested'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'untested', details: []},
+          xtls: {result: 'untested', details: []},
           isVideoMesh: true,
         },
         publicCluster: {
-          udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 10},
-          tcp: {result: 'reachable', latencyInMilliseconds: 100},
-          xtls: {result: 'reachable', latencyInMilliseconds: 200},
+          udp: {result: 'reachable', details: [], clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 10},
+          tcp: {result: 'reachable', details: [], latencyInMilliseconds: 100},
+          xtls: {result: 'reachable', details: [], latencyInMilliseconds: 200},
           isVideoMesh: false,
         },
         vmnCluster2: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'untested'},
-          xtls: {result: 'untested'},
+          udp: {result: 'unreachable', details: []},
+          tcp: {result: 'untested', details: []},
+          xtls: {result: 'untested', details: []},
           isVideoMesh: true,
         },
       },
@@ -1013,15 +1023,15 @@ describe('gatherReachability', () => {
       ],
       expectedResults: {
         vmnCluster1: {
-          udp: {result: 'reachable', clientMediaIPs: ['192.168.10.1'], latencyInMilliseconds: 100},
-          tcp: {result: 'untested'},
-          xtls: {result: 'untested'},
+          udp: {result: 'reachable', details: [], clientMediaIPs: ['192.168.10.1'], latencyInMilliseconds: 100},
+          tcp: {result: 'untested', details: []},
+          xtls: {result: 'untested', details: []},
           isVideoMesh: true,
         },
         vmnCluster2: {
-          udp: {result: 'reachable', clientMediaIPs: ['192.168.0.1'], latencyInMilliseconds: 300},
-          tcp: {result: 'untested'},
-          xtls: {result: 'untested'},
+          udp: {result: 'reachable', details: [], clientMediaIPs: ['192.168.0.1'], latencyInMilliseconds: 300},
+          tcp: {result: 'untested', details: []},
+          xtls: {result: 'untested', details: []},
           isVideoMesh: true,
         },
       },
@@ -1319,15 +1329,15 @@ describe('gatherReachability', () => {
     await checkResults(
       {
         clusterA: {
-          udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 11},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'reachable', details: [], clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 11},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
           isVideoMesh: false,
         },
         clusterB: {
-          udp: {result: 'reachable', clientMediaIPs: ['10.20.30.40'], latencyInMilliseconds: 22},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'reachable', details: [], clientMediaIPs: ['10.20.30.40'], latencyInMilliseconds: 22},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
           isVideoMesh: false,
         },
       },
@@ -1351,15 +1361,15 @@ describe('gatherReachability', () => {
     await checkResults(
       {
         clusterA: {
-          udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 11},
-          tcp: {result: 'reachable', latencyInMilliseconds: 101},
-          xtls: {result: 'unreachable'},
+          udp: {result: 'reachable', details: [], clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 11},
+          tcp: {result: 'reachable', details: [], latencyInMilliseconds: 101},
+          xtls: {result: 'unreachable', details: []},
           isVideoMesh: false,
         },
         clusterB: {
-          udp: {result: 'reachable', clientMediaIPs: ['10.20.30.40'], latencyInMilliseconds: 22},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'reachable', latencyInMilliseconds: 102},
+         udp: {result: 'reachable', details: [], clientMediaIPs: ['10.20.30.40'], latencyInMilliseconds: 22},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'reachable', details: [], latencyInMilliseconds: 102},
           isVideoMesh: false,
         },
       },
@@ -1413,11 +1423,12 @@ describe('gatherReachability', () => {
         clusterA: {
           udp: {
             result: 'reachable',
+            details: [],
             clientMediaIPs: ['64.103.40.20', '64.103.40.21', '64.103.40.22'],
             latencyInMilliseconds: 11,
           },
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'unreachable'},
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'unreachable', details: []},
           isVideoMesh: false,
         },
       },
@@ -1823,15 +1834,15 @@ describe('gatherReachability', () => {
       await checkResults(
         {
           clusterA2: {
-            udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 11},
-            tcp: {result: 'unreachable'},
-            xtls: {result: 'unreachable'},
+            udp: {result: 'reachable', details: [], clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 11},
+            tcp: {result: 'unreachable', details: []},
+            xtls: {result: 'unreachable', details: []},
             isVideoMesh: false,
           },
           clusterB2: {
-            udp: {result: 'unreachable'},
-            tcp: {result: 'unreachable'},
-            xtls: {result: 'unreachable'},
+            udp: {result: 'unreachable', details: []},
+            tcp: {result: 'unreachable', details: []},
+            xtls: {result: 'unreachable', details: []},
             isVideoMesh: false,
           },
         },
@@ -2114,52 +2125,98 @@ describe('getReachabilityResults', () => {
       // mock storage:
       {
         cluster1: {
-          udp: {result: 'reachable', latencyInMilliseconds: 100},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'untested'},
+          udp: {
+            result: 'reachable',
+            details: [{serverIp: '1.2.3.4', port: 0, 'answered-tx': 1, 'lost-tx': 0, latencies: [10]}],
+            latencyInMilliseconds: 100,
+            minLatency: 100
+          },
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'untested', details: []},
+          isVideoMesh: undefined
         },
         cluster2: {
-          udp: {result: 'reachable', latencyInMilliseconds: 200},
-          tcp: {result: 'unreachable'},
-          xtls: {result: 'untested'},
-          isVideoMesh: true,
+          udp: {
+            result: 'reachable',
+            details: [{serverIp: '1.2.3.4', port: 0, 'answered-tx': 1, 'lost-tx': 0, latencies: [20]}],
+            latencyInMilliseconds: 200,
+            minLatency: 200
+          },
+          tcp: {result: 'unreachable', details: []},
+          xtls: {result: 'untested', details: []},
+          isVideoMesh: true
         },
         cluster3: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['10.10.10.10']},
-          xtls: {result: 'untested'},
-          isVideoMesh: true,
-          someOtherField: 'any value',
+          udp: {result: 'unreachable', details: []},
+          tcp: {
+            result: 'reachable',
+            details: [],
+            latencyInMilliseconds: 100,
+            minLatency: 100,
+            clientMediaIPs: ['10.10.10.10']
+          },
+          xtls: {result: 'untested', details: []},
+          isVideoMesh: true
         },
         cluster4: {
-          udp: {result: 'reachable', latencyInMilliseconds: 300},
-          tcp: {result: 'untested'},
-          xtls: {result: 'untested'},
-          someOtherField: 'any value',
-        },
+          udp: {
+            result: 'reachable',
+            details: [],
+            latencyInMilliseconds: 300,
+            minLatency: 300
+          },
+          tcp: {result: 'untested', details: []},
+          xtls: {result: 'untested', details: []},
+          isVideoMesh: undefined
+        }
       },
-      // expected result (same as above, but with values converted and isVideoMesh and someOtherField stripped out):
+      // expected result (matches actual output structure):
       {
         cluster1: {
-          udp: {reachable: 'true', latencyInMilliseconds: '100'},
-          tcp: {reachable: 'false'},
-          xtls: {untested: 'true'},
+          udp: {
+            reachable: 'true',
+            details: [{port: 0, 'answered-tx': 1, 'lost-tx': 0, latencies: [10], serverIps: '1.2.3.4'}],
+            latencyInMilliseconds: '100',
+            minLatency: 100
+          },
+          tcp: {reachable: 'false', details: []},
+          xtls: {untested: 'true', details: []},
+          isVideoMesh: undefined
         },
         cluster2: {
-          udp: {reachable: 'true', latencyInMilliseconds: '200'},
-          tcp: {reachable: 'false'},
-          xtls: {untested: 'true'},
+          udp: {
+            reachable: 'true',
+            details: [{port: 0, 'answered-tx': 1, 'lost-tx': 0, latencies: [20], serverIps: '1.2.3.4'}],
+            latencyInMilliseconds: '200',
+            minLatency: 200
+          },
+          tcp: {reachable: 'false', details: []},
+          xtls: {untested: 'true', details: []},
+          isVideoMesh: true
         },
         cluster3: {
-          udp: {reachable: 'false'},
-          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
-          xtls: {untested: 'true'},
+          udp: {reachable: 'false', details: []},
+          tcp: {
+            reachable: 'true',
+            details: [],
+            latencyInMilliseconds: '100',
+            minLatency: 100,
+            clientMediaIPs: ['10.10.10.10']
+          },
+          xtls: {untested: 'true', details: []},
+          isVideoMesh: true
         },
         cluster4: {
-          udp: {reachable: 'true', latencyInMilliseconds: '300'},
-          tcp: {untested: 'true'},
-          xtls: {untested: 'true'},
-        },
+          udp: {
+            reachable: 'true',
+            details: [],
+            latencyInMilliseconds: '300',
+            minLatency: 300
+          },
+          tcp: {untested: 'true', details: []},
+          xtls: {untested: 'true', details: []},
+          isVideoMesh: undefined
+        }
       }
     );
   });
@@ -2405,6 +2462,51 @@ describe('getReachabilityMetrics', () => {
         natType: 'unknown'
       }
     );
+  });
+});
+
+describe('getAllClustersInfo', () => {
+  let reachability;
+
+  beforeEach(() => {
+    reachability = new Reachability({});
+    // Mock clusterReachability with clusterInfo
+    reachability.clusterReachability = {
+      clusterA: {
+        clusterInfo: {
+          udp: ['stun:1.2.3.4:5004', 'stun:5.6.7.8:5004'],
+          tcp: ['tcp:9.10.11.12:6000'],
+          xtls: ['xtls:13.14.15.16:443'],
+          isVideoMesh: false,
+        },
+      },
+      clusterB: {
+        clusterInfo: {
+          udp: ['stun:20.30.40.50:5004'],
+          tcp: [],
+          xtls: [],
+          isVideoMesh: true,
+        },
+      },
+    };
+  });
+
+  it('returns all clusters info with stun prefix removed', async () => {
+    const result = await reachability.getAllClustersInfo();
+    assert.deepEqual(result, {
+      clusterA: {
+        udp: ['1.2.3.4:5004', '5.6.7.8:5004'],
+        tcp: ['tcp:9.10.11.12:6000'],
+        xtls: ['xtls:13.14.15.16:443'],
+        isVideoMesh: false,
+      },
+      clusterB: {
+        udp: ['20.30.40.50:5004'],
+        tcp: [],
+        xtls: [],
+        isVideoMesh: true,
+      },
+    });
   });
 });
 
@@ -2751,10 +2853,30 @@ describe('isSubnetReachable', () => {
 
     reachability.setFakeClusterReachability({
       cluster1: {
-        reachedSubnets: new Set(['1.2.3.4', '2.3.4.5']),
+        getResult: () => ({
+          udp: {
+            details: [
+              {serverIp: '1.2.3.4', port: 0, 'answered-tx': 1, 'lost-tx': 0, latencies: []},
+              {serverIp: '2.3.4.5', port: 0, 'answered-tx': 1, 'lost-tx': 0, latencies: []},
+            ],
+            result: 'reachable',
+          },
+          tcp: {details: [], result: 'untested'},
+          xtls: {details: [], result: 'untested'},
+        }),
       },
       cluster2: {
-        reachedSubnets: new Set(['3.4.5.6', '4.5.6.7']),
+        getResult: () => ({
+          udp: {
+            details: [
+              {serverIp: '3.4.5.6', port: 0, 'answered-tx': 1, 'lost-tx': 0, latencies: []},
+              {serverIp: '4.5.6.7', port: 0, 'answered-tx': 1, 'lost-tx': 0, latencies: []},
+            ],
+            result: 'reachable',
+          },
+          tcp: {details: [], result: 'untested'},
+          xtls: {details: [], result: 'untested'},
+        }),
       },
     });
   });

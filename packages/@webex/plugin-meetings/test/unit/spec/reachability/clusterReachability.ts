@@ -23,6 +23,7 @@ describe('ClusterReachability', () => {
     [Events.resultReady]: [],
     [Events.clientMediaIpsUpdated]: [],
     [Events.natTypeUpdated]: [],
+    [Events.resultDetailsUpdated]: [],
   };
   const FAKE_OFFER = {type: 'offer', sdp: 'fake sdp'};
 
@@ -30,6 +31,7 @@ describe('ClusterReachability', () => {
     emittedEvents[Events.resultReady].length = 0;
     emittedEvents[Events.clientMediaIpsUpdated].length = 0;
     emittedEvents[Events.natTypeUpdated].length = 0;
+    emittedEvents[Events.resultDetailsUpdated].length = 0;
   };
   beforeEach(() => {
     fakePeerConnection = {
@@ -37,10 +39,15 @@ describe('ClusterReachability', () => {
       setLocalDescription: sinon.stub().resolves(),
       close: sinon.stub(),
       iceGatheringState: 'new',
+      onicecandidate: () => {},
+      onicegatheringstatechange: () => {},
     };
 
     previousRTCPeerConnection = global.RTCPeerConnection;
     global.RTCPeerConnection = sinon.stub().returns(fakePeerConnection);
+    // Reset stub history for createOffer and setLocalDescription
+    fakePeerConnection.createOffer.resetHistory();
+    fakePeerConnection.setLocalDescription.resetHistory();
 
     clusterReachability = new ClusterReachability('testName', {
       isVideoMesh: false,
@@ -64,6 +71,10 @@ describe('ClusterReachability', () => {
     clusterReachability.on(Events.natTypeUpdated, (data: NatTypeUpdatedEventData) => {
       emittedEvents[Events.natTypeUpdated].push(data);
     });
+
+    clusterReachability.on(Events.resultDetailsUpdated, (data: ResultEventData) => {
+      emittedEvents[Events.resultDetailsUpdated].push(data);
+    });
   });
 
   afterEach(() => {
@@ -76,6 +87,7 @@ describe('ClusterReachability', () => {
     assert.equal(clusterReachability.isVideoMesh, false);
     assert.equal(clusterReachability.numUdpUrls, 2);
     assert.equal(clusterReachability.numTcpUrls, 2);
+    assert.equal(clusterReachability.numXTlsUrls, 2);
   });
 
   it('should create a peer connection with the right config', () => {
@@ -128,9 +140,9 @@ describe('ClusterReachability', () => {
 
   it('returns correct results before start() is called', () => {
     assert.deepEqual(clusterReachability.getResult(), {
-      udp: {result: 'untested'},
-      tcp: {result: 'untested'},
-      xtls: {result: 'untested'},
+      udp: {result: 'untested', details: []},
+      tcp: {result: 'untested', details: []},
+      xtls: {result: 'untested', details: []},
     });
 
     // verify that no events were emitted
@@ -186,9 +198,9 @@ describe('ClusterReachability', () => {
       assert.deepEqual(emittedEvents[Events.clientMediaIpsUpdated], []);
 
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'unreachable'},
-        tcp: {result: 'unreachable'},
-        xtls: {result: 'unreachable'},
+        udp: {result: 'unreachable', details: []},
+        tcp: {result: 'unreachable', details: []},
+        xtls: {result: 'unreachable', details: []},
       });
     });
 
@@ -205,15 +217,37 @@ describe('ClusterReachability', () => {
         result: 'reachable',
         latencyInMilliseconds: 100,
         clientMediaIPs: ['somePublicIp'],
+        details: [
+          {
+            serverIp: 'somePublicIp',
+            port: null,
+            'answered-tx': 1,
+            'lost-tx': 0,
+            latencies: [100]
+          }
+        ]
       });
 
       clusterReachability.abort();
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['somePublicIp']},
-        tcp: {result: 'unreachable'},
-        xtls: {result: 'unreachable'},
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 100,
+          clientMediaIPs: ['somePublicIp'],
+          details: [
+            {
+              serverIp: 'somePublicIp',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [100]
+            }
+          ]
+        },
+        tcp: {result: 'unreachable', details: []},
+        xtls: {result: 'unreachable', details: []},
       });
     });
 
@@ -227,9 +261,9 @@ describe('ClusterReachability', () => {
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'unreachable'},
-        tcp: {result: 'unreachable'},
-        xtls: {result: 'unreachable'},
+        udp: {result: 'unreachable', details: []},
+        tcp: {result: 'unreachable', details: []},
+        xtls: {result: 'unreachable', details: []},
       });
     });
 
@@ -245,9 +279,22 @@ describe('ClusterReachability', () => {
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'reachable', latencyInMilliseconds: 30, clientMediaIPs: ['somePublicIp1']},
-        tcp: {result: 'unreachable'},
-        xtls: {result: 'unreachable'},
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 30,
+          clientMediaIPs: ['somePublicIp1'],
+          details: [
+            {
+              serverIp: 'somePublicIp1',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [30]
+            }
+          ]
+        },
+        tcp: {result: 'unreachable', details: []},
+        xtls: {result: 'unreachable', details: []},
       });
     });
 
@@ -273,9 +320,32 @@ describe('ClusterReachability', () => {
           result: 'reachable',
           latencyInMilliseconds: 10,
           clientMediaIPs: ['somePublicIp1', 'somePublicIp2', 'somePublicIp3'],
+          details: [
+            {
+              serverIp: 'somePublicIp1',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [10]
+            },
+            {
+              serverIp: 'somePublicIp2',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [20]
+            },
+            {
+              serverIp: 'somePublicIp3',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [30]
+            }
+          ]
         },
-        tcp: {result: 'unreachable'},
-        xtls: {result: 'unreachable'},
+        tcp: {result: 'unreachable', details: []},
+        xtls: {result: 'unreachable', details: []}
       });
     });
 
@@ -297,9 +367,35 @@ describe('ClusterReachability', () => {
 
       // latency should be from only the first candidates, but the clientMediaIps should be from only from UDP candidates
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'unreachable'},
-        tcp: {result: 'reachable', latencyInMilliseconds: 10},
-        xtls: {result: 'unreachable'},
+        udp: {result: 'unreachable',  details: []},
+        tcp: {
+          result: 'reachable',
+          latencyInMilliseconds: 10,
+          details: [
+            {
+              serverIp: 'someTurnRelayIp1',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [10]
+            },
+            {
+              serverIp: 'someTurnRelayIp2',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [20]
+            },
+            {
+              serverIp: 'someTurnRelayIp3',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [30]
+            }
+          ]
+        },
+        xtls: {result: 'unreachable',  details: []},
       });
     });
 
@@ -327,9 +423,35 @@ describe('ClusterReachability', () => {
 
       // latency should be from only the first candidates, but the clientMediaIps should be from only from UDP candidates
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'unreachable'},
-        tcp: {result: 'unreachable'},
-        xtls: {result: 'reachable', latencyInMilliseconds: 10},
+        udp: {result: 'unreachable',  details: []},
+        tcp: {result: 'unreachable', details: []},
+        xtls: {
+          result: 'reachable',
+          latencyInMilliseconds: 10,
+          details: [
+            {
+              serverIp: 'someTurnRelayIp1',
+              port: 443,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [10]
+            },
+            {
+              serverIp: 'someTurnRelayIp2',
+              port: 443,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [20]
+            },
+            {
+              serverIp: 'someTurnRelayIp3',
+              port: 443,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [30]
+            }
+          ]
+        }
       });
     });
 
@@ -347,6 +469,15 @@ describe('ClusterReachability', () => {
         result: 'reachable',
         latencyInMilliseconds: 10,
         clientMediaIPs: ['somePublicIp1'],
+        details: [
+          {
+            serverIp: 'somePublicIp1',
+            port: null,
+            'answered-tx': 1,
+            'lost-tx': 0,
+            latencies: [10]
+          }
+        ]
       });
       assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
       resetEmittedEvents();
@@ -393,9 +524,49 @@ describe('ClusterReachability', () => {
           result: 'reachable',
           latencyInMilliseconds: 10,
           clientMediaIPs: ['somePublicIp1', 'somePublicIp2'],
+          details: [
+            {
+              serverIp: 'somePublicIp1',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [20]
+            },
+            {
+              serverIp: 'somePublicIp2',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [40]
+            }
+          ]
         },
-        tcp: {result: 'reachable', latencyInMilliseconds: 40},
-        xtls: {result: 'reachable', latencyInMilliseconds: 40},
+        tcp: {
+          result: 'reachable',
+          latencyInMilliseconds: 40,
+          details: [
+            {
+              serverIp: 'someTurnRelayIp',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [40]
+            }
+          ]
+        },
+        xtls: {
+          result: 'reachable',
+          latencyInMilliseconds: 40,
+          details: [
+            {
+              serverIp: 'someTurnRelayIp',
+              port: 443,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [40]
+            }
+          ]
+        }
       });
     });
 
@@ -435,13 +606,53 @@ describe('ClusterReachability', () => {
           result: 'reachable',
           latencyInMilliseconds: 10,
           clientMediaIPs: ['somePublicIp1'],
+          details: [
+            {
+              serverIp: 'somePublicIp1',
+              port: 1000,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [10]
+            },
+            {
+              serverIp: 'somePublicIp1',
+              port: 2000,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [20]
+            }
+          ]
         },
-        tcp: {result: 'reachable', latencyInMilliseconds: 20},
-        xtls: {result: 'reachable', latencyInMilliseconds: 20},
+        tcp: {
+          result: 'reachable',
+          latencyInMilliseconds: 20,
+          details: [
+            {
+              serverIp: 'someTurnRelayIp',
+              port: null,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [20]
+            }
+          ]
+        },
+        xtls: {
+          result: 'reachable',
+          latencyInMilliseconds: 20,
+          details: [
+            {
+              serverIp: 'someTurnRelayIp',
+              port: 443,
+              'answered-tx': 1,
+              'lost-tx': 0,
+              latencies: [20]
+            }
+          ]
+        }
       });
     });
 
-    it('should gather correctly reached subnets', async () => {
+    it('should gather correctly reached subnets in details', async () => {
       const promise = clusterReachability.start();
 
       await clock.tickAsync(10);
@@ -452,14 +663,20 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
 
-      assert.deepEqual(Array.from(clusterReachability.reachedSubnets), [
-        '1.2.3.4',
-        '4.3.2.1',
+      const udpDetails = clusterReachability.getResult().udp.details;
+      const tcpDetails = clusterReachability.getResult().tcp.details;
+
+      assert.sameMembers(
+        udpDetails.map(d => d.serverIp),
+        ['1.2.3.4', '4.3.2.1']
+      );
+      assert.include(
+        tcpDetails.map(d => d.serverIp),
         'someTurnRelayIp'
-      ]);
+      );
     });
 
-    it('should store only unique subnet address', async () => {
+    it('should store only unique subnet address in details', async () => {
       const promise = clusterReachability.start();
 
       await clock.tickAsync(10);
@@ -470,7 +687,68 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
 
-      assert.deepEqual(Array.from(clusterReachability.reachedSubnets), ['1.2.3.4']);
+      const udpDetails = clusterReachability.getResult().udp.details;
+      const tcpDetails = clusterReachability.getResult().tcp.details;
+
+      assert.sameMembers(
+        udpDetails.map(d => `${d.serverIp}:${d.port}`),
+        ['1.2.3.4:5004', '1.2.3.4:9000']
+      );
+      assert.sameMembers(
+        tcpDetails.map(d => d.serverIp),
+        ['1.2.3.4']
+      );
+    });
+
+    it('should not add duplicate details for the same (serverIp, port) pair', async () => {
+      const promise = clusterReachability.start();
+
+      await clock.tickAsync(10);
+      fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: '1.2.3.4', port: 5004}});
+      await clock.tickAsync(10);
+      fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: '1.2.3.4', port: 5004}});
+
+      clusterReachability.abort();
+      await promise;
+
+      const udpDetails = clusterReachability.getResult().udp.details;
+      assert.lengthOf(udpDetails, 1);
+      assert.deepEqual(udpDetails[0], {
+        serverIp: '1.2.3.4',
+        port: 5004,
+        'answered-tx': 1,
+        'lost-tx': 0,
+        latencies: [20]
+      });
+    });
+
+    it('should not set latency for failed subnets', async () => {
+      clusterReachability.result.udp.details.push({
+        serverIp: '2.2.2.2',
+        port: 5004,
+        'answered-tx': 0,
+        'lost-tx': 1,
+        latencies: [],
+      });
+
+      const udpDetails = clusterReachability.getResult().udp.details;
+      const failed = udpDetails.find(d => d.serverIp === '2.2.2.2');
+      assert.deepEqual(failed.latencies, []);
+    });
+
+    it('should set latency for successful subnets', async () => {
+      // Simulate a successful subnet in details
+      clusterReachability.result.udp.details.push({
+        serverIp: '3.3.3.3',
+        port: 5004,
+        'answered-tx': 1,
+        'lost-tx': 0,
+        latencies: [123],
+      });
+
+      const udpDetails = clusterReachability.getResult().udp.details;
+      const success = udpDetails.find(d => d.serverIp === '3.3.3.3');
+      assert.deepEqual(success.latencies, [123]);
     });
   });
 });
