@@ -148,15 +148,35 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @param b end
    * @returns latency
    */
-  public getDiffBetweenTimestamps(a: MetricEventNames, b: MetricEventNames) {
+  public getDiffBetweenTimestamps(
+    a: MetricEventNames,
+    b: MetricEventNames,
+    clampValues?: {minimum?: number; maximum?: number}
+  ) {
     const start = this.latencyTimestamps.get(a);
     const end = this.latencyTimestamps.get(b);
 
-    if (typeof start === 'number' && typeof end === 'number') {
-      return end - start;
+    if (typeof start !== 'number' || typeof end !== 'number') {
+      return undefined;
     }
 
-    return undefined;
+    const diff = end - start;
+
+    if (!clampValues) {
+      return diff;
+    }
+
+    const {minimum = 0, maximum} = clampValues;
+
+    if (diff < minimum) {
+      return minimum;
+    }
+
+    if (maximum !== undefined && diff > maximum) {
+      return maximum;
+    }
+
+    return diff;
   }
 
   /**
@@ -172,7 +192,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getMeetingInfoReqResp() {
     return this.getDiffBetweenTimestamps(
       'internal.client.meetinginfo.request',
-      'internal.client.meetinginfo.response'
+      'internal.client.meetinginfo.response',
+      {maximum: 1200000}
     );
   }
 
@@ -215,7 +236,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getCallInitJoinReq() {
     return this.getDiffBetweenTimestamps(
       'internal.client.interstitial-window.click.joinbutton',
-      'client.locus.join.request'
+      'client.locus.join.request',
+      {maximum: 1200000}
     );
   }
 
@@ -224,7 +246,11 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getJoinReqResp() {
-    return this.getDiffBetweenTimestamps('client.locus.join.request', 'client.locus.join.response');
+    return this.getDiffBetweenTimestamps(
+      'client.locus.join.request',
+      'client.locus.join.response',
+      {maximum: 1200000}
+    );
   }
 
   /**
@@ -245,7 +271,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getLocalSDPGenRemoteSDPRecv() {
     return this.getDiffBetweenTimestamps(
       'client.media-engine.local-sdp-generated',
-      'client.media-engine.remote-sdp-received'
+      'client.media-engine.remote-sdp-received',
+      {maximum: 1200000}
     );
   }
 
@@ -254,7 +281,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getICESetupTime() {
-    return this.getDiffBetweenTimestamps('client.ice.start', 'client.ice.end');
+    return this.getDiffBetweenTimestamps('client.ice.start', 'client.ice.end', {maximum: 1200000});
   }
 
   /**
@@ -378,7 +405,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getCallInitMediaEngineReady() {
     return this.getDiffBetweenTimestamps(
       'internal.client.interstitial-window.click.joinbutton',
-      'client.media-engine.ready'
+      'client.media-engine.ready',
+      {maximum: 1200000}
     );
   }
 
