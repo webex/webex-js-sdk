@@ -130,7 +130,7 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(res2, undefined);
     });
 
-    describe.only('getDiffBetweenTimestamps with clamping', () => {
+    describe('getDiffBetweenTimestamps with clamping', () => {
       it('should return diff without clamping when no clampValues provided', () => {
         cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
         cdl.saveTimestamp({key: 'client.alert.removed', value: 50});
