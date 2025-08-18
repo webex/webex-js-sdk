@@ -4273,12 +4273,12 @@ describe('internal-plugin-metrics', () => {
         const remainingWarningKeys = Array.from(cd.eventLimitWarningsLogged.keys());
 
         // Should have no keys with correlationId1
-        assert.isFalse(remainingTrackerKeys.some(key => key.includes(correlationId1)));
-        assert.isFalse(remainingWarningKeys.some(key => key.includes(correlationId1)));
+        assert.isFalse(remainingTrackerKeys.some(key => key.split(':')[1] === correlationId1));
+        assert.isFalse(remainingWarningKeys.some(key => key.split(':')[1] === correlationId1));
 
         // Should still have keys with correlationId2
-        assert.isTrue(remainingTrackerKeys.some(key => key.includes(correlationId2)));
-        assert.isTrue(remainingWarningKeys.some(key => key.includes(correlationId2)));
+        assert.isTrue(remainingTrackerKeys.some(key => key.split(':')[1] === correlationId2));
+        assert.isTrue(remainingWarningKeys.some(key => key.split(':')[1] === correlationId2));
       });
 
       it('should handle empty correlationId gracefully', () => {
