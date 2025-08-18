@@ -2431,7 +2431,7 @@ describe('internal-plugin-metrics', () => {
         );
       });
 
-      it('should send event if meetingId provided but meeting is undefined', () => {
+      it('should record failure metric when meetingId is provided but meeting is undefined', () => {
         webex.meetings.getBasicMeetingInformation = sinon.stub().returns(undefined);
 
         cd.submitClientEvent({name: 'client.alert.displayed', options: {meetingId: 'meetingId'}});
@@ -2557,7 +2557,7 @@ describe('internal-plugin-metrics', () => {
               sinon.match(createEventLimitRegex(name, 'mediaType video'))
             );
 
-            // Send fourth event of with different mediaType
+            // Send fourth event with a different mediaType
             cd.submitClientEvent({
               name: name as any,
               payload: {mediaType: 'audio'},
