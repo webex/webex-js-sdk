@@ -43,7 +43,6 @@
     "@webex/eslint-config-legacy": "workspace:*",
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
-    "@webex/plugin-meetings": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
     "@webex/test-helper-chai": "workspace:*",
     "@webex/test-helper-mocha": "workspace:*",
