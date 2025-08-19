@@ -1686,17 +1686,17 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Getter - Returns callStateForMetrics.pstnCorrelationId
-   * @returns {string}
+   * @returns {string | undefined}
    */
-  get pstnCorrelationId() {
+  get pstnCorrelationId(): string | undefined {
     return this.callStateForMetrics.pstnCorrelationId;
   }
 
   /**
    * Setter - sets callStateForMetrics.pstnCorrelationId
-   * @param {string} correlationId
+   * @param {string | undefined} correlationId
    */
-  set pstnCorrelationId(correlationId: string) {
+  set pstnCorrelationId(correlationId: string | undefined) {
     this.callStateForMetrics.pstnCorrelationId = correlationId;
   }
 
@@ -6129,14 +6129,16 @@ export default class Meeting extends StatelessWebexPlugin {
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_DIAL_IN_FAILURE, {
             correlation_id: this.correlationId,
             dial_in_url: this.dialInUrl,
-            dial_in_correlation_id: this.pstnCorrelationId,
+            dial_in_correlation_id: pstnCorrelationId,
             locus_id: locusUrl.split('/').pop(),
             client_url: this.deviceUrl,
             reason: error.error?.message,
             stack: error.stack,
           });
 
-          this.pstnCorrelationId = undefined;
+          if (this.pstnCorrelationId === pstnCorrelationId) {
+            this.pstnCorrelationId = undefined;
+          }
 
           return Promise.reject(error);
         })
@@ -6172,14 +6174,16 @@ export default class Meeting extends StatelessWebexPlugin {
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_DIAL_OUT_FAILURE, {
             correlation_id: this.correlationId,
             dial_out_url: this.dialOutUrl,
-            dial_out_correlation_id: this.pstnCorrelationId,
+            dial_out_correlation_id: pstnCorrelationId,
             locus_id: locusUrl.split('/').pop(),
             client_url: this.deviceUrl,
             reason: error.error?.message,
             stack: error.stack,
           });
 
-          this.pstnCorrelationId = undefined;
+          if (this.pstnCorrelationId === pstnCorrelationId) {
+            this.pstnCorrelationId = undefined;
+          }
 
           return Promise.reject(error);
         })
@@ -6194,6 +6198,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise}
    */
   public disconnectPhoneAudio() {
+    const correlationToClear = this.pstnCorrelationId;
+
     return Promise.all([
       this.isPhoneProvisioned(this.dialInDeviceStatus)
         ? MeetingUtil.disconnectPhoneAudio(this, this.dialInUrl)
@@ -6202,7 +6208,9 @@ export default class Meeting extends StatelessWebexPlugin {
         ? MeetingUtil.disconnectPhoneAudio(this, this.dialOutUrl)
         : Promise.resolve(),
     ]).then(() => {
-      this.pstnCorrelationId = undefined;
+      if (this.pstnCorrelationId === correlationToClear) {
+        this.pstnCorrelationId = undefined;
+      }
     });
   }
 

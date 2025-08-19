@@ -6547,6 +6547,7 @@ describe('plugin-meetings', () => {
           // Verify pstnCorrelationId was set
           assert.exists(meeting.pstnCorrelationId);
           assert.notEqual(meeting.pstnCorrelationId, meeting.correlationId);
+          const firstPstnCorrelationId = meeting.pstnCorrelationId
 
           meeting.meetingRequest.dialIn.resetHistory();
 
@@ -6560,6 +6561,12 @@ describe('plugin-meetings', () => {
             clientUrl: meeting.deviceUrl,
           });
           assert.notCalled(meeting.meetingRequest.dialOut);
+          // A new PSTN correlationId should be generated for the second attempt
+          assert.notEqual(
+            meeting.pstnCorrelationId,
+            firstPstnCorrelationId,
+            'pstnCorrelationId should be regenerated on each dial-in attempt'
+          );
         });
 
         it('given a phone number, triggers dial-out, delegating request to meetingRequest correctly', async () => {
@@ -6580,6 +6587,7 @@ describe('plugin-meetings', () => {
           // Verify pstnCorrelationId was set
           assert.exists(meeting.pstnCorrelationId);
           assert.notEqual(meeting.pstnCorrelationId, meeting.correlationId);
+          const firstPstnCorrelationId = meeting.pstnCorrelationId;
 
           meeting.meetingRequest.dialOut.resetHistory();
 
@@ -6594,6 +6602,12 @@ describe('plugin-meetings', () => {
             phoneNumber,
           });
           assert.notCalled(meeting.meetingRequest.dialIn);
+          // A new PSTN correlationId should be generated for the second attempt
+          assert.notEqual(
+            meeting.pstnCorrelationId,
+            firstPstnCorrelationId,
+            'pstnCorrelationId should be regenerated on each dial-out attempt'
+          );
         });
 
         it('rejects if the request failed (dial in)', async () => {
@@ -6688,6 +6702,8 @@ describe('plugin-meetings', () => {
           
           // Verify that pstnCorrelationId is still cleared even when no phone connection is active
           assert.equal(meeting.pstnCorrelationId, undefined);
+           // And verify no disconnect was attempted
+          assert.notCalled(MeetingUtil.disconnectPhoneAudio);
         });
       });
 
