@@ -642,13 +642,17 @@ const Mercury = WebexPlugin.extend({
       )
       .then(() => {
         this._emit('event', envelope);
+        this._emit(`event:${sessionId}`, envelope);
         const [namespace] = data.eventType.split('.');
 
         if (namespace === data.eventType) {
           this._emit(`event:${namespace}`, envelope);
+          this._emit(`event:${namespace}:${sessionId}`, envelope);
         } else {
           this._emit(`event:${namespace}`, envelope);
           this._emit(`event:${data.eventType}`, envelope);
+          this._emit(`event:${namespace}:${sessionId}`, envelope);
+          this._emit(`event:${data.eventType}:${sessionId}`, envelope);
         }
       })
       .catch((reason) => {

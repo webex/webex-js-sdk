@@ -6042,7 +6042,7 @@ export default class Meeting extends StatelessWebexPlugin {
         llmSessionId
       );
       // @ts-ignore - Fix type
-      this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+      this.webex.internal.llm.off(`event:relay.event:${llmSessionId}`, this.processRelayEvent);
     }
 
     if (!isJoined) {
@@ -6054,9 +6054,9 @@ export default class Meeting extends StatelessWebexPlugin {
       .registerAndConnect(url, dataChannelUrl, llmSessionId)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
-        this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+        this.webex.internal.llm.off(`event:relay.event:${llmSessionId}`, this.processRelayEvent);
         // @ts-ignore - Fix type
-        this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+        this.webex.internal.llm.on(`event:relay.event:${llmSessionId}`, this.processRelayEvent);
         LoggerProxy.logger.info(
           `Meeting:index#updateLLMConnection --> enabled to receive relay events for connection ${llmSessionId}!`
         );
