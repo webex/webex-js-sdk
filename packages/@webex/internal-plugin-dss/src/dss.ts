@@ -375,7 +375,14 @@ const DSS = WebexPlugin.extend({
    * @throws {DssTimeoutError} when server does not respond in the specified timeframe
    */
   search(options: SearchOptions) {
-    const {requestedTypes, resultSize, queryString} = options;
+    const {
+      requestedTypes,
+      resultSize,
+      queryString,
+      includeCommonAreaPhones,
+      includeOnlyPairableDevices,
+      includePersonalDevices,
+    } = options;
 
     return this._request({
       dataPath: SEARCH_DATA_PATH,
@@ -384,6 +391,9 @@ const DSS = WebexPlugin.extend({
         queryString,
         resultSize,
         requestedTypes,
+        includeCommonAreaPhones,
+        includeOnlyPairableDevices,
+        includePersonalDevices,
       },
     }).then(({resultArray}) => resultArray);
   },
