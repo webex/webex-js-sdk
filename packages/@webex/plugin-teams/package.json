@@ -34,13 +34,13 @@
   },
   "dependencies": {
     "@webex/internal-plugin-device": "workspace:*",
-    "@webex/plugin-logger": "workspace:*",
-    "@webex/plugin-memberships": "workspace:*",
-    "@webex/plugin-rooms": "workspace:*",
-    "@webex/test-helper-chai": "workspace:*",
-    "@webex/test-helper-test-users": "workspace:*",
     "@webex/webex-core": "workspace:*",
     "lodash": "^4.17.21"
+  },
+  "peerDependencies": {
+    "@webex/plugin-logger": "workspace:*",
+    "@webex/plugin-memberships": "workspace:*",
+    "@webex/plugin-rooms": "workspace:*"
   },
   "scripts": {
     "build": "yarn build:src",
