@@ -6009,6 +6009,11 @@ export default class Meeting extends StatelessWebexPlugin {
 
     const isJoined = this.isJoined();
 
+    // Generate unique connection ID for this meeting
+    const llmSessionId = this.webinar.isJoinPracticeSessionDataChannel()
+      ? 'practice-session'
+      : 'main-session';
+
     // webinar panelist should use new data channel in practice session
     const dataChannelUrl =
       this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelUrl
@@ -6016,12 +6021,12 @@ export default class Meeting extends StatelessWebexPlugin {
         : datachannelUrl;
 
     // @ts-ignore - Fix type
-    if (this.webex.internal.llm.isConnected()) {
+    if (this.webex.internal.llm.isConnected(llmSessionId)) {
       if (
         // @ts-ignore - Fix type
-        url === this.webex.internal.llm.getLocusUrl() &&
+        url === this.webex.internal.llm.getLocusUrl(llmSessionId) &&
         // @ts-ignore - Fix type
-        dataChannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
+        dataChannelUrl === this.webex.internal.llm.getDatachannelUrl(llmSessionId) &&
         isJoined
       ) {
         return undefined;
@@ -6033,7 +6038,8 @@ export default class Meeting extends StatelessWebexPlugin {
               code: 3050,
               reason: 'done (permanent)',
             }
-          : undefined
+          : undefined,
+        llmSessionId
       );
       // @ts-ignore - Fix type
       this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
@@ -6045,14 +6051,14 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, dataChannelUrl)
+      .registerAndConnect(url, dataChannelUrl, llmSessionId)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
         // @ts-ignore - Fix type
         this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
         LoggerProxy.logger.info(
-          'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
+          `Meeting:index#updateLLMConnection --> enabled to receive relay events for connection ${llmSessionId}!`
         );
 
         return Promise.resolve(registerAndConnectResult);

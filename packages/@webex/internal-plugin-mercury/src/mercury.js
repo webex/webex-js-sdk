@@ -87,7 +87,7 @@ const Mercury = WebexPlugin.extend({
 
   /**
    * Get all active socket connections
-   * @returns {Map} Map of connectionId to socket instances
+   * @returns {Map} Map of sessionId to socket instances
    */
   getSockets() {
     return this.sockets;
@@ -95,11 +95,11 @@ const Mercury = WebexPlugin.extend({
 
   /**
    * Get a specific socket by connection ID
-   * @param {string} connectionId - The connection identifier
+   * @param {string} sessionId - The connection identifier
    * @returns {Socket|undefined} The socket instance or undefined if not found
    */
-  getSocket(connectionId) {
-    return this.sockets.get(connectionId);
+  getSocket(sessionId) {
+    return this.sockets.get(sessionId);
   },
 
   /**
@@ -117,11 +117,11 @@ const Mercury = WebexPlugin.extend({
   },
 
   @oneFlight
-  connect(webSocketUrl, connectionId = 'default') {
-    const existingSocket = this.sockets.get(connectionId);
+  connect(webSocketUrl, sessionId = 'main-session') {
+    const existingSocket = this.sockets.get(sessionId);
     if (existingSocket && existingSocket.connected) {
       this.logger.info(
-        `${this.namespace}: connection ${connectionId} already connected, will not connect again`
+        `${this.namespace}: connection ${sessionId} already connected, will not connect again`
       );
 
       return Promise.resolve();
@@ -129,7 +129,7 @@ const Mercury = WebexPlugin.extend({
 
     this.connecting = true;
 
-    this.logger.info(`${this.namespace}: starting connection attempt for ${connectionId}`);
+    this.logger.info(`${this.namespace}: starting connection attempt for ${sessionId}`);
     this.logger.info(
       `${this.namespace}: debug_mercury_logging stack: `,
       new Error('debug_mercury_logging').stack
@@ -138,9 +138,9 @@ const Mercury = WebexPlugin.extend({
     return Promise.resolve(
       this.webex.internal.device.registered || this.webex.internal.device.register()
     ).then(() => {
-      this.logger.info(`${this.namespace}: connecting ${connectionId}`);
+      this.logger.info(`${this.namespace}: connecting ${sessionId}`);
 
-      return this._connectWithBackoff(webSocketUrl, connectionId);
+      return this._connectWithBackoff(webSocketUrl, sessionId);
     });
   },
 
@@ -160,22 +160,22 @@ const Mercury = WebexPlugin.extend({
   },
 
   @oneFlight
-  disconnect(options, connectionId = 'default') {
+  disconnect(options, sessionId = 'main-session') {
     return new Promise((resolve) => {
-      const backoffCall = this.backoffCalls.get(connectionId);
+      const backoffCall = this.backoffCalls.get(sessionId);
       if (backoffCall) {
-        this.logger.info(`${this.namespace}: aborting connection ${connectionId}`);
+        this.logger.info(`${this.namespace}: aborting connection ${sessionId}`);
         backoffCall.abort();
-        this.backoffCalls.delete(connectionId);
+        this.backoffCalls.delete(sessionId);
       }
 
-      const socket = this.sockets.get(connectionId);
+      const socket = this.sockets.get(sessionId);
       if (socket) {
         socket.removeAllListeners('message');
         socket.connected = false;
         this.once('offline', resolve);
         resolve(socket.close(options || undefined));
-        this.sockets.delete(connectionId);
+        this.sockets.delete(sessionId);
       } else {
         resolve();
       }
@@ -193,8 +193,8 @@ const Mercury = WebexPlugin.extend({
   disconnectAll(options) {
     const disconnectPromises = [];
 
-    for (const connectionId of this.sockets.keys()) {
-      disconnectPromises.push(this.disconnect(options, connectionId));
+    for (const sessionId of this.sockets.keys()) {
+      disconnectPromises.push(this.disconnect(options, sessionId));
     }
 
     return Promise.all(disconnectPromises).then(() => {
@@ -275,21 +275,21 @@ const Mercury = WebexPlugin.extend({
       });
   },
 
-  _attemptConnection(socketUrl, connectionId, callback) {
+  _attemptConnection(socketUrl, sessionId, callback) {
     const socket = new Socket();
     let attemptWSUrl;
 
-    socket.on('close', (...args) => this._onclose(connectionId, ...args));
-    socket.on('message', (...args) => this._onmessage(connectionId, ...args));
+    socket.on('close', (...args) => this._onclose(sessionId, ...args));
+    socket.on('message', (...args) => this._onmessage(sessionId, ...args));
     socket.on('pong', (...args) => this._setTimeOffset(...args));
     socket.on('sequence-mismatch', (...args) => this._emit('sequence-mismatch', ...args));
     socket.on('ping-pong-latency', (...args) => this._emit('ping-pong-latency', ...args));
 
     Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()])
       .then(([webSocketUrl, token]) => {
-        const backoffCall = this.backoffCalls.get(connectionId);
+        const backoffCall = this.backoffCalls.get(sessionId);
         if (!backoffCall) {
-          const msg = `${this.namespace}: prevent socket open when backoffCall no longer defined for ${connectionId}`;
+          const msg = `${this.namespace}: prevent socket open when backoffCall no longer defined for ${sessionId}`;
 
           this.logger.info(msg);
 
@@ -303,27 +303,27 @@ const Mercury = WebexPlugin.extend({
           pingInterval: this.config.pingInterval,
           pongTimeout: this.config.pongTimeout,
           token: token.toString(),
-          trackingId: `${this.webex.sessionId}_${connectionId}_${Date.now()}`,
+          trackingId: `${this.webex.sessionId}_${sessionId}_${Date.now()}`,
           logger: this.logger,
         };
 
         // if the consumer has supplied request options use them
         if (this.webex.config.defaultMercuryOptions) {
-          this.logger.info(`${this.namespace}: setting custom options for ${connectionId}`);
+          this.logger.info(`${this.namespace}: setting custom options for ${sessionId}`);
           options = {...options, ...this.webex.config.defaultMercuryOptions};
         }
 
         // Set the socket before opening it. This allows a disconnect() to close
         // the socket if it is in the process of being opened.
-        this.sockets.set(connectionId, socket);
+        this.sockets.set(sessionId, socket);
 
-        this.logger.info(`${this.namespace} connection url for ${connectionId}: ${webSocketUrl}`);
+        this.logger.info(`${this.namespace} connection url for ${sessionId}: ${webSocketUrl}`);
 
         return socket.open(webSocketUrl, options);
       })
       .then(() => {
         this.logger.info(
-          `${this.namespace}: connected to mercury, success, action: connected, connectionId: ${connectionId}, url: ${attemptWSUrl}`
+          `${this.namespace}: connected to mercury, success, action: connected, sessionId: ${sessionId}, url: ${attemptWSUrl}`
         );
         callback();
 
@@ -340,7 +340,7 @@ const Mercury = WebexPlugin.extend({
       .catch((reason) => {
         this.lastError = reason; // remember the last error
 
-        const backoffCall = this.backoffCalls.get(connectionId);
+        const backoffCall = this.backoffCalls.get(sessionId);
         // Suppress connection errors that appear to be network related. This
         // may end up suppressing metrics during outages, but we might not care
         // (especially since many of our outages happen in a way that client
@@ -351,7 +351,7 @@ const Mercury = WebexPlugin.extend({
           });
         }
         this.logger.info(
-          `${this.namespace}: connection attempt failed for ${connectionId}`,
+          `${this.namespace}: connection attempt failed for ${sessionId}`,
           reason,
           backoffCall?.getNumRetries() === 0 ? reason.stack : ''
         );
@@ -359,7 +359,7 @@ const Mercury = WebexPlugin.extend({
         // web socket url and let WDM handle the token checking
         if (reason instanceof UnknownResponse) {
           this.logger.info(
-            `${this.namespace}: received unknown response code for ${connectionId}, refreshing device registration`
+            `${this.namespace}: received unknown response code for ${sessionId}, refreshing device registration`
           );
 
           return this.webex.internal.device.refresh().then(() => callback(reason));
@@ -367,7 +367,7 @@ const Mercury = WebexPlugin.extend({
         // NotAuthorized implies expired token
         if (reason instanceof NotAuthorized) {
           this.logger.info(
-            `${this.namespace}: received authorization error for ${connectionId}, reauthorizing`
+            `${this.namespace}: received authorization error for ${sessionId}, reauthorizing`
           );
 
           return this.webex.credentials.refresh({force: true}).then(() => callback(reason));
@@ -382,7 +382,7 @@ const Mercury = WebexPlugin.extend({
         // Forbidden implies current user is not entitle for Webex
         if (reason instanceof BadRequest || reason instanceof Forbidden) {
           this.logger.warn(
-            `${this.namespace}: received unrecoverable response from mercury for ${connectionId}`
+            `${this.namespace}: received unrecoverable response from mercury for ${sessionId}`
           );
           backoffCall?.abort();
 
@@ -394,7 +394,7 @@ const Mercury = WebexPlugin.extend({
             .then((haMessagingEnabled) => {
               if (haMessagingEnabled) {
                 this.logger.info(
-                  `${this.namespace}: received a generic connection error for ${connectionId}, will try to connect to another datacenter. failed, action: 'failed', url: ${attemptWSUrl} error: ${reason.message}`
+                  `${this.namespace}: received a generic connection error for ${sessionId}, will try to connect to another datacenter. failed, action: 'failed', url: ${attemptWSUrl} error: ${reason.message}`
                 );
 
                 return this.webex.internal.services.markFailedUrl(attemptWSUrl);
@@ -409,14 +409,14 @@ const Mercury = WebexPlugin.extend({
       })
       .catch((reason) => {
         this.logger.error(
-          `${this.namespace}: failed to handle connection failure for ${connectionId}`,
+          `${this.namespace}: failed to handle connection failure for ${sessionId}`,
           reason
         );
         callback(reason);
       });
   },
 
-  _connectWithBackoff(webSocketUrl, connectionId) {
+  _connectWithBackoff(webSocketUrl, sessionId) {
     return new Promise((resolve, reject) => {
       // eslint gets confused about whether or not call is actually used
       // eslint-disable-next-line prefer-const
@@ -424,24 +424,24 @@ const Mercury = WebexPlugin.extend({
       const onComplete = (err) => {
         this.connecting = false;
 
-        this.backoffCalls.delete(connectionId);
+        this.backoffCalls.delete(sessionId);
         if (err) {
           this.logger.info(
             `${
               this.namespace
-            }: failed to connect ${connectionId} after ${call.getNumRetries()} retries; log statement about next retry was inaccurate; ${err}`
+            }: failed to connect ${sessionId} after ${call.getNumRetries()} retries; log statement about next retry was inaccurate; ${err}`
           );
 
           return reject(err);
         }
 
         // Update overall connected status
-        const socket = this.sockets.get(connectionId);
+        const socket = this.sockets.get(sessionId);
         if (socket) {
           socket.connected = true;
         }
         // @ts-ignore
-        this.socket = this.sockets.get('default');
+        this.socket = this.sockets.get('main-session');
         this.connected = this.hasConnectedSockets();
         this.hasEverConnected = true;
         this._emit('online');
@@ -453,11 +453,9 @@ const Mercury = WebexPlugin.extend({
       // eslint-disable-next-line prefer-reflect
       call = backoff.call((callback) => {
         this.logger.info(
-          `${
-            this.namespace
-          }: executing connection attempt ${call.getNumRetries()} for ${connectionId}`
+          `${this.namespace}: executing connection attempt ${call.getNumRetries()} for ${sessionId}`
         );
-        this._attemptConnection(webSocketUrl, connectionId, callback);
+        this._attemptConnection(webSocketUrl, sessionId, callback);
       }, onComplete);
 
       call.setStrategy(
@@ -474,8 +472,8 @@ const Mercury = WebexPlugin.extend({
       }
 
       call.on('abort', () => {
-        this.logger.info(`${this.namespace}: connection aborted for ${connectionId}`);
-        reject(new Error(`Mercury Connection Aborted for ${connectionId}`));
+        this.logger.info(`${this.namespace}: connection aborted for ${sessionId}`);
+        reject(new Error(`Mercury Connection Aborted for ${sessionId}`));
       });
 
       call.on('callback', (err) => {
@@ -484,7 +482,7 @@ const Mercury = WebexPlugin.extend({
           const delay = Math.min(call.strategy_.nextBackoffDelay_, this.config.backoffTimeMax);
 
           this.logger.info(
-            `${this.namespace}: failed to connect ${connectionId}; attempting retry ${
+            `${this.namespace}: failed to connect ${sessionId}; attempting retry ${
               number + 1
             } in ${delay} ms`
           );
@@ -495,12 +493,12 @@ const Mercury = WebexPlugin.extend({
 
           return;
         }
-        this.logger.info(`${this.namespace}: connected ${connectionId}`);
+        this.logger.info(`${this.namespace}: connected ${sessionId}`);
       });
 
       call.start();
 
-      this.backoffCalls.set(connectionId, call);
+      this.backoffCalls.set(sessionId, call);
     });
   },
 
@@ -537,18 +535,18 @@ const Mercury = WebexPlugin.extend({
     return handlers;
   },
 
-  _onclose(connectionId, event) {
+  _onclose(sessionId, event) {
     // I don't see any way to avoid the complexity or statement count in here.
     /* eslint complexity: [0] */
 
     try {
       const reason = event.reason && event.reason.toLowerCase();
-      const socket = this.sockets.get(connectionId);
+      const socket = this.sockets.get(sessionId);
       const socketUrl = socket?.url;
 
       if (socket) {
         socket.removeAllListeners();
-        this.sockets.delete(connectionId);
+        this.sockets.delete(sessionId);
       }
 
       // Update overall connected status
@@ -563,67 +561,64 @@ const Mercury = WebexPlugin.extend({
         case 1003:
           // metric: disconnect
           this.logger.info(
-            `${this.namespace}: Mercury service rejected last message for ${connectionId}; will not reconnect: ${event.reason}`
+            `${this.namespace}: Mercury service rejected last message for ${sessionId}; will not reconnect: ${event.reason}`
           );
           this._emit('offline.permanent', event);
           break;
         case 4000:
           // metric: disconnect
-          this.logger.info(
-            `${this.namespace}: socket ${connectionId} replaced; will not reconnect`
-          );
+          this.logger.info(`${this.namespace}: socket ${sessionId} replaced; will not reconnect`);
           this._emit('offline.replaced', event);
           break;
         case 1001:
         case 1005:
         case 1006:
         case 1011:
-          this.logger.info(`${this.namespace}: socket ${connectionId} disconnected; reconnecting`);
+          this.logger.info(`${this.namespace}: socket ${sessionId} disconnected; reconnecting`);
           this._emit('offline.transient', event);
-          this._reconnect(socketUrl, connectionId);
+          this._reconnect(socketUrl, sessionId);
           // metric: disconnect
           // if (code == 1011 && reason !== ping error) metric: unexpected disconnect
           break;
         case 1000:
         case 3050: // 3050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
           if (normalReconnectReasons.includes(reason)) {
-            this.logger.info(
-              `${this.namespace}: socket ${connectionId} disconnected; reconnecting`
-            );
+            this.logger.info(`${this.namespace}: socket ${sessionId} disconnected; reconnecting`);
             this._emit('offline.transient', event);
-            this._reconnect(socketUrl, connectionId);
+            this._reconnect(socketUrl, sessionId);
             // metric: disconnect
             // if (reason === done forced) metric: force closure
           } else {
             this.logger.info(
-              `${this.namespace}: socket ${connectionId} disconnected; will not reconnect: ${event.reason}`
+              `${this.namespace}: socket ${sessionId} disconnected; will not reconnect: ${event.reason}`
             );
             this._emit('offline.permanent', event);
           }
           break;
         default:
           this.logger.info(
-            `${this.namespace}: socket ${connectionId} disconnected unexpectedly; will not reconnect`
+            `${this.namespace}: socket ${sessionId} disconnected unexpectedly; will not reconnect`
           );
           // unexpected disconnect
           this._emit('offline.permanent', event);
       }
     } catch (error) {
       this.logger.error(
-        `${this.namespace}: error occurred in close handler for ${connectionId}`,
+        `${this.namespace}: error occurred in close handler for ${sessionId}`,
         error
       );
     }
   },
 
-  _onmessage(connectionId, event) {
+  _onmessage(sessionId, event) {
     this._setTimeOffset(event);
     const envelope = event.data;
 
     if (process.env.ENABLE_MERCURY_LOGGING) {
-      this.logger.debug(`${this.namespace}: message envelope from ${connectionId}: `, envelope);
+      this.logger.debug(`${this.namespace}: message envelope from ${sessionId}: `, envelope);
     }
 
+    envelope.sessionId = sessionId;
     const {data} = envelope;
 
     this._applyOverrides(data);
@@ -638,7 +633,7 @@ const Mercury = WebexPlugin.extend({
               resolve((this.webex[namespace] || this.webex.internal[namespace])[name](data))
             ).catch((reason) =>
               this.logger.error(
-                `${this.namespace}: error occurred in autowired event handler for ${data.eventType} from ${connectionId}`,
+                `${this.namespace}: error occurred in autowired event handler for ${data.eventType} from ${sessionId}`,
                 reason
               )
             );
@@ -646,7 +641,7 @@ const Mercury = WebexPlugin.extend({
         Promise.resolve()
       )
       .then(() => {
-        this._emit('event', event.data);
+        this._emit('event', envelope);
         const [namespace] = data.eventType.split('.');
 
         if (namespace === data.eventType) {
@@ -658,7 +653,7 @@ const Mercury = WebexPlugin.extend({
       })
       .catch((reason) => {
         this.logger.error(
-          `${this.namespace}: error occurred processing socket message from ${connectionId}`,
+          `${this.namespace}: error occurred processing socket message from ${sessionId}`,
           reason
         );
       });
@@ -671,10 +666,10 @@ const Mercury = WebexPlugin.extend({
     }
   },
 
-  _reconnect(webSocketUrl, connectionId = 'default') {
-    this.logger.info(`${this.namespace}: reconnecting ${connectionId}`);
+  _reconnect(webSocketUrl, sessionId = 'main-session') {
+    this.logger.info(`${this.namespace}: reconnecting ${sessionId}`);
 
-    return this.connect(webSocketUrl, connectionId);
+    return this.connect(webSocketUrl, sessionId);
   },
 });
 

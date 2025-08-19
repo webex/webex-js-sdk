@@ -61,10 +61,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Register to the websocket
    * @param {string} llmSocketUrl
-   * @param {string} connectionId - Connection identifier (defaults to 'default')
+   * @param {string} sessionId - Connection identifier (defaults to 'main-session')
    * @returns {Promise<void>}
    */
-  private register = (llmSocketUrl: string, connectionId = 'default'): Promise<void> =>
+  private register = (llmSocketUrl: string, sessionId = 'main-session'): Promise<void> =>
     this.request({
       method: 'POST',
       url: llmSocketUrl,
@@ -72,13 +72,13 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     })
       .then((res: {body: {webSocketUrl: string; binding: string}}) => {
         // Get or create connection data
-        const connectionData = this.connections.get(connectionId) || {};
+        const connectionData = this.connections.get(sessionId) || {};
         connectionData.webSocketUrl = res.body.webSocketUrl;
         connectionData.binding = res.body.binding;
-        this.connections.set(connectionId, connectionData);
+        this.connections.set(sessionId, connectionData);
       })
       .catch((error: any) => {
-        this.logger.error(`Error connecting to websocket for ${connectionId}: ${error}`);
+        this.logger.error(`Error connecting to websocket for ${sessionId}: ${error}`);
         throw error;
       });
 
@@ -86,66 +86,66 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Register and connect to the websocket
    * @param {string} locusUrl
    * @param {string} datachannelUrl
-   * @param {string} connectionId - Connection identifier (defaults to 'default')
+   * @param {string} sessionId - Connection identifier (defaults to 'main-session')
    * @returns {Promise<void>}
    */
   public registerAndConnect = (
     locusUrl: string,
     datachannelUrl: string,
-    connectionId = 'default'
+    sessionId = 'main-session'
   ): Promise<void> =>
-    this.register(datachannelUrl, connectionId).then(() => {
+    this.register(datachannelUrl, sessionId).then(() => {
       if (!locusUrl || !datachannelUrl) return undefined;
 
       // Get or create connection data
-      const connectionData = this.connections.get(connectionId) || {};
+      const connectionData = this.connections.get(sessionId) || {};
       connectionData.locusUrl = locusUrl;
       connectionData.datachannelUrl = datachannelUrl;
-      this.connections.set(connectionId, connectionData);
+      this.connections.set(sessionId, connectionData);
 
-      return this.connect(connectionData.webSocketUrl, connectionId);
+      return this.connect(connectionData.webSocketUrl, sessionId);
     });
 
   /**
    * Tells if LLM socket is connected
-   * @param {string} connectionId - Connection identifier (defaults to 'default')
+   * @param {string} sessionId - Connection identifier (defaults to 'main-session')
    * @returns {boolean} connected
    */
-  public isConnected = (connectionId = 'default'): boolean => {
-    const socket = this.getSocket(connectionId);
+  public isConnected = (sessionId = 'main-session'): boolean => {
+    const socket = this.getSocket(sessionId);
 
     return socket ? socket.connected : false;
   };
 
   /**
    * Tells if LLM socket is binding
-   * @param {string} connectionId - Connection identifier (defaults to 'default')
+   * @param {string} sessionId - Connection identifier (defaults to 'main-session')
    * @returns {string} binding
    */
-  public getBinding = (connectionId = 'default'): string => {
-    const connectionData = this.connections.get(connectionId);
+  public getBinding = (sessionId = 'main-session'): string => {
+    const connectionData = this.connections.get(sessionId);
 
     return connectionData?.binding || '';
   };
 
   /**
    * Get Locus URL for the connection
-   * @param {string} connectionId - Connection identifier (defaults to 'default')
+   * @param {string} sessionId - Connection identifier (defaults to 'main-session')
    * @returns {string} locus Url
    */
-  public getLocusUrl = (connectionId = 'default'): string => {
-    const connectionData = this.connections.get(connectionId);
+  public getLocusUrl = (sessionId = 'main-session'): string => {
+    const connectionData = this.connections.get(sessionId);
 
     return connectionData?.locusUrl || '';
   };
 
   /**
    * Get data channel URL for the connection
-   * @param {string} connectionId - Connection identifier (defaults to 'default')
+   * @param {string} sessionId - Connection identifier (defaults to 'main-session')
    * @returns {string} data channel Url
    */
-  public getDatachannelUrl = (connectionId = 'default'): string => {
-    const connectionData = this.connections.get(connectionId);
+  public getDatachannelUrl = (sessionId = 'main-session'): string => {
+    const connectionData = this.connections.get(sessionId);
 
     return connectionData?.datachannelUrl || '';
   };
@@ -153,16 +153,16 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Disconnects websocket connection
    * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
-   * @param {string} connectionId - Connection identifier (defaults to 'default')
+   * @param {string} sessionId - Connection identifier (defaults to 'main-session')
    * @returns {Promise<void>}
    */
   public disconnectLLM = (
     options: {code: number; reason: string},
-    connectionId = 'default'
+    sessionId = 'main-session'
   ): Promise<void> =>
-    this.disconnect(options, connectionId).then(() => {
+    this.disconnect(options, sessionId).then(() => {
       // Clean up connection data
-      this.connections.delete(connectionId);
+      this.connections.delete(sessionId);
     });
 
   /**
@@ -178,7 +178,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Get all active LLM connections
-   * @returns {Map} Map of connectionId to connection data
+   * @returns {Map} Map of sessionId to connection data
    */
   public getAllConnections = (): Map<
     string,
@@ -195,27 +195,27 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @deprecated Use getBinding() instead
    */
   private get webSocketUrl(): string | undefined {
-    return this.connections.get('default')?.webSocketUrl;
+    return this.connections.get('main-session')?.webSocketUrl;
   }
 
   /**
    * @deprecated Use getBinding() instead
    */
   private get binding(): string | undefined {
-    return this.connections.get('default')?.binding;
+    return this.connections.get('main-session')?.binding;
   }
 
   /**
    * @deprecated Use getLocusUrl() instead
    */
   private get locusUrl(): string | undefined {
-    return this.connections.get('default')?.locusUrl;
+    return this.connections.get('main-session')?.locusUrl;
   }
 
   /**
    * @deprecated Use getDatachannelUrl() instead
    */
   private get datachannelUrl(): string | undefined {
-    return this.connections.get('default')?.datachannelUrl;
+    return this.connections.get('main-session')?.datachannelUrl;
   }
 }
