@@ -32,6 +32,7 @@ export const METHODS = {
   WRAPUP: 'wrapup',
   PAUSE_RECORDING: 'pauseRecording',
   RESUME_RECORDING: 'resumeRecording',
+  FETCH_IVR_TRANSCRIPT: 'fetchIvrTranscript',
   CONSULT: 'consult',
   END_CONSULT: 'endConsult',
   TRANSFER: 'transfer',

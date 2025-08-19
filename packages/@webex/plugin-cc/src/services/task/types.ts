@@ -968,6 +968,106 @@ export type ContactCleanupData = {
 };
 
 /**
+ * Metadata for individual transcript from mediastorage service
+ * @public
+ */
+export type IvrTranscriptMetaData = {
+  /** Unique identifier for the transcript */
+  transcriptId: string;
+  /** Start time of the transcript (timestamp) */
+  startTime: number;
+  /** Stop time of the transcript (timestamp) */
+  stopTime: number;
+  /** Conversational Virtual Assistant identifier */
+  cvaId: string;
+  /** Name of the bot that handled the conversation */
+  botName: string;
+  /** URL path to the transcript file in cloud storage */
+  transcriptPath: string;
+};
+
+/**
+ * Response from the mediastorage metadata API
+ * @public
+ */
+export type IvrTranscriptMetaDataResponse = {
+  /** Organization ID */
+  orgId: string;
+  /** Interaction ID for the task */
+  interactionId: string;
+  /** Timeout in minutes for the transcript URL */
+  timeOutMins: number;
+  /** Array of available transcripts with metadata */
+  transcripts: IvrTranscriptMetaData[];
+};
+
+/**
+ * Customer transcript entry in the conversation
+ * @public
+ */
+export type IvrCustomerTranscript = {
+  /** Customer's query/utterance */
+  query: string;
+  /** Sentiment analysis score */
+  sentiment: number;
+  /** Timestamp when the utterance occurred */
+  timestamp: number;
+};
+
+/**
+ * Bot transcript entry in the conversation
+ * @public
+ */
+export type IvrBotTranscript = {
+  /** Timestamp when the bot responded */
+  timestamp: number;
+  /** Confidence score of the bot response */
+  confidence: number;
+  /** Bot's reply text */
+  reply: string;
+  /** Name of the intent that was matched */
+  intentName?: string;
+  /** Parameters extracted from the conversation */
+  parameters?: Record<string, any>;
+  /** Unique identifier for the intent */
+  intentId?: string;
+  /** Name of the bot (set during processing) */
+  botName?: string;
+};
+
+/**
+ * Single conversation turn containing either customer or bot transcript
+ * @public
+ */
+export type IvrConversationTurn = {
+  /** Customer transcript for this turn */
+  customer?: IvrCustomerTranscript;
+  /** Bot transcript for this turn */
+  bot?: IvrBotTranscript;
+};
+
+/**
+ * Array of conversation turns representing the full IVR conversation
+ * @public
+ */
+export type IvrConversations = IvrConversationTurn[];
+
+/**
+ * Content of an IVR transcript file from cloud storage
+ * @public
+ */
+export type IvrTranscriptData = {
+  /** The full conversation array */
+  conversation: IvrConversations;
+};
+
+/**
+ * Complete processed IVR transcript response
+ * @public
+ */
+export type IvrTranscriptResponse = IvrConversations;
+
+/**
  * Response type for task public methods
  * Can be an {@link AgentContact} object containing updated task state,
  * an Error in case of failure, or void for operations that don't return data
@@ -1110,4 +1210,39 @@ export interface ITask extends EventEmitter {
    * ```
    */
   resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse>;
+
+  /**
+   * Fetches the IVR transcript for the current voice task
+   * This method retrieves the Interactive Voice Response transcript that was recorded
+   * during the customer's interaction with the IVR system before being connected to an agent.
+   * Only available for voice tasks that have IVR interactions.
+   *
+   * @param orgId - Organization ID (required)
+   * @param interactionId - Interaction ID for the task (required)
+   * @param timeoutMins - Timeout in minutes for the transcript URL (required)
+   * @param includeConversation - Whether to fetch the actual conversation data
+   * @returns Promise<IvrTranscriptResponse> The IVR transcript data including metadata and content
+   * @throws Error if the task is not a voice task, no IVR transcript is available, or the fetch operation fails
+   * @example
+   * ```typescript
+   * // Fetch IVR transcript after accepting a voice task
+   * try {
+   *   const transcript = await task.fetchIvrTranscript('org123', 'interaction456', 10);
+   *   console.log('IVR transcript:', transcript.content.transcripts);
+   *
+   *   // Display transcript to agent
+   *   transcript.content.transcripts.forEach(entry => {
+   *     console.log(`${entry.timestamp}: ${entry.utterance}`);
+   *   });
+   * } catch (error) {
+   *   console.error('Failed to fetch IVR transcript:', error);
+   *   // Handle case where no transcript is available
+   * }
+   * ```
+   */
+  fetchIvrTranscript(
+    orgId: string,
+    interactionId: string,
+    timeoutMins: number
+  ): Promise<IvrTranscriptResponse>;
 }

@@ -7,6 +7,7 @@ import * as Utils from '../../../../../src/services/core/Utils';
 import {CC_EVENTS} from '../../../../../src/services/config/types';
 import config from '../../../../../src/config';
 import WebCallingService from '../../../../../src/services/WebCallingService';
+import IvrTranscriptService from '../../../../../src/services/task/IvrTranscriptService';
 import {
   TASK_EVENTS,
   TaskResponse,
@@ -17,14 +18,25 @@ import {
   CONSULT_TRANSFER_DESTINATION_TYPE,
   ConsultTransferPayLoad,
   TransferPayLoad,
+  MEDIA_CHANNEL,
 } from '../../../../../src/services/task/types';
 import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import MetricsManager from '../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
+import * as METRICS_CONSTANTS from '../../../../../src/metrics/constants';
 import LoggerProxy from '../../../../../src/logger-proxy';
 
 jest.mock('@webex/calling');
 jest.mock('../../../../../src/logger-proxy');
+
+// Mock IvrTranscriptService
+const MockIvrTranscriptService = {
+  fetchIVRTranscript: jest.fn()
+};
+
+jest.mock('../../../../../src/services/task/IvrTranscriptService', () => ({
+  default: jest.fn().mockImplementation(() => MockIvrTranscriptService)
+}));
 
 describe('Task', () => {
   let onSpy;
@@ -74,6 +86,7 @@ describe('Task', () => {
       wrapup: jest.fn().mockResolvedValue({}),
       pauseRecording: jest.fn().mockResolvedValue({}),
       resumeRecording: jest.fn().mockResolvedValue({}),
+      getIvrTranscriptUrl: jest.fn().mockResolvedValue({}),
     };
 
     mockMetricsManager = {
@@ -91,6 +104,7 @@ describe('Task', () => {
     mockWebexRequest = {
       request: jest.fn(),
       uploadLogs: jest.fn(),
+      webex: webex, // Add webex property for IvrTranscriptService
     };
 
     jest.spyOn(WebexRequest, 'getInstance').mockReturnValue(mockWebexRequest);
@@ -142,7 +156,7 @@ describe('Task', () => {
     };
 
     // Create an instance of Task
-    task = new Task(contactMock, webCallingService, taskDataMock);
+    task = new Task(contactMock, webCallingService, taskDataMock, { wrapUpProps: null });
 
     // Mock navigator.mediaDevices
     global.navigator.mediaDevices = {
@@ -804,7 +818,7 @@ describe('Task', () => {
     const taskWithoutDestAgentId = new Task(contactMock, webCallingService, {
       ...taskDataMock,
       destAgentId: undefined,
-    });
+    }, { wrapUpProps: null });
 
     const queueConsultTransferPayload: ConsultTransferPayLoad = {
       to: 'some-queue-id',
@@ -1469,6 +1483,258 @@ describe('Task', () => {
         wrapUpReason: wrapupProps.wrapUpProps.wrapUpReasonList[0].name,
         auxCodeId: wrapupProps.wrapUpProps.wrapUpReasonList[0].id
       });
+    });
+  });
+
+  describe('fetchIvrTranscript', () => {
+    beforeEach(() => {
+      // Mock global fetch
+      global.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should fetch IVR transcript successfully for voice task', async () => {
+      const taskDataMockVoice = {
+        ...taskDataMock,
+        interaction: {
+          ...taskDataMock.interaction,
+          mediaType: MEDIA_CHANNEL.TELEPHONY
+        },
+        orgId: 'test-org-123',
+        interactionId: 'test-interaction-456',
+      };
+
+      const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
+
+      // Mock IvrTranscriptService instance
+      const mockIvrTranscriptService = {
+        fetchIVRTranscript: jest.fn()
+      };
+
+      // Override the private getIvrTranscriptService method
+      (task as any).getIvrTranscriptService = jest.fn().mockReturnValue(mockIvrTranscriptService);
+
+      const mockConversationData = [
+        {
+          customer: {
+            query: 'I need help with my account',
+            sentiment: 0.8,
+            timestamp: 1640995210000
+          }
+        },
+        {
+          bot: {
+            timestamp: 1640995215000,
+            confidence: 0.95,
+            reply: 'I can help you with your account. What specifically do you need assistance with?',
+            intentName: 'account_help',
+            intentId: 'intent-123',
+            botName: 'CustomerServiceBot'
+          }
+        }
+      ];
+
+      // Mock the fetchIVRTranscript method to return our test data
+      mockIvrTranscriptService.fetchIVRTranscript.mockResolvedValue(mockConversationData);
+
+      const result = await task.fetchIvrTranscript('test-org-123', 'test-interaction-456', 5);
+
+      expect(mockIvrTranscriptService.fetchIVRTranscript).toHaveBeenCalledWith(
+        'test-org-123',
+        'test-interaction-456',
+        5
+      );
+      expect(result).toEqual(mockConversationData);
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_SUCCESS,
+        expect.objectContaining({
+          taskId: 'test-interaction-456',
+          orgId: 'test-org-123',
+          type: 'direct-service',
+          conversationTurns: 2
+        }),
+        ['operational', 'behavioral', 'business']
+      );
+    });
+
+    it('should throw error when orgId is missing', async () => {
+      const taskDataMockNoOrg = {
+        ...taskDataMock,
+        mediaChannel: MEDIA_CHANNEL.TELEPHONY,
+        taskId: 'test-task-456',
+        // orgId missing
+      };
+
+      const task = new Task(contactMock, webCallingService, taskDataMockNoOrg, { wrapUpProps: null });
+
+      await expect(task.fetchIvrTranscript('', 'test-interaction-456', 5)).rejects.toThrow();
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_FAILED,
+        expect.objectContaining({
+          error: expect.any(String)
+        }),
+        ['operational', 'behavioral', 'business']
+      );
+    });
+
+    it('should handle API error when fetching transcript URL', async () => {
+      const taskDataMockVoice = {
+        ...taskDataMock,
+        mediaChannel: MEDIA_CHANNEL.TELEPHONY,
+        orgId: 'test-org-123',
+        taskId: 'test-task-456',
+      };
+
+      const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
+
+      const apiError = new Error('API Error');
+      contactMock.getIvrTranscriptUrl.mockRejectedValue(apiError);
+
+      await expect(task.fetchIvrTranscript('test-org-123', 'test-interaction-456', 5)).rejects.toThrow();
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_FAILED,
+        expect.objectContaining({
+          error: expect.any(String)
+        }),
+        ['operational', 'behavioral', 'business']
+      );
+    });
+
+    it('should handle error when fetching transcript content from S3', async () => {
+      const taskDataMockVoice = {
+        ...taskDataMock,
+        mediaChannel: MEDIA_CHANNEL.TELEPHONY,
+        orgId: 'test-org-123',
+        taskId: 'test-task-456',
+      };
+
+      const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
+
+      // Mock IvrTranscriptService instance
+      const mockIvrTranscriptService = {
+        fetchIVRTranscript: jest.fn()
+      };
+
+      // Override the private getIvrTranscriptService method
+      (task as any).getIvrTranscriptService = jest.fn().mockReturnValue(mockIvrTranscriptService);
+
+      // Mock the fetchIVRTranscript method to return empty array (simulating S3 failure)
+      mockIvrTranscriptService.fetchIVRTranscript.mockResolvedValue([]);
+
+      const result = await task.fetchIvrTranscript('test-org-123', 'test-interaction-456', 5);
+
+      // Should return empty array when transcript fetch fails
+      expect(result).toEqual([]);
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_SUCCESS,
+        expect.objectContaining({
+          taskId: 'test-interaction-456',
+          orgId: 'test-org-123'
+        }),
+        ['operational', 'behavioral', 'business']
+      );
+    });
+
+    it('should handle empty transcripts array', async () => {
+      const taskDataMockVoice = {
+        ...taskDataMock,
+        mediaChannel: MEDIA_CHANNEL.TELEPHONY,
+        orgId: 'test-org-123',
+        taskId: 'test-task-456',
+      };
+
+      const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
+
+      const mockTranscriptUrlResponse = {
+        body: {
+          orgId: 'test-org-123',
+          interactionId: 'test-interaction-456',
+          timeOutMins: 5,
+          transcripts: []
+        }
+      };
+
+      contactMock.getIvrTranscriptUrl.mockResolvedValue(mockTranscriptUrlResponse);
+
+      await expect(task.fetchIvrTranscript('test-org-123', 'test-interaction-456', 5)).rejects.toThrow();
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_FAILED,
+        expect.objectContaining({
+          taskId: 'test-interaction-456',
+          error: expect.any(String)
+        }),
+        ['operational', 'behavioral', 'business']
+      );
+    });
+
+    it('should handle multiple transcripts', async () => {
+      const taskDataMockVoice = {
+        ...taskDataMock,
+        mediaChannel: MEDIA_CHANNEL.TELEPHONY,
+        orgId: 'test-org-123',
+        taskId: 'test-task-456',
+      };
+
+      const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
+
+      // Mock IvrTranscriptService instance
+      const mockIvrTranscriptService = {
+        fetchIVRTranscript: jest.fn()
+      };
+
+      // Override the private getIvrTranscriptService method
+      (task as any).getIvrTranscriptService = jest.fn().mockReturnValue(mockIvrTranscriptService);
+
+      const mockMultipleTranscriptData = [
+        {
+          customer: { query: 'Hello', timestamp: 1000 }
+        },
+        {
+          bot: { reply: 'Hi there', timestamp: 1001, botName: 'TestBot1' }
+        },
+        {
+          customer: { query: 'Goodbye', timestamp: 2000 }
+        },
+        {
+          bot: { reply: 'See you later', timestamp: 2001, botName: 'TestBot2' }
+        }
+      ];
+
+      // Mock the fetchIVRTranscript method to return multiple conversations
+      mockIvrTranscriptService.fetchIVRTranscript.mockResolvedValue(mockMultipleTranscriptData);
+
+      const result = await task.fetchIvrTranscript('test-org-123', 'test-interaction-456', 5);
+
+      expect(mockIvrTranscriptService.fetchIVRTranscript).toHaveBeenCalledWith(
+        'test-org-123',
+        'test-interaction-456',
+        5
+      );
+
+      expect(result).toHaveLength(4);
+      expect(result[0].customer.query).toEqual('Hello');
+      expect(result[1].bot.botName).toEqual('TestBot1');
+      expect(result[2].customer.query).toEqual('Goodbye');
+      expect(result[3].bot.botName).toEqual('TestBot2');
+
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_SUCCESS,
+        expect.objectContaining({
+          taskId: 'test-interaction-456',
+          orgId: 'test-org-123',
+          conversationTurns: 4
+        }),
+        ['operational', 'behavioral', 'business']
+      );
     });
   });
 });

@@ -79,6 +79,16 @@ const agentLoginInputError = document.getElementById('agent-login-input-error');
 const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProfile');
 const autoWrapupTimerElm = document.getElementById('autoWrapupTimer');
 const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
+const fetchIvrTranscriptBtn = document.querySelector('#fetch-ivr-transcript');
+const ivrTimeoutInput = document.querySelector('#timeout-mins');
+const ivrStatusElm = document.querySelector('#ivr-transcript-status');
+const ivrResultsContentElm = document.querySelector('#ivr-conversation-list');
+console.log('IVR Transcript UI elements initialized:', {
+  fetchButton: !!fetchIvrTranscriptBtn,
+  timeoutInput: !!ivrTimeoutInput,
+  statusElement: !!ivrStatusElm,
+  resultsElement: !!ivrResultsContentElm
+});
 deregisterBtn.style.backgroundColor = 'red';
 
 // Store and Grab `access-token` from sessionStorage
@@ -584,6 +594,142 @@ function refreshUIPostConsult() {
   hideEndConsultButton();
 }
 
+// Function to update IVR transcript button state
+function updateIvrTranscriptButtonState() {
+  console.log('Updating IVR transcript button state...');
+  
+  if (!currentTask) {
+    console.log('IVR Button State: No active task found');
+    fetchIvrTranscriptBtn.disabled = true;
+    ivrStatusElm.textContent = 'No active task';
+    return;
+  }
+  console.log('IVR current task ', currentTask);
+  console.log(`IVR Button State: Task status: ${currentTask.data.interaction.state}, Media channel: ${currentTask.data.mediaType}`);
+
+  if (currentTask.data.interaction.state === 'connected' && currentTask.data.mediaType === 'telephony') {
+    console.log('IVR Button State: Enabling button - task accepted and telephony channel');
+    fetchIvrTranscriptBtn.disabled = false;
+    ivrStatusElm.textContent = 'Ready to fetch IVR transcript';
+  } else if (currentTask.data.interaction.state !== 'connected') {
+    console.log('IVR Button State: Disabling button - task not accepted');
+    fetchIvrTranscriptBtn.disabled = true;
+    ivrStatusElm.textContent = 'Task must be accepted first';
+  } else if (currentTask.data.mediaType !== 'telephony') {
+    console.log('IVR Button State: Disabling button - not telephony channel');
+    fetchIvrTranscriptBtn.disabled = true;
+    ivrStatusElm.textContent = 'IVR transcript only available for telephony';
+  }
+}
+
+// Function to fetch IVR transcript
+async function fetchIvrTranscript() {
+  console.log('=== Starting IVR Transcript Fetch ===');
+  
+  // Check if task is accepted and media type is telephony
+  if (!currentTask) {
+    console.error('IVR Fetch: No active task found');
+    ivrStatusElm.textContent = 'No active task found';
+    return;
+  }
+
+  console.log(`IVR Fetch: Current task status: ${currentTask.data.interaction.state}, media channel: ${currentTask.data.mediaType}`);
+
+  if (currentTask.data.interaction.state !== 'connected') {
+    console.warn('IVR Fetch: Task is not accepted');
+    ivrStatusElm.textContent = 'Task must be accepted to fetch IVR transcript';
+    return;
+  }
+
+  if (currentTask.data.mediaType !== 'telephony') {
+    console.warn('IVR Fetch: Media channel is not telephony');
+    ivrStatusElm.textContent = 'IVR transcript is only available for telephony tasks';
+    return;
+  }
+
+  // Get timeout value from input (convert minutes to milliseconds)
+  const timeoutMinutes = parseInt(ivrTimeoutInput.value) || 5;
+  const timeoutMs = timeoutMinutes * 60 * 1000;
+  
+  console.log(`IVR Fetch: Using timeout of ${timeoutMinutes} minutes (${timeoutMs}ms)`);
+
+  try {
+    fetchIvrTranscriptBtn.disabled = true;
+    ivrStatusElm.textContent = `Fetching IVR transcript... (timeout: ${timeoutMinutes} min)`;
+    ivrResultsContentElm.innerHTML = '';
+
+    console.log('IVR Fetch: Calling currentTask.fetchIvrTranscript()...');
+    const transcript = await currentTask.fetchIvrTranscript(currentTask.data.orgId, currentTask.data.interactionId, timeoutMinutes);
+    
+    console.log('IVR Fetch: Received response:', transcript);
+    
+    if (transcript && transcript.length > 0) {
+      console.log(`IVR Fetch: Successfully fetched ${transcript.length} conversation(s)`);
+      ivrStatusElm.textContent = `Successfully fetched ${transcript.length} conversation(s)`;
+      
+      // Show the content area
+      const ivrContentArea = document.querySelector('#ivr-transcript-content');
+      if (ivrContentArea) {
+        ivrContentArea.style.display = 'block';
+      }
+      
+      // Display the conversations
+      let html = '';
+      transcript.forEach((conversation, index) => {
+        console.log(`IVR Fetch: Processing conversation ${index + 1}:`, conversation);
+        html += `
+          <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px;">
+            <h4>Conversation ${index + 1}</h4>
+            <p><strong>Call ID:</strong> ${conversation.callId || 'N/A'}</p>
+            <p><strong>Duration:</strong> ${conversation.duration || 'N/A'}</p>
+            <p><strong>Start Time:</strong> ${conversation.startTime || 'N/A'}</p>
+            <p><strong>End Time:</strong> ${conversation.endTime || 'N/A'}</p>
+            ${conversation.segments && conversation.segments.length > 0 ? `
+              <div style="margin-top: 10px;">
+                <strong>Segments:</strong>
+                <ul style="margin-top: 5px;">
+                  ${conversation.segments.map(segment => `
+                    <li style="margin-bottom: 5px;">
+                      <strong>${segment.speaker || 'Unknown'}:</strong> ${segment.text || 'N/A'}
+                      <br><small>Duration: ${segment.duration || 'N/A'}, Offset: ${segment.offset || 'N/A'}</small>
+                    </li>
+                  `).join('')}
+                </ul>
+              </div>
+            ` : '<p><em>No segments available</em></p>'}
+          </div>
+        `;
+      });
+      
+      ivrResultsContentElm.innerHTML = html;
+      console.log('IVR Fetch: UI updated with conversation data');
+    } else {
+      console.log('IVR Fetch: No transcript data received');
+      ivrStatusElm.textContent = 'No IVR transcript found for this task';
+      
+      // Hide the content area
+      const ivrContentArea = document.querySelector('#ivr-transcript-content');
+      if (ivrContentArea) {
+        ivrContentArea.style.display = 'none';
+      }
+      
+      ivrResultsContentElm.innerHTML = '<p><em>No transcript data available</em></p>';
+    }
+  } catch (error) {
+    console.error('IVR Fetch: Error occurred:', error);
+    console.error('IVR Fetch: Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    ivrStatusElm.textContent = `Error: ${error.message || 'Failed to fetch IVR transcript'}`;
+    ivrResultsContentElm.innerHTML = '<p><em>Error occurred while fetching transcript</em></p>';
+  } finally {
+    fetchIvrTranscriptBtn.disabled = false;
+    console.log('=== IVR Transcript Fetch Complete ===');
+  }
+}
+
 // Register task listeners
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
@@ -595,6 +741,7 @@ function registerTaskListeners(task) {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
   task.on('task:end', (task) => {
+    console.log('Task ended event received');
     incomingDetailsElm.innerText = '';
     if (currentTask.data.interactionId === task.data.interactionId) {
       if (!task.data.wrapUpRequired) {
@@ -608,6 +755,8 @@ function registerTaskListeners(task) {
       }
       updateTaskList(); // Update the task list UI to have latest tasks
       handleTaskSelect(task);
+      console.log('Updating IVR button state after task end...');
+      updateIvrTranscriptButtonState(); // Update IVR button state when task ends
     }
   });
 
@@ -1090,6 +1239,14 @@ function doDeRegister() {
 
 deregisterBtn.addEventListener('click', doDeRegister);
 
+// Add event listener for IVR transcript fetch button
+console.log('Setting up IVR transcript fetch button event listener...');
+fetchIvrTranscriptBtn.addEventListener('click', fetchIvrTranscript);
+
+// Initialize IVR transcript button state
+console.log('Initializing IVR transcript button state...');
+updateIvrTranscriptButtonState();
+
 function handleTaskHydrate(task) {
   currentTask = task;
 
@@ -1318,12 +1475,15 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 });
 
  async function answer() {
+  console.log('Answer button clicked - accepting task...');
   answerElm.disabled = true;
   declineElm.disabled = true;
   await currentTask.accept();
   updateTaskList();
   handleTaskSelect(currentTask);
   incomingDetailsElm.innerText = 'Task Accepted';
+  console.log('Task accepted successfully, updating IVR button state...');
+  updateIvrTranscriptButtonState(); // Enable IVR transcript button if telephony
 }
 
 function decline() {
@@ -1682,17 +1842,21 @@ function disableAnswerDeclineButtons() {
 function handleTaskSelect(task) {
   // Handle the task click event
   console.log('Task clicked:', task);
+  console.log(`Task details - ID: ${task.data?.interactionId}, Media: ${task.data?.interaction?.mediaType}`);
   enableAnswerDeclineButtons(task);
   engageElm.innerHTML = ``;
   engageElm.style.height = "100px"
   const chatAndSocial = ['chat', 'social'];
   currentTask = task
+  console.log('Updating IVR button state for selected task...');
+  updateIvrTranscriptButtonState(); // Update IVR button state when task is selected
  if (chatAndSocial.includes(task.data.interaction.mediaType) && isBundleLoaded && !task.data.wrapUpRequired) {
     loadChatWidget(task);
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {
     loadEmailWidget(task);
   }
   updateCallControlUI(task); // Enable/disable transfer controls
+  updateIvrTranscriptButtonState(); // Update IVR button state when task is selected
 }
 
 function loadChatWidget(task) {
