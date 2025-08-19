@@ -60,8 +60,7 @@
     "@webex/test-helper-mock-webex": "workspace:*",
     "@webex/test-helper-test-users": "workspace:*",
     "eslint": "^8.24.0",
-    "sinon": "^9.2.4",
-    "webex": "workspace:*"
+    "sinon": "^9.2.4"
   },
   "dependencies": {
     "@babel/polyfill": "^7.12.1",
