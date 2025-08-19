@@ -918,7 +918,7 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
     });
 
-    it('calculates getAudioJoinRespTxStart correctly', () => {
+    it('calculates getShareDuration correctly', () => {
       cdl.saveTimestamp({
         key: 'internal.client.share.initiated',
         value: 5,

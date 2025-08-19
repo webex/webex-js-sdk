@@ -545,8 +545,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
-   *
-   * Time from start share to stop share
+   * Time from share initiation to share stop (ms).
    */
   public getShareDuration() {
     return this.getDiffBetweenTimestamps(
