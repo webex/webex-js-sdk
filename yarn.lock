@@ -8009,7 +8009,6 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-plugin-device": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8018,7 +8017,6 @@ __metadata:
     "@webex/test-helper-mocha": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
-    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     file-type: ^16.0.1
     global: ^4.4.0
@@ -8477,7 +8475,6 @@ __metadata:
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.1819
-    "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8660,7 +8657,6 @@ __metadata:
     "@webex/internal-plugin-mercury": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
-    "@webex/plugin-meetings": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mocha": "workspace:*"
     "@webex/test-helper-mock-web-socket": "workspace:*"
@@ -8922,6 +8918,10 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
+  peerDependencies:
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-messages": "workspace:*"
+    "@webex/plugin-people": "workspace:*"
   languageName: unknown
   linkType: soft
 
@@ -9162,7 +9162,6 @@ __metadata:
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/media-helpers": "workspace:*"
-    "@webex/plugin-meetings": "workspace:*"
     "@webex/plugin-people": "workspace:*"
     "@webex/plugin-rooms": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -9208,10 +9207,6 @@ __metadata:
     "@webex/internal-plugin-mercury": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
-    "@webex/plugin-logger": "workspace:*"
-    "@webex/plugin-messages": "workspace:*"
-    "@webex/plugin-people": "workspace:*"
-    "@webex/plugin-rooms": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mocha": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
@@ -9222,6 +9217,11 @@ __metadata:
     lodash: ^4.17.21
     prettier: ^2.7.1
     sinon: ^9.2.4
+  peerDependencies:
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-messages": "workspace:*"
+    "@webex/plugin-people": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
   languageName: unknown
   linkType: soft
 
@@ -9252,6 +9252,10 @@ __metadata:
     lodash: ^4.17.21
     prettier: ^2.7.1
     sinon: ^9.2.4
+  peerDependencies:
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-people": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
   languageName: unknown
   linkType: soft
 
@@ -9313,10 +9317,6 @@ __metadata:
     "@webex/internal-plugin-mercury": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
-    "@webex/plugin-logger": "workspace:*"
-    "@webex/plugin-memberships": "workspace:*"
-    "@webex/plugin-messages": "workspace:*"
-    "@webex/plugin-people": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mocha": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
@@ -9327,6 +9327,9 @@ __metadata:
     lodash: ^4.17.21
     prettier: ^2.7.1
     sinon: ^9.2.4
+  peerDependencies:
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-people": "workspace:*"
   languageName: unknown
   linkType: soft
 
@@ -9340,9 +9343,6 @@ __metadata:
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
-    "@webex/plugin-logger": "workspace:*"
-    "@webex/plugin-rooms": "workspace:*"
-    "@webex/plugin-teams": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mocha": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
@@ -9351,6 +9351,10 @@ __metadata:
     eslint: ^8.24.0
     prettier: ^2.7.1
     sinon: ^9.2.4
+  peerDependencies:
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
+    "@webex/plugin-teams": "workspace:*"
   languageName: unknown
   linkType: soft
 
@@ -9364,9 +9368,6 @@ __metadata:
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
-    "@webex/plugin-logger": "workspace:*"
-    "@webex/plugin-memberships": "workspace:*"
-    "@webex/plugin-rooms": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mocha": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
@@ -9376,6 +9377,10 @@ __metadata:
     lodash: ^4.17.21
     prettier: ^2.7.1
     sinon: ^9.2.4
+  peerDependencies:
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-memberships": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
   languageName: unknown
   linkType: soft
 
@@ -9389,8 +9394,6 @@ __metadata:
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
-    "@webex/plugin-logger": "workspace:*"
-    "@webex/plugin-rooms": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mocha": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
@@ -9399,6 +9402,9 @@ __metadata:
     eslint: ^8.24.0
     prettier: ^2.7.1
     sinon: ^9.2.4
+  peerDependencies:
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
   languageName: unknown
   linkType: soft
 
@@ -34193,7 +34199,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"webex@workspace:*, webex@workspace:packages/webex":
+"webex@workspace:packages/webex":
   version: 0.0.0-use.local
   resolution: "webex@workspace:packages/webex"
   dependencies:
@@ -34238,7 +34244,6 @@ __metadata:
     lodash: ^4.17.21
     safe-buffer: ^5.2.0
     sinon: ^9.2.4
-    webex: "workspace:*"
   languageName: unknown
   linkType: soft
 
