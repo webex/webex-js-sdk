@@ -35627,7 +35627,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"webex@workspace:packages/webex":
+"webex@workspace:*, webex@workspace:packages/webex":
   version: 0.0.0-use.local
   resolution: "webex@workspace:packages/webex"
   dependencies:
@@ -35674,6 +35674,7 @@ __metadata:
     prettier: ^2.7.1
     safe-buffer: ^5.2.0
     sinon: ^9.2.4
+    webex: "workspace:*"
   languageName: unknown
   linkType: soft
 
