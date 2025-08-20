@@ -850,6 +850,11 @@ describe('plugin-meetings', () => {
       {functionName: 'isClosedCaptionActive', displayHint: 'CAPTION_STATUS_ACTIVE'},
       {functionName: 'canStartManualCaption', displayHint: 'MANUAL_CAPTION_START'},
       {functionName: 'canStopManualCaption', displayHint: 'MANUAL_CAPTION_STOP'},
+
+      {functionName: 'isLocalRecordingStarted',displayHint:'LOCAL_RECORDING_STATUS_STARTED'},
+      {functionName: 'isLocalRecordingStopped', displayHint: 'LOCAL_RECORDING_STATUS_STOPPED'},
+      {functionName: 'isLocalRecordingPaused', displayHint: 'LOCAL_RECORDING_STATUS_PAUSED'},
+
       {functionName: 'isManualCaptionActive', displayHint: 'MANUAL_CAPTION_STATUS_ACTIVE'},
       {functionName: 'isWebexAssistantActive', displayHint: 'WEBEX_ASSISTANT_STATUS_ACTIVE'},
       {functionName: 'canViewCaptionPanel', displayHint: 'ENABLE_CAPTION_PANEL'},

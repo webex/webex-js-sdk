@@ -34,10 +34,12 @@
   },
   "dependencies": {
     "@webex/internal-plugin-device": "workspace:*",
+    "@webex/webex-core": "workspace:*"
+  },
+  "peerDependencies": {
     "@webex/plugin-logger": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
-    "@webex/plugin-teams": "workspace:*",
-    "@webex/webex-core": "workspace:*"
+    "@webex/plugin-teams": "workspace:*"
   },
   "scripts": {
     "build": "yarn build:src",

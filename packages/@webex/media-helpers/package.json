@@ -1,7 +1,7 @@
 {
   "name": "@webex/media-helpers",
   "description": "Package that provides helper functions for media related activities.",
-  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
+  "license": "Cisco's General Terms (https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html)",
   "main": "dist/index.js",
   "devMain": "src/index.ts",
   "repository": {
