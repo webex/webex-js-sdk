@@ -13,7 +13,7 @@ import {
 } from '../constants';
 import {ClusterReachabilityResult, NatType, SubnetDetails, ClusterNode} from './reachability.types';
 
-async function checkIP(ip) {
+async function checkIP(ip: string) {
   const {isIP} = await import('is-ip');
 
   return isIP(ip);
