@@ -197,6 +197,17 @@ const MeetingUtil = {
         });
 
         return parsed;
+      })
+      .catch((err) => {
+        webex.internal.newMetrics.submitClientEvent({
+          name: 'client.locus.join.response',
+          payload: {
+            identifiers: {meetingLookupUrl: meeting.meetingInfo?.meetingLookupUrl},
+          },
+          options: {meetingId: meeting.id, rawError: err},
+        });
+
+        throw err;
       });
   },
 

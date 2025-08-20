@@ -622,6 +622,28 @@ describe('plugin-meetings', () => {
 
         assert.equal(parameter.locusClusterUrl, 'locusClusterUrl');
       });
+
+      it('should post client event with error when join fails', async () => {
+        const joinError = new Error('Join failed');
+        meeting.meetingRequest.joinMeeting.rejects(joinError);
+        meeting.meetingInfo = { meetingLookupUrl: 'test-lookup-url' };
+
+        try {
+          await MeetingUtil.joinMeeting(meeting, {});
+          assert.fail('Expected joinMeeting to throw an error');
+        } catch (error) {
+          assert.equal(error, joinError);
+          
+          // Verify error client event was submitted
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.locus.join.response',
+            payload: {
+              identifiers: { meetingLookupUrl: 'test-lookup-url' },
+            },
+            options: { meetingId: meeting.id, rawError: joinError },
+          });
+        }
+      });
     });
 
     describe('joinMeetingOptions', () => {
