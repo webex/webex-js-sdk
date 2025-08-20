@@ -5973,7 +5973,7 @@ export default class Meeting extends StatelessWebexPlugin {
         if (this.config.enableAutomaticLLM) {
           // @ts-ignore
           this.webex.internal.llm.on('online', this.handleLLMOnline);
-          this.updateLLMConnection()
+          this.updateLLMConnectionBySessionId('main-session')
             .catch((error) => {
               LoggerProxy.logger.error(
                 'Meeting:index#join --> Transcription Socket Connection Failed',
@@ -6004,14 +6004,14 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise}
    */
   updateLLMConnection() {
-    const isJoined = this.isJoined();
+    const connections = ['main-session'];
 
-    // Generate unique connection ID for this meeting
-    const llmSessionId = this.webinar.isJoinPracticeSessionDataChannel()
-      ? 'practice-session'
-      : 'main-session';
-
-    return this.updateLLMConnectionBySessionId(llmSessionId);
+    if (this.webinar.isJoinPracticeSessionDataChannel()) {
+      connections.push('practice-session');
+    }
+    connections.forEach((llmSessionId) => {
+      this.updateLLMConnectionBySessionId(llmSessionId);
+    });
   }
 
   async updateLLMConnectionBySessionId(llmSessionId) {
