@@ -6003,10 +6003,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {String} datachannelUrl
    * @returns {Promise}
    */
-  async updateLLMConnection() {
-    // @ts-ignore - Fix type
-    const {url, info: {datachannelUrl, practiceSessionDatachannelUrl} = {}} = this.locusInfo;
-
+  updateLLMConnection() {
     const isJoined = this.isJoined();
 
     // Generate unique connection ID for this meeting
@@ -6014,11 +6011,17 @@ export default class Meeting extends StatelessWebexPlugin {
       ? 'practice-session'
       : 'main-session';
 
+    return this.updateLLMConnectionBySessionId(llmSessionId);
+  }
+
+  async updateLLMConnectionBySessionId(llmSessionId) {
+    const isJoined = this.isJoined();
+
+    // @ts-ignore
+    const {url, info: {datachannelUrl, practiceSessionDatachannelUrl} = {}} = this.locusInfo;
     // webinar panelist should use new data channel in practice session
     const dataChannelUrl =
-      this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelUrl
-        ? practiceSessionDatachannelUrl
-        : datachannelUrl;
+      llmSessionId === 'practice-session' ? practiceSessionDatachannelUrl : datachannelUrl;
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected(llmSessionId)) {
