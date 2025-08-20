@@ -56,6 +56,7 @@ import * as MeetingRequestImport from '@webex/plugin-meetings/src/meeting/reques
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
+import MembersUtil from '@webex/plugin-meetings/src/members/util';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import Media from '@webex/plugin-meetings/src/media/index';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
@@ -368,6 +369,35 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.simultaneousInterpretation, SimultaneousInterpretation);
           assert.instanceOf(meeting.webinar, Webinar);
         });
+
+        it('should call the callback with the meeting that has id already set', () => {
+          let meetingIdFromCallback;
+          // check that the meeting id is already set correctly at the time when the callback is called
+          const meetingCreationCallback = sinon.stub().callsFake((meeting) => {
+            meetingIdFromCallback = meeting.id;
+          });
+
+          meeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+            },
+            {
+              parent: webex,
+            },
+            meetingCreationCallback
+          );
+          assert.exists(meeting.id);
+          assert.calledOnceWithExactly(meetingCreationCallback, meeting);
+          assert.equal(meeting.id, meetingIdFromCallback);
+        });
+
         it('creates MediaRequestManager instances', () => {
           assert.instanceOf(meeting.mediaRequestManagers.audio, MediaRequestManager);
           assert.instanceOf(meeting.mediaRequestManagers.video, MediaRequestManager);
@@ -581,7 +611,6 @@ describe('plugin-meetings', () => {
           assert.isFalse(meeting.isLocusCall());
         });
       });
-
       describe('#invite', () => {
         it('should have #invite', () => {
           assert.exists(meeting.invite);
@@ -592,8 +621,6 @@ describe('plugin-meetings', () => {
         it('should proxy members #addMember and return a promise', async () => {
           const invite = meeting.invite(uuid1, false);
 
-          assert.exists(invite.then);
-          await invite;
           assert.calledOnce(meeting.members.addMember);
           assert.calledWith(meeting.members.addMember, uuid1, false);
         });
@@ -1219,14 +1246,13 @@ describe('plugin-meetings', () => {
               allowMediaInLobby: true,
             },
           });
-        
+
           assert.calledWithMatch(
             meeting.addMediaInternal,
             sinon.match.any,
             sinon.match.any,
             sinon.match.any,
-            sinon.match.has('videoEnabled', false)
-                        .and(sinon.match.has('allowMediaInLobby', true))
+            sinon.match.has('videoEnabled', false).and(sinon.match.has('allowMediaInLobby', true))
           );
         });
 
@@ -1235,23 +1261,21 @@ describe('plugin-meetings', () => {
             joinOptions,
             mediaOptions: {
               audioEnabled: false,
-              sendAudio: true, 
-              receiveAudio: false, 
+              sendAudio: true,
+              receiveAudio: false,
               allowMediaInLobby: true,
             },
           });
-        
+
           assert.calledWithMatch(
             meeting.addMediaInternal,
             sinon.match.any,
             sinon.match.any,
             sinon.match.any,
-            sinon.match.has('audioEnabled', false)
-                        .and(sinon.match.has('allowMediaInLobby', true))
+            sinon.match.has('audioEnabled', false).and(sinon.match.has('allowMediaInLobby', true))
           );
-        });        
+        });
 
-        
         it('should use provided send/receive values when videoEnabled/audioEnabled are true or not set', async () => {
           await meeting.joinWithMedia({
             joinOptions,
@@ -1263,7 +1287,7 @@ describe('plugin-meetings', () => {
               allowMediaInLobby: true,
             },
           });
-        
+
           assert.calledWith(
             meeting.addMediaInternal,
             sinon.match.any,
@@ -1301,12 +1325,11 @@ describe('plugin-meetings', () => {
           sinon.restore();
         });
         it('should call voicea.onSpokenLanguageUpdate when joined', async () => {
-
           meeting.joinedWith = {state: 'JOINED'};
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
             LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
-            {spokenLanguage: 'fr'},
+            {spokenLanguage: 'fr'}
           );
           assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr', meeting.id);
           assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'fr');
@@ -1319,12 +1342,11 @@ describe('plugin-meetings', () => {
         });
 
         it('should also call voicea.onSpokenLanguageUpdate when not joined', async () => {
-
           meeting.joinedWith = {state: 'NOT_JOINED'};
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
             LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
-            {spokenLanguage: 'de'},
+            {spokenLanguage: 'de'}
           );
           assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'de');
           assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'de');
@@ -2169,14 +2191,12 @@ describe('plugin-meetings', () => {
           };
           meeting.mediaProperties.setMediaDirection = sinon.stub().returns(true);
           meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
-          meeting.mediaProperties.getCurrentConnectionInfo = sinon
-            .stub()
-            .resolves({
-              connectionType: 'udp',
-              selectedCandidatePairChanges: 2,
-              numTransports: 1,
-              ipVersion: 'IPv6',
-            });
+          meeting.mediaProperties.getCurrentConnectionInfo = sinon.stub().resolves({
+            connectionType: 'udp',
+            selectedCandidatePairChanges: 2,
+            numTransports: 1,
+            ipVersion: 'IPv6',
+          });
           meeting.audio = muteStateStub;
           meeting.video = muteStateStub;
           sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
@@ -3401,8 +3421,8 @@ describe('plugin-meetings', () => {
           meeting.mediaConnections = [
             {
               mediaAgentCluster: 'some.cluster',
-            }
-          ]
+            },
+          ];
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
           meeting.iceCandidateErrors.set('701_turn_host_lookup_received_error', 1);
@@ -3583,12 +3603,12 @@ describe('plugin-meetings', () => {
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(false),
           };
-          meeting.mediaServerIp =  '1.2.3.4';
+          meeting.mediaServerIp = '1.2.3.4';
           meeting.mediaConnections = [
             {
               mediaAgentCluster: 'some.cluster',
-            }
-          ]
+            },
+          ];
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -3638,12 +3658,12 @@ describe('plugin-meetings', () => {
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(true),
           };
-          meeting.mediaServerIp =  '1.2.3.4';
+          meeting.mediaServerIp = '1.2.3.4';
           meeting.mediaConnections = [
             {
               mediaAgentCluster: 'some.cluster',
-            }
-          ]
+            },
+          ];
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -4355,9 +4375,7 @@ describe('plugin-meetings', () => {
             const error = new Error();
             meeting.meetingRequest.setBrb = sinon.stub().rejects(error);
 
-            await expect(
-              meeting.beRightBack(true)
-            ).to.be.rejectedWith(error);
+            await expect(meeting.beRightBack(true)).to.be.rejectedWith(error);
 
             assert.isFalse(meeting.brbState.state.syncToServerInProgress);
           });
@@ -12413,7 +12431,7 @@ describe('plugin-meetings', () => {
                 activeSharingId.whiteboard = beneficiaryId;
 
                 eventTrigger.share.push(
-                  meeting.webinar.selfIsAttendee
+                  meeting.webinar.selfIsAttendee || meeting.guest
                     ? {
                         eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                         functionName: 'remoteShare',
@@ -12432,7 +12450,8 @@ describe('plugin-meetings', () => {
                       }
                 );
 
-                shareStatus = meeting.webinar.selfIsAttendee
+                shareStatus =
+                  meeting.webinar.selfIsAttendee || meeting.guest
                   ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
                   : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
               }
@@ -12647,6 +12666,36 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
               assert.equal(meeting.shareCAEventSentStatus.receiveStart, false);
               assert.equal(meeting.shareCAEventSentStatus.receiveStop, false);
+            });
+          });
+
+          describe('Whiteboard Share - User is guest', () => {
+            it('User receives a remote share instead of whiteboard share', () => {
+              // Set the guest flag
+              meeting.guest = true;
+
+              // Step 1: Start sharing whiteboard A
+              const data1 = generateData(
+                blankPayload, // Initial payload
+                true, // isGranting: Granting share
+                false, // isContent: Whiteboard (not content)
+                USER_IDS.REMOTE_A, // Beneficiary ID: Remote user A
+                RESOURCE_URLS.WHITEBOARD_A // Resource URL: Whiteboard A
+              );
+
+              // Step 2: Stop sharing whiteboard A
+              const data2 = generateData(
+                data1.payload, // Updated payload from Step 1
+                false, // isGranting: Stopping share
+                false, // isContent: Whiteboard
+                USER_IDS.REMOTE_A // Beneficiary ID: Remote user A
+              );
+
+              // Validate the payload changes and status updates
+              payloadTestHelper([data1]);
+
+              // Specific assertions for guest
+              assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
             });
           });
 
@@ -14092,6 +14141,445 @@ describe('plugin-meetings', () => {
       assert.equal(result.isRegistrationIdValid, false);
       assert.deepEqual(result.requiredCaptcha, FAKE_CAPTCHA);
       assert.equal(result.failureReason, MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA);
+    });
+  });
+
+  describe('#setStage', () => {
+    const check = async (options, expectedVideoLayout) => {
+      const locusUrl = `https://locus-test.wbx2.com/locus/api/v1/loci/${uuidv4()}`;
+      meeting.locusUrl = locusUrl;
+
+      const setStagePromise = meeting.setStage(options);
+
+      assert.exists(setStagePromise.then);
+      await setStagePromise;
+
+      assert.calledOnceWithExactly(
+        meeting.meetingRequest.synchronizeStage,
+        locusUrl,
+        expectedVideoLayout
+      );
+    };
+
+    beforeEach(() => {
+      meeting.meetingRequest.synchronizeStage = sinon.stub().returns(Promise.resolve());
+    });
+
+    it('sends the expected request when no options are provided', async () => {
+      await check(undefined, {
+        overrideDefault: true,
+        lockAttendeeViewOnStageOnly: false,
+        stageParameters: {
+          activeSpeakerProportion: 0.5,
+          showActiveSpeaker: {show: false, order: 0},
+          stageManagerType: 0,
+        },
+      });
+    });
+
+    it('sends the expected request when empty options are provided', async () => {
+      await check(
+        {},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 0,
+          },
+        }
+      );
+    });
+
+    [0.25, 0.5, 0.75].forEach((activeSpeakerProportion) => {
+      it(`sends the expected request when only the active speaker proportion option is provided as ${activeSpeakerProportion}`, async () => {
+        await check(
+          {activeSpeakerProportion},
+          {
+            overrideDefault: true,
+            lockAttendeeViewOnStageOnly: false,
+            stageParameters: {
+              activeSpeakerProportion,
+              showActiveSpeaker: {show: false, order: 0},
+              stageManagerType: 0,
+            },
+          }
+        );
+      });
+    });
+
+    it('sends the expected request when only the custom background option is provided', async () => {
+      const customBackground = {
+        url: `https://test.wbx2.com/background/${uuidv4()}.jpg`,
+      };
+
+      await check(
+        {customBackground},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 2,
+          },
+          customLayouts: {background: customBackground},
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom logo option is provided', async () => {
+      const customLogo = {
+        url: `https://test.wbx2.com/logo/${uuidv4()}.png`,
+        position: 'LowerRight',
+      };
+
+      await check(
+        {customLogo},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 1,
+          },
+          customLayouts: {logo: customLogo},
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom name label option is provided', async () => {
+      const customNameLabel = {
+        accentColor: '#0A7806',
+        background: {color: 'rgba(255, 255, 255, 1)'},
+        border: {color: 'rgba(255, 255, 255, 1)'},
+        content: {
+          displayName: {color: 'rgba(0, 0, 0, 0.95)'},
+          subtitle: {color: 'rgba(0, 0, 0, 0.6)'},
+        },
+        decoration: {color: 'rgba(10, 120, 6, 1)'},
+        fadeOut: {delay: 15},
+        type: 'Primary',
+      };
+
+      await check(
+        {customNameLabel},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 4,
+          },
+          nameLabelStyle: customNameLabel,
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom background and logo options are provided', async () => {
+      const customBackground = {
+        url: `https://test.wbx2.com/background/${uuidv4()}.jpg`,
+      };
+      const customLogo = {
+        url: `https://test.wbx2.com/logo/${uuidv4()}.png`,
+        position: 'UpperRight',
+      };
+
+      await check(
+        {customBackground, customLogo},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 3,
+          },
+          customLayouts: {background: customBackground, logo: customLogo},
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom background and name label options are provided', async () => {
+      const customBackground = {
+        url: `https://test.wbx2.com/background/${uuidv4()}.jpg`,
+      };
+      const customNameLabel = {
+        accentColor: '#00A3FF',
+        background: {color: 'rgba(0, 163, 255, 1)'},
+        border: {color: 'rgba(0, 163, 255, 1)'},
+        content: {
+          displayName: {color: 'rgba(255, 255, 255, 0.95)'},
+          subtitle: {color: 'rgba(255, 255, 255, 0.7)'},
+        },
+        decoration: {color: 'rgba(255, 255, 255, 0.95)'},
+        fadeOut: {delay: 15},
+        type: 'PrimaryInverted',
+      };
+
+      await check(
+        {customBackground, customNameLabel},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 6,
+          },
+          customLayouts: {background: customBackground},
+          nameLabelStyle: customNameLabel,
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom logo and name label options are provided', async () => {
+      const customLogo = {
+        url: `https://test.wbx2.com/logo/${uuidv4()}.png`,
+        position: 'UpperLeft',
+      };
+      const customNameLabel = {
+        accentColor: '#942B2B',
+        background: {color: 'rgba(255, 255, 255, 1)'},
+        border: {color: 'rgba(148, 43, 43, 1)'},
+        content: {
+          displayName: {color: 'rgba(0, 0, 0, 0.95)'},
+          subtitle: {color: 'rgba(0, 0, 0, 0.6)'},
+        },
+        decoration: {color: 'rgba(0, 0, 0, 0)'},
+        fadeOut: {delay: 15},
+        type: 'Secondary',
+      };
+
+      await check(
+        {customLogo, customNameLabel},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 5,
+          },
+          customLayouts: {logo: customLogo},
+          nameLabelStyle: customNameLabel,
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom background, logo, name label options are provided', async () => {
+      const customBackground = {
+        url: `https://test.wbx2.com/background/${uuidv4()}.jpg`,
+      };
+      const customLogo = {
+        url: `https://test.wbx2.com/logo/${uuidv4()}.png`,
+        position: 'LowerLeft',
+      };
+      const customNameLabel = {
+        accentColor: '#EBD960',
+        background: {color: 'rgba(235, 217, 96, 0.55)'},
+        border: {color: 'rgba(235, 217, 96, 0.55)'},
+        content: {
+          displayName: {color: 'rgba(255, 255, 255, 0.95)'},
+          subtitle: {color: 'rgba(255, 255, 255, 0.7)'},
+        },
+        decoration: {color: 'rgba(0, 0, 0, 0)'},
+        fadeOut: {delay: 15},
+        type: 'SecondaryInverted',
+      };
+
+      await check(
+        {customBackground, customLogo, customNameLabel},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 7,
+          },
+          customLayouts: {background: customBackground, logo: customLogo},
+          nameLabelStyle: customNameLabel,
+        }
+      );
+    });
+
+    it('sends the expected request when only the important participants option is provided as empty', async () => {
+      await check(
+        {importantParticipants: []},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 0,
+          },
+        }
+      );
+    });
+
+    it('sends the expected request when only the important participants option is provided as populated', async () => {
+      const importantParticipants = [
+        {mainCsi: 11111111, participantId: uuidv4()},
+        {mainCsi: 22222222, participantId: uuidv4()},
+        {mainCsi: 33333333, participantId: uuidv4()},
+        {mainCsi: 44444444, participantId: uuidv4()},
+        {mainCsi: 55555555, participantId: uuidv4()},
+        {mainCsi: 66666666, participantId: uuidv4()},
+        {mainCsi: 77777777, participantId: uuidv4()},
+        {mainCsi: 88888888, participantId: uuidv4()},
+      ];
+
+      await check(
+        {importantParticipants},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            importantParticipants: [
+              {...importantParticipants[0], order: 1},
+              {...importantParticipants[1], order: 2},
+              {...importantParticipants[2], order: 3},
+              {...importantParticipants[3], order: 4},
+              {...importantParticipants[4], order: 5},
+              {...importantParticipants[5], order: 6},
+              {...importantParticipants[6], order: 7},
+              {...importantParticipants[7], order: 8},
+            ],
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 0,
+          },
+        }
+      );
+    });
+
+    [false, true].forEach((lockAttendeeViewOnStage) => {
+      it(`sends the expected request when only the lock attendee view on stage option is provided as ${lockAttendeeViewOnStage}`, async () => {
+        await check(
+          {lockAttendeeViewOnStage},
+          {
+            overrideDefault: true,
+            lockAttendeeViewOnStageOnly: lockAttendeeViewOnStage,
+            stageParameters: {
+              activeSpeakerProportion: 0.5,
+              showActiveSpeaker: {show: false, order: 0},
+              stageManagerType: 0,
+            },
+          }
+        );
+      });
+    });
+
+    [false, true].forEach((showActiveSpeaker) => {
+      it(`sends the expected request when only the show active speaker option is provided as ${showActiveSpeaker}`, async () => {
+        await check(
+          {showActiveSpeaker},
+          {
+            overrideDefault: true,
+            lockAttendeeViewOnStageOnly: false,
+            stageParameters: {
+              activeSpeakerProportion: 0.5,
+              showActiveSpeaker: {show: showActiveSpeaker, order: 0},
+              stageManagerType: 0,
+            },
+          }
+        );
+      });
+    });
+
+    it('sends the expected request when all options are provided', async () => {
+      const activeSpeakerProportion = 0.6;
+      const customBackground = {
+        url: `https://test.wbx2.com/background/${uuidv4()}.jpg`,
+      };
+      const customLogo = {
+        url: `https://test.wbx2.com/logo/${uuidv4()}.png`,
+        position: 'UpperMiddle',
+      };
+      const customNameLabel = {
+        accentColor: '#0A7806',
+        background: {color: 'rgba(255, 255, 255, 1)'},
+        border: {color: 'rgba(255, 255, 255, 1)'},
+        content: {
+          displayName: {color: 'rgba(0, 0, 0, 0.95)'},
+          subtitle: {color: 'rgba(0, 0, 0, 0.6)'},
+        },
+        decoration: {color: 'rgba(10, 120, 6, 1)'},
+        fadeOut: {delay: 15},
+        type: 'Primary',
+      };
+      const importantParticipants = [
+        {mainCsi: 11111111, participantId: uuidv4()},
+        {mainCsi: 22222222, participantId: uuidv4()},
+        {mainCsi: 33333333, participantId: uuidv4()},
+        {mainCsi: 44444444, participantId: uuidv4()},
+        {mainCsi: 55555555, participantId: uuidv4()},
+        {mainCsi: 66666666, participantId: uuidv4()},
+        {mainCsi: 77777777, participantId: uuidv4()},
+        {mainCsi: 88888888, participantId: uuidv4()},
+      ];
+      const lockAttendeeViewOnStage = true;
+      const showActiveSpeaker = true;
+
+      await check(
+        {
+          activeSpeakerProportion,
+          customBackground,
+          customLogo,
+          customNameLabel,
+          importantParticipants,
+          lockAttendeeViewOnStage,
+          showActiveSpeaker,
+        },
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: lockAttendeeViewOnStage,
+          stageParameters: {
+            activeSpeakerProportion,
+            importantParticipants: [
+              {...importantParticipants[0], order: 1},
+              {...importantParticipants[1], order: 2},
+              {...importantParticipants[2], order: 3},
+              {...importantParticipants[3], order: 4},
+              {...importantParticipants[4], order: 5},
+              {...importantParticipants[5], order: 6},
+              {...importantParticipants[6], order: 7},
+              {...importantParticipants[7], order: 8},
+            ],
+            showActiveSpeaker: {show: showActiveSpeaker, order: 0},
+            stageManagerType: 7,
+          },
+          customLayouts: {background: customBackground, logo: customLogo},
+          nameLabelStyle: customNameLabel,
+        }
+      );
+    });
+  });
+
+  describe('#unsetStage', () => {
+    beforeEach(() => {
+      meeting.meetingRequest.synchronizeStage = sinon.stub().returns(Promise.resolve());
+    });
+
+    it('sends the expected request', async () => {
+      const locusUrl = `https://locus-test.wbx2.com/locus/api/v1/loci/${uuidv4()}`;
+      meeting.locusUrl = locusUrl;
+
+      const unsetStagePromise = meeting.unsetStage();
+
+      assert.exists(unsetStagePromise.then);
+      await unsetStagePromise;
+
+      assert.calledOnceWithExactly(
+        meeting.meetingRequest.synchronizeStage,
+        locusUrl,
+        {overrideDefault: false}
+      );
     });
   });
 });

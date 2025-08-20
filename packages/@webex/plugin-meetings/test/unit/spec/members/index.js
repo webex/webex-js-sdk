@@ -177,6 +177,26 @@ describe('plugin-meetings', () => {
         assert.isFalse(MembersUtil.isInvalidInvitee({email: 'sip:test@cisco.com'}), 'SIP email should be valid');
       });
 
+      it('should skip email validation if skipEmailValidation is true', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: '8618578675309', skipEmailValidation: true});
+        
+        assert.notCalled(MembersUtil.isInvalidInvitee);
+      });
+
+      it('should not skip email validation if skipEmailValidation is not equal true', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: '86185786@ds.com'});
+        
+        assert.called(MembersUtil.isInvalidInvitee);
+      });
+
       it('should accept valid phone with isInternalNumber', async () => {
         sandbox.spy(MembersUtil, 'isInvalidInvitee');
 
@@ -189,6 +209,22 @@ describe('plugin-meetings', () => {
         assert.isTrue(MembersUtil.isInvalidInvitee({ phoneNumber: '18578675309', isInternalNumber: false }));
         assert.isFalse(MembersUtil.isInvalidInvitee({phoneNumber: '18578675309', isInternalNumber: true}));
         assert.isTrue(MembersUtil.isInvalidInvitee({phoneNumber: '+8618578675309', isInternalNumber: true}));
+      });
+
+      it('should not crash if params is undefined', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        try {
+          await members.addMember(undefined);
+        } catch (err) {
+          assert.instanceOf(err, ParameterError);
+
+          assert.equal(err.message, 'The invitee must be defined with either a valid email, emailAddress or phoneNumber property.');
+        }
+              
+        assert.called(MembersUtil.isInvalidInvitee);
       });
     });
 

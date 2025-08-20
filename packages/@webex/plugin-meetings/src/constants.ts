@@ -263,7 +263,6 @@ export const RECORDING_STATE = {
   PAUSED: 'paused',
   RESUMED: 'resumed',
 };
-
 export const SHARE_STATUS = {
   NO_SHARE: 'no_share',
   REMOTE_SHARE_ACTIVE: 'remote_share_active',
@@ -949,6 +948,9 @@ export const DISPLAY_HINTS = {
   PREMISE_RECORDING_CONTROL_PAUSE: 'PREMISE_RECORDING_CONTROL_PAUSE',
   PREMISE_RECORDING_CONTROL_STOP: 'PREMISE_RECORDING_CONTROL_STOP',
   PREMISE_RECORDING_CONTROL_RESUME: 'PREMISE_RECORDING_CONTROL_RESUME',
+  LOCAL_RECORDING_STATUS_STARTED: 'LOCAL_RECORDING_STATUS_STARTED',
+  LOCAL_RECORDING_STATUS_STOPPED: 'LOCAL_RECORDING_STATUS_STOPPED',
+  LOCAL_RECORDING_STATUS_PAUSED: 'LOCAL_RECORDING_STATUS_PAUSED',
   LOCK_CONTROL_UNLOCK: 'LOCK_CONTROL_UNLOCK',
   LOCK_CONTROL_LOCK: 'LOCK_CONTROL_LOCK',
   LOCK_STATUS_LOCKED: 'LOCK_STATUS_LOCKED',
@@ -988,7 +990,6 @@ export const DISPLAY_HINTS = {
   CAN_RENAME_SELF_AND_OBSERVED: 'CAN_RENAME_SELF_AND_OBSERVED',
   CAN_RENAME_OTHERS: 'CAN_RENAME_OTHERS',
   MOVE_TO_LOBBY: 'MOVE_TO_LOBBY',
-
   // breakout session
   BREAKOUT_MANAGEMENT: 'BREAKOUT_MANAGEMENT',
   BROADCAST_MESSAGE_TO_BREAKOUT: 'BROADCAST_MESSAGE_TO_BREAKOUT',
@@ -1189,6 +1190,7 @@ export const QUALITY_LEVELS = {
   HIGH: 'HIGH',
   '360p': '360p',
   '480p': '480p',
+  '540p': '540p',
   '720p': '720p',
   '1080p': '1080p',
 };
@@ -1215,6 +1217,18 @@ export const AVAILABLE_RESOLUTIONS = {
       height: {
         max: 480,
         ideal: 480,
+      },
+    },
+  },
+  '540p': {
+    video: {
+      width: {
+        max: 960,
+        ideal: 960,
+      },
+      height: {
+        max: 540,
+        ideal: 540,
       },
     },
   },
@@ -1357,4 +1371,10 @@ export const INITIAL_REGISTRATION_STATUS = {
   deviceRegister: false,
   mercuryConnect: false,
   checkH264Support: false,
+};
+
+export const STAGE_MANAGER_TYPE = {
+  LOGO: 0b001,
+  BACKGROUND: 0b010,
+  NAME_LABEL: 0b100,
 };

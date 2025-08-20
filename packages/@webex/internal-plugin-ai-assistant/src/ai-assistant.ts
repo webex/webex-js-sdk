@@ -4,7 +4,7 @@
 import uuid from 'uuid';
 import {WebexPlugin} from '@webex/webex-core';
 import '@webex/internal-plugin-mercury';
-import {get} from 'lodash';
+import {get, merge} from 'lodash';
 import {Timer} from '@webex/common-timers';
 
 import {
@@ -210,24 +210,30 @@ const AIAssistant = WebexPlugin.extend({
               decryptedMessage = await this._decryptData(resultData);
             }
 
-            // Emit the final message
-            this.trigger(streamEventName, {
-              message: decryptedMessage || '',
-              requestId,
-              finished: true,
-              errorMessage,
-              errorCode,
-            });
+            // Emit the final message with entire response object plus legacy properties
+            this.trigger(
+              streamEventName,
+              merge({}, data.response, {
+                message: decryptedMessage || '',
+                requestId,
+                finished: true,
+                errorMessage,
+                errorCode,
+              })
+            );
 
             this.stopListening(this, eventName);
           } catch (decryptError) {
-            this.trigger(streamEventName, {
-              message: concatenatedMessage,
-              requestId,
-              finished: true,
-              errorMessage: errorMessage || decryptError.message,
-              errorCode,
-            });
+            this.trigger(
+              streamEventName,
+              merge({}, data.response, {
+                message: concatenatedMessage,
+                requestId,
+                finished: true,
+                errorMessage: errorMessage || decryptError.message,
+                errorCode,
+              })
+            );
           }
         } else {
           // For non-finished messages, concatenate and emit the accumulated message
@@ -239,23 +245,29 @@ const AIAssistant = WebexPlugin.extend({
 
             concatenatedMessage += decryptedMessage;
 
-            // Emit the concatenated message so far
-            this.trigger(streamEventName, {
-              message: concatenatedMessage,
-              requestId,
-              finished: false,
-              errorMessage,
-              errorCode,
-            });
+            // Emit the concatenated message so far with entire response object plus legacy properties
+            this.trigger(
+              streamEventName,
+              merge({}, data.response, {
+                message: concatenatedMessage,
+                requestId,
+                finished: false,
+                errorMessage,
+                errorCode,
+              })
+            );
           } catch (decryptError) {
             // If decryption fails, we still want to continue listening for more messages
-            this.trigger(streamEventName, {
-              message: concatenatedMessage,
-              requestId,
-              finished: false,
-              errorMessage: errorMessage || decryptError.message,
-              errorCode,
-            });
+            this.trigger(
+              streamEventName,
+              merge({}, data.response, {
+                message: concatenatedMessage,
+                requestId,
+                finished: false,
+                errorMessage: errorMessage || decryptError.message,
+                errorCode,
+              })
+            );
           }
         }
       });
@@ -272,13 +284,7 @@ const AIAssistant = WebexPlugin.extend({
           reject(error);
         })
         .then(({body}) => {
-          const {sessionId} = body;
-
-          resolve({
-            requestId,
-            sessionId,
-            streamEventName,
-          });
+          resolve({...body, requestId, streamEventName});
           timer.start();
         });
     });
