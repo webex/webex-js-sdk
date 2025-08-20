@@ -580,7 +580,7 @@ const WebexCore = AmpState.extend({
     return Promise.resolve();
   },
 
-  async upload(options) {
+  upload(options) {
     if (!options.file) {
       return Promise.reject(new Error('`options.file` is required'));
     }
