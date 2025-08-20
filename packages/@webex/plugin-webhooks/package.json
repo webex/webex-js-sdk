@@ -34,9 +34,11 @@
   },
   "dependencies": {
     "@webex/internal-plugin-device": "workspace:*",
-    "@webex/plugin-logger": "workspace:*",
-    "@webex/plugin-rooms": "workspace:*",
     "@webex/webex-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@webex/plugin-logger": "workspace:*",
+    "@webex/plugin-rooms": "workspace:*"
   },
   "scripts": {
     "build": "yarn build:src",
