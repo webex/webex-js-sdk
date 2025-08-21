@@ -117,7 +117,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   @oneFlight
-  connect(webSocketUrl, sessionId = 'main-session') {
+  connect(webSocketUrl, sessionId = 'default-session') {
     const existingSocket = this.sockets.get(sessionId);
     if (existingSocket && existingSocket.connected) {
       this.logger.info(
@@ -160,7 +160,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   @oneFlight
-  disconnect(options, sessionId = 'main-session') {
+  disconnect(options, sessionId = 'default-session') {
     return new Promise((resolve) => {
       const backoffCall = this.backoffCalls.get(sessionId);
       if (backoffCall) {
@@ -441,7 +441,7 @@ const Mercury = WebexPlugin.extend({
           socket.connected = true;
         }
         // @ts-ignore
-        this.socket = this.sockets.get('main-session');
+        this.socket = this.sockets.get('default-session');
         this.connected = this.hasConnectedSockets();
         this.hasEverConnected = true;
         this._emit('online');
@@ -670,7 +670,7 @@ const Mercury = WebexPlugin.extend({
     }
   },
 
-  _reconnect(webSocketUrl, sessionId = 'main-session') {
+  _reconnect(webSocketUrl, sessionId = 'default-session') {
     this.logger.info(`${this.namespace}: reconnecting ${sessionId}`);
 
     return this.connect(webSocketUrl, sessionId);
