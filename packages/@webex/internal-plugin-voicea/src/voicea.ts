@@ -245,12 +245,12 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.announceStatus = ANNOUNCE_STATUS.JOINING;
     this.listenToEvents();
     // @ts-ignore
-    this.webex.internal.llm.getSocket('main-session').send({
+    this.webex.internal.llm.getSocket('default-session').send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
         // @ts-ignore
-        route: this.webex.internal.llm.getBinding('main-session'),
+        route: this.webex.internal.llm.getBinding('default-session'),
       },
       headers: {},
       data: {
@@ -275,7 +275,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.request({
       method: 'PUT',
       // @ts-ignore
-      url: `${this.webex.internal.llm.getLocusUrl('main-session')}/controls/`,
+      url: `${this.webex.internal.llm.getLocusUrl('default-session')}/controls/`,
       body: {
         transcribe: {
           spokenLanguage: languageCode,
@@ -293,14 +293,14 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public requestLanguage = (languageCode: string): void => {
     // @ts-ignore
-    if (!this.webex.internal.llm.isConnected('main-session')) return;
+    if (!this.webex.internal.llm.isConnected('default-session')) return;
     // @ts-ignore
-    this.webex.internal.llm.getSocket('main-session').send({
+    this.webex.internal.llm.getSocket('default-session').send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
         // @ts-ignore
-        route: this.webex.internal.llm.getBinding('main-session'),
+        route: this.webex.internal.llm.getBinding('default-session'),
       },
       headers: {
         to: this.vmcDeviceId,
@@ -333,15 +333,15 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     isFinal: boolean
   ): void => {
     // @ts-ignore
-    if (!this.webex.internal.llm.isConnected('main-session')) return;
+    if (!this.webex.internal.llm.isConnected('default-session')) return;
 
     // @ts-ignore
-    this.webex.internal.llm.getSocket('main-session').send({
+    this.webex.internal.llm.getSocket('default-session').send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
         // @ts-ignore
-        route: this.webex.internal.llm.getBinding('main-session'),
+        route: this.webex.internal.llm.getBinding('default-session'),
       },
       headers: {},
       data: {
@@ -387,7 +387,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     return this.request({
       method: 'PUT',
       // @ts-ignore
-      url: `${this.webex.internal.llm.getLocusUrl('main-session')}/controls/`,
+      url: `${this.webex.internal.llm.getLocusUrl('default-session')}/controls/`,
       body,
     })
       .then(() => {
@@ -418,7 +418,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   public announce = () => {
     if (this.isAnnounceProcessing()) return;
     // @ts-ignore
-    if (!this.webex.internal.llm.isConnected('main-session')) {
+    if (!this.webex.internal.llm.isConnected('default-session')) {
       throw new Error('voicea can not announce before llm connected');
     }
     this.sendAnnouncement();
@@ -439,7 +439,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   public turnOnCaptions = async (spokenLanguage?): undefined | Promise<void> => {
     if (this.captionStatus === TURN_ON_CAPTION_STATUS.SENDING) return undefined;
     // @ts-ignore
-    if (!this.webex.internal.llm.isConnected('main-session')) {
+    if (!this.webex.internal.llm.isConnected('default-session')) {
       throw new Error('can not turn on captions before llm connected');
     }
 
@@ -460,7 +460,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     return this.request({
       method: 'PUT',
       // @ts-ignore
-      url: `${this.webex.internal.llm.getLocusUrl('main-session')}/controls/`,
+      url: `${this.webex.internal.llm.getLocusUrl('default-session')}/controls/`,
       body: {
         transcribe: {
           transcribing: activate,
@@ -490,7 +490,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     return this.request({
       method: 'PUT',
       // @ts-ignore
-      url: `${this.webex.internal.llm.getLocusUrl('main-session')}/controls/`,
+      url: `${this.webex.internal.llm.getLocusUrl('default-session')}/controls/`,
       body: {
         manualCaption: {
           enable,
