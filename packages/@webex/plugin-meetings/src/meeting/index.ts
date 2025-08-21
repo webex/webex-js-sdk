@@ -6017,6 +6017,8 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         'practice-session'
       );
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off('event:relay.event:practice-session', this.processRelayEvent);
     }
     connections.forEach((llmSessionId) => {
       this.updateLLMConnectionBySessionId(llmSessionId);
@@ -6031,6 +6033,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // webinar panelist should use new data channel in practice session
     const dataChannelUrl =
       llmSessionId === 'practice-session' ? practiceSessionDatachannelUrl : datachannelUrl;
+
+    const eventName =
+      llmSessionId === 'default-session'
+        ? `event:relay.event`
+        : `event:relay.event:${llmSessionId}`;
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected(llmSessionId)) {
@@ -6054,7 +6061,7 @@ export default class Meeting extends StatelessWebexPlugin {
         llmSessionId
       );
       // @ts-ignore - Fix type
-      this.webex.internal.llm.off(`event:relay.event:${llmSessionId}`, this.processRelayEvent);
+      this.webex.internal.llm.off(eventName, this.processRelayEvent);
     }
 
     if (!isJoined) {
@@ -6066,9 +6073,10 @@ export default class Meeting extends StatelessWebexPlugin {
       .registerAndConnect(url, dataChannelUrl, llmSessionId)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
-        this.webex.internal.llm.off(`event:relay.event:${llmSessionId}`, this.processRelayEvent);
+        this.webex.internal.llm.off(eventName, this.processRelayEvent);
         // @ts-ignore - Fix type
-        this.webex.internal.llm.on(`event:relay.event:${llmSessionId}`, this.processRelayEvent);
+        this.webex.internal.llm.on(eventName, this.processRelayEvent);
+
         LoggerProxy.logger.info(
           `Meeting:index#updateLLMConnection --> enabled to receive relay events for connection ${llmSessionId}!`
         );

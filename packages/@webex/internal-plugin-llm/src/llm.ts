@@ -218,13 +218,4 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   private get datachannelUrl(): string | undefined {
     return this.connections.get(DEFAULT_SESSION)?.datachannelUrl;
   }
-
-  /**
-   * Get a specific socket by connection ID
-   * @param {string} sessionId - The connection identifier
-   * @returns {Socket|undefined} The socket instance or undefined if not found
-   */
-  getSocket(sessionId = DEFAULT_SESSION) {
-    return this.sockets.get(sessionId);
-  }
 }

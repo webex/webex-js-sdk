@@ -86,6 +86,23 @@ const Mercury = WebexPlugin.extend({
   },
 
   /**
+   * Get all active socket connections
+   * @returns {Map} Map of sessionId to socket instances
+   */
+  getSockets() {
+    return this.sockets;
+  },
+
+  /**
+   * Get a specific socket by connection ID
+   * @param {string} sessionId - The connection identifier
+   * @returns {Socket|undefined} The socket instance or undefined if not found
+   */
+  getSocket(sessionId = 'default-session') {
+    return this.sockets.get(sessionId);
+  },
+
+  /**
    * Check if any sockets are connected
    * @returns {boolean} True if at least one socket is connected
    */
@@ -100,7 +117,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   @oneFlight
-  connect(webSocketUrl, sessionId) {
+  connect(webSocketUrl, sessionId = 'default-session') {
     const existingSocket = this.sockets.get(sessionId);
     if (existingSocket && existingSocket.connected) {
       this.logger.info(
@@ -143,7 +160,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   @oneFlight
-  disconnect(options, sessionId) {
+  disconnect(options, sessionId = 'default-session') {
     return new Promise((resolve) => {
       const backoffCall = this.backoffCalls.get(sessionId);
       if (backoffCall) {
@@ -330,6 +347,7 @@ const Mercury = WebexPlugin.extend({
         // metrics can't be trusted).
         if (reason.code !== 1006 && backoffCall && backoffCall?.getNumRetries() > 0) {
           this._emit('connection_failed', reason, {
+            sessionId,
             retries: backoffCall?.getNumRetries(),
           });
         }
@@ -419,15 +437,15 @@ const Mercury = WebexPlugin.extend({
         }
 
         // Update overall connected status
-        const sessionSocket = this.sockets.get(sessionId);
-        if (sessionSocket) {
-          sessionSocket.connected = true;
+        const socket = this.sockets.get(sessionId);
+        if (socket) {
+          socket.connected = true;
         }
         // @ts-ignore
-        // this.socket = this.sockets.get('default-session');
+        this.socket = this.sockets.get('default-session');
         this.connected = this.hasConnectedSockets();
         this.hasEverConnected = true;
-        this._emit('online');
+        this._emit('online', {sessionId});
         this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
 
         return resolve();
@@ -526,6 +544,7 @@ const Mercury = WebexPlugin.extend({
       const reason = event.reason && event.reason.toLowerCase();
       const socket = this.sockets.get(sessionId);
       const socketUrl = socket?.url;
+      event.sessionId = sessionId;
 
       if (socket) {
         socket.removeAllListeners();
@@ -624,18 +643,16 @@ const Mercury = WebexPlugin.extend({
         Promise.resolve()
       )
       .then(() => {
-        this._emit('event', envelope);
-        this._emit(`event:${sessionId}`, envelope);
+        const suffix = sessionId === 'default-session' ? '' : `:${sessionId}`;
+
+        this._emit(`event${suffix}`, envelope);
         const [namespace] = data.eventType.split('.');
 
         if (namespace === data.eventType) {
-          this._emit(`event:${namespace}`, envelope);
-          this._emit(`event:${namespace}:${sessionId}`, envelope);
+          this._emit(`event:${namespace}${suffix}`, envelope);
         } else {
-          this._emit(`event:${namespace}`, envelope);
-          this._emit(`event:${data.eventType}`, envelope);
-          this._emit(`event:${namespace}:${sessionId}`, envelope);
-          this._emit(`event:${data.eventType}:${sessionId}`, envelope);
+          this._emit(`event:${namespace}${suffix}`, envelope);
+          this._emit(`event:${data.eventType}${suffix}`, envelope);
         }
       })
       .catch((reason) => {
@@ -653,7 +670,7 @@ const Mercury = WebexPlugin.extend({
     }
   },
 
-  _reconnect(webSocketUrl, sessionId) {
+  _reconnect(webSocketUrl, sessionId = 'default-session') {
     this.logger.info(`${this.namespace}: reconnecting ${sessionId}`);
 
     return this.connect(webSocketUrl, sessionId);
