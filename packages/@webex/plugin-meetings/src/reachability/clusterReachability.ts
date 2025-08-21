@@ -21,7 +21,7 @@ async function checkIP(ip: string) {
 
 declare global {
   interface RTCIceCandidate {
-    url: string; // currently only supported in Chrome/Edge
+    url?: string; // currently only supported in Chrome/Edge
   }
 }
 
@@ -412,7 +412,7 @@ export class ClusterReachability extends EventsScope {
         let port = null;
 
         if (e.candidate.url) {
-          const match = e.candidate.url.match(STUN_SERVER_URL_REGEX);
+          const match = e.candidate.url?.match(STUN_SERVER_URL_REGEX);
           if (match) {
             [, serverIp, port] = match;
             port = Number(port);
