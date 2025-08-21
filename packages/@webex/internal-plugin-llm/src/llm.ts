@@ -2,7 +2,7 @@
 
 import Mercury from '@webex/internal-plugin-mercury';
 
-import {LLM} from './constants';
+import {LLM, DEFAULT_SESSION} from './constants';
 // eslint-disable-next-line no-unused-vars
 import {ILLMChannel} from './llm.types';
 
@@ -61,10 +61,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Register to the websocket
    * @param {string} llmSocketUrl
-   * @param {string} sessionId - Connection identifier (defaults to 'default-session')
+   * @param {string} sessionId - Connection identifier (defaults to DEFAULT_SESSION)
    * @returns {Promise<void>}
    */
-  private register = (llmSocketUrl: string, sessionId = 'default-session'): Promise<void> =>
+  private register = (llmSocketUrl: string, sessionId = DEFAULT_SESSION): Promise<void> =>
     this.request({
       method: 'POST',
       url: llmSocketUrl,
@@ -86,13 +86,13 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Register and connect to the websocket
    * @param {string} locusUrl
    * @param {string} datachannelUrl
-   * @param {string} sessionId - Connection identifier (defaults to 'default-session')
+   * @param {string} sessionId - Connection identifier (defaults to DEFAULT_SESSION)
    * @returns {Promise<void>}
    */
   public registerAndConnect = (
     locusUrl: string,
     datachannelUrl: string,
-    sessionId = 'default-session'
+    sessionId = DEFAULT_SESSION
   ): Promise<void> =>
     this.register(datachannelUrl, sessionId).then(() => {
       if (!locusUrl || !datachannelUrl) return undefined;
@@ -108,10 +108,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Tells if LLM socket is connected
-   * @param {string} sessionId - Connection identifier (defaults to 'default-session')
+   * @param {string} sessionId - Connection identifier (defaults to DEFAULT_SESSION)
    * @returns {boolean} connected
    */
-  public isConnected = (sessionId = 'default-session'): boolean => {
+  public isConnected = (sessionId = DEFAULT_SESSION): boolean => {
     const socket = this.getSocket(sessionId);
 
     return socket ? socket.connected : false;
@@ -119,10 +119,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Tells if LLM socket is binding
-   * @param {string} sessionId - Connection identifier (defaults to 'default-session')
+   * @param {string} sessionId - Connection identifier (defaults to DEFAULT_SESSION)
    * @returns {string} binding
    */
-  public getBinding = (sessionId = 'default-session'): string => {
+  public getBinding = (sessionId = DEFAULT_SESSION): string => {
     const connectionData = this.connections.get(sessionId);
 
     return connectionData?.binding || '';
@@ -130,10 +130,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Get Locus URL for the connection
-   * @param {string} sessionId - Connection identifier (defaults to 'default-session')
+   * @param {string} sessionId - Connection identifier (defaults to DEFAULT_SESSION)
    * @returns {string} locus Url
    */
-  public getLocusUrl = (sessionId = 'default-session'): string => {
+  public getLocusUrl = (sessionId = DEFAULT_SESSION): string => {
     const connectionData = this.connections.get(sessionId);
 
     return connectionData?.locusUrl || '';
@@ -141,10 +141,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Get data channel URL for the connection
-   * @param {string} sessionId - Connection identifier (defaults to 'default-session')
+   * @param {string} sessionId - Connection identifier (defaults to DEFAULT_SESSION)
    * @returns {string} data channel Url
    */
-  public getDatachannelUrl = (sessionId = 'default-session'): string => {
+  public getDatachannelUrl = (sessionId = DEFAULT_SESSION): string => {
     const connectionData = this.connections.get(sessionId);
 
     return connectionData?.datachannelUrl || '';
@@ -153,12 +153,12 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Disconnects websocket connection
    * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
-   * @param {string} sessionId - Connection identifier (defaults to 'default-session')
+   * @param {string} sessionId - Connection identifier (defaults to DEFAULT_SESSION)
    * @returns {Promise<void>}
    */
   public disconnectLLM = (
     options: {code: number; reason: string},
-    sessionId = 'default-session'
+    sessionId = DEFAULT_SESSION
   ): Promise<void> =>
     this.disconnect(options, sessionId).then(() => {
       // Clean up connection data
@@ -195,27 +195,36 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @deprecated Use getBinding() instead
    */
   private get webSocketUrl(): string | undefined {
-    return this.connections.get('default-session')?.webSocketUrl;
+    return this.connections.get(DEFAULT_SESSION)?.webSocketUrl;
   }
 
   /**
    * @deprecated Use getBinding() instead
    */
   private get binding(): string | undefined {
-    return this.connections.get('default-session')?.binding;
+    return this.connections.get(DEFAULT_SESSION)?.binding;
   }
 
   /**
    * @deprecated Use getLocusUrl() instead
    */
   private get locusUrl(): string | undefined {
-    return this.connections.get('default-session')?.locusUrl;
+    return this.connections.get(DEFAULT_SESSION)?.locusUrl;
   }
 
   /**
    * @deprecated Use getDatachannelUrl() instead
    */
   private get datachannelUrl(): string | undefined {
-    return this.connections.get('default-session')?.datachannelUrl;
+    return this.connections.get(DEFAULT_SESSION)?.datachannelUrl;
+  }
+
+  /**
+   * Get a specific socket by connection ID
+   * @param {string} sessionId - The connection identifier
+   * @returns {Socket|undefined} The socket instance or undefined if not found
+   */
+  getSocket(sessionId = DEFAULT_SESSION) {
+    return this.sockets.get(sessionId);
   }
 }

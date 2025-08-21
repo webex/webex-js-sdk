@@ -245,7 +245,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.announceStatus = ANNOUNCE_STATUS.JOINING;
     this.listenToEvents();
     // @ts-ignore
-    this.webex.internal.llm.getSocket('default-session').send({
+    this.webex.internal.llm.getSocket('default-session')?.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
@@ -295,7 +295,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     if (!this.webex.internal.llm.isConnected('default-session')) return;
     // @ts-ignore
-    this.webex.internal.llm.getSocket('default-session').send({
+    this.webex.internal.llm.getSocket('default-session')?.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
@@ -336,7 +336,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     if (!this.webex.internal.llm.isConnected('default-session')) return;
 
     // @ts-ignore
-    this.webex.internal.llm.getSocket('default-session').send({
+    this.webex.internal.llm.getSocket('default-session')?.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {

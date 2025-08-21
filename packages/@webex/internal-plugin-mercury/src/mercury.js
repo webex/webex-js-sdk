@@ -86,23 +86,6 @@ const Mercury = WebexPlugin.extend({
   },
 
   /**
-   * Get all active socket connections
-   * @returns {Map} Map of sessionId to socket instances
-   */
-  getSockets() {
-    return this.sockets;
-  },
-
-  /**
-   * Get a specific socket by connection ID
-   * @param {string} sessionId - The connection identifier
-   * @returns {Socket|undefined} The socket instance or undefined if not found
-   */
-  getSocket(sessionId) {
-    return this.sockets.get(sessionId);
-  },
-
-  /**
    * Check if any sockets are connected
    * @returns {boolean} True if at least one socket is connected
    */
@@ -117,7 +100,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   @oneFlight
-  connect(webSocketUrl, sessionId = 'default-session') {
+  connect(webSocketUrl, sessionId) {
     const existingSocket = this.sockets.get(sessionId);
     if (existingSocket && existingSocket.connected) {
       this.logger.info(
@@ -160,7 +143,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   @oneFlight
-  disconnect(options, sessionId = 'default-session') {
+  disconnect(options, sessionId) {
     return new Promise((resolve) => {
       const backoffCall = this.backoffCalls.get(sessionId);
       if (backoffCall) {
@@ -436,12 +419,12 @@ const Mercury = WebexPlugin.extend({
         }
 
         // Update overall connected status
-        const socket = this.sockets.get(sessionId);
-        if (socket) {
-          socket.connected = true;
+        const sessionSocket = this.sockets.get(sessionId);
+        if (sessionSocket) {
+          sessionSocket.connected = true;
         }
         // @ts-ignore
-        this.socket = this.sockets.get('default-session');
+        // this.socket = this.sockets.get('default-session');
         this.connected = this.hasConnectedSockets();
         this.hasEverConnected = true;
         this._emit('online');
@@ -670,7 +653,7 @@ const Mercury = WebexPlugin.extend({
     }
   },
 
-  _reconnect(webSocketUrl, sessionId = 'default-session') {
+  _reconnect(webSocketUrl, sessionId) {
     this.logger.info(`${this.namespace}: reconnecting ${sessionId}`);
 
     return this.connect(webSocketUrl, sessionId);

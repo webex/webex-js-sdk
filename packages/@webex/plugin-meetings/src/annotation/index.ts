@@ -336,7 +336,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
     };
 
     // @ts-ignore
-    this.webex.internal.llm.socket.send(data);
+    this.webex.internal.llm.getSocket('default-session')?.send(data);
     this.seqNum += 1;
   }
 }
