@@ -289,6 +289,20 @@ export class ClusterReachability extends EventsScope {
     const result = this.result[protocol];
     const subnet = result.details.find((s) => s.serverIp === serverIp && s.port === port);
 
+    if (subnet) {
+      subnet['answered-tx'] = 1;
+      subnet['lost-tx'] = 0;
+      subnet.latencies = [latency];
+    } else {
+      result.details.push({
+        serverIp,
+        port,
+        'answered-tx': 1,
+        'lost-tx': 0,
+        latencies: [latency],
+      });
+    }
+
     if (result.latencyInMilliseconds === undefined) {
       LoggerProxy.logger.log(
         `Reachability:index#saveResult --> Successfully reached ${this.name} over ${protocol}: ${latency}ms`
@@ -297,20 +311,6 @@ export class ClusterReachability extends EventsScope {
       result.result = 'reachable';
       if (publicIp) {
         result.clientMediaIPs = [publicIp];
-      }
-
-      if (subnet) {
-        subnet['answered-tx'] = 1;
-        subnet['lost-tx'] = 0;
-        subnet.latencies = [latency];
-      } else {
-        result.details.push({
-          serverIp,
-          port,
-          'answered-tx': 1,
-          'lost-tx': 0,
-          latencies: [latency],
-        });
       }
       this.emit(
         {
@@ -324,20 +324,6 @@ export class ClusterReachability extends EventsScope {
         }
       );
     } else {
-      if (!subnet) {
-        result.details.push({
-          serverIp,
-          port,
-          'answered-tx': 1,
-          'lost-tx': 0,
-          latencies: [latency],
-        });
-      } else {
-        subnet['answered-tx'] = 1;
-        subnet['lost-tx'] = 0;
-        subnet.latencies = [latency];
-      }
-
       this.emit(
         {
           file: 'clusterReachability',
@@ -398,7 +384,7 @@ export class ClusterReachability extends EventsScope {
    * @returns {void}
    */
   private registerIceCandidateListener() {
-    this.pc.onicecandidate = (e) => {
+    this.pc.onicecandidate = ({candidate}) => {
       const TURN_TLS_PORT = 443;
       const CANDIDATE_TYPES = {
         SERVER_REFLEXIVE: 'srflx',
@@ -407,33 +393,33 @@ export class ClusterReachability extends EventsScope {
 
       const latencyInMilliseconds = this.getElapsedTime();
 
-      if (e.candidate) {
+      if (candidate) {
         let serverIp = null;
         let port = null;
 
-        if (e.candidate.url) {
-          const match = e.candidate.url?.match(STUN_SERVER_URL_REGEX);
+        if (candidate.url) {
+          const match = candidate.url?.match(STUN_SERVER_URL_REGEX);
           if (match) {
             [, serverIp, port] = match;
             port = Number(port);
           }
         }
 
-        if (!serverIp && e.candidate.address) {
-          serverIp = e.candidate.address;
+        if (!serverIp && candidate.address) {
+          serverIp = candidate.address;
         }
 
-        if (!port && e.candidate.port) {
-          port = e.candidate.port;
+        if (!port && candidate.port) {
+          port = candidate.port;
         }
 
-        if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp, port);
-          this.determineNatType(e.candidate);
+        if (candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
+          this.saveResult('udp', latencyInMilliseconds, candidate.address, serverIp, port);
+          this.determineNatType(candidate);
         }
 
-        if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
-          const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
+        if (candidate.type === CANDIDATE_TYPES.RELAY) {
+          const protocol = candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
           this.saveResult(protocol, latencyInMilliseconds, null, serverIp, port);
         }
       }
@@ -479,11 +465,12 @@ export class ClusterReachability extends EventsScope {
         if (match) {
           allChecks.push(
             (async () => {
+              const [, serverIp, port] = match;
               try {
-                if (await checkIP(match[1])) {
+                if (await checkIP(serverIp)) {
                   this.result[protocol].details.push({
-                    serverIp: match[1],
-                    port: Number(match[2]),
+                    serverIp,
+                    port: Number(port),
                     'answered-tx': 0,
                     'lost-tx': 1,
                     latencies: [],

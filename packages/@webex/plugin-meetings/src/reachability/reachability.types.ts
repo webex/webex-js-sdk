@@ -114,9 +114,9 @@ export type GetClustersTrigger = 'startup' | 'early-call/no-min-reached';
 
 export interface ClusterNode {
   isVideoMesh: boolean;
-  udp: Array<string>;
-  tcp: Array<string>;
-  xtls: Array<string>;
+  udp: string[];
+  tcp: string[];
+  xtls: string[];
 }
 
 // This is the type used to get the cluster URLs.

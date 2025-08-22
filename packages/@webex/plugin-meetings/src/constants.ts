@@ -1377,6 +1377,9 @@ export const INITIAL_REGISTRATION_STATUS = {
 export const STUN_SERVER_URL_REGEX = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
 
 export const PROTOCOLS_LIST: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
+
+export const STUN_PREFIX = 'stun:';
+
 export const STAGE_MANAGER_TYPE = {
   LOGO: 0b001,
   BACKGROUND: 0b010,
