@@ -1,6 +1,6 @@
 /**
  * Constants for Task Service
- * @module @webex/plugin-cc/services/task/constants
+ * @module @webex/contact-center/services/task/constants
  * @ignore
  */
 
