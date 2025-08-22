@@ -1,6 +1,6 @@
 # Webex JS SDK: Contact Center Plugin
 
-Welcome to **@webex/plugin-cc**, a plugin for the [Webex JS SDK](https://github.com/webex/webex-js-sdk). This package enables integration with Webex Contact Center, providing APIs for agent management, task handling, and real-time communications.
+Welcome to **@webex/contact-center**, a plugin for the [Webex JS SDK](https://github.com/webex/webex-js-sdk). This package enables integration with Webex Contact Center, providing APIs for agent management, task handling, and real-time communications.
 
 ## Features
 
@@ -13,7 +13,7 @@ Welcome to **@webex/plugin-cc**, a plugin for the [Webex JS SDK](https://github.
 ## Installation
 
 ```bash
-npm install @webex/plugin-cc
+npm install @webex/contact-center
 ```
 
 ## Initialization
@@ -21,35 +21,35 @@ npm install @webex/plugin-cc
 Initialize the Contact Center plugin with the Webex SDK. The `config` parameter is optional, but you can pass any of the following options for `cc`:
 
 ```javascript
-import Webex from '@webex/plugin-cc';
+import Webex from '@webex/contact-center';
 
 const config = {
   credentials: {
     access_token: 'your-access-token', // Required for authentication
   },
   logger: {
-    level: 'debug',        // Enhanced logging for development
-    bufferLogLevel: 'log'  // Log level for uploaded logs
+    level: 'debug', // Enhanced logging for development
+    bufferLogLevel: 'log', // Log level for uploaded logs
   },
   cc: {
     // Agent session management
-    allowMultiLogin: false,        // Prevent multiple agent sessions
-    allowAutomatedRelogin: true,   // Auto reconnect on disconnection
+    allowMultiLogin: false, // Prevent multiple agent sessions
+    allowAutomatedRelogin: true, // Auto reconnect on disconnection
 
     // Connection settings
-    clientType: 'WebexCCSDK',      // Identify client type
-    isKeepAliveEnabled: false,     // Websocket keep-alive
-    force: true,                   // Force connection parameters
+    clientType: 'WebexCCSDK', // Identify client type
+    isKeepAliveEnabled: false, // Websocket keep-alive
+    force: true, // Force connection parameters
 
     // Metrics configuration
     metrics: {
       clientName: 'WEBEX_JS_SDK',
-      clientType: 'WebexCCSDK'
-    }
-  }
+      clientType: 'WebexCCSDK',
+    },
+  },
 };
 
-const webex = Webex.init({ config }); // config is optional
+const webex = Webex.init({config}); // config is optional
 const cc = webex.cc;
 
 webex.once('ready', () => {
@@ -64,11 +64,13 @@ webex.once('ready', () => {
 The [ContactCenter](./classes/ContactCenter.html) class is your primary interface for agent operations. Key capabilities include:
 
 1. **Session Management**:
+
    - Agent registration and initialization
    - Connection management
    - Event handling
 
 2. **Agent Operations**:
+
    - Station login/logout
    - State management (Available/Idle)
    - Profile updates
@@ -86,19 +88,19 @@ async function initializeAgent() {
   try {
     // 1. Register with contact center
     const profile = await cc.register();
-    
+
     // 2. Login with browser-based calling
     await cc.stationLogin({
       teamId: profile.teams[0].teamId,
-      loginOption: 'BROWSER'
+      loginOption: 'BROWSER',
     });
-    
+
     // 3. Set availability state
     await cc.setAgentState({
       state: 'Available',
-      auxCodeId: '0'
+      auxCodeId: '0',
     });
-    
+
     console.log('Agent initialized and ready');
   } catch (error) {
     console.error('Initialization failed:', error);
@@ -111,11 +113,13 @@ async function initializeAgent() {
 The [Task](./classes/Task.html) class represents an interaction (call, chat, etc.) and provides methods for:
 
 1. **Media Control**:
+
    - Mute/unmute
    - Hold/resume
    - Recording controls
 
 2. **Call Flow**:
+
    - Accept/decline tasks
    - Transfer operations
    - Consultation features
@@ -133,27 +137,26 @@ cc.on('task:incoming', async (task) => {
   try {
     // 1. Accept the task
     await task.accept();
-    
+
     // 2. Set up media handling (for voice)
     task.on('task:media', (track) => {
       const audio = document.getElementById('remote-audio');
       audio.srcObject = new MediaStream([track]);
     });
-    
+
     // 3. Handle task states
     task.on('task:hold', () => {
       console.log('Task placed on hold');
     });
-    
+
     task.on('task:end', async () => {
       if (task.data.wrapUpRequired) {
         await task.wrapup({
           auxCodeId: 'RESOLVED',
-          wrapUpReason: 'Customer issue resolved'
+          wrapUpReason: 'Customer issue resolved',
         });
       }
     });
-    
   } catch (error) {
     console.error('Task handling failed:', error);
   }
