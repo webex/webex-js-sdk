@@ -1,21 +1,24 @@
 ### Table of Contents
+
 - [Getting Started](#getting-started)
 - [Developing](#developing)
-- [Building](#building) 
+- [Building](#building)
 - [Testing](#testing)
-- [Samples](#samples) 
+- [Samples](#samples)
 - [Consuming SDK](#consuming-sdk)
   - [NPM](#npm)
   - [CDN](#cdn)
 - [Kitchen Sink App](#kitchen-sink-app)
+
 ---
 
 ## Getting Started
+
 The `ContactCenter` package is designed to provide a set of APIs to perform various operations for the Agent flow within Webex Contact Center.
 
 - [Introduction to the Webex Web Calling SDK]()
 - [Quickstart guide]().
- 
+
 ## Developing
 
 ```bash
@@ -38,33 +41,41 @@ yarn build:local
 ## Testing
 
 ```bash
- yarn workspace @webex/plugin-cc run test:unit
+ yarn workspace @webex/contact-center run test:unit
 ```
 
-## Samples 
+## Samples
+
 ```bash
   yarn run samples:serve
 ```
 
 ## Consuming SDK
+
 To consume the latest stable version of the Calling SDK one can use NPM or CDN.
+
 # NPM
+
 ```javascript
-  npm install @webex/plugin-cc
+  npm install @webex/contact-center
 ```
+
 (or)
 
 ```javascript
-  yarn add @webex/plugin-cc
+  yarn add @webex/contact-center
 ```
 
 ```javascript
-  import ContactCenter from '@webex/plugin-cc'
+import ContactCenter from '@webex/contact-center';
 ```
+
 # CDN
+
 ```javascript
-  <script src="../contact-center.min.js"></script>
+<script src="../contact-center.min.js"></script>
 ```
 
 ### Kitchen Sink App
+
 To test Contact Center SDK API, use this Kitchen Sink app: https://webex.github.io/webex-js-sdk/samples/contact-center/
