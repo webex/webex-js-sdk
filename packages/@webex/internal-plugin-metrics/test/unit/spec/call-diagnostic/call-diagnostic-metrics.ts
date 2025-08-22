@@ -2501,14 +2501,14 @@ describe('internal-plugin-metrics', () => {
           assert.calledThrice(submitToCallDiagnosticsStub);
           });
 
-        [
+        ([
           ['client.media.render.start'],
           ['client.media.render.stop'],
           ['client.media.rx.start'],
           ['client.media.rx.stop'],
           ['client.media.tx.start'],
           ['client.media.tx.stop']
-        ].forEach(([name]) => {
+        ] as const).forEach(([name]) => {
           it(`should only send ${name} once per mediaType`, () => {
             const options = {
               meetingId: fakeMeeting.id,
@@ -2521,7 +2521,7 @@ describe('internal-plugin-metrics', () => {
             const baselineCallCount = webex.logger.log.callCount;
             // Send first event
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload,
               options,
             });
@@ -2531,7 +2531,7 @@ describe('internal-plugin-metrics', () => {
 
             // Send second event of same type
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload,
               options,
             });
@@ -2546,7 +2546,7 @@ describe('internal-plugin-metrics', () => {
 
             // Send third event of same type
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload,
               options,
             });
@@ -2559,7 +2559,7 @@ describe('internal-plugin-metrics', () => {
 
             // Send fourth event with a different mediaType
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload: {mediaType: 'audio'},
               options,
             });
@@ -2580,21 +2580,21 @@ describe('internal-plugin-metrics', () => {
             const baselineCallCount = webex.logger.log.callCount;
             // Send first event
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload,
               options,
             });
 
             // Send second event with same shareInstanceId
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload,
               options,
             });
 
             // Send event with different shareInstanceId
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload: { ...payload, shareInstanceId: 'instance-2' },
               options,
             });
@@ -2603,10 +2603,10 @@ describe('internal-plugin-metrics', () => {
           });
         });
 
-                [
+        ([
           ['client.roap-message.received'],
           ['client.roap-message.sent']
-        ].forEach(([name]) => {
+        ] as const).forEach(([name]) => {
           it(`should not send third event of same type and not log warning again for ${name}`, () => {
             const options = {
               meetingId: fakeMeeting.id,
@@ -2623,7 +2623,7 @@ describe('internal-plugin-metrics', () => {
 
             // Send first event
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload,
               options,
             });
@@ -2633,7 +2633,7 @@ describe('internal-plugin-metrics', () => {
 
             // Send second event (should trigger warning)
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload,
               options,
             });
@@ -2647,7 +2647,7 @@ describe('internal-plugin-metrics', () => {
             webex.logger.log.resetHistory();
             
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload,
               options,
             });
@@ -2672,13 +2672,13 @@ describe('internal-plugin-metrics', () => {
             const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
 
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload,
               options,
             });
 
             cd.submitClientEvent({
-              name: name as any,
+              name,
               payload,
               options,
             });
