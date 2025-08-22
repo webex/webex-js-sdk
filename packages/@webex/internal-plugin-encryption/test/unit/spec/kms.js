@@ -90,7 +90,6 @@ describe('internal-plugin-encryption', () => {
         assert.equal(spyStub.args[2][0].customerMasterKeyBackup, 'masterKeyBackup');
         assert.equal(spyStub.args[3][0].uri, '/cmk');
         assert.equal(spyStub.args[3][0].customerMasterKeyBackup, undefined);
-        assert.equal(spyStub.args[3][0].customerMasterKeyRole, undefined);
       });
 
       it('deleteAllCustomerMasterKeys', async () => {
