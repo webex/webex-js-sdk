@@ -1220,19 +1220,21 @@ export interface ITask extends EventEmitter {
    * @param orgId - Organization ID (required)
    * @param interactionId - Interaction ID for the task (required)
    * @param timeoutMins - Timeout in minutes for the transcript URL (required)
-   * @param includeConversation - Whether to fetch the actual conversation data
-   * @returns Promise<IvrTranscriptResponse> The IVR transcript data including metadata and content
+   * @returns Promise<IvrTranscriptResponse> The IVR conversation turns array
    * @throws Error if the task is not a voice task, no IVR transcript is available, or the fetch operation fails
    * @example
    * ```typescript
    * // Fetch IVR transcript after accepting a voice task
    * try {
    *   const transcript = await task.fetchIvrTranscript('org123', 'interaction456', 10);
-   *   console.log('IVR transcript:', transcript.content.transcripts);
-   *
-   *   // Display transcript to agent
-   *   transcript.content.transcripts.forEach(entry => {
-   *     console.log(`${entry.timestamp}: ${entry.utterance}`);
+   *   console.log('Turns:', transcript.length);
+   *   transcript.forEach((turn) => {
+   *     if (turn.customer) {
+   *       console.log(`${turn.customer.timestamp}: Customer — ${turn.customer.query}`);
+   *     }
+   *     if (turn.bot) {
+   *       console.log(`${turn.bot.timestamp}: Bot (${turn.bot.botName}) — ${turn.bot.reply}`);
+   *     }
    *   });
    * } catch (error) {
    *   console.error('Failed to fetch IVR transcript:', error);

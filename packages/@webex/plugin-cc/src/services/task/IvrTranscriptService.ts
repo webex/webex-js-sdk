@@ -3,9 +3,9 @@ import LoggerProxy from '../../logger-proxy';
 import {IvrTranscriptMetaDataResponse, IvrTranscriptResponse, IvrTranscriptData} from './types';
 
 /**
- * IVR Transcript Service for managing IVR transcript operations
- * Provides functionality to fetch IVR transcript metadata and conversation content
- * using WebEx request infrastructure to handle CORS and authentication
+ * Service for retrieving IVR (Interactive Voice Response) transcript data
+ * Handles fetching transcript metadata and conversation content from storage endpoints
+ * Provides structured access to bot conversation history and customer interactions
  */
 export class IvrTranscriptService {
   private webex: WebexSDK;
@@ -19,26 +19,23 @@ export class IvrTranscriptService {
   }
 
   /**
-   * Fetches IVR transcript metadata for a given interaction
-   * This provides information about available transcript paths and metadata
+   * Retrieves metadata about available IVR transcripts for a specific interaction
+   * Returns information about transcript locations, bot names, and timing data
    *
-   * @param orgId - Organization ID for the request
-   * @param interactionId - Unique interaction identifier
-   * @param timeOutMins - Timeout in minutes for the request (default: 10)
-   * @returns Promise<IvrTranscriptMetaDataResponse> Metadata about available transcripts
-   * @throws Error if the metadata request fails
+   * @param orgId - Organization identifier
+   * @param interactionId - Unique identifier for the customer interaction
+   * @param timeOutMins - Request timeout duration in minutes (default: 10)
+   * @returns Promise containing transcript metadata including file paths and bot information
+   * @throws Error when metadata retrieval fails due to network, authentication, or server issues
    *
    * @example
    * ```typescript
-   * const metadata = await ivrService.getIvrTranscriptMetadata(
-   *   'orgId123',
-   *   'interaction456',
-   *   15
-   * );
+   * const metadata = await service.getIvrTranscriptMetadata('org123', 'interaction456', 15);
    * console.log('Available transcripts:', metadata.transcripts.length);
+   * console.log('First transcript path:', metadata.transcripts[0]?.transcriptPath);
    * ```
    */
-  public async getIvrTranscriptMetadata(
+  private async getIvrTranscriptMetadata(
     orgId: string,
     interactionId: string,
     timeOutMins = 10
@@ -50,7 +47,6 @@ export class IvrTranscriptService {
     });
 
     try {
-      // const authToken = await this.webex.credentials.getUserToken();
       const requestPayload: WebexRequestPayload = {
         uri: `https://mediastorage.produs1.ciscoccservice.com/media/organization/${orgId}/interaction/${interactionId}/ivrtranscript?timeOutMins=${timeOutMins}`,
         method: HTTP_METHODS.GET,
@@ -62,12 +58,6 @@ export class IvrTranscriptService {
       };
 
       const response = (await this.webex.request(requestPayload)) as WebexRequestPayload;
-
-      LoggerProxy.log('IVR transcript metadata fetched successfully', {
-        module: 'IvrTranscriptService',
-        method: 'getIvrTranscriptMetadata',
-        interactionId,
-      });
 
       return response.body as IvrTranscriptMetaDataResponse;
     } catch (error) {
@@ -81,52 +71,45 @@ export class IvrTranscriptService {
   }
 
   /**
-   * Fetches the actual IVR conversation transcript content from a transcript path
-   * Uses WebEx request infrastructure to bypass CORS restrictions
+   * Retrieves the actual conversation content from a transcript file URL
+   * Downloads and parses the transcript data containing bot responses and customer interactions
    *
-   * @param transcriptPath - Full URL path to the transcript content
-   * @returns Promise<IvrTranscriptResponse> The conversation transcript data
-   * @throws Error if the conversation request fails
+   * @param transcriptPath - Complete URL to the transcript file in cloud storage
+   * @returns Promise containing the conversation transcript as an array of interaction turns
+   * @throws Error when file download fails, content is malformed, or network issues occur
    *
    * @example
    * ```typescript
-   * const conversation = await ivrService.fetchIvrConversation(
-   *   'https://mediastorage.../transcript.json'
+   * const conversation = await service.fetchIvrConversation(
+   *   'https://storage.example.com/transcript123.json'
    * );
    * console.log('Conversation turns:', conversation.length);
+   * console.log('First bot response:', conversation[0]?.bot?.reply);
    * ```
    */
-  public async fetchIvrConversation(transcriptPath: string): Promise<IvrTranscriptResponse> {
+  private async fetchIvrConversation(transcriptPath: string): Promise<IvrTranscriptResponse> {
     LoggerProxy.info('Fetching IVR conversation content', {
       module: 'IvrTranscriptService',
       method: 'fetchIvrConversation',
     });
 
     try {
-      // const authToken = await this.webex.credentials.getUserToken();
       const requestPayload: WebexRequestPayload = {
         uri: transcriptPath,
         method: HTTP_METHODS.GET,
-        // headers: {
-        //   Authorization: `Bearer ${authToken}`,
-        // },
       };
 
       const response = (await this.webex.request(requestPayload)) as WebexRequestPayload;
 
-      // Handle the response based on its structure
       let conversationData: IvrTranscriptResponse;
 
       if (response.body && typeof response.body === 'object') {
-        // If response has a conversation property, extract it
         if ('conversation' in response.body) {
           conversationData = (response.body as IvrTranscriptData).conversation;
         } else {
-          // Otherwise assume the body is the conversation array
           conversationData = response.body as IvrTranscriptResponse;
         }
       } else {
-        // Empty response case
         conversationData = [];
       }
 
@@ -146,7 +129,11 @@ export class IvrTranscriptService {
   }
 
   /**
-   * Flattens the parameters object recursively (matching agent desktop logic)
+   * Recursively flattens nested parameter objects into dot-notation keys
+   * Converts complex nested structures into a flat key-value mapping for easier processing
+   * @param params - The parameter object or array to flatten
+   * @param paramKey - The current key prefix for nested properties
+   * @returns Flattened object with dot-notation keys
    * @private
    */
   private getFlatParams = (params: any, paramKey: string): Record<string, any> => {
@@ -162,8 +149,7 @@ export class IvrTranscriptService {
       });
     } else {
       Object.keys(params).forEach((key) => {
-        const finalKey = paramKey ? `${paramKey} ${key}` : key;
-
+        const finalKey = paramKey ? `${paramKey}.${key}` : key;
         if (params[key] && typeof params[key] === 'object') {
           flatParams = {...flatParams, ...this.getFlatParams(params[key], finalKey)};
         } else {
@@ -176,13 +162,14 @@ export class IvrTranscriptService {
   };
 
   /**
-   * Parses conversations and flattens bot parameters (matching agent desktop logic)
+   * Processes conversation data by adding bot name and flattening parameter structures
+   * Enriches transcript data with bot identification and standardizes parameter format
+   * @param conversation - Array of conversation turns to process
+   * @param botName - Name of the bot to associate with responses
+   * @returns Processed conversation array with enhanced bot information
    * @private
    */
-  private parseConversations = (
-    conversation: IvrTranscriptResponse,
-    botName: string
-  ): IvrTranscriptResponse => {
+  private parseConversations = (conversation: IvrTranscriptResponse, botName: string) => {
     conversation.forEach((transcript, index) => {
       if (transcript.bot) {
         transcript.bot.botName = botName;
@@ -197,22 +184,23 @@ export class IvrTranscriptService {
   };
 
   /**
-   * Fetches IVR transcript following the exact agent desktop logic
-   * This matches the agent desktop implementation exactly
+   * Retrieves complete IVR transcript data by fetching metadata and all conversation content
+   * Orchestrates the full transcript retrieval process including error handling for partial failures
    *
-   * @param orgId - Organization ID
-   * @param interactionId - Unique interaction identifier
-   * @param timeOutMins - Timeout in minutes for the request (default: 10)
-   * @returns Promise<IvrTranscriptResponse> Complete conversation transcript
-   * @throws Error if any step of the process fails
+   * @param orgId - Organization identifier
+   * @param interactionId - Unique identifier for the customer interaction
+   * @param timeOutMins - Request timeout duration in minutes (default: 10)
+   * @returns Promise containing all conversation turns from available transcripts
+   * @throws Error when metadata retrieval fails or all transcript downloads fail
    *
    * @example
    * ```typescript
-   * const transcript = await ivrService.fetchIVRTranscript(
-   *   'orgId123',
-   *   'interaction456'
-   * );
-   * console.log('Parsed transcript:', transcript);
+   * const fullTranscript = await service.fetchIVRTranscript('org123', 'interaction456');
+   * console.log('Total conversation turns:', fullTranscript.length);
+   * fullTranscript.forEach(turn => {
+   *   if (turn.bot) console.log('Bot:', turn.bot.reply);
+   *   if (turn.customer) console.log('Customer:', turn.customer.query);
+   * });
    * ```
    */
   public async fetchIVRTranscript(
@@ -220,28 +208,30 @@ export class IvrTranscriptService {
     interactionId: string,
     timeOutMins = 10
   ): Promise<IvrTranscriptResponse> {
-    LoggerProxy.info('Fetching IVR transcript using agent desktop logic', {
+    LoggerProxy.info('Fetching complete IVR transcript with metadata and conversations', {
       module: 'IvrTranscriptService',
       method: 'fetchIVRTranscript',
       interactionId,
     });
 
     try {
-      // Step 1: Fetch metadata (same as agent desktop fetchMetaData)
+      // Step 1: Retrieve transcript metadata to get file locations and bot information
       const metaData = await this.getIvrTranscriptMetadata(orgId, interactionId, timeOutMins);
       LoggerProxy.log(
-        `Retrieved IVR metadata with transcript count: ${metaData.transcripts?.length || 0}`,
+        `Retrieved transcript metadata containing ${
+          metaData.transcripts?.length || 0
+        } transcript files`,
         {
           module: 'IvrTranscriptService',
           method: 'fetchIVRTranscript',
         }
       );
 
-      // Step 2: Initialize transcript conversations array
+      // Step 2: Initialize conversation collection array
       let transcriptConversations: IvrTranscriptResponse = [];
       const transcriptMetaDataList = metaData.transcripts;
 
-      // Step 3: Check if transcripts are available
+      // Step 3: Validate transcript availability
       if (!transcriptMetaDataList || transcriptMetaDataList.length === 0) {
         LoggerProxy.warn('No IVR transcripts found for interaction', {
           module: 'IvrTranscriptService',
@@ -252,24 +242,18 @@ export class IvrTranscriptService {
         return transcriptConversations;
       }
 
-      // Step 4: Process ALL transcripts sequentially (matching agent desktop logic)
+      // Step 4: Process each transcript file sequentially to build complete conversation history
       // eslint-disable-next-line no-await-in-loop
       for (const transcriptMetaData of transcriptMetaDataList) {
         try {
-          LoggerProxy.log(`Processing transcript: ${transcriptMetaData.transcriptId}`, {
+          LoggerProxy.log(`Processing transcript file: ${transcriptMetaData.transcriptId}`, {
             module: 'IvrTranscriptService',
             method: 'fetchIVRTranscript',
             interactionId,
           });
-
-          // Fetch conversation for this transcript
           // eslint-disable-next-line no-await-in-loop
           let conversation = await this.fetchIvrConversation(transcriptMetaData.transcriptPath);
-
-          // Parse conversations with bot name (matching agent desktop parseConversations)
           conversation = this.parseConversations(conversation, transcriptMetaData.botName);
-
-          // Concatenate to main conversations array (matching agent desktop logic)
           transcriptConversations = transcriptConversations.concat(conversation);
         } catch (error) {
           LoggerProxy.warn(
@@ -280,12 +264,12 @@ export class IvrTranscriptService {
               interactionId,
             }
           );
-          // Continue processing other transcripts even if one fails
+          // Continue processing remaining transcripts even if individual files fail
         }
       }
 
       LoggerProxy.log(
-        `IVR transcript fetched and parsed successfully with length: ${transcriptConversations.length}`,
+        `Complete IVR transcript processing finished - total conversation turns: ${transcriptConversations.length}`,
         {
           module: 'IvrTranscriptService',
           method: 'fetchIVRTranscript',

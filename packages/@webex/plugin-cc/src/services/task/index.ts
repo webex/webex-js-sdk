@@ -1101,6 +1101,11 @@ export default class Task extends EventEmitter implements ITask {
         throw new Error('Organization ID or Interaction ID is missing');
       }
 
+      // Enforce voice-only usage for IVR transcript
+      if (this.data?.interaction?.mediaType !== MEDIA_CHANNEL.TELEPHONY) {
+        throw new Error('IVR transcript is only available for voice (telephony) tasks');
+      }
+
       // Use IvrTranscriptService directly (matching agent desktop fetchIVRTranscript)
       const transcriptConversations = await this.getIvrTranscriptService().fetchIVRTranscript(
         orgId,
@@ -1143,7 +1148,7 @@ export default class Task extends EventEmitter implements ITask {
           orgId,
           type: 'direct-service',
           error: detailedError.message,
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(this.data),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );

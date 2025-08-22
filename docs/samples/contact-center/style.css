@@ -540,3 +540,264 @@ legend {
   border-left: 3px solid #1890ff;
   font-weight: bold;
 }
+
+/* IVR Transcript Conversation Styles */
+.ivr-conversation-container {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 10px 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  max-height: 800px;
+  overflow-y: auto;
+}
+
+.ivr-conversation-header {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e1e8ed;
+}
+
+.ivr-conversation-header h4 {
+  color: #0052bf;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ivr-conversation-header h4:before {
+  content: "💬";
+  font-size: 1.3rem;
+}
+
+.ivr-row {
+  display: flex;
+  margin-bottom: 16px;
+  animation: fadeInUp 0.3s ease-out;
+  position: relative;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ivr-row.customer {
+  justify-content: flex-end;
+  padding-left: 60px;
+}
+
+.ivr-row.agent {
+  justify-content: flex-start;
+  padding-right: 60px;
+}
+
+.ivr-message-bubble {
+  max-width: 75%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+.ivr-row.customer .ivr-message-bubble {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom-right-radius: 4px;
+  margin-left: auto;
+}
+
+.ivr-row.agent .ivr-message-bubble {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border-bottom-left-radius: 4px;
+  margin-right: auto;
+}
+
+.ivr-message-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+  opacity: 0.9;
+  font-weight: 600;
+}
+
+.ivr-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: white;
+  flex-shrink: 0;
+}
+
+.ivr-row.customer .ivr-avatar {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  order: 2;
+}
+
+.ivr-row.agent .ivr-avatar {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  /* order: 1;
+  margin-right: 8px; */
+}
+
+.ivr-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ivr-row.customer .ivr-label {
+  color: #3651c9;
+  order: 1;
+}
+
+.ivr-row.agent .ivr-label {
+  color: #f5576c;
+  order: 2;
+}
+
+.ivr-time {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  font-weight: normal;
+}
+
+.ivr-msg {
+  font-size: 0.95rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Speech bubble arrows */
+.ivr-row.customer .ivr-message-bubble:after {
+  content: "";
+  position: absolute;
+  right: -8px;
+  bottom: 8px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-left-color: #764ba2;
+  border-right: none;
+  border-bottom: none;
+}
+
+.ivr-row.agent .ivr-message-bubble:after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  bottom: 8px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-right-color: #f5576c;
+  border-left: none;
+  border-bottom: none;
+}
+
+/* Scrollbar styling */
+.ivr-conversation-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ivr-conversation-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.ivr-conversation-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 3px;
+}
+
+.ivr-conversation-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
+/* Empty state */
+.ivr-empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.ivr-empty-state i {
+  font-size: 3rem;
+  color: #d1d5db;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.ivr-empty-state p {
+  margin: 0;
+  font-style: italic;
+}
+
+/* Status indicators */
+.ivr-status {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin: 10px 0;
+  text-align: center;
+}
+
+.ivr-status.loading {
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  color: #8b5cf6;
+}
+
+.ivr-status.success {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  color: #059669;
+}
+
+.ivr-status.error {
+  background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+  color: #dc2626;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .ivr-row.customer {
+    padding-left: 20px;
+  }
+  
+  .ivr-row.agent {
+    padding-right: 20px;
+  }
+  
+  .ivr-message-bubble {
+    max-width: 85%;
+    font-size: 0.9rem;
+    padding: 10px 14px;
+  }
+  
+  .ivr-conversation-container {
+    padding: 15px;
+  }
+}

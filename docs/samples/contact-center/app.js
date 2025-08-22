@@ -605,9 +605,9 @@ function updateIvrTranscriptButtonState() {
     return;
   }
   console.log('IVR current task ', currentTask);
-  console.log(`IVR Button State: Task status: ${currentTask.data.interaction.state}, Media channel: ${currentTask.data.mediaType}`);
+  console.log(`IVR Button State: Task status: ${currentTask.data.interaction.state}, Media channel: ${currentTask.data.interaction.mediaType}`);
 
-  if (currentTask.data.interaction.state === 'connected' && currentTask.data.mediaType === 'telephony') {
+  if (currentTask.data.interaction.state === 'connected' && currentTask.data.interaction.mediaType === 'telephony') {
     console.log('IVR Button State: Enabling button - task accepted and telephony channel');
     fetchIvrTranscriptBtn.disabled = false;
     ivrStatusElm.textContent = 'Ready to fetch IVR transcript';
@@ -615,7 +615,7 @@ function updateIvrTranscriptButtonState() {
     console.log('IVR Button State: Disabling button - task not accepted');
     fetchIvrTranscriptBtn.disabled = true;
     ivrStatusElm.textContent = 'Task must be accepted first';
-  } else if (currentTask.data.mediaType !== 'telephony') {
+  } else if (currentTask.data.interaction.mediaType !== 'telephony') {
     console.log('IVR Button State: Disabling button - not telephony channel');
     fetchIvrTranscriptBtn.disabled = true;
     ivrStatusElm.textContent = 'IVR transcript only available for telephony';
@@ -633,7 +633,7 @@ async function fetchIvrTranscript() {
     return;
   }
 
-  console.log(`IVR Fetch: Current task status: ${currentTask.data.interaction.state}, media channel: ${currentTask.data.mediaType}`);
+  console.log(`IVR Fetch: Current task status: ${currentTask.data.interaction.state}, media channel: ${currentTask.data.interaction.mediaType}`);
 
   if (currentTask.data.interaction.state !== 'connected') {
     console.warn('IVR Fetch: Task is not accepted');
@@ -641,7 +641,7 @@ async function fetchIvrTranscript() {
     return;
   }
 
-  if (currentTask.data.mediaType !== 'telephony') {
+  if (currentTask.data.interaction.mediaType !== 'telephony') {
     console.warn('IVR Fetch: Media channel is not telephony');
     ivrStatusElm.textContent = 'IVR transcript is only available for telephony tasks';
     return;
@@ -666,43 +666,14 @@ async function fetchIvrTranscript() {
     if (transcript && transcript.length > 0) {
       console.log(`IVR Fetch: Successfully fetched ${transcript.length} conversation(s)`);
       ivrStatusElm.textContent = `Successfully fetched ${transcript.length} conversation(s)`;
-      
       // Show the content area
       const ivrContentArea = document.querySelector('#ivr-transcript-content');
       if (ivrContentArea) {
         ivrContentArea.style.display = 'block';
       }
-      
-      // Display the conversations
-      let html = '';
-      transcript.forEach((conversation, index) => {
-        console.log(`IVR Fetch: Processing conversation ${index + 1}:`, conversation);
-        html += `
-          <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px;">
-            <h4>Conversation ${index + 1}</h4>
-            <p><strong>Call ID:</strong> ${conversation.callId || 'N/A'}</p>
-            <p><strong>Duration:</strong> ${conversation.duration || 'N/A'}</p>
-            <p><strong>Start Time:</strong> ${conversation.startTime || 'N/A'}</p>
-            <p><strong>End Time:</strong> ${conversation.endTime || 'N/A'}</p>
-            ${conversation.segments && conversation.segments.length > 0 ? `
-              <div style="margin-top: 10px;">
-                <strong>Segments:</strong>
-                <ul style="margin-top: 5px;">
-                  ${conversation.segments.map(segment => `
-                    <li style="margin-bottom: 5px;">
-                      <strong>${segment.speaker || 'Unknown'}:</strong> ${segment.text || 'N/A'}
-                      <br><small>Duration: ${segment.duration || 'N/A'}, Offset: ${segment.offset || 'N/A'}</small>
-                    </li>
-                  `).join('')}
-                </ul>
-              </div>
-            ` : '<p><em>No segments available</em></p>'}
-          </div>
-        `;
-      });
-      
-      ivrResultsContentElm.innerHTML = html;
-      console.log('IVR Fetch: UI updated with conversation data');
+      // Render IVR transcript in Agent Desktop style
+      ivrResultsContentElm.innerHTML = renderIVRTranscript(transcript);
+      console.log('IVR Fetch: UI updated with Agent Desktop style transcript');
     } else {
       console.log('IVR Fetch: No transcript data received');
       ivrStatusElm.textContent = 'No IVR transcript found for this task';
@@ -1915,3 +1886,88 @@ updateLoginOptionElm.addEventListener('change', updateApplyButtonState);
 updateDialNumberElm.addEventListener('input', updateApplyButtonState);
 
 updateApplyButtonState();
+
+// Helper to format timestamp to HH:mm
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}
+
+// Render IVR transcript in modern chat-like style
+function renderIVRTranscript(conversation) {
+  // Debug: Log the conversation structure
+  console.log('🎭 Rendering IVR Transcript:', conversation);
+  
+  if (!conversation || conversation.length === 0) {
+    return `
+      <div class="ivr-empty-state">
+        <i class="fa fa-comments-o"></i>
+        <p>No conversation found</p>
+      </div>
+    `;
+  }
+  
+  return conversation.map((turn, index) => {
+    const messages = [];
+    
+    console.log(`📝 Processing turn ${index}:`, {
+      hasCustomer: !!(turn.customer && turn.customer.query),
+      hasBot: !!(turn.bot && turn.bot.reply),
+      customerQuery: turn.customer?.query || 'N/A',
+      botReply: turn.bot?.reply ? `${turn.bot.reply.substring(0, 50)}...` : 'N/A'
+    });
+    
+    // Render customer message first (if it exists and has content)
+    if (turn.customer && turn.customer.query && turn.customer.query.trim()) {
+      messages.push(`
+        <div class="ivr-row customer">
+          <div class="ivr-avatar">👤</div>
+          <div class="ivr-message-bubble">
+            <div class="ivr-message-header">
+              <span class="ivr-label">Customer</span>
+              <span class="ivr-time">${formatTime(turn.customer.timestamp)}</span>
+            </div>
+            <div class="ivr-msg">${escapeHtml(turn.customer.query)}</div>
+          </div>
+        </div>
+      `);
+      console.log(`✅ Added customer message for turn ${index}`);
+    }
+    
+    // Then render bot response (if it exists and has content)
+    if (turn.bot && turn.bot.reply && turn.bot.reply.trim()) {
+      messages.push(`
+        <div class="ivr-row agent">
+          <div class="ivr-avatar">🤖</div>
+          <div class="ivr-message-bubble">
+            <div class="ivr-message-header">
+              <span class="ivr-label">Virtual Agent</span>
+              <span class="ivr-time">${formatTime(turn.bot.timestamp)}</span>
+            </div>
+            <div class="ivr-msg">${escapeHtml(turn.bot.reply)}</div>
+          </div>
+        </div>
+      `);
+      console.log(`✅ Added bot message for turn ${index}`);
+    }
+    
+    // If no valid content in this turn, log it
+    if (messages.length === 0) {
+      console.log(`⚠️ Turn ${index} has no valid content to render`);
+    }
+    
+    return messages.join('');
+  }).join('');
+}
+
+// Helper function to escape HTML to prevent XSS
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Example usage after fetching transcript:
+// const html = renderIVRTranscript(conversation);
+// document.getElementById('ivr-transcript-container').innerHTML = html;

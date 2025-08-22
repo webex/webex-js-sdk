@@ -86,7 +86,6 @@ describe('Task', () => {
       wrapup: jest.fn().mockResolvedValue({}),
       pauseRecording: jest.fn().mockResolvedValue({}),
       resumeRecording: jest.fn().mockResolvedValue({}),
-      getIvrTranscriptUrl: jest.fn().mockResolvedValue({}),
     };
 
     mockMetricsManager = {
@@ -1592,8 +1591,16 @@ describe('Task', () => {
 
       const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
 
+      // Mock IvrTranscriptService instance to throw error
+      const mockIvrTranscriptService = {
+        fetchIVRTranscript: jest.fn()
+      };
+
+      // Override the private getIvrTranscriptService method
+      (task as any).getIvrTranscriptService = jest.fn().mockReturnValue(mockIvrTranscriptService);
+
       const apiError = new Error('API Error');
-      contactMock.getIvrTranscriptUrl.mockRejectedValue(apiError);
+      mockIvrTranscriptService.fetchIVRTranscript.mockRejectedValue(apiError);
 
       await expect(task.fetchIvrTranscript('test-org-123', 'test-interaction-456', 5)).rejects.toThrow();
 
@@ -1642,35 +1649,31 @@ describe('Task', () => {
       );
     });
 
-    it('should handle empty transcripts array', async () => {
+    it('should return empty array (and record success metric) when no transcripts are available', async () => {
       const taskDataMockVoice = {
         ...taskDataMock,
-        mediaChannel: MEDIA_CHANNEL.TELEPHONY,
+        interaction: {
+          ...taskDataMock.interaction,
+          mediaType: MEDIA_CHANNEL.TELEPHONY
+        },
         orgId: 'test-org-123',
-        taskId: 'test-task-456',
+        interactionId: 'test-interaction-456',
       };
 
       const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
+      // Service returns no conversations when metadata has no transcripts
+      (task as any).getIvrTranscriptService = jest.fn().mockReturnValue({
+        fetchIVRTranscript: jest.fn().mockResolvedValue([]),
+      });
 
-      const mockTranscriptUrlResponse = {
-        body: {
-          orgId: 'test-org-123',
-          interactionId: 'test-interaction-456',
-          timeOutMins: 5,
-          transcripts: []
-        }
-      };
-
-      contactMock.getIvrTranscriptUrl.mockResolvedValue(mockTranscriptUrlResponse);
-
-      await expect(task.fetchIvrTranscript('test-org-123', 'test-interaction-456', 5)).rejects.toThrow();
-
-      expect(global.fetch).not.toHaveBeenCalled();
+      const result = await task.fetchIvrTranscript('test-org-123', 'test-interaction-456', 5);
+      expect(result).toEqual([]);
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_FAILED,
+        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_SUCCESS,
         expect.objectContaining({
           taskId: 'test-interaction-456',
-          error: expect.any(String)
+          orgId: 'test-org-123',
+          conversationTurns: 0
         }),
         ['operational', 'behavioral', 'business']
       );
