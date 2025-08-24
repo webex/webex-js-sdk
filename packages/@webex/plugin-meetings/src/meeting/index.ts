@@ -8390,6 +8390,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (whiteboard) {
       // @ts-ignore
+      this.webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp({
+        key: 'internal.client.share.initiated',
+      });
+      // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.share.initiated',
         payload: {
@@ -8449,10 +8453,16 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (whiteboard) {
       // @ts-ignore
+      this.webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp({
+        key: 'internal.client.share.stopped',
+      });
+      // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.share.stopped',
         payload: {
           mediaType: 'whiteboard',
+          // @ts-ignore
+          shareDuration: this.webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration(),
         },
         options: {
           meetingId: this.id,
@@ -8611,11 +8621,17 @@ export default class Meeting extends StatelessWebexPlugin {
     this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
     if (content) {
       // @ts-ignore
+      this.webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp({
+        key: 'internal.client.share.stopped',
+      });
+      // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.share.stopped',
         payload: {
           mediaType: 'share',
           shareInstanceId: this.localShareInstanceId,
+          // @ts-ignore
+          shareDuration: this.webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration(),
         },
         options: {meetingId: this.id},
       });
@@ -9591,6 +9607,11 @@ export default class Meeting extends StatelessWebexPlugin {
       this.localShareInstanceId = uuid.v4();
       this.shareCAEventSentStatus.transmitStart = false;
       this.shareCAEventSentStatus.transmitStop = false;
+
+      // @ts-ignore
+      this.webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp({
+        key: 'internal.client.share.initiated',
+      });
 
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({

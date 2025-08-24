@@ -1,5 +1,5 @@
 {
-  "name": "@webex/plugin-cc",
+  "name": "@webex/contact-center",
   "description": "This package provides a set of APIs to perform various operations for the Agent flow within Webex Contact Center",
   "license": "Cisco's General Terms (https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html)",
   "contributors": [
@@ -26,7 +26,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",
-    "directory": "packages/@webex/plugin-cc"
+    "directory": "packages/@webex/contact-center"
   },
   "engines": {
     "node": ">=20.x"
