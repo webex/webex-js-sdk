@@ -160,7 +160,9 @@ export type InternalEvent = {
     | 'internal.client.meeting.interstitial-window.showed'
     | 'internal.client.interstitial-window.click.joinbutton'
     | 'internal.client.add-media.turn-discovery.start'
-    | 'internal.client.add-media.turn-discovery.end';
+    | 'internal.client.add-media.turn-discovery.end'
+    | 'internal.client.share.initiated'
+    | 'internal.client.share.stopped';
 
   payload?: never;
   options?: never;
