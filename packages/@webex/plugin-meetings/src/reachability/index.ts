@@ -25,6 +25,7 @@ import {
   GetClustersTrigger,
   NatType,
   ClusterUrls,
+  ClusterBackendResult,
 } from './reachability.types';
 
 import {
@@ -467,12 +468,7 @@ export default class Reachability extends EventsScope {
       const allClusterResults: ReachabilityResults = JSON.parse(resultsJson);
 
       results = mapValues(allClusterResults, (clusterResult) => {
-        const transformed: {
-          udp: TransportResultForBackend;
-          tcp: TransportResultForBackend;
-          xtls: TransportResultForBackend;
-          isVideoMesh?: boolean;
-        } = {
+        const transformed: ClusterBackendResult = {
           udp: {},
           tcp: {},
           xtls: {},

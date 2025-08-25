@@ -10,13 +10,22 @@ import {
   ICE_GATHERING_STATE,
   STUN_SERVER_URL_REGEX,
   PROTOCOLS_LIST,
+  BASIC_IPV4_REGEX,
+  BASIC_IPV6_REGEX,
 } from '../constants';
 import {ClusterReachabilityResult, NatType, SubnetDetails, ClusterNode} from './reachability.types';
 
-async function checkIP(ip: string) {
-  const {isIP} = await import('is-ip');
+async function checkIP(ip: string): Promise<boolean> {
+  try {
+    const {isIP} = await import('is-ip');
 
-  return isIP(ip);
+    return isIP(ip);
+  } catch (error) {
+    LoggerProxy.logger.warn('Failed to load is-ip module, using basic validation:', error);
+
+    // Fallback: basic IPv4 or IPv6 validation
+    return BASIC_IPV4_REGEX.test(ip) || BASIC_IPV6_REGEX.test(ip);
+  }
 }
 
 declare global {

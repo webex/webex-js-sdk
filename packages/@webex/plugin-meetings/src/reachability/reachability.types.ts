@@ -7,24 +7,22 @@ export type TransportResult = {
   clientMediaIPs?: string[];
   details: SubnetDetails[];
 };
-
-// Type to represent the result for each subnet IP address
-export type SubnetDetails = {
-  serverIp: string; // IP address of the subnet being tested
+// Common type to represent the result for each subnet IP address
+type CommonSubnetProperties = {
   port: number; // Port used for the test
   'answered-tx': number; // 1 if reachable, 0 otherwise
   'lost-tx': number; // 1 if unreachable, 0 otherwise
   latencies: number[]; // latency for subnet IP address
 };
 
-// This is the type that matches what backend expects us to send
-// to them(main key diff is serverIps instead of serverIp)
-export type SubnetDetailsForBackend = {
-  serverIps: string; // IP address of the subnet for backend purpose
-  port: number; // Port used for the test
-  'answered-tx': number; // 1 if reachable, 0 otherwise
-  'lost-tx': number; // 1 if unreachable, 0 otherwise
-  latencies: number[]; // latency for subnet IP address
+// Type to represent the result for each subnet IP address (local use)
+export type SubnetDetails = CommonSubnetProperties & {
+  serverIp: string;
+};
+
+// This is the type that matches what backend expects us to send to them
+export type SubnetDetailsForBackend = CommonSubnetProperties & {
+  serverIps: string;
 };
 
 export enum NatType {
@@ -73,6 +71,9 @@ export type ReachabilityResultForBackend = {
   tcp: TransportResultForBackend;
   xtls: TransportResultForBackend;
 };
+
+// This is the type used when sending reachability results to the backend, with an optional isVideoMesh flag
+export type ClusterBackendResult = ReachabilityResultForBackend & {isVideoMesh?: boolean};
 
 // this is the type that is required by the backend when we send them reachability results
 export type ReachabilityResultsForBackend = Record<string, ReachabilityResultForBackend>;
