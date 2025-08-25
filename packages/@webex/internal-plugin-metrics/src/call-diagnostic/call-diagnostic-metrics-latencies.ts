@@ -545,6 +545,16 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Time from share initiation to share stop (ms).
+   */
+  public getShareDuration() {
+    return this.getDiffBetweenTimestamps(
+      'internal.client.share.initiated',
+      'internal.client.share.stopped'
+    );
+  }
+
+  /**
    * Total latency for all exchange ci token.
    */
   public getExchangeCITokenJMT() {

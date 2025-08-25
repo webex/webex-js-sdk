@@ -918,6 +918,18 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
     });
 
+    it('calculates getShareDuration correctly', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.share.initiated',
+        value: 5,
+      });
+      cdl.saveTimestamp({
+        key: 'internal.client.share.stopped',
+        value: 7,
+      });
+      assert.deepEqual(cdl.getShareDuration(), 2);
+    });
+
     describe('calculates getU2CTime correctly', () => {
       it('returns undefined when no precomputed value available', () => {
         assert.deepEqual(cdl.getU2CTime(), undefined);
