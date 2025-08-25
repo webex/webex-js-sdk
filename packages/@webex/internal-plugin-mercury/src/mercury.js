@@ -21,6 +21,7 @@ import {
 } from './errors';
 
 const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
+const DEFAULT_SESSION = 'default-session';
 
 const Mercury = WebexPlugin.extend({
   namespace: 'Mercury',
@@ -98,7 +99,7 @@ const Mercury = WebexPlugin.extend({
    * @param {string} sessionId - The connection identifier
    * @returns {Socket|undefined} The socket instance or undefined if not found
    */
-  getSocket(sessionId = 'default-session') {
+  getSocket(sessionId = DEFAULT_SESSION) {
     return this.sockets.get(sessionId);
   },
 
@@ -117,7 +118,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   @oneFlight
-  connect(webSocketUrl, sessionId = 'default-session') {
+  connect(webSocketUrl, sessionId = DEFAULT_SESSION) {
     const existingSocket = this.sockets.get(sessionId);
     if (existingSocket && existingSocket.connected) {
       this.logger.info(
@@ -160,7 +161,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   @oneFlight
-  disconnect(options, sessionId = 'default-session') {
+  disconnect(options, sessionId = DEFAULT_SESSION) {
     return new Promise((resolve) => {
       const backoffCall = this.backoffCalls.get(sessionId);
       if (backoffCall) {
@@ -437,12 +438,12 @@ const Mercury = WebexPlugin.extend({
         }
 
         // Update overall connected status
-        const socket = this.sockets.get(sessionId);
-        if (socket) {
-          socket.connected = true;
+        const sessionSocket = this.sockets.get(sessionId);
+        if (sessionSocket) {
+          sessionSocket.connected = true;
         }
         // @ts-ignore
-        this.socket = this.sockets.get('default-session');
+        this.socket = this.sockets.get(DEFAULT_SESSION);
         this.connected = this.hasConnectedSockets();
         this.hasEverConnected = true;
         this._emit('online', {sessionId});
@@ -643,7 +644,7 @@ const Mercury = WebexPlugin.extend({
         Promise.resolve()
       )
       .then(() => {
-        const suffix = sessionId === 'default-session' ? '' : `:${sessionId}`;
+        const suffix = sessionId === DEFAULT_SESSION ? '' : `:${sessionId}`;
 
         this._emit(`event${suffix}`, envelope);
         const [namespace] = data.eventType.split('.');
@@ -670,7 +671,7 @@ const Mercury = WebexPlugin.extend({
     }
   },
 
-  _reconnect(webSocketUrl, sessionId = 'default-session') {
+  _reconnect(webSocketUrl, sessionId = DEFAULT_SESSION) {
     this.logger.info(`${this.namespace}: reconnecting ${sessionId}`);
 
     return this.connect(webSocketUrl, sessionId);
