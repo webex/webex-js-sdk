@@ -55,7 +55,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
       },
     },
     'contact-center': {
-      import: `${path.resolve(__dirname)}/packages/@webex/plugin-cc/src/webex.js`,
+      import: `${path.resolve(__dirname)}/packages/@webex/contact-center/src/webex.js`,
       library: {
         name: 'Webex',
         type: 'umd',
@@ -65,12 +65,14 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
   },
   mode: env && env.NODE_ENV === 'development' ? 'development' : 'production',
   output: {
-    filename: '[name].min.js',
-    sourceMapFilename: '[file].map',
-    path:
-      env && env.umd
-        ? `${path.resolve(__dirname)}/packages/webex/umd`
-        : `${path.resolve(__dirname)}/docs/samples`,
+    path: path.resolve(__dirname),
+    filename: (pathData) => {
+      if (pathData.chunk.name === 'contact-center' && env && env.umd) {
+        return 'packages/@webex/contact-center/umd/[name].min.js';
+      }
+
+      return env && env.umd ? 'packages/webex/umd/[name].min.js' : 'docs/samples/[name].min.js';
+    },
   },
   devtool: env && env.NODE_ENV === 'development' ? 'eval-cheap-module-source-map' : 'source-map',
   devServer: {
