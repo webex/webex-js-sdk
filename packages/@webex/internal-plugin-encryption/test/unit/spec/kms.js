@@ -60,6 +60,14 @@ describe('internal-plugin-encryption', () => {
           awsKms: true,
         });
 
+         // Upload aws cmk and role
+        await webex.internal.encryption.kms.uploadCustomerMasterKey({
+          assignedOrgId: 'xx-sds-assdf',
+          customerMasterKey: 'masterKey',
+          awsKms: true,
+          customerMasterKeyRole: 'role',
+        });
+
         // Upload backup cmk for aws
         await webex.internal.encryption.kms.uploadCustomerMasterKey({
           assignedOrgId: 'xx-sds-assdf',
