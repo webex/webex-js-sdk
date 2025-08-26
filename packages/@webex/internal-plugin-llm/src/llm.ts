@@ -72,10 +72,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     })
       .then((res: {body: {webSocketUrl: string; binding: string}}) => {
         // Get or create connection data
-        const connectionData = this.connections.get(sessionId) || {};
-        connectionData.webSocketUrl = res.body.webSocketUrl;
-        connectionData.binding = res.body.binding;
-        this.connections.set(sessionId, connectionData);
+        const sessionData = this.connections.get(sessionId) || {};
+        sessionData.webSocketUrl = res.body.webSocketUrl;
+        sessionData.binding = res.body.binding;
+        this.connections.set(sessionId, sessionData);
       })
       .catch((error: any) => {
         this.logger.error(`Error connecting to websocket for ${sessionId}: ${error}`);
@@ -98,12 +98,12 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       if (!locusUrl || !datachannelUrl) return undefined;
 
       // Get or create connection data
-      const connectionData = this.connections.get(sessionId) || {};
-      connectionData.locusUrl = locusUrl;
-      connectionData.datachannelUrl = datachannelUrl;
-      this.connections.set(sessionId, connectionData);
+      const sessionData = this.connections.get(sessionId) || {};
+      sessionData.locusUrl = locusUrl;
+      sessionData.datachannelUrl = datachannelUrl;
+      this.connections.set(sessionId, sessionData);
 
-      return this.connect(connectionData.webSocketUrl, sessionId);
+      return this.connect(sessionData.webSocketUrl, sessionId);
     });
 
   /**
@@ -123,9 +123,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @returns {string} binding
    */
   public getBinding = (sessionId = DEFAULT_SESSION): string => {
-    const connectionData = this.connections.get(sessionId);
+    const sessionData = this.connections.get(sessionId);
 
-    return connectionData?.binding || '';
+    return sessionData?.binding || '';
   };
 
   /**
@@ -134,9 +134,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @returns {string} locus Url
    */
   public getLocusUrl = (sessionId = DEFAULT_SESSION): string => {
-    const connectionData = this.connections.get(sessionId);
+    const sessionData = this.connections.get(sessionId);
 
-    return connectionData?.locusUrl || '';
+    return sessionData?.locusUrl || '';
   };
 
   /**
@@ -145,9 +145,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @returns {string} data channel Url
    */
   public getDatachannelUrl = (sessionId = DEFAULT_SESSION): string => {
-    const connectionData = this.connections.get(sessionId);
+    const sessionData = this.connections.get(sessionId);
 
-    return connectionData?.datachannelUrl || '';
+    return sessionData?.datachannelUrl || '';
   };
 
   /**
@@ -161,7 +161,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     sessionId = DEFAULT_SESSION
   ): Promise<void> =>
     this.disconnect(options, sessionId).then(() => {
-      // Clean up connection data
+      // Clean up sessions data
       this.connections.delete(sessionId);
     });
 
@@ -178,7 +178,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Get all active LLM connections
-   * @returns {Map} Map of sessionId to connection data
+   * @returns {Map} Map of sessionId to session data
    */
   public getAllConnections = (): Map<
     string,
