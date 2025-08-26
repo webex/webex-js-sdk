@@ -189,33 +189,4 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       datachannelUrl?: string;
     }
   > => new Map(this.connections);
-
-  // Legacy properties for backward compatibility with single connection
-  /**
-   * @deprecated Use getBinding() instead
-   */
-  private get webSocketUrl(): string | undefined {
-    return this.connections.get(DEFAULT_SESSION)?.webSocketUrl;
-  }
-
-  /**
-   * @deprecated Use getBinding() instead
-   */
-  private get binding(): string | undefined {
-    return this.connections.get(DEFAULT_SESSION)?.binding;
-  }
-
-  /**
-   * @deprecated Use getLocusUrl() instead
-   */
-  private get locusUrl(): string | undefined {
-    return this.connections.get(DEFAULT_SESSION)?.locusUrl;
-  }
-
-  /**
-   * @deprecated Use getDatachannelUrl() instead
-   */
-  private get datachannelUrl(): string | undefined {
-    return this.connections.get(DEFAULT_SESSION)?.datachannelUrl;
-  }
 }
