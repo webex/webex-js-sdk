@@ -648,12 +648,11 @@ const DeviceManager = WebexPlugin.extend({
    */
   getPairedDevice() {
     if (!this._pairedDevice) {
-      this.logger.info('DeviceManager#getPairedDeviceInfo: Currently no device is paired');
+      this.logger.info('DeviceManager#getPairedDevice: Currently no device is paired');
 
       return undefined;
     }
-    const pairedDeviceId =
-      this._pairedDevice && (this._pairedDevice.id || this._pairedDevice.identity.id);
+    const pairedDeviceId = this._pairedDevice?.id || this._pairedDevice?.identity?.id;
 
     return DeviceCollection.get(pairedDeviceId);
   },
