@@ -168,15 +168,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
     const {minimum = 0, maximum} = clampValues;
 
-    if (diff < minimum) {
-      return minimum;
-    }
-
-    if (maximum !== undefined && diff > maximum) {
-      return maximum;
-    }
-
-    return diff;
+    return Math.min(maximum ?? Infinity, Math.max(diff, minimum));
   }
 
   /**
@@ -426,7 +418,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const lobbyTime = typeof lobbyTimeLatency === 'number' ? lobbyTimeLatency : 0;
 
     if (interstitialJoinClickTimestamp && connectedMedia) {
-      return connectedMedia - interstitialJoinClickTimestamp - lobbyTime;
+      const interstitialToMediaOKJmt = connectedMedia - interstitialJoinClickTimestamp - lobbyTime;
+
+      return Math.max(0, interstitialToMediaOKJmt);
     }
 
     return undefined;
@@ -491,12 +485,12 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const lobbyTime = this.getStayLobbyTime();
 
     if (clickToInterstitial && interstitialToJoinOk && joinConfJMT) {
-      const totalMediaJMT = clickToInterstitial + interstitialToJoinOk + joinConfJMT;
+      const totalMediaJMT = Math.max(0, clickToInterstitial + interstitialToJoinOk + joinConfJMT);
       if (this.getMeeting()?.allowMediaInLobby) {
         return totalMediaJMT;
       }
 
-      return totalMediaJMT - lobbyTime;
+      return Math.max(0, totalMediaJMT - lobbyTime);
     }
 
     return undefined;
@@ -512,7 +506,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const joinConfJMT = this.getJoinConfJMT();
 
     if (clickToInterstitialWithUserDelay && interstitialToJoinOk && joinConfJMT) {
-      return clickToInterstitialWithUserDelay + interstitialToJoinOk + joinConfJMT;
+      return Math.max(0, clickToInterstitialWithUserDelay + interstitialToJoinOk + joinConfJMT);
     }
 
     return undefined;
@@ -527,7 +521,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const joinConfJMT = this.getJoinConfJMT();
 
     if (typeof interstitialToJoinOk === 'number' && typeof joinConfJMT === 'number') {
-      return interstitialToJoinOk - joinConfJMT;
+      return Math.max(0, interstitialToJoinOk - joinConfJMT);
     }
 
     return undefined;
