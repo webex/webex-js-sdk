@@ -83,4 +83,37 @@ describe('plugin-device-manager', () => {
       assert.isTrue(DeviceCollection.get.calledWith('456'));
     });
   });
+
+  describe('pairedMethod', () => {
+    it('returns the default paired method value "Manual"', () => {
+      const result = deviceManager.getPairedMethod();
+      
+      assert.strictEqual(result, 'Manual');
+    });
+
+    it('returns the current paired method value when set', () => {
+      deviceManager._pairedMethod = 'Ultrasonic';
+      
+      const result = deviceManager.getPairedMethod();
+      
+      assert.strictEqual(result, 'Ultrasonic');
+    });
+
+    it('sets the paired method value', () => {
+      deviceManager.setPairedMethod('Ultrasonic');
+      
+      assert.strictEqual(deviceManager._pairedMethod, 'Ultrasonic');
+    });
+
+    it('updates the paired method value when called multiple times', () => {
+      deviceManager.setPairedMethod('Ultrasonic');
+      assert.strictEqual(deviceManager._pairedMethod, 'Ultrasonic');
+
+      deviceManager.setPairedMethod('Manual');
+      assert.strictEqual(deviceManager._pairedMethod, 'Manual');
+
+      deviceManager.setPairedMethod('QR');
+      assert.strictEqual(deviceManager._pairedMethod, 'QR');
+    });
+  });
 });

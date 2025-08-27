@@ -243,6 +243,7 @@ describe('internal-plugin-metrics', () => {
           mode: 'personal',
           devices: [{productName: 'my_product_name'}],
         });
+        webex.devicemanager.pairedMethod = "Manual";
 
         const prepareItemSpy = sinon.spy(
           webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher,
