@@ -30,6 +30,7 @@ import MembersUtil from './util';
 import {ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
 import {ServerRoleShape} from './types';
+import {Invitee} from '../meeting/type';
 
 /**
  * Members Update Event
@@ -800,18 +801,18 @@ export default class Members extends StatelessWebexPlugin {
 
   /**
    * Adds a guest Member to the associated meeting
-   * @param {String} invitee
+   * @param {Invitee} invitee
    * @param {Boolean} [alertIfActive]
    * @returns {Promise}
    * @memberof Members
    */
-  addMember(invitee: any, alertIfActive?: boolean) {
+  addMember(invitee: Invitee, alertIfActive?: boolean) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError('The associated locus url for this meeting object must be defined.')
       );
     }
-    if (MembersUtil.isInvalidInvitee(invitee)) {
+    if (invitee?.skipEmailValidation !== true && MembersUtil.isInvalidInvitee(invitee)) {
       return Promise.reject(
         new ParameterError(
           'The invitee must be defined with either a valid email, emailAddress or phoneNumber property.'
@@ -825,11 +826,11 @@ export default class Members extends StatelessWebexPlugin {
 
   /**
    * Cancels an outgoing PSTN call to the associated meeting
-   * @param {String} invitee
+   * @param {Invitee} invitee
    * @returns {Promise}
    * @memberof Members
    */
-  cancelPhoneInvite(invitee: any) {
+  cancelPhoneInvite(invitee: Invitee) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError('The associated locus url for this meeting object must be defined.')
@@ -847,13 +848,13 @@ export default class Members extends StatelessWebexPlugin {
 
   /**
    * Cancels an SIP/phone call to the associated meeting
-   * @param {Object} invitee
+   * @param {Invitee} invitee
    * @param {String} invitee.memberId - The memberId of the invitee
    * @param {Boolean} [invitee.isInternalNumber] - When cancel phone invitation, if the number is internal
    * @returns {Promise}
    * @memberof Members
    */
-  cancelInviteByMemberId(invitee: {memberId: string; isInternalNumber?: boolean}) {
+  cancelInviteByMemberId(invitee: Invitee) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError('The associated locus url for this meeting object must be defined.')

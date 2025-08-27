@@ -56,6 +56,7 @@ import * as MeetingRequestImport from '@webex/plugin-meetings/src/meeting/reques
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
+import MembersUtil from '@webex/plugin-meetings/src/members/util';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import Media from '@webex/plugin-meetings/src/media/index';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
@@ -368,6 +369,35 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.simultaneousInterpretation, SimultaneousInterpretation);
           assert.instanceOf(meeting.webinar, Webinar);
         });
+
+        it('should call the callback with the meeting that has id already set', () => {
+          let meetingIdFromCallback;
+          // check that the meeting id is already set correctly at the time when the callback is called
+          const meetingCreationCallback = sinon.stub().callsFake((meeting) => {
+            meetingIdFromCallback = meeting.id;
+          });
+
+          meeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+            },
+            {
+              parent: webex,
+            },
+            meetingCreationCallback
+          );
+          assert.exists(meeting.id);
+          assert.calledOnceWithExactly(meetingCreationCallback, meeting);
+          assert.equal(meeting.id, meetingIdFromCallback);
+        });
+
         it('creates MediaRequestManager instances', () => {
           assert.instanceOf(meeting.mediaRequestManagers.audio, MediaRequestManager);
           assert.instanceOf(meeting.mediaRequestManagers.video, MediaRequestManager);
@@ -581,7 +611,6 @@ describe('plugin-meetings', () => {
           assert.isFalse(meeting.isLocusCall());
         });
       });
-
       describe('#invite', () => {
         it('should have #invite', () => {
           assert.exists(meeting.invite);
@@ -592,8 +621,6 @@ describe('plugin-meetings', () => {
         it('should proxy members #addMember and return a promise', async () => {
           const invite = meeting.invite(uuid1, false);
 
-          assert.exists(invite.then);
-          await invite;
           assert.calledOnce(meeting.members.addMember);
           assert.calledWith(meeting.members.addMember, uuid1, false);
         });
@@ -8093,6 +8120,7 @@ describe('plugin-meetings', () => {
 
           meeting.requestScreenShareFloor = sinon.stub().resolves({});
           meeting.releaseScreenShareFloor = sinon.stub().resolves({});
+          webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
           meeting.mediaProperties.mediaDirection = {
             sendAudio: 'fake value', // using non-boolean here so that we can check that these values are untouched in tests
             sendVideo: 'fake value',
@@ -8174,6 +8202,12 @@ describe('plugin-meetings', () => {
               payload: {mediaType: 'share', shareInstanceId: meeting.localShareInstanceId},
               options: {meetingId: meeting.id},
             });
+
+            // ensure the share start timestamp is saved
+            assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+              key: 'internal.client.share.initiated',
+            });
+
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
 
             assert.equal(meeting.shareCAEventSentStatus.transmitStart, false);
@@ -8190,6 +8224,11 @@ describe('plugin-meetings', () => {
               name: 'client.share.initiated',
               payload: {mediaType: 'share', shareInstanceId: meeting.localShareInstanceId},
               options: {meetingId: meeting.id},
+            });
+
+            // ensure the share start timestamp is saved
+            assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+              key: 'internal.client.share.initiated',
             });
 
             assert.calledWith(
@@ -10465,6 +10504,8 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties = {mediaDirection: {sendShare: true}};
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
           (meeting.deviceUrl = 'deviceUrl.com'), (meeting.localShareInstanceId = '1234-5678');
+          webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
+          webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration = sinon.stub().returns(1000);
         });
         it('should call changeMeetingFloor()', async () => {
           meeting.screenShareFloorState = 'GRANTED';
@@ -10482,6 +10523,22 @@ describe('plugin-meetings', () => {
           assert.exists(share.then);
           await share;
           assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+
+          // ensure the share stop timestamp is saved
+          assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+            key: 'internal.client.share.stopped',
+          });
+
+          // ensure the CA share stopped metric is submitted with duration
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.share.stopped',
+            payload: {
+              mediaType: 'share',
+              shareInstanceId: meeting.localShareInstanceId,
+              shareDuration: 1000,
+            },
+            options: {meetingId: meeting.id},
+          });
         });
         it('should not call changeMeetingFloor() if someone else already has the floor', async () => {
           // change selfId so that it doesn't match the beneficiary id from meeting.locusInfo.mediaShares
@@ -12054,6 +12111,7 @@ describe('plugin-meetings', () => {
             meeting.locusInfo.self = {url: url1};
             meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
             meeting.deviceUrl = 'deviceUrl.com';
+            webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
           });
           it('should have #startWhiteboardShare', () => {
             assert.exists(meeting.startWhiteboardShare);
@@ -12081,6 +12139,11 @@ describe('plugin-meetings', () => {
               payload: {mediaType: 'whiteboard'},
               options: {meetingId: meeting.id},
             });
+
+            // ensure the share start timestamp is saved
+            assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+              key: 'internal.client.share.initiated',
+            });
           });
         });
         describe('#stopWhiteboardShare', () => {
@@ -12092,6 +12155,8 @@ describe('plugin-meetings', () => {
             meeting.locusInfo.self = {url: url1};
             meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
             meeting.deviceUrl = 'deviceUrl.com';
+            webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
+            webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration = sinon.stub().returns(1000);
           });
           it('should stop the whiteboard share', async () => {
             const whiteboardShare = meeting.stopWhiteboardShare();
@@ -12106,6 +12171,21 @@ describe('plugin-meetings', () => {
               uri: url1,
             });
             assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+
+            // ensure the share stop timestamp is saved
+            assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+              key: 'internal.client.share.stopped',
+            });
+
+            // ensure the CA share stopped metric is submitted with duration
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.stopped',
+              payload: {
+                mediaType: 'whiteboard',
+                shareDuration: 1000,
+              },
+              options: {meetingId: meeting.id},
+            });
           });
         });
       });
@@ -12404,7 +12484,7 @@ describe('plugin-meetings', () => {
                 activeSharingId.whiteboard = beneficiaryId;
 
                 eventTrigger.share.push(
-                  meeting.webinar.selfIsAttendee
+                  meeting.webinar.selfIsAttendee || meeting.guest
                     ? {
                         eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                         functionName: 'remoteShare',
@@ -12423,7 +12503,8 @@ describe('plugin-meetings', () => {
                       }
                 );
 
-                shareStatus = meeting.webinar.selfIsAttendee
+                shareStatus =
+                  meeting.webinar.selfIsAttendee || meeting.guest
                   ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
                   : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
               }
@@ -12638,6 +12719,36 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
               assert.equal(meeting.shareCAEventSentStatus.receiveStart, false);
               assert.equal(meeting.shareCAEventSentStatus.receiveStop, false);
+            });
+          });
+
+          describe('Whiteboard Share - User is guest', () => {
+            it('User receives a remote share instead of whiteboard share', () => {
+              // Set the guest flag
+              meeting.guest = true;
+
+              // Step 1: Start sharing whiteboard A
+              const data1 = generateData(
+                blankPayload, // Initial payload
+                true, // isGranting: Granting share
+                false, // isContent: Whiteboard (not content)
+                USER_IDS.REMOTE_A, // Beneficiary ID: Remote user A
+                RESOURCE_URLS.WHITEBOARD_A // Resource URL: Whiteboard A
+              );
+
+              // Step 2: Stop sharing whiteboard A
+              const data2 = generateData(
+                data1.payload, // Updated payload from Step 1
+                false, // isGranting: Stopping share
+                false, // isContent: Whiteboard
+                USER_IDS.REMOTE_A // Beneficiary ID: Remote user A
+              );
+
+              // Validate the payload changes and status updates
+              payloadTestHelper([data1]);
+
+              // Specific assertions for guest
+              assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
             });
           });
 

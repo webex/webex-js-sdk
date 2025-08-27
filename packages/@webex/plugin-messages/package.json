@@ -24,6 +24,9 @@
     "@webex/eslint-config-legacy": "workspace:*",
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
+    "@webex/plugin-logger": "workspace:*",
+    "@webex/plugin-people": "workspace:*",
+    "@webex/plugin-rooms": "workspace:*",
     "@webex/test-helper-chai": "workspace:*",
     "@webex/test-helper-file": "workspace:*",
     "@webex/test-helper-mocha": "workspace:*",
@@ -38,12 +41,14 @@
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
-    "@webex/plugin-logger": "workspace:*",
-    "@webex/plugin-people": "workspace:*",
-    "@webex/plugin-rooms": "workspace:*",
     "@webex/webex-core": "workspace:*",
     "debug": "^4.3.4",
     "lodash": "^4.17.21"
+  },
+  "peerDependencies": {
+    "@webex/plugin-logger": "workspace:*",
+    "@webex/plugin-people": "workspace:*",
+    "@webex/plugin-rooms": "workspace:*"
   },
   "scripts": {
     "build": "yarn build:src",
