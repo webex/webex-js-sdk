@@ -28,6 +28,30 @@ class MetricManager implements IMetricManager {
     this.serviceIndicator = indicator;
   }
 
+  /**
+   * Creates a base metric object with common fields and tags.
+   * @param action - The action for the metric tag.
+   * @param type - The type of the metric.
+   * @returns A base metric data object.
+   */
+  private createBaseMetric(action: string, type: METRIC_TYPE) {
+    const fields: {[key: string]: any} = {
+      device_url: this.deviceInfo?.device?.clientDeviceUri,
+      mobius_url: this.deviceInfo?.device?.uri,
+      calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+    };
+
+    return {
+      tags: {
+        action,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: this.serviceIndicator,
+      },
+      fields,
+      type,
+    };
+  }
+
   public submitUploadLogsMetric(
     name: METRIC_EVENT,
     action: string,
@@ -38,53 +62,24 @@ class MetricManager implements IMetricManager {
     stack?: string,
     callId?: string
   ) {
-    let data;
+    const data = this.createBaseMetric(action, type);
+    data.fields.correlation_id = correlationId;
+    data.fields.tracking_id = trackingId;
+    data.fields.feedback_id = feedbackId;
+    data.fields.call_id = callId;
 
-    switch (name) {
-      case METRIC_EVENT.UPLOAD_LOGS_SUCCESS: {
-        data = {
-          tags: {
-            action,
-            device_id: this.deviceInfo?.device?.deviceId,
-            service_indicator: this.serviceIndicator,
-          },
-          fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-            correlation_id: correlationId,
-            tracking_id: trackingId,
-            feedback_id: feedbackId,
-            call_id: callId,
-          },
-          type,
-        };
-        break;
-      }
-      case METRIC_EVENT.UPLOAD_LOGS_FAILED: {
-        data = {
-          tags: {
-            action,
-            device_id: this.deviceInfo?.device?.deviceId,
-            service_indicator: this.serviceIndicator,
-          },
-          fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-            correlation_id: correlationId,
-            tracking_id: trackingId,
-            feedback_id: feedbackId,
-            error: stack,
-            call_id: callId,
-          },
-          type,
-        };
-      }
+    if (name === METRIC_EVENT.UPLOAD_LOGS_FAILED) {
+      data.fields.error = stack;
+    } else if (name !== METRIC_EVENT.UPLOAD_LOGS_SUCCESS) {
+      log.warn('Invalid metric name for upload logs metric.', {
+        file: METRIC_FILE,
+        method: 'submitUploadLogsMetric',
+      });
+
+      return;
     }
-    if (data) {
-      this.webex.internal.metrics.submitClientMetrics(name, data);
-    }
+
+    this.webex.internal.metrics.submitClientMetrics(name, data);
   }
 
   /**
@@ -110,65 +105,25 @@ class MetricManager implements IMetricManager {
     keepaliveCount?: number,
     clientError?: LineError | CallingClientError
   ) {
-    let data;
+    const data = this.createBaseMetric(metricAction, type);
+    data.fields.reg_source = caller;
+    data.fields.server_type = serverType;
+    data.fields.trackingId = trackingId;
 
-    switch (name) {
-      case METRIC_EVENT.REGISTRATION: {
-        data = {
-          tags: {
-            action: metricAction,
-            device_id: this.deviceInfo?.device?.deviceId,
-            service_indicator: this.serviceIndicator,
-          },
-          fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-            reg_source: caller,
-            server_type: serverType,
-            trackingId,
-          },
-          type,
-        };
-        break;
-      }
+    if (name === METRIC_EVENT.REGISTRATION_ERROR && clientError) {
+      data.fields.keepalive_count = keepaliveCount;
+      data.fields.error = clientError.getError().message;
+      data.fields.error_type = clientError.getError().type;
+    } else if (name !== METRIC_EVENT.REGISTRATION) {
+      log.warn('Invalid metric name for registration metric.', {
+        file: METRIC_FILE,
+        method: 'submitRegistrationMetric',
+      });
 
-      case METRIC_EVENT.REGISTRATION_ERROR: {
-        if (clientError) {
-          data = {
-            tags: {
-              action: metricAction,
-              device_id: this.deviceInfo?.device?.deviceId,
-              service_indicator: this.serviceIndicator,
-            },
-            fields: {
-              device_url: this.deviceInfo?.device?.clientDeviceUri,
-              mobius_url: this.deviceInfo?.device?.uri,
-              calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-              reg_source: caller,
-              server_type: serverType,
-              trackingId,
-              keepalive_count: keepaliveCount,
-              error: clientError.getError().message,
-              error_type: clientError.getError().type,
-            },
-            type,
-          };
-        }
-        break;
-      }
-
-      default:
-        log.warn('Invalid metric name received. Rejecting request to submit metric.', {
-          file: METRIC_FILE,
-          method: this.submitRegistrationMetric.name,
-        });
-        break;
+      return;
     }
 
-    if (data) {
-      this.webex.internal.metrics.submitClientMetrics(name, data);
-    }
+    this.webex.internal.metrics.submitClientMetrics(name, data);
   }
 
   /**
@@ -187,62 +142,23 @@ class MetricManager implements IMetricManager {
     correlationId: CorrelationId,
     callError?: CallError
   ) {
-    let data;
+    const data = this.createBaseMetric(metricAction, type);
+    data.fields.call_id = callId;
+    data.fields.correlation_id = correlationId;
 
-    switch (name) {
-      case METRIC_EVENT.CALL: {
-        data = {
-          tags: {
-            action: metricAction,
-            device_id: this.deviceInfo?.device?.deviceId,
-            service_indicator: this.serviceIndicator,
-          },
-          fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-            call_id: callId,
-            correlation_id: correlationId,
-          },
-          type,
-        };
-        break;
-      }
+    if (name === METRIC_EVENT.CALL_ERROR && callError) {
+      data.fields.error = callError.getCallError().message;
+      data.fields.error_type = callError.getCallError().type;
+    } else if (name !== METRIC_EVENT.CALL) {
+      log.warn('Invalid metric name for call metric.', {
+        file: METRIC_FILE,
+        method: 'submitCallMetric',
+      });
 
-      case METRIC_EVENT.CALL_ERROR: {
-        if (callError) {
-          data = {
-            tags: {
-              action: metricAction,
-              device_id: this.deviceInfo?.device?.deviceId,
-              service_indicator: this.serviceIndicator,
-            },
-            fields: {
-              device_url: this.deviceInfo?.device?.clientDeviceUri,
-              mobius_url: this.deviceInfo?.device?.uri,
-              calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-              call_id: callId,
-              correlation_id: correlationId,
-              error: callError.getCallError().message,
-              error_type: callError.getCallError().type,
-            },
-            type,
-          };
-        }
-        break;
-      }
-
-      default:
-        log.warn('Invalid metric name received. Rejecting request to submit metric.', {
-          file: METRIC_FILE,
-          method: this.submitCallMetric.name,
-        });
-        break;
+      return;
     }
 
-    if (data) {
-      this.webex.internal.metrics.submitClientMetrics(name, data);
-    }
+    this.webex.internal.metrics.submitClientMetrics(name, data);
   }
 
   /**
@@ -265,66 +181,25 @@ class MetricManager implements IMetricManager {
     remoteSdp?: string,
     callError?: CallError
   ) {
-    let data;
+    const data = this.createBaseMetric(metricAction, type);
+    data.fields.call_id = callId;
+    data.fields.correlation_id = correlationId;
+    data.fields.local_media_details = localSdp;
+    data.fields.remote_media_details = remoteSdp;
 
-    switch (name) {
-      case METRIC_EVENT.MEDIA: {
-        data = {
-          tags: {
-            action: metricAction,
-            device_id: this.deviceInfo?.device?.deviceId,
-            service_indicator: this.serviceIndicator,
-          },
-          fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-            call_id: callId,
-            correlation_id: correlationId,
-            local_media_details: localSdp,
-            remote_media_details: remoteSdp,
-          },
-          type,
-        };
-        break;
-      }
+    if (name === METRIC_EVENT.MEDIA_ERROR && callError) {
+      data.fields.error = callError.getCallError().message;
+      data.fields.error_type = callError.getCallError().type;
+    } else if (name !== METRIC_EVENT.MEDIA) {
+      log.warn('Invalid metric name for media metric.', {
+        file: METRIC_FILE,
+        method: 'submitMediaMetric',
+      });
 
-      case METRIC_EVENT.MEDIA_ERROR: {
-        if (callError) {
-          data = {
-            tags: {
-              action: metricAction,
-              device_id: this.deviceInfo?.device?.deviceId,
-              service_indicator: this.serviceIndicator,
-            },
-            fields: {
-              device_url: this.deviceInfo?.device?.clientDeviceUri,
-              mobius_url: this.deviceInfo?.device?.uri,
-              calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-              call_id: callId,
-              correlation_id: correlationId,
-              local_media_details: localSdp,
-              remote_media_details: remoteSdp,
-              error: callError.getCallError().message,
-              error_type: callError.getCallError().type,
-            },
-            type,
-          };
-        }
-        break;
-      }
-
-      default:
-        log.warn('Invalid metric name received. Rejecting request to submit metric.', {
-          file: METRIC_FILE,
-          method: this.submitMediaMetric.name,
-        });
-        break;
+      return;
     }
 
-    if (data) {
-      this.webex.internal.metrics.submitClientMetrics(name, data);
-    }
+    this.webex.internal.metrics.submitClientMetrics(name, data);
   }
 
   /**
@@ -343,59 +218,28 @@ class MetricManager implements IMetricManager {
     voicemailError?: string,
     statusCode?: number
   ) {
-    let data;
+    if (name !== METRIC_EVENT.VOICEMAIL && name !== METRIC_EVENT.VOICEMAIL_ERROR) {
+      log.warn('Invalid metric name received. Rejecting request to submit metric.', {
+        file: METRIC_FILE,
+        method: this.submitVoicemailMetric.name,
+      });
 
-    switch (name) {
-      case METRIC_EVENT.VOICEMAIL: {
-        data = {
-          tags: {
-            action: metricAction,
-            device_id: this.deviceInfo?.device?.deviceId,
-            message_id: messageId,
-          },
-          fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            calling_sdk_version:
-              typeof process !== 'undefined' && process.env.CALLING_SDK_VERSION
-                ? process.env.CALLING_SDK_VERSION
-                : VERSION,
-          },
-          type,
-        };
-        break;
-      }
-
-      case METRIC_EVENT.VOICEMAIL_ERROR: {
-        data = {
-          tags: {
-            action: metricAction,
-            device_id: this.deviceInfo?.device?.deviceId,
-            message_id: messageId,
-            error: voicemailError,
-            status_code: statusCode,
-          },
-          fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            calling_sdk_version:
-              typeof process !== 'undefined' && process.env.CALLING_SDK_VERSION
-                ? process.env.CALLING_SDK_VERSION
-                : VERSION,
-          },
-          type,
-        };
-        break;
-      }
-
-      default:
-        log.warn('Invalid metric name received. Rejecting request to submit metric.', {
-          file: METRIC_FILE,
-          method: this.submitVoicemailMetric.name,
-        });
-        break;
+      return;
     }
-    if (data) {
-      this.webex.internal.metrics.submitClientMetrics(name, data);
+
+    const data = this.createBaseMetric(metricAction, type);
+
+    if (messageId) {
+      // @ts-ignore
+      data.tags.message_id = messageId;
     }
+
+    if (name === METRIC_EVENT.VOICEMAIL_ERROR) {
+      data.fields.error = voicemailError;
+      data.fields.status_code = statusCode;
+    }
+
+    this.webex.internal.metrics.submitClientMetrics(name, data);
   }
 
   public submitBNRMetric(
@@ -404,33 +248,20 @@ class MetricManager implements IMetricManager {
     callId: CallId,
     correlationId: CorrelationId
   ) {
-    let data;
-
-    if (name === METRIC_EVENT.BNR_ENABLED || name === METRIC_EVENT.BNR_DISABLED) {
-      data = {
-        tags: {
-          device_id: this.deviceInfo?.device?.deviceId,
-          service_indicator: this.serviceIndicator,
-        },
-        fields: {
-          device_url: this.deviceInfo?.device?.clientDeviceUri,
-          mobius_url: this.deviceInfo?.device?.uri,
-          calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-          call_id: callId,
-          correlation_id: correlationId,
-        },
-        type,
-      };
-    } else {
+    if (name !== METRIC_EVENT.BNR_ENABLED && name !== METRIC_EVENT.BNR_DISABLED) {
       log.warn('Invalid metric name received. Rejecting request to submit metric.', {
         file: METRIC_FILE,
         method: this.submitBNRMetric.name,
       });
+
+      return;
     }
 
-    if (data) {
-      this.webex.internal.metrics.submitClientMetrics(name, data);
-    }
+    const data = this.createBaseMetric(name, type);
+    data.fields.call_id = callId;
+    data.fields.correlation_id = correlationId;
+
+    this.webex.internal.metrics.submitClientMetrics(name, data);
   }
 }
 
