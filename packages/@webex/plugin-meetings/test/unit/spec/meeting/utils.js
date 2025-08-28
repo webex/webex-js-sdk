@@ -59,6 +59,10 @@ describe('plugin-meetings', () => {
       meeting.getWebexObject = sinon.stub().returns(webex);
       meeting.simultaneousInterpretation = {cleanUp: sinon.stub()};
       meeting.trigger = sinon.stub();
+      meeting.webex = webex;
+      meeting.webex.internal.newMetrics.callDiagnosticMetrics =
+      meeting.webex.internal.newMetrics.callDiagnosticMetrics || {};
+      meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId = sinon.stub();
     });
 
     afterEach(() => {
@@ -83,6 +87,10 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
+        assert.calledOnceWithExactly(
+          meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
+          meeting.correlationId
+        );
       });
 
       it('do clean up on meeting object with LLM disabled', async () => {
@@ -100,6 +108,10 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
+        assert.calledOnceWithExactly(
+          meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
+          meeting.correlationId
+        );
       });
 
       it('do clean up on meeting object with no config', async () => {
@@ -116,6 +128,10 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
+        assert.calledOnceWithExactly(
+          meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
+          meeting.correlationId
+        );
       });
     });
 
