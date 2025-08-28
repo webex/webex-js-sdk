@@ -208,6 +208,10 @@ const MeetingUtil = {
     meeting.simultaneousInterpretation.cleanUp();
     meeting.locusMediaRequest = undefined;
 
+    meeting.webex?.internal?.newMetrics?.callDiagnosticMetrics?.clearEventLimitsForCorrelationId(
+      meeting.correlationId
+    );
+
     // make sure we send last metrics before we close the peerconnection
     const stopStatsAnalyzer = meeting.statsAnalyzer
       ? meeting.statsAnalyzer.stopAnalyzer()
