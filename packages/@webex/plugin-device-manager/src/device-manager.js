@@ -17,6 +17,9 @@ const DeviceManager = WebexPlugin.extend({
   _boundSpace: null,
 
   initialize() {
+    // Initialize the paired method property
+    this._pairedMethod = 'Manual';
+
     // Lyra mercury events listener
     this.webex.internal.mercury.on('event:lyra.space_updated', ({data}) => {
       this._receiveDeviceUpdates(data);
@@ -637,6 +640,38 @@ const DeviceManager = WebexPlugin.extend({
     }
 
     return Promise.resolve();
+  },
+
+  /**
+   * gets the currently paired device info if paired
+   * @returns {device}
+   */
+  getPairedDevice() {
+    if (!this._pairedDevice) {
+      this.logger.info('DeviceManager#getPairedDevice: Currently no device is paired');
+
+      return undefined;
+    }
+    const pairedDeviceId = this._pairedDevice?.id || this._pairedDevice?.identity?.id;
+
+    return DeviceCollection.get(pairedDeviceId);
+  },
+
+  /**
+   * Gets the currently set paired method
+   * @returns {string} - The paired method (defaults to "Manual")
+   */
+  getPairedMethod() {
+    return this._pairedMethod || 'Manual';
+  },
+
+  /**
+   * Sets the paired method
+   * @param {string} pairedMethod - The paired method to set
+   * @returns {void}
+   */
+  setPairedMethod(pairedMethod) {
+    this._pairedMethod = pairedMethod;
   },
 });
 

@@ -105,6 +105,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private delayedClientFeatureEvents: DelayedClientFeatureEvent[] = [];
   private eventErrorCache: WeakMap<any, any> = new WeakMap();
   private isMercuryConnected = false;
+  private eventLimitTracker: Map<string, number> = new Map();
+  private eventLimitWarningsLogged: Set<string> = new Set();
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -666,6 +668,144 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Checks if an event should be limited based on criteria defined in the event dictionary.
+   * Returns true if the event should be sent, false if it has reached its limit.
+   * @param event - The diagnostic event object
+   * @returns boolean indicating whether the event should be sent
+   */
+  private shouldSendEvent({event}: Event): boolean {
+    const eventName = event?.name as string;
+    const correlationId = event?.identifiers?.correlationId;
+
+    if (!correlationId || correlationId === 'unknown') {
+      return true;
+    }
+
+    const limitKeyPrefix = `${eventName}:${correlationId}`;
+
+    switch (eventName) {
+      case 'client.media.render.start':
+      case 'client.media.render.stop':
+      case 'client.media.rx.start':
+      case 'client.media.rx.stop':
+      case 'client.media.tx.start':
+      case 'client.media.tx.stop': {
+        // Send only once per mediaType-correlationId pair (or mediaType-correlationId-shareInstanceId for share/share_audio)
+        const mediaType = event?.mediaType;
+        if (mediaType) {
+          if (mediaType === 'share' || mediaType === 'share_audio') {
+            const shareInstanceId = event?.shareInstanceId;
+            if (shareInstanceId) {
+              const limitKey = `${limitKeyPrefix}:${mediaType}:${shareInstanceId}`;
+
+              return this.checkAndIncrementEventCount(
+                limitKey,
+                1,
+                `${eventName} for ${mediaType} instance ${shareInstanceId}`
+              );
+            }
+          } else {
+            const limitKey = `${limitKeyPrefix}:${mediaType}`;
+
+            return this.checkAndIncrementEventCount(
+              limitKey,
+              1,
+              `${eventName} for mediaType ${mediaType}`
+            );
+          }
+        }
+        break;
+      }
+
+      case 'client.roap-message.received':
+      case 'client.roap-message.sent': {
+        // Send only once per correlationId and roap.messageType/roap.type
+        const roapMessageType = event?.roap?.messageType || event?.roap?.type;
+        if (roapMessageType) {
+          const limitKey = `${limitKeyPrefix}:${roapMessageType}`;
+
+          return this.checkAndIncrementEventCount(
+            limitKey,
+            1,
+            `${eventName} for ROAP type ${roapMessageType}`
+          );
+        }
+        break;
+      }
+
+      default:
+        return true;
+    }
+
+    return true;
+  }
+
+  /**
+   * Checks the current count for a limit key and increments if under limit.
+   * @param limitKey - The unique key for this limit combination
+   * @param maxCount - Maximum allowed count
+   * @param eventDescription - Description for logging
+   * @returns true if under limit and incremented, false if at/over limit
+   */
+  private checkAndIncrementEventCount(
+    limitKey: string,
+    maxCount: number,
+    eventDescription: string
+  ): boolean {
+    const currentCount = this.eventLimitTracker.get(limitKey) || 0;
+
+    if (currentCount >= maxCount) {
+      // Log warning only once per limit key
+      if (!this.eventLimitWarningsLogged.has(limitKey)) {
+        this.logger.log(
+          CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+          `CallDiagnosticMetrics: Event limit reached for ${eventDescription}. ` +
+            `Max count ${maxCount} exceeded. Event will not be sent.`,
+          `limitKey: ${limitKey}`
+        );
+        this.eventLimitWarningsLogged.add(limitKey);
+      }
+
+      return false;
+    }
+
+    // Increment count and allow event
+    this.eventLimitTracker.set(limitKey, currentCount + 1);
+
+    return true;
+  }
+
+  /**
+   * Clears event limit tracking
+   */
+  public clearEventLimits(): void {
+    this.eventLimitTracker.clear();
+    this.eventLimitWarningsLogged.clear();
+  }
+
+  /**
+   * Clears event limit tracking for a specific correlationId only.
+   * Keeps limits for other meetings intact.
+   */
+  public clearEventLimitsForCorrelationId(correlationId: string): void {
+    if (!correlationId) {
+      return;
+    }
+    // Keys are formatted as "eventName:correlationId:..." across all limiters.
+    const hasCorrIdAtSecondToken = (key: string) => key.split(':')[1] === correlationId;
+    for (const key of Array.from(this.eventLimitTracker.keys())) {
+      if (hasCorrIdAtSecondToken(key)) {
+        this.eventLimitTracker.delete(key);
+      }
+    }
+    for (const key of Array.from(this.eventLimitWarningsLogged.values())) {
+      if (hasCorrIdAtSecondToken(key)) {
+        this.eventLimitWarningsLogged.delete(key);
+      }
+    }
+  }
+
+  /**
    * Generate error payload for Client Event
    * @param rawError
    */
@@ -1098,6 +1238,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       `name: ${name}`
     );
     const diagnosticEvent = this.prepareClientEvent({name, payload, options});
+
+    if (!this.shouldSendEvent(diagnosticEvent)) {
+      return Promise.resolve();
+    }
 
     if (options?.preLoginId) {
       return this.submitToCallDiagnosticsPreLogin(diagnosticEvent, options?.preLoginId);
