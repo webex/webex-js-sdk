@@ -245,6 +245,7 @@ describe('plugin-meetings', () => {
     });
 
     webex.internal.newMetrics.callDiagnosticMetrics.clearErrorCache = sinon.stub();
+    webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId = sinon.stub();
     webex.internal.support.submitLogs = sinon.stub().returns(Promise.resolve());
     webex.internal.services = {get: sinon.stub().returns('locus-url')};
     webex.credentials.getOrgId = sinon.stub().returns('fake-org-id');
