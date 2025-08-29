@@ -1985,6 +1985,7 @@ describe('plugin-meetings', () => {
               assert.calledOnce(MeetingUtil.joinMeeting);
               
               // Assert that client.locus.join.response error event is not sent from this function, it is now emitted from MeetingUtil.joinMeeting
+              assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
               assert.calledWithMatch(
                 webex.internal.newMetrics.submitClientEvent,
                 {
