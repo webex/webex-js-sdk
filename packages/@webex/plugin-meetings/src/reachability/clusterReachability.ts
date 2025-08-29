@@ -1,4 +1,5 @@
 import {Defer} from '@webex/common';
+import {Address4, Address6} from 'ip-address';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
@@ -10,23 +11,8 @@ import {
   ICE_GATHERING_STATE,
   STUN_SERVER_URL_REGEX,
   PROTOCOLS_LIST,
-  BASIC_IPV4_REGEX,
-  BASIC_IPV6_REGEX,
 } from '../constants';
 import {ClusterReachabilityResult, NatType, SubnetDetails, ClusterNode} from './reachability.types';
-
-async function checkIP(ip: string): Promise<boolean> {
-  try {
-    const {isIP} = await import('is-ip');
-
-    return isIP(ip);
-  } catch (error) {
-    LoggerProxy.logger.warn('Failed to load is-ip module, using basic validation:', error);
-
-    // Fallback: basic IPv4 or IPv6 validation
-    return BASIC_IPV4_REGEX.test(ip) || BASIC_IPV6_REGEX.test(ip);
-  }
-}
 
 declare global {
   interface RTCIceCandidate {
@@ -465,39 +451,31 @@ export class ClusterReachability extends EventsScope {
       details: [],
     };
 
-    const allChecks: Promise<void>[] = [];
-
     for (const protocol of PROTOCOLS_LIST) {
       const urls = this.clusterInfo[protocol];
       for (const url of urls) {
         const match = url.match(STUN_SERVER_URL_REGEX);
         if (match) {
-          allChecks.push(
-            (async () => {
-              const [, serverIp, port] = match;
-              try {
-                if (await checkIP(serverIp)) {
-                  this.result[protocol].details.push({
-                    serverIp,
-                    port: Number(port),
-                    'answered-tx': 0,
-                    'lost-tx': 1,
-                    latencies: [],
-                  });
-                }
-              } catch (err) {
-                LoggerProxy.logger.error(
-                  'Reachability:ClusterReachability#start --> IP check failed:',
-                  err
-                );
-              }
-            })()
-          );
+          const [, serverIp, port] = match;
+          try {
+            if (Address4.isValid(serverIp) || Address6.isValid(serverIp)) {
+              this.result[protocol].details.push({
+                serverIp,
+                port: Number(port),
+                'answered-tx': 0,
+                'lost-tx': 1,
+                latencies: [],
+              });
+            }
+          } catch (err) {
+            LoggerProxy.logger.error(
+              'Reachability:ClusterReachability#start --> IP check failed:',
+              err
+            );
+          }
         }
       }
     }
-
-    await Promise.all(allChecks);
 
     try {
       const offer = await this.pc.createOffer({offerToReceiveAudio: true});
