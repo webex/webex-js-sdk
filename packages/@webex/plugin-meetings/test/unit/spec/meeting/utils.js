@@ -3,12 +3,14 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import Meetings from '@webex/plugin-meetings';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
-import {LOCAL_SHARE_ERRORS} from '@webex/plugin-meetings/src/constants';
+import {LOCAL_SHARE_ERRORS, PASSWORD_STATUS} from '@webex/plugin-meetings/src/constants';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import {SELF_POLICY, IP_VERSION} from '@webex/plugin-meetings/src/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
 import * as BrowserDetectionModule from '@webex/plugin-meetings/src/common/browser-detection';
+import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
+import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
 
 describe('plugin-meetings', () => {
   let webex;
@@ -638,6 +640,28 @@ describe('plugin-meetings', () => {
 
         assert.equal(parameter.locusClusterUrl, 'locusClusterUrl');
       });
+
+      it('should post client event with error when join fails', async () => {
+        const joinError = new Error('Join failed');
+        meeting.meetingRequest.joinMeeting.rejects(joinError);
+        meeting.meetingInfo = { meetingLookupUrl: 'test-lookup-url' };
+
+        try {
+          await MeetingUtil.joinMeeting(meeting, {});
+          assert.fail('Expected joinMeeting to throw an error');
+        } catch (error) {
+          assert.equal(error, joinError);
+          
+          // Verify error client event was submitted
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.locus.join.response',
+            payload: {
+              identifiers: { meetingLookupUrl: 'test-lookup-url' },
+            },
+            options: { meetingId: meeting.id, rawError: joinError },
+          });
+        }
+      });
     });
 
     describe('joinMeetingOptions', () => {
@@ -675,6 +699,82 @@ describe('plugin-meetings', () => {
           });
         } finally {
           joinMeetingSpy.restore();
+        }
+      });
+
+      it('should submit client event and reject with PasswordError when password is required', async () => {
+        const meeting = {
+          id: 'meeting-id',
+          passwordStatus: PASSWORD_STATUS.REQUIRED,
+          resourceId: null,
+          requiredCaptcha: null,
+          getWebexObject: sinon.stub().returns(webex),
+        };
+
+        try {
+          await MeetingUtil.joinMeetingOptions(meeting, {});
+          assert.fail('Expected joinMeetingOptions to throw PasswordError');
+        } catch (error) {
+          assert.instanceOf(error, PasswordError);
+          
+          // Verify client event was submitted with error details
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.meetinginfo.response',
+            options: {
+              meetingId: meeting.id,
+            },
+            payload: {
+              errors: [
+                {
+                  fatal: false,
+                  category: 'expected',
+                  name: 'other',
+                  shownToUser: false,
+                  errorCode: error.code,
+                  errorDescription: error.name,
+                  rawErrorMessage: error.sdkMessage,
+                },
+              ],
+            },
+          });
+        }
+      });
+
+      it('should submit client event and reject with CaptchaError when captcha is required', async () => {
+        const meeting = {
+          id: 'meeting-id',
+          passwordStatus: null,
+          resourceId: null,
+          requiredCaptcha: {captchaId: 'test-captcha'},
+          getWebexObject: sinon.stub().returns(webex),
+        };
+
+        try {
+          await MeetingUtil.joinMeetingOptions(meeting, {});
+          assert.fail('Expected joinMeetingOptions to throw CaptchaError');
+        } catch (error) {
+          assert.instanceOf(error, CaptchaError);
+          
+          // Verify client event was submitted with error details
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.meetinginfo.response',
+            options: {
+              meetingId: meeting.id,
+            },
+            payload: {
+              errors: [
+                {
+                  fatal: false,
+                  category: 'expected',
+                  name: 'other',
+                  shownToUser: false,
+                  errorCode: error.code,
+                  errorDescription: error.name,
+                  rawErrorMessage: error.sdkMessage,
+                },
+              ],
+            },
+          });
         }
       });
     });
