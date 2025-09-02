@@ -5952,15 +5952,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingFiniteStateMachine.fail(error);
         LoggerProxy.logger.error('Meeting:index#join --> Failed', error);
 
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.locus.join.response',
-          payload: {
-            identifiers: {meetingLookupUrl: this.meetingInfo?.meetingLookupUrl},
-          },
-          options: {meetingId: this.id, rawError: error},
-        });
-
         // TODO:  change this to error codes and pre defined dictionary
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_FAILURE, {
           correlation_id: this.correlationId,
