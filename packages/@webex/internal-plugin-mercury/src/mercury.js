@@ -104,6 +104,15 @@ const Mercury = WebexPlugin.extend({
   },
 
   /**
+   * Set a specific socket as the default socket
+   * @param {string} sessionId - The connection identifier
+   * @returns {void}
+   */
+  setDefaultSocket(sessionId = DEFAULT_SESSION) {
+    this.socket = this.sockets.get(sessionId);
+  },
+
+  /**
    * Check if any sockets are connected
    * @returns {boolean} True if at least one socket is connected
    */
