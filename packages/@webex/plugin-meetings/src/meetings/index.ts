@@ -408,6 +408,13 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   getCorrespondingMeetingByLocus(data) {
+    if (data.eventType === 'locus.compact.difference' && data.stateElementsMessage?.locusUrl) {
+      return this.meetingCollection.getByKey(
+        MEETING_KEY.LOCUS_URL,
+        data.stateElementsMessage.locusUrl
+      );
+    }
+
     // getting meeting by correlationId. This will happen for the new event
     // Either the locus
     // TODO : Add check for the callBack Address

@@ -70,7 +70,7 @@ import Media, {type BundlePolicy} from '../media';
 import MediaProperties from '../media/properties';
 import MeetingStateMachine from './state';
 import {createMuteState} from './muteState';
-import LocusInfo, {LocusDTO} from '../locus-info';
+import LocusInfo, {LocusDTO, LocusLLMEvent} from '../locus-info';
 import Metrics from '../metrics';
 import ReconnectionManager from '../reconnection-manager';
 import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
@@ -5700,6 +5700,21 @@ export default class Meeting extends StatelessWebexPlugin {
     }
   }
 
+  /** Handles Locus LLM events
+   *
+   * @param {LocusLLMEvent} event - The Locus LLM event to process
+   * @returns {void}
+   */
+  private processLocusLLMEvent = (event: LocusLLMEvent): void => {
+    if (event.data.eventType === 'locus.compact.difference') {
+      this.locusInfo.parse(this, event.data);
+    } else {
+      LoggerProxy.logger.warn(
+        `Meeting:index#processLocusLLMEvent --> Unknown event type: ${event.data.eventType}`
+      );
+    }
+  };
+
   /**
    * Callback called when a relay event is received from meeting LLM Connection
    * @param {RelayEvent} e Event object coming from LLM Connection
@@ -6111,6 +6126,8 @@ export default class Meeting extends StatelessWebexPlugin {
       );
       // @ts-ignore - Fix type
       this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off('event:locus.compact.difference', this.processLocusLLMEvent);
     }
 
     if (!isJoined) {
@@ -6125,6 +6142,10 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
         // @ts-ignore - Fix type
         this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.off('event:locus.compact.difference', this.processLocusLLMEvent);
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.on('event:locus.compact.difference', this.processLocusLLMEvent);
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
         );
@@ -9376,6 +9397,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - fix types
     this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.off('event:locus.compact.difference', this.processLocusLLMEvent);
   };
 
   /**
