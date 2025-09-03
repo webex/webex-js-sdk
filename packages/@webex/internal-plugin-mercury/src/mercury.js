@@ -171,10 +171,12 @@ const Mercury = WebexPlugin.extend({
       }
 
       const socket = this.sockets.get(sessionId);
+      const suffix = sessionId === DEFAULT_SESSION ? '' : `:${sessionId}`;
+
       if (socket) {
         socket.removeAllListeners('message');
         socket.connected = false;
-        this.once('offline', resolve);
+        this.once(sessionId === DEFAULT_SESSION ? 'offline' : `offline${suffix}`, resolve);
         resolve(socket.close(options || undefined));
         this.sockets.delete(sessionId);
       } else {
@@ -279,12 +281,13 @@ const Mercury = WebexPlugin.extend({
   _attemptConnection(socketUrl, sessionId, callback) {
     const socket = new Socket();
     let attemptWSUrl;
+    const suffix = sessionId === DEFAULT_SESSION ? '' : `:${sessionId}`;
 
     socket.on('close', (...args) => this._onclose(sessionId, ...args));
     socket.on('message', (...args) => this._onmessage(sessionId, ...args));
-    socket.on('pong', (...args) => this._setTimeOffset(...args));
-    socket.on('sequence-mismatch', (...args) => this._emit('sequence-mismatch', ...args));
-    socket.on('ping-pong-latency', (...args) => this._emit('ping-pong-latency', ...args));
+    socket.on('pong', (...args) => this._setTimeOffset(sessionId, ...args));
+    socket.on('sequence-mismatch', (...args) => this._emit(`sequence-mismatch${suffix}`, ...args));
+    socket.on('ping-pong-latency', (...args) => this._emit(`ping-pong-latency${suffix}`, ...args));
 
     Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()])
       .then(([webSocketUrl, token]) => {
@@ -347,7 +350,7 @@ const Mercury = WebexPlugin.extend({
         // (especially since many of our outages happen in a way that client
         // metrics can't be trusted).
         if (reason.code !== 1006 && backoffCall && backoffCall?.getNumRetries() > 0) {
-          this._emit('connection_failed', reason, {
+          this._emit(`connection_failed${suffix}`, reason, {
             sessionId,
             retries: backoffCall?.getNumRetries(),
           });
@@ -446,7 +449,8 @@ const Mercury = WebexPlugin.extend({
         this.socket = this.sockets.get(DEFAULT_SESSION);
         this.connected = this.hasConnectedSockets();
         this.hasEverConnected = true;
-        this._emit('online', {sessionId});
+        const suffix = sessionId === DEFAULT_SESSION ? '' : `:${sessionId}`;
+        this._emit(`online${suffix}`, {sessionId});
         this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
 
         return resolve();
@@ -545,18 +549,19 @@ const Mercury = WebexPlugin.extend({
       const reason = event.reason && event.reason.toLowerCase();
       const socket = this.sockets.get(sessionId);
       const socketUrl = socket?.url;
+      const suffix = sessionId === DEFAULT_SESSION ? '' : `:${sessionId}`;
       event.sessionId = sessionId;
 
       if (socket) {
         socket.removeAllListeners();
         this.sockets.delete(sessionId);
+        this._emit(`offline${suffix}`, event);
       }
 
       // Update overall connected status
       this.connected = this.hasConnectedSockets();
 
       if (!this.connected) {
-        this._emit('offline', event);
         this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
       }
 
@@ -566,19 +571,19 @@ const Mercury = WebexPlugin.extend({
           this.logger.info(
             `${this.namespace}: Mercury service rejected last message for ${sessionId}; will not reconnect: ${event.reason}`
           );
-          this._emit('offline.permanent', event);
+          this._emit(`offline.permanent${suffix}`, event);
           break;
         case 4000:
           // metric: disconnect
           this.logger.info(`${this.namespace}: socket ${sessionId} replaced; will not reconnect`);
-          this._emit('offline.replaced', event);
+          this._emit(`offline.replaced${suffix}`, event);
           break;
         case 1001:
         case 1005:
         case 1006:
         case 1011:
           this.logger.info(`${this.namespace}: socket ${sessionId} disconnected; reconnecting`);
-          this._emit('offline.transient', event);
+          this._emit(`offline.transient${suffix}`, event);
           this._reconnect(socketUrl, sessionId);
           // metric: disconnect
           // if (code == 1011 && reason !== ping error) metric: unexpected disconnect
@@ -587,7 +592,7 @@ const Mercury = WebexPlugin.extend({
         case 3050: // 3050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
           if (normalReconnectReasons.includes(reason)) {
             this.logger.info(`${this.namespace}: socket ${sessionId} disconnected; reconnecting`);
-            this._emit('offline.transient', event);
+            this._emit(`offline.transient${suffix}`, event);
             this._reconnect(socketUrl, sessionId);
             // metric: disconnect
             // if (reason === done forced) metric: force closure
@@ -595,7 +600,7 @@ const Mercury = WebexPlugin.extend({
             this.logger.info(
               `${this.namespace}: socket ${sessionId} disconnected; will not reconnect: ${event.reason}`
             );
-            this._emit('offline.permanent', event);
+            this._emit(`offline.permanent${suffix}`, event);
           }
           break;
         default:
@@ -603,7 +608,7 @@ const Mercury = WebexPlugin.extend({
             `${this.namespace}: socket ${sessionId} disconnected unexpectedly; will not reconnect`
           );
           // unexpected disconnect
-          this._emit('offline.permanent', event);
+          this._emit(`offline.permanent${suffix}`, event);
       }
     } catch (error) {
       this.logger.error(
@@ -614,7 +619,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   _onmessage(sessionId, event) {
-    this._setTimeOffset(event);
+    this._setTimeOffset(sessionId, event);
     const envelope = event.data;
 
     if (process.env.ENABLE_MERCURY_LOGGING) {
@@ -664,7 +669,7 @@ const Mercury = WebexPlugin.extend({
       });
   },
 
-  _setTimeOffset(event) {
+  _setTimeOffset(sessionId, event) {
     const {wsWriteTimestamp} = event.data;
     if (typeof wsWriteTimestamp === 'number' && wsWriteTimestamp > 0) {
       this.mercuryTimeOffset = Date.now() - wsWriteTimestamp;
