@@ -40,6 +40,13 @@ import HashTreeParser, {
   ObjectType,
 } from '../hashTree/hashTreeParser';
 
+export type LocusLLMEvent = {
+  data: {
+    eventType: 'locus.compact.difference';
+    stateElementsMessage: HashTreeMessage;
+  };
+};
+
 export type LocusDTO = {
   controls?: any;
   fullState?: {
@@ -141,7 +148,7 @@ export default class LocusInfo extends EventsScope {
   mainSessionLocusCache: any;
   self: any;
   hashTreeParser?: HashTreeParser;
-  hashTreeObjectId2ParticipantId: Map<number, string>;
+  hashTreeObjectId2ParticipantId: Map<number, string>; // mapping of hash tree object ids to participant ids
 
   /**
    * Constructor
@@ -409,8 +416,9 @@ export default class LocusInfo extends EventsScope {
    * @returns {void}
    */
   updateHashTreeObjectInLocus(object: HashTreeObject, locus: LocusDTO): LocusDTO {
-    // todo: handle cases of JSON.parse throwing an error
-    switch (object.htMeta.elementId.type) {
+    const type = object.htMeta.elementId.type.toLowerCase();
+
+    switch (type) {
       case ObjectType.locus: {
         if (!object.data) {
           LoggerProxy.logger.warn(
@@ -421,28 +429,41 @@ export default class LocusInfo extends EventsScope {
         }
         // replace the main locus
 
-        // the MAIN dataset has empty participants, so removing that to avoid it overriding the ones in our current locus
-        const locusObjectFromData = JSON.parse(object.data);
+        // The Locus object from MAIN dataset has empty participants, so removing them to avoid it overriding the ones in our current locus object
+        // Also, it doesn't have "self". That's OK as it won't override existing locus.self and also existing SDK code can handle that missing self in Locus updates
+        const locusObjectFromData = object.data;
         delete locusObjectFromData.participants;
 
-        // todo: not sure if MAIN dataset will contain empty self or nothing
-
-        locus = {...locus, ...locusObjectFromData, jsSdkMeta: {removedParticipantIds: []}};
+        locus = {...locus, ...locusObjectFromData};
         locus.htMeta = object.htMeta;
         break;
       }
       case ObjectType.participant:
+        LoggerProxy.logger.info(
+          `Locus-info:index#updateHashTreeObjectInLocus --> participant id=${
+            object.htMeta.elementId.id
+          } ${object.data ? 'updated' : 'removed'}`
+        );
+        console.log(
+          'marcin: hashTreeObjectId2ParticipantId=',
+          cloneDeep(this.hashTreeObjectId2ParticipantId)
+        );
         if (object.data) {
           if (!locus.participants) {
             locus.participants = [];
           }
-          const participantObject = JSON.parse(object.data);
+          const participantObject = object.data;
           participantObject.htMeta = object.htMeta;
           locus.participants.push(participantObject);
           this.hashTreeObjectId2ParticipantId.set(object.htMeta.elementId.id, participantObject.id);
         } else {
           const participantId = this.hashTreeObjectId2ParticipantId.get(object.htMeta.elementId.id);
+
+          if (!locus.jsSdkMeta) {
+            locus.jsSdkMeta = {removedParticipantIds: []};
+          }
           locus.jsSdkMeta.removedParticipantIds.push(participantId);
+          this.hashTreeObjectId2ParticipantId.delete(object.htMeta.elementId.id);
         }
         break;
       case ObjectType.self:
@@ -453,7 +474,7 @@ export default class LocusInfo extends EventsScope {
 
           return locus;
         }
-        locus.self = JSON.parse(object.data);
+        locus.self = object.data;
         break;
     }
 
@@ -500,6 +521,7 @@ export default class LocusInfo extends EventsScope {
         // but with empty participants array
         let locus: LocusDTO = {
           participants: [],
+          jsSdkMeta: {removedParticipantIds: []},
         };
 
         LocusDtoTopLevelKeys.forEach((key) => {
@@ -538,9 +560,9 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   parse(meeting: any, data: any) {
-    if (data.dataSets) {
+    if (data.eventType === 'locus.compact.difference') {
       // this is the new hashmap Locus message format (only applicable to webinars for now)
-      this.handleHashTreeMessage(meeting, data as HashTreeMessage);
+      this.handleHashTreeMessage(meeting, data.stateElementsMessage as HashTreeMessage);
     } else {
       // eslint-disable-next-line @typescript-eslint/no-shadow
       const {eventType} = data;
@@ -607,17 +629,30 @@ export default class LocusInfo extends EventsScope {
     if (dataSets) {
       // this is the new hashmap Locus DTO format (only applicable to webinars for now)
       if (!this.hashTreeParser) {
+        LoggerProxy.logger.info(`Locus-info:index#onFullLocus --> creating hash tree parser`);
+        LoggerProxy.logger.info(
+          'Locus-info:index#onFullLocus --> dataSets:',
+          dataSets,
+          ' and locus:',
+          locus
+        );
         this.hashTreeParser = new HashTreeParser({
           initialLocus: {locus, dataSets},
           webexRequest: this.webex.request.bind(this.webex),
           locusInfoUpdateCallback: this.updateFromHashTree.bind(this),
+          debugId: `HT-${this.meetingId.substring(0, 4)}`,
         });
       } else {
         // todo: need a confirmation from Locus on the format of the data and if we should use it at all
-      }
-    }
+        console.log('marcin: !!!!!!!! full DTO - this is not implemented yet');
 
-    if (!this.locusParser.isNewFullLocus(locus)) {
+        LoggerProxy.logger.warn(
+          'Locus-info:index#onFullLocus --> full DTO - this is not implemented yet!!!!!!!!'
+        );
+
+        return;
+      }
+    } else if (!this.locusParser.isNewFullLocus(locus)) {
       LoggerProxy.logger.info(
         `Locus-info:index#onFullLocus --> ignoring old full locus DTO, eventType=${eventType}`
       );
