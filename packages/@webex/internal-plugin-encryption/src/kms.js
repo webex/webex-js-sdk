@@ -277,6 +277,7 @@ const KMS = WebexPlugin.extend({
    * @param {UUID} options.assignedOrgId the orgId
    * @param {string} options.customerMasterKey the master key
    * @param {string} options.customerMasterKeyBackup the master key backup
+   * @param {string} options.customerMasterKeyRole the optional role associated with customerMasterKey
    * @param {boolean} options.awsKms enable amazon aws keys
    * @returns {Promise.<UploadCmkResponse>} response of upload CMK api
    */
@@ -285,6 +286,7 @@ const KMS = WebexPlugin.extend({
     customerMasterKey,
     awsKms = false,
     customerMasterKeyBackup = undefined,
+    customerMasterKeyRole = undefined,
   }) {
     this.logger.info('kms: upload customer master key for byok');
 
@@ -295,6 +297,7 @@ const KMS = WebexPlugin.extend({
       customerMasterKey,
       requestId: uuid.v4(),
       customerMasterKeyBackup: awsKms ? customerMasterKeyBackup : undefined,
+      customerMasterKeyRole awsKms ? customerMasterKeyRole : undefined,
     }).then((res) => {
       this.logger.info('kms: finish to upload customer master key');
 

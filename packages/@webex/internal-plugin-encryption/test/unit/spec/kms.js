@@ -60,6 +60,14 @@ describe('internal-plugin-encryption', () => {
           awsKms: true,
         });
 
+         // Upload aws cmk and role
+        await webex.internal.encryption.kms.uploadCustomerMasterKey({
+          assignedOrgId: 'xx-sds-assdf',
+          customerMasterKey: 'masterKey',
+          awsKms: true,
+          customerMasterKeyRole: 'role',
+        });
+
         // Upload backup cmk for aws
         await webex.internal.encryption.kms.uploadCustomerMasterKey({
           assignedOrgId: 'xx-sds-assdf',
@@ -79,9 +87,11 @@ describe('internal-plugin-encryption', () => {
         assert.equal(spyStub.args[1][0].uri, '/awsKmsCmk');
         assert.equal(spyStub.args[1][0].customerMasterKeyBackup, undefined);
         assert.equal(spyStub.args[2][0].uri, '/awsKmsCmk');
-        assert.equal(spyStub.args[2][0].customerMasterKeyBackup, 'masterKeyBackup');
-        assert.equal(spyStub.args[3][0].uri, '/cmk');
-        assert.equal(spyStub.args[3][0].customerMasterKeyBackup, undefined);
+        assert.equal(spyStub.args[2][0].customerMasterKeyRole, 'role');
+        assert.equal(spyStub.args[3][0].uri, '/awsKmsCmk');
+        assert.equal(spyStub.args[3][0].customerMasterKeyBackup, 'masterKeyBackup');
+        assert.equal(spyStub.args[4][0].uri, '/cmk');
+        assert.equal(spyStub.args[4][0].customerMasterKeyBackup, undefined);
       });
 
       it('deleteAllCustomerMasterKeys', async () => {
