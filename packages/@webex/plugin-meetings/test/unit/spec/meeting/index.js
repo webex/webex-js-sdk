@@ -1989,21 +1989,25 @@ describe('plugin-meetings', () => {
             });
           });
 
-          it('should post error event if failed', async () => {
+          it('should handle join failure', async () => {
             MeetingUtil.isPinOrGuest = sinon.stub().returns(false);
+            webex.internal.newMetrics.submitClientEvent = sinon.stub();
+            
             await meeting.join().catch(() => {
-              assert.deepEqual(
-                webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].name,
-                'client.locus.join.response'
-              );
-              assert.match(
-                webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].options.rawError,
+              assert.calledOnce(MeetingUtil.joinMeeting);
+              
+              // Assert that client.locus.join.response error event is not sent from this function, it is now emitted from MeetingUtil.joinMeeting
+              assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+              assert.calledWithMatch(
+                webex.internal.newMetrics.submitClientEvent,
                 {
-                  code: 2,
-                  error: null,
-                  joinOptions: {},
-                  sdkMessage:
-                    'There was an issue joining the meeting, meeting could be in a bad state.',
+                  name: 'client.call.initiated',
+                  payload: {
+                    trigger: 'user-interaction',
+                    isRoapCallEnabled: true,
+                    pstnAudioType: undefined
+                  },
+                  options: {meetingId: meeting.id},
                 }
               );
             });
