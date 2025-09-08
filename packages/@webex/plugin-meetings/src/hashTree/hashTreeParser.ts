@@ -96,11 +96,31 @@ class HashTreeParser {
     this.locusInfoUpdateCallback = options.locusInfoUpdateCallback;
 
     // object mapping dataset names to arrays of leaf data
-    const leafData: Record<string, Array<{type: string; id: number; version: number}>> = {};
+    const leafData = this.analyzeLocusHtMeta(locus);
 
-    // each dataset exists at a different place in the dto
-    // iterate recursively over the locus and if it has a htMeta key,
-    // create an object with the type, id and version and add it to the appropriate leafData array
+    for (const dataSet of dataSets) {
+      const {name, leafCount} = dataSet;
+
+      const hashTree = new HashTree(leafData[name] || [], leafCount);
+
+      this.dataSets[name] = {
+        ...dataSet,
+        hashTree,
+      };
+    }
+  }
+
+  /**
+   * Each dataset exists at a different place in the dto
+   * iterate recursively over the locus and if it has a htMeta key,
+   * create an object with the type, id and version and add it to the appropriate leafData array
+   *
+   * @param {any} locus - The current part of the locus being processed
+   * @returns {any} - An object mapping dataset names to arrays of leaf data
+   */
+  private analyzeLocusHtMeta(locus: any) {
+    // object mapping dataset names to arrays of leaf data
+    const leafData: Record<string, Array<{type: string; id: number; version: number}>> = {};
 
     const findAndStoreMetaData = (currentLocusPart: any) => {
       if (typeof currentLocusPart !== 'object' || currentLocusPart === null) {
@@ -135,16 +155,7 @@ class HashTreeParser {
 
     findAndStoreMetaData(locus);
 
-    for (const dataSet of dataSets) {
-      const {name, leafCount} = dataSet;
-
-      const hashTree = new HashTree(leafData[name] || [], leafCount);
-
-      this.dataSets[name] = {
-        ...dataSet,
-        hashTree,
-      };
-    }
+    return leafData;
   }
 
   /**
@@ -194,6 +205,29 @@ class HashTreeParser {
     );
     dataSets.forEach((dataSet) => {
       this.runSyncAlgorithm(dataSet);
+    });
+  }
+
+  /**
+   * This method should be called when we receive a partial locus DTO that contains dataSets and htMeta information
+   * It updates the hash trees with the new leaf data based on the received Locus
+   *
+   * @param {Object} update - The locus update containing data sets and locus information
+   * @returns {void}
+   */
+  handleLocusUpdate(update: {dataSets?: Array<DataSet>; locus: any}): void {
+    const {dataSets, locus} = update;
+
+    if (!dataSets) {
+      LoggerProxy.logger.warn(
+        `HashTreeParser#handleLocusUpdate --> ${this.debugId} received hash tree update without dataSets, ignoring`
+      );
+    }
+
+    const leafData = this.analyzeLocusHtMeta(locus);
+
+    Object.keys(leafData).forEach((dataSetName) => {
+      this.dataSets[dataSetName].hashTree.putItems(leafData[dataSetName]);
     });
   }
 
