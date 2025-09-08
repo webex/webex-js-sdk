@@ -2431,7 +2431,7 @@ describe('internal-plugin-metrics', () => {
         );
       });
 
-      it('should send behavioral event if meetingId provided but meeting is undefined', () => {
+      it('should record failure metric when meetingId is provided but meeting is undefined', () => {
         webex.meetings.getBasicMeetingInformation = sinon.stub().returns(undefined);
 
         cd.submitClientEvent({name: 'client.alert.displayed', options: {meetingId: 'meetingId'}});
@@ -2464,6 +2464,228 @@ describe('internal-plugin-metrics', () => {
         cd.submitClientEvent(testEvent);
         assert.calledWith(cd.submitToCallDiagnosticsPreLogin, testEvent);
         assert.notCalled(cd.submitToCallDiagnostics);
+      });
+
+      describe('Limiting repeated events', () => {
+        beforeEach(() => {
+          cd.clearEventLimits();
+        });
+
+        const createEventLimitRegex = (eventName: string, eventType: string) => {
+          const escapedEventName = eventName.replace(/\./g, '\\.');
+          return new RegExp(`Event limit reached for ${escapedEventName} for ${eventType}`);
+        };
+
+        it('should always send events that are not in the limiting switch cases', () => {
+          const options = {
+            meetingId: fakeMeeting.id,
+          };
+          const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+          const baselineCallCount = webex.logger.log.callCount;
+          cd.submitClientEvent({
+            name: 'client.alert.displayed',
+            options,
+          });
+
+          cd.submitClientEvent({
+            name: 'client.alert.displayed',
+            options,
+          });
+
+          cd.submitClientEvent({
+            name: 'client.alert.displayed',
+            options,
+          });
+
+          assert.calledThrice(submitToCallDiagnosticsStub);
+          });
+
+        ([
+          ['client.media.render.start'],
+          ['client.media.render.stop'],
+          ['client.media.rx.start'],
+          ['client.media.rx.stop'],
+          ['client.media.tx.start'],
+          ['client.media.tx.stop']
+        ] as const).forEach(([name]) => {
+          it(`should only send ${name} once per mediaType`, () => {
+            const options = {
+              meetingId: fakeMeeting.id,
+            };
+            const payload = {
+              mediaType: 'video' as const,
+            };
+            const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+            const baselineCallCount = webex.logger.log.callCount;
+            // Send first event
+            cd.submitClientEvent({
+              name,
+              payload,
+              options,
+            });
+
+            assert.calledOnce(submitToCallDiagnosticsStub);
+            submitToCallDiagnosticsStub.resetHistory();
+
+            // Send second event of same type
+            cd.submitClientEvent({
+              name,
+              payload,
+              options,
+            });
+
+            assert.notCalled(submitToCallDiagnosticsStub);
+            assert.calledWith(
+              webex.logger.log,
+              'call-diagnostic-events -> ',
+              sinon.match(createEventLimitRegex(name, 'mediaType video'))
+            );
+            webex.logger.log.resetHistory();
+
+            // Send third event of same type
+            cd.submitClientEvent({
+              name,
+              payload,
+              options,
+            });
+
+            assert.notCalled(submitToCallDiagnosticsStub);
+            assert.neverCalledWithMatch(webex.logger.log,
+              'call-diagnostic-events -> ',
+              sinon.match(createEventLimitRegex(name, 'mediaType video'))
+            );
+
+            // Send fourth event with a different mediaType
+            cd.submitClientEvent({
+              name,
+              payload: {mediaType: 'audio'},
+              options,
+            });
+
+            assert.calledOnce(submitToCallDiagnosticsStub);
+          });
+
+          it(`should handle share media type with shareInstanceId correctly for ${name}`, () => {
+            const options = {
+              meetingId: fakeMeeting.id,
+            };
+            const payload = {
+              mediaType: 'share' as const,
+              shareInstanceId: 'instance-1',
+            };
+            const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+            const baselineCallCount = webex.logger.log.callCount;
+            // Send first event
+            cd.submitClientEvent({
+              name,
+              payload,
+              options,
+            });
+
+            // Send second event with same shareInstanceId
+            cd.submitClientEvent({
+              name,
+              payload,
+              options,
+            });
+
+            // Send event with different shareInstanceId
+            cd.submitClientEvent({
+              name,
+              payload: { ...payload, shareInstanceId: 'instance-2' },
+              options,
+            });
+
+            assert.calledTwice(submitToCallDiagnosticsStub);
+          });
+        });
+
+        ([
+          ['client.roap-message.received'],
+          ['client.roap-message.sent']
+        ] as const).forEach(([name]) => {
+          it(`should not send third event of same type and not log warning again for ${name}`, () => {
+            const options = {
+              meetingId: fakeMeeting.id,
+            };
+            const payload = {
+              roap: {
+                messageType: 'OFFER' as const,
+              },
+            };
+            const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+            // Clear any existing call history to get accurate counts
+            webex.logger.log.resetHistory();
+
+            // Send first event
+            cd.submitClientEvent({
+              name,
+              payload,
+              options,
+            });
+
+            assert.calledOnce(submitToCallDiagnosticsStub);
+            submitToCallDiagnosticsStub.resetHistory();
+
+            // Send second event (should trigger warning)
+            cd.submitClientEvent({
+              name,
+              payload,
+              options,
+            });
+
+            assert.notCalled(submitToCallDiagnosticsStub);
+            assert.calledWith(
+              webex.logger.log,
+              'call-diagnostic-events -> ',
+              sinon.match(createEventLimitRegex(name, 'ROAP type OFFER'))
+            );
+            webex.logger.log.resetHistory();
+            
+            cd.submitClientEvent({
+              name,
+              payload,
+              options,
+            });
+
+            assert.notCalled(submitToCallDiagnosticsStub);
+            assert.neverCalledWithMatch(
+              webex.logger.log,
+              'call-diagnostic-events -> ',
+              sinon.match(createEventLimitRegex(name, 'ROAP type OFFER'))
+            );
+          });
+
+          it(`should handle roap.type instead of roap.messageType for ${name}`, () => {
+            const options = {
+              meetingId: fakeMeeting.id,
+            };
+            const payload = {
+              roap: {
+                type: 'ANSWER' as const,
+              },
+            };
+            const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+            cd.submitClientEvent({
+              name,
+              payload,
+              options,
+            });
+
+            cd.submitClientEvent({
+              name,
+              payload,
+              options,
+            });
+
+            assert.calledOnce(submitToCallDiagnosticsStub);
+          });
+        });
       });
     });
 
@@ -4020,6 +4242,187 @@ describe('internal-plugin-metrics', () => {
 
         // should not call submitFeatureEventSpy again if delayedClientFeatureEvents was cleared
         assert.notCalled(submitFeatureEventSpy);
+      });
+    });
+
+    describe('#clearEventLimitsForCorrelationId', () => {
+      beforeEach(() => {
+        cd.clearEventLimits();
+      });
+
+      it('should clear event limits for specific correlationId only', () => {
+        // Use the actual correlationIds from our fakeMeeting fixtures
+        const correlationId1 = fakeMeeting.correlationId;   // e.g. 'correlationId1'
+        const correlationId2 = fakeMeeting2.correlationId;  // e.g. 'correlationId2'
+        const options1 = { meetingId: fakeMeeting.id };
+        const options2 = { meetingId: fakeMeeting2.id };
+        const payload = { mediaType: 'video' as const };
+
+        // Set up events for both correlations to trigger limits
+        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options1 });
+        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options2 });
+        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options1 });
+        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options2 });
+        assert.isTrue(cd.eventLimitTracker.size > 0);
+        assert.isTrue(cd.eventLimitWarningsLogged.size > 0);
+
+        // Clear limits for only correlationId1 (present)
+        cd.clearEventLimitsForCorrelationId(correlationId1);
+
+        const remainingTrackerKeys = Array.from(cd.eventLimitTracker.keys());
+        const remainingWarningKeys = Array.from(cd.eventLimitWarningsLogged.keys());
+
+        // Should have no keys with correlationId1
+        assert.isFalse(remainingTrackerKeys.some(key => key.split(':')[1] === correlationId1));
+        assert.isFalse(remainingWarningKeys.some(key => key.split(':')[1] === correlationId1));
+
+        // Should still have keys with correlationId2
+        assert.isTrue(remainingTrackerKeys.some(key => key.split(':')[1] === correlationId2));
+        assert.isTrue(remainingWarningKeys.some(key => key.split(':')[1] === correlationId2));
+      });
+
+      it('should handle empty correlationId gracefully', () => {
+        const options = { meetingId: fakeMeeting.id };
+        const payload = { mediaType: 'video' as const };
+
+        // Set up some tracking data
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        const initialTrackerSize = cd.eventLimitTracker.size;
+        const initialWarningsSize = cd.eventLimitWarningsLogged.size;
+
+        // Should not clear anything for empty correlationId
+        cd.clearEventLimitsForCorrelationId('');
+        cd.clearEventLimitsForCorrelationId(null as any);
+        cd.clearEventLimitsForCorrelationId(undefined as any);
+
+        assert.equal(cd.eventLimitTracker.size, initialTrackerSize);
+        assert.equal(cd.eventLimitWarningsLogged.size, initialWarningsSize);
+      });
+
+      it('should handle non-existent correlationId gracefully', () => {
+        const options = { meetingId: fakeMeeting.id };
+        const payload = { mediaType: 'video' as const };
+
+        // Set up some tracking data
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        const initialTrackerSize = cd.eventLimitTracker.size;
+        const initialWarningsSize = cd.eventLimitWarningsLogged.size;
+
+        // Should not clear anything for non-existent correlationId
+        cd.clearEventLimitsForCorrelationId('nonExistentCorrelationId');
+
+        assert.equal(cd.eventLimitTracker.size, initialTrackerSize);
+        assert.equal(cd.eventLimitWarningsLogged.size, initialWarningsSize);
+      });
+
+      it('should clear multiple event types for the same correlationId', () => {
+        const correlationId = fakeMeeting.correlationId;
+        const options = { meetingId: fakeMeeting.id };
+        const videoPayload = { mediaType: 'video' as const };
+        const audioPayload = { mediaType: 'audio' as const };
+        const roapPayload = { roap: { messageType: 'OFFER' as const } };
+
+        // Set up multiple event types for the same correlation
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload: videoPayload,
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload: audioPayload,
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.roap-message.sent',
+          payload: roapPayload,
+          options,
+        });
+
+        // Trigger limits
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload: videoPayload,
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload: audioPayload,
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.roap-message.sent',
+          payload: roapPayload,
+          options,
+        });
+
+        assert.isTrue(cd.eventLimitTracker.size > 0);
+        assert.isTrue(cd.eventLimitWarningsLogged.size > 0);
+
+        // Clear all limits for this correlationId
+        cd.clearEventLimitsForCorrelationId(correlationId);
+
+        // Should clear all tracking data for this correlationId
+        assert.equal(cd.eventLimitTracker.size, 0);
+        assert.equal(cd.eventLimitWarningsLogged.size, 0);
+      });
+
+      it('should allow events to be sent again after clearing limits for correlationId', () => {
+        const correlationId = fakeMeeting.correlationId;
+        const options = { meetingId: fakeMeeting.id };
+        const payload = { mediaType: 'video' as const };
+        const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+
+        // Send first event (should succeed)
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        assert.calledOnce(submitToCallDiagnosticsStub);
+        submitToCallDiagnosticsStub.resetHistory();
+
+        // Send second event (should be blocked)
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        assert.notCalled(submitToCallDiagnosticsStub);
+
+        // Clear limits for this correlationId
+        cd.clearEventLimitsForCorrelationId(correlationId);
+
+        // Send event again (should succeed after clearing)
+        cd.submitClientEvent({
+          name: 'client.media.render.start',
+          payload,
+          options,
+        });
+
+        assert.calledOnce(submitToCallDiagnosticsStub);
       });
     });
   });
