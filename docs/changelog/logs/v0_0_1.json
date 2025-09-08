@@ -1,0 +1,35 @@
+{
+  "@webex/test-webex-node": {
+    "0.0.1-next.1": {
+      "published_date": 1757059007214,
+      "commits": {
+        "faf912164d150ffa01b491c917d8f65e1dcf0d6c": "fix(plugin-encryption): styling error missed in merge (#4457)"
+      },
+      "alongWith": {
+        "@webex/contact-center": "3.8.1-next.39",
+        "@webex/internal-plugin-board": "3.8.1-next.18",
+        "@webex/internal-plugin-calendar": "3.8.1-next.18",
+        "@webex/internal-plugin-conversation": "3.8.1-next.18",
+        "@webex/internal-plugin-ediscovery": "3.8.1-next.18",
+        "@webex/internal-plugin-encryption": "3.8.1-next.17",
+        "@webex/internal-plugin-flag": "3.8.1-next.18",
+        "@webex/internal-plugin-lyra": "3.8.1-next.18",
+        "@webex/internal-plugin-scheduler": "3.8.1-next.17",
+        "@webex/internal-plugin-search": "3.8.1-next.18",
+        "@webex/internal-plugin-support": "3.8.1-next.18",
+        "@webex/internal-plugin-team": "3.8.1-next.18",
+        "@webex/plugin-attachment-actions": "3.8.1-next.18",
+        "@webex/plugin-device-manager": "3.8.1-next.18",
+        "@webex/plugin-encryption": "3.8.1-next.17",
+        "@webex/plugin-meetings": "3.8.1-next.45",
+        "@webex/plugin-memberships": "3.8.1-next.18",
+        "@webex/plugin-messages": "3.8.1-next.18",
+        "@webex/plugin-rooms": "3.8.1-next.15",
+        "@webex/recipe-private-web-client": "3.8.1-next.19",
+        "@webex/webex-server": "3.8.1-next.18",
+        "webex": "3.8.1-next.64",
+        "webex-node": "3.8.1-next.43"
+      }
+    }
+  }
+}
