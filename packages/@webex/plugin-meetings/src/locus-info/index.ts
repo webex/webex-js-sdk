@@ -42,7 +42,7 @@ import HashTreeParser, {
 
 export type LocusLLMEvent = {
   data: {
-    eventType: 'locus.compact.difference';
+    eventType: 'locus.state_message';
     stateElementsMessage: HashTreeMessage;
   };
 };
@@ -593,7 +593,7 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   parse(meeting: any, data: any) {
-    if (data.eventType === 'locus.compact.difference') {
+    if (data.eventType === 'locus.state_message') {
       // this is the new hashmap Locus message format (only applicable to webinars for now)
       this.handleHashTreeMessage(meeting, data.stateElementsMessage as HashTreeMessage);
     } else {

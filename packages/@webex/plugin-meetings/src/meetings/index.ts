@@ -408,7 +408,7 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   getCorrespondingMeetingByLocus(data) {
-    if (data.eventType === 'locus.compact.difference' && data.stateElementsMessage?.locusUrl) {
+    if (data.eventType === 'locus.state_message' && data.stateElementsMessage?.locusUrl) {
       return this.meetingCollection.getByKey(
         MEETING_KEY.LOCUS_URL,
         data.stateElementsMessage.locusUrl
