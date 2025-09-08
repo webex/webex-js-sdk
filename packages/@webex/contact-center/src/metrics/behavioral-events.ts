@@ -129,6 +129,18 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'agent_rona',
     verb: 'set',
   },
+  [METRIC_EVENT_NAMES.AGENT_CONTACT_ASSIGN_FAILED]: {
+    product,
+    agent: 'service',
+    target: 'agent_contact_assign',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.AGENT_INVITE_FAILED]: {
+    product,
+    agent: 'service',
+    target: 'agent_invite',
+    verb: 'fail',
+  },
 
   // Added Task events
   [METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS]: {
