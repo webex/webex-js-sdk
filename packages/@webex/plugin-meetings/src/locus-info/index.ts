@@ -92,6 +92,11 @@ export type LocusDTO = {
   url?: string;
 };
 
+export type LocusApiResponseBody = {
+  dataSets?: DataSet[];
+  locus: LocusDTO; // this LocusDTO here might not be the full one (for example it won't have all the participants, but it should have self)
+};
+
 const LocusDtoTopLevelKeys = [
   'controls',
   'fullState',
@@ -256,7 +261,7 @@ export default class LocusInfo extends EventsScope {
 
         if (isDelta) {
           if (res.body.baseSequence) {
-            meeting.locusInfo.handleLocusDelta(res.body, meeting);
+            meeting.locusInfo.handleLocusDelta(res.body, meeting); // todo: check if this is safe, is isDelta=true always only for non-hash tree locus
 
             return;
           }
@@ -482,6 +487,34 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Handles HTTP response from Locus API call when hash tree update.
+   * @param {Meeting} meeting meeting object
+   * @param {LocusApiResponseBody} responseBody body of the http reponse from Locus API call
+   * @returns {void}
+   */
+  handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
+    console.log('marcin: locus response from API call:', responseBody);
+    if (responseBody.dataSets) {
+      if (!this.hashTreeParser) {
+        LoggerProxy.logger.warn(
+          `Locus-info:index#handleLocusAPIResponse --> received response with hash tree info from Locus API, but we don't have the hashTreeParser created`
+        );
+
+        return;
+      }
+      // Locus is using the new hash tree mechanism
+      // so update our data in the hash tree parser
+      this.hashTreeParser.handleLocusUpdate(responseBody);
+
+      // but the Locus object we receive in this case looks same like classic delta, so we can use existing delta method to process it
+      this.onDeltaLocus(responseBody.locus);
+    } else {
+      // classic Locus delta
+      this.handleLocusDelta(responseBody.locus, meeting);
+    }
+  }
+
+  /**
    * Handles a hash tree message received from Locus.
    *
    * @param {Meeting} meeting - The meeting object
@@ -643,12 +676,14 @@ export default class LocusInfo extends EventsScope {
           debugId: `HT-${this.meetingId.substring(0, 4)}`,
         });
       } else {
-        // todo: need a confirmation from Locus on the format of the data and if we should use it at all
-        console.log('marcin: !!!!!!!! full DTO - this is not implemented yet');
+        // in this case the Locus we're getting is not necessarily the full one
+        // so treat it like if we just got it in a message
+        console.log('marcin: !!!!!!!! full DTO - this is not fully implemented/tested yet');
 
         LoggerProxy.logger.warn(
-          'Locus-info:index#onFullLocus --> full DTO - this is not implemented yet!!!!!!!!'
+          'Locus-info:index#onFullLocus --> full DTO - this is not fully implemented/tested yet!!!!!!!!'
         );
+        this.handleLocusAPIResponse(undefined, {dataSets, locus});
 
         return;
       }
