@@ -345,6 +345,12 @@ class HashTreeParser {
 
     dataSet.hashTree.resize(receivedDataSet.leafCount);
 
+    // temporary log for the workshop // todo: remove
+    const ourCurrentRootHash = dataSet.hashTree.getRootHash();
+    LoggerProxy.logger.info(
+      `HashTreeParser#runSyncAlgorithm --> ${this.debugId} dataSet="${dataSet.name}" version=${dataSet.version} hashes before starting timer: ours=${ourCurrentRootHash} Locus=${dataSet.root}`
+    );
+
     const delay = dataSet.idleMs + this.getWeightedBackoffTime(dataSet.backoff);
 
     if (delay > 0) {
