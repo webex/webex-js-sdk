@@ -8,5 +8,6 @@
   "3.7.0": "logs/v3_7_0.json",
   "3.8.0": "logs/v3_8_0.json",
   "0.0.1": "logs/v0_0_1.json",
-  "3.8.1": "logs/v3_8_1.json"
+  "3.8.1": "logs/v3_8_1.json",
+  "3.9.0": "logs/v3_9_0.json"
 }
