@@ -426,6 +426,35 @@ describe('plugin-meetings', () => {
           body: {
             aliasValue,
             requestingParticipantId,
+            suffixValue: '',
+          },
+        });
+      });
+
+      it('sends a POST request to the locus endpoint with suffixValue', async () => {
+        const locusUrl = url1;
+        const memberId = 'test1';
+        const requestingParticipantId = 'test2';
+        const aliasValue = 'alias';
+        const suffixValue = 'suffix';
+
+        const options = {
+          memberId,
+          requestingParticipantId,
+          alias: aliasValue,
+          locusUrl,
+          suffix: suffixValue,
+        };
+
+        await membersRequest.editDisplayNameMember(options);
+
+        checkRequest({
+          method: 'POST',
+          uri: `${locusUrl}/participant/${memberId}/alias`,
+          body: {
+            aliasValue,
+            requestingParticipantId,
+            suffixValue,
           },
         });
       });
