@@ -172,6 +172,7 @@ describe('plugin-meetings', () => {
             requestingParticipantId,
             alias,
             locusUrl,
+            suffix: undefined,
           }
         );
       });
@@ -490,7 +491,7 @@ describe('plugin-meetings', () => {
         const body = {
           aliasValue: alias,
           requestingParticipantId,
-          suffix,
+          suffixValue: suffix,
         };
 
         const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
