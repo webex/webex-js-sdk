@@ -84,6 +84,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     if (!this.hasSubscribedToEvents) {
       // @ts-ignore
       this.webex.internal.llm.on('event:relay.event', this.eventProcessor);
+      // @ts-ignore
+      this.webex.internal.llm.on('event:relay.event:practice-session', this.eventProcessor);
       this.hasSubscribedToEvents = true;
     }
   }
@@ -97,6 +99,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.vmcDeviceId = undefined;
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
+    // @ts-ignore
+    this.webex.internal.llm.off('event:relay.event:practice-session', this.eventProcessor);
     this.hasSubscribedToEvents = false;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;

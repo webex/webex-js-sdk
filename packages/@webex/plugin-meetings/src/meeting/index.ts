@@ -5981,7 +5981,7 @@ export default class Meeting extends StatelessWebexPlugin {
         if (this.config.enableAutomaticLLM) {
           // @ts-ignore
           this.webex.internal.llm.on('online', this.handleLLMOnline);
-          this.updateLLMConnectionBySessionId('default-session')
+          this.updateLLMConnection()
             .catch((error) => {
               LoggerProxy.logger.error(
                 'Meeting:index#join --> Transcription Socket Connection Failed',
@@ -6008,52 +6008,21 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
-   * @param {String} datachannelUrl
    * @returns {Promise}
    */
   async updateLLMConnection() {
-    const connections = ['default-session'];
+    // @ts-ignore - Fix type
+    const {url, info: {datachannelUrl} = {}} = this.locusInfo;
 
-    if (this.webinar.isJoinPracticeSessionDataChannel()) {
-      connections.push('practice-session');
-    } else {
-      // @ts-ignore - Fix type
-      await this.webex.internal.llm.disconnectLLM(
-        {
-          code: 3050,
-          reason: 'done (permanent)',
-        },
-        'practice-session'
-      );
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.off('event:relay.event:practice-session', this.processRelayEvent);
-    }
-    connections.forEach((llmSessionId) => {
-      this.updateLLMConnectionBySessionId(llmSessionId);
-    });
-  }
-
-  async updateLLMConnectionBySessionId(llmSessionId) {
     const isJoined = this.isJoined();
 
-    // @ts-ignore
-    const {url, info: {datachannelUrl, practiceSessionDatachannelUrl} = {}} = this.locusInfo;
-    // webinar panelist should use new data channel in practice session
-    const dataChannelUrl =
-      llmSessionId === 'practice-session' ? practiceSessionDatachannelUrl : datachannelUrl;
-
-    const eventName =
-      llmSessionId === 'default-session'
-        ? `event:relay.event`
-        : `event:relay.event:${llmSessionId}`;
-
     // @ts-ignore - Fix type
-    if (this.webex.internal.llm.isConnected(llmSessionId)) {
+    if (this.webex.internal.llm.isConnected()) {
       if (
         // @ts-ignore - Fix type
-        url === this.webex.internal.llm.getLocusUrl(llmSessionId) &&
+        url === this.webex.internal.llm.getLocusUrl() &&
         // @ts-ignore - Fix type
-        dataChannelUrl === this.webex.internal.llm.getDatachannelUrl(llmSessionId) &&
+        datachannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
         isJoined
       ) {
         return undefined;
@@ -6065,11 +6034,10 @@ export default class Meeting extends StatelessWebexPlugin {
               code: 3050,
               reason: 'done (permanent)',
             }
-          : undefined,
-        llmSessionId
+          : undefined
       );
       // @ts-ignore - Fix type
-      this.webex.internal.llm.off(eventName, this.processRelayEvent);
+      this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
     }
 
     if (!isJoined) {
@@ -6078,15 +6046,14 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, dataChannelUrl, llmSessionId)
+      .registerAndConnect(url, datachannelUrl)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
-        this.webex.internal.llm.off(eventName, this.processRelayEvent);
+        this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
         // @ts-ignore - Fix type
-        this.webex.internal.llm.on(eventName, this.processRelayEvent);
-
+        this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
         LoggerProxy.logger.info(
-          `Meeting:index#updateLLMConnection --> enabled to receive relay events for connection ${llmSessionId}!`
+          'Meeting:index#updateLLMConnection --> enabled to receive relay events for default session!'
         );
 
         return Promise.resolve(registerAndConnectResult);

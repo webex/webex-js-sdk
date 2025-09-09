@@ -64,7 +64,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @param {string} sessionId - Connection identifier (defaults to DEFAULT_SESSION)
    * @returns {Promise<void>}
    */
-  private register = (llmSocketUrl: string, sessionId = DEFAULT_SESSION): Promise<void> =>
+  private register = (llmSocketUrl: string, sessionId: string = DEFAULT_SESSION): Promise<void> =>
     this.request({
       method: 'POST',
       url: llmSocketUrl,
@@ -92,7 +92,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   public registerAndConnect = (
     locusUrl: string,
     datachannelUrl: string,
-    sessionId = DEFAULT_SESSION
+    sessionId: string = DEFAULT_SESSION
   ): Promise<void> =>
     this.register(datachannelUrl, sessionId).then(() => {
       if (!locusUrl || !datachannelUrl) return undefined;
@@ -102,6 +102,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       sessionData.locusUrl = locusUrl;
       sessionData.datachannelUrl = datachannelUrl;
       this.connections.set(sessionId, sessionData);
+      console.error(`registerAndConnect(${sessionId}) -->  channel is ${datachannelUrl}!`);
 
       return this.connect(sessionData.webSocketUrl, sessionId);
     });
@@ -158,7 +159,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    */
   public disconnectLLM = (
     options: {code: number; reason: string},
-    sessionId = DEFAULT_SESSION
+    sessionId: string = DEFAULT_SESSION
   ): Promise<void> =>
     this.disconnect(options, sessionId).then(() => {
       // Clean up sessions data
@@ -189,4 +190,13 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       datachannelUrl?: string;
     }
   > => new Map(this.connections);
+
+  /**
+   * Set a specific socket as the default socket
+   * @param {string} sessionId - The connection identifier
+   * @returns {void}
+   */
+  setDefaultSocket(sessionId = DEFAULT_SESSION) {
+    this.socket = this.sockets.get(sessionId) || this.socket.get(DEFAULT_SESSION);
+  }
 }

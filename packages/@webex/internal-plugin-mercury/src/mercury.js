@@ -6,7 +6,7 @@
 import url from 'url';
 
 import {WebexPlugin} from '@webex/webex-core';
-import {deprecated, oneFlight} from '@webex/common';
+import {deprecated} from '@webex/common';
 import {camelCase, get, set} from 'lodash';
 import backoff from 'backoff';
 
@@ -104,15 +104,6 @@ const Mercury = WebexPlugin.extend({
   },
 
   /**
-   * Set a specific socket as the default socket
-   * @param {string} sessionId - The connection identifier
-   * @returns {void}
-   */
-  setDefaultSocket(sessionId = DEFAULT_SESSION) {
-    this.socket = this.sockets.get(sessionId);
-  },
-
-  /**
    * Check if any sockets are connected
    * @returns {boolean} True if at least one socket is connected
    */
@@ -126,10 +117,25 @@ const Mercury = WebexPlugin.extend({
     return false;
   },
 
-  @oneFlight
+  /**
+   * Check if any sockets are connecting
+   * @returns {boolean} True if at least one socket is connected
+   */
+  hasConnectingSockets() {
+    for (const socket of this.sockets.values()) {
+      if (socket && socket.connecting) {
+        return true;
+      }
+    }
+
+    return false;
+  },
+
+  // @oneFlight
   connect(webSocketUrl, sessionId = DEFAULT_SESSION) {
+    console.error(`Mercury#connect() ${sessionId}.`);
     const existingSocket = this.sockets.get(sessionId);
-    if (existingSocket && existingSocket.connected) {
+    if (existingSocket?.connected || existingSocket?.connecting) {
       this.logger.info(
         `${this.namespace}: connection ${sessionId} already connected, will not connect again`
       );
@@ -169,7 +175,7 @@ const Mercury = WebexPlugin.extend({
     );
   },
 
-  @oneFlight
+  // @oneFlight
   disconnect(options, sessionId = DEFAULT_SESSION) {
     return new Promise((resolve) => {
       const backoffCall = this.backoffCalls.get(sessionId);
@@ -183,7 +189,9 @@ const Mercury = WebexPlugin.extend({
       const suffix = sessionId === DEFAULT_SESSION ? '' : `:${sessionId}`;
 
       if (socket) {
+        console.error(`Mercury#disconnect() ${sessionId}.`);
         socket.removeAllListeners('message');
+        socket.connecting = false;
         socket.connected = false;
         this.once(sessionId === DEFAULT_SESSION ? 'offline' : `offline${suffix}`, resolve);
         resolve(socket.close(options || undefined));
@@ -288,7 +296,9 @@ const Mercury = WebexPlugin.extend({
   },
 
   _attemptConnection(socketUrl, sessionId, callback) {
+    console.error(`Mercury#_attemptConnection() ${sessionId}.`);
     const socket = new Socket();
+    socket.connecting = true;
     let attemptWSUrl;
     const suffix = sessionId === DEFAULT_SESSION ? '' : `:${sessionId}`;
 
@@ -435,43 +445,48 @@ const Mercury = WebexPlugin.extend({
       // eslint gets confused about whether or not call is actually used
       // eslint-disable-next-line prefer-const
       let call;
-      const onComplete = (err) => {
-        this.connecting = false;
-
-        this.backoffCalls.delete(sessionId);
+      const onComplete = (err, sid = sessionId) => {
+        this.backoffCalls.delete(sid);
         if (err) {
           this.logger.info(
             `${
               this.namespace
-            }: failed to connect ${sessionId} after ${call.getNumRetries()} retries; log statement about next retry was inaccurate; ${err}`
+            }: failed to connect ${sid} after ${call.getNumRetries()} retries; log statement about next retry was inaccurate; ${err}`
           );
 
           return reject(err);
         }
-
+        console.error(`Mercury#connected() ${sid}.`);
         // Update overall connected status
-        const sessionSocket = this.sockets.get(sessionId);
+        const sessionSocket = this.sockets.get(sid);
         if (sessionSocket) {
+          sessionSocket.connecting = false;
           sessionSocket.connected = true;
         }
         // @ts-ignore
         this.socket = this.sockets.get(DEFAULT_SESSION);
+        this.connecting = this.hasConnectingSockets();
         this.connected = this.hasConnectedSockets();
         this.hasEverConnected = true;
-        const suffix = sessionId === DEFAULT_SESSION ? '' : `:${sessionId}`;
-        this._emit(`online${suffix}`, {sessionId});
+        const suffix = sid === DEFAULT_SESSION ? '' : `:${sid}`;
+        this._emit(`online${suffix}`, {sessionId: sid});
         this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
 
         return resolve();
       };
-
+      console.error(`Mercury#_connectWithBackoff() ${sessionId}.`);
       // eslint-disable-next-line prefer-reflect
-      call = backoff.call((callback) => {
-        this.logger.info(
-          `${this.namespace}: executing connection attempt ${call.getNumRetries()} for ${sessionId}`
-        );
-        this._attemptConnection(webSocketUrl, sessionId, callback);
-      }, onComplete);
+      call = backoff.call(
+        (callback) => {
+          this.logger.info(
+            `${
+              this.namespace
+            }: executing connection attempt ${call.getNumRetries()} for ${sessionId}`
+          );
+          this._attemptConnection(webSocketUrl, sessionId, callback);
+        },
+        (err) => onComplete(err, sessionId)
+      );
 
       call.setStrategy(
         new backoff.ExponentialStrategy({
@@ -487,6 +502,7 @@ const Mercury = WebexPlugin.extend({
       }
 
       call.on('abort', () => {
+        console.error(`Mercury#_connectWithBackoff abort() ${sessionId}.`);
         this.logger.info(`${this.namespace}: connection aborted for ${sessionId}`);
         reject(new Error(`Mercury Connection Aborted for ${sessionId}`));
       });
@@ -510,7 +526,7 @@ const Mercury = WebexPlugin.extend({
         }
         this.logger.info(`${this.namespace}: connected ${sessionId}`);
       });
-
+      console.error(`Mercury#_connectWithBackoff start() ${sessionId}.`);
       call.start();
 
       this.backoffCalls.set(sessionId, call);
@@ -568,6 +584,7 @@ const Mercury = WebexPlugin.extend({
       }
 
       // Update overall connected status
+      this.connecting = this.hasConnectingSockets();
       this.connected = this.hasConnectedSockets();
 
       if (!this.connected) {

@@ -98,8 +98,9 @@ const Webinar = WebexPlugin.extend({
 
     if (this.practiceSessionEnabled) {
       // may need change data channel in practice session
-      meeting?.updateLLMConnection();
+      // meeting?.updateLLMConnection();
     }
+    this.updatePSDataChannel(this.practiceSessionEnabled);
   },
 
   /**
@@ -108,6 +109,73 @@ const Webinar = WebexPlugin.extend({
    */
   isJoinPracticeSessionDataChannel() {
     return this.selfIsPanelist && this.practiceSessionEnabled;
+  },
+
+  /**
+   * Connects to low latency mercury and reconnects if the address has changed
+   * It will also disconnect if called when the meeting has ended
+   * @param {boolean} connect - whether to connect or disconnect
+   * @returns {Promise}
+   */
+  async updatePSDataChannel(connect) {
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+
+    // @ts-ignore - Fix type
+    const {url, info: {practiceSessionDatachannelUrl} = {}} = meeting?.locusInfo ?? {};
+
+    const isJoined = meeting.isJoined() && this.isJoinPracticeSessionDataChannel();
+
+    if (!connect) {
+      // @ts-ignore - Fix type
+      await this.webex.internal.llm.disconnectLLM(
+        {
+          code: 3050,
+          reason: 'done (permanent)',
+        },
+        'practice-session'
+      );
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off('event:relay.event:practice-session', meeting?.processRelayEvent);
+
+      return undefined;
+    }
+
+    if (!isJoined || !practiceSessionDatachannelUrl) {
+      return undefined;
+    }
+    // @ts-ignore - Fix type
+    if (this.webex.internal.llm.isConnected('practice-session')) {
+      if (
+        // @ts-ignore - Fix type
+        url === this.webex.internal.llm.getLocusUrl('practice-session') &&
+        // @ts-ignore - Fix type
+        practiceSessionDatachannelUrl ===
+          this.webex.internal.llm.getDatachannelUrl('practice-session')
+      ) {
+        return undefined;
+      }
+    }
+
+    // @ts-ignore - Fix type
+    return this.webex.internal.llm
+      .registerAndConnect(url, practiceSessionDatachannelUrl, 'practice-session')
+      .then((registerAndConnectResult) => {
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.off(
+          'event:relay.event:practice-session',
+          meeting?.processRelayEvent
+        );
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.on(
+          'event:relay.event:practice-session',
+          meeting?.processRelayEvent
+        );
+        LoggerProxy.logger.info(
+          'Webinar:index#updatePSDataChannel --> enabled to receive relay events for default session for practice-session!'
+        );
+
+        return Promise.resolve(registerAndConnectResult);
+      });
   },
 
   /**
@@ -137,6 +205,7 @@ const Webinar = WebexPlugin.extend({
    */
   updatePracticeSessionStatus(payload) {
     this.set('practiceSessionEnabled', !!payload?.enabled);
+    this.updatePSDataChannel(this.practiceSessionEnabled).then(() => {});
   },
 
   /**
