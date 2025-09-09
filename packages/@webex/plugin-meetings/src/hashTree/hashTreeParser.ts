@@ -1,4 +1,4 @@
-import {zip} from 'lodash';
+import {isEmpty, zip} from 'lodash';
 import HashTree, {LeafDataItem} from './hashTree';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {Enum, HTTP_VERBS} from '../constants';
@@ -235,13 +235,14 @@ class HashTreeParser {
    * Handles incoming hash tree messages, updates the hash trees and calls locusInfoUpdateCallback
    *
    * @param {HashTreeMessage} message - The hash tree message containing data sets and objects to be processed
+   * @param {string} [debugText] - Optional debug text to include in logs
    * @returns {void}
    */
-  handleMessage(message: HashTreeMessage): void {
+  handleMessage(message: HashTreeMessage, debugText?: string): void {
     const {dataSets} = message;
 
     LoggerProxy.logger.info(
-      `HashTreeParser#handleMessage --> ${this.debugId} received message:`,
+      `HashTreeParser#handleMessage --> ${this.debugId} received message ${debugText || ''}:`,
       message
     );
     if (this.isEndMessage(message)) {
@@ -407,10 +408,12 @@ class HashTreeParser {
           }
           // request sync for mismatched leaves
           if (Object.keys(mismatchedLeavesData).length > 0) {
-            const updatedObjects = await this.sendSyncRequestToLocus(dataSet, mismatchedLeavesData);
+            const syncResponse = await this.sendSyncRequestToLocus(dataSet, mismatchedLeavesData);
 
-            if (updatedObjects.length > 0) {
-              this.locusInfoUpdateCallback(LocusInfoUpdateType.OBJECTS_UPDATED, {updatedObjects});
+            // sync API may return nothing (in that case data will arrive via messages)
+            // or it may return a response in the same format as messages
+            if (syncResponse) {
+              this.handleMessage(syncResponse, 'via sync API');
             }
           }
         } else {
@@ -459,7 +462,7 @@ class HashTreeParser {
     })
       .then((response) => {
         const hashes = response.body?.hashes;
-
+        // todo: check datasets leafcount ?
         if (!hashes || !Array.isArray(hashes)) {
           LoggerProxy.logger.warn(
             `HashTreeParser#getHashesFromLocus --> ${this.debugId} Locus returned invalid hashes, response body=`,
@@ -495,7 +498,7 @@ class HashTreeParser {
   private sendSyncRequestToLocus(
     dataSet: InternalDataSet,
     mismatchedLeavesData: Record<number, LeafDataItem[]>
-  ): Promise<HashTreeObject[]> {
+  ): Promise<HashTreeMessage | null> {
     LoggerProxy.logger.info(
       `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sending sync request for data set "${dataSet.name}"`
     );
@@ -527,21 +530,16 @@ class HashTreeParser {
           `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sync request succeeded for "${dataSet.name}"`
         );
 
-        // todo: handle response body (it may be there or not)
-        if (resp.statusCode === 202) {
+        console.log('marcin2: resp.body', resp.body);
+        if (!resp.body || isEmpty(resp.body)) {
           LoggerProxy.logger.info(
-            `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Got 202 for sync request for data set "${dataSet.name}", data should arrive via messages`
+            `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Got ${resp.statusCode} with empty body for sync request for data set "${dataSet.name}", data should arrive via messages`
           );
-        }
-        const updatedObjects = resp.body?.objects || [];
 
-        if (updatedObjects.length !== body.leafDataEntries.length) {
-          LoggerProxy.logger.info(
-            `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sync request sent for "${dataSet.name}" with ${body.leafDataEntries.length} entries, but got ${updatedObjects.length} objects in response (statusCode=${resp.statusCode})`
-          );
+          return null;
         }
 
-        return updatedObjects;
+        return resp.body as HashTreeMessage;
       })
       .catch((error) => {
         LoggerProxy.logger.error(
