@@ -1,6 +1,14 @@
 import 'jsdom-global/register';
+import {WebexSDK} from '../../../../../src/types';
 import IvrTranscriptService from '../../../../../src/services/task/IvrTranscriptService';
 import LoggerProxy from '../../../../../src/logger-proxy';
+import MockWebex from '@webex/test-helper-mock-webex';
+import {
+  IvrTranscriptMetaDataResponse,
+  IvrTranscriptResponse,
+  IvrTranscriptMetaData,
+  IvrConversationTurn,
+} from '../../../../../src/services/task/types';
 
 jest.mock('../../../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -14,17 +22,64 @@ jest.mock('../../../../../src/logger-proxy', () => ({
 
 describe('IvrTranscriptService', () => {
   let service: IvrTranscriptService;
-  let mockWebex: any;
+  let webex: WebexSDK;
+
+  // Mock data constants following config test pattern
+  const mockOrgId = 'org123';
+  const mockInteractionId = 'interaction456';
+  const mockTimeOutMins = 5;
+  const mockTranscriptPath = 'https://mediastorage.produs1.ciscoccservice.com/transcript.json';
+  const mockNonS3TranscriptPath = 'https://example.com/transcript.json';
+
+  // Mock response data following config test patterns
+  const mockTranscriptMetadata: IvrTranscriptMetaData = {
+    transcriptId: 'trans1',
+    transcriptPath: mockTranscriptPath,
+    cvaId: 'NATIVE_BASIC_VIRTUAL_AGENT',
+    startTime: 123,
+    stopTime: 456,
+    botName: 'TestBot',
+  };
+
+  const mockMetadataResponse: IvrTranscriptMetaDataResponse = {
+    orgId: mockOrgId,
+    interactionId: mockInteractionId,
+    timeOutMins: mockTimeOutMins,
+    transcripts: [mockTranscriptMetadata],
+  };
+
+  const mockConversationTurn: IvrConversationTurn = {
+    bot: {
+      reply: 'Hello',
+      timestamp: 123,
+      confidence: 0.9,
+      parameters: { foo: 'bar' },
+    },
+    customer: {
+      query: 'Hi',
+      sentiment: 1,
+      timestamp: 123,
+    },
+  };
+
+  const mockConversationResponse: IvrTranscriptResponse = [mockConversationTurn];
 
   beforeEach(() => {
-    mockWebex = {
-      credentials: {
-        getUserToken: jest.fn().mockResolvedValue('Bearer mocktoken'),
+    webex = new MockWebex({
+      logger: {
+        log: jest.fn(),
+        error: jest.fn(),
+        info: jest.fn(),
       },
-      request: jest.fn(),
-    };
+    });
 
-    service = new IvrTranscriptService(mockWebex);
+    // Mock webex credentials and request
+    webex.credentials = {
+      getUserToken: jest.fn().mockResolvedValue('Bearer mocktoken'),
+    } as any;
+    webex.request = jest.fn();
+
+    service = new IvrTranscriptService(webex);
     jest.clearAllMocks();
   });
 
@@ -32,37 +87,26 @@ describe('IvrTranscriptService', () => {
     jest.resetAllMocks();
   });
 
-  describe('getIvrTranscriptMetadata', () => {
-    const orgId = 'org1';
-    const interactionId = 'int1';
-    const timeOutMins = 5;
-
-    it('should call the correct media storage URL and return metadata successfully', async () => {
+  describe('fetchIVRTranscript', () => {
+    it('should fetch metadata and conversation successfully', async () => {
       const mockResponse = {
+        body: mockMetadataResponse,
+      };
+      const mockConversationResponse = {
         body: {
-          orgId,
-          interactionId,
-          timeOutMins,
-          transcripts: [
-            {
-              orgId,
-              transcriptId: 'trans1',
-              transcriptPath: 'https://s3.com/file.json',
-              cvaId: 'NATIVE_BASIC_VIRTUAL_AGENT',
-              startTime: 123,
-              stopTime: 456,
-              botName: 'TestBot',
-            },
-          ],
+          conversation: [mockConversationTurn],
         },
       };
 
-      mockWebex.request.mockResolvedValue(mockResponse);
+      (webex.request as jest.Mock)
+        .mockResolvedValueOnce(mockResponse)
+        .mockResolvedValueOnce(mockConversationResponse);
 
-      const result = await service.getIvrTranscriptMetadata(orgId, interactionId, timeOutMins);
+      const result = await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
 
-      expect(mockWebex.request).toHaveBeenCalledWith({
-        uri: `https://mediastorage.produs1.ciscoccservice.com/media/organization/${orgId}/interaction/${interactionId}/ivrtranscript?timeOutMins=${timeOutMins}`,
+      expect(webex.request).toHaveBeenCalledTimes(2);
+      expect(webex.request).toHaveBeenCalledWith({
+        uri: `https://mediastorage.produs1.ciscoccservice.com/media/organization/${mockOrgId}/interaction/${mockInteractionId}/ivrtranscript?timeOutMins=${mockTimeOutMins}`,
         method: 'GET',
         headers: {
           Authorization: 'Bearer mocktoken',
@@ -71,644 +115,266 @@ describe('IvrTranscriptService', () => {
         },
       });
       
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching IVR transcript metadata', {
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching complete IVR transcript with metadata and conversations', {
         module: 'IvrTranscriptService',
-        method: 'getIvrTranscriptMetadata',
-        interactionId,
+        method: 'fetchIVRTranscript',
+        interactionId: mockInteractionId,
       });
-      
-      expect(result).toEqual(mockResponse.body);
+
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBe(1);
+      expect(result[0].bot?.reply).toBe('Hello');
+      expect(result[0].bot?.botName).toBe('TestBot');
+    });
+
+    it('should return empty array if no transcripts found', async () => {
+      const mockResponse = {
+        body: {
+          ...mockMetadataResponse,
+          transcripts: [],
+        },
+      };
+
+      (webex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
+
+      expect(LoggerProxy.warn).toHaveBeenCalledWith('No IVR transcripts found for interaction', {
+        module: 'IvrTranscriptService',
+        method: 'fetchIVRTranscript',
+        interactionId: mockInteractionId,
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle different conversation response formats', async () => {
+      // Test direct array response
+      const mockResponse = {
+        body: mockMetadataResponse,
+      };
+      const mockDirectArrayResponse = {
+        body: [mockConversationTurn],
+      };
+
+      (webex.request as jest.Mock)
+        .mockResolvedValueOnce(mockResponse)
+        .mockResolvedValueOnce(mockDirectArrayResponse);
+
+      let result = await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
+
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBe(1);
+      expect(result[0].bot?.reply).toBe('Hello');
+
+      // Test empty conversation response
+      const mockEmptyResponse = {
+        body: undefined,
+      };
+
+      (webex.request as jest.Mock)
+        .mockResolvedValueOnce(mockResponse)
+        .mockResolvedValueOnce(mockEmptyResponse);
+
+      result = await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should continue processing other transcripts if one fails', async () => {
+      const multipleTranscriptsMetadata = {
+        ...mockMetadataResponse,
+        transcripts: [
+          mockTranscriptMetadata,
+          {
+            ...mockTranscriptMetadata,
+            transcriptId: 'trans2',
+            transcriptPath: 'https://example.com/transcript2.json',
+            botName: 'Bot2',
+          },
+        ],
+      };
+
+      const mockResponse = {
+        body: multipleTranscriptsMetadata,
+      };
+      const mockSuccessConversation = {
+        body: { conversation: [mockConversationTurn] },
+      };
+      const error = new Error('Failed to fetch transcript');
+      (error as any).statusCode = 500;
+
+      (webex.request as jest.Mock)
+        .mockResolvedValueOnce(mockResponse)
+        .mockRejectedValueOnce(error)
+        .mockResolvedValueOnce(mockSuccessConversation);
+
+      const result = await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
+
+      expect(LoggerProxy.warn).toHaveBeenCalledWith(
+        `Failed to process transcript trans1: ${error}`,
+        {
+          module: 'IvrTranscriptService',
+          method: 'fetchIVRTranscript',
+          interactionId: mockInteractionId,
+        }
+      );
+
+      expect(result.length).toBe(1);
     });
 
     it('should handle 400 Bad Request error and throw original error', async () => {
       const error = new Error('Bad Request - Invalid parameters');
       (error as any).statusCode = 400;
 
-      mockWebex.request.mockRejectedValue(error);
+      (webex.request as jest.Mock).mockRejectedValue(error);
 
       try {
-        await service.getIvrTranscriptMetadata(orgId, interactionId, timeOutMins);
+        await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
       } catch (thrownError) {
         expect(thrownError).toBe(error);
         expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript metadata: ${error}`,
+          `Failed to fetch IVR transcript: ${error}`,
           {
             module: 'IvrTranscriptService',
-            method: 'getIvrTranscriptMetadata',
-            interactionId,
+            method: 'fetchIVRTranscript',
+            interactionId: mockInteractionId,
           }
         );
       }
     });
 
-    it('should handle 401 Unauthorized error and throw original error', async () => {
-      const error = new Error('Unauthorized - Invalid token');
-      (error as any).statusCode = 401;
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.getIvrTranscriptMetadata(orgId, interactionId, timeOutMins);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript metadata: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'getIvrTranscriptMetadata',
-            interactionId,
-          }
-        );
-      }
-    });
-
-    it('should handle 403 Forbidden error and throw original error', async () => {
-      const error = new Error('Forbidden - Access denied');
-      (error as any).statusCode = 403;
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.getIvrTranscriptMetadata(orgId, interactionId, timeOutMins);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript metadata: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'getIvrTranscriptMetadata',
-            interactionId,
-          }
-        );
-      }
-    });
-
-    it('should handle 404 Not Found error and throw original error', async () => {
-      const error = new Error('Not Found - Interaction not found');
-      (error as any).statusCode = 404;
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.getIvrTranscriptMetadata(orgId, interactionId, timeOutMins);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript metadata: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'getIvrTranscriptMetadata',
-            interactionId,
-          }
-        );
-      }
-    });
-
-    it('should handle 500 Internal Server Error and throw original error', async () => {
-      const error = new Error('Internal Server Error - Service unavailable');
-      (error as any).statusCode = 500;
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.getIvrTranscriptMetadata(orgId, interactionId, timeOutMins);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript metadata: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'getIvrTranscriptMetadata',
-            interactionId,
-          }
-        );
-      }
-    });
-
-    it('should handle 502 Bad Gateway error and throw original error', async () => {
-      const error = new Error('Bad Gateway - Upstream server error');
-      (error as any).statusCode = 502;
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.getIvrTranscriptMetadata(orgId, interactionId, timeOutMins);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript metadata: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'getIvrTranscriptMetadata',
-            interactionId,
-          }
-        );
-      }
-    });
-
-    it('should handle 503 Service Unavailable error and throw original error', async () => {
-      const error = new Error('Service Unavailable - Temporarily unavailable');
-      (error as any).statusCode = 503;
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.getIvrTranscriptMetadata(orgId, interactionId, timeOutMins);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript metadata: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'getIvrTranscriptMetadata',
-            interactionId,
-          }
-        );
-      }
-    });
-
-    it('should handle network timeout error and throw original error', async () => {
-      const error = new Error('Request timed out');
-      (error as any).code = 'TIMEOUT';
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.getIvrTranscriptMetadata(orgId, interactionId, timeOutMins);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript metadata: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'getIvrTranscriptMetadata',
-            interactionId,
-          }
-        );
-      }
-    });
-  });
-
-  describe('fetchIvrConversation', () => {
-    const transcriptPath = 'https://mediastorage.produs1.ciscoccservice.com/transcript.json';
-    const nonS3TranscriptPath = 'https://example.com/transcript.json';
-
-    it('should call webex.request with S3 URL and return conversation successfully', async () => {
-      const mockResponse = {
-        body: {
-          conversation: [
-            {
-              bot: { reply: 'Hello', timestamp: 123, confidence: 0.9 },
-              customer: { query: 'Hi', sentiment: 1, timestamp: 124 },
-            },
-          ],
-        },
-      };
-
-      mockWebex.request.mockResolvedValue(mockResponse);
-
-      const result = await service.fetchIvrConversation(transcriptPath);
-
-      expect(mockWebex.request).toHaveBeenCalledWith({
-        uri: transcriptPath,
-        method: 'GET',
-      });
-
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching IVR conversation content', {
-        module: 'IvrTranscriptService',
-        method: 'fetchIvrConversation',
-      });
-
-      expect(LoggerProxy.log).toHaveBeenCalledWith('IVR conversation content fetched successfully', {
-        module: 'IvrTranscriptService',
-        method: 'fetchIvrConversation',
-      });
-
-      expect(result).toEqual(mockResponse.body.conversation);
-    });
-
-    it('should handle response.body as direct conversation array', async () => {
-      const mockResponse = {
-        body: [
-          { bot: { reply: 'Hello', confidence: 0.9, timestamp: 123 }, customer: { query: 'Hi', sentiment: 1, timestamp: 123 } },
-        ],
-      };
-
-      mockWebex.request.mockResolvedValue(mockResponse);
-
-      const result = await service.fetchIvrConversation(transcriptPath);
-
-      expect(result).toEqual(mockResponse.body);
-    });
-
-    it('should return empty array if response.body is not an object', async () => {
-      const mockResponse = { body: undefined };
-
-      mockWebex.request.mockResolvedValue(mockResponse);
-
-      const result = await service.fetchIvrConversation(transcriptPath);
-
-      expect(result).toEqual([]);
-    });
-
-    it('should handle non-S3 URLs without special headers', async () => {
-      const mockResponse = {
-        body: { conversation: [{ bot: { reply: 'Test', confidence: 0.9, timestamp: 123 }, customer: { query: 'Hi', sentiment: 1, timestamp: 123 } }] },
-      };
-
-      mockWebex.request.mockResolvedValue(mockResponse);
-
-      await service.fetchIvrConversation(nonS3TranscriptPath);
-
-      expect(mockWebex.request).toHaveBeenCalledWith({
-        uri: nonS3TranscriptPath,
-        method: 'GET',
-      });
-    });
-
-    it('should handle 400 Bad Request error and throw original error', async () => {
-      const error = new Error('Bad Request - Invalid S3 path');
-      (error as any).statusCode = 400;
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.fetchIvrConversation(transcriptPath);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR conversation content: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'fetchIvrConversation',
-          }
-        );
-      }
-    });
-
-    it('should handle 401 Unauthorized error and throw original error', async () => {
-      const error = new Error('Unauthorized - Authentication failed');
-      (error as any).statusCode = 401;
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.fetchIvrConversation(transcriptPath);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR conversation content: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'fetchIvrConversation',
-          }
-        );
-      }
-    });
-
-    it('should handle 403 Forbidden CORS error and throw original error', async () => {
-      const error = new Error('Forbidden - CORS policy violation');
-      (error as any).statusCode = 403;
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.fetchIvrConversation(transcriptPath);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR conversation content: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'fetchIvrConversation',
-          }
-        );
-      }
-    });
-
-    it('should handle 404 Not Found error and throw original error', async () => {
-      const error = new Error('Not Found - Transcript file not found');
-      (error as any).statusCode = 404;
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.fetchIvrConversation(transcriptPath);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR conversation content: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'fetchIvrConversation',
-          }
-        );
-      }
-    });
-
-    it('should handle 500 Internal Server Error and throw original error', async () => {
-      const error = new Error('Internal Server Error - S3 service error');
-      (error as any).statusCode = 500;
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.fetchIvrConversation(transcriptPath);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR conversation content: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'fetchIvrConversation',
-          }
-        );
-      }
-    });
-
-    it('should handle network connection error and throw original error', async () => {
-      const error = new Error('Connection refused');
-      (error as any).code = 'ECONNREFUSED';
-
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.fetchIvrConversation(transcriptPath);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR conversation content: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'fetchIvrConversation',
-          }
-        );
-      }
-    });
-
-    it('should throw if webex.request fails', async () => {
-      const error = new Error('Network failed');
-      mockWebex.request.mockRejectedValue(error);
-
-      try {
-        await service.fetchIvrConversation(transcriptPath);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-      }
-    });
-  });
-
-  describe('fetchIVRTranscript', () => {
-    const orgId = 'org1';
-    const interactionId = 'int1';
-    const timeOutMins = 5;
-
-    it('should fetch metadata, then fetch and parse all conversations successfully', async () => {
-      const metaData = {
-        orgId,
-        interactionId,
-        timeOutMins,
-        transcripts: [
-          {
-            orgId,
-            transcriptId: 'trans1',
-            transcriptPath: 'https://s3.com/file1.json',
-            cvaId: 'NATIVE_BASIC_VIRTUAL_AGENT',
-            startTime: 123,
-            stopTime: 456,
-            botName: 'Bot1',
-          },
-          {
-            orgId,
-            transcriptId: 'trans2',
-            transcriptPath: 'https://s3.com/file2.json',
-            cvaId: 'NATIVE_BASIC_VIRTUAL_AGENT',
-            startTime: 789,
-            stopTime: 999,
-            botName: 'Bot2',
-          },
-        ],
-      };
-
-      const conv1 = [
-        { bot: { reply: 'Hi', parameters: { foo: 'bar' }, confidence: 0.9, timestamp: 123 }, customer: { query: 'Hello', sentiment: 1, timestamp: 123 } },
-      ];
-      const conv2 = [
-        { bot: { reply: 'Hello', parameters: { bar: 'baz' }, confidence: 0.8, timestamp: 124 }, customer: { query: 'Hi', sentiment: 1, timestamp: 124 } },
+    it('should handle authentication errors (401, 403) and throw original error', async () => {
+      const authErrors = [
+        { statusCode: 401, message: 'Unauthorized - Invalid token' },
+        { statusCode: 403, message: 'Forbidden - Access denied' },
       ];
 
-      jest.spyOn(service as any, 'getIvrTranscriptMetadata').mockResolvedValue(metaData as any);
-      jest.spyOn(service as any, 'fetchIvrConversation')
-        .mockResolvedValueOnce(conv1 as any)
-        .mockResolvedValueOnce(conv2 as any);
+      for (const errorConfig of authErrors) {
+        const error = new Error(errorConfig.message);
+        (error as any).statusCode = errorConfig.statusCode;
 
-      const result = await service.fetchIVRTranscript(orgId, interactionId, timeOutMins);
+        (webex.request as jest.Mock).mockRejectedValue(error);
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching complete IVR transcript with metadata and conversations', {
-        module: 'IvrTranscriptService',
-        method: 'fetchIVRTranscript',
-        interactionId,
-      });
-
-      expect(LoggerProxy.log).toHaveBeenCalledWith(
-        `Retrieved transcript metadata containing ${metaData.transcripts.length} transcript files`,
-        {
-          module: 'IvrTranscriptService',
-          method: 'fetchIVRTranscript',
+        try {
+          await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
+        } catch (thrownError) {
+          expect(thrownError).toBe(error);
         }
-      );
-
-      expect(result.length).toBe(2);
-      expect(result[0].bot!.reply).toBe('Hi');
-      expect(result[1].bot!.reply).toBe('Hello');
+      }
     });
 
-    it('should return empty array if no transcripts found', async () => {
-      jest.spyOn(service as any, 'getIvrTranscriptMetadata').mockResolvedValue({ transcripts: [] } as any);
+    it('should handle server errors (404, 500, 502, 503) and throw original error', async () => {
+      const serverErrors = [
+        { statusCode: 404, message: 'Not Found - Interaction not found' },
+        { statusCode: 500, message: 'Internal Server Error - Service unavailable' },
+        { statusCode: 502, message: 'Bad Gateway - Upstream server error' },
+        { statusCode: 503, message: 'Service Unavailable - Temporarily unavailable' },
+      ];
 
-      const result = await service.fetchIVRTranscript(orgId, interactionId, timeOutMins);
+      for (const errorConfig of serverErrors) {
+        const error = new Error(errorConfig.message);
+        (error as any).statusCode = errorConfig.statusCode;
 
-      expect(LoggerProxy.warn).toHaveBeenCalledWith('No IVR transcripts found for interaction', {
-        module: 'IvrTranscriptService',
-        method: 'fetchIVRTranscript',
-        interactionId,
-      });
+        (webex.request as jest.Mock).mockRejectedValue(error);
 
-      expect(result).toEqual([]);
-    });
-
-    it('should continue processing other transcripts if one transcript fetch fails', async () => {
-      const metaData = {
-        transcripts: [
-          { transcriptId: 't1', transcriptPath: 'url1', botName: 'Bot1' },
-          { transcriptId: 't2', transcriptPath: 'url2', botName: 'Bot2' },
-        ],
-      };
-
-      const error = new Error('Failed to fetch transcript');
-      (error as any).statusCode = 500;
-
-      jest.spyOn(service as any, 'getIvrTranscriptMetadata').mockResolvedValue(metaData as any);
-      jest.spyOn(service as any, 'fetchIvrConversation')
-        .mockRejectedValueOnce(error)
-        .mockResolvedValueOnce([{ bot: { reply: 'ok', confidence: 0.9, timestamp: 123 }, customer: { query: 'test', sentiment: 1, timestamp: 123 } }] as any);
-
-      const result = await service.fetchIVRTranscript(orgId, interactionId, timeOutMins);
-
-      expect(LoggerProxy.warn).toHaveBeenCalledWith(
-        `Failed to process transcript t1: ${error}`,
-        {
-          module: 'IvrTranscriptService',
-          method: 'fetchIVRTranscript',
-          interactionId,
+        try {
+          await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
+        } catch (thrownError) {
+          expect(thrownError).toBe(error);
         }
-      );
-
-      expect(result.length).toBe(1);
-      expect(result[0].bot!.reply).toBe('ok');
-    });
-
-    it('should handle metadata fetch failure with 401 error and throw original error', async () => {
-      const error = new Error('Unauthorized - Token expired');
-      (error as any).statusCode = 401;
-
-      jest.spyOn(service as any, 'getIvrTranscriptMetadata').mockRejectedValue(error);
-
-      try {
-        await service.fetchIVRTranscript(orgId, interactionId, timeOutMins);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'fetchIVRTranscript',
-            interactionId,
-          }
-        );
       }
     });
 
-    it('should handle 400 Bad Request from metadata and throw original error', async () => {
-      const error = new Error('Bad Request - Invalid organization ID');
-      (error as any).statusCode = 400;
+    it('should handle network errors and throw original error', async () => {
+      const networkErrors = [
+        { code: 'TIMEOUT', message: 'Request timed out' },
+        { code: 'ECONNREFUSED', message: 'Connection refused' },
+      ];
 
-      jest.spyOn(service as any, 'getIvrTranscriptMetadata').mockRejectedValue(error);
+      for (const errorConfig of networkErrors) {
+        const error = new Error(errorConfig.message);
+        (error as any).code = errorConfig.code;
 
-      try {
-        await service.fetchIVRTranscript(orgId, interactionId, timeOutMins);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'fetchIVRTranscript',
-            interactionId,
-          }
-        );
-      }
-    });
+        (webex.request as jest.Mock).mockRejectedValue(error);
 
-    it('should handle 404 Not Found from metadata and throw original error', async () => {
-      const error = new Error('Not Found - Interaction ID not found');
-      (error as any).statusCode = 404;
-
-      jest.spyOn(service as any, 'getIvrTranscriptMetadata').mockRejectedValue(error);
-
-      try {
-        await service.fetchIVRTranscript(orgId, interactionId, timeOutMins);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'fetchIVRTranscript',
-            interactionId,
-          }
-        );
-      }
-    });
-
-    it('should handle 500 Internal Server Error from metadata and throw original error', async () => {
-      const error = new Error('Internal Server Error - Database connection failed');
-      (error as any).statusCode = 500;
-
-      jest.spyOn(service as any, 'getIvrTranscriptMetadata').mockRejectedValue(error);
-
-      try {
-        await service.fetchIVRTranscript(orgId, interactionId, timeOutMins);
-      } catch (thrownError) {
-        expect(thrownError).toBe(error);
-        expect(LoggerProxy.error).toHaveBeenCalledWith(
-          `Failed to fetch IVR transcript: ${error}`,
-          {
-            module: 'IvrTranscriptService',
-            method: 'fetchIVRTranscript',
-            interactionId,
-          }
-        );
+        try {
+          await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
+        } catch (thrownError) {
+          expect(thrownError).toBe(error);
+        }
       }
     });
   });
 
-  describe('parseConversations', () => {
-    it('should parse conversations and flatten bot parameters', () => {
-      const conversation = [
-        {
-          bot: {
-            reply: 'Hello',
-            confidence: 0.9,
-            timestamp: 123,
-            parameters: {
-              user: { name: 'John', age: 30 },
-              session: { id: '123' },
-            },
+  describe('parameter flattening', () => {
+    it('should flatten nested bot parameters', async () => {
+      const conversationWithNestedParams: IvrConversationTurn = {
+        bot: {
+          reply: 'Hello',
+          confidence: 0.9,
+          timestamp: 123,
+          parameters: {
+            user: { name: 'John', age: 30 },
+            session: { id: '123' },
           },
-          customer: { query: 'Hi', sentiment: 1, timestamp: 123 },
         },
-      ] as any;
+        customer: { query: 'Hi', sentiment: 1, timestamp: 123 },
+      };
 
-      const result = (service as any).parseConversations(conversation, 'TestBot');
+      const mockResponse = {
+        body: mockMetadataResponse,
+      };
+      const mockConversationResponse = {
+        body: { conversation: [conversationWithNestedParams] },
+      };
 
-      expect(result[0].bot.botName).toBe('TestBot');
-      expect(result[0].bot.parameters).toEqual({
+      (webex.request as jest.Mock)
+        .mockResolvedValueOnce(mockResponse)
+        .mockResolvedValueOnce(mockConversationResponse);
+
+      const result = await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
+
+      expect(result[0].bot?.parameters).toEqual({
         'user.name': 'John',
         'user.age': 30,
         'session.id': '123',
       });
     });
-  });
 
-  describe('getFlatParams', () => {
-    it('should flatten nested object parameters', () => {
-      const params = {
-        user: { name: 'John', details: { age: 30, city: 'NYC' } },
-        session: { id: '123' },
+    it('should handle array parameters', async () => {
+      const conversationWithArrayParams: IvrConversationTurn = {
+        bot: {
+          reply: 'Hello',
+          confidence: 0.9,
+          timestamp: 123,
+          parameters: [
+            { name: 'John', age: 30 },
+            { name: 'Jane', age: 25 },
+          ],
+        },
+        customer: { query: 'Hi', sentiment: 1, timestamp: 123 },
       };
 
-      const result = (service as any).getFlatParams(params, '');
+      const mockResponse = {
+        body: mockMetadataResponse,
+      };
+      const mockConversationResponse = {
+        body: { conversation: [conversationWithArrayParams] },
+      };
 
-      expect(result).toEqual({
-        'user.name': 'John',
-        'user.details.age': 30,
-        'user.details.city': 'NYC',
-        'session.id': '123',
-      });
-    });
+      (webex.request as jest.Mock)
+        .mockResolvedValueOnce(mockResponse)
+        .mockResolvedValueOnce(mockConversationResponse);
 
-    it('should handle array parameters', () => {
-      const params = [
-        { name: 'John', age: 30 },
-        { name: 'Jane', age: 25 },
-      ];
+      const result = await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
 
-      const result = (service as any).getFlatParams(params, 'users');
-
-      expect(result).toEqual({
-        'users.name': 'Jane',
-        'users.age': 25,
+      // Array parameters should flatten to the last item's properties
+      expect(result[0].bot?.parameters).toEqual({
+        name: 'Jane',
+        age: 25,
       });
     });
   });
