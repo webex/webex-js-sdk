@@ -979,7 +979,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return;
     }
 
-    LoggerProxy.log(`Received event: ${eventData.type}`, {
+    LoggerProxy.log(`Received event: ${eventData?.data?.type ?? eventData.type}`, {
       module: CC_FILE,
       method: METHODS.HANDLE_WEBSOCKET_MESSAGE,
     });
