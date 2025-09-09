@@ -29,6 +29,14 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
+   * Calls this to clean up listeners
+   * @returns {void}
+   */
+  cleanUp() {
+    this.updatePSDataChannel(false);
+  },
+
+  /**
    * Update the current locus url of the webinar
    * @param {string} locusUrl
    * @returns {void}
@@ -132,10 +140,13 @@ const Webinar = WebexPlugin.extend({
           code: 3050,
           reason: 'done (permanent)',
         },
-        'practice-session'
+        'llm-practice-session'
       );
       // @ts-ignore - Fix type
-      this.webex.internal.llm.off('event:relay.event:practice-session', meeting?.processRelayEvent);
+      this.webex.internal.llm.off(
+        'event:relay.event:llm-practice-session',
+        meeting?.processRelayEvent
+      );
 
       return undefined;
     }
@@ -144,13 +155,13 @@ const Webinar = WebexPlugin.extend({
       return undefined;
     }
     // @ts-ignore - Fix type
-    if (this.webex.internal.llm.isConnected('practice-session')) {
+    if (this.webex.internal.llm.isConnected('llm-practice-session')) {
       if (
         // @ts-ignore - Fix type
-        url === this.webex.internal.llm.getLocusUrl('practice-session') &&
+        url === this.webex.internal.llm.getLocusUrl('llm-practice-session') &&
         // @ts-ignore - Fix type
         practiceSessionDatachannelUrl ===
-          this.webex.internal.llm.getDatachannelUrl('practice-session')
+          this.webex.internal.llm.getDatachannelUrl('llm-practice-session')
       ) {
         return undefined;
       }
@@ -158,20 +169,20 @@ const Webinar = WebexPlugin.extend({
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, practiceSessionDatachannelUrl, 'practice-session')
+      .registerAndConnect(url, practiceSessionDatachannelUrl, 'llm-practice-session')
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off(
-          'event:relay.event:practice-session',
+          'event:relay.event:llm-practice-session',
           meeting?.processRelayEvent
         );
         // @ts-ignore - Fix type
         this.webex.internal.llm.on(
-          'event:relay.event:practice-session',
+          'event:relay.event:llm-practice-session',
           meeting?.processRelayEvent
         );
         LoggerProxy.logger.info(
-          'Webinar:index#updatePSDataChannel --> enabled to receive relay events for default session for practice-session!'
+          'Webinar:index#updatePSDataChannel --> enabled to receive relay events for default session for llm-practice-session!'
         );
 
         return Promise.resolve(registerAndConnectResult);

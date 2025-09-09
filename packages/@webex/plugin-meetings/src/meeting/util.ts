@@ -216,6 +216,7 @@ const MeetingUtil = {
     meeting.stopPeriodicLogUpload();
 
     meeting.breakouts.cleanUp();
+    meeting.webinar.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
     meeting.locusMediaRequest = undefined;
 

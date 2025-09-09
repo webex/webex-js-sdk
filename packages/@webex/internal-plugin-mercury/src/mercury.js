@@ -21,7 +21,7 @@ import {
 } from './errors';
 
 const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
-const DEFAULT_SESSION = 'default-session';
+const DEFAULT_SESSION = 'mercury-default-session';
 
 const Mercury = WebexPlugin.extend({
   namespace: 'Mercury',
@@ -178,6 +178,7 @@ const Mercury = WebexPlugin.extend({
   // @oneFlight
   disconnect(options, sessionId = DEFAULT_SESSION) {
     return new Promise((resolve) => {
+      console.error(`Mercury#disconnect()1 ${sessionId}.`);
       const backoffCall = this.backoffCalls.get(sessionId);
       if (backoffCall) {
         this.logger.info(`${this.namespace}: aborting connection ${sessionId}`);
@@ -189,7 +190,7 @@ const Mercury = WebexPlugin.extend({
       const suffix = sessionId === DEFAULT_SESSION ? '' : `:${sessionId}`;
 
       if (socket) {
-        console.error(`Mercury#disconnect() ${sessionId}.`);
+        console.error(`Mercury#disconnect()2 ${sessionId}.`);
         socket.removeAllListeners('message');
         socket.connecting = false;
         socket.connected = false;
@@ -211,6 +212,7 @@ const Mercury = WebexPlugin.extend({
    * @returns {Promise} Promise that resolves when all connections are closed
    */
   disconnectAll(options) {
+    console.error('Mercury#disconnectAll()');
     const disconnectPromises = [];
 
     for (const sessionId of this.sockets.keys()) {
@@ -578,6 +580,7 @@ const Mercury = WebexPlugin.extend({
       event.sessionId = sessionId;
 
       if (socket) {
+        console.error(`Mercury#_onclose() ${sessionId}.`);
         socket.removeAllListeners();
         this.sockets.delete(sessionId);
         this._emit(`offline${suffix}`, event);

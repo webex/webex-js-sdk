@@ -163,6 +163,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   ): Promise<void> =>
     this.disconnect(options, sessionId).then(() => {
       // Clean up sessions data
+      console.error(`disconnectLLM(${sessionId})`);
       this.connections.delete(sessionId);
     });
 
