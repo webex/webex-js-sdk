@@ -519,7 +519,7 @@ describe('plugin-meetings', () => {
         const expectedBody = {
           aliasValue: alias,
           requestingParticipantId,
-          suffix: '',
+          suffixValue: '',
         };
 
         const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
