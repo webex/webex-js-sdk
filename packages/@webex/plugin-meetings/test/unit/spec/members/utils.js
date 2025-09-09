@@ -488,18 +488,16 @@ describe('plugin-meetings', () => {
           suffix,
         };
 
-        const body = {
-          aliasValue: alias,
-          requestingParticipantId,
-          suffixValue: suffix,
-        };
-
         const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
 
         assert.deepEqual(MembersUtil.editDisplayNameMemberRequestParams(options), {
           method: HTTP_VERBS.POST,
           uri,
-          body,
+          body: {
+            aliasValue: alias,
+            requestingParticipantId,
+            suffixValue: suffix,
+          },
         });
       });
 
@@ -516,18 +514,16 @@ describe('plugin-meetings', () => {
           requestingParticipantId,
         };
 
-        const expectedBody = {
-          aliasValue: alias,
-          requestingParticipantId,
-          suffixValue: '',
-        };
-
         const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
 
         assert.deepEqual(MembersUtil.editDisplayNameMemberRequestParams(options), {
           method: HTTP_VERBS.POST,
           uri,
-          body: expectedBody,
+          body: {
+            aliasValue: alias,
+            requestingParticipantId,
+            suffixValue: '',
+          },
         });
       });
     });
