@@ -7,7 +7,7 @@ import {TASK_FILE} from '../../constants';
 import {METHODS} from './constants';
 import routingContact from './contact';
 import {IvrTranscriptService} from './IvrTranscriptService';
-import WebexRequest from '../core/WebexRequest';
+import Services from '../index';
 import LoggerProxy from '../../logger-proxy';
 import {
   ITask,
@@ -138,7 +138,6 @@ export default class Task extends EventEmitter implements ITask {
   public webCallMap: Record<TaskId, CallId>;
   private wrapupData: WrapupData;
   public autoWrapup?: AutoWrapup;
-  private ivrTranscriptService?: IvrTranscriptService;
 
   /**
    * Creates a new Task instance which provides the following features:
@@ -160,32 +159,17 @@ export default class Task extends EventEmitter implements ITask {
     this.webCallMap = {};
     this.wrapupData = wrapupData;
     this.metricsManager = MetricsManager.getInstance();
-    // Note: IvrTranscriptService is initialized lazily when needed
 
     this.registerWebCallListeners();
     this.setupAutoWrapupTimer();
   }
 
   /**
-   * Gets or creates the IvrTranscriptService instance
+   * Gets the IvrTranscriptService from Services singleton
    * @private
    */
   private getIvrTranscriptService(): IvrTranscriptService {
-    if (!this.ivrTranscriptService) {
-      const webexRequest = WebexRequest.getInstance();
-
-      if (!webexRequest || !(webexRequest as any).webex) {
-        throw new Error(
-          'WebexRequest is not properly initialized. Please ensure ContactCenter plugin is properly registered.'
-        );
-      }
-
-      const webex = (webexRequest as any).webex;
-
-      this.ivrTranscriptService = new IvrTranscriptService(webex);
-    }
-
-    return this.ivrTranscriptService;
+    return Services.getInstance().transcript;
   }
 
   /**
@@ -1106,7 +1090,6 @@ export default class Task extends EventEmitter implements ITask {
         throw new Error('IVR transcript is only available for voice (telephony) tasks');
       }
 
-      // Use IvrTranscriptService directly (matching agent desktop fetchIVRTranscript)
       const transcriptConversations = await this.getIvrTranscriptService().fetchIVRTranscript(
         orgId,
         interactionId,

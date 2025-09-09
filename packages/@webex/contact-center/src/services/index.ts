@@ -6,6 +6,7 @@ import {WebSocketManager} from './core/websocket/WebSocketManager';
 import {ConnectionService} from './core/websocket/connection-service';
 import {WebexSDK, SubscribeRequest} from '../types';
 import aqmDialer from './task/dialer';
+import {IvrTranscriptService} from './task/IvrTranscriptService';
 
 /**
  * Services class provides centralized access to all contact center plugin services
@@ -19,6 +20,8 @@ export default class Services {
   public readonly agent: ReturnType<typeof routingAgent>;
   /** Configuration services for agent settings */
   public readonly config: AgentConfigService;
+  /** IVR transcript service for agents */
+  public readonly transcript: IvrTranscriptService;
   /** Contact services for managing customer interactions */
   public readonly contact: ReturnType<typeof routingContact>;
   /** Dialer services for outbound calling features */
@@ -41,6 +44,7 @@ export default class Services {
     this.webSocketManager = new WebSocketManager({webex});
     const aqmReq = new AqmReqs(this.webSocketManager);
     this.config = new AgentConfigService();
+    this.transcript = new IvrTranscriptService(webex);
     this.agent = routingAgent(aqmReq);
     this.contact = routingContact(aqmReq);
     this.dialer = aqmDialer(aqmReq);
@@ -58,7 +62,7 @@ export default class Services {
    * @param options.connectionConfig - Subscription configuration for websocket connection
    * @returns The singleton Services instance
    */
-  public static getInstance(options: {
+  public static getInstance(options?: {
     webex: WebexSDK;
     connectionConfig: SubscribeRequest;
   }): Services {

@@ -25,6 +25,7 @@ import MetricsManager from '../../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../../src/metrics/constants';
 import * as METRICS_CONSTANTS from '../../../../../src/metrics/constants';
 import LoggerProxy from '../../../../../src/logger-proxy';
+import Services from '../../../../../src/services';
 
 jest.mock('@webex/calling');
 jest.mock('../../../../../src/logger-proxy');
@@ -38,6 +39,26 @@ jest.mock('../../../../../src/services/task/IvrTranscriptService', () => ({
   default: jest.fn().mockImplementation(() => MockIvrTranscriptService)
 }));
 
+// Mock Services singleton - properly mock the default export class with static getInstance
+const mockServicesInstance = {
+  transcript: {
+    fetchIVRTranscript: jest.fn()
+  }
+};
+
+jest.mock('../../../../../src/services', () => {
+  // Mock Services class with static getInstance method
+  class MockServices {
+    static getInstance() {
+      return mockServicesInstance;
+    }
+  }
+  
+  return {
+    default: MockServices
+  };
+});
+
 describe('Task', () => {
   let onSpy;
   let task;
@@ -45,6 +66,7 @@ describe('Task', () => {
   let mockMetricsManager;
   let taskDataMock;
   let webCallingService;
+  let mockIvrTranscriptService;
   let getErrorDetailsSpy;
   let mockWebexRequest;
   let webex: WebexSDK;
@@ -108,6 +130,17 @@ describe('Task', () => {
 
     jest.spyOn(WebexRequest, 'getInstance').mockReturnValue(mockWebexRequest);
 
+    // Initialize mock IvrTranscriptService - reference the mock from Services singleton
+    mockIvrTranscriptService = mockServicesInstance.transcript;
+    mockIvrTranscriptService.webex = webex;
+    mockIvrTranscriptService.fetchIVRTranscript = jest.fn();
+    mockIvrTranscriptService.getIvrTranscriptMetadata = jest.fn();
+    mockIvrTranscriptService.fetchIvrConversation = jest.fn();
+    mockIvrTranscriptService.getFlatParams = jest.fn();
+    mockIvrTranscriptService.parseConversations = jest.fn();
+
+    // Also spy on getIvrTranscriptService to return our mock
+    jest.spyOn(Task.prototype, 'getIvrTranscriptService' as any).mockReturnValue(mockIvrTranscriptService);
 
     webCallingService.loginOption = LoginOption.BROWSER;
     onSpy = jest.spyOn(webCallingService, 'on');
@@ -1508,14 +1541,6 @@ describe('Task', () => {
 
       const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
 
-      // Mock IvrTranscriptService instance
-      const mockIvrTranscriptService = {
-        fetchIVRTranscript: jest.fn()
-      };
-
-      // Override the private getIvrTranscriptService method
-      (task as any).getIvrTranscriptService = jest.fn().mockReturnValue(mockIvrTranscriptService);
-
       const mockConversationData = [
         {
           customer: {
@@ -1591,14 +1616,7 @@ describe('Task', () => {
 
       const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
 
-      // Mock IvrTranscriptService instance to throw error
-      const mockIvrTranscriptService = {
-        fetchIVRTranscript: jest.fn()
-      };
-
-      // Override the private getIvrTranscriptService method
-      (task as any).getIvrTranscriptService = jest.fn().mockReturnValue(mockIvrTranscriptService);
-
+      // The service will throw error when fetchIVRTranscript is called
       const apiError = new Error('API Error');
       mockIvrTranscriptService.fetchIVRTranscript.mockRejectedValue(apiError);
 
@@ -1622,14 +1640,6 @@ describe('Task', () => {
       };
 
       const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
-
-      // Mock IvrTranscriptService instance
-      const mockIvrTranscriptService = {
-        fetchIVRTranscript: jest.fn()
-      };
-
-      // Override the private getIvrTranscriptService method
-      (task as any).getIvrTranscriptService = jest.fn().mockReturnValue(mockIvrTranscriptService);
 
       // Mock the fetchIVRTranscript method to return empty array (simulating S3 failure)
       mockIvrTranscriptService.fetchIVRTranscript.mockResolvedValue([]);
@@ -1662,9 +1672,7 @@ describe('Task', () => {
 
       const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
       // Service returns no conversations when metadata has no transcripts
-      (task as any).getIvrTranscriptService = jest.fn().mockReturnValue({
-        fetchIVRTranscript: jest.fn().mockResolvedValue([]),
-      });
+      mockIvrTranscriptService.fetchIVRTranscript.mockResolvedValue([]);
 
       const result = await task.fetchIvrTranscript('test-org-123', 'test-interaction-456', 5);
       expect(result).toEqual([]);
@@ -1688,14 +1696,6 @@ describe('Task', () => {
       };
 
       const task = new Task(contactMock, webCallingService, taskDataMockVoice, { wrapUpProps: null });
-
-      // Mock IvrTranscriptService instance
-      const mockIvrTranscriptService = {
-        fetchIVRTranscript: jest.fn()
-      };
-
-      // Override the private getIvrTranscriptService method
-      (task as any).getIvrTranscriptService = jest.fn().mockReturnValue(mockIvrTranscriptService);
 
       const mockMultipleTranscriptData = [
         {
