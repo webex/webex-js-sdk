@@ -328,7 +328,7 @@ const WebexCore = AmpState.extend({
    * @returns {WebexCore}
    */
   initialize(attrs = {}) {
-    console.log('webinar5k special build')
+    console.log('webinar5k special build');
     this.config = merge({}, config, attrs.config);
 
     // There's some unfortunateness with the way {@link AmpersandState#children}
