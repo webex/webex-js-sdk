@@ -990,7 +990,7 @@ describe('plugin-meetings', () => {
           requestingParticipantId: expectedRequestingParticipantId,
           alias: expectedAlias,
           locusUrl: expectedLocusUrl,
-          suffixValue: expectedSuffix,
+          suffix: expectedSuffix,
         });
         assert.strictEqual(resultPromise, spies.editDisplayNameMember.getCall(0).returnValue);
       };
@@ -1048,20 +1048,11 @@ describe('plugin-meetings', () => {
         const requestingParticipantId = uuid.v4();
         const memberId = uuid.v4();
         const alias = 'aliasName';
-        const expectedSuffix = '';
         const {members, spies} = setup(url1);
 
         const resultPromise = members.editDisplayName(memberId, requestingParticipantId, alias);
 
-        await checkValid(
-          resultPromise,
-          spies,
-          memberId,
-          requestingParticipantId,
-          alias,
-          url1,
-          expectedSuffix
-        );
+        await checkValid(resultPromise, spies, memberId, requestingParticipantId, alias, url1);
       });
     });
 
