@@ -1254,10 +1254,7 @@ export default class LocusInfo extends EventsScope {
    */
   updateMeetingInfo(info: object, self?: object) {
     const roles = self ? SelfUtils.getRoles(self) : this.parsedLocus.self?.roles || [];
-    if (
-      (info && !isEqual(this.info, info)) ||
-      (roles.length && !isEqual(this.roles, roles) && info)
-    ) {
+    if ((info && !isEqual(this.info, info)) || (!isEqual(this.roles, roles) && info)) {
       const isJoined = SelfUtils.isJoined(self || this.parsedLocus.self);
       const parsedInfo = InfoUtils.getInfos(this.parsedLocus.info, info, roles, isJoined);
 

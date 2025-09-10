@@ -1641,6 +1641,28 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should trigger MEETING_INFO_UPDATED even if the roles array is empty', () => {
+        const initialInfo = cloneDeep(meetingInfo);
+
+        const updateSelf = cloneDeep(self);
+        updateSelf.controls.role.roles = [];
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateMeetingInfo(initialInfo, updateSelf);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateMeetingInfo',
+          },
+          LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
+          {
+            isInitializing: !self,
+          }
+          );
+        });
+
       const checkMeetingInfoUpdatedCalled = (expected, payload) => {
         const expectedArgs = [
           locusInfo.emitScoped,
