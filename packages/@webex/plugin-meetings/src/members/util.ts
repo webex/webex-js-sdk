@@ -316,8 +316,11 @@ const MembersUtil = {
     } = {
       aliasValue: options.alias,
       requestingParticipantId: options.requestingParticipantId,
-      suffixValue: options.suffix || '',
     };
+
+    if (options.suffix !== undefined) {
+      body.suffixValue = options.suffix;
+    }
     const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
 
     return {

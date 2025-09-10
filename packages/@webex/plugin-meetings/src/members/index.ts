@@ -1181,7 +1181,7 @@ export default class Members extends StatelessWebexPlugin {
    * @param {string} memberId - id of the participant who is receiving request
    * @param {string} requestingParticipantId - id of the participant who is sending request (optional)
    * @param {string} [alias] - alias name
-   * @param {string} [suffix] - suffix name (optional)
+   * @param {string} [suffix] - name suffix (optional)
    * @returns {Promise}
    * @public
    * @memberof Members

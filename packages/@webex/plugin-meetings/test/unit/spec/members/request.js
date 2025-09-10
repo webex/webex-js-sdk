@@ -426,6 +426,32 @@ describe('plugin-meetings', () => {
           body: {
             aliasValue,
             requestingParticipantId,
+          },
+        });
+      });
+
+      it('sends a POST request to the locus endpoint with suffix empty string', async () => {
+        const locusUrl = url1;
+        const memberId = 'test1';
+        const requestingParticipantId = 'test2';
+        const aliasValue = 'alias';
+
+        const options = {
+          memberId,
+          requestingParticipantId,
+          alias: aliasValue,
+          locusUrl,
+          suffix: '',
+        };
+
+        await membersRequest.editDisplayNameMember(options);
+
+        checkRequest({
+          method: 'POST',
+          uri: `${locusUrl}/participant/${memberId}/alias`,
+          body: {
+            aliasValue,
+            requestingParticipantId,
             suffixValue: '',
           },
         });

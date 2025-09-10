@@ -129,7 +129,7 @@ describe('plugin-meetings', () => {
       });
     });
     describe('#generateEditDisplayNameMemberOptions', () => {
-      it('returns the correct options with suffixx when suffix is there', () => {
+      it('returns the correct options with suffix when suffix is there', () => {
         const locusUrl = 'urlTest1';
         const memberId = 'test1';
         const requestingParticipantId = 'test2';
@@ -154,7 +154,7 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('returns the correct options without suffixx when suffix is not there', () => {
+      it('returns the correct options without suffix when suffix is not there', () => {
         const locusUrl = 'urlTest1';
         const memberId = 'test1';
         const requestingParticipantId = 'test2';
@@ -505,7 +505,7 @@ describe('plugin-meetings', () => {
         const locusUrl = 'TestLocusUrl';
         const memberId = 'test1';
         const alias = 'alias';
-        const requestingParticipantId = '23131';
+        const requestingParticipantId = '12345';
 
         const options = {
           locusUrl: locusUrl,
@@ -514,7 +514,7 @@ describe('plugin-meetings', () => {
           requestingParticipantId,
         };
 
-        const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
+        const uri = `${locusUrl}/participant/${memberId}/alias`;
 
         assert.deepEqual(MembersUtil.editDisplayNameMemberRequestParams(options), {
           method: HTTP_VERBS.POST,
@@ -522,7 +522,34 @@ describe('plugin-meetings', () => {
           body: {
             aliasValue: alias,
             requestingParticipantId,
-            suffixValue: '',
+          },
+        });
+      });
+
+      it('returns the correct params when suffix is empty string', () => {
+        const locusUrl = 'TestLocusUrl';
+        const memberId = 'test1';
+        const alias = 'alias';
+        const requestingParticipantId = '322424';
+        const suffix = '';
+
+        const options = {
+          locusUrl: locusUrl,
+          memberId,
+          alias,
+          suffix,
+          requestingParticipantId,
+        };
+
+        const uri = `${locusUrl}/participant/${memberId}/alias`;
+
+        assert.deepEqual(MembersUtil.editDisplayNameMemberRequestParams(options), {
+          method: HTTP_VERBS.POST,
+          uri,
+          body: {
+            aliasValue: alias,
+            requestingParticipantId,
+            suffixValue: suffix,
           },
         });
       });
