@@ -489,11 +489,45 @@ export default class LocusInfo extends EventsScope {
         // Also, it doesn't have "self". That's OK as it won't override existing locus.self and also existing SDK code can handle that missing self in Locus updates
         const locusObjectFromData = object.data;
         delete locusObjectFromData.participants;
+        delete locusObjectFromData.mediaShares;
 
         locus = {...locus, ...locusObjectFromData};
         locus.htMeta = object.htMeta;
         break;
       }
+      case ObjectType.mediaShare:
+        if (object.data) {
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateHashTreeObjectInLocus --> mediaShare id=${
+              object.htMeta.elementId.id
+            } name='${object.data.name}' updated ${
+              object.data.name === 'content'
+                ? `floor=${object.data.floor?.disposition}, ${object.data.floor?.beneficiary?.id}`
+                : ''
+            }`
+          );
+        } else {
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateHashTreeObjectInLocus --> mediaShare id=${object.htMeta.elementId.id} removed`
+          );
+        }
+        if (object.data) {
+          const existingMediaShare = locus.mediaShares?.find(
+            (ms) => ms.htMeta.elementId.id === object.htMeta.elementId.id
+          );
+
+          if (existingMediaShare) {
+            Object.assign(existingMediaShare, object.data);
+          } else {
+            locus.mediaShares = locus.mediaShares || [];
+            locus.mediaShares.push(object.data);
+          }
+        } else {
+          locus.mediaShares = locus.mediaShares?.filter(
+            (ms) => ms.htMeta.elementId.id !== object.htMeta.elementId.id
+          );
+        }
+        break;
       case ObjectType.participant:
         LoggerProxy.logger.info(
           `Locus-info:index#updateHashTreeObjectInLocus --> participant id=${
@@ -531,6 +565,11 @@ export default class LocusInfo extends EventsScope {
           return locus;
         }
         locus.self = object.data;
+        break;
+      default:
+        LoggerProxy.logger.warn(
+          `Locus-info:index#updateHashTreeObjectInLocus --> received unsupported object type ${type}`
+        );
         break;
     }
 

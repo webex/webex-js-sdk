@@ -22,6 +22,7 @@ export const ObjectType = {
   participant: 'participant',
   self: 'self',
   locus: 'locus',
+  mediaShare: 'mediashare',
 } as const;
 
 export type ObjectType = Enum<typeof ObjectType>;
