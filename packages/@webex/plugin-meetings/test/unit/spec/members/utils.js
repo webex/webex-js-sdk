@@ -3,7 +3,7 @@ import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 
 import MembersUtil from '@webex/plugin-meetings/src/members/util';
-import {HTTP_VERBS, CONTROLS, PARTICIPANT, ALIAS} from '@webex/plugin-meetings/src/constants';
+import {HTTP_VERBS, CONTROLS, PARTICIPANT} from '@webex/plugin-meetings/src/constants';
 
 const {assert} = chai;
 
@@ -475,11 +475,11 @@ describe('plugin-meetings', () => {
 
     describe('#editDisplayNameMemberRequestParams', () => {
       it('returns the correct params when suffix is available', () => {
-        const locusUrl = 'TestLocusUrl';
+        const locusUrl = 'TestLocusUrl1';
         const memberId = 'test1';
-        const alias = 'alias';
+        const alias = 'alias1';
         const requestingParticipantId = '23131';
-        const suffix = 'suffix';
+        const suffix = 'suffix1';
         const options = {
           locusUrl: locusUrl,
           memberId,
@@ -488,7 +488,7 @@ describe('plugin-meetings', () => {
           suffix,
         };
 
-        const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
+        const uri = `${locusUrl}/participant/${memberId}/alias`;
 
         assert.deepEqual(MembersUtil.editDisplayNameMemberRequestParams(options), {
           method: HTTP_VERBS.POST,
@@ -502,9 +502,9 @@ describe('plugin-meetings', () => {
       });
 
       it('returns the correct params when suffix is not available', () => {
-        const locusUrl = 'TestLocusUrl';
-        const memberId = 'test1';
-        const alias = 'alias';
+        const locusUrl = 'TestLocusUrl2';
+        const memberId = 'test2';
+        const alias = 'alias2';
         const requestingParticipantId = '12345';
 
         const options = {
@@ -527,9 +527,9 @@ describe('plugin-meetings', () => {
       });
 
       it('returns the correct params when suffix is empty string', () => {
-        const locusUrl = 'TestLocusUrl';
-        const memberId = 'test1';
-        const alias = 'alias';
+        const locusUrl = 'TestLocusUrl3';
+        const memberId = 'test3';
+        const alias = 'alias3';
         const requestingParticipantId = '322424';
         const suffix = '';
 
