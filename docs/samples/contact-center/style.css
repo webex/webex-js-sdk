@@ -756,6 +756,50 @@ legend {
   font-style: italic;
 }
 
+/* Loading state */
+.ivr-loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.ivr-loading i {
+  font-size: 2rem;
+  color: #3b82f6;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.ivr-loading .fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error state */
+.ivr-error {
+  text-align: center;
+  padding: 40px 20px;
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.ivr-error i {
+  font-size: 2.5rem;
+  color: #dc2626;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.ivr-error p {
+  margin: 0;
+  font-style: italic;
+}
+
 /* Status indicators */
 .ivr-status {
   padding: 8px 16px;
