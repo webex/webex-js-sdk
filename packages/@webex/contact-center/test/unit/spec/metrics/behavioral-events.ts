@@ -12,6 +12,20 @@ describe('metrics/behavioral-events', () => {
         verb: 'set',
       });
 
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.AGENT_CONTACT_ASSIGN_FAILED)).toEqual({
+        product,
+        agent: 'service',
+        target: 'agent_contact_assign',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.AGENT_INVITE_FAILED)).toEqual({
+        product,
+        agent: 'service',
+        target: 'agent_invite',
+        verb: 'fail',
+      });
+
       expect(getEventTaxonomy(METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS)).toEqual({
         product,
         agent: 'user',
