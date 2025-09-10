@@ -628,11 +628,12 @@ export default class LocusInfo extends EventsScope {
       }
 
       case LocusInfoUpdateType.MEETING_ENDED: {
+        console.log('marcin: hashtree got MEETING_ENDED');
         LoggerProxy.logger.info(
           `Locus-info:index#updateFromHashTree --> received signal that meeting ended, destroying meeting ${this.meetingId}`
         );
         const meeting = this.webex.meetings.meetingCollection.get(this.meetingId);
-        this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+        this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.SELF_REMOVED);
       }
     }
   }

@@ -252,6 +252,7 @@ class HashTreeParser {
       this.stopAllTimers();
       this.locusInfoUpdateCallback(LocusInfoUpdateType.MEETING_ENDED);
     } else {
+      let isRosterDropped = false;
       const updatedObjects: HashTreeObject[] = [];
 
       dataSets.forEach((dataSet) => {
@@ -274,6 +275,9 @@ class HashTreeParser {
             zip(appliedChangesList, locusStateElementsForThisSet).forEach(
               ([changeApplied, object]) => {
                 if (changeApplied) {
+                  if (object.htMeta.elementId.type === ObjectType.self && !object.data) {
+                    isRosterDropped = true;
+                  }
                   // update the locus with the new object
                   updatedObjects.push(object);
                 }
@@ -299,11 +303,20 @@ class HashTreeParser {
             );
           }
 
-          this.runSyncAlgorithm(dataSet);
+          if (!isRosterDropped) {
+            this.runSyncAlgorithm(dataSet);
+          }
         }
       });
 
-      if (updatedObjects.length > 0) {
+      if (isRosterDropped) {
+        LoggerProxy.logger.info(
+          `HashTreeParser#handleHashTreeMessage --> ${this.debugId} detected roster drop`
+        );
+        this.stopAllTimers();
+        // in case of roster drop we don't care about other updates
+        this.locusInfoUpdateCallback(LocusInfoUpdateType.MEETING_ENDED);
+      } else if (updatedObjects.length > 0) {
         this.locusInfoUpdateCallback(LocusInfoUpdateType.OBJECTS_UPDATED, {updatedObjects});
       } else {
         LoggerProxy.logger.info(
