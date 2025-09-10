@@ -2345,17 +2345,38 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('applyLocusDeltaData handles LOCUS_URL_CHANGED action correctly', () => {
+      it('applyLocusDeltaData handles LOCUS_URL_CHANGED action correctly', async () => {
         const {LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
+        const fakeDeltaLocus = {
+          url: 'new loci url',
+          participants: [],
+        };
+        const fakeParticipants = [
+          {participantId: 'participant id 1'},
+          {participantId: 'participant id 2'},
+        ]
+        const res = {body: fakeDeltaLocus};
         const meeting = {
-          locusInfo: {
-            onDeltaLocus: sandbox.stub(),
+          meetingRequest: {
+            getLocusDTO: sandbox.stub().resolves(res),
           },
+          locusInfo: {
+            handleLocusDelta: sandbox.stub(),
+          },
+          locusUrl: 'current locus url',
+        };
+
+        locusInfo.locusParser.workingCopy = {
+          syncUrl: 'current sync url',
+          participants: fakeParticipants,
         };
 
         locusInfo.applyLocusDeltaData(LOCUS_URL_CHANGED, fakeLocus, meeting);
 
-        assert.calledWith(meeting.locusInfo.onDeltaLocus, fakeLocus);
+        await testUtils.flushPromises();
+
+        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'current sync url'});
+        assert.equal(res.body.participants, fakeParticipants)
       });
 
       describe('edge cases for sync failing', () => {
