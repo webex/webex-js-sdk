@@ -2,7 +2,7 @@
 
 import Mercury from '@webex/internal-plugin-mercury';
 
-import {LLM} from './constants';
+import {LLM, LLM_DEFAULT_SESSION} from './constants';
 // eslint-disable-next-line no-unused-vars
 import {ILLMChannel} from './llm.types';
 
@@ -42,39 +42,46 @@ export const config = {
  */
 export default class LLMChannel extends (Mercury as any) implements ILLMChannel {
   namespace = LLM;
-
+  defaultSessionId = LLM_DEFAULT_SESSION;
   /**
-   * If the LLM plugin has been registered and listening
-   * @instance
-   * @type {Boolean}
-   * @public
+   * Map to store connection-specific data for multiple LLM connections
+   * @private
+   * @type {Map<string, {webSocketUrl?: string; binding?: string; locusUrl?: string; datachannelUrl?: string}>}
    */
-
-  private webSocketUrl?: string;
-
-  private binding?: string;
-
-  private locusUrl?: string;
-
-  private datachannelUrl?: string;
+  private connections: Map<
+    string,
+    {
+      webSocketUrl?: string;
+      binding?: string;
+      locusUrl?: string;
+      datachannelUrl?: string;
+    }
+  > = new Map();
 
   /**
    * Register to the websocket
    * @param {string} llmSocketUrl
+   * @param {string} sessionId - Connection identifier
    * @returns {Promise<void>}
    */
-  private register = (llmSocketUrl: string): Promise<void> =>
+  private register = (
+    llmSocketUrl: string,
+    sessionId: string = LLM_DEFAULT_SESSION
+  ): Promise<void> =>
     this.request({
       method: 'POST',
       url: llmSocketUrl,
       body: {deviceUrl: this.webex.internal.device.url},
     })
       .then((res: {body: {webSocketUrl: string; binding: string}}) => {
-        this.webSocketUrl = res.body.webSocketUrl;
-        this.binding = res.body.binding;
+        // Get or create connection data
+        const sessionData = this.connections.get(sessionId) || {};
+        sessionData.webSocketUrl = res.body.webSocketUrl;
+        sessionData.binding = res.body.binding;
+        this.connections.set(sessionId, sessionData);
       })
       .catch((error: any) => {
-        this.logger.error(`Error connecting to websocket: ${error}`);
+        this.logger.error(`Error connecting to websocket for ${sessionId}: ${error}`);
         throw error;
       });
 
@@ -82,50 +89,107 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Register and connect to the websocket
    * @param {string} locusUrl
    * @param {string} datachannelUrl
+   * @param {string} sessionId - Connection identifier
    * @returns {Promise<void>}
    */
-  public registerAndConnect = (locusUrl: string, datachannelUrl: string): Promise<void> =>
-    this.register(datachannelUrl).then(() => {
+  public registerAndConnect = (
+    locusUrl: string,
+    datachannelUrl: string,
+    sessionId: string = LLM_DEFAULT_SESSION
+  ): Promise<void> =>
+    this.register(datachannelUrl, sessionId).then(() => {
       if (!locusUrl || !datachannelUrl) return undefined;
-      this.locusUrl = locusUrl;
-      this.datachannelUrl = datachannelUrl;
-      this.connect(this.webSocketUrl);
+
+      // Get or create connection data
+      const sessionData = this.connections.get(sessionId) || {};
+      sessionData.locusUrl = locusUrl;
+      sessionData.datachannelUrl = datachannelUrl;
+      this.connections.set(sessionId, sessionData);
+
+      return this.connect(sessionData.webSocketUrl, sessionId);
     });
 
   /**
    * Tells if LLM socket is connected
+   * @param {string} sessionId - Connection identifier
    * @returns {boolean} connected
    */
-  public isConnected = (): boolean => this.connected;
+  public isConnected = (sessionId = LLM_DEFAULT_SESSION): boolean => {
+    const socket = this.getSocket(sessionId);
+
+    return socket ? socket.connected : false;
+  };
 
   /**
    * Tells if LLM socket is binding
+   * @param {string} sessionId - Connection identifier
    * @returns {string} binding
    */
-  public getBinding = (): string => this.binding;
+  public getBinding = (sessionId = LLM_DEFAULT_SESSION): string => {
+    const sessionData = this.connections.get(sessionId);
+
+    return sessionData?.binding || '';
+  };
 
   /**
    * Get Locus URL for the connection
+   * @param {string} sessionId - Connection identifier
    * @returns {string} locus Url
    */
-  public getLocusUrl = (): string => this.locusUrl;
+  public getLocusUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
+    const sessionData = this.connections.get(sessionId);
+
+    return sessionData?.locusUrl || '';
+  };
 
   /**
    * Get data channel URL for the connection
+   * @param {string} sessionId - Connection identifier
    * @returns {string} data channel Url
    */
-  public getDatachannelUrl = (): string => this.datachannelUrl;
+  public getDatachannelUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
+    const sessionData = this.connections.get(sessionId);
+
+    return sessionData?.datachannelUrl || '';
+  };
 
   /**
    * Disconnects websocket connection
    * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
+   * @param {string} sessionId - Connection identifier
    * @returns {Promise<void>}
    */
-  public disconnectLLM = (options: object): Promise<void> =>
-    this.disconnect(options).then(() => {
-      this.locusUrl = undefined;
-      this.datachannelUrl = undefined;
-      this.binding = undefined;
-      this.webSocketUrl = undefined;
+  public disconnectLLM = (
+    options: {code: number; reason: string},
+    sessionId: string = LLM_DEFAULT_SESSION
+  ): Promise<void> =>
+    this.disconnect(options, sessionId).then(() => {
+      // Clean up sessions data
+      this.connections.delete(sessionId);
     });
+
+  /**
+   * Disconnects all LLM websocket connections
+   * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
+   * @returns {Promise<void>}
+   */
+  public disconnectAllLLM = (options?: {code: number; reason: string}): Promise<void> =>
+    this.disconnectAll(options).then(() => {
+      // Clean up all connection data
+      this.connections.clear();
+    });
+
+  /**
+   * Get all active LLM connections
+   * @returns {Map} Map of sessionId to session data
+   */
+  public getAllConnections = (): Map<
+    string,
+    {
+      webSocketUrl?: string;
+      binding?: string;
+      locusUrl?: string;
+      datachannelUrl?: string;
+    }
+  > => new Map(this.connections);
 }
