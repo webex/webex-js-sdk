@@ -135,18 +135,21 @@ const Webinar = WebexPlugin.extend({
 
     if (!connect) {
       // @ts-ignore - Fix type
-      await this.webex.internal.llm.disconnectLLM(
-        {
-          code: 3050,
-          reason: 'done (permanent)',
-        },
-        'llm-practice-session'
-      );
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.off(
-        'event:relay.event:llm-practice-session',
-        meeting?.processRelayEvent
-      );
+      if (this.webex.internal.llm.isConnected('llm-practice-session')) {
+        // @ts-ignore - Fix type
+        await this.webex.internal.llm.disconnectLLM(
+          {
+            code: 3050,
+            reason: 'done (permanent)',
+          },
+          'llm-practice-session'
+        );
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.off(
+          'event:relay.event:llm-practice-session',
+          meeting?.processRelayEvent
+        );
+      }
 
       return undefined;
     }
