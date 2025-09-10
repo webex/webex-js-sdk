@@ -25,7 +25,7 @@ const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'p
 const Mercury = WebexPlugin.extend({
   namespace: 'Mercury',
   lastError: undefined,
-  defaultSession: 'mercury-default-session',
+  defaultSessionId: 'mercury-default-session',
 
   session: {
     connected: {
@@ -99,7 +99,7 @@ const Mercury = WebexPlugin.extend({
    * @param {string} sessionId - The connection identifier
    * @returns {Socket|undefined} The socket instance or undefined if not found
    */
-  getSocket(sessionId = this.defaultSession) {
+  getSocket(sessionId = this.defaultSessionId) {
     return this.sockets.get(sessionId);
   },
 
@@ -132,7 +132,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   // @oneFlight
-  connect(webSocketUrl, sessionId = this.defaultSession) {
+  connect(webSocketUrl, sessionId = this.defaultSessionId) {
     console.error(`Mercury#connect() ${sessionId}.`);
     const existingSocket = this.sockets.get(sessionId);
     if (existingSocket?.connected || existingSocket?.connecting) {
@@ -176,7 +176,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   // @oneFlight
-  disconnect(options, sessionId = this.defaultSession) {
+  disconnect(options, sessionId = this.defaultSessionId) {
     return new Promise((resolve) => {
       console.error(`Mercury#disconnect()1 ${sessionId}.`);
       const backoffCall = this.backoffCalls.get(sessionId);
@@ -187,14 +187,14 @@ const Mercury = WebexPlugin.extend({
       }
 
       const socket = this.sockets.get(sessionId);
-      const suffix = sessionId === this.defaultSession ? '' : `:${sessionId}`;
+      const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
 
       if (socket) {
         console.error(`Mercury#disconnect()2 ${sessionId}.`);
         socket.removeAllListeners('message');
         socket.connecting = false;
         socket.connected = false;
-        this.once(sessionId === this.defaultSession ? 'offline' : `offline${suffix}`, resolve);
+        this.once(sessionId === this.defaultSessionId ? 'offline' : `offline${suffix}`, resolve);
         resolve(socket.close(options || undefined));
         this.sockets.delete(sessionId);
       } else {
@@ -302,7 +302,7 @@ const Mercury = WebexPlugin.extend({
     const socket = new Socket();
     socket.connecting = true;
     let attemptWSUrl;
-    const suffix = sessionId === this.defaultSession ? '' : `:${sessionId}`;
+    const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
 
     socket.on('close', (...args) => this._onclose(sessionId, ...args));
     socket.on('message', (...args) => this._onmessage(sessionId, ...args));
@@ -466,11 +466,11 @@ const Mercury = WebexPlugin.extend({
           sessionSocket.connected = true;
         }
         // @ts-ignore
-        this.socket = this.sockets.get(this.defaultSession);
+        this.socket = this.sockets.get(this.defaultSessionId);
         this.connecting = this.hasConnectingSockets();
         this.connected = this.hasConnectedSockets();
         this.hasEverConnected = true;
-        const suffix = sid === this.defaultSession ? '' : `:${sid}`;
+        const suffix = sid === this.defaultSessionId ? '' : `:${sid}`;
         this._emit(`online${suffix}`, {sessionId: sid});
         this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
 
@@ -576,7 +576,7 @@ const Mercury = WebexPlugin.extend({
       const reason = event.reason && event.reason.toLowerCase();
       const socket = this.sockets.get(sessionId);
       const socketUrl = socket?.url;
-      const suffix = sessionId === this.defaultSession ? '' : `:${sessionId}`;
+      const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
       event.sessionId = sessionId;
 
       if (socket) {
@@ -678,7 +678,7 @@ const Mercury = WebexPlugin.extend({
         Promise.resolve()
       )
       .then(() => {
-        const suffix = sessionId === this.defaultSession ? '' : `:${sessionId}`;
+        const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
 
         this._emit(`event${suffix}`, envelope);
         const [namespace] = data.eventType.split('.');
@@ -705,7 +705,7 @@ const Mercury = WebexPlugin.extend({
     }
   },
 
-  _reconnect(webSocketUrl, sessionId = this.defaultSession) {
+  _reconnect(webSocketUrl, sessionId = this.defaultSessionId) {
     this.logger.info(`${this.namespace}: reconnecting ${sessionId}`);
 
     return this.connect(webSocketUrl, sessionId);

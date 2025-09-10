@@ -42,7 +42,7 @@ export const config = {
  */
 export default class LLMChannel extends (Mercury as any) implements ILLMChannel {
   namespace = LLM;
-  defaultSession = LLM_DEFAULT_SESSION;
+  defaultSessionId = LLM_DEFAULT_SESSION;
   /**
    * Map to store connection-specific data for multiple LLM connections
    * @private
@@ -196,13 +196,4 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       datachannelUrl?: string;
     }
   > => new Map(this.connections);
-
-  /**
-   * Set a specific socket as the default socket
-   * @param {string} sessionId - The connection identifier
-   * @returns {void}
-   */
-  setDefaultSocket(sessionId = LLM_DEFAULT_SESSION) {
-    this.socket = this.sockets.get(sessionId) || this.socket.get(LLM_DEFAULT_SESSION);
-  }
 }
