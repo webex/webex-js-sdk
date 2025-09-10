@@ -93,10 +93,9 @@ export default class LocusInfo extends EventsScope {
    * Does a Locus sync. It tries to get the latest delta DTO or if it can't, it falls back to getting the full Locus DTO.
    *
    * @param {Meeting} meeting
-   * @param {boolean} isLocusUrlChanged
    * @returns {undefined}
    */
-  private doLocusSync(meeting: any, isLocusUrlChanged: boolean) {
+  private doLocusSync(meeting: any) {
     let isDelta;
     let url;
     let meetingDestroyed = false;
@@ -173,14 +172,6 @@ export default class LocusInfo extends EventsScope {
           return;
         }
 
-        // When the locus url changed, if the participants from locus sync response are empty, add the participants from workingCopy to the new locus,
-        // otherwise the participants info will be lost after the breakout session ends.
-        if (isLocusUrlChanged) {
-          if (!res.body.participants?.length) {
-            res.body.participants = this.locusParser.workingCopy.participants;
-          }
-        }
-
         if (isDelta) {
           if (res.body.baseSequence) {
             meeting.locusInfo.handleLocusDelta(res.body, meeting);
@@ -227,9 +218,9 @@ export default class LocusInfo extends EventsScope {
   applyLocusDeltaData(action: string, locus: any, meeting: any) {
     const {DESYNC, USE_CURRENT, USE_INCOMING, WAIT, LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
 
-    const isLocusUrlChanged = action === LOCUS_URL_CHANGED;
     switch (action) {
       case USE_INCOMING:
+      case LOCUS_URL_CHANGED:
         meeting.locusInfo.onDeltaLocus(locus);
         break;
       case USE_CURRENT:
@@ -237,8 +228,7 @@ export default class LocusInfo extends EventsScope {
         // do nothing
         break;
       case DESYNC:
-      case LOCUS_URL_CHANGED:
-        this.doLocusSync(meeting, isLocusUrlChanged);
+        this.doLocusSync(meeting);
         break;
       default:
         LoggerProxy.logger.info(

@@ -253,8 +253,7 @@ describe('locus-info/parser', () => {
     });
     
     it('replaces current loci when the locus URL changes and incoming sequence is later, even when baseSequence doesn\'t match', () => {
-      const {LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
-      sandbox.stub(LocusDeltaParser, 'compare').returns(LOCUS_URL_CHANGED);
+      const {USE_INCOMING} = LocusDeltaParser.loci;
 
       parser.queue.dequeue = sandbox.stub().returns(NEW_LOCI);
       parser.onDeltaAction = sandbox.stub();
@@ -263,10 +262,7 @@ describe('locus-info/parser', () => {
 
       parser.processDeltaEvent();
 
-      assert.deepEqual(parser.workingCopy, {
-        ...NEW_LOCI,
-        sequence: {entries: []}
-      });
+      assert.equal(parser.workingCopy, NEW_LOCI);
     });
 
     it('does not replace current loci when the locus URL changes but incoming sequence is not later', () => {
