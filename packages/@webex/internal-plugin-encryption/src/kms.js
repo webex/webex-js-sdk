@@ -297,7 +297,7 @@ const KMS = WebexPlugin.extend({
       customerMasterKey,
       requestId: uuid.v4(),
       customerMasterKeyBackup: awsKms ? customerMasterKeyBackup : undefined,
-      customerMasterKeyRole awsKms ? customerMasterKeyRole : undefined,
+      customerMasterKeyRole: awsKms ? customerMasterKeyRole : undefined,
     }).then((res) => {
       this.logger.info('kms: finish to upload customer master key');
 
