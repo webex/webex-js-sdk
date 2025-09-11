@@ -293,7 +293,7 @@ class HashTree {
           Buffer.from(rightHash, 'hex').subarray(8, 16).reverse(),
         ]);
 
-        nextLevelHashes.push(XXH3_128(input, BigInt(0)).toString(16));
+        nextLevelHashes.push(XXH3_128(input, BigInt(0)).toString(16).padStart(32, '0'));
       }
       currentLevelHashes = nextLevelHashes;
       allHashes.unshift(...currentLevelHashes);
