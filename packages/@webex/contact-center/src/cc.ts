@@ -644,7 +644,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           throw error;
         });
     } catch (error) {
-      LoggerProxy.error(`Error during register: ${error}`, {
+      LoggerProxy.error(`Error during register: ${(error as any)?.message || error}`, {
         module: CC_FILE,
         method: METHODS.CONNECT_WEBSOCKET,
       });
@@ -1213,10 +1213,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         try {
           await this.webCallingService.registerWebCallingLine();
         } catch (error) {
-          LoggerProxy.error(`Error registering web calling line: ${error}`, {
-            module: CC_FILE,
-            method: METHODS.HANDLE_DEVICE_TYPE,
-          });
+          LoggerProxy.error(
+            `Error registering web calling line: ${(error as any)?.message || error}`,
+            {
+              module: CC_FILE,
+              method: METHODS.HANDLE_DEVICE_TYPE,
+            }
+          );
           throw error;
         }
         break;
