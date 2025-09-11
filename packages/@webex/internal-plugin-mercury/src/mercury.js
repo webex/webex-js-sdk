@@ -197,9 +197,9 @@ const Mercury = WebexPlugin.extend({
         this.once(sessionId === this.defaultSessionId ? 'offline' : `offline${suffix}`, resolve);
         resolve(socket.close(options || undefined));
         this.sockets.delete(sessionId);
-      } else {
-        resolve();
       }
+
+      resolve();
 
       // Update overall connected status
       this.connected = this.hasConnectedSockets();
@@ -341,6 +341,7 @@ const Mercury = WebexPlugin.extend({
         // Set the socket before opening it. This allows a disconnect() to close
         // the socket if it is in the process of being opened.
         this.sockets.set(sessionId, socket);
+        this.socket = this.sockets.get(this.defaultSessionId) || socket;
 
         this.logger.info(`${this.namespace} connection url for ${sessionId}: ${webSocketUrl}`);
 
@@ -466,7 +467,6 @@ const Mercury = WebexPlugin.extend({
           sessionSocket.connected = true;
         }
         // @ts-ignore
-        this.socket = this.sockets.get(this.defaultSessionId);
         this.connecting = this.hasConnectingSockets();
         this.connected = this.hasConnectedSockets();
         this.hasEverConnected = true;

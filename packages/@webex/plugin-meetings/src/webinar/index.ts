@@ -131,7 +131,7 @@ const Webinar = WebexPlugin.extend({
     // @ts-ignore - Fix type
     const {url, info: {practiceSessionDatachannelUrl} = {}} = meeting?.locusInfo ?? {};
 
-    const isJoined = meeting.isJoined() && this.isJoinPracticeSessionDataChannel();
+    const isJoined = meeting?.isJoined() && this.isJoinPracticeSessionDataChannel();
 
     if (!connect) {
       // @ts-ignore - Fix type
