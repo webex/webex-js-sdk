@@ -193,7 +193,6 @@ const Mercury = WebexPlugin.extend({
         socket.connected = false;
         this.once(sessionId === this.defaultSessionId ? 'offline' : `offline${suffix}`, resolve);
         resolve(socket.close(options || undefined));
-        this.sockets.delete(sessionId);
       }
       resolve();
 
@@ -565,14 +564,15 @@ const Mercury = WebexPlugin.extend({
 
     try {
       const reason = event.reason && event.reason.toLowerCase();
-      const socket = this.sockets.get(sessionId);
+      let socket = this.sockets.get(sessionId);
       const socketUrl = socket?.url;
       const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
       event.sessionId = sessionId;
+      this.sockets.delete(sessionId);
 
       if (socket) {
         socket.removeAllListeners();
-        this.sockets.delete(sessionId);
+        socket = null;
         this._emit(`offline${suffix}`, event);
       }
 
