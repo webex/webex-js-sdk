@@ -3,6 +3,7 @@ import {LoginOption, WebexRequestPayload} from '../../types';
 import {Failure} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
+import {TaskData, ConsultTransferPayLoad, CONSULT_TRANSFER_DESTINATION_TYPE} from '../task/types';
 
 /**
  * Extracts common error details from a Webex request payload.
@@ -129,4 +130,19 @@ export const createErrDetailsObject = (errObj: WebexRequestPayload) => {
   const details = getCommonErrorDetails(errObj);
 
   return new Err.Details('Service.reqs.generic.failure', details);
+};
+
+// Task destination utilities (shared across services)
+export const isEntryPointOrEpdn = (destAgentType?: string): boolean => {
+  return destAgentType === 'EPDN' || destAgentType === 'ENTRYPOINT';
+};
+
+export const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => {
+  const destAgentType = (taskData as any)?.destAgentType;
+
+  return destAgentType === 'DN' || isEntryPointOrEpdn(destAgentType) ? 'DIAL_NUMBER' : '';
+};
+
+export const getDestAgentTypeForEporEpdn = (): ConsultTransferPayLoad['destinationType'] => {
+  return CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
 };
