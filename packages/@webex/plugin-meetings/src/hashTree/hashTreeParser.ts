@@ -276,7 +276,10 @@ class HashTreeParser {
             zip(appliedChangesList, locusStateElementsForThisSet).forEach(
               ([changeApplied, object]) => {
                 if (changeApplied) {
-                  if (object.htMeta.elementId.type === ObjectType.self && !object.data) {
+                  if (
+                    object.htMeta.elementId.type.toLowerCase() === ObjectType.self &&
+                    !object.data
+                  ) {
                     isRosterDropped = true;
                   }
                   // update the locus with the new object
