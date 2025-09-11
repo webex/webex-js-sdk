@@ -1327,7 +1327,7 @@ export default class Task extends EventEmitter implements ITask {
 
       let finalDestinationType: ConsultTransferPayLoad['destinationType'];
       if (agentActionType === 'DIAL_NUMBER') {
-        if (isEntryPointOrEpdn((this.data as any)?.destAgentType)) {
+        if (isEntryPointOrEpdn(this.data?.destinationType)) {
           finalDestinationType = getDestAgentTypeForEporEpdn();
         } else {
           finalDestinationType = CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;

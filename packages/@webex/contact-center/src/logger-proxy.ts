@@ -88,16 +88,6 @@ export default class LoggerProxy {
     }
   }
 
-  // Minimal error summary helper retained for future use if needed
-  public static formatError(err: unknown): string {
-    // Keep simple; prefer caller to pass message directly
-    if (!err) return 'Unknown error';
-    if (typeof err === 'string') return err;
-    const anyErr: any = err as any;
-
-    return String(err) || anyErr?.message;
-  }
-
   /**
    * Formats a log message with timestamp, log level, and context details.
    *

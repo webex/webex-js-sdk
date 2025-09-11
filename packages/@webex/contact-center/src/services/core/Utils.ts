@@ -138,7 +138,7 @@ export const isEntryPointOrEpdn = (destAgentType?: string): boolean => {
 };
 
 export const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => {
-  const destAgentType = (taskData as any)?.destAgentType;
+  const destAgentType = taskData?.destinationType;
 
   return destAgentType === 'DN' || isEntryPointOrEpdn(destAgentType) ? 'DIAL_NUMBER' : '';
 };

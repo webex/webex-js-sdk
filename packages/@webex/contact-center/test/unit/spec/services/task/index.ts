@@ -777,6 +777,75 @@ describe('Task', () => {
     );
   });
 
+  it('should send DIALNUMBER when task destinationType is DN during consultTransfer', async () => {
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.consultTransfer.mockResolvedValue(expectedResponse);
+
+    // Ensure task data indicates DN scenario
+    task.data.destinationType = 'DN' as unknown as string;
+
+    const consultTransferPayload: ConsultTransferPayLoad = {
+      to: '1234',
+      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+    };
+
+    await task.consultTransfer(consultTransferPayload);
+
+    expect(contactMock.consultTransfer).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: {
+        to: consultTransferPayload.to,
+        destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER,
+      },
+    });
+  });
+
+  it('should send ENTRYPOINT when task destinationType is EPDN during consultTransfer', async () => {
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.consultTransfer.mockResolvedValue(expectedResponse);
+
+    // Ensure task data indicates EP/EPDN scenario
+    task.data.destinationType = 'EPDN' as unknown as string;
+
+    const consultTransferPayload: ConsultTransferPayLoad = {
+      to: '1234',
+      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+    };
+
+    await task.consultTransfer(consultTransferPayload);
+
+    expect(contactMock.consultTransfer).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: {
+        to: consultTransferPayload.to,
+        destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT,
+      },
+    });
+  });
+
+  it('should keep AGENT when task destinationType is neither DN nor EPDN/ENTRYPOINT', async () => {
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.consultTransfer.mockResolvedValue(expectedResponse);
+
+    // Ensure task data indicates non-DN and non-EP/EPDN scenario
+    task.data.destinationType = 'SOMETHING_ELSE' as unknown as string;
+
+    const consultTransferPayload: ConsultTransferPayLoad = {
+      to: '1234',
+      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+    };
+
+    await task.consultTransfer(consultTransferPayload);
+
+    expect(contactMock.consultTransfer).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: {
+        to: consultTransferPayload.to,
+        destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+      },
+    });
+  });
+
   it('should do consult transfer to a queue by using the destAgentId from task data', async () => {
     const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
     contactMock.consultTransfer.mockResolvedValue(expectedResponse);
