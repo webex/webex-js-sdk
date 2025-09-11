@@ -222,6 +222,7 @@ export default class LocusInfo extends EventsScope {
 
   /**
    * Does a Locus sync. It tries to get the latest delta DTO or if it can't, it falls back to getting the full Locus DTO.
+   * WARNING: This function must not be used for hash tree based Locus meetings.
    *
    * @param {Meeting} meeting
    * @param {boolean} isLocusUrlChanged
@@ -312,7 +313,7 @@ export default class LocusInfo extends EventsScope {
 
         if (isDelta) {
           if (res.body.baseSequence) {
-            meeting.locusInfo.handleLocusDelta(res.body, meeting); // todo: check if this is safe, is isDelta=true always only for non-hash tree locus
+            meeting.locusInfo.handleLocusDelta(res.body, meeting);
 
             return;
           }

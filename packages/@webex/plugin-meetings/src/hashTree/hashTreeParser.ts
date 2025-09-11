@@ -228,7 +228,7 @@ class HashTreeParser {
     const leafData = this.analyzeLocusHtMeta(locus);
 
     Object.keys(leafData).forEach((dataSetName) => {
-      this.dataSets[dataSetName].hashTree.putItems(leafData[dataSetName]);
+      this.dataSets[dataSetName].hashTree.putItems(leafData[dataSetName]); // todo: in theory this should never happen, but might be worth adding a check for this.dataSets[dataSetName] existing
     });
   }
 
@@ -479,7 +479,7 @@ class HashTreeParser {
     })
       .then((response) => {
         const hashes = response.body?.hashes;
-        // todo: check datasets leafcount ?
+
         if (!hashes || !Array.isArray(hashes)) {
           LoggerProxy.logger.warn(
             `HashTreeParser#getHashesFromLocus --> ${this.debugId} Locus returned invalid hashes, response body=`,
