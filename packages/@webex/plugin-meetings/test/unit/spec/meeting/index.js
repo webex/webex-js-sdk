@@ -12262,6 +12262,7 @@ describe('plugin-meetings', () => {
             meeting.deviceUrl = 'deviceUrl.com';
             webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
             webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration = sinon.stub().returns(1000);
+            webex.internal.newMetrics.submitClientEvent = sinon.stub();
           });
           it('should stop the whiteboard share', async () => {
             const whiteboardShare = meeting.stopWhiteboardShare();
@@ -12363,6 +12364,9 @@ describe('plugin-meetings', () => {
             meeting.selfId = '9528d952-e4de-46cf-8157-fd4823b98377';
             meeting.deviceUrl = 'my-web-url';
             meeting.locusInfo.info = {isWebinar: false};
+            webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
+            webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration = sinon.stub().returns(1500);
+            webex.internal.newMetrics.submitClientEvent = sinon.stub();
           });
 
           const USER_IDS = {
@@ -13508,7 +13512,54 @@ describe('plugin-meetings', () => {
               payloadTestHelper([data1, data2, data3]);
             });
           });
-        });
+
+          it('should send share stopped metric when whiteboard sharing stops', () => {
+            // Start whiteboard sharing (this won't trigger metrics)
+            const data1 = generateData(
+              blankPayload,
+              true, // isGranting: true
+              false, // isContent: false (whiteboard)
+              USER_IDS.ME,
+              RESOURCE_URLS.WHITEBOARD_A
+            );
+
+            // Stop whiteboard sharing (this should trigger metrics)
+            const data2 = generateData(
+              data1.payload,
+              false, // isGranting: false (stopping share)
+              false, // isContent: false (whiteboard)
+              USER_IDS.ME
+            );
+
+            // Trigger the events
+            meeting.locusInfo.emit(
+              {function: 'test', file: 'test'},
+              EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+              data1.payload
+            );
+
+            meeting.locusInfo.emit(
+              {function: 'test', file: 'test'},
+              EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+              data2.payload
+            );
+
+            // Verify metrics were called when whiteboard sharing stopped
+            assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+              key: 'internal.client.share.stopped',
+            });
+
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.stopped',
+              payload: {
+                mediaType: 'whiteboard',
+                shareDuration: 1500, // mocked return value
+              },
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
 
         describe('handleShareVideoStreamMuteStateChange', () => {
           it('should emit MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE event with correct fields', () => {
@@ -13534,6 +13585,7 @@ describe('plugin-meetings', () => {
             );
           });
         });
+      });
       });
 
       describe('#startKeepAlive', () => {
