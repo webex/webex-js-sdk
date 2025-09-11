@@ -1339,7 +1339,7 @@ export default class Task extends EventEmitter implements ITask {
       // Resolve the target id (queue consult transfers go to the accepted agent)
       let targetId = consultTransferPayload.to;
       if (consultTransferPayload.destinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
-        if (!this.data?.destAgentId) {
+        if (!this.data.destAgentId) {
           throw new Error('No agent has accepted this queue consult yet');
         }
         targetId = this.data.destAgentId;
