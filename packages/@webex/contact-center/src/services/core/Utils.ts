@@ -146,3 +146,29 @@ export const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' |
 export const getDestAgentTypeForEporEpdn = (): ConsultTransferPayLoad['destinationType'] => {
   return CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
 };
+
+/**
+ * Derives the consult transfer destination type based on the provided task data.
+ *
+ * Logic parity with desktop behavior:
+ * - If agent action is dialing a number (DN/EPDN/ENTRYPOINT):
+ *   - ENTRYPOINT/EPDN map to ENTRYPOINT
+ *   - DN maps to DIALNUMBER
+ * - Otherwise defaults to AGENT
+ *
+ * @param taskData - The task data used to infer the agent action and destination type
+ * @returns The normalized destination type to be used for consult transfer
+ */
+export const deriveConsultTransferDestinationType = (
+  taskData?: TaskData
+): ConsultTransferPayLoad['destinationType'] => {
+  const agentActionType = getAgentActionTypeFromTask(taskData);
+
+  if (agentActionType === 'DIAL_NUMBER') {
+    return isEntryPointOrEpdn(taskData?.destinationType)
+      ? getDestAgentTypeForEporEpdn()
+      : CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
+  }
+
+  return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
+};
