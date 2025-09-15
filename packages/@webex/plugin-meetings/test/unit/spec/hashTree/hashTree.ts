@@ -431,4 +431,19 @@ describe('HashTree', () => {
       expect(computedHashes).to.deep.equal(expectedAllHashes);
     });
   });
+
+  describe.only('computeLeafHash', () => {
+    it('should compute the correct hash when the hash starts with a zero', () => {
+      const item: LeafDataItem = {type: 'self', id: 74, version: 1}; // Chosen to produce a hash starting with zero
+      const hashTree = new HashTree([], 2);
+
+      hashTree.putItem(item);
+      hashTree.computeLeafHash(0);
+
+      const leafHash = hashTree.leafHashes[0];
+
+      expect(leafHash.startsWith('0')).to.be.true;
+      expect(leafHash).equal('0525d6616d0f20119293c0bf2c818e8a');
+    });
+  });
 });

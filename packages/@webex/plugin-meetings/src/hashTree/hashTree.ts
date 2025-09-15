@@ -263,7 +263,7 @@ class HashTree {
       });
     });
 
-    this.leafHashes[index] = XXH3_128(buffer, BigInt(0)).toString(16);
+    this.leafHashes[index] = XXH3_128(buffer, BigInt(0)).toString(16).padStart(32, '0');
   }
 
   /**
