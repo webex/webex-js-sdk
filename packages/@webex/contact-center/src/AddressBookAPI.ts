@@ -215,6 +215,113 @@ export class AddressBookAPI {
       throw error;
     }
   }
+
+  /**
+   * Searches for address book entries based on search criteria
+   * @param {AddressBookEntrySearchParams} [params] - Search parameters
+   * @returns {Promise<AddressBookEntriesResponse>} Promise resolving to matching address book entries
+   * @throws {Error} If the API call fails
+   * @public
+   * @example
+   * ```typescript
+   * // Search by name or number
+   * const results = await addressBookAPI.searchEntries({
+   *   search: 'john'
+   * });
+   *
+   * // Search with filters
+   * const results = await addressBookAPI.searchEntries({
+   *   search: 'support',
+   *   filter: 'name=="John Doe"',
+   *   pageSize: 50
+   * });
+   * ```
+   */
+  public async searchEntries(
+    params: AddressBookEntrySearchParams = {}
+  ): Promise<AddressBookEntriesResponse> {
+    LoggerProxy.info('Searching address book entries', {
+      module: 'AddressBookAPI',
+      method: 'searchEntries',
+    });
+
+    return this.getEntries(params);
+  }
+
+  /**
+   * Fetches all address book entries across all pages for a specific address book
+   * @param {Omit<AddressBookEntrySearchParams, 'page'>} [params] - Search parameters (excluding page)
+   * @returns {Promise<AddressBookEntry[]>} Promise resolving to all address book entries
+   * @throws {Error} If any API call fails
+   * @public
+   * @example
+   * ```typescript
+   * // Get all entries from agent's default address book
+   * const allEntries = await addressBookAPI.getAllEntries();
+   *
+   * // Get all entries from a specific address book matching search criteria
+   * const filteredEntries = await addressBookAPI.getAllEntries({
+   *   addressBookId: 'addressBookId123',
+   *   search: 'support',
+   *   filter: 'name=="*Support*"'
+   * });
+   * ```
+   */
+  public async getAllEntries(
+    params: Omit<AddressBookEntrySearchParams, 'page'> = {}
+  ): Promise<AddressBookEntry[]> {
+    LoggerProxy.info('Fetching all address book entries', {
+      module: 'AddressBookAPI',
+      method: 'getAllEntries',
+    });
+
+    try {
+      const {pageSize = DEFAULT_PAGE_SIZE, ...searchParams} = params;
+      let allEntries: AddressBookEntry[] = [];
+      const currentPage = 0;
+      let totalPages = 1;
+
+      // Fetch first page to get total pages
+      const firstResponse = await this.getEntries({
+        ...searchParams,
+        page: currentPage,
+        pageSize,
+      });
+
+      allEntries = allEntries.concat(firstResponse.data);
+      totalPages = firstResponse.meta.totalPages || 1;
+
+      // Fetch remaining pages in parallel
+      if (totalPages > 1) {
+        const remainingPages = Array.from({length: totalPages - 1}, (_, i) => i + 1);
+        const remainingRequests = remainingPages.map((page) =>
+          this.getEntries({
+            ...searchParams,
+            page,
+            pageSize,
+          })
+        );
+
+        const responses = await Promise.all(remainingRequests);
+        responses.forEach((response) => {
+          allEntries = allEntries.concat(response.data);
+        });
+      }
+
+      LoggerProxy.log(`Successfully retrieved all ${allEntries.length} address book entries`, {
+        module: 'AddressBookAPI',
+        method: 'getAllEntries',
+      });
+
+      return allEntries;
+    } catch (error) {
+      LoggerProxy.error(`Failed to fetch all address book entries: ${error}`, {
+        module: 'AddressBookAPI',
+        method: 'getAllEntries',
+      });
+      throw error;
+    }
+  }
 }
 
 export default AddressBookAPI;
