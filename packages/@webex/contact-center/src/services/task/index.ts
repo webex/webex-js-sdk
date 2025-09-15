@@ -1089,8 +1089,8 @@ export default class Task extends EventEmitter implements ITask {
       if (this.data?.interaction?.mediaType !== MEDIA_CHANNEL.TELEPHONY) {
         throw new Error('IVR transcript is only available for voice (telephony) tasks');
       }
-
-      const transcriptConversations = await this.getIvrTranscriptService().fetchIVRTranscript(
+      const transcriptService = this.getIvrTranscriptService();
+      const transcriptConversations = await transcriptService.fetchIVRTranscript(
         orgId,
         interactionId,
         timeoutMins
@@ -1102,7 +1102,6 @@ export default class Task extends EventEmitter implements ITask {
         {
           taskId: interactionId,
           orgId,
-          type: 'direct-service',
           conversationTurns: transcriptConversations.length,
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(this.data),
         },
@@ -1129,7 +1128,6 @@ export default class Task extends EventEmitter implements ITask {
         {
           taskId: interactionId,
           orgId,
-          type: 'direct-service',
           error: detailedError.message,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },

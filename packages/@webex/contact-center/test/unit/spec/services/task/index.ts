@@ -859,7 +859,7 @@ describe('Task', () => {
 
     await expect(
       taskWithoutDestAgentId.consultTransfer(queueConsultTransferPayload)
-    ).rejects.toThrow('Error while performing consultTransfer');
+    ).rejects.toThrow('No agent has accepted this queue consult yet');
   });
 
   it('should handle errors in consult transfer', async () => {
@@ -1578,7 +1578,6 @@ describe('Task', () => {
         expect.objectContaining({
           taskId: 'test-interaction-456',
           orgId: 'test-org-123',
-          type: 'direct-service',
           conversationTurns: 2
         }),
         ['operational', 'behavioral', 'business']

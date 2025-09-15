@@ -67,6 +67,9 @@ export default class Services {
     connectionConfig: SubscribeRequest;
   }): Services {
     if (!this.instance) {
+      if (!options) {
+        throw new Error('Options are required to create Services instance');
+      }
       this.instance = new Services(options);
     }
 

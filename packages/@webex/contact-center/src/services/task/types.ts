@@ -1226,8 +1226,12 @@ export interface ITask extends EventEmitter {
    * ```typescript
    * // Fetch IVR transcript after accepting a voice task
    * try {
-   *   const transcript = await task.fetchIvrTranscript('org123', 'interaction456', 10);
-   *   console.log('Turns:', transcript.length);
+   *   const transcript = await task.fetchIvrTranscript(
+   *     task.data.orgId,
+   *     task.data.interactionId,
+   *     10 // timeout in minutes
+   *   );
+   *   console.log('Conversation turns:', transcript.length);
    *   transcript.forEach((turn) => {
    *     if (turn.customer) {
    *       console.log(`${turn.customer.timestamp}: Customer — ${turn.customer.query}`);

@@ -84,6 +84,15 @@ export const WEB_RTC_PREFIX = 'webrtc-';
 export const STATE_CHANGE_API = 'v1/agents/session/state';
 
 /**
+ * Base URL for IVR transcript metadata API.
+ * @type {string}
+ * @public
+ * @ignore
+ */
+export const IVR_TRANSCRIPT_API_BASE_URL =
+  'https://mediastorage.produs1.ciscoccservice.com/media/organization';
+
+/**
  * Message for deregistering WebCalling line and cleaning up resources.
  * @type {string}
  * @public

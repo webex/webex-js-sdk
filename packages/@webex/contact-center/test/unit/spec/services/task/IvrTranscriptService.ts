@@ -150,17 +150,19 @@ describe('IvrTranscriptService', () => {
     });
 
     it('should handle different conversation response formats', async () => {
-      // Test direct array response
+      // Test wrapped conversation response (standard format)
       const mockResponse = {
         body: mockMetadataResponse,
       };
-      const mockDirectArrayResponse = {
-        body: [mockConversationTurn],
+      const mockWrappedConversationResponse = {
+        body: {
+          conversation: [mockConversationTurn],
+        },
       };
 
       (webex.request as jest.Mock)
         .mockResolvedValueOnce(mockResponse)
-        .mockResolvedValueOnce(mockDirectArrayResponse);
+        .mockResolvedValueOnce(mockWrappedConversationResponse);
 
       let result = await service.fetchIVRTranscript(mockOrgId, mockInteractionId, mockTimeOutMins);
 
