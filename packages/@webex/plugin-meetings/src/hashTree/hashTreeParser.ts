@@ -99,6 +99,12 @@ class HashTreeParser {
     // object mapping dataset names to arrays of leaf data
     const leafData = this.analyzeLocusHtMeta(locus);
 
+    LoggerProxy.logger.info(
+      `HashTreeParser#constructor --> creating HashTreeParser for datasets: ${JSON.stringify(
+        dataSets.map((ds) => ds.name)
+      )}`
+    );
+
     for (const dataSet of dataSets) {
       const {name, leafCount} = dataSet;
 
@@ -204,7 +210,9 @@ class HashTreeParser {
         }))
       )}`
     );
+
     dataSets.forEach((dataSet) => {
+      this.updateDataSetInfo(dataSet);
       this.runSyncAlgorithm(dataSet);
     });
   }
@@ -230,6 +238,28 @@ class HashTreeParser {
     Object.keys(leafData).forEach((dataSetName) => {
       this.dataSets[dataSetName].hashTree.putItems(leafData[dataSetName]); // todo: in theory this should never happen, but might be worth adding a check for this.dataSets[dataSetName] existing
     });
+  }
+
+  /**
+   * Updates the internal data set information based on the received data set from Locus.
+   *
+   * @param {DataSet} receivedDataSet - The latest data set information received from Locus to update the internal state.
+   * @returns {void}
+   */
+  updateDataSetInfo(receivedDataSet: DataSet) {
+    // update our version of the dataSet
+    if (this.dataSets[receivedDataSet.name].version < receivedDataSet.version) {
+      this.dataSets[receivedDataSet.name].version = receivedDataSet.version;
+      this.dataSets[receivedDataSet.name].root = receivedDataSet.root;
+      this.dataSets[receivedDataSet.name].idleMs = receivedDataSet.idleMs;
+      this.dataSets[receivedDataSet.name].backoff = {
+        maxMs: receivedDataSet.backoff.maxMs,
+        exponent: receivedDataSet.backoff.exponent,
+      };
+      LoggerProxy.logger.info(
+        `HashTreeParser#handleMessage --> ${this.debugId} updated "${receivedDataSet.name}" to version=${receivedDataSet.version}, root=${receivedDataSet.root}`
+      );
+    }
   }
 
   /**
@@ -293,19 +323,7 @@ class HashTreeParser {
             );
           }
 
-          // update our version of the dataSet
-          if (this.dataSets[dataSet.name].version < dataSet.version) {
-            this.dataSets[dataSet.name].version = dataSet.version;
-            this.dataSets[dataSet.name].root = dataSet.root;
-            this.dataSets[dataSet.name].idleMs = dataSet.idleMs;
-            this.dataSets[dataSet.name].backoff = {
-              maxMs: dataSet.backoff.maxMs,
-              exponent: dataSet.backoff.exponent,
-            };
-            LoggerProxy.logger.info(
-              `HashTreeParser#handleMessage --> ${this.debugId} updated "${dataSet.name}" to version=${dataSet.version}, root=${dataSet.root}`
-            );
-          }
+          this.updateDataSetInfo(dataSet);
 
           if (!isRosterDropped) {
             this.runSyncAlgorithm(dataSet);
@@ -401,7 +419,13 @@ class HashTreeParser {
 
             try {
               // request hashes from sender
-              receivedHashes = await this.getHashesFromLocus(dataSet.name);
+              const {hashes, dataSet: latestDataSetInfo} = await this.getHashesFromLocus(
+                dataSet.name
+              );
+
+              receivedHashes = hashes;
+
+              dataSet.hashTree.resize(latestDataSetInfo.leafCount);
             } catch (error) {
               if (error.statusCode === 409) {
                 // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
@@ -478,7 +502,8 @@ class HashTreeParser {
       uri: url,
     })
       .then((response) => {
-        const hashes = response.body?.hashes;
+        const hashes = response.body?.hashes as string[] | undefined;
+        const dataSetFromResponse = response.body?.dataSet;
 
         if (!hashes || !Array.isArray(hashes)) {
           LoggerProxy.logger.warn(
@@ -494,7 +519,10 @@ class HashTreeParser {
           } Received hashes for data set "${dataSetName}": ${JSON.stringify(hashes)}`
         );
 
-        return hashes;
+        return {
+          hashes,
+          dataSet: dataSetFromResponse as DataSet,
+        };
       })
       .catch((error) => {
         LoggerProxy.logger.error(
