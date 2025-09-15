@@ -58,6 +58,8 @@ import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/t
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
+import EntryPointAPI from './EntryPointAPI';
+import AddressBookAPI from './AddressBookAPI';
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -163,6 +165,10 @@ import {Failure} from './services/core/GlobalTypes';
  *
  * @public
  */
+
+// Export both API classes for direct import
+export {EntryPointAPI, AddressBookAPI};
+
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   /**
    * The plugin's unique namespace identifier in the Webex SDK.
@@ -244,12 +250,101 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private metricsManager: MetricsManager;
 
   /**
+   * API instance for managing Webex Contact Center entry points
+   * Provides functionality to fetch, search, and paginate through entry points
+   * @type {EntryPointAPI}
+   * @private
+   */
+  private entryPointAPI: EntryPointAPI;
+
+  /**
+   * API instance for managing Webex Contact Center address book contacts
+   * Provides functionality to fetch, search, and manage address book contacts
+   * @type {AddressBookAPI}
+   * @private
+   */
+  private addressBookAPI: AddressBookAPI;
+
+  /**
    * Logger utility for Contact Center plugin
    * Provides consistent logging across the plugin
    * @type {LoggerProxy}
    * @public
    */
   public LoggerProxy = LoggerProxy;
+
+  /**
+   * Provides access to the EntryPoint API for managing Webex Contact Center entry points.
+   * Allows fetching, searching, and paginating through entry points.
+   *
+   * @returns {EntryPointAPI} The EntryPoint API instance
+   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   *
+   * // Get entry points with pagination
+   * const entryPoints = await cc.entryPoints.getEntryPoints(0, 50);
+   *
+   * // Search for specific entry points
+   * const searchResults = await cc.entryPoints.searchEntryPoints({
+   *   searchTerm: 'support',
+   *   page: 0,
+   *   pageSize: 25
+   * });
+   *
+   * // Get all entry points (handles pagination automatically)
+   * const allEntryPoints = await cc.entryPoints.getAllEntryPoints();
+   * ```
+   */
+  get entryPoints(): EntryPointAPI {
+    return this.entryPointAPI;
+  }
+
+  /**
+   * Provides access to the AddressBook API for managing Webex Contact Center address book contacts.
+   * Allows fetching, searching, creating, updating, and deleting address book contacts.
+   *
+   * @returns {AddressBookAPI} The AddressBook API instance
+   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   *
+   * // Get contacts with pagination
+   * const contacts = await cc.addressBook.getContacts(0, 50);
+   *
+   * // Search for specific contacts
+   * const searchResults = await cc.addressBook.searchContacts({
+   *   searchTerm: 'john',
+   *   page: 0,
+   *   pageSize: 25
+   * });
+   *
+   * // Create a new contact
+   * const newContact = await cc.addressBook.createContact({
+   *   firstName: 'John',
+   *   lastName: 'Doe',
+   *   phoneNumber: '+1234567890',
+   *   email: 'john.doe@example.com'
+   * });
+   *
+   * // Update an existing contact
+   * await cc.addressBook.updateContact('contact123', {
+   *   firstName: 'Jane',
+   *   lastName: 'Smith'
+   * });
+   *
+   * // Delete a contact
+   * await cc.addressBook.deleteContact('contact123');
+   * ```
+   */
+  get addressBook(): AddressBookAPI {
+    return this.addressBookAPI;
+  }
 
   /**
    * @ignore
@@ -288,6 +383,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.services.webSocketManager
       );
       this.incomingTaskListener();
+
+      // Initialize API instances
+      this.entryPointAPI = new EntryPointAPI(this.$webex);
+      this.addressBookAPI = new AddressBookAPI(this.$webex, () => this.agentConfig?.addressBookId);
 
       LoggerProxy.initialize(this.$webex.logger);
     });
