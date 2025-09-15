@@ -20,6 +20,28 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
   };
 };
 
+/**
+ * Checks if the destination type represents an entry point variant (EPDN or ENTRYPOINT).
+ */
+const isEntryPointOrEpdn = (destAgentType?: string): boolean => {
+  return destAgentType === 'EPDN' || destAgentType === 'ENTRYPOINT';
+};
+
+/**
+ * Determines if the task involves dialing a number based on the destination type.
+ * Returns 'DIAL_NUMBER' for dial-related destinations, empty string otherwise.
+ */
+const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => {
+  const destAgentType = taskData?.destinationType;
+
+  // Check if destination requires dialing: direct dial number or entry point variants
+  const isDialNumber = destAgentType === 'DN';
+  const isEntryPointVariant = isEntryPointOrEpdn(destAgentType);
+
+  // If the destination type is a dial number or an entry point variant, return 'DIAL_NUMBER'
+  return isDialNumber || isEntryPointVariant ? 'DIAL_NUMBER' : '';
+};
+
 export const isValidDialNumber = (input: string): boolean => {
   // This regex checks for a valid dial number format for only few countries such as US, Canada.
   const regexForDn = /1[0-9]{3}[2-9][0-9]{6}([,]{1,10}[0-9]+){0,1}/;
@@ -132,21 +154,6 @@ export const createErrDetailsObject = (errObj: WebexRequestPayload) => {
   return new Err.Details('Service.reqs.generic.failure', details);
 };
 
-// Task destination utilities (shared across services)
-export const isEntryPointOrEpdn = (destAgentType?: string): boolean => {
-  return destAgentType === 'EPDN' || destAgentType === 'ENTRYPOINT';
-};
-
-export const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => {
-  const destAgentType = taskData?.destinationType;
-
-  return destAgentType === 'DN' || isEntryPointOrEpdn(destAgentType) ? 'DIAL_NUMBER' : '';
-};
-
-export const getDestAgentTypeForEporEpdn = (): ConsultTransferPayLoad['destinationType'] => {
-  return CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
-};
-
 /**
  * Derives the consult transfer destination type based on the provided task data.
  *
@@ -166,7 +173,7 @@ export const deriveConsultTransferDestinationType = (
 
   if (agentActionType === 'DIAL_NUMBER') {
     return isEntryPointOrEpdn(taskData?.destinationType)
-      ? getDestAgentTypeForEporEpdn()
+      ? CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT
       : CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
   }
 
