@@ -61,7 +61,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Register to the websocket
    * @param {string} llmSocketUrl
-   * @param {string} sessionId - Connection identifier (defaults to LLM_DEFAULT_SESSION)
+   * @param {string} sessionId - Connection identifier
    * @returns {Promise<void>}
    */
   private register = (
@@ -89,7 +89,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Register and connect to the websocket
    * @param {string} locusUrl
    * @param {string} datachannelUrl
-   * @param {string} sessionId - Connection identifier (defaults to LLM_DEFAULT_SESSION)
+   * @param {string} sessionId - Connection identifier
    * @returns {Promise<void>}
    */
   public registerAndConnect = (
@@ -114,7 +114,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Tells if LLM socket is connected
-   * @param {string} sessionId - Connection identifier (defaults to LLM_DEFAULT_SESSION)
+   * @param {string} sessionId - Connection identifier
    * @returns {boolean} connected
    */
   public isConnected = (sessionId = LLM_DEFAULT_SESSION): boolean => {
@@ -125,7 +125,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Tells if LLM socket is binding
-   * @param {string} sessionId - Connection identifier (defaults to LLM_DEFAULT_SESSION)
+   * @param {string} sessionId - Connection identifier
    * @returns {string} binding
    */
   public getBinding = (sessionId = LLM_DEFAULT_SESSION): string => {
@@ -136,7 +136,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Get Locus URL for the connection
-   * @param {string} sessionId - Connection identifier (defaults to LLM_DEFAULT_SESSION)
+   * @param {string} sessionId - Connection identifier
    * @returns {string} locus Url
    */
   public getLocusUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
@@ -147,7 +147,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Get data channel URL for the connection
-   * @param {string} sessionId - Connection identifier (defaults to LLM_DEFAULT_SESSION)
+   * @param {string} sessionId - Connection identifier
    * @returns {string} data channel Url
    */
   public getDatachannelUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
@@ -159,7 +159,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Disconnects websocket connection
    * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
-   * @param {string} sessionId - Connection identifier (defaults to LLM_DEFAULT_SESSION)
+   * @param {string} sessionId - Connection identifier
    * @returns {Promise<void>}
    */
   public disconnectLLM = (
