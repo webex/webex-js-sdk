@@ -190,13 +190,21 @@ const MembersUtil = {
    * @param {String} requestingParticipantId id of the participant who is sending request (optional)
    * @param {String} alias alias name
    * @param {String} locusUrl url
+   * @param {String} suffix optional suffix
    * @returns {Object} consists of {memberID: string, requestingParticipantId: string, alias: string, locusUrl: string}
    */
-  generateEditDisplayNameMemberOptions: (memberId, requestingParticipantId, alias, locusUrl) => ({
+  generateEditDisplayNameMemberOptions: (
     memberId,
     requestingParticipantId,
     alias,
     locusUrl,
+    suffix
+  ) => ({
+    memberId,
+    requestingParticipantId,
+    alias,
+    locusUrl,
+    suffix,
   }),
 
   getMuteMemberRequestParams: (options) => {
@@ -301,10 +309,18 @@ const MembersUtil = {
    * @returns {Object} request parameters (method, uri, body) needed to make a editDisplayName request
    */
   editDisplayNameMemberRequestParams: (options) => {
-    const body = {
+    const body: {
+      aliasValue: string;
+      requestingParticipantId: string;
+      suffixValue?: string;
+    } = {
       aliasValue: options.alias,
       requestingParticipantId: options.requestingParticipantId,
     };
+
+    if (options.suffix !== undefined) {
+      body.suffixValue = options.suffix;
+    }
     const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
 
     return {

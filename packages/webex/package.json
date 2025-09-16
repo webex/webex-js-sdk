@@ -60,14 +60,14 @@
     "@webex/test-helper-mock-webex": "workspace:*",
     "@webex/test-helper-test-users": "workspace:*",
     "eslint": "^8.24.0",
-    "sinon": "^9.2.4",
-    "webex": "workspace:*"
+    "sinon": "^9.2.4"
   },
   "dependencies": {
     "@babel/polyfill": "^7.12.1",
     "@babel/runtime-corejs2": "^7.14.8",
     "@webex/calling": "workspace:*",
     "@webex/common": "workspace:*",
+    "@webex/contact-center": "workspace:*",
     "@webex/internal-plugin-calendar": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-dss": "workspace:*",
@@ -78,7 +78,6 @@
     "@webex/internal-plugin-voicea": "workspace:*",
     "@webex/plugin-attachment-actions": "workspace:*",
     "@webex/plugin-authorization": "workspace:*",
-    "@webex/plugin-cc": "workspace:*",
     "@webex/plugin-device-manager": "workspace:*",
     "@webex/plugin-encryption": "workspace:*",
     "@webex/plugin-logger": "workspace:*",

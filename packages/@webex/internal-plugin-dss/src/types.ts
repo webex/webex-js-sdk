@@ -46,6 +46,9 @@ export interface SearchOptions {
   requestedTypes: SearchType[];
   resultSize: number;
   queryString: string;
+  includePersonalDevices?: boolean;
+  includeCommonAreaPhones?: boolean;
+  includeOnlyPairableDevices?: boolean;
 }
 
 export interface BatcherOptions {

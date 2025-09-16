@@ -197,6 +197,17 @@ const MeetingUtil = {
         });
 
         return parsed;
+      })
+      .catch((err) => {
+        webex.internal.newMetrics.submitClientEvent({
+          name: 'client.locus.join.response',
+          payload: {
+            identifiers: {meetingLookupUrl: meeting.meetingInfo?.meetingLookupUrl},
+          },
+          options: {meetingId: meeting.id, rawError: err},
+        });
+
+        throw err;
       });
   },
 
@@ -207,6 +218,10 @@ const MeetingUtil = {
     meeting.breakouts.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
     meeting.locusMediaRequest = undefined;
+
+    meeting.webex?.internal?.newMetrics?.callDiagnosticMetrics?.clearEventLimitsForCorrelationId(
+      meeting.correlationId
+    );
 
     // make sure we send last metrics before we close the peerconnection
     const stopStatsAnalyzer = meeting.statsAnalyzer
@@ -328,10 +343,57 @@ const MeetingUtil = {
     meeting.resourceId = meeting.resourceId || options.resourceId;
 
     if (meeting.requiredCaptcha) {
-      return Promise.reject(new CaptchaError());
+      const errorToThrow = new CaptchaError();
+
+      // @ts-ignore
+      webex.internal.newMetrics.submitClientEvent({
+        name: 'client.meetinginfo.response',
+        options: {
+          meetingId: meeting.id,
+        },
+        payload: {
+          errors: [
+            {
+              fatal: false,
+              category: 'expected',
+              name: 'other',
+              shownToUser: false,
+              errorCode: errorToThrow.code,
+              errorDescription: errorToThrow.name,
+              rawErrorMessage: errorToThrow.sdkMessage,
+            },
+          ],
+        },
+      });
+
+      return Promise.reject(errorToThrow);
     }
+
     if (meeting.passwordStatus === PASSWORD_STATUS.REQUIRED) {
-      return Promise.reject(new PasswordError());
+      const errorToThrow = new PasswordError();
+
+      // @ts-ignore
+      webex.internal.newMetrics.submitClientEvent({
+        name: 'client.meetinginfo.response',
+        options: {
+          meetingId: meeting.id,
+        },
+        payload: {
+          errors: [
+            {
+              fatal: false,
+              category: 'expected',
+              name: 'other',
+              shownToUser: false,
+              errorCode: errorToThrow.code,
+              errorDescription: errorToThrow.name,
+              rawErrorMessage: errorToThrow.sdkMessage,
+            },
+          ],
+        },
+      });
+
+      return Promise.reject(errorToThrow);
     }
 
     if (options.pin) {
@@ -541,6 +603,15 @@ const MeetingUtil = {
 
   canStartManualCaption: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_START),
+
+  isLocalRecordingStarted: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.LOCAL_RECORDING_STATUS_STARTED),
+
+  isLocalRecordingStopped: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.LOCAL_RECORDING_STATUS_STOPPED),
+
+  isLocalRecordingPaused: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.LOCAL_RECORDING_STATUS_PAUSED),
 
   canStopManualCaption: (displayHints) => displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STOP),
 

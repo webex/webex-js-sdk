@@ -130,6 +130,82 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(res2, undefined);
     });
 
+    describe('getDiffBetweenTimestamps with clamping', () => {
+      it('should return diff without clamping when no clampValues provided', () => {
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
+        cdl.saveTimestamp({key: 'client.alert.removed', value: 50});
+        const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed');
+        assert.deepEqual(res, 40);
+      });
+
+      it('should return diff without clamping when value is within range', () => {
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
+        cdl.saveTimestamp({key: 'client.alert.removed', value: 50});
+        const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
+          minimum: 0,
+          maximum: 100
+        });
+        assert.deepEqual(res, 40);
+      });
+
+      it('should clamp to minimum when diff is below minimum', () => {
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 50});
+        cdl.saveTimestamp({key: 'client.alert.removed', value: 45});
+        const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
+          minimum: 10,
+          maximum: 100
+        });
+        assert.deepEqual(res, 10);
+      });
+
+      it('should clamp to maximum when diff is above maximum', () => {
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
+        cdl.saveTimestamp({key: 'client.alert.removed', value: 210});
+        const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
+          minimum: 0,
+          maximum: 100
+        });
+        assert.deepEqual(res, 100);
+      });
+
+      it('should use default minimum of 0 when only maximum is specified', () => {
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 50});
+        cdl.saveTimestamp({key: 'client.alert.removed', value: 45});
+        const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
+          maximum: 100
+        });
+        assert.deepEqual(res, 0);
+      });
+
+      it('should not clamp maximum when maximum is undefined', () => {
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
+        cdl.saveTimestamp({key: 'client.alert.removed', value: 2000});
+        const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
+          minimum: 5
+        });
+        assert.deepEqual(res, 1990);
+      });
+
+      it('should handle negative differences correctly with clamping', () => {
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 100});
+        cdl.saveTimestamp({key: 'client.alert.removed', value: 50});
+        const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
+          minimum: 10,
+          maximum: 1000
+        });
+        assert.deepEqual(res, 10);
+      });
+
+      it('should return undefined when timestamps are missing even with clamping', () => {
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
+        const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
+          minimum: 0,
+          maximum: 100
+        });
+        assert.deepEqual(res, undefined);
+      });
+    });
+
     it('calculates getMeetingInfoReqResp correctly', () => {
       cdl.saveTimestamp({key: 'internal.client.meetinginfo.request', value: 10});
       cdl.saveTimestamp({key: 'internal.client.meetinginfo.response', value: 20});
@@ -916,6 +992,18 @@ describe('internal-plugin-metrics', () => {
         value: 14,
       });
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
+    });
+
+    it('calculates getShareDuration correctly', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.share.initiated',
+        value: 5,
+      });
+      cdl.saveTimestamp({
+        key: 'internal.client.share.stopped',
+        value: 7,
+      });
+      assert.deepEqual(cdl.getShareDuration(), 2);
     });
 
     describe('calculates getU2CTime correctly', () => {
