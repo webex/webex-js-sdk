@@ -4038,7 +4038,7 @@ describe('plugin-meetings', () => {
                 member2: {isInMeeting: false, isInLobby: true},
                 member3: {isInMeeting: false, isInLobby: false},
                 member4: {isInMeeting: true, isInLobby: false},
-              },
+              }
             };
             sinon.stub(meeting, 'getMembers').returns({membersCollection: fakeMembersCollection});
             const fakeData = {intervalMetadata: {}};
