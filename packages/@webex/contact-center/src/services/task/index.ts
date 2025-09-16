@@ -2,10 +2,11 @@ import EventEmitter from 'events';
 import {CALL_EVENT_KEYS, LocalMicrophoneStream} from '@webex/calling';
 import {CallId} from '@webex/calling/dist/types/common/types';
 import {
-  getErrorDetails,
+  getTaskErrorDetails,
   deriveConsultTransferDestinationType,
   getDestinationAgentId,
 } from '../core/Utils';
+import {TaskError, Failure} from '../core/GlobalTypes';
 import {LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
 import {METHODS} from './constants';
@@ -29,7 +30,6 @@ import {
 import WebCallingService from '../WebCallingService';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
-import {Failure} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
 import {WrapupData} from '../config/types';
 
@@ -376,17 +376,22 @@ export default class Task extends EventEmitter implements ITask {
 
       return Promise.resolve(); // TODO: reject for extension as part of refactor
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.ACCEPT, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.ACCEPT, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
         {
           taskId: this.data.interactionId,
           error: error.toString(),
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details as Failure),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 
@@ -425,8 +430,8 @@ export default class Task extends EventEmitter implements ITask {
 
       return Promise.resolve();
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.TOGGLE_MUTE, TASK_FILE);
-      throw detailedError;
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.TOGGLE_MUTE, TASK_FILE);
+      throw taskError.error;
     }
   }
 
@@ -473,17 +478,22 @@ export default class Task extends EventEmitter implements ITask {
 
       return Promise.resolve();
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.DECLINE, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.DECLINE, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
         {
           taskId: this.data.interactionId,
           error: error.toString(),
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 
@@ -550,18 +560,23 @@ export default class Task extends EventEmitter implements ITask {
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.HOLD, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.HOLD, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
         {
           taskId: this.data.interactionId,
           mediaResourceId: this.data.mediaResourceId,
           error: error.toString(),
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 
@@ -631,7 +646,7 @@ export default class Task extends EventEmitter implements ITask {
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.RESUME, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.RESUME, TASK_FILE);
       const mainInteractionId = this.data.interaction?.mainInteractionId;
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
@@ -641,11 +656,16 @@ export default class Task extends EventEmitter implements ITask {
           mediaResourceId: mainInteractionId
             ? this.data.interaction.media[mainInteractionId].mediaResourceId
             : '',
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 
@@ -725,16 +745,21 @@ export default class Task extends EventEmitter implements ITask {
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.END, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.END, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_END_FAILED,
         {
           taskId: this.data.interactionId,
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 
@@ -829,18 +854,23 @@ export default class Task extends EventEmitter implements ITask {
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.WRAPUP, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.WRAPUP, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
         {
           taskId: this.data.interactionId,
           wrapUpCode: wrapupPayload.auxCodeId,
           wrapUpReason: wrapupPayload.wrapUpReason,
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 
@@ -909,17 +939,22 @@ export default class Task extends EventEmitter implements ITask {
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.PAUSE_RECORDING, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.PAUSE_RECORDING, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
         {
           taskId: this.data.interactionId,
           error: error.toString(),
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 
@@ -1000,17 +1035,22 @@ export default class Task extends EventEmitter implements ITask {
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.RESUME_RECORDING, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.RESUME_RECORDING, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
         {
           taskId: this.data.interactionId,
           error: error.toString(),
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 
@@ -1085,7 +1125,7 @@ export default class Task extends EventEmitter implements ITask {
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.CONSULT, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
         {
@@ -1093,11 +1133,16 @@ export default class Task extends EventEmitter implements ITask {
           destination: consultPayload.to,
           destinationType: consultPayload.destinationType,
           error: error.toString(),
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 
@@ -1170,17 +1215,22 @@ export default class Task extends EventEmitter implements ITask {
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.END_CONSULT, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.END_CONSULT, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
         {
           taskId: this.data.interactionId,
           error: error.toString(),
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 
@@ -1261,7 +1311,7 @@ export default class Task extends EventEmitter implements ITask {
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.TRANSFER, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.TRANSFER, TASK_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
@@ -1270,11 +1320,16 @@ export default class Task extends EventEmitter implements ITask {
           destinationType: transferPayload.destinationType,
           isConsultTransfer: false,
           error: error.toString(),
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 
@@ -1371,7 +1426,7 @@ export default class Task extends EventEmitter implements ITask {
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT_TRANSFER, TASK_FILE);
+      const taskError: TaskError = getTaskErrorDetails(error, METHODS.CONSULT_TRANSFER, TASK_FILE);
       const failedDestinationType = deriveConsultTransferDestinationType(this.data);
       const failedDestAgentId = getDestinationAgentId(
         this.data.interaction?.participants,
@@ -1385,11 +1440,16 @@ export default class Task extends EventEmitter implements ITask {
           destinationType: failedDestinationType,
           isConsultTransfer: true,
           error: error.toString(),
+          trackingId: taskError.trackingId,
+          errorMessage: taskError.errorMessage,
+          errorType: taskError.errorType,
+          errorData: taskError.errorData,
+          reasonCode: taskError.reasonCode,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw taskError.error;
     }
   }
 }

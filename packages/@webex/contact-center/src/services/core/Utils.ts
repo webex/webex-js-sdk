@@ -1,6 +1,6 @@
 import * as Err from './Err';
 import {LoginOption, WebexRequestPayload} from '../../types';
-import {Failure} from './GlobalTypes';
+import {Failure, TaskError, AugmentedError} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
 import {
@@ -140,6 +140,64 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
   return {
     error: err,
     reason,
+  };
+};
+
+/**
+ * Extracts error details from task API errors and logs them. Also uploads logs for the error.
+ * This handles the specific error format returned by task API calls.
+ *
+ * @param error - The error object from task API calls with structure: {id: string, details: {trackingId: string, msg: {...}}}
+ * @param methodName - The name of the method where the error occurred.
+ * @param moduleName - The name of the module where the error occurred.
+ * @returns TaskError object containing structured error details for metrics and logging
+ * @public
+ * @example
+ * const taskError = getTaskErrorDetails(error, 'transfer', 'TaskModule');
+ * throw taskError.error;
+ * @ignore
+ */
+export const getTaskErrorDetails = (
+  error: any,
+  methodName: string,
+  moduleName: string
+): TaskError => {
+  const trackingId = error?.details?.trackingId || '';
+  const errorMsg = error?.details?.msg;
+  const errorMessage = errorMsg?.errorMessage || `Error while performing ${methodName}`;
+  const errorType = errorMsg?.errorType || 'Unknown Error';
+  const errorData = errorMsg?.errorData || '';
+  const reasonCode = errorMsg?.reasonCode || 0;
+
+  LoggerProxy.error(`${methodName} failed: ${errorMessage} (${errorType})`, {
+    module: moduleName,
+    method: methodName,
+    trackingId,
+  });
+
+  WebexRequest.getInstance().uploadLogs({
+    correlationId: trackingId,
+  });
+
+  const reason = `${errorType}: ${errorMessage}${errorData ? ` (${errorData})` : ''}`;
+  const err: AugmentedError = new Error(reason);
+  err.data = {
+    message: errorMessage,
+    errorType,
+    errorData,
+    reasonCode,
+    trackingId,
+  };
+
+  // Return structured TaskError object
+  return {
+    error: err,
+    reason: errorMessage,
+    trackingId,
+    errorMessage,
+    errorType,
+    errorData,
+    reasonCode,
   };
 };
 

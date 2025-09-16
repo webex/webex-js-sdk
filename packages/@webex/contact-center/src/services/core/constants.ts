@@ -72,6 +72,7 @@ export const METHODS = {
 
   // Utils methods
   GET_ERROR_DETAILS: 'getErrorDetails',
+  GET_TASK_ERROR_DETAILS: 'getTaskErrorDetails',
   GET_COMMON_ERROR_DETAILS: 'getCommonErrorDetails',
   CREATE_ERR_DETAILS_OBJECT: 'createErrDetailsObject',
 
