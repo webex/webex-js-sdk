@@ -1375,8 +1375,7 @@ export default class Task extends EventEmitter implements ITask {
       const failedDestinationType = deriveConsultTransferDestinationType(this.data);
       const failedDestAgentId = getDestinationAgentId(
         this.data.interaction?.participants,
-        this.data.agentId,
-        this.data.destAgentId
+        this.data.agentId
       );
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
