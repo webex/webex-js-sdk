@@ -1,7 +1,7 @@
 import EventEmitter from 'events';
 import {CALL_EVENT_KEYS, LocalMicrophoneStream} from '@webex/calling';
 import {CallId} from '@webex/calling/dist/types/common/types';
-import {getErrorDetails} from '../core/Utils';
+import {getErrorDetails, deriveConsultTransferDestinationType} from '../core/Utils';
 import {LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
 import {METHODS} from './constants';
@@ -19,7 +19,6 @@ import {
   ConsultEndPayload,
   TransferPayLoad,
   DESTINATION_TYPE,
-  CONSULT_TRANSFER_DESTINATION_TYPE,
   ConsultTransferPayLoad,
   MEDIA_CHANNEL,
 } from './types';
@@ -1308,61 +1307,70 @@ export default class Task extends EventEmitter implements ITask {
    * ```
    */
   public async consultTransfer(
-    consultTransferPayload: ConsultTransferPayLoad
+    consultTransferPayload?: ConsultTransferPayLoad
   ): Promise<TaskResponse> {
     try {
-      LoggerProxy.info(`Initiating consult transfer to ${consultTransferPayload.to}`, {
-        module: TASK_FILE,
-        method: METHODS.CONSULT_TRANSFER,
-        interactionId: this.data.interactionId,
-      });
-
-      // For queue destinations, use the destAgentId from task data
-      if (consultTransferPayload.destinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
-        if (!this.data.destAgentId) {
-          throw new Error('No agent has accepted this queue consult yet');
-        }
-
-        // Override the destination with the agent who accepted the queue consult
-        consultTransferPayload = {
-          to: this.data.destAgentId,
-          destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
-        };
+      // Resolve the target id (queue consult transfers go to the accepted agent)
+      if (!this.data.destAgentId) {
+        throw new Error('No agent has accepted this queue consult yet');
       }
+
+      LoggerProxy.info(
+        `Initiating consult transfer to ${consultTransferPayload?.to || this.data.destAgentId}`,
+        {
+          module: TASK_FILE,
+          method: METHODS.CONSULT_TRANSFER,
+          interactionId: this.data.interactionId,
+        }
+      );
+      // Obtain payload based on desktop logic using TaskData
+      const finalDestinationType = deriveConsultTransferDestinationType(this.data);
+
+      // By default we always use `destAgentId` as the target id
+      const consultTransferRequest: ConsultTransferPayLoad = {
+        to: this.data.destAgentId,
+        destinationType: finalDestinationType,
+      };
 
       const result = await this.contact.consultTransfer({
         interactionId: this.data.interactionId,
-        data: consultTransferPayload,
+        data: consultTransferRequest,
       });
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
         {
           taskId: this.data.interactionId,
-          destination: consultTransferPayload.to,
-          destinationType: consultTransferPayload.destinationType,
+          destination: consultTransferRequest.to,
+          destinationType: consultTransferRequest.destinationType,
           isConsultTransfer: true,
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
         },
         ['operational', 'behavioral', 'business']
       );
 
-      LoggerProxy.log(`Consult transfer completed successfully to ${consultTransferPayload.to}`, {
-        module: TASK_FILE,
-        method: METHODS.CONSULT_TRANSFER,
-        trackingId: result.trackingId,
-        interactionId: this.data.interactionId,
-      });
+      LoggerProxy.log(
+        `Consult transfer completed successfully to ${
+          consultTransferPayload?.to || this.data.destAgentId
+        }`,
+        {
+          module: TASK_FILE,
+          method: METHODS.CONSULT_TRANSFER,
+          trackingId: result.trackingId,
+          interactionId: this.data.interactionId,
+        }
+      );
 
       return result;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT_TRANSFER, TASK_FILE);
+      const failedDestinationType = deriveConsultTransferDestinationType(this.data);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
           taskId: this.data.interactionId,
-          destination: consultTransferPayload.to,
-          destinationType: consultTransferPayload.destinationType,
+          destination: this.data.destAgentId || '',
+          destinationType: failedDestinationType,
           isConsultTransfer: true,
           error: error.toString(),
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),

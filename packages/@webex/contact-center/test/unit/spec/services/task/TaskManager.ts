@@ -658,6 +658,13 @@ describe('TaskManager', () => {
   });
 
   it('should emit TASK_CONSULT_ACCEPTED event on AGENT_CONSULTING event', () => {
+    const initialConsultingPayload = {
+      data: {
+        ...initalPayload.data,
+        type: CC_EVENTS.AGENT_OFFER_CONSULT,
+      },
+    };
+
     const consultingPayload = {
       data: {
         ...initalPayload.data,
@@ -672,8 +679,8 @@ describe('TaskManager', () => {
     });
 
     const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
+    webSocketManagerMock.emit('message', JSON.stringify(initialConsultingPayload));
     webSocketManagerMock.emit('message', JSON.stringify(consultingPayload));
-    expect(taskManager.getTask(taskId).updateTaskData).toHaveBeenCalledWith(consultingPayload.data);
     expect(taskManager.getTask(taskId).data.isConsulted).toBe(true);
     expect(taskEmitSpy).toHaveBeenCalledWith(
       TASK_EVENTS.TASK_CONSULT_ACCEPTED,
