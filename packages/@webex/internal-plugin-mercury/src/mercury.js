@@ -133,10 +133,10 @@ const Mercury = WebexPlugin.extend({
 
   // @oneFlight
   connect(webSocketUrl, sessionId = this.defaultSessionId) {
-    const existingSocket = this.sockets.get(sessionId);
-    if (existingSocket?.connected || existingSocket?.connecting) {
+    const sessionSocket = this.sockets.get(sessionId);
+    if (sessionSocket?.connected || sessionSocket?.connecting) {
       this.logger.info(
-        `${this.namespace}: connection ${sessionId} already connected, will not connect again`
+        `${this.namespace}: connection ${sessionId} already connecting or connected, will not connect again`
       );
 
       return Promise.resolve();
@@ -184,15 +184,15 @@ const Mercury = WebexPlugin.extend({
         this.backoffCalls.delete(sessionId);
       }
 
-      const socket = this.sockets.get(sessionId);
+      const sessionSocket = this.sockets.get(sessionId);
       const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
 
-      if (socket) {
-        socket.removeAllListeners('message');
-        socket.connecting = false;
-        socket.connected = false;
+      if (sessionSocket) {
+        sessionSocket.removeAllListeners('message');
+        sessionSocket.connecting = false;
+        sessionSocket.connected = false;
         this.once(sessionId === this.defaultSessionId ? 'offline' : `offline${suffix}`, resolve);
-        resolve(socket.close(options || undefined));
+        resolve(sessionSocket.close(options || undefined));
       }
       resolve();
 
@@ -564,15 +564,15 @@ const Mercury = WebexPlugin.extend({
 
     try {
       const reason = event.reason && event.reason.toLowerCase();
-      let socket = this.sockets.get(sessionId);
-      const socketUrl = socket?.url;
+      let sessionSocket = this.sockets.get(sessionId);
+      const socketUrl = sessionSocket?.url;
       const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
       event.sessionId = sessionId;
       this.sockets.delete(sessionId);
 
-      if (socket) {
-        socket.removeAllListeners();
-        socket = null;
+      if (sessionSocket) {
+        sessionSocket.removeAllListeners();
+        sessionSocket = null;
         this._emit(`offline${suffix}`, event);
       }
 
