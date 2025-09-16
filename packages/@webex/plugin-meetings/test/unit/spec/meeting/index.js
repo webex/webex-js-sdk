@@ -4031,7 +4031,7 @@ describe('plugin-meetings', () => {
             });
           });
 
-          it.only('counts the number of members that are in the meeting or lobby for MEDIA_QUALITY event', async () => {
+          it('counts the number of members that are in the meeting or lobby for MEDIA_QUALITY event', async () => {
             let fakeMembersCollection = {
               members: {
                 member1: {isInMeeting: true, isInLobby: false},
