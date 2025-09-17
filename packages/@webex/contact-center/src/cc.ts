@@ -289,7 +289,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
       this.incomingTaskListener();
 
-      LoggerProxy.initialize(this.$webex.logger);
+      // Initialize logger with optional session instance label from config if provided
+      // @ts-ignore - $config may be partially provided
+      const sessionInstance = (this.$config as any)?.logging?.sessionInstance || 'main';
+      LoggerProxy.initialize(this.$webex.logger, sessionInstance);
     });
   }
 
@@ -983,6 +986,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       module: CC_FILE,
       method: METHODS.HANDLE_WEBSOCKET_MESSAGE,
     });
+
+    // Emit metrics for all websocket events except keepalive and welcome
+    const topLevelType = eventData.type;
+    const nestedType = eventData?.data?.type;
+    if (topLevelType && topLevelType !== CC_EVENTS.WELCOME && eventData.keepalive !== 'true') {
+      const metricsPayload: Record<string, any> = {
+        ws_event_type: nestedType || topLevelType,
+        top_level_type: topLevelType,
+        has_data: Boolean(eventData.data),
+      };
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_EVENT_RECEIVED, metricsPayload, [
+        'operational',
+      ]);
+    }
 
     switch (eventData.type) {
       case CC_EVENTS.AGENT_MULTI_LOGIN:

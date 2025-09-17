@@ -152,6 +152,8 @@ export interface CCPluginConfig {
     enable: boolean;
     /** Whether to log verbose events */
     verboseEvents: boolean;
+    /** Optional session instance label for multi-session logging */
+    sessionInstance?: string;
   };
   /** Configuration for the calling client */
   callingClientConfig: CallingClientConfig;
@@ -192,6 +194,8 @@ export interface LogContext {
   method?: string;
   interactionId?: string;
   trackingId?: string;
+  /** Optional session instance label */
+  sessionInstance?: string;
 }
 
 /**
