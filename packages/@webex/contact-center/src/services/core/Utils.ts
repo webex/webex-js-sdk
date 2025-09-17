@@ -3,7 +3,12 @@ import {LoginOption, WebexRequestPayload} from '../../types';
 import {Failure} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
-import {TaskData, ConsultTransferPayLoad, CONSULT_TRANSFER_DESTINATION_TYPE} from '../task/types';
+import {
+  TaskData,
+  ConsultTransferPayLoad,
+  CONSULT_TRANSFER_DESTINATION_TYPE,
+  Interaction,
+} from '../task/types';
 
 /**
  * Extracts common error details from a Webex request payload.
@@ -166,6 +171,50 @@ export const createErrDetailsObject = (errObj: WebexRequestPayload) => {
  * @param taskData - The task data used to infer the agent action and destination type
  * @returns The normalized destination type to be used for consult transfer
  */
+/**
+ * Checks if a participant type represents a non-customer participant.
+ * Non-customer participants include agents, dial numbers, entry point dial numbers,
+ * and entry points.
+ */
+const isNonCustomerParticipant = (participantType: string): boolean => {
+  return (
+    participantType === 'Agent' ||
+    participantType === 'DN' ||
+    participantType === 'EpDn' ||
+    participantType === 'entryPoint'
+  );
+};
+
+/**
+ * Gets the destination agent ID from participants data by finding the first
+ * non-customer participant that is not the current agent and is not in wrap-up state.
+ *
+ * @param participants - The participants data from the interaction
+ * @param agentId - The current agent's ID to exclude from the search
+ * @returns The destination agent ID, or empty string if none found
+ */
+export const getDestinationAgentId = (
+  participants: Interaction['participants'],
+  agentId: string
+): string => {
+  let id = '';
+
+  if (participants) {
+    Object.keys(participants).forEach((participant) => {
+      const participantData = participants[participant];
+      if (
+        isNonCustomerParticipant(participantData.type) &&
+        participantData.id !== agentId &&
+        !participantData.isWrapUp
+      ) {
+        id = participantData.id;
+      }
+    });
+  }
+
+  return id;
+};
+
 export const deriveConsultTransferDestinationType = (
   taskData?: TaskData
 ): ConsultTransferPayLoad['destinationType'] => {
