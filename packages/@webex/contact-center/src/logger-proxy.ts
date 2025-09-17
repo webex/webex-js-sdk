@@ -23,9 +23,9 @@ export default class LoggerProxy {
    * @param {Logger} logger - A logger object implementing standard logging methods.
    * @ignore
    */
-  public static initialize(logger: Logger, sessionInstance?: string): void {
+  public static initialize(logger: Logger, sessionInstance): void {
     LoggerProxy.logger = logger;
-    LoggerProxy.sessionInstance = sessionInstance || 'main';
+    LoggerProxy.sessionInstance = sessionInstance;
   }
 
   /**

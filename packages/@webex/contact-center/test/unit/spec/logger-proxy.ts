@@ -14,16 +14,6 @@ describe('LoggerProxy sessionInstance formatting', () => {
     };
   });
 
-  it('includes default sessionInstance "main" in formatted logs', () => {
-    LoggerProxy.initialize(mockLogger);
-
-    LoggerProxy.log('hello', {module: 'test', method: 'log'});
-
-    expect(mockLogger.log).toHaveBeenCalled();
-    const payload = mockLogger.log.mock.calls[0][0] as string;
-    expect(payload.includes(' - session:main')).toBe(true);
-  });
-
   it('includes provided sessionInstance value in formatted logs', () => {
     LoggerProxy.initialize(mockLogger, 'tab2');
 
