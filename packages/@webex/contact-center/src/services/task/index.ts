@@ -10,6 +10,8 @@ import {LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
 import {METHODS} from './constants';
 import routingContact from './contact';
+import {IvrTranscriptService} from './IvrTranscriptService';
+import Services from '../index';
 import LoggerProxy from '../../logger-proxy';
 import {
   ITask,
@@ -25,6 +27,7 @@ import {
   DESTINATION_TYPE,
   ConsultTransferPayLoad,
   MEDIA_CHANNEL,
+  IvrTranscriptResponse,
 } from './types';
 import WebCallingService from '../WebCallingService';
 import MetricsManager from '../../metrics/MetricsManager';
@@ -159,8 +162,17 @@ export default class Task extends EventEmitter implements ITask {
     this.webCallMap = {};
     this.wrapupData = wrapupData;
     this.metricsManager = MetricsManager.getInstance();
+
     this.registerWebCallListeners();
     this.setupAutoWrapupTimer();
+  }
+
+  /**
+   * Gets the IvrTranscriptService from Services singleton
+   * @private
+   */
+  private getIvrTranscriptService(): IvrTranscriptService {
+    return Services.getInstance().transcript;
   }
 
   /**
@@ -1010,6 +1022,127 @@ export default class Task extends EventEmitter implements ITask {
         },
         ['operational', 'behavioral', 'business']
       );
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Fetches the IVR transcript for the specified task.
+   * This method retrieves the Interactive Voice Response transcript that was recorded
+   * during the customer's interaction with the IVR system before being connected to an agent.
+   * Available for tasks that have IVR interactions.
+   *
+   * @param orgId - Organization ID (required)
+   * @param interactionId - Interaction ID for the task (required)
+   * @param timeoutMins - Timeout in minutes for the transcript URL (required)
+   * @returns Promise<IvrTranscriptResponse> The IVR transcript conversation data
+   * @throws Error if no IVR transcript is available, or the fetch operation fails
+   * @example
+   * ```typescript
+   * // Fetch IVR transcript after accepting a task
+   * task.on(TASK_EVENTS.TASK_ASSIGNED, async () => {
+   *   try {
+   *     const transcript = await task.fetchIvrTranscript(
+   *       task.data.orgId,
+   *       task.data.interactionId,
+   *       5
+   *     );
+   *     console.log('IVR transcript fetched successfully');
+   *
+   *     // Process conversation data
+   *     transcript.forEach((turn, index) => {
+   *       console.log(`Turn ${index + 1}:`);
+   *       if (turn.customer) {
+   *         console.log(`  Customer: ${turn.customer.query}`);
+   *       }
+   *       if (turn.bot) {
+   *         console.log(`  Bot: ${turn.bot.reply} (Bot: ${turn.bot.botName})`);
+   *       }
+   *     });
+   *   } catch (error) {
+   *     console.error('Failed to fetch IVR transcript:', error);
+   *   }
+   * });
+   * ```
+   */
+  public async fetchIvrTranscript(
+    orgId: string,
+    interactionId: string,
+    timeoutMins: number
+  ): Promise<IvrTranscriptResponse> {
+    try {
+      LoggerProxy.info(`Fetching IVR transcript using direct IvrTranscriptService`, {
+        module: TASK_FILE,
+        method: METHODS.FETCH_IVR_TRANSCRIPT,
+        interactionId,
+      });
+
+      // Start metrics tracking
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_FAILED,
+      ]);
+
+      // Validate required fields
+      if (!orgId || !interactionId) {
+        throw new Error('Organization ID or Interaction ID is missing');
+      }
+
+      // Enforce voice-only usage for IVR transcript
+      if (this.data?.interaction?.mediaType !== MEDIA_CHANNEL.TELEPHONY) {
+        throw new Error('IVR transcript is only available for voice (telephony) tasks');
+      }
+      const transcriptService = this.getIvrTranscriptService();
+      const transcriptConversations = await transcriptService.fetchIVRTranscript(
+        orgId,
+        interactionId,
+        timeoutMins
+      );
+
+      // Track success metrics
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_SUCCESS,
+        {
+          taskId: interactionId,
+          orgId,
+          conversationTurns: transcriptConversations.length,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(this.data),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log('IVR transcript fetched successfully using direct service', {
+        module: TASK_FILE,
+        method: METHODS.FETCH_IVR_TRANSCRIPT,
+        interactionId,
+      });
+
+      return transcriptConversations;
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.FETCH_IVR_TRANSCRIPT,
+        TASK_FILE
+      );
+
+      // Track failure metrics
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_FAILED,
+        {
+          taskId: interactionId,
+          orgId,
+          error: detailedError.message,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`IVR transcript fetch failed: ${detailedError.message}`, {
+        module: TASK_FILE,
+        method: METHODS.FETCH_IVR_TRANSCRIPT,
+        interactionId,
+      });
+
       throw detailedError;
     }
   }

@@ -51,6 +51,9 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @property {string} TASK_ACCEPT_CONSULT_SUCCESS - Event name for successful consult acceptance.
  * @property {string} TASK_ACCEPT_CONSULT_FAILED - Event name for failed consult acceptance.
  *
+ * @property {string} TASK_IVR_TRANSCRIPT_FETCH_SUCCESS - Event name for successful IVR transcript fetch.
+ * @property {string} TASK_IVR_TRANSCRIPT_FETCH_FAILED - Event name for failed IVR transcript fetch.
+ *
  * @property {string} TASK_OUTDIAL_SUCCESS - Event name for successful outdial task.
  * @property {string} TASK_OUTDIAL_FAILED - Event name for failed outdial task.
  *
@@ -108,6 +111,10 @@ export const METRIC_EVENT_NAMES = {
   TASK_PAUSE_RECORDING_FAILED: 'Task Pause Recording Failed',
   TASK_ACCEPT_CONSULT_SUCCESS: 'Task Accept Consult Success',
   TASK_ACCEPT_CONSULT_FAILED: 'Task Accept Consult Failed',
+
+  // IVR Transcript
+  TASK_IVR_TRANSCRIPT_FETCH_SUCCESS: 'Task IVR Transcript Fetch Success',
+  TASK_IVR_TRANSCRIPT_FETCH_FAILED: 'Task IVR Transcript Fetch Failed',
 
   TASK_OUTDIAL_SUCCESS: 'Task Outdial Success',
   TASK_OUTDIAL_FAILED: 'Task Outdial Failed',

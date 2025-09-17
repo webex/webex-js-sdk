@@ -110,6 +110,20 @@ describe('metrics/behavioral-events', () => {
         verb: 'fail',
       });
 
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_ivr_transcript_fetch',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_ivr_transcript_fetch',
+        verb: 'fail',
+      });
+
       expect(getEventTaxonomy('' as METRIC_EVENT_NAMES)).toEqual(undefined);
     });
   });

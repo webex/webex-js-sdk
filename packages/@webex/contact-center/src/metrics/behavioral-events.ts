@@ -329,6 +329,20 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'agent_device_type_update',
     verb: 'fail',
   },
+
+  // IVR transcript fetch
+  [METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_ivr_transcript_fetch',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_IVR_TRANSCRIPT_FETCH_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_ivr_transcript_fetch',
+    verb: 'fail',
+  },
 };
 
 /**

@@ -104,9 +104,13 @@ export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOpt
  */
 export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
   let errData = {message: '', fieldName: ''};
-
+  let reason = '';
   const failure = error.details as Failure;
-  const reason = failure?.data?.reason ?? `Error while performing ${methodName}`;
+  if (!failure) {
+    reason = error.message ?? `Error while performing ${methodName}`;
+  } else {
+    reason = failure?.data?.reason ?? `Error while performing ${methodName}`;
+  }
 
   if (!(reason === 'AGENT_NOT_FOUND' && methodName === 'silentRelogin')) {
     LoggerProxy.error(`${methodName} failed with reason: ${reason}`, {

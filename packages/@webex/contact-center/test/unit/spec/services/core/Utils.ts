@@ -148,13 +148,34 @@ describe('Utils', () => {
 
       const result = Utils.getErrorDetails(unexpectedError, methodName, moduleName);
 
-      // Should use default error message when structure is unexpected
+      // Should use the error message when no details property exists
+      expect(result).toEqual({
+        error: new Error('Unexpected error structure'),
+        reason: 'Unexpected error structure',
+      });
+
+      // Should not throw when accessing properties with optional chaining
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `${methodName} failed with reason: Unexpected error structure`,
+        {module: moduleName, method: methodName, trackingId: undefined}
+      );
+    });
+
+    it('should handle error objects with no message property and no details', () => {
+      const errorWithoutMessage = {
+        // No details property and no message property
+        code: 500,
+        status: 'error',
+      };
+
+      const result = Utils.getErrorDetails(errorWithoutMessage, methodName, moduleName);
+
+      // Should use default error message when no message and no details exist
       expect(result).toEqual({
         error: new Error(`Error while performing ${methodName}`),
         reason: `Error while performing ${methodName}`,
       });
 
-      // Should not throw when accessing properties with optional chaining
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `${methodName} failed with reason: Error while performing ${methodName}`,
         {module: moduleName, method: methodName, trackingId: undefined}

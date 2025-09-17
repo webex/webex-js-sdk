@@ -246,6 +246,22 @@
                   <div id="taskList"></div>
                 </fieldset>
                 <fieldset>
+                  <legend>IVR Transcript</legend>
+                  <div class="u-mv">
+                    <button id="fetch-ivr-transcript" class="btn--blue" disabled>Fetch IVR Transcript</button>
+                    <input id="timeout-mins" placeholder="Timeout (mins)" value="5" type="number" min="1" max="60" style="width: 120px; margin-left: 10px;">
+                  </div>
+                  <div id="ivr-transcript-result" style="margin-top: 10px;">
+                    <p id="ivr-transcript-status" class="status-par">No transcript fetched</p>
+                    <div id="ivr-transcript-content" class="ivr-conversation-container" style="display: none;">
+                      <div class="ivr-conversation-header">
+                        <h4>IVR Conversation</h4>
+                      </div>
+                      <div id="ivr-conversation-list"></div>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset>
                   <legend>Digital Channels</legend>
                     <div id="engageWidget"> </div>
                 </fieldset>
