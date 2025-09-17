@@ -7462,6 +7462,8 @@ describe('plugin-meetings', () => {
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
@@ -7508,6 +7510,8 @@ describe('plugin-meetings', () => {
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
@@ -7563,6 +7567,8 @@ describe('plugin-meetings', () => {
               permissionToken: FAKE_PERMISSION_TOKEN,
             },
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
