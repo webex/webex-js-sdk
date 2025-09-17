@@ -291,7 +291,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       // Initialize logger with optional session instance label from config if provided
       // @ts-ignore - $config may be partially provided
-      const sessionInstance = (this.$config as any)?.logging?.sessionInstance || 'main';
+      const sessionInstance = this.config?.logging?.sessionInstance || 'main';
       LoggerProxy.initialize(this.$webex.logger, sessionInstance);
     });
   }

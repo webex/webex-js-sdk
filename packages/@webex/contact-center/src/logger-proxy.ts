@@ -10,7 +10,7 @@ export default class LoggerProxy {
   /**
    * Optional session instance label for multi-session logging context
    */
-  public static sessionInstance = 'main';
+  private static sessionInstance = 'main';
   /**
    * The static logger instance to be used by the proxy.
    * @ignore
