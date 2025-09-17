@@ -94,6 +94,15 @@ export default class LoggerProxy {
   }
 
   /**
+   * Returns the session instance label.
+   * @returns {string} The session instance label.
+   * @public
+   */
+  public static getSessionInstance(): string {
+    return LoggerProxy.sessionInstance;
+  }
+
+  /**
    * Formats a log message with timestamp, log level, and context details.
    *
    * @private

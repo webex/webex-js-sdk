@@ -253,6 +253,11 @@ export default class MetricsManager {
 
     const payloadWithCommonMetadata = {...payload};
     payloadWithCommonMetadata.tabHidden = document.hidden;
+    // Attach session instance to the payload
+    const sessionInstance = LoggerProxy.getSessionInstance();
+    if (sessionInstance) {
+      payloadWithCommonMetadata.sessionInstance = sessionInstance;
+    }
 
     return payloadWithCommonMetadata;
   }
