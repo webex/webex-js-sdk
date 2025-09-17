@@ -693,6 +693,7 @@ export class Registration implements IRegistration {
         const resp = await this.postRegistration(url);
         this.deviceInfo = resp.body as IDeviceInfo;
         this.registrationStatus = RegistrationStatus.ACTIVE;
+        this.setActiveMobiusUrl(url);
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
         log.log(
           `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId}`,
@@ -701,7 +702,6 @@ export class Registration implements IRegistration {
             method: METHODS.REGISTER,
           }
         );
-        this.setActiveMobiusUrl(url);
         this.setIntervalValues(this.deviceInfo);
         this.metricManager.setDeviceInfo(this.deviceInfo);
         this.metricManager.submitRegistrationMetric(
