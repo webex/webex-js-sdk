@@ -88,7 +88,7 @@ describe('Workspace Detection Tests', () => {
 
       expect(() => {
         findWorkspaceRoot(tempDir);
-      }).toThrow('Error: Could not find workspace root with package.json containing workspaces field');
+      }).toThrow(new Error('Could not find workspace root with package.json containing workspaces field'));
     });
   });
 
@@ -117,7 +117,7 @@ describe('Workspace Detection Tests', () => {
 
       expect(() => {
         getServerPath(tempDir);
-      }).toThrow('Error: Could not find workspace root with package.json containing workspaces field');
+      }).toThrow(new Error('Could not find workspace root with package.json containing workspaces field'));
     });
   });
 });
