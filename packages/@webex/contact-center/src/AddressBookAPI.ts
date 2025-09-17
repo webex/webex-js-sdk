@@ -6,6 +6,11 @@
 import {HTTP_METHODS, WebexSDK} from './types';
 import LoggerProxy from './logger-proxy';
 import WebexRequest from './services/core/WebexRequest';
+import PageCache, {
+  PaginatedResponse,
+  BaseSearchParams,
+  PAGINATION_DEFAULTS,
+} from './utils/PageCache';
 
 /**
  * Interface for AddressBook entry item based on AddressBookEntryDTO from spec
@@ -32,50 +37,16 @@ export interface AddressBookEntry {
  * Interface for paginated AddressBook entries response based on spec
  * @public
  */
-export interface AddressBookEntriesResponse {
-  /** Array of address book entries */
-  data: AddressBookEntry[];
-  /** Pagination metadata */
-  meta: {
-    /** Organization ID */
-    orgid?: string;
-    /** Current page number */
-    page?: number;
-    /** Page size for current data set */
-    pageSize?: number;
-    /** Number of pages */
-    totalPages?: number;
-    /** Total number of items */
-    totalRecords?: number;
-    /** Map of pagination links */
-    links?: Record<string, string>;
-  };
-}
+export type AddressBookEntriesResponse = PaginatedResponse<AddressBookEntry>;
 
 /**
  * Interface for AddressBook entry search parameters based on spec
  * @public
  */
-export interface AddressBookEntrySearchParams {
+export interface AddressBookEntrySearchParams extends BaseSearchParams {
   /** Address book ID (optional, uses agent's address book if not provided) */
   addressBookId?: string;
-  /** Filter criteria using RSQL syntax */
-  filter?: string;
-  /** Attributes to be returned */
-  attributes?: string;
-  /** Search keyword for name and number fields */
-  search?: string;
-  /** Page number (starts from 0) */
-  page?: number;
-  /** Number of items per page */
-  pageSize?: number;
 }
-
-/**
- * Default pagination settings
- */
-const DEFAULT_PAGE = 0;
-const DEFAULT_PAGE_SIZE = 100;
 
 /**
  * AddressBook API class for managing Webex Contact Center address book entries.
@@ -119,6 +90,9 @@ export class AddressBookAPI {
   private webex: WebexSDK;
   private getAddressBookId: () => string;
 
+  // Page cache using the common utility
+  private pageCache: PageCache<AddressBookEntry>;
+
   /**
    * Creates an instance of AddressBookAPI
    * @param {WebexSDK} webex - The Webex SDK instance
@@ -129,6 +103,7 @@ export class AddressBookAPI {
     this.webex = webex;
     this.webexRequest = WebexRequest.getInstance({webex});
     this.getAddressBookId = getAddressBookId;
+    this.pageCache = new PageCache<AddressBookEntry>('AddressBookAPI');
   }
 
   /**
@@ -155,8 +130,8 @@ export class AddressBookAPI {
   ): Promise<AddressBookEntriesResponse> {
     const {
       addressBookId,
-      page = DEFAULT_PAGE,
-      pageSize = DEFAULT_PAGE_SIZE,
+      page = PAGINATION_DEFAULTS.PAGE,
+      pageSize = PAGINATION_DEFAULTS.PAGE_SIZE,
       search,
       filter,
       attributes,
@@ -169,6 +144,29 @@ export class AddressBookAPI {
       module: 'AddressBookAPI',
       method: 'getEntries',
     });
+
+    // Check if we can use cache for simple pagination (no search/filter/attributes)
+    if (this.pageCache.canUseCache({search, filter, attributes})) {
+      const cacheKey = this.pageCache.buildCacheKey(bookId, page, pageSize);
+      const cachedPage = this.pageCache.getCachedPage(cacheKey);
+
+      if (cachedPage) {
+        LoggerProxy.log(`Returning page ${page} from cache`, {
+          module: 'AddressBookAPI',
+          method: 'getEntries',
+        });
+
+        return {
+          data: cachedPage.data,
+          meta: {
+            page,
+            pageSize,
+            totalPages: cachedPage.totalMeta?.totalPages,
+            totalRecords: cachedPage.totalMeta?.totalRecords,
+          },
+        };
+      }
+    }
 
     try {
       // Build query parameters according to spec
@@ -206,118 +204,17 @@ export class AddressBookAPI {
         }
       );
 
+      // Cache the page data for simple pagination (no search/filter/attributes)
+      if (this.pageCache.canUseCache({search, filter, attributes}) && response.body?.data) {
+        const cacheKey = this.pageCache.buildCacheKey(bookId, page, pageSize);
+        this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
+      }
+
       return response.body;
     } catch (error) {
       LoggerProxy.error(`Failed to fetch address book entries: ${error}`, {
         module: 'AddressBookAPI',
         method: 'getEntries',
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Searches for address book entries based on search criteria
-   * @param {AddressBookEntrySearchParams} [params] - Search parameters
-   * @returns {Promise<AddressBookEntriesResponse>} Promise resolving to matching address book entries
-   * @throws {Error} If the API call fails
-   * @public
-   * @example
-   * ```typescript
-   * // Search by name or number
-   * const results = await addressBookAPI.searchEntries({
-   *   search: 'john'
-   * });
-   *
-   * // Search with filters
-   * const results = await addressBookAPI.searchEntries({
-   *   search: 'support',
-   *   filter: 'name=="John Doe"',
-   *   pageSize: 50
-   * });
-   * ```
-   */
-  public async searchEntries(
-    params: AddressBookEntrySearchParams = {}
-  ): Promise<AddressBookEntriesResponse> {
-    LoggerProxy.info('Searching address book entries', {
-      module: 'AddressBookAPI',
-      method: 'searchEntries',
-    });
-
-    return this.getEntries(params);
-  }
-
-  /**
-   * Fetches all address book entries across all pages for a specific address book
-   * @param {Omit<AddressBookEntrySearchParams, 'page'>} [params] - Search parameters (excluding page)
-   * @returns {Promise<AddressBookEntry[]>} Promise resolving to all address book entries
-   * @throws {Error} If any API call fails
-   * @public
-   * @example
-   * ```typescript
-   * // Get all entries from agent's default address book
-   * const allEntries = await addressBookAPI.getAllEntries();
-   *
-   * // Get all entries from a specific address book matching search criteria
-   * const filteredEntries = await addressBookAPI.getAllEntries({
-   *   addressBookId: 'addressBookId123',
-   *   search: 'support',
-   *   filter: 'name=="*Support*"'
-   * });
-   * ```
-   */
-  public async getAllEntries(
-    params: Omit<AddressBookEntrySearchParams, 'page'> = {}
-  ): Promise<AddressBookEntry[]> {
-    LoggerProxy.info('Fetching all address book entries', {
-      module: 'AddressBookAPI',
-      method: 'getAllEntries',
-    });
-
-    try {
-      const {pageSize = DEFAULT_PAGE_SIZE, ...searchParams} = params;
-      let allEntries: AddressBookEntry[] = [];
-      const currentPage = 0;
-      let totalPages = 1;
-
-      // Fetch first page to get total pages
-      const firstResponse = await this.getEntries({
-        ...searchParams,
-        page: currentPage,
-        pageSize,
-      });
-
-      allEntries = allEntries.concat(firstResponse.data);
-      totalPages = firstResponse.meta.totalPages || 1;
-
-      // Fetch remaining pages in parallel
-      if (totalPages > 1) {
-        const remainingPages = Array.from({length: totalPages - 1}, (_, i) => i + 1);
-        const remainingRequests = remainingPages.map((page) =>
-          this.getEntries({
-            ...searchParams,
-            page,
-            pageSize,
-          })
-        );
-
-        const responses = await Promise.all(remainingRequests);
-        responses.forEach((response) => {
-          allEntries = allEntries.concat(response.data);
-        });
-      }
-
-      LoggerProxy.log(`Successfully retrieved all ${allEntries.length} address book entries`, {
-        module: 'AddressBookAPI',
-        method: 'getAllEntries',
-      });
-
-      return allEntries;
-    } catch (error) {
-      LoggerProxy.error(`Failed to fetch all address book entries: ${error}`, {
-        module: 'AddressBookAPI',
-        method: 'getAllEntries',
       });
       throw error;
     }

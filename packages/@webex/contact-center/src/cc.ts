@@ -44,13 +44,8 @@ import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
 import {getErrorDetails, isValidDialNumber} from './services/core/Utils';
-import {Profile, WelcomeEvent, CC_EVENTS, ContactServiceQueue} from './services/config/types';
-import {
-  AGENT_STATE_AVAILABLE,
-  AGENT_STATE_AVAILABLE_ID,
-  DEFAULT_PAGE,
-  DEFAULT_PAGE_SIZE,
-} from './services/config/constants';
+import {Profile, WelcomeEvent, CC_EVENTS} from './services/config/types';
+import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
@@ -60,6 +55,7 @@ import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
 import EntryPointAPI from './EntryPointAPI';
 import AddressBookAPI from './AddressBookAPI';
+import QueueAPI from './QueueAPI';
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -251,19 +247,66 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * API instance for managing Webex Contact Center entry points
-   * Provides functionality to fetch, search, and paginate through entry points
+   * Provides functionality to fetch entry points with caching support
    * @type {EntryPointAPI}
-   * @private
+   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   *
+   * // Access EntryPoint API
+   * const response = await cc.entryPoint.getEntryPoints({
+   *   page: 0,
+   *   pageSize: 50
+   * });
+   * ```
    */
-  private entryPointAPI: EntryPointAPI;
+  public entryPoint: EntryPointAPI;
 
   /**
    * API instance for managing Webex Contact Center address book contacts
-   * Provides functionality to fetch, search, and manage address book contacts
+   * Provides functionality to fetch address book entries with caching support
    * @type {AddressBookAPI}
-   * @private
+   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   *
+   * // Access AddressBook API
+   * const response = await cc.addressBook.getEntries({
+   *   page: 0,
+   *   pageSize: 25
+   * });
+   * ```
    */
-  private addressBookAPI: AddressBookAPI;
+  public addressBook: AddressBookAPI;
+
+  /**
+   * API instance for managing Webex Contact Center queues
+   * Provides functionality to fetch queues with caching support
+   * @type {QueueAPI}
+   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   *
+   * // Access Queue API
+   * const response = await cc.queue.getQueues({
+   *   page: 0,
+   *   pageSize: 50
+   * });
+   *
+   * // Get specific queue by ID
+   * const queue = await cc.queue.getQueueById('queue-id-123');
+   * ```
+   */
+  public queue: QueueAPI;
 
   /**
    * Logger utility for Contact Center plugin
@@ -272,79 +315,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @public
    */
   public LoggerProxy = LoggerProxy;
-
-  /**
-   * Provides access to the EntryPoint API for managing Webex Contact Center entry points.
-   * Allows fetching, searching, and paginating through entry points.
-   *
-   * @returns {EntryPointAPI} The EntryPoint API instance
-   * @public
-   * @example
-   * ```typescript
-   * const cc = webex.cc;
-   * await cc.register();
-   *
-   * // Get entry points with pagination
-   * const entryPoints = await cc.entryPoints.getEntryPoints(0, 50);
-   *
-   * // Search for specific entry points
-   * const searchResults = await cc.entryPoints.searchEntryPoints({
-   *   searchTerm: 'support',
-   *   page: 0,
-   *   pageSize: 25
-   * });
-   *
-   * // Get all entry points (handles pagination automatically)
-   * const allEntryPoints = await cc.entryPoints.getAllEntryPoints();
-   * ```
-   */
-  get entryPoints(): EntryPointAPI {
-    return this.entryPointAPI;
-  }
-
-  /**
-   * Provides access to the AddressBook API for managing Webex Contact Center address book contacts.
-   * Allows fetching, searching, creating, updating, and deleting address book contacts.
-   *
-   * @returns {AddressBookAPI} The AddressBook API instance
-   * @public
-   * @example
-   * ```typescript
-   * const cc = webex.cc;
-   * await cc.register();
-   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
-   *
-   * // Get contacts with pagination
-   * const contacts = await cc.addressBook.getContacts(0, 50);
-   *
-   * // Search for specific contacts
-   * const searchResults = await cc.addressBook.searchContacts({
-   *   searchTerm: 'john',
-   *   page: 0,
-   *   pageSize: 25
-   * });
-   *
-   * // Create a new contact
-   * const newContact = await cc.addressBook.createContact({
-   *   firstName: 'John',
-   *   lastName: 'Doe',
-   *   phoneNumber: '+1234567890',
-   *   email: 'john.doe@example.com'
-   * });
-   *
-   * // Update an existing contact
-   * await cc.addressBook.updateContact('contact123', {
-   *   firstName: 'Jane',
-   *   lastName: 'Smith'
-   * });
-   *
-   * // Delete a contact
-   * await cc.addressBook.deleteContact('contact123');
-   * ```
-   */
-  get addressBook(): AddressBookAPI {
-    return this.addressBookAPI;
-  }
 
   /**
    * @ignore
@@ -385,8 +355,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.incomingTaskListener();
 
       // Initialize API instances
-      this.entryPointAPI = new EntryPointAPI(this.$webex);
-      this.addressBookAPI = new AddressBookAPI(this.$webex, () => this.agentConfig?.addressBookId);
+      // will have future function for indivdual fetch etc so better be in an object
+      this.entryPoint = new EntryPointAPI(this.$webex);
+      this.addressBook = new AddressBookAPI(this.$webex, () => this.agentConfig?.addressBookId);
+      this.queue = new QueueAPI(this.$webex);
 
       LoggerProxy.initialize(this.$webex.logger);
     });
@@ -1495,79 +1467,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const {error: detailedError} = getErrorDetails(error, METHODS.START_OUTDIAL, CC_FILE);
       throw detailedError;
     }
-  }
-
-  /**
-   * This is used for getting the list of queues to which a task can be consulted or transferred.
-   * @param {string} [search] - Optional search string to filter queues by name
-   * @param {string} [filter] - Optional OData filter expression (e.g., 'teamId eq "team123"')
-   * @param {number} [page=0] - Page number for paginated results, starting at 0
-   * @param {number} [pageSize=100] - Number of queues to return per page
-   * @returns Promise<ContactServiceQueue[]> Resolves with the list of queues
-   * @throws Error If the operation fails
-   * @public
-   * @example
-   * ```typescript
-   * const cc = webex.cc;
-   * await cc.register();
-   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
-   *
-   * // Basic usage - get all queues
-   * const allQueues = await cc.getQueues();
-   *
-   * // Search for specific queues
-   * const salesQueues = await cc.getQueues('sales'); // Search for 'sales' in queue names
-   *
-   * // Use filtering and pagination
-   * const filteredQueues = await cc.getQueues(
-   *   '', // No search term
-   *   'teamId eq "team123"', // Filter by team
-   *   0,  // First page
-   *   50  // 50 items per page
-   * );
-   *
-   * // Process queue results
-   * queues.forEach(queue => {
-   *   console.log('Queue:', {
-   *     id: queue.queueId,
-   *     name: queue.queueName,
-   *     channelType: queue.channelType,
-   *     isActive: queue.isActive,
-   *     description: queue.description
-   *   });
-   * });
-   * ```
-   */
-  public async getQueues(
-    search?: string,
-    filter?: string,
-    page = DEFAULT_PAGE,
-    pageSize = DEFAULT_PAGE_SIZE
-  ): Promise<ContactServiceQueue[]> {
-    LoggerProxy.info('Fetching queues', {
-      module: CC_FILE,
-      method: METHODS.GET_QUEUES,
-    });
-
-    const orgId = this.$webex.credentials.getOrgId();
-
-    if (!orgId) {
-      LoggerProxy.error('Org ID not found.', {
-        module: CC_FILE,
-        method: METHODS.GET_QUEUES,
-      });
-
-      throw new Error('Org ID not found.');
-    }
-
-    const result = await this.services.config.getQueues(orgId, page, pageSize, search, filter);
-
-    LoggerProxy.log(`Successfully retrieved ${result?.length} queues`, {
-      module: CC_FILE,
-      method: METHODS.GET_QUEUES,
-    });
-
-    return result;
   }
 
   /**

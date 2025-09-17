@@ -26,6 +26,25 @@ export {default as Task} from './services/task';
  */
 export {default as routingAgent} from './services/agent';
 
+// API exports
+/**
+ * EntryPoint API for managing Webex Contact Center entry points
+ * @category APIs
+ */
+export {default as EntryPointAPI} from './EntryPointAPI';
+
+/**
+ * AddressBook API for managing Webex Contact Center address book contacts
+ * @category APIs
+ */
+export {default as AddressBookAPI} from './AddressBookAPI';
+
+/**
+ * Queue API for managing Webex Contact Center queues
+ * @category APIs
+ */
+export {default as QueueAPI} from './QueueAPI';
+
 // Enums
 /**
  * Task Events for Contact Center operations
