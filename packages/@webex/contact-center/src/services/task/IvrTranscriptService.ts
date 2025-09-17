@@ -73,7 +73,13 @@ export class IvrTranscriptService {
 
       return response.body as IvrTranscriptMetaDataResponse;
     } catch (error) {
-      LoggerProxy.error(`Failed to fetch IVR transcript metadata: ${error}`, {
+      const statusCode =
+        (error as any)?.statusCode || (error as any)?.response?.status || 'unknown';
+      const errorMessage = `Failed to fetch IVR transcript metadata${
+        statusCode !== 'unknown' ? ` (Status: ${statusCode})` : ''
+      }: ${error}`;
+
+      LoggerProxy.error(errorMessage, {
         module: 'IvrTranscriptService',
         method: 'getIvrTranscriptMetadata',
         interactionId,
@@ -131,7 +137,13 @@ export class IvrTranscriptService {
 
       return conversationData;
     } catch (error) {
-      LoggerProxy.error(`Failed to fetch IVR conversation content: ${error}`, {
+      const statusCode =
+        (error as any)?.statusCode || (error as any)?.response?.status || 'unknown';
+      const errorMessage = `Failed to fetch IVR conversation content${
+        statusCode !== 'unknown' ? ` (Status: ${statusCode})` : ''
+      }: ${error}`;
+
+      LoggerProxy.error(errorMessage, {
         module: 'IvrTranscriptService',
         method: 'fetchIvrConversation',
       });
@@ -151,17 +163,20 @@ export class IvrTranscriptService {
     let flatParams: Record<string, any> = {};
 
     if (Array.isArray(params)) {
-      params.forEach((param) => {
+      params.forEach((param, index) => {
+        const arrayKey = paramKey ? `${paramKey}[${index}]` : `[${index}]`;
         if (param && typeof param === 'object') {
-          flatParams = {...flatParams, ...this.getFlatParams(param, paramKey)};
+          flatParams = {...flatParams, ...this.getFlatParams(param, arrayKey)};
         } else {
-          flatParams[paramKey] = param;
+          flatParams[arrayKey] = param;
         }
       });
-    } else {
+    } else if (params && typeof params === 'object') {
       Object.keys(params).forEach((key) => {
         const finalKey = paramKey ? `${paramKey}.${key}` : key;
-        if (params[key] && typeof params[key] === 'object') {
+        if (params[key] && typeof params[key] === 'object' && !Array.isArray(params[key])) {
+          flatParams = {...flatParams, ...this.getFlatParams(params[key], finalKey)};
+        } else if (Array.isArray(params[key])) {
           flatParams = {...flatParams, ...this.getFlatParams(params[key], finalKey)};
         } else {
           flatParams[finalKey] = params[key];
@@ -272,14 +287,17 @@ export class IvrTranscriptService {
           successCount += 1;
         } catch (error) {
           failureCount += 1;
-          LoggerProxy.warn(
-            `Failed to process transcript ${transcriptMetaData.transcriptId}: ${error}`,
-            {
-              module: 'IvrTranscriptService',
-              method: 'fetchIVRTranscript',
-              interactionId,
-            }
-          );
+          const statusCode =
+            (error as any)?.statusCode || (error as any)?.response?.status || 'unknown';
+          const errorMessage = `Failed to process transcript ${transcriptMetaData.transcriptId}${
+            statusCode !== 'unknown' ? ` (Status: ${statusCode})` : ''
+          }: ${error}`;
+
+          LoggerProxy.warn(errorMessage, {
+            module: 'IvrTranscriptService',
+            method: 'fetchIVRTranscript',
+            interactionId,
+          });
           // Continue processing remaining transcripts even if individual files fail
         }
       }
