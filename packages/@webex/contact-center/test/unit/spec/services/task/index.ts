@@ -74,6 +74,7 @@ describe('Task', () => {
   let loggerInfoSpy;
   let loggerLogSpy;
   let loggerErrorSpy;
+  let getDestinationAgentIdSpy;
 
   const taskId = '0ae913a4-c857-4705-8d49-76dd3dde75e4';
   const mockTrack = {} as MediaStreamTrack;
@@ -192,6 +193,11 @@ describe('Task', () => {
       },
     };
 
+    // Mock destination agent id resolution from participants
+    getDestinationAgentIdSpy = jest
+      .spyOn(Utils, 'getDestinationAgentId')
+      .mockReturnValue(taskDataMock.destAgentId);
+
     // Create an instance of Task
     task = new Task(contactMock, webCallingService, taskDataMock, { wrapUpProps: null });
 
@@ -214,6 +220,7 @@ describe('Task', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   it('test the on spy', async () => {
@@ -913,6 +920,9 @@ describe('Task', () => {
       to: 'some-queue-id',
       destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE,
     };
+
+    // For this negative case, ensure computed destination is empty
+    getDestinationAgentIdSpy.mockReturnValueOnce('');
 
     await expect(
       taskWithoutDestAgentId.consultTransfer(queueConsultTransferPayload)
