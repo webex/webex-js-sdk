@@ -165,64 +165,44 @@ export const generateTaskErrorObject = (
   const trackingId = error?.details?.trackingId || error?.trackingId || '';
   const errorMsg = error?.details?.msg;
 
-  // If the error matches Task API shape, parse it directly
-  if (errorMsg && (errorMsg.errorMessage || errorMsg.errorType)) {
-    const fallbackMessage =
-      (error && typeof error.message === 'string' && error.message) ||
-      `Error while performing ${methodName}`;
-    const errorMessage = errorMsg?.errorMessage || fallbackMessage;
-    const errorType =
-      errorMsg?.errorType ||
-      (error && typeof error.name === 'string' && error.name) ||
-      'Unknown Error';
-    const errorData = errorMsg?.errorData || '';
-    const reasonCode = errorMsg?.reasonCode || 0;
+  const fallbackMessage =
+    (error && typeof error.message === 'string' && error.message) ||
+    `Error while performing ${methodName}`;
+  const errorMessage = errorMsg?.errorMessage || fallbackMessage;
+  const errorType =
+    errorMsg?.errorType ||
+    (error && typeof error.name === 'string' && error.name) ||
+    'Unknown Error';
+  const errorData = errorMsg?.errorData || '';
+  const reasonCode = errorMsg?.reasonCode || 0;
 
-    // Log and upload for Task API formatted errors
-    LoggerProxy.error(`${methodName} failed: ${errorMessage} (${errorType})`, {
-      module: moduleName,
-      method: methodName,
-      trackingId,
-    });
-    WebexRequest.getInstance().uploadLogs({
-      correlationId: trackingId,
-    });
+  // Log and upload for Task API formatted errors
+  LoggerProxy.error(`${methodName} failed: ${errorMessage} (${errorType})`, {
+    module: moduleName,
+    method: methodName,
+    trackingId,
+  });
+  WebexRequest.getInstance().uploadLogs({
+    correlationId: trackingId,
+  });
 
-    const reason = `${errorType}: ${errorMessage}${errorData ? ` (${errorData})` : ''}`;
-    const err: AugmentedError = new Error(reason);
-    err.data = {
-      message: errorMessage,
-      errorType,
-      errorData,
-      reasonCode,
-      trackingId,
-    };
-
-    return {
-      error: err,
-      reason: errorMessage,
-      trackingId,
-      errorMessage,
-      errorType,
-      errorData,
-      reasonCode,
-    };
-  }
-
-  // Fallback: use generic error handling
-  const {error: genericError, reason} = getErrorDetails(error, methodName, moduleName);
-  const fallbackType = (error && typeof error.name === 'string' && error.name) || 'Unknown Error';
-  const fallbackReasonCode =
-    error?.details?.msg?.reasonCode || error?.details?.data?.reasonCode || 0;
+  const reason = `${errorType}: ${errorMessage}${errorData ? ` (${errorData})` : ''}`;
+  const err: AugmentedError = new Error(reason);
+  err.data = {
+    message: errorMessage,
+    errorType,
+    errorData,
+    reasonCode,
+    trackingId,
+  };
 
   return {
-    error: genericError,
-    reason,
+    error: err,
     trackingId,
-    errorMessage: reason,
-    errorType: fallbackType,
-    errorData: '',
-    reasonCode: fallbackReasonCode,
+    errorMessage,
+    errorType,
+    errorData,
+    reasonCode,
   };
 };
 

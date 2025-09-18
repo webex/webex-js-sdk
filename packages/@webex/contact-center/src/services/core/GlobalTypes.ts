@@ -40,8 +40,6 @@ export type Failure = Msg<{
 export interface TaskError {
   /** Original error object for throwing */
   error: Error;
-  /** Human-readable error message */
-  reason: string;
   /** Unique tracking identifier for correlation */
   trackingId: string;
   /** Detailed error message from the API */

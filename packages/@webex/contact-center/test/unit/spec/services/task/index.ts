@@ -175,13 +175,23 @@ describe('Task', () => {
       const reason = legacyReason || (errorType ? `${errorType}: ${errorMessage}` : errorMessage);
       return {
         error: new Error(reason),
-        reason: errorMessage,
         trackingId,
         errorMessage,
         errorType,
         errorData,
         reasonCode: msg?.reasonCode || 0,
       } as any;
+    });
+
+    (global as any).makeFailure = (reason: string, trackingId = '1234', orgId = 'org1') => ({
+      type: 'failure_event',
+      orgId,
+      trackingId,
+      data: {
+        agentId: 'agent1',
+        reason,
+        reasonCode: 0,
+      },
     });
   });
 
@@ -438,14 +448,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in accept method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Accept Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Accept Failed')};
 
     jest.spyOn(webCallingService, 'answerCall').mockImplementation(() => {
       throw error;
@@ -502,14 +505,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in decline method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Decline Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Decline Failed')};
 
     jest.spyOn(webCallingService, 'declineCall').mockImplementation(() => {
       throw error;
@@ -570,14 +566,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in hold method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Hold Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Hold Failed')};
     contactMock.hold.mockImplementation(() => {
       throw error;
     });
@@ -630,14 +619,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in resume method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Resume Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Resume Failed')};
     contactMock.unHold.mockImplementation(() => {
       throw error;
     });
@@ -703,14 +685,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in consult method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Consult Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Consult Failed')};
     contactMock.consult.mockImplementation(() => {
       throw error;
     });
@@ -775,14 +750,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in endConsult method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'End Consult Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('End Consult Failed')};
     contactMock.consultEnd.mockImplementation(() => {
       throw error;
     });
@@ -957,14 +925,7 @@ describe('Task', () => {
     expect(contactMock.consult).toHaveBeenCalledWith({interactionId: taskId, data: consultPayload});
     expect(response).toEqual(expectedResponse);
 
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Consult Transfer Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Consult Transfer Failed')};
     contactMock.consultTransfer.mockImplementation(() => {
       throw error;
     });
@@ -1062,14 +1023,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in transfer method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Consult Transfer Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Consult Transfer Failed')};
     contactMock.blindTransfer.mockImplementation(() => {
       throw error;
     });
@@ -1134,14 +1088,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in end method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'End Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('End Failed')};
     contactMock.end.mockImplementation(() => {
       throw error;
     });
@@ -1193,14 +1140,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in wrapup method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Wrapup Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Wrapup Failed')};
     contactMock.wrapup.mockImplementation(() => {
       throw error;
     });
@@ -1284,14 +1224,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in pauseRecording method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Pause Recording Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Pause Recording Failed')};
     contactMock.pauseRecording.mockImplementation(() => {
       throw error;
     });
@@ -1372,14 +1305,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in resumeRecording method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Resume Recording Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Resume Recording Failed')};
     contactMock.resumeRecording.mockImplementation(() => {
       throw error;
     });
