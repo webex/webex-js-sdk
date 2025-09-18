@@ -33,7 +33,7 @@ describe('Task', () => {
   let mockMetricsManager;
   let taskDataMock;
   let webCallingService;
-  let getTaskErrorDetailsSpy;
+  let generateTaskErrorObjectSpy;
   let mockWebexRequest;
   let webex: WebexSDK;
   let loggerInfoSpy;
@@ -164,8 +164,8 @@ describe('Task', () => {
       return mockStream;
     });
 
-    getTaskErrorDetailsSpy = jest.spyOn(Utils, 'getTaskErrorDetails');
-    getTaskErrorDetailsSpy.mockImplementation((error: any, methodName: string) => {
+    generateTaskErrorObjectSpy = jest.spyOn(Utils, 'generateTaskErrorObject');
+    generateTaskErrorObjectSpy.mockImplementation((error: any, methodName: string) => {
       const trackingId = error?.details?.trackingId;
       const msg = error?.details?.msg;
       const legacyReason = error?.details?.data?.reason;
@@ -452,7 +452,7 @@ describe('Task', () => {
     });
 
     await expect(task.accept()).rejects.toThrow(new Error(error.details.data.reason));
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'accept', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'accept', TASK_FILE);
     const expectedTaskErrorFields = {
       trackingId: error.details.trackingId,
       errorMessage: error.details.data.reason,
@@ -515,7 +515,7 @@ describe('Task', () => {
       throw error;
     });
     await expect(task.decline()).rejects.toThrow(new Error(error.details.data.reason));
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'decline', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'decline', TASK_FILE);
     const expectedTaskErrorFieldsDecline = {
       trackingId: error.details.trackingId,
       errorMessage: error.details.data.reason,
@@ -583,7 +583,7 @@ describe('Task', () => {
     });
 
     await expect(task.hold()).rejects.toThrow(error.details.data.reason);
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'hold', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'hold', TASK_FILE);
     const expectedTaskErrorFieldsHold = {
       trackingId: error.details.trackingId,
       errorMessage: error.details.data.reason,
@@ -643,7 +643,7 @@ describe('Task', () => {
     });
 
     await expect(task.resume()).rejects.toThrow(error.details.data.reason);
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'resume', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'resume', TASK_FILE);
     const expectedTaskErrorFieldsResume = {
       trackingId: error.details.trackingId,
       errorMessage: error.details.data.reason,
@@ -721,7 +721,7 @@ describe('Task', () => {
     };
 
     await expect(task.consult(consultPayload)).rejects.toThrow(error.details.data.reason);
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'consult', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'consult', TASK_FILE);
     expect(loggerInfoSpy).toHaveBeenCalledWith(`Starting consult`, {
       module: TASK_FILE,
       method: 'consult',
@@ -793,7 +793,7 @@ describe('Task', () => {
     };
 
     await expect(task.endConsult(consultEndPayload)).rejects.toThrow(error.details.data.reason);
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'endConsult', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'endConsult', TASK_FILE);
     const expectedTaskErrorFieldsEndConsult = {
       trackingId: error.details.trackingId,
       errorMessage: error.details.data.reason,
@@ -977,7 +977,7 @@ describe('Task', () => {
     await expect(task.consultTransfer(consultTransferPayload)).rejects.toThrow(
       error.details.data.reason
     );
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'consultTransfer', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'consultTransfer', TASK_FILE);
     const expectedTaskErrorFieldsConsultTransfer = {
       trackingId: error.details.trackingId,
       errorMessage: error.details.data.reason,
@@ -1080,7 +1080,7 @@ describe('Task', () => {
     };
 
     await expect(task.transfer(blindTransferPayload)).rejects.toThrow(error.details.data.reason);
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'transfer', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'transfer', TASK_FILE);
     const expectedTaskErrorFieldsTransfer = {
       trackingId: error.details.trackingId,
       errorMessage: error.details.data.reason,
@@ -1147,7 +1147,7 @@ describe('Task', () => {
     });
 
     await expect(task.end()).rejects.toThrow(error.details.data.reason);
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'end', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'end', TASK_FILE);
     const expectedTaskErrorFieldsEnd = {
       trackingId: error.details.trackingId,
       errorMessage: error.details.data.reason,
@@ -1211,7 +1211,7 @@ describe('Task', () => {
     };
 
     await expect(task.wrapup(wrapupPayload)).rejects.toThrow(error.details.data.reason);
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'wrapup', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'wrapup', TASK_FILE);
     const expectedTaskErrorFieldsWrapup = {
       trackingId: error.details.trackingId,
       errorMessage: error.details.data.reason,
@@ -1297,7 +1297,7 @@ describe('Task', () => {
     });
 
     await expect(task.pauseRecording()).rejects.toThrow(error.details.data.reason);
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'pauseRecording', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'pauseRecording', TASK_FILE);
     const expectedTaskErrorFieldsPause = {
       trackingId: error.details.trackingId,
       errorMessage: error.details.data.reason,
@@ -1389,7 +1389,7 @@ describe('Task', () => {
     };
 
     await expect(task.resumeRecording(resumePayload)).rejects.toThrow(error.details.data.reason);
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'resumeRecording', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'resumeRecording', TASK_FILE);
     const expectedTaskErrorFieldsResumeRec = {
       trackingId: error.details.trackingId,
       errorMessage: error.details.data.reason,
@@ -1443,7 +1443,7 @@ describe('Task', () => {
       throw error;
     });
     await expect(task.toggleMute()).rejects.toThrow(new Error(error.details.data.reason));
-    expect(getTaskErrorDetailsSpy).toHaveBeenCalledWith(error, 'toggleMute', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'toggleMute', TASK_FILE);
     expect(loggerInfoSpy).toHaveBeenCalledWith(`Toggling mute state`, {
       module: TASK_FILE,
       method: 'toggleMute',
