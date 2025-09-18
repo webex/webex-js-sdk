@@ -219,71 +219,30 @@ const AIAssistant = WebexPlugin.extend({
         const responseType = get(data, 'responseType');
 
         if (data.finished) {
-          // For finished messages, decrypt and emit the final complete message
           timer.cancel();
-
-          try {
-            if (!errorCode) {
-              await this._decryptContent(resultData);
-            }
-
-            // Emit the final message with entire response object plus legacy properties
-            this.trigger(
-              streamEventName,
-              merge({}, data.response, {
-                responseType,
-                requestId,
-                finished: true,
-                errorMessage,
-                errorCode,
-              })
-            );
-
-            this.stopListening(this, eventName);
-          } catch (decryptError) {
-            this.trigger(
-              streamEventName,
-              merge({}, data.response, {
-                responseType,
-                requestId,
-                finished: true,
-                errorMessage: errorMessage || decryptError.message,
-                errorCode,
-              })
-            );
-          }
-        } else {
-          // For non-finished messages, concatenate and emit the accumulated message
-          try {
-            if (!errorCode) {
-              await this._decryptContent(resultData);
-            }
-
-            // Emit the concatenated message so far with entire response object plus legacy properties
-            this.trigger(
-              streamEventName,
-              merge({}, data.response, {
-                responseType,
-                requestId,
-                finished: false,
-                errorMessage,
-                errorCode,
-              })
-            );
-          } catch (decryptError) {
-            // If decryption fails, we still want to continue listening for more messages
-            this.trigger(
-              streamEventName,
-              merge({}, data.response, {
-                responseType,
-                requestId,
-                finished: false,
-                errorMessage: errorMessage || decryptError.message,
-                errorCode,
-              })
-            );
-          }
+          this.stopListening(this, eventName);
         }
+
+        let decryptErrorMessage;
+
+        try {
+          if (!errorCode) {
+            await this._decryptContent(resultData);
+          }
+        } catch (decryptError) {
+          decryptErrorMessage = decryptError.message;
+        }
+
+        this.trigger(
+          streamEventName,
+          merge({}, data.response, {
+            responseType,
+            requestId,
+            finished: data.finished,
+            errorMessage: errorMessage || decryptErrorMessage,
+            errorCode,
+          })
+        );
       });
 
       this.webex
