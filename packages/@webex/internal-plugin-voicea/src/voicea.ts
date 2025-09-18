@@ -248,13 +248,20 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   private sendAnnouncement = (): void => {
     this.announceStatus = ANNOUNCE_STATUS.JOINING;
     this.listenToEvents();
-    // @ts-ignore
-    this.webex.internal.llm.socket.send({
+    const socket =
+      // @ts-ignore
+      this.webex.internal.llm.getSocket('llm-practice-session') || this.webex.internal.llm.socket;
+    const binding =
+      // @ts-ignore
+      this.webex.internal.llm.getBinding('llm-practice-session') ||
+      // @ts-ignore
+      this.webex.internal.llm.getBinding();
+    socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
         // @ts-ignore
-        route: this.webex.internal.llm.getBinding(),
+        route: binding,
       },
       headers: {},
       data: {
@@ -298,13 +305,20 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   public requestLanguage = (languageCode: string): void => {
     // @ts-ignore
     if (!this.webex.internal.llm.isConnected()) return;
-    // @ts-ignore
-    this.webex.internal.llm.socket.send({
+    const socket =
+      // @ts-ignore
+      this.webex.internal.llm.getSocket('llm-practice-session') || this.webex.internal.llm.socket;
+    const binding =
+      // @ts-ignore
+      this.webex.internal.llm.getBinding('llm-practice-session') ||
+      // @ts-ignore
+      this.webex.internal.llm.getBinding();
+    socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
         // @ts-ignore
-        route: this.webex.internal.llm.getBinding(),
+        route: binding,
       },
       headers: {
         to: this.vmcDeviceId,

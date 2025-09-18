@@ -116,6 +116,12 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
       );
       // @ts-ignore
       this.webex.internal.llm.on('event:relay.event', this.eventDataProcessor, this);
+      // @ts-ignore
+      this.webex.internal.llm.on(
+        'event:relay.event:llm-practice-session',
+        this.eventDataProcessor,
+        this
+      );
       this.hasSubscribedToEvents = true;
     }
   }
@@ -131,7 +137,11 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
       // @ts-ignore
       this.webex.internal.llm.off('event:relay.event', this.eventDataProcessor);
-
+      // @ts-ignore
+      this.webex.internal.llm.off(
+        'event:relay.event:llm-practice-session',
+        this.eventDataProcessor
+      );
       this.hasSubscribedToEvents = false;
     }
   }
@@ -303,12 +313,20 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {void}
    */
   private publishEncrypted(encryptedContent: string, strokeData: StrokeData) {
+    const socket =
+      // @ts-ignore
+      this.webex.internal.llm.getSocket('llm-practice-session') || this.webex.internal.llm.socket;
+    const binding =
+      // @ts-ignore
+      this.webex.internal.llm.getBinding('llm-practice-session') ||
+      // @ts-ignore
+      this.webex.internal.llm.getBinding();
     const data = {
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
         // @ts-ignore
-        route: this.webex.internal.llm.getBinding(),
+        route: binding,
       },
       headers: {
         to: strokeData.toUserId,
@@ -336,7 +354,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
     };
 
     // @ts-ignore
-    this.webex.internal.llm.socket.send(data);
+    socket.send(data);
     this.seqNum += 1;
   }
 }
