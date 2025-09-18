@@ -263,10 +263,7 @@ describe('locus-info/parser', () => {
 
       parser.processDeltaEvent();
 
-      assert.deepEqual(parser.workingCopy, {
-        ...NEW_LOCI,
-        sequence: {entries: []}
-      });
+      assert.equal(parser.workingCopy, null);
     });
 
     it('does not replace current loci when the locus URL changes but incoming sequence is not later', () => {

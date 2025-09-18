@@ -101,11 +101,17 @@ export default class LocusInfo extends EventsScope {
     let url;
     let meetingDestroyed = false;
 
-    if (this.locusParser.workingCopy.syncUrl) {
+    if (this.locusParser.workingCopy?.syncUrl) {
       url = this.locusParser.workingCopy.syncUrl;
       isDelta = true;
     } else {
-      url = meeting.locusUrl;
+      if (isLocusUrlChanged) {
+        // If the locus url changed, we should always do a full sync,
+        // use the main session locus url to get the full locus(full participants list in the response)
+        url = this.mainSessionLocusCache.url;
+      } else {
+        url = meeting.locusUrl;
+      }
       isDelta = false;
     }
 
@@ -171,14 +177,6 @@ export default class LocusInfo extends EventsScope {
           }
 
           return;
-        }
-
-        // When the locus url changed, if the participants from locus sync response are empty, add the participants from workingCopy to the new locus,
-        // otherwise the participants info will be lost after the breakout session ends.
-        if (isLocusUrlChanged) {
-          if (!res.body.participants?.length) {
-            res.body.participants = this.locusParser.workingCopy.participants;
-          }
         }
 
         if (isDelta) {
