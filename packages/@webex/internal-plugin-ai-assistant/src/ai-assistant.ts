@@ -223,7 +223,9 @@ const AIAssistant = WebexPlugin.extend({
           timer.cancel();
 
           try {
-            await this._decryptContent(resultData);
+            if (!errorCode) {
+              await this._decryptContent(resultData);
+            }
 
             // Emit the final message with entire response object plus legacy properties
             this.trigger(
@@ -253,7 +255,9 @@ const AIAssistant = WebexPlugin.extend({
         } else {
           // For non-finished messages, concatenate and emit the accumulated message
           try {
-            await this._decryptContent(resultData);
+            if (!errorCode) {
+              await this._decryptContent(resultData);
+            }
 
             // Emit the concatenated message so far with entire response object plus legacy properties
             this.trigger(

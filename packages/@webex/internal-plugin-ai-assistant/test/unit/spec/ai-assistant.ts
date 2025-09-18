@@ -428,6 +428,54 @@ describe('plugin-ai-assistant', () => {
         });
       });
 
+      it('includes error information when server returns an error - unfinished', async () => {
+        const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
+
+        await webex.internal.aiAssistant._request({
+          resource: 'test-resource',
+          params: {param1: 'value1'},
+        });
+
+        // Use createData for error case with additional response data
+        webex.internal.aiAssistant._handleEvent(
+          createData(
+            'test-request-id',
+            false,
+            undefined,
+            undefined,
+            undefined,
+            'Error message',
+            'ERROR_CODE',
+            {
+              sessionId: 'test-session-id',
+              messageId: 'test-message-id',
+              content: {
+                type: 'error',
+              },
+            }
+          )
+        );
+
+        await waitForAsync();
+
+        expect(webex.logger.error.notCalled).to.be.true; // No error should be logged internally
+
+        expect(triggerSpy.calledTwice).to.be.true;
+        expect(triggerSpy.getCall(1).args[0]).to.equal('aiassistant:stream:test-request-id');
+        const triggeredData = triggerSpy.getCall(1).args[1];
+
+        expect(triggeredData).to.deep.equal({
+          sessionId: 'test-session-id',
+          messageId: 'test-message-id',
+          content: {type: 'error'},
+          errorMessage: 'Error message',
+          errorCode: 'ERROR_CODE',
+          responseType: undefined,
+          requestId: 'test-request-id',
+          finished: false,
+        });
+      });
+
       it('includes error information when server returns an error', async () => {
         const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
 
@@ -457,6 +505,8 @@ describe('plugin-ai-assistant', () => {
         );
 
         await waitForAsync();
+
+        expect(webex.logger.error.notCalled).to.be.true; // No error should be logged internally
 
         expect(triggerSpy.calledTwice).to.be.true;
         expect(triggerSpy.getCall(1).args[0]).to.equal('aiassistant:stream:test-request-id');
