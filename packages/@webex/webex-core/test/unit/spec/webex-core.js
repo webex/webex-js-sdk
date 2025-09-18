@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+import {EventEmitter} from 'events';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import WebexCore, {
@@ -13,6 +14,7 @@ import WebexCore, {
 } from '@webex/webex-core';
 import {set} from 'lodash';
 import {version} from '@webex/webex-core/package';
+import {proxyEvents} from '@webex/common/src/events';
 // TODO:  fix circular dependency core->metrics->core https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-515520
 require('@webex/internal-plugin-metrics');
 
@@ -261,6 +263,63 @@ describe('Webex', () => {
       webex.setConfig(config);
 
       assert.isTrue(webex.config.credentials.prop);
+    });
+  });
+
+  describe('#upload()', () => {
+    it('rejects when no object is specified', () => {
+      return webex.upload().catch((err) => {
+        assert.equal(err.message, '`options.file` is required');
+      });
+    });
+
+    it('rejects when no file is specified', () => {
+      return webex.upload({}).catch((err) => {
+        assert.equal(err.message, '`options.file` is required');
+      });
+    });
+
+    it('passes through progress events to caller', () => {
+      const uploadEventEmitter = new EventEmitter();
+
+      webex._uploadPhaseInitialize = sinon.stub().callsFake(() => {
+        return Promise.resolve();
+      });
+      webex._uploadPhaseUpload = sinon.stub().callsFake(() => {
+        const promise = Promise.resolve();
+
+        proxyEvents(uploadEventEmitter, promise);
+
+        return promise;
+      });
+      webex._uploadPhaseFinalize = sinon.stub().callsFake(() => {
+        return Promise.resolve({
+          body: {
+            url: 'https://example.com/download',
+          },
+          headers: {
+            'Content-Type': 'image/png',
+          },
+        });
+      });
+
+      const uploader = webex.upload({file: {}});
+
+      assert.isFunction(uploader.on);
+
+      return uploader.then((res) => {
+        const progressStub = sinon.stub();
+        uploader.on('progress', progressStub);
+
+        uploadEventEmitter.emit('progress', {percent: 25});
+
+        assert.isTrue(progressStub.calledOnce);
+        assert.isTrue(webex._uploadPhaseInitialize.calledOnce);
+        assert.isTrue(webex._uploadPhaseUpload.calledOnce);
+        assert.isTrue(webex._uploadPhaseFinalize.calledOnce);
+        assert.equal(res.url, 'https://example.com/download');
+        assert.equal(res['Content-Type'], 'image/png');
+      });
     });
   });
 
