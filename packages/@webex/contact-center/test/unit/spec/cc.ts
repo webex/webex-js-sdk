@@ -170,7 +170,7 @@ describe('webex.cc', () => {
   it('should initialize services and logger proxy on ready event', () => {
     webex.once('ready', () => {
       expect(Services.getInstance).toHaveBeenCalled();
-      expect(LoggerProxy.initialize).toHaveBeenCalledWith(webex.logger, 'main');
+      expect(LoggerProxy.initialize).toHaveBeenCalledWith(webex.logger);
     });
 
     webex.emit('ready');

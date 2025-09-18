@@ -8,10 +8,6 @@ import {LOG_PREFIX} from './constants';
  */
 export default class LoggerProxy {
   /**
-   * Optional session instance label for multi-session logging context
-   */
-  private static sessionInstance: string;
-  /**
    * The static logger instance to be used by the proxy.
    * @ignore
    */
@@ -23,9 +19,8 @@ export default class LoggerProxy {
    * @param {Logger} logger - A logger object implementing standard logging methods.
    * @ignore
    */
-  public static initialize(logger: Logger, sessionInstance): void {
+  public static initialize(logger: Logger): void {
     LoggerProxy.logger = logger;
-    LoggerProxy.sessionInstance = sessionInstance;
   }
 
   /**
@@ -94,15 +89,6 @@ export default class LoggerProxy {
   }
 
   /**
-   * Returns the session instance label.
-   * @returns {string} The session instance label.
-   * @public
-   */
-  public static getSessionInstance(): string {
-    return LoggerProxy.sessionInstance;
-  }
-
-  /**
    * Formats a log message with timestamp, log level, and context details.
    *
    * @private
@@ -118,11 +104,7 @@ export default class LoggerProxy {
     const methodName = context.method || 'unknown';
     const interactionId = context.interactionId ? ` - interactionId:${context.interactionId}` : '';
     const trackingId = context.trackingId ? ` - trackingId:${context.trackingId}` : '';
-    let sessionLabel = '';
-    if (LoggerProxy.sessionInstance) {
-      sessionLabel = ` - session:${LoggerProxy.sessionInstance}`;
-    }
 
-    return `${timestamp} ${LOG_PREFIX} - [${level}]: module:${moduleName} - method:${methodName}${interactionId}${trackingId}${sessionLabel} - ${message}`;
+    return `${timestamp} ${LOG_PREFIX} - [${level}]: module:${moduleName} - method:${methodName}${interactionId}${trackingId} - ${message}`;
   }
 }

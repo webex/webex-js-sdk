@@ -3,7 +3,6 @@ import MetricsManager from '../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
 import {WebexSDK} from '../../../../src/types';
 import {EventPayload} from '@webex/internal-plugin-metrics/src/metrics.types';
-import LoggerProxy from '../../../../src/logger-proxy';
 
 describe('MetricsManagerImplementation', () => {
   let webex: WebexSDK;
@@ -65,25 +64,7 @@ describe('MetricsManagerImplementation', () => {
       });
     });
 
-    it('should include sessionInstance in payload when available in browser', () => {
-      // Simulate browser env for this test
-      (global as any).window = {} as any;
-      (global as any).document = {hidden: false} as any;
     
-      jest.spyOn(LoggerProxy, 'getSessionInstance').mockReturnValue('test');
-        const eventName = METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS;
-        const data: EventPayload = {foo: 'bar'};
-    
-        metricsManager.trackEvent(eventName, data, ['operational']);
-    
-        expect(webex.internal.newMetrics.submitOperationalEvent).toHaveBeenCalledWith({
-          name:
-            PRODUCT_NAME.toUpperCase() +
-            '_' +
-            METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS.replace(/ /g, '_').toUpperCase(),
-          payload: {foo: 'bar', sessionInstance: 'test', tabHidden: false},
-        });
-    });
 
     it('should not submit a behavioral, operational and business event if array is invalid', () => {
       const eventName = METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS;

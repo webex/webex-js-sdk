@@ -6,8 +6,8 @@ import {
 } from '@webex/internal-plugin-metrics/src/metrics.types';
 
 import {WebexSDK} from '../types';
-import {BehavioralEventTaxonomy, getEventTaxonomy} from './behavioral-events';
 import LoggerProxy from '../logger-proxy';
+import {BehavioralEventTaxonomy, getEventTaxonomy} from './behavioral-events';
 import {METRIC_EVENT_NAMES} from './constants';
 import {Failure} from '../services/core/GlobalTypes';
 import {PRODUCT_NAME} from '../constants';
@@ -253,11 +253,6 @@ export default class MetricsManager {
 
     const payloadWithCommonMetadata = {...payload};
     payloadWithCommonMetadata.tabHidden = document.hidden;
-    // Attach session instance to the payload
-    const sessionInstance = LoggerProxy.getSessionInstance();
-    if (sessionInstance) {
-      payloadWithCommonMetadata.sessionInstance = sessionInstance;
-    }
 
     return payloadWithCommonMetadata;
   }
