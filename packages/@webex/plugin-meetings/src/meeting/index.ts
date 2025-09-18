@@ -6025,9 +6025,10 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
+   * @param {boolean} forceClear to clear the existing connection
    * @returns {Promise}
    */
-  async updateLLMConnection() {
+  async updateLLMConnection(forceClear = false) {
     // @ts-ignore - Fix type
     const {url, info: {datachannelUrl} = {}} = this.locusInfo;
 
@@ -6046,7 +6047,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
       // @ts-ignore - Fix type
       await this.webex.internal.llm.disconnectLLM(
-        isJoined
+        isJoined || forceClear
           ? {
               code: 3050,
               reason: 'done (permanent)',
@@ -6057,7 +6058,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
     }
 
-    if (!isJoined) {
+    if (!isJoined || forceClear) {
       return undefined;
     }
 
