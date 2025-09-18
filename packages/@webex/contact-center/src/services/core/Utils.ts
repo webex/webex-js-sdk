@@ -3,6 +3,12 @@ import {LoginOption, WebexRequestPayload} from '../../types';
 import {Failure} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
+import {
+  TaskData,
+  ConsultTransferPayLoad,
+  CONSULT_TRANSFER_DESTINATION_TYPE,
+  Interaction,
+} from '../task/types';
 
 /**
  * Extracts common error details from a Webex request payload.
@@ -17,6 +23,28 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
     trackingId: errObj?.headers?.trackingid || errObj?.headers?.TrackingID,
     msg: errObj?.body,
   };
+};
+
+/**
+ * Checks if the destination type represents an entry point variant (EPDN or ENTRYPOINT).
+ */
+const isEntryPointOrEpdn = (destAgentType?: string): boolean => {
+  return destAgentType === 'EPDN' || destAgentType === 'ENTRYPOINT';
+};
+
+/**
+ * Determines if the task involves dialing a number based on the destination type.
+ * Returns 'DIAL_NUMBER' for dial-related destinations, empty string otherwise.
+ */
+const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => {
+  const destAgentType = taskData?.destinationType;
+
+  // Check if destination requires dialing: direct dial number or entry point variants
+  const isDialNumber = destAgentType === 'DN';
+  const isEntryPointVariant = isEntryPointOrEpdn(destAgentType);
+
+  // If the destination type is a dial number or an entry point variant, return 'DIAL_NUMBER'
+  return isDialNumber || isEntryPointVariant ? 'DIAL_NUMBER' : '';
 };
 
 export const isValidDialNumber = (input: string): boolean => {
@@ -129,4 +157,74 @@ export const createErrDetailsObject = (errObj: WebexRequestPayload) => {
   const details = getCommonErrorDetails(errObj);
 
   return new Err.Details('Service.reqs.generic.failure', details);
+};
+
+/**
+ * Derives the consult transfer destination type based on the provided task data.
+ *
+ * Logic parity with desktop behavior:
+ * - If agent action is dialing a number (DN/EPDN/ENTRYPOINT):
+ *   - ENTRYPOINT/EPDN map to ENTRYPOINT
+ *   - DN maps to DIALNUMBER
+ * - Otherwise defaults to AGENT
+ *
+ * @param taskData - The task data used to infer the agent action and destination type
+ * @returns The normalized destination type to be used for consult transfer
+ */
+/**
+ * Checks if a participant type represents a non-customer participant.
+ * Non-customer participants include agents, dial numbers, entry point dial numbers,
+ * and entry points.
+ */
+const isNonCustomerParticipant = (participantType: string): boolean => {
+  return (
+    participantType === 'Agent' ||
+    participantType === 'DN' ||
+    participantType === 'EpDn' ||
+    participantType === 'entryPoint'
+  );
+};
+
+/**
+ * Gets the destination agent ID from participants data by finding the first
+ * non-customer participant that is not the current agent and is not in wrap-up state.
+ *
+ * @param participants - The participants data from the interaction
+ * @param agentId - The current agent's ID to exclude from the search
+ * @returns The destination agent ID, or empty string if none found
+ */
+export const getDestinationAgentId = (
+  participants: Interaction['participants'],
+  agentId: string
+): string => {
+  let id = '';
+
+  if (participants) {
+    Object.keys(participants).forEach((participant) => {
+      const participantData = participants[participant];
+      if (
+        isNonCustomerParticipant(participantData.type) &&
+        participantData.id !== agentId &&
+        !participantData.isWrapUp
+      ) {
+        id = participantData.id;
+      }
+    });
+  }
+
+  return id;
+};
+
+export const deriveConsultTransferDestinationType = (
+  taskData?: TaskData
+): ConsultTransferPayLoad['destinationType'] => {
+  const agentActionType = getAgentActionTypeFromTask(taskData);
+
+  if (agentActionType === 'DIAL_NUMBER') {
+    return isEntryPointOrEpdn(taskData?.destinationType)
+      ? CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT
+      : CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
+  }
+
+  return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
 };
