@@ -192,6 +192,10 @@ export interface LogContext {
   method?: string;
   interactionId?: string;
   trackingId?: string;
+  /** Additional structured data to include in logs */
+  data?: Record<string, any>;
+  /** Error object to include in logs */
+  error?: Error | unknown;
 }
 
 /**

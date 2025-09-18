@@ -11,6 +11,8 @@ import PageCache, {
   BaseSearchParams,
   PAGINATION_DEFAULTS,
 } from './utils/PageCache';
+import MetricsManager from './metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from './metrics/constants';
 
 /**
  * Interface for Queue Skill Requirement based on QueueSkillRequirementDTO from spec
@@ -235,6 +237,7 @@ export interface ContactServiceQueueSearchParams extends BaseSearchParams {
 export class QueueAPI {
   private webexRequest: WebexRequest;
   private webex: WebexSDK;
+  private metricsManager: MetricsManager;
 
   // Page cache using the common utility
   private pageCache: PageCache<ContactServiceQueue>;
@@ -248,6 +251,7 @@ export class QueueAPI {
     this.webex = webex;
     this.webexRequest = WebexRequest.getInstance({webex});
     this.pageCache = new PageCache<ContactServiceQueue>('QueueAPI');
+    this.metricsManager = MetricsManager.getInstance({webex});
   }
 
   /**
@@ -277,6 +281,7 @@ export class QueueAPI {
   public async getQueues(
     params: ContactServiceQueueSearchParams = {}
   ): Promise<ContactServiceQueuesResponse> {
+    const startTime = Date.now();
     const {
       page = PAGINATION_DEFAULTS.PAGE,
       pageSize = PAGINATION_DEFAULTS.PAGE_SIZE,
@@ -291,10 +296,17 @@ export class QueueAPI {
     } = params;
 
     const orgId = this.webex.credentials.getOrgId();
+    const isSearchRequest = !!(search || filter || attributes || sortBy);
 
     LoggerProxy.info('Fetching contact service queues', {
       module: 'QueueAPI',
       method: 'getQueues',
+      data: {
+        orgId,
+        page,
+        pageSize,
+        isSearchRequest,
+      },
     });
 
     // Check if we can use cache for simple pagination (no search/filter/attributes/sort)
@@ -303,9 +315,18 @@ export class QueueAPI {
       const cachedPage = this.pageCache.getCachedPage(cacheKey);
 
       if (cachedPage) {
+        const duration = Date.now() - startTime;
+
         LoggerProxy.log(`Returning page ${page} from cache`, {
           module: 'QueueAPI',
           method: 'getQueues',
+          data: {
+            cacheHit: true,
+            duration,
+            recordCount: cachedPage.data.length,
+            page,
+            pageSize,
+          },
         });
 
         return {
@@ -320,6 +341,9 @@ export class QueueAPI {
         };
       }
     }
+
+    // Start timing only for actual API calls (not cache hits)
+    this.metricsManager.timeEvent(METRIC_EVENT_NAMES.QUEUE_FETCH_SUCCESS);
 
     try {
       // Build query parameters according to spec
@@ -342,40 +366,120 @@ export class QueueAPI {
 
       const resource = `/organization/${orgId}/v2/contact-service-queue?${queryParams.toString()}`;
 
+      LoggerProxy.log('Making API request to fetch contact service queues', {
+        module: 'QueueAPI',
+        method: 'getQueues',
+        data: {
+          resource,
+          service: 'wcc-api-gateway',
+        },
+      });
+
       const response = await this.webexRequest.request({
         service: 'wcc-api-gateway',
         resource,
         method: HTTP_METHODS.GET,
       });
 
-      if (response.statusCode !== 200) {
-        throw new Error(
-          `API call failed with status ${response.statusCode}: ${
-            response.body?.error?.message || response.body?.message || 'Unknown error'
-          }`
-        );
-      }
+      const duration = Date.now() - startTime;
 
-      LoggerProxy.log(
-        `Successfully retrieved ${response.body?.data?.length || 0} contact service queues`,
-        {
+      if (response.statusCode !== 200) {
+        const errorMessage =
+          response.body?.error?.message || response.body?.message || 'Unknown error';
+        const errorData = {
+          orgId,
+          statusCode: response.statusCode,
+          errorMessage,
+          isSearchRequest,
+          page,
+          pageSize,
+        };
+
+        LoggerProxy.error(`API call failed with status ${response.statusCode}`, {
           module: 'QueueAPI',
           method: 'getQueues',
-        }
-      );
+          data: errorData,
+        });
+
+        // Track metrics for failures
+        this.metricsManager.trackEvent(METRIC_EVENT_NAMES.QUEUE_FETCH_FAILED, errorData, [
+          'behavioral',
+        ]);
+
+        throw new Error(`API call failed with status ${response.statusCode}: ${errorMessage}`);
+      }
+
+      const recordCount = response.body?.data?.length || 0;
+      const totalRecords = response.body?.meta?.totalRecords;
+
+      LoggerProxy.log(`Successfully retrieved ${recordCount} contact service queues`, {
+        module: 'QueueAPI',
+        method: 'getQueues',
+        data: {
+          statusCode: response.statusCode,
+          duration,
+          recordCount,
+          totalRecords,
+          isSearchRequest,
+          page,
+          pageSize,
+        },
+      });
+
+      // Only track metrics for search requests or first page loads to reduce metric volume
+      if (isSearchRequest || page === 0) {
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.QUEUE_FETCH_SUCCESS,
+          {
+            orgId,
+            statusCode: response.statusCode,
+            recordCount,
+            totalRecords,
+            isSearchRequest,
+            isFirstPage: page === 0,
+          },
+          ['behavioral', 'operational']
+        );
+      }
 
       // Cache the page data for simple pagination (no search/filter/attributes/sort)
       if (this.pageCache.canUseCache({search, filter, attributes, sortBy}) && response.body?.data) {
         const cacheKey = this.pageCache.buildCacheKey(orgId, page, pageSize);
         this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
+
+        LoggerProxy.log('Cached contact service queues for future requests', {
+          module: 'QueueAPI',
+          method: 'getQueues',
+          data: {
+            cacheKey,
+            recordCount,
+          },
+        });
       }
 
       return response.body;
     } catch (error) {
-      LoggerProxy.error(`Failed to fetch contact service queues: ${error}`, {
+      const errorData = {
+        orgId,
+        error: error instanceof Error ? error.message : String(error),
+        isSearchRequest,
+        page,
+        pageSize,
+      };
+
+      LoggerProxy.error('Failed to fetch contact service queues', {
         module: 'QueueAPI',
         method: 'getQueues',
+        data: errorData,
+        error,
       });
+
+      // Track all failures for troubleshooting
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.QUEUE_FETCH_FAILED, errorData, [
+        'behavioral',
+        'operational',
+      ]);
+
       throw error;
     }
   }

@@ -302,8 +302,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    *   pageSize: 50
    * });
    *
-   * // Get specific queue by ID
-   * const queue = await cc.queue.getQueueById('queue-id-123');
+   * // Filter queues by specific criteria
+   * const filteredQueues = await cc.queue.getQueues({
+   *   filter: 'id=="queue-id-123"'
+   * });
    * ```
    */
   public queue: QueueAPI;

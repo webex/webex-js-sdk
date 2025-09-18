@@ -11,6 +11,8 @@ import PageCache, {
   BaseSearchParams,
   PAGINATION_DEFAULTS,
 } from './utils/PageCache';
+import MetricsManager from './metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from './metrics/constants';
 
 /**
  * Interface for EntryPoint item
@@ -85,6 +87,7 @@ export type EntryPointSearchParams = BaseSearchParams;
 export class EntryPointAPI {
   private webexRequest: WebexRequest;
   private webex: WebexSDK;
+  private metricsManager: MetricsManager;
 
   // Page cache using the common utility
   private pageCache: PageCache<EntryPoint>;
@@ -98,6 +101,7 @@ export class EntryPointAPI {
     this.webex = webex;
     this.webexRequest = WebexRequest.getInstance({webex});
     this.pageCache = new PageCache<EntryPoint>('EntryPointAPI');
+    this.metricsManager = MetricsManager.getInstance({webex});
   }
 
   /**
@@ -121,6 +125,7 @@ export class EntryPointAPI {
   public async getEntryPoints(
     params: EntryPointSearchParams = {}
   ): Promise<EntryPointListResponse> {
+    const startTime = Date.now();
     const {
       page = PAGINATION_DEFAULTS.PAGE,
       pageSize = PAGINATION_DEFAULTS.PAGE_SIZE,
@@ -132,11 +137,15 @@ export class EntryPointAPI {
     } = params;
 
     const orgId = this.webex.credentials.getOrgId();
+    const isSearchRequest = !!(search || filter || attributes || sortBy);
 
-    LoggerProxy.info('Fetching entry points', {
-      module: 'EntryPointAPI',
-      method: 'getEntryPoints',
-    });
+    LoggerProxy.info(
+      `Fetching entry points - orgId: ${orgId}, page: ${page}, pageSize: ${pageSize}, isSearchRequest: ${isSearchRequest}`,
+      {
+        module: 'EntryPointAPI',
+        method: 'getEntryPoints',
+      }
+    );
 
     // Check if we can use cache for simple pagination (no search/filter/attributes/sort)
     if (this.pageCache.canUseCache({search, filter, attributes, sortBy})) {
@@ -144,10 +153,15 @@ export class EntryPointAPI {
       const cachedPage = this.pageCache.getCachedPage(cacheKey);
 
       if (cachedPage) {
-        LoggerProxy.log(`Returning page ${page} from cache`, {
-          module: 'EntryPointAPI',
-          method: 'getEntryPoints',
-        });
+        const duration = Date.now() - startTime;
+
+        LoggerProxy.log(
+          `Returning page ${page} from cache - cacheHit: true, duration: ${duration}ms, recordCount: ${cachedPage.data.length}, pageSize: ${pageSize}`,
+          {
+            module: 'EntryPointAPI',
+            method: 'getEntryPoints',
+          }
+        );
 
         return {
           data: cachedPage.data,
@@ -160,6 +174,9 @@ export class EntryPointAPI {
         };
       }
     }
+
+    // Start timing only for actual API calls (not cache hits)
+    this.metricsManager.timeEvent(METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS);
 
     try {
       // Build query parameters
@@ -176,37 +193,115 @@ export class EntryPointAPI {
 
       const resource = `/organization/${orgId}/v2/entry-point?${queryParams.toString()}`;
 
+      LoggerProxy.log(
+        `Making API request to fetch entry points - resource: ${resource}, service: wcc-api-gateway`,
+        {
+          module: 'EntryPointAPI',
+          method: 'getEntryPoints',
+        }
+      );
+
       const response = await this.webexRequest.request({
         service: 'wcc-api-gateway',
         resource,
         method: HTTP_METHODS.GET,
       });
 
+      const duration = Date.now() - startTime;
+
       if (response.statusCode !== 200) {
-        throw new Error(
-          `API call failed with status ${response.statusCode}: ${
-            response.body?.error?.message || response.body?.message || 'Unknown error'
-          }`
-        );
+        const errorMessage =
+          response.body?.error?.message || response.body?.message || 'Unknown error';
+        const errorData = {
+          orgId,
+          statusCode: response.statusCode,
+          errorMessage,
+          isSearchRequest,
+          page,
+          pageSize,
+        };
+
+        LoggerProxy.error(`API call failed with status ${response.statusCode}`, {
+          module: 'EntryPointAPI',
+          method: 'getEntryPoints',
+          data: errorData,
+        });
+
+        // Only track metrics for failures and search requests to reduce noise
+        this.metricsManager.trackEvent(METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_FAILED, errorData, [
+          'behavioral',
+        ]);
+
+        throw new Error(`API call failed with status ${response.statusCode}: ${errorMessage}`);
       }
 
-      LoggerProxy.log(`Successfully retrieved ${response.body?.data?.length || 0} entry points`, {
+      const recordCount = response.body?.data?.length || 0;
+      const totalRecords = response.body?.meta?.totalRecords;
+
+      LoggerProxy.log(`Successfully retrieved ${recordCount} entry points`, {
         module: 'EntryPointAPI',
         method: 'getEntryPoints',
+        data: {
+          statusCode: response.statusCode,
+          duration,
+          recordCount,
+          totalRecords,
+          isSearchRequest,
+          page,
+          pageSize,
+        },
       });
+
+      // Only track metrics for search requests or first page loads to reduce metric volume
+      if (isSearchRequest || page === 0) {
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS,
+          {
+            orgId,
+            statusCode: response.statusCode,
+            recordCount,
+            totalRecords,
+            isSearchRequest,
+            isFirstPage: page === 0,
+          },
+          ['behavioral']
+        );
+      }
 
       // Cache the page data for simple pagination (no search/filter/attributes/sort)
       if (this.pageCache.canUseCache({search, filter, attributes, sortBy}) && response.body?.data) {
         const cacheKey = this.pageCache.buildCacheKey(orgId, page, pageSize);
         this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
+
+        LoggerProxy.log('Cached entry points data for future requests', {
+          module: 'EntryPointAPI',
+          method: 'getEntryPoints',
+          data: {cacheKey, recordCount},
+        });
       }
 
       return response.body;
     } catch (error) {
-      LoggerProxy.error(`Failed to fetch entry points: ${error}`, {
+      const errorData = {
+        orgId,
+        error: error instanceof Error ? error.message : String(error),
+        isSearchRequest,
+        page,
+        pageSize,
+      };
+
+      LoggerProxy.error(`Failed to fetch entry points`, {
         module: 'EntryPointAPI',
         method: 'getEntryPoints',
+        data: errorData,
+        error,
       });
+
+      // Track all failures for troubleshooting
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_FAILED, errorData, [
+        'behavioral',
+      ]);
+
       throw error;
     }
   }

@@ -11,6 +11,8 @@ import PageCache, {
   BaseSearchParams,
   PAGINATION_DEFAULTS,
 } from './utils/PageCache';
+import MetricsManager from './metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from './metrics/constants';
 
 /**
  * Interface for AddressBook entry item based on AddressBookEntryDTO from spec
@@ -89,6 +91,7 @@ export class AddressBookAPI {
   private webexRequest: WebexRequest;
   private webex: WebexSDK;
   private getAddressBookId: () => string;
+  private metricsManager: MetricsManager;
 
   // Page cache using the common utility
   private pageCache: PageCache<AddressBookEntry>;
@@ -104,6 +107,7 @@ export class AddressBookAPI {
     this.webexRequest = WebexRequest.getInstance({webex});
     this.getAddressBookId = getAddressBookId;
     this.pageCache = new PageCache<AddressBookEntry>('AddressBookAPI');
+    this.metricsManager = MetricsManager.getInstance({webex});
   }
 
   /**
@@ -128,6 +132,7 @@ export class AddressBookAPI {
   public async getEntries(
     params: AddressBookEntrySearchParams = {}
   ): Promise<AddressBookEntriesResponse> {
+    const startTime = Date.now();
     const {
       addressBookId,
       page = PAGINATION_DEFAULTS.PAGE,
@@ -139,10 +144,19 @@ export class AddressBookAPI {
 
     // Use provided addressBookId or fall back to agent's address book
     const bookId = addressBookId || this.getAddressBookId();
+    const orgId = this.webex.credentials.getOrgId();
+    const isSearchRequest = !!(search || filter || attributes);
 
     LoggerProxy.info('Fetching address book entries', {
       module: 'AddressBookAPI',
       method: 'getEntries',
+      data: {
+        orgId,
+        bookId,
+        page,
+        pageSize,
+        isSearchRequest,
+      },
     });
 
     // Check if we can use cache for simple pagination (no search/filter/attributes)
@@ -151,9 +165,18 @@ export class AddressBookAPI {
       const cachedPage = this.pageCache.getCachedPage(cacheKey);
 
       if (cachedPage) {
+        const duration = Date.now() - startTime;
+
         LoggerProxy.log(`Returning page ${page} from cache`, {
           module: 'AddressBookAPI',
           method: 'getEntries',
+          data: {
+            cacheHit: true,
+            duration,
+            recordCount: cachedPage.data.length,
+            page,
+            pageSize,
+          },
         });
 
         return {
@@ -168,6 +191,9 @@ export class AddressBookAPI {
       }
     }
 
+    // Start timing only for actual API calls (not cache hits)
+    this.metricsManager.timeEvent(METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_SUCCESS);
+
     try {
       // Build query parameters according to spec
       const queryParams = new URLSearchParams({
@@ -179,8 +205,16 @@ export class AddressBookAPI {
       if (attributes) queryParams.append('attributes', attributes);
       if (search) queryParams.append('search', search);
 
-      const orgId = this.webex.credentials.getOrgId();
       const resource = `/organization/${orgId}/v2/address-book/${bookId}/entry?${queryParams.toString()}`;
+
+      LoggerProxy.log('Making API request to fetch address book entries', {
+        module: 'AddressBookAPI',
+        method: 'getEntries',
+        data: {
+          resource,
+          service: 'wcc-api-gateway',
+        },
+      });
 
       const response = await this.webexRequest.request({
         service: 'wcc-api-gateway',
@@ -188,34 +222,108 @@ export class AddressBookAPI {
         method: HTTP_METHODS.GET,
       });
 
-      if (response.statusCode !== 200) {
-        throw new Error(
-          `API call failed with status ${response.statusCode}: ${
-            response.body?.error?.message || response.body?.message || 'Unknown error'
-          }`
-        );
-      }
+      const duration = Date.now() - startTime;
 
-      LoggerProxy.log(
-        `Successfully retrieved ${response.body?.data?.length || 0} address book entries`,
-        {
+      if (response.statusCode !== 200) {
+        const errorMessage =
+          response.body?.error?.message || response.body?.message || 'Unknown error';
+        const errorData = {
+          orgId,
+          bookId,
+          statusCode: response.statusCode,
+          errorMessage,
+          isSearchRequest,
+          page,
+          pageSize,
+        };
+
+        LoggerProxy.error(`API call failed with status ${response.statusCode}`, {
           module: 'AddressBookAPI',
           method: 'getEntries',
-        }
-      );
+          data: errorData,
+        });
+
+        // Track metrics for failures
+        this.metricsManager.trackEvent(METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_FAILED, errorData, [
+          'behavioral',
+        ]);
+
+        throw new Error(`API call failed with status ${response.statusCode}: ${errorMessage}`);
+      }
+
+      const recordCount = response.body?.data?.length || 0;
+      const totalRecords = response.body?.meta?.totalRecords;
+
+      LoggerProxy.log(`Successfully retrieved ${recordCount} address book entries`, {
+        module: 'AddressBookAPI',
+        method: 'getEntries',
+        data: {
+          statusCode: response.statusCode,
+          duration,
+          recordCount,
+          totalRecords,
+          isSearchRequest,
+          page,
+          pageSize,
+        },
+      });
+
+      // Only track metrics for search requests or first page loads to reduce metric volume
+      if (isSearchRequest || page === 0) {
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_SUCCESS,
+          {
+            orgId,
+            bookId,
+            statusCode: response.statusCode,
+            recordCount,
+            totalRecords,
+            isSearchRequest,
+            isFirstPage: page === 0,
+          },
+          ['behavioral', 'operational']
+        );
+      }
 
       // Cache the page data for simple pagination (no search/filter/attributes)
       if (this.pageCache.canUseCache({search, filter, attributes}) && response.body?.data) {
         const cacheKey = this.pageCache.buildCacheKey(bookId, page, pageSize);
         this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
+
+        LoggerProxy.log('Cached address book entries for future requests', {
+          module: 'AddressBookAPI',
+          method: 'getEntries',
+          data: {
+            cacheKey,
+            recordCount,
+          },
+        });
       }
 
       return response.body;
     } catch (error) {
-      LoggerProxy.error(`Failed to fetch address book entries: ${error}`, {
+      const errorData = {
+        orgId,
+        bookId,
+        error: error instanceof Error ? error.message : String(error),
+        isSearchRequest,
+        page,
+        pageSize,
+      };
+
+      LoggerProxy.error('Failed to fetch address book entries', {
         module: 'AddressBookAPI',
         method: 'getEntries',
+        data: errorData,
+        error,
       });
+
+      // Track all failures for troubleshooting
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_FAILED, errorData, [
+        'behavioral',
+        'operational',
+      ]);
+
       throw error;
     }
   }

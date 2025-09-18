@@ -7,6 +7,9 @@ import {
   WebexSDK,
 } from '../../../src/types';
 import ContactCenter from '../../../src/cc';
+import EntryPointAPI from '../../../src/EntryPointAPI';
+import AddressBookAPI from '../../../src/AddressBookAPI';
+import QueueAPI from '../../../src/QueueAPI';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess, AGENT_EVENTS} from '../../../src/services/agent/types';
 import {SetStateResponse} from '../../../src/types';
@@ -1387,88 +1390,6 @@ describe('webex.cc', () => {
     });
   });
 
-  describe('getQueues', () => {
-    it('should return queues response when successful', async () => {
-      const mockQueuesResponse = [
-        {
-          queueId: 'queue1',
-          queueName: 'Queue 1',
-        },
-        {
-          queueId: 'queue2',
-          queueName: 'Queue 2',
-        },
-      ];
-
-      webex.cc.services.config.getQueues = jest.fn().mockResolvedValue(mockQueuesResponse);
-
-      const result = await webex.cc.getQueues();
-
-      // Verify logging calls
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
-        module: CC_FILE,
-        method: 'getQueues',
-      });
-      expect(LoggerProxy.log).toHaveBeenCalledWith(
-        `Successfully retrieved ${result.length} queues`,
-        {
-          module: CC_FILE,
-          method: 'getQueues',
-        }
-      );
-
-      expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
-        'mockOrgId',
-        0,
-        100,
-        undefined,
-        undefined
-      );
-      expect(result).toEqual(mockQueuesResponse);
-    });
-
-    it('should throw an error if orgId is not present', async () => {
-      jest.spyOn(webex.credentials, 'getOrgId').mockResolvedValue(undefined);
-      webex.cc.services.config.getQueues = jest.fn();
-
-      try {
-        await webex.cc.getQueues();
-      } catch (error) {
-        expect(error).toEqual(new Error('Org ID not found.'));
-        expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
-          module: CC_FILE,
-          method: 'getQueues',
-        });
-        expect(LoggerProxy.error).toHaveBeenCalledWith('Org ID not found.', {
-          module: CC_FILE,
-          method: 'getQueues',
-        });
-        expect(webex.cc.services.config.getQueues).not.toHaveBeenCalled();
-      }
-    });
-
-    it('should throw an error if config getQueues throws an error', async () => {
-      webex.cc.services.config.getQueues = jest.fn().mockRejectedValue(new Error('Test error.'));
-
-      try {
-        await webex.cc.getQueues();
-      } catch (error) {
-        expect(error).toEqual(new Error('Test error.'));
-        expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
-          module: CC_FILE,
-          method: 'getQueues',
-        });
-        expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
-          'mockOrgId',
-          0,
-          100,
-          undefined,
-          undefined
-        );
-      }
-    });
-  });
-
   describe('uploadLogs', () => {
     it('should upload logs successfully', async () => {
       const uploadLogsMock = jest.spyOn(webex.cc.webexRequest, 'uploadLogs').mockResolvedValue({
@@ -1793,6 +1714,23 @@ describe('webex.cc', () => {
       messageCallback(JSON.stringify(payload));
 
       expect(setLoginOptionSpy).toHaveBeenCalledWith(deviceType);
+    });
+  });
+
+  describe('API property exposure', () => {
+    it('should expose entryPoint API', () => {
+      expect(webex.cc.entryPoint).toBeDefined();
+      expect(webex.cc.entryPoint).toBeInstanceOf(EntryPointAPI);
+    });
+
+    it('should expose addressBook API', () => {
+      expect(webex.cc.addressBook).toBeDefined();
+      expect(webex.cc.addressBook).toBeInstanceOf(AddressBookAPI);
+    });
+
+    it('should expose queue API', () => {
+      expect(webex.cc.queue).toBeDefined();
+      expect(webex.cc.queue).toBeInstanceOf(QueueAPI);
     });
   });
 
