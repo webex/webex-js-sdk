@@ -22,7 +22,7 @@ npm install --save @webex/internal-plugin-ai-assistant
 
 ## Usage
 
-The responses from the AI assistant service are delivered asynchronously via mercury. The methods in this plugin return a stream ID which can then be used to listen to the updates for a given request. The service will return preliminary versions of a response. The latest response for a given request should be used.
+The responses from the AI assistant service are delivered asynchronously via mercury. The methods in this plugin return a stream ID which can then be used to listen to the updates for a given request. The service will respond in chunks. The latest response for a given request will contain the full response.
 
 The data used for the arguments to the methods in this plugin is obtained from either Locus or the Meeting Container.
 ```js
