@@ -8,6 +8,6 @@ export default {
      * Timeout before AI Assistant request fails, in milliseconds.
      * @type {Number}
      */
-    requestTimeout: 6000,
+    requestTimeout: 60000,
   },
 };
