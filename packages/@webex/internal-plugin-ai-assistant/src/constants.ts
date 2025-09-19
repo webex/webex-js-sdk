@@ -36,3 +36,10 @@ export enum CONTENT_TYPES {
 export enum CONTEXT_RESOURCE_TYPES {
   MEETING = 'meeting',
 }
+
+export enum RESPONSE_NAMES {
+  TOOL_USE = 'tool_use',
+  CITED_ANSWER = 'cited_answer',
+  MESSAGE = 'message',
+  TOOL_RESULT = 'tool_result',
+}

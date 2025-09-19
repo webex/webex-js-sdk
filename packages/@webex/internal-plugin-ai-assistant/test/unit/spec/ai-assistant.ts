@@ -8,7 +8,7 @@ import {assert, expect} from '@webex/test-helper-chai';
 import AIAssistant from '@webex/internal-plugin-ai-assistant';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {set} from 'lodash';
+import {cloneDeep, merge, set} from 'lodash';
 import uuid from 'uuid';
 import {Timer} from '@webex/common-timers';
 import config from '@webex/internal-plugin-ai-assistant/src/config';
@@ -16,6 +16,7 @@ import {
   AI_ASSISTANT_ERROR_CODES,
   AI_ASSISTANT_ERRORS,
 } from '@webex/internal-plugin-ai-assistant/src/constants';
+import {jsonResponse, messageResponse} from '../data/messages';
 
 const waitForAsync = () =>
   new Promise<void>((resolve) =>
@@ -213,7 +214,6 @@ describe('plugin-ai-assistant', () => {
         const requestPromise = webex.internal.aiAssistant._request({
           resource: 'test-resource',
           params: {param1: 'value1'},
-          dataPath: 'response.content',
         });
 
         expect(webex.request.getCall(0).args[0]).to.deep.equal({
@@ -242,26 +242,134 @@ describe('plugin-ai-assistant', () => {
         });
       });
 
+      it('handles a markdown response', async () => {
+        const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
+        webex.internal.encryption.decryptText.callsFake(async (keyUrl, value) => {
+          return `decrypted-with-${keyUrl}-${value}`;
+        });
+
+        await webex.internal.aiAssistant._request({
+          resource: 'test-resource',
+          params: {param1: 'value1'},
+        });
+
+        // first event is a message chunk with an encrypted value
+        await webex.internal.aiAssistant._handleEvent(cloneDeep(messageResponse[0]));
+
+        expect(triggerSpy.getCall(0).args[0]).to.equal(
+          `aiassistant:result:${messageResponse[0].clientRequestId}`
+        );
+
+        await waitForAsync();
+
+        let expectedResult = set(
+          cloneDeep(messageResponse[0]),
+          'response.content.value',
+          'decrypted-with-keyUrl1-markdown_encrypted_value_0'
+        );
+
+        expect(triggerSpy.getCall(0).args[1]).to.deep.equal(expectedResult);
+
+        // second event is the final message with an encrypted value
+        await webex.internal.aiAssistant._handleEvent(cloneDeep(messageResponse[1]));
+
+        expectedResult = set(
+          cloneDeep(messageResponse[1]),
+          'response.content.value',
+          'decrypted-with-keyUrl1-markdown_encrypted_value_1'
+        );
+
+        expect(triggerSpy.getCall(2).args[1]).to.deep.equal(expectedResult);
+      });
+
+      it('decrypts a chunked json response', async () => {
+        const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
+        webex.internal.encryption.decryptText.callsFake(async (keyUrl, value) => {
+          return `decrypted-with-${keyUrl}-${value}`;
+        });
+
+        await webex.internal.aiAssistant._request({
+          resource: 'test-resource',
+          params: {param1: 'value1'},
+        });
+
+        // first event is a tool use with an encrypted value
+        await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[0]));
+
+        expect(triggerSpy.getCall(0).args[0]).to.equal(`aiassistant:result:${jsonResponse[0].clientRequestId}`);
+        
+        let expectedResult = set(
+          cloneDeep(jsonResponse[0]),
+          'response.content.value.value',
+          'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_0_encrypted_value'
+        );
+        
+        expect(triggerSpy.getCall(0).args[1]).to.deep.equal(
+          expectedResult
+        );
+
+        // second event is a tool result which has no encrypted value
+        await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[1]));
+
+        expectedResult = cloneDeep(jsonResponse[1]);
+        expect(triggerSpy.getCall(1).args[1]).to.deep.equal(expectedResult);
+
+        // third event is another tool use with an encrypted value
+        await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[2]));
+
+        expectedResult = set(
+          cloneDeep(jsonResponse[2]),
+          'response.content.value.value',
+          'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_2_encrypted_value'
+        );
+        expect(triggerSpy.getCall(3).args[1]).to.deep.equal(expectedResult);
+
+        // fourth event is a cited answer with an encrypted value
+        await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[3]));
+
+        expectedResult = set(
+          cloneDeep(jsonResponse[3]),
+          'response.content.value.value',
+          'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_3_encrypted_value'
+        );
+        expect(triggerSpy.getCall(4).args[1]).to.deep.equal(expectedResult);
+
+        // fifth event is a tool result which has no encrypted value
+        await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[4]));
+
+        expectedResult = cloneDeep(jsonResponse[4]);
+        expect(triggerSpy.getCall(6).args[1]).to.deep.equal(expectedResult);
+
+        // sixth event is a cited answer with an encrypted value
+        await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[5]));
+
+        expectedResult = set(
+          cloneDeep(jsonResponse[5]),
+          'response.content.value.value',
+          'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_5_encrypted_value'
+        );
+        expect(triggerSpy.getCall(8).args[1]).to.deep.equal(expectedResult);
+      });
+
       it('decrypts and emits data when receiving event data', async () => {
         const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
 
         await webex.internal.aiAssistant._request({
           resource: 'test-resource',
           params: {param1: 'value1'},
-          dataPath: 'response.content',
         });
 
         // Use createData with additional response data
         // Create a response that mimics the real structure where content has both metadata and encrypted data
-        webex.internal.aiAssistant._handleEvent({
+        await webex.internal.aiAssistant._handleEvent({
           clientRequestId: 'test-request-id',
           finished: true,
           response: {
             sessionId: 'test-session-id',
             messageId: 'test-message-id',
             content: {
+              name: 'message',
               type: 'message',
-              format: 'plainText',
               value: 'test-value',
               encryptionKeyUrl: 'test-key-url',
             },
@@ -281,132 +389,21 @@ describe('plugin-ai-assistant', () => {
         expect(triggerSpy.calledTwice).to.be.true; // Called once for streamEvent, once for resultEvent
         expect(triggerSpy.getCall(1).args[0]).to.equal('aiassistant:stream:test-request-id');
         const triggeredData = triggerSpy.getCall(1).args[1];
-        expect(triggeredData).to.deep.include({
-          message: 'decrypted-test-value',
+
+        expect(triggeredData).to.deep.equal({
+          sessionId: 'test-session-id',
+          messageId: 'test-message-id',
+          content: {
+            name: 'message',
+            type: 'message',
+            value: 'decrypted-test-value',
+            encryptionKeyUrl: 'test-key-url',
+          },
+          responseType: undefined,
           requestId: 'test-request-id',
           finished: true,
-          sessionId: 'test-session-id',
-          messageId: 'test-message-id',
-        });
-        expect(triggeredData.content).to.deep.include({
-          type: 'message',
-          format: 'plainText',
-        });
-      });
-
-      it('concatenates streamed messages for non-finished events', async () => {
-        const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
-
-        await webex.internal.aiAssistant._request({
-          resource: 'test-resource',
-          params: {param1: 'value1'},
-          dataPath: 'response.content',
-        });
-
-        // Create base response data that will be consistent across chunks
-        const baseResponseData = {
-          sessionId: 'test-session-id',
-          messageId: 'test-message-id',
-          responseId: 'test-response-id',
-        };
-
-        // Simulate first message chunk using createData
-        webex.internal.aiAssistant._handleEvent(
-          createData(
-            'test-request-id',
-            false,
-            'response.content',
-            'first-part-',
-            'test-key-url',
-            undefined,
-            undefined,
-            {
-              ...baseResponseData,
-              content: {
-                type: 'message',
-              },
-            }
-          )
-        );
-
-        await waitForAsync();
-
-        // Check first chunk
-        expect(triggerSpy.getCall(1).args[0]).to.equal('aiassistant:stream:test-request-id');
-        const firstChunk = triggerSpy.getCall(1).args[1];
-        expect(firstChunk).to.deep.include({
-          message: 'decrypted-first-part-',
-          finished: false,
-          sessionId: 'test-session-id',
-          messageId: 'test-message-id',
-          responseId: 'test-response-id',
-        });
-
-        // Simulate second message chunk using createData
-        webex.internal.aiAssistant._handleEvent(
-          createData(
-            'test-request-id',
-            false,
-            'response.content',
-            'second-part',
-            'test-key-url',
-            undefined,
-            undefined,
-            {
-              ...baseResponseData,
-              content: {
-                type: 'message',
-              },
-            }
-          )
-        );
-
-        await waitForAsync();
-
-        // Check second chunk - should include first and second part concatenated
-        expect(triggerSpy.getCall(3).args[0]).to.equal('aiassistant:stream:test-request-id');
-        const secondChunk = triggerSpy.getCall(3).args[1];
-        expect(secondChunk).to.deep.include({
-          message: 'decrypted-first-part-decrypted-second-part',
-          finished: false,
-          sessionId: 'test-session-id',
-          messageId: 'test-message-id',
-          responseId: 'test-response-id',
-        });
-
-        // Simulate final message using createData
-        webex.internal.aiAssistant._handleEvent(
-          createData(
-            'test-request-id',
-            true,
-            'response.content',
-            'final-part',
-            'test-key-url',
-            undefined,
-            undefined,
-            {
-              ...baseResponseData,
-              content: {
-                type: 'message',
-              },
-            }
-          )
-        );
-
-        await waitForAsync();
-
-        // Check all trigger calls - first two should have concatenated message
-        expect(triggerSpy.callCount).to.equal(6); // Three event pairs for result and stream
-
-        // Check final message - stops concatenation, only returns the final version
-        expect(triggerSpy.getCall(5).args[0]).to.equal('aiassistant:stream:test-request-id');
-        const finalChunk = triggerSpy.getCall(5).args[1];
-        expect(finalChunk).to.deep.include({
-          message: 'decrypted-final-part',
-          finished: true,
-          sessionId: 'test-session-id',
-          messageId: 'test-message-id',
-          responseId: 'test-response-id',
+          errorMessage: undefined,
+          errorCode: undefined,
         });
       });
 
@@ -415,7 +412,6 @@ describe('plugin-ai-assistant', () => {
         await webex.internal.aiAssistant._request({
           resource: 'test-resource',
           params: {param1: 'value1'},
-          dataPath: 'response.content',
         });
 
         // Advance the clock past the timeout
@@ -432,13 +428,60 @@ describe('plugin-ai-assistant', () => {
         });
       });
 
+      it('includes error information when server returns an error - unfinished', async () => {
+        const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
+
+        await webex.internal.aiAssistant._request({
+          resource: 'test-resource',
+          params: {param1: 'value1'},
+        });
+
+        // Use createData for error case with additional response data
+        webex.internal.aiAssistant._handleEvent(
+          createData(
+            'test-request-id',
+            false,
+            undefined,
+            undefined,
+            undefined,
+            'Error message',
+            'ERROR_CODE',
+            {
+              sessionId: 'test-session-id',
+              messageId: 'test-message-id',
+              content: {
+                type: 'error',
+              },
+            }
+          )
+        );
+
+        await waitForAsync();
+
+        expect(webex.logger.error.notCalled).to.be.true; // No error should be logged internally
+
+        expect(triggerSpy.calledTwice).to.be.true;
+        expect(triggerSpy.getCall(1).args[0]).to.equal('aiassistant:stream:test-request-id');
+        const triggeredData = triggerSpy.getCall(1).args[1];
+
+        expect(triggeredData).to.deep.equal({
+          sessionId: 'test-session-id',
+          messageId: 'test-message-id',
+          content: {type: 'error'},
+          errorMessage: 'Error message',
+          errorCode: 'ERROR_CODE',
+          responseType: undefined,
+          requestId: 'test-request-id',
+          finished: false,
+        });
+      });
+
       it('includes error information when server returns an error', async () => {
         const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
 
         await webex.internal.aiAssistant._request({
           resource: 'test-resource',
           params: {param1: 'value1'},
-          dataPath: 'response.content',
         });
 
         // Use createData for error case with additional response data
@@ -461,20 +504,23 @@ describe('plugin-ai-assistant', () => {
           )
         );
 
+        await waitForAsync();
+
+        expect(webex.logger.error.notCalled).to.be.true; // No error should be logged internally
+
         expect(triggerSpy.calledTwice).to.be.true;
         expect(triggerSpy.getCall(1).args[0]).to.equal('aiassistant:stream:test-request-id');
         const triggeredData = triggerSpy.getCall(1).args[1];
-        expect(triggeredData).to.deep.include({
-          message: '',
-          requestId: 'test-request-id',
-          finished: true,
-          errorMessage: 'Error message',
-          errorCode: 'ERROR_CODE',
+
+        expect(triggeredData).to.deep.equal({
           sessionId: 'test-session-id',
           messageId: 'test-message-id',
-        });
-        expect(triggeredData.content).to.deep.include({
-          type: 'error',
+          content: {type: 'error'},
+          errorMessage: 'Error message',
+          errorCode: 'ERROR_CODE',
+          responseType: undefined,
+          requestId: 'test-request-id',
+          finished: true,
         });
       });
     });
