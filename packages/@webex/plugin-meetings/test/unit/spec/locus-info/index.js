@@ -2370,7 +2370,7 @@ describe('plugin-meetings', () => {
       it('applyLocusDeltaData handles LOCUS_URL_CHANGED action correctly', () => {
         const {LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
         const fakeFullLocus = {
-          url: 'new loci url',
+          url: 'new full loci url',
         };
         const meeting = {
           meetingRequest: {
@@ -2384,12 +2384,8 @@ describe('plugin-meetings', () => {
 
         locusInfo.locusParser.workingCopy = null;
 
-        locusInfo.mainSessionLocusCache = {
-          url: 'main session locus url'
-        }
-
         locusInfo.applyLocusDeltaData(LOCUS_URL_CHANGED, fakeLocus, meeting);
-        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'main session locus url'});
+        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: fakeLocus.url});
       });
 
       describe('edge cases for sync failing', () => {

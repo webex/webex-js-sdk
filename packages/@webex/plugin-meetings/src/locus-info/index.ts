@@ -94,25 +94,25 @@ export default class LocusInfo extends EventsScope {
    *
    * @param {Meeting} meeting
    * @param {boolean} isLocusUrlChanged
+   * @param {Locus} locus
    * @returns {undefined}
    */
-  private doLocusSync(meeting: any, isLocusUrlChanged: boolean) {
-    let isDelta;
+  private doLocusSync(meeting: any, isLocusUrlChanged: boolean, locus: any) {
     let url;
+    let isDelta = false;
     let meetingDestroyed = false;
 
-    if (this.locusParser.workingCopy?.syncUrl) {
+    if (isLocusUrlChanged) {
+      // for the locus url changed case from breakout to main session, we should always do a full sync, in this case, the url from locus is always on main session,
+      // so use the main session locus url to get the full locus(full participants list in the response).
+      // for the locus url changed case from main session to breakout, we don't need to care about it here,
+      // because it is a USE_INCOMING case, it will not be executed here.
+      url = locus.url;
+    } else if (this.locusParser.workingCopy?.syncUrl) {
       url = this.locusParser.workingCopy.syncUrl;
       isDelta = true;
     } else {
-      if (isLocusUrlChanged) {
-        // If the locus url changed, we should always do a full sync,
-        // use the main session locus url to get the full locus(full participants list in the response)
-        url = this.mainSessionLocusCache.url;
-      } else {
-        url = meeting.locusUrl;
-      }
-      isDelta = false;
+      url = meeting.locusUrl;
     }
 
     LoggerProxy.logger.info(
@@ -236,7 +236,7 @@ export default class LocusInfo extends EventsScope {
         break;
       case DESYNC:
       case LOCUS_URL_CHANGED:
-        this.doLocusSync(meeting, isLocusUrlChanged);
+        this.doLocusSync(meeting, isLocusUrlChanged, locus);
         break;
       default:
         LoggerProxy.logger.info(
