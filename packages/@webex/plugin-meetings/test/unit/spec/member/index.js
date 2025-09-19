@@ -20,6 +20,15 @@ describe('member', () => {
     assert.exists(member.canReclaimHost);
   });
 
+    describe('processRoles', () => {
+    it('checks that processRoles calls extractRoleCapabilities', () => {
+      sinon.spy(MemberUtil, 'extractRoleCapabilities');
+      member.processRoles(participant);
+
+      assert.calledOnceWithExactly(MemberUtil.extractRoleCapabilities, participant);
+    });
+  });
+
   describe('roles', () => {
     it('checks that processParticipant calls processRoles', () => {
       sinon.spy(member, 'processRoles');

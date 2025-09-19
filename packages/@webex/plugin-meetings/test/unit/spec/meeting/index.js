@@ -10275,6 +10275,24 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to CONTROLS_AUTO_END_MEETING_WARNING_CHANGED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_AUTO_END_MEETING_WARNING_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_AUTO_END_MEETING_WARNING_UPDATED,
+            {state}
+          );
+        });
+
         it('listens to CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED', async () => {
           const state = {example: 'value'};
 
@@ -11260,11 +11278,13 @@ describe('plugin-meetings', () => {
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
           canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
           canMoveToLobbySpy = sinon.spy(MeetingUtil, 'canMoveToLobby');
+          showAutoEndMeetingWarningSpy = sinon.spy(MeetingUtil, 'showAutoEndMeetingWarning');
         });
 
         afterEach(() => {
           inMeetingActionsSetSpy.restore();
           waitingForOthersToJoinSpy.restore();
+          showAutoEndMeetingWarningSpy.restore();
         });
 
         forEach(
@@ -11400,6 +11420,10 @@ describe('plugin-meetings', () => {
               actionName: 'canShareWhiteBoard',
               requiredDisplayHints: [DISPLAY_HINTS.SHARE_WHITEBOARD],
               requiredPolicies: [SELF_POLICY.SUPPORT_WHITEBOARD],
+            },
+            {
+              actionName: 'canShowAutoEndMeetingWarning',
+              requiredDisplayHints: [DISPLAY_HINTS.SHOW_AUTO_END_MEETING_WARNING],
             },
           ],
           ({
@@ -11812,6 +11836,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
           assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
           assert.calledWith(canMoveToLobbySpy, userDisplayHints);
+          assert.calledWith(showAutoEndMeetingWarningSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],

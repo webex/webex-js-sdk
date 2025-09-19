@@ -2962,6 +2962,18 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_AUTO_END_MEETING_WARNING_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setupLocusControlsListener',
+        },
+        EVENT_TRIGGERS.MEETING_CONTROLS_AUTO_END_MEETING_WARNING_UPDATED,
+        {state}
+      );
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_ANNOTATION_CHANGED, ({state}) => {
       Trigger.trigger(
         this,
@@ -4197,6 +4209,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this.userDisplayHints,
             this.selfUserPolicies
           ),
+          showAutoEndMeetingWarning: MeetingUtil.showAutoEndMeetingWarning(this.userDisplayHints),
           canRaiseHand: MeetingUtil.canUserRaiseHand(this.userDisplayHints),
           canLowerAllHands: MeetingUtil.canUserLowerAllHands(this.userDisplayHints),
           canLowerSomeoneElsesHand: MeetingUtil.canUserLowerSomeoneElsesHand(this.userDisplayHints),
@@ -9376,6 +9389,29 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     return Promise.reject(new Error('Error sending reaction, service url not found.'));
+  }
+
+  /**
+   * Extend the current meeting duration.
+   *
+   * @param {number} extensionMinutes - how many minutes to extend
+   * @returns {Promise}
+   * @public
+   * @memberof Meeting
+   */
+  public extendMeeting(extensionMinutes = 30) {
+    const meetingInstanceId = this.locusInfo?.info?.meetingInstanceId;
+    const participantId = this.members?.selfId;
+
+    if (!meetingInstanceId || !participantId) {
+      return Promise.reject(new Error('Missing meetingInstanceId or participantId'));
+    }
+
+    return this.meetingRequest.extendMeeting({
+      meetingInstanceId,
+      participantId,
+      extensionMinutes,
+    });
   }
 
   /**

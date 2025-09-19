@@ -887,6 +887,38 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
+   * Extend the current meeting duration.
+   *
+   * @param {Object} params - Parameters for extending the meeting.
+   * @param {string} params.meetingInstanceId - The unique ID of the meeting instance.
+   * @param {string} params.participantId - The ID of the participant requesting the extension.
+   * @param {number} params.extensionMinutes - The number of minutes to extend the meeting by.
+   * @returns {Promise<any>} A promise that resolves with the server response.
+   */
+  extendMeeting({
+    meetingInstanceId,
+    participantId,
+    extensionMinutes,
+  }: {
+    meetingInstanceId: string;
+    participantId: string;
+    extensionMinutes: number;
+  }) {
+    const uri = `https://locus-meeting-policy-b.wbx2.com/locus-meeting-policy/api/v1/continueMeeting`;
+
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri,
+      body: {
+        meetingInstanceId,
+        requestParticipantId: participantId,
+        extensionMinutes,
+      },
+    });
+  }
+
+  /**
    * Make a network request to enable or disable reactions.
    * @param {boolean} options.enable - determines if we need to enable or disable.
    * @param {locusUrl} options.locusUrl

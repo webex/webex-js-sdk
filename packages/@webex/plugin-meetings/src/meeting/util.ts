@@ -631,6 +631,9 @@ const MeetingUtil = {
 
   waitingForOthersToJoin: (displayHints) => displayHints.includes(DISPLAY_HINTS.WAITING_FOR_OTHERS),
 
+  showAutoEndMeetingWarning: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.SHOW_AUTO_END_MEETING_WARNING),
+
   canSendReactions: (originalValue, displayHints) => {
     if (displayHints.includes(DISPLAY_HINTS.REACTIONS_ACTIVE)) {
       return true;
@@ -653,6 +656,9 @@ const MeetingUtil = {
   canShareWhiteBoard: (displayHints, policies = {}) =>
     displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD) &&
     !!policies[SELF_POLICY.SUPPORT_WHITEBOARD],
+
+  canShowAutoEndMeetingWarning: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.SHOW_AUTO_END_MEETING_WARNING),
 
   canMoveToLobby: (displayHints) => displayHints.includes(DISPLAY_HINTS.MOVE_TO_LOBBY),
 
