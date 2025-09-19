@@ -677,6 +677,7 @@ export class Registration implements IRegistration {
 
       return abort;
     }
+    // Hardcoded url
     servers = ["https:///mobius.us-orawxt0.b80.prod.infra.webex.com/api/v1/calling/web/"];
     for (const url of servers) {
       const serverType =
