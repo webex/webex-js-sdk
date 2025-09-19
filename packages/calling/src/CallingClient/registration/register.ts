@@ -133,7 +133,7 @@ export class Registration implements IRegistration {
   }
 
   public setActiveMobiusUrl(url: string) {
-    url = "https://mobius.us-orawxt0.b80.prod.infra.webex.com/api/v1/calling/web/";
+    url = "https://mobius.us-orawxt0.b80.prod.infra.webex.com/api/v1/calling/web/"
     log.info(`${METHOD_START_MESSAGE} with ${url}`, {
       method: METHODS.UPDATE_ACTIVE_MOBIUS,
       file: REGISTRATION_FILE,
