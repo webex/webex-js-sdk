@@ -353,8 +353,16 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     if (!this.webex.internal.llm.isConnected()) return;
 
-    // @ts-ignore
-    this.webex.internal.llm.socket.send({
+    const socket =
+      // @ts-ignore
+      this.webex.internal.llm.getSocket('llm-practice-session') || this.webex.internal.llm.socket;
+    const binding =
+      // @ts-ignore
+      this.webex.internal.llm.getBinding('llm-practice-session') ||
+      // @ts-ignore
+      this.webex.internal.llm.getBinding();
+
+    socket?.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
