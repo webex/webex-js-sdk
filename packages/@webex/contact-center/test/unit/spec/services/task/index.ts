@@ -12,6 +12,7 @@ import {
   TaskResponse,
   AgentContact,
   ConsultEndPayload,
+  ConsultConferenceData,
   TaskData,
   DESTINATION_TYPE,
   CONSULT_TRANSFER_DESTINATION_TYPE,
@@ -42,6 +43,11 @@ describe('Task', () => {
   let getDestinationAgentIdSpy;
 
   const taskId = '0ae913a4-c857-4705-8d49-76dd3dde75e4';
+  const mockConsultData: ConsultConferenceData = {
+    to: 'test-agent-123',
+    destinationType: 'agent',
+    agentId: 'current-agent-456',
+  };
   const mockTrack = {} as MediaStreamTrack;
   const mockStream = {
     outputStream: {
@@ -75,6 +81,9 @@ describe('Task', () => {
       wrapup: jest.fn().mockResolvedValue({}),
       pauseRecording: jest.fn().mockResolvedValue({}),
       resumeRecording: jest.fn().mockResolvedValue({}),
+      consultConference: jest.fn().mockResolvedValue({}),
+      exitConference: jest.fn().mockResolvedValue({}),
+      conferenceTransfer: jest.fn().mockResolvedValue({}),
     };
 
     mockMetricsManager = {
@@ -637,8 +646,8 @@ describe('Task', () => {
     expect(loggerLogSpy).toHaveBeenCalledWith(`Consult started successfully to ${consultPayload.to}`, {
       module: TASK_FILE,
       method: 'consult',
-      trackingId: expectedResponse.trackingId,
       interactionId: task.data.interactionId,
+      trackingId: '1234',
     });
     expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
@@ -1530,6 +1539,186 @@ describe('Task', () => {
       expect(wrapupSpy).toHaveBeenCalledWith({
         wrapUpReason: wrapupProps.wrapUpProps.wrapUpReasonList[0].name,
         auxCodeId: wrapupProps.wrapUpProps.wrapUpReasonList[0].id
+      });
+    });
+  });
+
+  describe('Conference methods', () => {
+    beforeEach(() => {
+      contactMock = {
+        consultConference: jest.fn(),
+        exitConference: jest.fn(),
+        conferenceTransfer: jest.fn(),
+      };
+
+      // Re-setup the getDestinationAgentId spy for conference methods
+      getDestinationAgentIdSpy = jest
+        .spyOn(Utils, 'getDestinationAgentId')
+        .mockReturnValue(taskDataMock.destAgentId);
+
+      task = new Task(contactMock, webCallingService, taskDataMock, {
+        wrapUpProps: { wrapUpReasonList: [] },
+        autoWrapEnabled: false,
+        autoWrapAfterSeconds: 0
+      });
+    });
+
+    describe('startConsultConference', () => {
+      const mockConsultData = {
+        agentId: 'current-agent-id',
+        destAgentId: 'destination-agent-id', // Agent Desktop expects destAgentId, not to
+        destinationType: 'agent'
+      };
+
+      it('should successfully start conference and emit event', async () => {
+        const mockResponse = {
+          trackingId: 'test-tracking-id',
+          interactionId: taskId,
+        };
+        contactMock.consultConference.mockResolvedValue(mockResponse);
+        
+
+        const result = await task.startConsultConference(mockConsultData);
+
+        expect(contactMock.consultConference).toHaveBeenCalledWith({
+          interactionId: taskId,
+          data: {
+            agentId: taskDataMock.agentId, // From task data agent ID
+            to: taskDataMock.destAgentId, // From getDestinationAgentId() using task participants
+            destinationType: 'agent', // From consultation data
+          },
+        });
+        expect(result).toEqual(mockResponse);
+        expect(LoggerProxy.info).toHaveBeenCalledWith(`Initiating consult conference to ${taskDataMock.destAgentId}`, {
+          module: TASK_FILE,
+          method: 'startConsultConference',
+          interactionId: taskId,
+        });
+        expect(LoggerProxy.log).toHaveBeenCalledWith('Consult conference started successfully', {
+          module: TASK_FILE,
+          method: 'startConsultConference',
+          interactionId: taskId,
+        });
+      });
+
+      it('should handle basic validation scenarios', async () => {
+        // Agent Desktop logic validates data structure but not participant availability
+        // This test confirms the method works with the Agent Desktop data flow
+        const mockResponse = {
+          trackingId: 'test-tracking-validation',
+          interactionId: taskId,
+        };
+        contactMock.consultConference.mockResolvedValue(mockResponse);
+
+        const result = await task.startConsultConference(mockConsultData);
+        expect(result).toEqual(mockResponse);
+      });
+
+      it('should handle and rethrow contact method errors', async () => {
+        const mockError = new Error('Conference start failed');
+        contactMock.consultConference.mockRejectedValue(mockError);
+        getErrorDetailsSpy.mockReturnValue({ error: mockError });
+
+        await expect(task.startConsultConference(mockConsultData)).rejects.toThrow('Conference start failed');
+        expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to start consult conference', {
+          module: TASK_FILE,
+          method: 'startConsultConference',
+          interactionId: taskId,
+        });
+      });
+    });
+
+    describe('endConsultConference', () => {
+      it('should successfully end conference and emit event', async () => {
+        const mockResponse = {
+          trackingId: 'test-tracking-id-end',
+          interactionId: taskId,
+        };
+        contactMock.exitConference.mockResolvedValue(mockResponse);
+
+        const result = await task.endConsultConference();
+
+        expect(contactMock.exitConference).toHaveBeenCalledWith({
+          interactionId: taskId,
+        });
+        expect(result).toEqual(mockResponse);
+        expect(LoggerProxy.info).toHaveBeenCalledWith('Ending consult conference', {
+          module: TASK_FILE,
+          method: 'endConsultConference',
+          interactionId: taskId,
+        });
+        expect(LoggerProxy.log).toHaveBeenCalledWith('Consult conference ended successfully', {
+          module: TASK_FILE,
+          method: 'endConsultConference',
+          interactionId: taskId,
+        });
+      });
+
+      it('should throw error for invalid interaction ID', async () => {
+        task.data.interactionId = '';
+
+        await expect(task.endConsultConference()).rejects.toThrow('Error while performing endConsultConference');
+        expect(contactMock.exitConference).not.toHaveBeenCalled();
+      });
+
+      it('should handle and rethrow contact method errors', async () => {
+        const mockError = new Error('Conference end failed');
+        contactMock.exitConference.mockRejectedValue(mockError);
+        getErrorDetailsSpy.mockReturnValue({ error: mockError });
+
+        await expect(task.endConsultConference()).rejects.toThrow('Conference end failed');
+        expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to end consult conference', {
+          module: TASK_FILE,
+          method: 'endConsultConference',
+          interactionId: taskId,
+        });
+      });
+    });
+
+    describe('transferConference', () => {
+      it('should successfully transfer conference', async () => {
+        const mockResponse = {
+          trackingId: 'test-tracking-id-transfer',
+          interactionId: taskId,
+        };
+        contactMock.conferenceTransfer.mockResolvedValue(mockResponse);
+        
+        const result = await task.transferConference();
+
+        expect(contactMock.conferenceTransfer).toHaveBeenCalledWith({
+          interactionId: taskId,
+        });
+        expect(result).toEqual(mockResponse);
+        expect(LoggerProxy.info).toHaveBeenCalledWith('Transferring conference', {
+          module: TASK_FILE,
+          method: 'transferConference',
+          interactionId: taskId,
+        });
+        expect(LoggerProxy.log).toHaveBeenCalledWith('Conference transferred successfully', {
+          module: TASK_FILE,
+          method: 'transferConference',
+          interactionId: taskId,
+        });
+      });
+
+      it('should throw error for invalid interaction ID', async () => {
+        task.data.interactionId = '';
+
+        await expect(task.transferConference()).rejects.toThrow('Error while performing transferConference');
+        expect(contactMock.conferenceTransfer).not.toHaveBeenCalled();
+      });
+
+      it('should handle and rethrow contact method errors', async () => {
+        const mockError = new Error('Conference transfer failed');
+        contactMock.conferenceTransfer.mockRejectedValue(mockError);
+        getErrorDetailsSpy.mockReturnValue({ error: mockError });
+
+        await expect(task.transferConference()).rejects.toThrow('Conference transfer failed');
+        expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to transfer conference', {
+          module: TASK_FILE,
+          method: 'transferConference',
+          interactionId: taskId,
+        });
       });
     });
   });

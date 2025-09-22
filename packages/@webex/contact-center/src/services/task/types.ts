@@ -370,6 +370,30 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_OFFER_CONTACT = 'task:offerContact',
+
+  /**
+   * Triggered when a conference is started successfully
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_STARTED, (task: ITask) => {
+   *   console.log('Conference started:', task.data.interactionId);
+   *   // Handle conference start
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_STARTED = 'task:conference.started',
+
+  /**
+   * Triggered when a conference is ended successfully
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_ENDED, (task: ITask) => {
+   *   console.log('Conference ended:', task.data.interactionId);
+   *   // Handle conference end
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_ENDED = 'task:conference.ended',
 }
 
 /**
@@ -881,6 +905,49 @@ export type ConsultConferenceData = {
   to: string | undefined;
   /** Type of destination (e.g., 'agent', 'queue') */
   destinationType: string;
+};
+
+/**
+ * Legacy consultation conference data type matching Agent Desktop
+ * @public
+ */
+export type consultConferencePayloadData = {
+  /** Identifier of the agent initiating consult/conference */
+  agentId: string;
+  /** Type of destination (e.g., 'agent', 'queue') */
+  destinationType: string;
+  /** Identifier of the destination agent */
+  destAgentId: string;
+};
+
+/**
+ * Consult with conference payload data
+ * @public
+ */
+export type ConsultWithConferencePayload = {
+  /** Identifier of the agent initiating consult/conference */
+  agentId?: string;
+  /** Target destination agent ID for the consult/conference */
+  destAgentId: string;
+  /** Type of destination (e.g., 'agent', 'queue', 'DN') */
+  destinationType: string;
+};
+
+/**
+ * Consultation data for dial number destinations
+ * @public
+ */
+export type ConsultDN = {
+  /** Identifier of the destination agent */
+  destAgentId: string;
+  /** Target dial number for the consultation */
+  destinationType: string;
+  /** Type of media for the consultation */
+  mediaType: string;
+  /** Optional tracking identifier */
+  trackingId?: string;
+  /** Whether to hold other participants during consultation (always true) */
+  holdParticipants?: boolean;
 };
 
 /**

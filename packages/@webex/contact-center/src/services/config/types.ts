@@ -45,6 +45,28 @@ export const CC_TASK_EVENTS = {
   AGENT_CONSULT_END_FAILED: 'AgentConsultEndFailed',
   /** Event emitted when consultation conference ends */
   AGENT_CONSULT_CONFERENCE_ENDED: 'AgentConsultConferenceEnded',
+  /** Event emitted when consultation conference is in progress */
+  AGENT_CONSULT_CONFERENCING: 'AgentConsultConferencing',
+  /** Event emitted when consultation conference starts */
+  AGENT_CONSULT_CONFERENCED: 'AgentConsultConferenced',
+  /** Event emitted when consultation conference fails */
+  AGENT_CONSULT_CONFERENCE_FAILED: 'AgentConsultConferenceFailed',
+  /** Event emitted when participant joins conference */
+  PARTICIPANT_JOINED_CONFERENCE: 'ParticipantJoinedConference',
+  /** Event emitted when participant leaves conference */
+  PARTICIPANT_LEFT_CONFERENCE: 'ParticipantLeftConference',
+  /** Event emitted when participant leaving conference fails */
+  PARTICIPANT_LEFT_CONFERENCE_FAILED: 'ParticipantLeftConferenceFailed',
+  /** Event emitted when consultation conference end fails */
+  AGENT_CONSULT_CONFERENCE_END_FAILED: 'AgentConsultConferenceEndFailed',
+  /** Event emitted when conference is successfully transferred */
+  AGENT_CONFERENCE_TRANSFERRED: 'AgentConferenceTransferred',
+  /** Event emitted when conference transfer fails */
+  AGENT_CONFERENCE_TRANSFER_FAILED: 'AgentConferenceTransferFailed',
+  /** Event emitted when consulted participant is moving/being transferred */
+  CONSULTED_PARTICIPANT_MOVING: 'ConsultedParticipantMoving',
+  /** Event emitted for post-call activity by participant */
+  PARTICIPANT_POST_CALL_ACTIVITY: 'ParticipantPostCallActivity',
   /** Event emitted when contact is blind transferred */
   AGENT_BLIND_TRANSFERRED: 'AgentBlindTransferred',
   /** Event emitted when blind transfer fails */

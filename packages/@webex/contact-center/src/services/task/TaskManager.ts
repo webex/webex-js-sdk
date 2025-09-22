@@ -324,6 +324,66 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, task);
             break;
+          case CC_EVENTS.AGENT_CONSULT_CONFERENCING:
+            // Conference is being established - update task state but don't emit final event yet
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferencing: true,
+            });
+            break;
+          case CC_EVENTS.AGENT_CONSULT_CONFERENCED:
+            // Conference started successfully - update task state and emit event
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferencing: true,
+            });
+            task.emit(TASK_EVENTS.TASK_CONFERENCE_STARTED, task);
+            break;
+          case CC_EVENTS.AGENT_CONSULT_CONFERENCE_FAILED:
+            // Conference failed - update task state (no event emission needed as contact method will throw)
+            task = this.updateTaskData(task, payload.data);
+            break;
+          case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
+            // Participant joined conference - update task state with participant information
+            task = this.updateTaskData(task, payload.data);
+            break;
+          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
+            // Conference ended - update task state and emit event
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferencing: false,
+            });
+            task.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
+            break;
+          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED:
+            // Conference exit failed - update task state (no event emission needed as contact method will throw)
+            task = this.updateTaskData(task, payload.data);
+            break;
+          case CC_EVENTS.AGENT_CONSULT_CONFERENCE_END_FAILED:
+            // Conference end failed - update task state with error details
+            task = this.updateTaskData(task, payload.data);
+            break;
+          case CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED:
+            // Conference was transferred - update task state and set to wrapup
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferencing: false,
+              hasLeft: true,
+              isWrapup: true,
+            });
+            break;
+          case CC_EVENTS.AGENT_CONFERENCE_TRANSFER_FAILED:
+            // Conference transfer failed - update task state with error details
+            task = this.updateTaskData(task, payload.data);
+            break;
+          case CC_EVENTS.CONSULTED_PARTICIPANT_MOVING:
+            // Participant is being moved/transferred - update task state with movement info
+            task = this.updateTaskData(task, payload.data);
+            break;
+          case CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY:
+            // Post-call activity for participant - update task state with activity details
+            task = this.updateTaskData(task, payload.data);
+            break;
           default:
             break;
         }

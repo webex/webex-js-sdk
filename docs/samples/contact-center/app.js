@@ -13,6 +13,8 @@ let taskId;
 let wrapupCodes = []; // Add this to store wrapup codes
 let isConsultOptionsShown = false;
 let isTransferOptionsShown = false; // Add this variable to track the state of transfer options
+let isConferenceActive = false; // Track conference state
+let consultationData = null; // Track who we consulted with for conference
 let entryPointId = '';
 let stateTimer;
 let currentConsultQueueId;
@@ -69,6 +71,7 @@ const initiateConsultDialog = document.querySelector('#initiate-consult-dialog')
 const agentMultiLoginAlert = document.querySelector('#agentMultiLoginAlert');
 const consultTransferBtn = document.querySelector('#consult-transfer');
 const transferElm = document.getElementById('transfer');
+const conferenceToggleBtn = document.querySelector('#conference-toggle');
 const timerElm = document.querySelector('#timerDisplay');
 const engageElm = document.querySelector('#engageWidget');
 let isBundleLoaded = false; // this is just to check before loading/using engage widgets
@@ -234,18 +237,25 @@ function closeConsultDialog() {
 
 function showConsultButton() {
   consultTabBtn.style.display = 'inline-block';
+  updateConferenceButtonState();
 }
 
 function hideConsultButton() {
   consultTabBtn.style.display = 'none';
+  updateConferenceButtonState();
 }
 
 function showEndConsultButton() {
   endConsultBtn.style.display = 'inline-block';
+  updateConferenceButtonState();
 }
 
 function hideEndConsultButton() {
   endConsultBtn.style.display = 'none';
+  // Reset conference state and clear consultation data when ending consult
+  isConferenceActive = false;
+  consultationData = null;
+  updateConferenceButtonState();
 }
 
 function toggleTransferOptions() {
@@ -386,9 +396,22 @@ async function initiateConsult() {
   };
 
   if (destinationType === 'queue') {
+    // Store consultation data for queue consult
+    consultationData = {
+      to: consultDestination,
+      destinationType: destinationType,
+      agentId: agentId // Include current agent ID
+    };
     handleQueueConsult(consultPayload);
     return;
   }
+
+  // Store consultation data for agent consult
+  consultationData = {
+    to: consultDestination,
+    destinationType: destinationType,
+    agentId: agentId // Include current agent ID
+  };
 
   try {
     await currentTask.consult(consultPayload);
@@ -503,6 +526,57 @@ async function endConsult() {
   } catch (error) {
     console.error('Failed to end consult', error);
     alert('Failed to end consult');
+  }
+}
+
+// Function to toggle conference (start/end conference)
+async function toggleConference() {
+  if (!currentTask) {
+    alert('No active task');
+    return;
+  }
+
+  try {
+    if (isConferenceActive) {
+      // End conference
+      console.log('Ending conference...');
+      await currentTask.endConsultConference();
+      console.log('Conference ended successfully');
+    } else {
+      // Start conference
+      if (!consultationData) {
+        alert('No consultation data available. Please initiate a consult first.');
+        return;
+      }
+
+      console.log('Starting conference with:', consultationData);
+      await currentTask.startConsultConference(consultationData);
+      console.log('Conference started successfully');
+    }
+  } catch (error) {
+    const action = isConferenceActive ? 'end' : 'start';
+    console.error(`Failed to ${action} conference:`, error);
+    alert(`Failed to ${action} conference. ${error.message || 'Please try again.'}`);
+  }
+}
+
+// Update conference button visibility and text based on consult and conference state
+function updateConferenceButtonState() {
+  if (!conferenceToggleBtn) return;
+
+  // Show conference button only if there's an active consult and we have consultation data
+  const hasConsult = endConsultBtn.style.display !== 'none';
+  const hasConsultationData = consultationData !== null;
+  
+  if (hasConsult && hasConsultationData) {
+    conferenceToggleBtn.style.display = 'inline-block';
+    conferenceToggleBtn.textContent = isConferenceActive ? 'End Conference' : 'Start Conference';
+    conferenceToggleBtn.className = isConferenceActive ? 'btn--red' : 'btn--green';
+    conferenceToggleBtn.title = isConferenceActive ? 
+      'Exit the conference call' : 
+      `Start conference with ${consultationData.destinationType}: ${consultationData.to}`;
+  } else {
+    conferenceToggleBtn.style.display = 'none';
   }
 }
 
@@ -692,6 +766,23 @@ function registerTaskListeners(task) {
   task.on('task:wrappedup', task => {
     currentTask = undefined;
     updateTaskList(); // Update the task list UI to have latest tasks
+  });
+
+  // Conference event listeners
+  task.on('task:conference.started', (task) => {
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      console.info('Conference started successfully');
+      isConferenceActive = true;
+      updateConferenceButtonState();
+    }
+  });
+
+  task.on('task:conference.ended', (task) => {
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      console.info('Conference ended successfully');
+      isConferenceActive = false;
+      updateConferenceButtonState();
+    }
   });
 }
 
