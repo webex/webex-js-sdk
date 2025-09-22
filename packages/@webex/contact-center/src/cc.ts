@@ -988,7 +988,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // Emit metrics for all websocket events except keepalive and welcome
     const topLevelType = eventData.type;
     const nestedType = eventData?.data?.type;
-    if (topLevelType && topLevelType !== CC_EVENTS.WELCOME && eventData.keepalive !== 'true') {
+    if (topLevelType !== CC_EVENTS.WELCOME && eventData.keepalive !== 'true') {
       const metricsPayload: Record<string, any> = {
         ws_event_type: nestedType || topLevelType,
         top_level_type: topLevelType,

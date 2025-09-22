@@ -64,8 +64,6 @@ describe('MetricsManagerImplementation', () => {
       });
     });
 
-    
-
     it('should not submit a behavioral, operational and business event if array is invalid', () => {
       const eventName = METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS;
       const data: EventPayload = {key: 'value'};
