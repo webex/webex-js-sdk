@@ -25,7 +25,7 @@ function getAllPropertiesAndMethods(obj) {
 }
 
 /**
- * Thing
+ * Extends an AmpersandState plugin with properties and methods from a given class.
  * @param {*} BasePlugin
  * @param  {Function} Class
  * @returns {Object}
