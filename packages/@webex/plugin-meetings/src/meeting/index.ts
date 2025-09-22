@@ -7836,6 +7836,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.allowMediaInLobby = options?.allowMediaInLobby;
 
+    // @ts-ignore
+    const ipver = MeetingUtil.getIpVersion(this.webex); // used just for metrics
+
     // If the user is unjoined or guest waiting in lobby dont allow the user to addMedia
     // @ts-ignore - isUserUnadmitted coming from SelfUtil
     if (this.isUserUnadmitted && !this.wirelessShare && !this.allowMediaInLobby) {
@@ -7934,6 +7937,7 @@ export default class Meeting extends StatelessWebexPlugin {
         locus_id: this.locusUrl.split('/').pop(),
         connectionType,
         ipVersion,
+        ipver,
         selectedCandidatePairChanges,
         numTransports,
         isMultistream: this.isMultistream,
@@ -8002,6 +8006,7 @@ export default class Meeting extends StatelessWebexPlugin {
         ...reachabilityMetrics,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
+        ipver,
       });
 
       await this.cleanUpOnAddMediaFailure();
