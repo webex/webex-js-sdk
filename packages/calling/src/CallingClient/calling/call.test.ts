@@ -3048,6 +3048,8 @@ describe('Supplementary Services tests', () => {
       const warnSpy = jest.spyOn(log, 'warn');
       const metricSpy = jest.spyOn(call['metricManager'], 'submitCallMetric');
 
+      call['broadworksCorrelationInfo'] = 'dummy-broadworks-correlation-info';
+
       await call.completeTransfer(TransferType.BLIND, undefined, transfereeNumber);
       await flushPromises(1);
 
@@ -3068,6 +3070,7 @@ describe('Supplementary Services tests', () => {
       expect(uploadLogsSpy).toHaveBeenCalledWith({
         correlationId: call.getCorrelationId(),
         callId: call.getCallId(),
+        broadworksCorrelationInfo: 'dummy-broadworks-correlation-info',
       });
       /* check whether error event is being emitted by sdk */
       expect(emitSpy).toBeCalledOnceWith(CALL_EVENT_KEYS.TRANSFER_ERROR, expect.any(CallError));

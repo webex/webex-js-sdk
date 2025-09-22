@@ -1,7 +1,7 @@
 /* eslint-disable dot-notation */
 import {getMockDeviceInfo, getTestUtilsWebex} from '../common/testUtil';
 import {getMetricManager} from './index';
-import {METRIC_TYPE, METRIC_EVENT, REG_ACTION, VOICEMAIL_ACTION} from './types';
+import {METRIC_TYPE, METRIC_EVENT, REG_ACTION, VOICEMAIL_ACTION, UPLOAD_LOGS_ACTION} from './types';
 import {REGISTRATION_UTIL, VERSION} from '../CallingClient/constants';
 import {createClientError} from '../Errors/catalog/CallingDeviceError';
 import {CallErrorObject, ErrorObject, ERROR_LAYER, ERROR_TYPE} from '../Errors/types';
@@ -586,6 +586,99 @@ describe('CALLING: Metric tests', () => {
       );
 
       expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
+    });
+  });
+
+  describe('Upload Logs metric tests', () => {
+    beforeAll(() => metricManager.setDeviceInfo(mockDeviceInfo));
+
+    it('submit upload logs success metric includes broadworksCorrelationInfo', () => {
+      const trackingId = 'track-123';
+      const feedbackId = 'feed-456';
+      const correlationId = 'corr-789';
+      const callId = 'call-123';
+      const broadworksCorrelationInfo = 'bw-corr-abc';
+
+      const expectedData = {
+        tags: {
+          action: UPLOAD_LOGS_ACTION,
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          correlation_id: correlationId,
+          broadworksCorrelationInfo,
+          tracking_id: trackingId,
+          feedback_id: feedbackId,
+          call_id: callId,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitUploadLogsMetric(
+        METRIC_EVENT.UPLOAD_LOGS_SUCCESS,
+        UPLOAD_LOGS_ACTION,
+        METRIC_TYPE.BEHAVIORAL,
+        trackingId,
+        feedbackId,
+        correlationId,
+        undefined,
+        callId,
+        broadworksCorrelationInfo
+      );
+
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(
+        METRIC_EVENT.UPLOAD_LOGS_SUCCESS,
+        expectedData
+      );
+    });
+
+    it('submit upload logs failure metric includes error and broadworksCorrelationInfo', () => {
+      const feedbackId = 'feed-456';
+      const correlationId = 'corr-789';
+      const callId = 'call-123';
+      const broadworksCorrelationInfo = 'bw-corr-abc';
+      const errorStack = 'some error stack';
+
+      const expectedData = {
+        tags: {
+          action: UPLOAD_LOGS_ACTION,
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          correlation_id: correlationId,
+          broadworksCorrelationInfo,
+          tracking_id: undefined,
+          feedback_id: feedbackId,
+          call_id: callId,
+          error: errorStack,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitUploadLogsMetric(
+        METRIC_EVENT.UPLOAD_LOGS_FAILED,
+        UPLOAD_LOGS_ACTION,
+        METRIC_TYPE.BEHAVIORAL,
+        undefined,
+        feedbackId,
+        correlationId,
+        errorStack,
+        callId,
+        broadworksCorrelationInfo
+      );
+
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(
+        METRIC_EVENT.UPLOAD_LOGS_FAILED,
+        expectedData
+      );
     });
   });
 });
