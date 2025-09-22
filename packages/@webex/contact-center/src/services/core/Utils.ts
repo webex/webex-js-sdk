@@ -1,6 +1,6 @@
 import * as Err from './Err';
 import {LoginOption, WebexRequestPayload} from '../../types';
-import {Failure, TaskError, AugmentedError} from './GlobalTypes';
+import {Failure, AugmentedError} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
 import {
@@ -150,7 +150,7 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
  * @param error - The error object from task API calls with structure: {id: string, details: {trackingId: string, msg: {...}}}
  * @param methodName - The name of the method where the error occurred.
  * @param moduleName - The name of the module where the error occurred.
- * @returns TaskError object containing structured error details for metrics and logging
+ * @returns AugmentedError containing structured error details on err.data for metrics and logging
  * @public
  * @example
  * const taskError = generateTaskErrorObject(error, 'transfer', 'TaskModule');
@@ -161,7 +161,7 @@ export const generateTaskErrorObject = (
   error: any,
   methodName: string,
   moduleName: string
-): TaskError => {
+): AugmentedError => {
   const trackingId = error?.details?.trackingId || error?.trackingId || '';
   const errorMsg = error?.details?.msg;
 
@@ -196,14 +196,7 @@ export const generateTaskErrorObject = (
     trackingId,
   };
 
-  return {
-    error: err,
-    trackingId,
-    errorMessage,
-    errorType,
-    errorData,
-    reasonCode,
-  };
+  return err;
 };
 
 /**

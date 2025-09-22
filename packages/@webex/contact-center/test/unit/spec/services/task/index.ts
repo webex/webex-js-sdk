@@ -172,15 +172,17 @@ describe('Task', () => {
       const errorMessage = msg?.errorMessage || legacyReason || `Error while performing ${methodName}`;
       const errorType = msg?.errorType || '';
       const errorData = msg?.errorData || '';
+      const reasonCode = msg?.reasonCode || 0;
       const reason = legacyReason || (errorType ? `${errorType}: ${errorMessage}` : errorMessage);
-      return {
-        error: new Error(reason),
+      const err: any = new Error(reason);
+      err.data = {
         trackingId,
-        errorMessage,
+        message: errorMessage,
         errorType,
         errorData,
-        reasonCode: msg?.reasonCode || 0,
-      } as any;
+        reasonCode,
+      };
+      return err;
     });
 
     (global as any).makeFailure = (reason: string, trackingId = '1234', orgId = 'org1') => ({
