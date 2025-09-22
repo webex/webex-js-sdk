@@ -36,52 +36,50 @@ class MetricManager implements IMetricManager {
     feedbackId?: string,
     correlationId?: string,
     stack?: string,
-    callId?: string
+    callId?: string,
+    broadworksCorrelationInfo?: string
   ) {
     let data;
 
+    const commonData = {
+      tags: {
+        action,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: this.serviceIndicator,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        correlation_id: correlationId,
+        broadworksCorrelationInfo,
+        tracking_id: trackingId,
+        feedback_id: feedbackId,
+        call_id: callId,
+      },
+      type,
+    };
+
     switch (name) {
       case METRIC_EVENT.UPLOAD_LOGS_SUCCESS: {
-        data = {
-          tags: {
-            action,
-            device_id: this.deviceInfo?.device?.deviceId,
-            service_indicator: this.serviceIndicator,
-          },
-          fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-            correlation_id: correlationId,
-            tracking_id: trackingId,
-            feedback_id: feedbackId,
-            call_id: callId,
-          },
-          type,
-        };
+        data = commonData;
+
         break;
       }
+
       case METRIC_EVENT.UPLOAD_LOGS_FAILED: {
         data = {
-          tags: {
-            action,
-            device_id: this.deviceInfo?.device?.deviceId,
-            service_indicator: this.serviceIndicator,
-          },
+          ...commonData,
           fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-            correlation_id: correlationId,
-            tracking_id: trackingId,
-            feedback_id: feedbackId,
+            ...commonData.fields,
             error: stack,
-            call_id: callId,
           },
-          type,
         };
+
+        break;
       }
     }
+
     if (data) {
       this.webex.internal.metrics.submitClientMetrics(name, data);
     }

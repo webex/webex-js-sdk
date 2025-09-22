@@ -1011,6 +1011,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1086,6 +1087,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1161,6 +1163,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1285,6 +1288,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1370,6 +1374,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1557,6 +1562,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
+          broadworksCorrelationInfo: this.broadworksCorrelationInfo,
         });
       }
     }, DEFAULT_SESSION_TIMER);
@@ -1741,6 +1747,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
+          broadworksCorrelationInfo: this.broadworksCorrelationInfo,
         });
       }
     } else {
@@ -1821,6 +1828,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
+          broadworksCorrelationInfo: this.broadworksCorrelationInfo,
         });
       }
     }
@@ -1897,6 +1905,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1950,6 +1959,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -2048,6 +2058,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   };
@@ -2461,6 +2472,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
+          broadworksCorrelationInfo: this.broadworksCorrelationInfo,
         });
       }
     } else if (transferType === TransferType.CONSULT && transferCallId) {
@@ -2511,6 +2523,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
+          broadworksCorrelationInfo: this.broadworksCorrelationInfo,
         });
       }
     } else {
