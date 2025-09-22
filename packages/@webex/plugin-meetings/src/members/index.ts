@@ -1181,11 +1181,17 @@ export default class Members extends StatelessWebexPlugin {
    * @param {string} memberId - id of the participant who is receiving request
    * @param {string} requestingParticipantId - id of the participant who is sending request (optional)
    * @param {string} [alias] - alias name
+   * @param {string} [suffix] - name suffix (optional)
    * @returns {Promise}
    * @public
    * @memberof Members
    */
-  public editDisplayName(memberId: string, requestingParticipantId: string, alias: string) {
+  public editDisplayName(
+    memberId: string,
+    requestingParticipantId: string,
+    alias: string,
+    suffix?: string
+  ) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError(
@@ -1205,7 +1211,8 @@ export default class Members extends StatelessWebexPlugin {
       memberId,
       requestingParticipantId,
       alias,
-      locusUrl
+      locusUrl,
+      suffix
     );
 
     return this.membersRequest.editDisplayNameMember(options);

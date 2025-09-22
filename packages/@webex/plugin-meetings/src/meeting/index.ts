@@ -3149,6 +3149,23 @@ export default class Meeting extends StatelessWebexPlugin {
               },
               EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD
             );
+            // @ts-ignore
+            this.webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp({
+              key: 'internal.client.share.stopped',
+            });
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.share.stopped',
+              payload: {
+                mediaType: 'whiteboard',
+                shareDuration:
+                  // @ts-ignore
+                  this.webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration(),
+              },
+              options: {
+                meetingId: this.id,
+              },
+            });
             break;
 
           case SHARE_STATUS.NO_SHARE:
@@ -6948,10 +6965,10 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       }
 
-      // Count members that are in the meeting.
+      // Count members that are in the meeting or in the lobby.
       const {members} = this.getMembers().membersCollection;
       event.data.intervalMetadata.meetingUserCount = Object.values(members).filter(
-        (member: Member) => member.isInMeeting
+        (member: Member) => member.isInMeeting || member.isInLobby
       ).length;
 
       // @ts-ignore

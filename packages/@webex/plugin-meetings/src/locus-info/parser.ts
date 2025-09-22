@@ -728,11 +728,15 @@ export default class Parser {
         break;
 
       case USE_INCOMING:
-      case LOCUS_URL_CHANGED:
         // update working copy for future comparisons.
         // Note: The working copy of parser gets updated in .onFullLocus()
         // and here when USE_INCOMING or LOCUS_URL_CHANGED locus.
         this.workingCopy = newLoci;
+        break;
+
+      case LOCUS_URL_CHANGED:
+        // clear the working copy completely, do a full locus sync
+        this.workingCopy = null;
         break;
 
       case WAIT:
