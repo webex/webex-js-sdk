@@ -1,5 +1,5 @@
 // Internal Dependencies
-import {deprecated, oneFlight, applyDecorators} from '@webex/common';
+import {deprecated, withDecorators, oneFlight} from '@webex/common';
 import {persist, waitForValue, WebexPlugin} from '@webex/webex-core';
 import {safeSetTimeout} from '@webex/common-timers';
 import {orderBy} from 'lodash';
@@ -373,84 +373,87 @@ const Device = WebexPlugin.extend({
    * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
-  refresh(deviceRegistrationOptions = {}) {
-    this.logger.info('device: refreshing');
+  refresh: withDecorators(
+    [waitForValue('@'), oneFlight],
+    function refresh(deviceRegistrationOptions = {}) {
+      this.logger.info('device: refreshing');
 
-    // Validate that the device can be registered.
-    return this.canRegister().then(() => {
-      // Validate if the device is not registered and register instead.
-      if (!this.registered) {
-        this.logger.info('device: device not registered, registering');
+      // Validate that the device can be registered.
+      return this.canRegister().then(() => {
+        // Validate if the device is not registered and register instead.
+        if (!this.registered) {
+          this.logger.info('device: device not registered, registering');
 
-        return this.register(deviceRegistrationOptions);
-      }
+          return this.register(deviceRegistrationOptions);
+        }
 
-      // Merge body configurations, overriding defaults.
-      const body = {
-        ...this.serialize(),
-        ...(this.config.body ? this.config.body : {}),
-      };
+        // Merge body configurations, overriding defaults.
+        const body = {
+          ...this.serialize(),
+          ...(this.config.body ? this.config.body : {}),
+        };
 
-      // Remove unneeded properties from the body object.
-      delete body.features;
-      delete body.mediaCluster;
-      delete body.etag;
+        // Remove unneeded properties from the body object.
+        delete body.features;
+        delete body.mediaCluster;
+        delete body.etag;
 
-      // Append a ttl value if the device is marked as ephemeral.
-      if (this.config.ephemeral) {
-        body.ttl = this.config.ephemeralDeviceTTL;
-      }
+        // Append a ttl value if the device is marked as ephemeral.
+        if (this.config.ephemeral) {
+          body.ttl = this.config.ephemeralDeviceTTL;
+        }
 
-      // Merge header configurations, overriding defaults.
-      const headers = {
-        ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
-        ...(this.config.headers ? this.config.headers : {}),
-        // If etag is sent, WDM will not send developer feature toggles unless they have changed
-        ...(this.etag ? {'If-None-Match': this.etag} : {}),
-      };
+        // Merge header configurations, overriding defaults.
+        const headers = {
+          ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
+          ...(this.config.headers ? this.config.headers : {}),
+          // If etag is sent, WDM will not send developer feature toggles unless they have changed
+          ...(this.etag ? {'If-None-Match': this.etag} : {}),
+        };
 
-      const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
+        const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
 
-      const requestId = uuid.v4();
-      this.set('refresh-request-id', requestId);
+        const requestId = uuid.v4();
+        this.set('refresh-request-id', requestId);
 
-      return this.request({
-        method: 'PUT',
-        uri: this.url,
-        body,
-        headers,
-        qs: {
-          includeUpstreamServices: `${includeDetails}${
-            this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
-          }`,
-        },
-      })
-        .then((response) => {
-          // If we've signed out in the mean time, the request ID will have changed
-          if (this.get('refresh-request-id') !== requestId) {
-            this.logger.info('device: refresh request ID mismatch, ignoring response');
-
-            return Promise.resolve();
-          }
-
-          return this.processRegistrationSuccess(response);
+        return this.request({
+          method: 'PUT',
+          uri: this.url,
+          body,
+          headers,
+          qs: {
+            includeUpstreamServices: `${includeDetails}${
+              this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
+            }`,
+          },
         })
-        .catch((reason) => {
-          // Handle a 404 error, which indicates that the device is no longer
-          // valid and needs to be registered as a new device.
-          if (reason.statusCode === 404) {
-            this.logger.info('device: refresh failed, device is not valid');
-            this.logger.info('device: attempting to register a new device');
+          .then((response) => {
+            // If we've signed out in the mean time, the request ID will have changed
+            if (this.get('refresh-request-id') !== requestId) {
+              this.logger.info('device: refresh request ID mismatch, ignoring response');
 
-            this.clear();
+              return Promise.resolve();
+            }
 
-            return this.register(deviceRegistrationOptions);
-          }
+            return this.processRegistrationSuccess(response);
+          })
+          .catch((reason) => {
+            // Handle a 404 error, which indicates that the device is no longer
+            // valid and needs to be registered as a new device.
+            if (reason.statusCode === 404) {
+              this.logger.info('device: refresh failed, device is not valid');
+              this.logger.info('device: attempting to register a new device');
 
-          return Promise.reject(reason);
-        });
-    });
-  },
+              this.clear();
+
+              return this.register(deviceRegistrationOptions);
+            }
+
+            return Promise.reject(reason);
+          });
+      });
+    }
+  ),
   /**
    * Fetches the web devices and deletes the third of them which are not recent devices in use
    * @returns {Promise<void, Error>}
@@ -502,30 +505,33 @@ const Device = WebexPlugin.extend({
    * @param {DeviceRegistrationOptions} deviceRegistrationOptions - The options for registration.
    * @returns {Promise<void, Error>}
    */
-  register(deviceRegistrationOptions = {}) {
-    this.logger.info('device: registering');
+  register: withDecorators(
+    [waitForValue('@'), oneFlight],
+    function register(deviceRegistrationOptions = {}) {
+      this.logger.info('device: registering');
 
-    this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
+      this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
 
-    // Validate that the device can be registered.
-    return this.canRegister().then(() => {
-      // Validate if the device is already registered and refresh instead.
-      if (this.registered) {
-        this.logger.info('device: device already registered, refreshing');
+      // Validate that the device can be registered.
+      return this.canRegister().then(() => {
+        // Validate if the device is already registered and refresh instead.
+        if (this.registered) {
+          this.logger.info('device: device already registered, refreshing');
 
-        return this.refresh(deviceRegistrationOptions);
-      }
-
-      return this._registerInternal(deviceRegistrationOptions).catch((error) => {
-        if (error?.body?.message === 'User has excessive device registrations') {
-          return this.deleteDevices().then(() => {
-            return this._registerInternal(deviceRegistrationOptions);
-          });
+          return this.refresh(deviceRegistrationOptions);
         }
-        throw error;
+
+        return this._registerInternal(deviceRegistrationOptions).catch((error) => {
+          if (error?.body?.message === 'User has excessive device registrations') {
+            return this.deleteDevices().then(() => {
+              return this._registerInternal(deviceRegistrationOptions);
+            });
+          }
+          throw error;
+        });
       });
-    });
-  },
+    }
+  ),
 
   /**
    * Merges the default and custom body configurations for the registration request.
@@ -548,75 +554,80 @@ const Device = WebexPlugin.extend({
    * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
-  _registerInternal(deviceRegistrationOptions = {}) {
-    this.logger.info('device: making registration request');
+  _registerInternal: withDecorators(
+    [waitForValue('@'), oneFlight],
+    function _registerInternal(deviceRegistrationOptions = {}) {
+      this.logger.info('device: making registration request');
 
-    // Merge body configurations, overriding defaults.
-    const body = this._getBody();
+      // Merge body configurations, overriding defaults.
+      const body = this._getBody();
 
-    // Merge header configurations, overriding defaults.
-    const headers = {
-      ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
-      ...(this.config.headers ? this.config.headers : {}),
-    };
+      // Merge header configurations, overriding defaults.
+      const headers = {
+        ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
+        ...(this.config.headers ? this.config.headers : {}),
+      };
 
-    // Append a ttl value if the device is marked as ephemeral
-    if (this.config.ephemeral) {
-      body.ttl = this.config.ephemeralDeviceTTL;
-    }
-    this.webex.internal.newMetrics.submitInternalEvent({
-      name: 'internal.register.device.request',
-    });
-
-    const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
-
-    const requestId = uuid.v4();
-    this.set('register-request-id', requestId);
-
-    // This will be replaced by a `create()` method.
-    return this.request({
-      method: 'POST',
-      service: 'wdm',
-      resource: 'devices',
-      body,
-      headers,
-      qs: {
-        includeUpstreamServices: `${includeDetails}${
-          this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
-        }`,
-      },
-    })
-      .catch((error) => {
-        this.webex.internal.newMetrics.submitInternalEvent({
-          name: 'internal.register.device.response',
-        });
-
-        throw error;
-      })
-      .then((response) => {
-        // If we've signed out in the mean time, the request ID will have changed
-        if (this.get('register-request-id') !== requestId) {
-          this.logger.info('device: register request ID mismatch, ignoring response');
-
-          return Promise.resolve();
-        }
-
-        // Do not add any processing of response above this as that will affect timestamp
-        this.webex.internal.newMetrics.submitInternalEvent({
-          name: 'internal.register.device.response',
-        });
-
-        this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL);
-
-        return this.processRegistrationSuccess(response);
-      })
-      .catch((error) => {
-        this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
-          fields: {error},
-        });
-        throw error;
+      // Append a ttl value if the device is marked as ephemeral
+      if (this.config.ephemeral) {
+        body.ttl = this.config.ephemeralDeviceTTL;
+      }
+      this.webex.internal.newMetrics.submitInternalEvent({
+        name: 'internal.register.device.request',
       });
-  },
+
+      const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
+
+      const requestId = uuid.v4();
+      this.set('register-request-id', requestId);
+
+      // This will be replaced by a `create()` method.
+      return this.request({
+        method: 'POST',
+        service: 'wdm',
+        resource: 'devices',
+        body,
+        headers,
+        qs: {
+          includeUpstreamServices: `${includeDetails}${
+            this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
+          }`,
+        },
+      })
+        .catch((error) => {
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.register.device.response',
+          });
+
+          throw error;
+        })
+        .then((response) => {
+          // If we've signed out in the mean time, the request ID will have changed
+          if (this.get('register-request-id') !== requestId) {
+            this.logger.info('device: register request ID mismatch, ignoring response');
+
+            return Promise.resolve();
+          }
+
+          // Do not add any processing of response above this as that will affect timestamp
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.register.device.response',
+          });
+
+          this.webex.internal.metrics.submitClientMetrics(
+            METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL
+          );
+
+          return this.processRegistrationSuccess(response);
+        })
+        .catch((error) => {
+          this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
+            fields: {error},
+          });
+          throw error;
+        });
+    }
+  ),
   /**
    * Unregister the current registered device if available. Unregistering a
    * device utilizes the services plugin to send the request to the **WDM**
@@ -624,7 +635,7 @@ const Device = WebexPlugin.extend({
    *
    * @returns {Promise<void, Error>}
    */
-  unregister() {
+  unregister: withDecorators([waitForValue('@'), oneFlight], function unregister() {
     this.logger.info('device: unregistering');
 
     if (!this.registered) {
@@ -648,7 +659,7 @@ const Device = WebexPlugin.extend({
         }
         throw reason;
       });
-  },
+  }),
   /* eslint-enable require-jsdoc */
 
   // Helper method members
@@ -926,10 +937,12 @@ const Device = WebexPlugin.extend({
    * @param {string} url - The url to mark as failed.
    * @returns {Promise<string>} - The next priority url.
    */
-  markUrlFailedAndGetNew(url) {
-    return Promise.resolve(this.webex.internal.services.markFailedUrl(url));
-  },
-
+  markUrlFailedAndGetNew: withDecorators(
+    [deprecated('device#markUrlFailedAndGetNew(): Use services#markFailedUrl()')],
+    function markUrlFailedAndGetNew(url) {
+      return Promise.resolve(this.webex.internal.services.markFailedUrl(url));
+    }
+  ),
   // Ampersand method members
 
   /* eslint-disable require-jsdoc */
@@ -940,7 +953,7 @@ const Device = WebexPlugin.extend({
    * @param {Array<any>} args - An array of items to be mapped as properties.
    * @returns {void}
    */
-  initialize(...args) {
+  initialize: withDecorators([persist('@', decider)], function initialize(...args) {
     // Prototype the extended class in order to preserve the parent member.
     Reflect.apply(WebexPlugin.prototype.initialize, this, args);
 
@@ -983,19 +996,8 @@ const Device = WebexPlugin.extend({
       this.isInMeeting = false;
       this.resetLogoutTimer();
     });
-  },
+  }),
   /* eslint-enable require-jsdoc */
-});
-
-applyDecorators(Device, {
-  register: [waitForValue('@')],
-  _registerInternal: [waitForValue('@'), oneFlight],
-  refresh: [waitForValue('@'), oneFlight],
-  unregister: [waitForValue('@'), oneFlight],
-  markUrlFailedAndGetNew: [
-    deprecated('device#markUrlFailedAndGetNew(): Use services#markFailedUrl()'),
-  ],
-  initialize: [persist('@', decider)],
 });
 
 export default Device;

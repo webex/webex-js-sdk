@@ -1,14 +1,10 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import {applyDecorators} from '@webex/common/src/apply-decorators';
+import {withDecorators} from '@webex/common/src/with-decorators';
 
-describe('applyDecorators()', () => {
+describe('withDecorators()', () => {
   it('applies the decorators in order', () => {
     const method = sinon.stub();
-
-    const obj = {
-      method
-    }
 
     const decorator1 = (fn) => {
       return function decorated1() {
@@ -22,11 +18,9 @@ describe('applyDecorators()', () => {
       };
     }
 
-    applyDecorators(obj, {
-      method: [decorator1, decorator2]
-    });
+    const result = withDecorators([decorator1, decorator2], method);
 
-    obj.method('arg');
+    result('arg');
 
     assert.calledOnce(method);
 
