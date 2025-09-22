@@ -39,6 +39,7 @@ describe('Task', () => {
   let loggerInfoSpy;
   let loggerLogSpy;
   let loggerErrorSpy;
+  let getDestinationAgentIdSpy;
 
   const taskId = '0ae913a4-c857-4705-8d49-76dd3dde75e4';
   const mockTrack = {} as MediaStreamTrack;
@@ -141,6 +142,11 @@ describe('Task', () => {
       },
     };
 
+    // Mock destination agent id resolution from participants
+    getDestinationAgentIdSpy = jest
+      .spyOn(Utils, 'getDestinationAgentId')
+      .mockReturnValue(taskDataMock.destAgentId);
+
     // Create an instance of Task
     task = new Task(contactMock, webCallingService, taskDataMock);
 
@@ -163,6 +169,7 @@ describe('Task', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   it('test the on spy', async () => {
@@ -754,27 +761,79 @@ describe('Task', () => {
     expect(contactMock.consult).toHaveBeenCalledWith({interactionId: taskId, data: consultPayload});
     expect(response).toEqual(expectedResponse);
 
-    const consultTransferPayload: ConsultTransferPayLoad = {
-      to: '1234',
-      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
-    };
-
-    const consultTransferResponse = await task.consultTransfer(consultTransferPayload);
+    const consultTransferResponse = await task.consultTransfer();
     expect(contactMock.consultTransfer).toHaveBeenCalledWith({
       interactionId: taskId,
-      data: consultTransferPayload,
+      data: {
+        to: taskDataMock.destAgentId,
+        destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+      },
     });
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       2,
       METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
       {
         taskId: taskDataMock.interactionId,
-        destination: consultTransferPayload.to,
-        destinationType: consultTransferPayload.destinationType,
+        destination: taskDataMock.destAgentId,
+        destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
         isConsultTransfer: true,
       },
       ['operational', 'behavioral', 'business']
     );
+  });
+
+  it('should send DIALNUMBER when task destinationType is DN during consultTransfer', async () => {
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.consultTransfer.mockResolvedValue(expectedResponse);
+
+    // Ensure task data indicates DN scenario
+    task.data.destinationType = 'DN' as unknown as string;
+
+    await task.consultTransfer();
+
+    expect(contactMock.consultTransfer).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: {
+        to: taskDataMock.destAgentId,
+        destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER,
+      },
+    });
+  });
+
+  it('should send ENTRYPOINT when task destinationType is EPDN during consultTransfer', async () => {
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.consultTransfer.mockResolvedValue(expectedResponse);
+
+    // Ensure task data indicates EP/EPDN scenario
+    task.data.destinationType = 'EPDN' as unknown as string;
+
+    await task.consultTransfer();
+
+    expect(contactMock.consultTransfer).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: {
+        to: taskDataMock.destAgentId,
+        destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT,
+      },
+    });
+  });
+
+  it('should keep AGENT when task destinationType is neither DN nor EPDN/ENTRYPOINT', async () => {
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.consultTransfer.mockResolvedValue(expectedResponse);
+
+    // Ensure task data indicates non-DN and non-EP/EPDN scenario
+    task.data.destinationType = 'SOMETHING_ELSE' as unknown as string;
+
+    await task.consultTransfer();
+
+    expect(contactMock.consultTransfer).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: {
+        to: taskDataMock.destAgentId,
+        destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+      },
+    });
   });
 
   it('should do consult transfer to a queue by using the destAgentId from task data', async () => {
@@ -810,6 +869,9 @@ describe('Task', () => {
       to: 'some-queue-id',
       destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE,
     };
+
+    // For this negative case, ensure computed destination is empty
+    getDestinationAgentIdSpy.mockReturnValueOnce('');
 
     await expect(
       taskWithoutDestAgentId.consultTransfer(queueConsultTransferPayload)
@@ -855,8 +917,8 @@ describe('Task', () => {
       METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
       {
         taskId: taskDataMock.interactionId,
-        destination: consultTransferPayload.to,
-        destinationType: consultTransferPayload.destinationType,
+        destination: taskDataMock.destAgentId,
+        destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
         isConsultTransfer: true,
         error: error.toString(),
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
