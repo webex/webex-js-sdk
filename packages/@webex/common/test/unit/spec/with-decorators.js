@@ -1,6 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import {withDecorators} from '@webex/common/src/with-decorators';
+import withDecorators from '@webex/common/src/with-decorators';
 
 describe('withDecorators()', () => {
   it('applies the decorators in order', () => {

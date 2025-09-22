@@ -4,10 +4,6 @@
  * @param {Function} fn - The function to decorate
  * @returns {Function} - The decorated function
  */
-export function withDecorators(decorators, fn) {
+export default function withDecorators(decorators, fn) {
   return decorators.reduce((decorated, decorator) => decorator(decorated), fn);
 }
-
-export default {
-  withDecorators,
-};
