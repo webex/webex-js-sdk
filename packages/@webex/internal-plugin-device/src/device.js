@@ -1,5 +1,5 @@
 // Internal Dependencies
-import {deprecated, oneFlight} from '@webex/common';
+import {deprecated, oneFlight, extendFromClass} from '@webex/common';
 import {persist, waitForValue, WebexPlugin} from '@webex/webex-core';
 import {safeSetTimeout} from '@webex/common-timers';
 import {orderBy} from 'lodash';
@@ -20,18 +20,21 @@ function decider() {
   return !this.config.ephemeral;
 }
 
-const Device = WebexPlugin.extend({
+/**
+ * @class DeviceClass
+ */
+class DeviceClass {
   // Ampersand property members.
 
-  namespace: 'Device',
+  namespace = 'Device';
 
   // Allow for extra properties to prevent the plugin from failing due to
   // **WDM** service DTO changes.
-  extraProperties: 'allow',
+  extraProperties = 'allow';
 
-  idAttribute: 'url',
+  idAttribute = 'url';
 
-  children: {
+  children = {
     /**
      * The class object that contains all of the feature collections.
      *
@@ -44,7 +47,7 @@ const Device = WebexPlugin.extend({
      * @type {IpNetworkDetector}
      */
     ipNetworkDetector: IpNetworkDetector,
-  },
+  };
 
   /**
    * A collection of device properties mostly assigned by the retrieved DTO from
@@ -52,7 +55,7 @@ const Device = WebexPlugin.extend({
    *
    * @type {Object}
    */
-  props: {
+  props = {
     /**
      * This property determines whether or not giphy support is enabled.
      *
@@ -249,7 +252,7 @@ const Device = WebexPlugin.extend({
      * @type {'ALLOW' | 'BLOCK'}
      */
     whiteboardFileShareControl: 'string',
-  },
+  };
 
   /**
    * A list of derived properties that populate based when their parent data
@@ -257,7 +260,7 @@ const Device = WebexPlugin.extend({
    *
    * @type {Object}
    */
-  derived: {
+  derived = {
     /**
      * This property determines if the current device is registered.
      *
@@ -277,14 +280,14 @@ const Device = WebexPlugin.extend({
         return !!this.url;
       },
     },
-  },
+  };
 
   /**
    * Stores timer data as well as other state details.
    *
    * @type {Object}
    */
-  session: {
+  session = {
     /**
      * This property stores the logout timer object
      *
@@ -333,7 +336,7 @@ const Device = WebexPlugin.extend({
      * @type {boolean}
      */
     isInNetwork: 'boolean',
-  },
+  };
 
   // Event method members.
 
@@ -344,7 +347,7 @@ const Device = WebexPlugin.extend({
    */
   meetingStarted() {
     this.webex.trigger('meeting started');
-  },
+  }
 
   /**
    * Trigger meeting ended event for webex instance. Used by web-client team.
@@ -353,7 +356,7 @@ const Device = WebexPlugin.extend({
    */
   meetingEnded() {
     this.webex.trigger('meeting ended');
-  },
+  }
 
   /**
    * Set the value of energy forecast config for the current registered device.
@@ -362,14 +365,14 @@ const Device = WebexPlugin.extend({
    */
   setEnergyForecastConfig(energyForecastConfig = false) {
     this.energyForecastConfig = energyForecastConfig;
-  },
+  }
 
   // Registration method members
 
   /**
    * Refresh the current registered device if able.
    *
-   * @param {DeviceRegistrationOptions} options - The options for refresh.
+   * @param {DeviceRegistrationOptions} deviceRegistrationOptions - The options for refresh.
    * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
@@ -452,7 +455,8 @@ const Device = WebexPlugin.extend({
           return Promise.reject(reason);
         });
     });
-  },
+  }
+
   /**
    * Fetches the web devices and deletes the third of them which are not recent devices in use
    * @returns {Promise<void, Error>}
@@ -497,10 +501,12 @@ const Device = WebexPlugin.extend({
 
         return Promise.reject(error);
       });
-  },
+  }
 
   /**
    * Registers and when fails deletes devices
+   * @param {DeviceRegistrationOptions} deviceRegistrationOptions - The options for registration.
+   * @returns {Promise<void, Error>}
    */
   @waitForValue('@')
   register(deviceRegistrationOptions = {}) {
@@ -526,21 +532,25 @@ const Device = WebexPlugin.extend({
         throw error;
       });
     });
-  },
+  }
 
+  /**
+   * Merges the default and custom body configurations.
+   * @returns {Object} - The merged body configuration object.
+   */
   _getBody() {
     return {
       ...(this.config.defaults.body ? this.config.defaults.body : {}),
       ...(this.config.body ? this.config.body : {}),
     };
-  },
+  }
 
   /**
    * Register or refresh a device depending on the current device state. Device
    * registration utilizes the services plugin to send the request to the
    * **WDM** service.
    *
-   * @param {Object} options - The options for registration.
+   * @param {Object} deviceRegistrationOptions - The options for registration.
    * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
@@ -614,7 +624,8 @@ const Device = WebexPlugin.extend({
         });
         throw error;
       });
-  },
+  }
+
   /**
    * Unregister the current registered device if available. Unregistering a
    * device utilizes the services plugin to send the request to the **WDM**
@@ -648,7 +659,7 @@ const Device = WebexPlugin.extend({
         }
         throw reason;
       });
-  },
+  }
   /* eslint-enable require-jsdoc */
 
   // Helper method members
@@ -680,7 +691,7 @@ const Device = WebexPlugin.extend({
             )
           )
     );
-  },
+  }
 
   /**
    * Check if the device can currently reach the inactivity check url.
@@ -730,7 +741,7 @@ const Device = WebexPlugin.extend({
 
         return Promise.resolve(this.resetLogoutTimer());
       });
-  },
+  }
 
   /**
    * Clears the registration ttl value if available.
@@ -743,7 +754,7 @@ const Device = WebexPlugin.extend({
 
     // Prototype the extended class in order to preserve the parent member.
     Reflect.apply(WebexPlugin.prototype.clear, this, args);
-  },
+  }
 
   /**
    * Get the current websocket url with the appropriate priority host.
@@ -784,7 +795,7 @@ const Device = WebexPlugin.extend({
     }
 
     return Promise.reject(new Error('device: failed to get the current websocket url'));
-  },
+  }
 
   /**
    * Process a successful device registration.
@@ -833,7 +844,7 @@ const Device = WebexPlugin.extend({
 
     // Emit the registration:success event.
     this.trigger(DEVICE_EVENT_REGISTRATION_SUCCESS, this);
-  },
+  }
 
   /**
    * Reset the current local logout timer for the registered device if
@@ -866,7 +877,7 @@ const Device = WebexPlugin.extend({
         this.setLogoutTimer(this.intranetInactivityDuration);
       }
     }
-  },
+  }
 
   /**
    * Set the value of the logout timer for the current registered device.
@@ -890,7 +901,7 @@ const Device = WebexPlugin.extend({
     this.logoutTimer = safeSetTimeout(() => {
       this.webex.logout();
     }, duration * 1000);
-  },
+  }
 
   /**
    * Wait for the device to be registered.
@@ -916,7 +927,7 @@ const Device = WebexPlugin.extend({
         resolve();
       });
     });
-  },
+  }
 
   // Deprecated methods.
 
@@ -929,7 +940,7 @@ const Device = WebexPlugin.extend({
   @deprecated('device#markUrlFailedAndGetNew(): Use services#markFailedUrl()')
   markUrlFailedAndGetNew(url) {
     return Promise.resolve(this.webex.internal.services.markFailedUrl(url));
-  },
+  }
 
   // Ampersand method members
 
@@ -985,8 +996,10 @@ const Device = WebexPlugin.extend({
       this.isInMeeting = false;
       this.resetLogoutTimer();
     });
-  },
+  }
   /* eslint-enable require-jsdoc */
-});
+}
+
+const Device = extendFromClass(WebexPlugin, DeviceClass);
 
 export default Device;
