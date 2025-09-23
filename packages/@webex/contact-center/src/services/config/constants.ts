@@ -246,4 +246,17 @@ export const endPointMap = {
    */
   queueList: (orgId: string, queryParams: string) =>
     `organization/${orgId}/v2/contact-service-queue?${queryParams}`,
+  /**
+   * Gets the endpoint for address book entries with custom query parameters.
+   * @param orgId - Organization ID.
+   * @param addressBookId - Address book ID.
+   * @param queryParams - Query parameters string.
+   * @returns The endpoint URL string.
+   * @public
+   * @example
+   * const url = endPointMap.addressBookEntries('org123', 'book456', 'page=0&pageSize=10');
+   * @ignore
+   */
+  addressBookEntries: (orgId: string, addressBookId: string, queryParams: string) =>
+    `/organization/${orgId}/v2/address-book/${addressBookId}/entry?${queryParams}`,
 };

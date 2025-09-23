@@ -13,6 +13,7 @@ import PageCache, {
 } from '../utils/PageCache';
 import MetricsManager from '../metrics/MetricsManager';
 import {WCC_API_GATEWAY} from './constants';
+import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
 
 /**
@@ -230,7 +231,7 @@ export class AddressBookAPI {
       if (attributes) queryParams.append('attributes', attributes);
       if (search) queryParams.append('search', search);
 
-      const resource = `/organization/${orgId}/v2/address-book/${bookId}/entry?${queryParams.toString()}`;
+      const resource = endPointMap.addressBookEntries(orgId, bookId, queryParams.toString());
 
       LoggerProxy.info('Making API request to fetch address book entries', {
         module: 'AddressBookAPI',

@@ -26,24 +26,8 @@ export {default as Task} from './services/task';
  */
 export {default as routingAgent} from './services/agent';
 
-// API exports
-/**
- * EntryPoint API for managing Webex Contact Center entry points
- * @category APIs
- */
-export {default as EntryPointAPI} from './services/EntryPointAPI';
-
-/**
- * AddressBook API for managing Webex Contact Center address book contacts
- * @category APIs
- */
+// API exports (AddressBook is public, EntryPoint and Queue are accessed via cc wrappers)
 export {default as AddressBookAPI} from './services/AddressBookAPI';
-
-/**
- * Queue API for managing Webex Contact Center queues
- * @category APIs
- */
-export {default as QueueAPI} from './services/QueueAPI';
 
 /** EntryPoint API types */
 export type {

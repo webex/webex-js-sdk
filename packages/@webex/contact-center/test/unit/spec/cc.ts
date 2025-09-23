@@ -8,8 +8,10 @@ import {
 } from '../../../src/types';
 import ContactCenter from '../../../src/cc';
 import EntryPointAPI from '../../../src/services/EntryPointAPI';
+import type {EntryPointListResponse} from '../../../src/services/EntryPointAPI';
 import AddressBookAPI from '../../../src/services/AddressBookAPI';
 import QueueAPI from '../../../src/services/QueueAPI';
+import type {ContactServiceQueuesResponse} from '../../../src/services/QueueAPI';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess, AGENT_EVENTS} from '../../../src/services/agent/types';
 import {SetStateResponse} from '../../../src/types';
@@ -1718,9 +1720,13 @@ describe('webex.cc', () => {
   });
 
   describe('API property exposure', () => {
-    it('should expose entryPoint API', () => {
-      expect(webex.cc.entryPoint).toBeDefined();
-      expect(webex.cc.entryPoint).toBeInstanceOf(EntryPointAPI);
+    it('should provide getEntryPoints wrapper that delegates to EntryPointAPI', async () => {
+      const spy = jest
+        .spyOn(EntryPointAPI.prototype, 'getEntryPoints')
+        .mockResolvedValue({} as EntryPointListResponse);
+      await webex.cc.getEntryPoints();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
 
     it('should expose addressBook API', () => {
@@ -1728,9 +1734,13 @@ describe('webex.cc', () => {
       expect(webex.cc.addressBook).toBeInstanceOf(AddressBookAPI);
     });
 
-    it('should expose queue API', () => {
-      expect(webex.cc.queue).toBeDefined();
-      expect(webex.cc.queue).toBeInstanceOf(QueueAPI);
+    it('should provide getQueues wrapper that delegates to QueueAPI', async () => {
+      const spy = jest
+        .spyOn(QueueAPI.prototype, 'getQueues')
+        .mockResolvedValue({} as ContactServiceQueuesResponse);
+      await webex.cc.getQueues();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
   });
 

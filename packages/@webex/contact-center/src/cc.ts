@@ -56,6 +56,11 @@ import {Failure} from './services/core/GlobalTypes';
 import EntryPointAPI from './services/EntryPointAPI';
 import AddressBookAPI from './services/AddressBookAPI';
 import QueueAPI from './services/QueueAPI';
+import type {EntryPointListResponse, EntryPointSearchParams} from './services/EntryPointAPI';
+import type {
+  ContactServiceQueuesResponse,
+  ContactServiceQueueSearchParams,
+} from './services/QueueAPI';
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -260,7 +265,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * });
    * ```
    */
-  public entryPoint: EntryPointAPI;
+  private entryPoint: EntryPointAPI;
 
   /**
    * API instance for managing Webex Contact Center address book contacts
@@ -305,7 +310,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * });
    * ```
    */
-  public queue: QueueAPI;
+  private queue: QueueAPI;
 
   /**
    * Logger utility for Contact Center plugin
@@ -1626,5 +1631,27 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
       throw error;
     }
+  }
+
+  /**
+   * Returns paginated entry points for the organization.
+   * Thin wrapper around internal EntryPointAPI instance.
+   * @public
+   */
+  public async getEntryPoints(
+    params: EntryPointSearchParams = {}
+  ): Promise<EntryPointListResponse> {
+    return this.entryPoint.getEntryPoints(params);
+  }
+
+  /**
+   * Returns paginated contact service queues for the organization.
+   * Thin wrapper around internal QueueAPI instance.
+   * @public
+   */
+  public async getQueues(
+    params: ContactServiceQueueSearchParams = {}
+  ): Promise<ContactServiceQueuesResponse> {
+    return this.queue.getQueues(params);
   }
 }

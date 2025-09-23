@@ -258,7 +258,7 @@ function toggleTransferOptions() {
 async function getQueueListForTelephonyChannel() {
   try {
     // Need to access via data as that is the list of queues
-    const queueResponse = await webex.cc.queue.getQueues();
+    const queueResponse = await webex.cc.getQueues();
     let queueList = queueResponse.data;
     queueList = queueList.filter(queue => queue.channelType === 'TELEPHONY');
   
@@ -270,7 +270,7 @@ async function getQueueListForTelephonyChannel() {
 
 async function getEntryPoints() {
   try {
-    const entryPoints = await webex.cc.entryPoint.getEntryPoints();
+    const entryPoints = await webex.cc.getEntryPoints();
     return entryPoints.data || [];
   } catch (error) {
     console.log('Failed to fetch entry points', error);
