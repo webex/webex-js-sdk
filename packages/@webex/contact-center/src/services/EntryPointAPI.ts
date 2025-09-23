@@ -210,32 +210,6 @@ export class EntryPointAPI {
 
       const duration = Date.now() - startTime;
 
-      if (response.statusCode !== 200) {
-        const errorMessage =
-          response.body?.error?.message || response.body?.message || 'Unknown error';
-        const errorData = {
-          orgId,
-          statusCode: response.statusCode,
-          errorMessage,
-          isSearchRequest,
-          page,
-          pageSize,
-        };
-
-        LoggerProxy.error(`API call failed with status ${response.statusCode}`, {
-          module: 'EntryPointAPI',
-          method: 'getEntryPoints',
-          data: errorData,
-        });
-
-        // Only track metrics for failures and search requests to reduce noise
-        this.metricsManager.trackEvent(METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_FAILED, errorData, [
-          'behavioral',
-        ]);
-
-        throw new Error(`API call failed with status ${response.statusCode}: ${errorMessage}`);
-      }
-
       const recordCount = response.body?.data?.length || 0;
       const totalRecords = response.body?.meta?.totalRecords;
 

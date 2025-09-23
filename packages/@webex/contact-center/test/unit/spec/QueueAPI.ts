@@ -205,34 +205,20 @@ describe('QueueAPI', () => {
     });
 
     it('should handle API errors and track metrics', async () => {
-      const errorResponse: IHttpResponse = {
-        statusCode: 500,
-        method: 'GET',
-        url: '/organization/test-org-id/v2/contact-service-queue',
-        headers: {} as any,
-        body: {
-          error: {
-            message: 'Internal Server Error',
-          },
-        },
-      };
-      mockWebexRequest.request.mockResolvedValue(errorResponse);
+      mockWebexRequest.request.mockRejectedValue(new Error('Internal Server Error'));
 
-      await expect(queueAPI.getQueues()).rejects.toThrow(
-        'API call failed with status 500: Internal Server Error'
-      );
+      await expect(queueAPI.getQueues()).rejects.toThrow('Internal Server Error');
 
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.QUEUE_FETCH_FAILED,
         {
           orgId: 'test-org-id',
-          statusCode: 500,
-          errorMessage: 'Internal Server Error',
+          error: 'Internal Server Error',
           isSearchRequest: false,
           page: 0,
           pageSize: 100,
         },
-        ['behavioral']
+        ['behavioral', 'operational']
       );
       expect(LoggerProxy.error).toHaveBeenCalled();
     });
