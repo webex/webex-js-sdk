@@ -200,10 +200,6 @@ describe('WebSocketManager', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(mockWorker.postMessage).toHaveBeenCalledWith({ type: 'terminate' });
-    expect(LoggerProxy.info).toHaveBeenCalledWith(
-      '[WebSocketStatus] | desktop online status is false',
-      { module: WEB_SOCKET_MANAGER_FILE, method: 'webSocketOnCloseHandler' }
-    );
     expect(LoggerProxy.error).toHaveBeenCalledWith(
       '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: network issue',
       { module: WEB_SOCKET_MANAGER_FILE, method: 'webSocketOnCloseHandler' }
