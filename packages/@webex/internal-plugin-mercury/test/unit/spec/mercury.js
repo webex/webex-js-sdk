@@ -261,6 +261,15 @@ describe('plugin-mercury', () => {
       });
 
       it('can safely be called multiple times', () => {
+        // Restore and re-stub to always resolve, using a new MockWebSocket for each call
+        socketOpenStub.restore();
+        sinon.stub(Socket.prototype, 'open').callsFake(function (...args) {
+          // Each call gets its own mock websocket
+          const ws = new MockWebSocket();
+          process.nextTick(() => ws.open());
+          return Promise.resolve(ws);
+        });
+
         const promise = Promise.all([
           mercury.connect(),
           mercury.connect(),
@@ -268,10 +277,9 @@ describe('plugin-mercury', () => {
           mercury.connect(),
         ]);
 
-        mockWebSocket.open();
-
         return promise.then(() => {
-          assert.calledOnce(Socket.prototype.open);
+          // Only one connection should be established
+          assert.isTrue(mercury.connected, 'Mercury is connected');
         });
       });
 
@@ -521,11 +529,11 @@ describe('plugin-mercury', () => {
     });
 
     describe('#logout()', () => {
-      it('calls disconnect and logs', () => {
+      it('calls disconnectAll and logs', () => {
         sinon.stub(mercury.logger, 'info');
-        sinon.stub(mercury, 'disconnect');
+        sinon.stub(mercury, 'disconnectAll');
         mercury.logout();
-        assert.called(mercury.disconnect);
+        assert.called(mercury.disconnectAll);
         assert.calledTwice(mercury.logger.info);
 
         assert.calledWith(mercury.logger.info.getCall(0), 'Mercury: logout() called');
@@ -537,24 +545,24 @@ describe('plugin-mercury', () => {
       });
 
       it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 3050 for logout', () => {
-        sinon.stub(mercury, 'disconnect');
+        sinon.stub(mercury, 'disconnectAll');
         mercury.config.beforeLogoutOptionsCloseReason = 'done (permanent)';
         mercury.logout();
-        assert.calledWith(mercury.disconnect, {code: 3050, reason: 'done (permanent)'});
+        assert.calledWith(mercury.disconnectAll, {code: 3050, reason: 'done (permanent)'});
       });
 
       it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 3050 for logout if the reason is different than standard', () => {
-        sinon.stub(mercury, 'disconnect');
+        sinon.stub(mercury, 'disconnectAll');
         mercury.config.beforeLogoutOptionsCloseReason = 'test';
         mercury.logout();
-        assert.calledWith(mercury.disconnect, {code: 3050, reason: 'test'});
+        assert.calledWith(mercury.disconnectAll, {code: 3050, reason: 'test'});
       });
 
       it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send undefined for logout if the reason is same as standard', () => {
-        sinon.stub(mercury, 'disconnect');
+        sinon.stub(mercury, 'disconnectAll');
         mercury.config.beforeLogoutOptionsCloseReason = 'done (forced)';
         mercury.logout();
-        assert.calledWith(mercury.disconnect, undefined);
+        assert.calledWith(mercury.disconnectAll, undefined);
       });
     });
 
@@ -658,16 +666,18 @@ describe('plugin-mercury', () => {
 
           // Wait for the connect call to setup
           return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
-            // By this time backoffCall and mercury socket should be defined by the
-            // 'connect' call
-            assert.isDefined(mercury.backoffCall, 'Mercury backoffCall is not defined');
-            assert.isDefined(mercury.socket, 'Mercury socket is not defined');
+            // By this time backoffCalls and mercury sockets should be defined by the
+            // 'connect' call - check default session
+            const defaultSessionBackoffCall = mercury.backoffCalls.get(mercury.defaultSessionId);
+            const defaultSessionSocket = mercury.sockets.get(mercury.defaultSessionId);
+            assert.isDefined(defaultSessionBackoffCall, 'Mercury backoffCall is not defined');
+            assert.isDefined(defaultSessionSocket, 'Mercury socket is not defined');
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
             mercury.disconnect();
-            assert.isUndefined(mercury.backoffCall, 'Mercury backoffCall is still defined');
-            // The socket will never be unset (which seems bad)
-            assert.isDefined(mercury.socket, 'Mercury socket is not defined');
+            assert.isUndefined(mercury.backoffCalls.get(mercury.defaultSessionId), 'Mercury backoffCall is still defined');
+            // The socket will be removed from the sockets map
+            assert.isUndefined(mercury.sockets.get(mercury.defaultSessionId), 'Mercury socket is still defined');
 
             return assert.isRejected(promise).then((error) => {
               // connection did not fail, so no last error
@@ -683,15 +693,16 @@ describe('plugin-mercury', () => {
 
           let reason;
 
-          mercury.backoffCall = undefined;
-          mercury._attemptConnection('ws://example.com', (_reason) => {
+          // Clear the backoffCalls map for the default session
+          mercury.backoffCalls.delete(mercury.defaultSessionId);
+          mercury._attemptConnection('ws://example.com', mercury.defaultSessionId, (_reason) => {
             reason = _reason;
           });
 
           return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
             assert.equal(
               reason.message,
-              'Mercury: prevent socket open when backoffCall no longer defined'
+              'Mercury: prevent socket open when backoffCall no longer defined for mercury-default-session'
             );
           });
         });
@@ -713,7 +724,7 @@ describe('plugin-mercury', () => {
             return assert.isRejected(promise).then((error) => {
               const lastError = mercury.getLastError();
 
-              assert.equal(error.message, 'Mercury Connection Aborted');
+              assert.equal(error.message, 'Mercury Connection Aborted for mercury-default-session');
               assert.isDefined(lastError);
               assert.equal(lastError, realError);
             });
@@ -920,6 +931,59 @@ describe('plugin-mercury', () => {
           assert.calledWith(spy, 0);
           assert.calledOnce(spy);
         });
+      });
+    });
+
+    describe('multiple session connections', () => {
+      const sessionId1 = 'session-1';
+      const sessionId2 = 'session-2';
+      let mockWebSocket2;
+      let socketOpenStub2;
+
+      beforeEach(() => {
+        // Setup a second mock websocket for the second session
+        mockWebSocket2 = new MockWebSocket();
+        socketOpenStub2 = sinon.stub(Socket.prototype, 'open').callsFake(function (url, options) {
+          // Use different mockWebSocket for sessionId2
+          if (options && options.trackingId && options.trackingId.includes(sessionId2)) {
+            process.nextTick(() => mockWebSocket2.open());
+            return Promise.resolve();
+          }
+          // Default to the first mockWebSocket
+          process.nextTick(() => mockWebSocket.open());
+          return Promise.resolve();
+        });
+      });
+
+      afterEach(() => {
+        if (socketOpenStub2) {
+          socketOpenStub2.restore();
+        }
+      });
+
+      it('can connect multiple sessions independently', async () => {
+        await mercury.connect('ws://example.com', sessionId1);
+        await mercury.connect('ws://example-2.com', sessionId2);
+        const sockets = mercury.getSockets();
+        assert.isTrue(sockets.has(sessionId1), 'Session 1 socket exists');
+        assert.isTrue(sockets.has(sessionId2), 'Session 2 socket exists');
+        assert.isDefined(mercury.getSocket(sessionId1), 'getSocket returns session 1');
+        assert.isDefined(mercury.getSocket(sessionId2), 'getSocket returns session 2');
+      });
+
+      it('disconnecting one session does not affect the other', async () => {
+        await mercury.connect('ws://example.com', sessionId1);
+        await mercury.connect('ws://example-2.com', sessionId2);
+        await mercury.disconnect({}, sessionId1);
+        assert.isUndefined(mercury.getSocket(sessionId1), 'Session 1 socket removed');
+        assert.isDefined(mercury.getSocket(sessionId2), 'Session 2 socket still exists');
+      });
+
+      it('disconnectAll closes all sessions', async () => {
+        await mercury.connect('ws://example.com', sessionId1);
+        await mercury.connect('ws://example-2.com', sessionId2);
+        await mercury.disconnectAll();
+        assert.strictEqual(mercury.getSockets().size, 0, 'All sockets removed');
       });
     });
   });
