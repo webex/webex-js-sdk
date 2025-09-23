@@ -6965,10 +6965,10 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       }
 
-      // Count members that are in the meeting.
+      // Count members that are in the meeting or in the lobby.
       const {members} = this.getMembers().membersCollection;
       event.data.intervalMetadata.meetingUserCount = Object.values(members).filter(
-        (member: Member) => member.isInMeeting
+        (member: Member) => member.isInMeeting || member.isInLobby
       ).length;
 
       // @ts-ignore
