@@ -12,7 +12,6 @@ import {
   TaskResponse,
   AgentContact,
   ConsultEndPayload,
-  ConsultConferenceData,
   TaskData,
   DESTINATION_TYPE,
   CONSULT_TRANSFER_DESTINATION_TYPE,
@@ -43,11 +42,6 @@ describe('Task', () => {
   let getDestinationAgentIdSpy;
 
   const taskId = '0ae913a4-c857-4705-8d49-76dd3dde75e4';
-  const mockConsultData: ConsultConferenceData = {
-    to: 'test-agent-123',
-    destinationType: 'agent',
-    agentId: 'current-agent-456',
-  };
   const mockTrack = {} as MediaStreamTrack;
   const mockStream = {
     outputStream: {
@@ -1598,6 +1592,13 @@ describe('Task', () => {
         .spyOn(Utils, 'getDestinationAgentId')
         .mockReturnValue(taskDataMock.destAgentId);
 
+      // Setup extractConsultConferenceData spy for conference methods
+      jest.spyOn(Utils, 'extractConsultConferenceData').mockReturnValue({
+        agentId: taskDataMock.agentId,
+        destAgentId: taskDataMock.destAgentId,
+        destinationType: taskDataMock.destinationType || 'agent'
+      });
+
       task = new Task(contactMock, webCallingService, taskDataMock, {
         wrapUpProps: { wrapUpReasonList: [] },
         autoWrapEnabled: false,
@@ -1606,11 +1607,6 @@ describe('Task', () => {
     });
 
     describe('startConsultConference', () => {
-      const mockConsultData = {
-        agentId: 'current-agent-id',
-        destAgentId: 'destination-agent-id', // Agent Desktop expects destAgentId, not to
-        destinationType: 'agent'
-      };
 
       it('should successfully start conference and emit event', async () => {
         const mockResponse = {
@@ -1620,7 +1616,7 @@ describe('Task', () => {
         contactMock.consultConference.mockResolvedValue(mockResponse);
         
 
-        const result = await task.startConsultConference(mockConsultData);
+        const result = await task.startConsultConference();
 
         expect(contactMock.consultConference).toHaveBeenCalledWith({
           interactionId: taskId,
@@ -1652,16 +1648,16 @@ describe('Task', () => {
         };
         contactMock.consultConference.mockResolvedValue(mockResponse);
 
-        const result = await task.startConsultConference(mockConsultData);
+        const result = await task.startConsultConference();
         expect(result).toEqual(mockResponse);
       });
 
       it('should handle and rethrow contact method errors', async () => {
         const mockError = new Error('Conference start failed');
         contactMock.consultConference.mockRejectedValue(mockError);
-        getErrorDetailsSpy.mockReturnValue({ error: mockError });
+        generateTaskErrorObjectSpy.mockReturnValue(mockError);
 
-        await expect(task.startConsultConference(mockConsultData)).rejects.toThrow('Conference start failed');
+        await expect(task.startConsultConference()).rejects.toThrow('Conference start failed');
         expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to start consult conference', {
           module: TASK_FILE,
           method: 'startConsultConference',
@@ -1706,7 +1702,7 @@ describe('Task', () => {
       it('should handle and rethrow contact method errors', async () => {
         const mockError = new Error('Conference end failed');
         contactMock.exitConference.mockRejectedValue(mockError);
-        getErrorDetailsSpy.mockReturnValue({ error: mockError });
+        generateTaskErrorObjectSpy.mockReturnValue(mockError);
 
         await expect(task.endConsultConference()).rejects.toThrow('Conference end failed');
         expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to end consult conference', {
@@ -1753,7 +1749,7 @@ describe('Task', () => {
       it('should handle and rethrow contact method errors', async () => {
         const mockError = new Error('Conference transfer failed');
         contactMock.conferenceTransfer.mockRejectedValue(mockError);
-        getErrorDetailsSpy.mockReturnValue({ error: mockError });
+        generateTaskErrorObjectSpy.mockReturnValue(mockError);
 
         await expect(task.transferConference()).rejects.toThrow('Conference transfer failed');
         expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to transfer conference', {

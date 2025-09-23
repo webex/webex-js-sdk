@@ -316,13 +316,27 @@ export const deriveConsultConferenceDestinationType = (taskData?: TaskData): str
  * - isWxccMultiPartyConfEnabled()
  * For now, we default to ENTRY_POINT as modern behavior.
  */
-const getDestAgentTypeForEporEPDN = (): string => {
-  // TODO: Add feature flag support when available
-  // if (SERVICE.featureflag.isWxccPersistCallEnabled() || SERVICE.featureflag.isWxccMultiPartyConfEnabled()) {
-  //   return DESTINATION_TYPE.ENTRY_POINT;
-  // }
-  // return DESTINATION_TYPE.EPDN;
-  return CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
+// const getDestAgentTypeForEporEPDN = (): string => {
+//   // TODO: Add feature flag support when available
+//   // if (SERVICE.featureflag.isWxccPersistCallEnabled() || SERVICE.featureflag.isWxccMultiPartyConfEnabled()) {
+//   //   return DESTINATION_TYPE.ENTRY_POINT;
+//   // }
+//   // return DESTINATION_TYPE.EPDN;
+//   return CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
+// };
+
+/**
+ * Extracts consultation conference data from task data
+ * @param taskData - The task data containing agent and destination information
+ * @returns Consultation conference data required for buildConsultConferenceParamData
+ * @public
+ */
+export const extractConsultConferenceData = (taskData: TaskData): consultConferencePayloadData => {
+  return {
+    agentId: taskData.agentId,
+    destAgentId: taskData.destAgentId,
+    destinationType: taskData.destinationType || 'agent',
+  };
 };
 
 /**
@@ -341,6 +355,7 @@ export const buildConsultConferenceParamData = (
   const data: ConsultConferenceData = {
     // Include agentId if present in input data
     ...('agentId' in dataPassed && {agentId: dataPassed.agentId}),
+    // Handle destAgentId from consultation data
     to: dataPassed.destAgentId,
     destinationType: '',
   };
@@ -350,10 +365,11 @@ export const buildConsultConferenceParamData = (
     if (dataPassed.destinationType === 'DN') {
       data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
     } else if (dataPassed.destinationType === 'EP_DN') {
-      data.destinationType = getDestAgentTypeForEporEPDN();
+      data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
     } else {
-      // Keep the existing destinationType if it's something else (like "agent")
-      data.destinationType = dataPassed.destinationType;
+      // Keep the existing destinationType if it's something else (like "agent" or "Agent")
+      // Convert "Agent" to lowercase for consistency
+      data.destinationType = dataPassed.destinationType.toLowerCase();
     }
   } else {
     data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
