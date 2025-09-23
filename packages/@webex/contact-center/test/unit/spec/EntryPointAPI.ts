@@ -1,4 +1,4 @@
-import EntryPointAPI from '../../../src/EntryPointAPI';
+import EntryPointAPI from '../../../src/services/EntryPointAPI';
 import {HTTP_METHODS, WebexSDK, IHttpResponse} from '../../../src/types';
 import {METRIC_EVENT_NAMES} from '../../../src/metrics/constants';
 import WebexRequest from '../../../src/services/core/WebexRequest';

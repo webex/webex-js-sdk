@@ -3,16 +3,17 @@
  * @module QueueAPI
  */
 
-import {HTTP_METHODS, WebexSDK} from './types';
-import LoggerProxy from './logger-proxy';
-import WebexRequest from './services/core/WebexRequest';
+import {HTTP_METHODS, WebexSDK} from '../types';
+import LoggerProxy from '../logger-proxy';
+import WebexRequest from './core/WebexRequest';
 import PageCache, {
   PaginatedResponse,
   BaseSearchParams,
   PAGINATION_DEFAULTS,
-} from './utils/PageCache';
-import MetricsManager from './metrics/MetricsManager';
-import {METRIC_EVENT_NAMES} from './metrics/constants';
+} from '../utils/PageCache';
+import MetricsManager from '../metrics/MetricsManager';
+import {WCC_API_GATEWAY} from './constants';
+import {METRIC_EVENT_NAMES} from '../metrics/constants';
 
 /**
  * Interface for Queue Skill Requirement based on QueueSkillRequirementDTO from spec
@@ -371,12 +372,12 @@ export class QueueAPI {
         method: 'getQueues',
         data: {
           resource,
-          service: 'wcc-api-gateway',
+          service: WCC_API_GATEWAY,
         },
       });
 
       const response = await this.webexRequest.request({
-        service: 'wcc-api-gateway',
+        service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
       });

@@ -53,9 +53,9 @@ import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/t
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
-import EntryPointAPI from './EntryPointAPI';
-import AddressBookAPI from './AddressBookAPI';
-import QueueAPI from './QueueAPI';
+import EntryPointAPI from './services/EntryPointAPI';
+import AddressBookAPI from './services/AddressBookAPI';
+import QueueAPI from './services/QueueAPI';
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -161,9 +161,6 @@ import QueueAPI from './QueueAPI';
  *
  * @public
  */
-
-// Export both API classes for direct import
-export {EntryPointAPI, AddressBookAPI};
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   /**

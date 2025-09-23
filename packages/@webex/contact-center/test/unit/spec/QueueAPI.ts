@@ -1,4 +1,4 @@
-import QueueAPI from '../../../src/QueueAPI';
+import QueueAPI from '../../../src/services/QueueAPI';
 import {HTTP_METHODS, WebexSDK, IHttpResponse} from '../../../src/types';
 import {METRIC_EVENT_NAMES} from '../../../src/metrics/constants';
 import WebexRequest from '../../../src/services/core/WebexRequest';

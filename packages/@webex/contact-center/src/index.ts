@@ -31,34 +31,38 @@ export {default as routingAgent} from './services/agent';
  * EntryPoint API for managing Webex Contact Center entry points
  * @category APIs
  */
-export {default as EntryPointAPI} from './EntryPointAPI';
+export {default as EntryPointAPI} from './services/EntryPointAPI';
 
 /**
  * AddressBook API for managing Webex Contact Center address book contacts
  * @category APIs
  */
-export {default as AddressBookAPI} from './AddressBookAPI';
+export {default as AddressBookAPI} from './services/AddressBookAPI';
 
 /**
  * Queue API for managing Webex Contact Center queues
  * @category APIs
  */
-export {default as QueueAPI} from './QueueAPI';
+export {default as QueueAPI} from './services/QueueAPI';
 
 /** EntryPoint API types */
-export type {EntryPoint, EntryPointListResponse, EntryPointSearchParams} from './EntryPointAPI';
+export type {
+  EntryPoint,
+  EntryPointListResponse,
+  EntryPointSearchParams,
+} from './services/EntryPointAPI';
 /** AddressBook API types */
 export type {
   AddressBookEntry,
   AddressBookEntriesResponse,
   AddressBookEntrySearchParams,
-} from './AddressBookAPI';
+} from './services/AddressBookAPI';
 /** Queue API types */
 export type {
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
   ContactServiceQueue as QueueContactServiceQueue,
-} from './QueueAPI';
+} from './services/QueueAPI';
 
 // Enums
 /**

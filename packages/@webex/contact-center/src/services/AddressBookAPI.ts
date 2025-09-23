@@ -3,16 +3,17 @@
  * @module AddressBookAPI
  */
 
-import {HTTP_METHODS, WebexSDK} from './types';
-import LoggerProxy from './logger-proxy';
-import WebexRequest from './services/core/WebexRequest';
+import {HTTP_METHODS, WebexSDK} from '../types';
+import LoggerProxy from '../logger-proxy';
+import WebexRequest from './core/WebexRequest';
 import PageCache, {
   PaginatedResponse,
   BaseSearchParams,
   PAGINATION_DEFAULTS,
-} from './utils/PageCache';
-import MetricsManager from './metrics/MetricsManager';
-import {METRIC_EVENT_NAMES} from './metrics/constants';
+} from '../utils/PageCache';
+import MetricsManager from '../metrics/MetricsManager';
+import {WCC_API_GATEWAY} from './constants';
+import {METRIC_EVENT_NAMES} from '../metrics/constants';
 
 /**
  * Interface for AddressBook entry item based on AddressBookEntryDTO from spec
@@ -167,7 +168,7 @@ export class AddressBookAPI {
       if (cachedPage) {
         const duration = Date.now() - startTime;
 
-        LoggerProxy.log(`Returning page ${page} from cache`, {
+        LoggerProxy.info(`Returning page ${page} from cache`, {
           module: 'AddressBookAPI',
           method: 'getEntries',
           data: {
@@ -231,17 +232,17 @@ export class AddressBookAPI {
 
       const resource = `/organization/${orgId}/v2/address-book/${bookId}/entry?${queryParams.toString()}`;
 
-      LoggerProxy.log('Making API request to fetch address book entries', {
+      LoggerProxy.info('Making API request to fetch address book entries', {
         module: 'AddressBookAPI',
         method: 'getEntries',
         data: {
           resource,
-          service: 'wcc-api-gateway',
+          service: WCC_API_GATEWAY,
         },
       });
 
       const response = await this.webexRequest.request({
-        service: 'wcc-api-gateway',
+        service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
       });
@@ -278,7 +279,7 @@ export class AddressBookAPI {
       const recordCount = response.body?.data?.length || 0;
       const totalRecords = response.body?.meta?.totalRecords;
 
-      LoggerProxy.log(`Successfully retrieved ${recordCount} address book entries`, {
+      LoggerProxy.info(`Successfully retrieved ${recordCount} address book entries`, {
         module: 'AddressBookAPI',
         method: 'getEntries',
         data: {
@@ -314,7 +315,7 @@ export class AddressBookAPI {
         const cacheKey = this.pageCache.buildCacheKey(bookId, page, pageSize);
         this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
 
-        LoggerProxy.log('Cached address book entries for future requests', {
+        LoggerProxy.info('Cached address book entries for future requests', {
           module: 'AddressBookAPI',
           method: 'getEntries',
           data: {

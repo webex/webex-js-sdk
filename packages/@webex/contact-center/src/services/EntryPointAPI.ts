@@ -3,16 +3,17 @@
  * @module EntryPointAPI
  */
 
-import {HTTP_METHODS, WebexSDK} from './types';
-import LoggerProxy from './logger-proxy';
-import WebexRequest from './services/core/WebexRequest';
+import {HTTP_METHODS, WebexSDK} from '../types';
+import LoggerProxy from '../logger-proxy';
+import WebexRequest from './core/WebexRequest';
 import PageCache, {
   PaginatedResponse,
   BaseSearchParams,
   PAGINATION_DEFAULTS,
-} from './utils/PageCache';
-import MetricsManager from './metrics/MetricsManager';
-import {METRIC_EVENT_NAMES} from './metrics/constants';
+} from '../utils/PageCache';
+import MetricsManager from '../metrics/MetricsManager';
+import {WCC_API_GATEWAY} from './constants';
+import {METRIC_EVENT_NAMES} from '../metrics/constants';
 
 /**
  * Interface for EntryPoint item
@@ -194,7 +195,7 @@ export class EntryPointAPI {
       const resource = `/organization/${orgId}/v2/entry-point?${queryParams.toString()}`;
 
       LoggerProxy.log(
-        `Making API request to fetch entry points - resource: ${resource}, service: wcc-api-gateway`,
+        `Making API request to fetch entry points - resource: ${resource}, service: ${WCC_API_GATEWAY}`,
         {
           module: 'EntryPointAPI',
           method: 'getEntryPoints',
@@ -202,7 +203,7 @@ export class EntryPointAPI {
       );
 
       const response = await this.webexRequest.request({
-        service: 'wcc-api-gateway',
+        service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
       });
