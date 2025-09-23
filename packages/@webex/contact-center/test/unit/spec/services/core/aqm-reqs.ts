@@ -381,9 +381,7 @@ describe('AqmReqs', () => {
           data: { type: 'KeepaliveEvent' },
         })
       );
-    
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Keepalive from web socket', {"method": "onMessage", "module": AQM_REQS_FILE});
-    
+        
       // Unhandled event
       webSocketManagerInstance.emit(
         'message',

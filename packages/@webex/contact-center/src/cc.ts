@@ -289,6 +289,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
       this.incomingTaskListener();
 
+      // Initialize logger
       LoggerProxy.initialize(this.$webex.logger);
     });
   }
@@ -983,6 +984,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       module: CC_FILE,
       method: METHODS.HANDLE_WEBSOCKET_MESSAGE,
     });
+
+    // Emit metrics for all websocket events except keepalive and welcome
+    const topLevelType = eventData.type;
+    const nestedType = eventData?.data?.type;
+    if (topLevelType !== CC_EVENTS.WELCOME && eventData.keepalive !== 'true') {
+      const metricsPayload: Record<string, any> = {
+        ws_event_type: nestedType || topLevelType,
+        top_level_type: topLevelType,
+        has_data: Boolean(eventData.data),
+      };
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_EVENT_RECEIVED, metricsPayload, [
+        'operational',
+      ]);
+    }
 
     switch (eventData.type) {
       case CC_EVENTS.AGENT_MULTI_LOGIN:

@@ -278,6 +278,7 @@ export type LogsMetaData = {
   callId?: string;
   feedbackId?: string;
   correlationId?: string;
+  broadworksCorrelationInfo?: string;
 };
 
 export type UploadLogsResponse = {

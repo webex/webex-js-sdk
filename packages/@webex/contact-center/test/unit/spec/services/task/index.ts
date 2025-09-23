@@ -33,7 +33,7 @@ describe('Task', () => {
   let mockMetricsManager;
   let taskDataMock;
   let webCallingService;
-  let getErrorDetailsSpy;
+  let generateTaskErrorObjectSpy;
   let mockWebexRequest;
   let webex: WebexSDK;
   let loggerInfoSpy;
@@ -164,7 +164,37 @@ describe('Task', () => {
       return mockStream;
     });
 
-    getErrorDetailsSpy = jest.spyOn(Utils, 'getErrorDetails');
+    generateTaskErrorObjectSpy = jest.spyOn(Utils, 'generateTaskErrorObject');
+    generateTaskErrorObjectSpy.mockImplementation((error: any, methodName: string) => {
+      const trackingId = error?.details?.trackingId;
+      const msg = error?.details?.msg;
+      const legacyReason = error?.details?.data?.reason;
+      const errorMessage = msg?.errorMessage || legacyReason || `Error while performing ${methodName}`;
+      const errorType = msg?.errorType || '';
+      const errorData = msg?.errorData || '';
+      const reasonCode = msg?.reasonCode || 0;
+      const reason = legacyReason || (errorType ? `${errorType}: ${errorMessage}` : errorMessage);
+      const err: any = new Error(reason);
+      err.data = {
+        trackingId,
+        message: errorMessage,
+        errorType,
+        errorData,
+        reasonCode,
+      };
+      return err;
+    });
+
+    (global as any).makeFailure = (reason: string, trackingId = '1234', orgId = 'org1') => ({
+      type: 'failure_event',
+      orgId,
+      trackingId,
+      data: {
+        agentId: 'agent1',
+        reason,
+        reasonCode: 0,
+      },
+    });
   });
 
   afterEach(() => {
@@ -420,27 +450,28 @@ describe('Task', () => {
   });
 
   it('should handle errors in accept method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Accept Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Accept Failed')};
 
     jest.spyOn(webCallingService, 'answerCall').mockImplementation(() => {
       throw error;
     });
 
     await expect(task.accept()).rejects.toThrow(new Error(error.details.data.reason));
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'accept', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'accept', TASK_FILE);
+    const expectedTaskErrorFields = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
       METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
       {
         taskId: taskDataMock.interactionId,
         error: error.toString(),
+        ...expectedTaskErrorFields,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
@@ -476,26 +507,27 @@ describe('Task', () => {
   });
 
   it('should handle errors in decline method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Decline Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Decline Failed')};
 
     jest.spyOn(webCallingService, 'declineCall').mockImplementation(() => {
       throw error;
     });
     await expect(task.decline()).rejects.toThrow(new Error(error.details.data.reason));
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'decline', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'decline', TASK_FILE);
+    const expectedTaskErrorFieldsDecline = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
       METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
       {
         taskId: taskDataMock.interactionId,
         error: error.toString(),
+        ...expectedTaskErrorFieldsDecline,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral']
@@ -536,20 +568,20 @@ describe('Task', () => {
   });
 
   it('should handle errors in hold method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Hold Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Hold Failed')};
     contactMock.hold.mockImplementation(() => {
       throw error;
     });
 
     await expect(task.hold()).rejects.toThrow(error.details.data.reason);
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'hold', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'hold', TASK_FILE);
+    const expectedTaskErrorFieldsHold = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
       METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
@@ -557,6 +589,7 @@ describe('Task', () => {
         taskId: taskDataMock.interactionId,
         mediaResourceId: taskDataMock.mediaResourceId,
         error: error.toString(),
+        ...expectedTaskErrorFieldsHold,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral']
@@ -588,20 +621,20 @@ describe('Task', () => {
   });
 
   it('should handle errors in resume method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Resume Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Resume Failed')};
     contactMock.unHold.mockImplementation(() => {
       throw error;
     });
 
     await expect(task.resume()).rejects.toThrow(error.details.data.reason);
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'resume', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'resume', TASK_FILE);
+    const expectedTaskErrorFieldsResume = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
       METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
@@ -611,6 +644,7 @@ describe('Task', () => {
         mediaResourceId:
           taskDataMock.interaction.media[taskDataMock.interaction.mainInteractionId]
             .mediaResourceId,
+        ...expectedTaskErrorFieldsResume,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral']
@@ -653,14 +687,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in consult method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Consult Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Consult Failed')};
     contactMock.consult.mockImplementation(() => {
       throw error;
     });
@@ -671,12 +698,19 @@ describe('Task', () => {
     };
 
     await expect(task.consult(consultPayload)).rejects.toThrow(error.details.data.reason);
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'consult', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'consult', TASK_FILE);
     expect(loggerInfoSpy).toHaveBeenCalledWith(`Starting consult`, {
       module: TASK_FILE,
       method: 'consult',
       interactionId: task.data.interactionId,
     });
+    const expectedTaskErrorFieldsConsult = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
       METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
       {
@@ -684,6 +718,7 @@ describe('Task', () => {
         destination: consultPayload.to,
         destinationType: consultPayload.destinationType,
         error: error.toString(),
+        ...expectedTaskErrorFieldsConsult,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
@@ -717,14 +752,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in endConsult method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'End Consult Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('End Consult Failed')};
     contactMock.consultEnd.mockImplementation(() => {
       throw error;
     });
@@ -735,13 +763,21 @@ describe('Task', () => {
     };
 
     await expect(task.endConsult(consultEndPayload)).rejects.toThrow(error.details.data.reason);
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'endConsult', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'endConsult', TASK_FILE);
+    const expectedTaskErrorFieldsEndConsult = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
       METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
       {
         taskId: taskDataMock.interactionId,
         error: error.toString(),
+        ...expectedTaskErrorFieldsEndConsult,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
@@ -891,14 +927,7 @@ describe('Task', () => {
     expect(contactMock.consult).toHaveBeenCalledWith({interactionId: taskId, data: consultPayload});
     expect(response).toEqual(expectedResponse);
 
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Consult Transfer Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Consult Transfer Failed')};
     contactMock.consultTransfer.mockImplementation(() => {
       throw error;
     });
@@ -911,7 +940,14 @@ describe('Task', () => {
     await expect(task.consultTransfer(consultTransferPayload)).rejects.toThrow(
       error.details.data.reason
     );
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'consultTransfer', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'consultTransfer', TASK_FILE);
+    const expectedTaskErrorFieldsConsultTransfer = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       2,
       METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
@@ -921,6 +957,7 @@ describe('Task', () => {
         destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
         isConsultTransfer: true,
         error: error.toString(),
+        ...expectedTaskErrorFieldsConsultTransfer,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
@@ -988,14 +1025,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in transfer method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Consult Transfer Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Consult Transfer Failed')};
     contactMock.blindTransfer.mockImplementation(() => {
       throw error;
     });
@@ -1006,7 +1036,14 @@ describe('Task', () => {
     };
 
     await expect(task.transfer(blindTransferPayload)).rejects.toThrow(error.details.data.reason);
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'transfer', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'transfer', TASK_FILE);
+    const expectedTaskErrorFieldsTransfer = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
       METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
@@ -1016,6 +1053,7 @@ describe('Task', () => {
         destinationType: blindTransferPayload.destinationType,
         isConsultTransfer: false,
         error: error.toString(),
+        ...expectedTaskErrorFieldsTransfer,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
@@ -1052,25 +1090,26 @@ describe('Task', () => {
   });
 
   it('should handle errors in end method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'End Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('End Failed')};
     contactMock.end.mockImplementation(() => {
       throw error;
     });
 
     await expect(task.end()).rejects.toThrow(error.details.data.reason);
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'end', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'end', TASK_FILE);
+    const expectedTaskErrorFieldsEnd = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
       METRIC_EVENT_NAMES.TASK_END_FAILED,
       {
         taskId: taskDataMock.interactionId,
+        ...expectedTaskErrorFieldsEnd,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
@@ -1103,14 +1142,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in wrapup method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Wrapup Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Wrapup Failed')};
     contactMock.wrapup.mockImplementation(() => {
       throw error;
     });
@@ -1121,7 +1153,14 @@ describe('Task', () => {
     };
 
     await expect(task.wrapup(wrapupPayload)).rejects.toThrow(error.details.data.reason);
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'wrapup', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'wrapup', TASK_FILE);
+    const expectedTaskErrorFieldsWrapup = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
       METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
@@ -1129,6 +1168,7 @@ describe('Task', () => {
         taskId: taskDataMock.interactionId,
         wrapUpCode: wrapupPayload.auxCodeId,
         wrapUpReason: wrapupPayload.wrapUpReason,
+        ...expectedTaskErrorFieldsWrapup,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
@@ -1186,26 +1226,27 @@ describe('Task', () => {
   });
 
   it('should handle errors in pauseRecording method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Pause Recording Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Pause Recording Failed')};
     contactMock.pauseRecording.mockImplementation(() => {
       throw error;
     });
 
     await expect(task.pauseRecording()).rejects.toThrow(error.details.data.reason);
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'pauseRecording', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'pauseRecording', TASK_FILE);
+    const expectedTaskErrorFieldsPause = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
       METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
       {
         taskId: taskDataMock.interactionId,
         error: error.toString(),
+        ...expectedTaskErrorFieldsPause,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
@@ -1266,14 +1307,7 @@ describe('Task', () => {
   });
 
   it('should handle errors in resumeRecording method', async () => {
-    const error = {
-      details: {
-        trackingId: '1234',
-        data: {
-          reason: 'Resume Recording Failed',
-        },
-      },
-    };
+    const error = {details: (global as any).makeFailure('Resume Recording Failed')};
     contactMock.resumeRecording.mockImplementation(() => {
       throw error;
     });
@@ -1283,13 +1317,21 @@ describe('Task', () => {
     };
 
     await expect(task.resumeRecording(resumePayload)).rejects.toThrow(error.details.data.reason);
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'resumeRecording', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'resumeRecording', TASK_FILE);
+    const expectedTaskErrorFieldsResumeRec = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
     expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
       1,
       METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
       {
         taskId: taskDataMock.interactionId,
         error: error.toString(),
+        ...expectedTaskErrorFieldsResumeRec,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
       ['operational', 'behavioral', 'business']
@@ -1329,7 +1371,7 @@ describe('Task', () => {
       throw error;
     });
     await expect(task.toggleMute()).rejects.toThrow(new Error(error.details.data.reason));
-    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'toggleMute', TASK_FILE);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'toggleMute', TASK_FILE);
     expect(loggerInfoSpy).toHaveBeenCalledWith(`Toggling mute state`, {
       module: TASK_FILE,
       method: 'toggleMute',

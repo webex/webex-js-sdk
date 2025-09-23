@@ -2369,23 +2369,23 @@ describe('plugin-meetings', () => {
 
       it('applyLocusDeltaData handles LOCUS_URL_CHANGED action correctly', () => {
         const {LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
-        const fakeDeltaLocus = {id: 'fake delta locus'};
+        const fakeFullLocus = {
+          url: 'new full loci url',
+        };
         const meeting = {
           meetingRequest: {
-            getLocusDTO: sandbox.stub().resolves({body: fakeDeltaLocus}),
+            getLocusDTO: sandbox.stub().resolves({body: fakeFullLocus}),
           },
           locusInfo: {
             handleLocusDelta: sandbox.stub(),
           },
-          locusUrl: 'current locus url',
+          locusUrl: 'current BO session locus url',
         };
 
-        locusInfo.locusParser.workingCopy = {
-          syncUrl: 'current sync url',
-        };
+        locusInfo.locusParser.workingCopy = null;
 
         locusInfo.applyLocusDeltaData(LOCUS_URL_CHANGED, fakeLocus, meeting);
-        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'current sync url'});
+        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: fakeLocus.url});
       });
 
       describe('edge cases for sync failing', () => {
