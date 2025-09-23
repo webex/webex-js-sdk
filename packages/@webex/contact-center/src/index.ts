@@ -45,6 +45,21 @@ export {default as AddressBookAPI} from './AddressBookAPI';
  */
 export {default as QueueAPI} from './QueueAPI';
 
+/** EntryPoint API types */
+export type {EntryPoint, EntryPointListResponse, EntryPointSearchParams} from './EntryPointAPI';
+/** AddressBook API types */
+export type {
+  AddressBookEntry,
+  AddressBookEntriesResponse,
+  AddressBookEntrySearchParams,
+} from './AddressBookAPI';
+/** Queue API types */
+export type {
+  ContactServiceQueuesResponse,
+  ContactServiceQueueSearchParams,
+  ContactServiceQueue as QueueContactServiceQueue,
+} from './QueueAPI';
+
 // Enums
 /**
  * Task Events for Contact Center operations
