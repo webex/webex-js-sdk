@@ -1,8 +1,14 @@
 import * as Err from './Err';
 import {LoginOption, WebexRequestPayload} from '../../types';
-import {Failure} from './GlobalTypes';
+import {Failure, AugmentedError} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
+import {
+  TaskData,
+  ConsultTransferPayLoad,
+  CONSULT_TRANSFER_DESTINATION_TYPE,
+  Interaction,
+} from '../task/types';
 
 /**
  * Extracts common error details from a Webex request payload.
@@ -17,6 +23,28 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
     trackingId: errObj?.headers?.trackingid || errObj?.headers?.TrackingID,
     msg: errObj?.body,
   };
+};
+
+/**
+ * Checks if the destination type represents an entry point variant (EPDN or ENTRYPOINT).
+ */
+const isEntryPointOrEpdn = (destAgentType?: string): boolean => {
+  return destAgentType === 'EPDN' || destAgentType === 'ENTRYPOINT';
+};
+
+/**
+ * Determines if the task involves dialing a number based on the destination type.
+ * Returns 'DIAL_NUMBER' for dial-related destinations, empty string otherwise.
+ */
+const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => {
+  const destAgentType = taskData?.destinationType;
+
+  // Check if destination requires dialing: direct dial number or entry point variants
+  const isDialNumber = destAgentType === 'DN';
+  const isEntryPointVariant = isEntryPointOrEpdn(destAgentType);
+
+  // If the destination type is a dial number or an entry point variant, return 'DIAL_NUMBER'
+  return isDialNumber || isEntryPointVariant ? 'DIAL_NUMBER' : '';
 };
 
 export const isValidDialNumber = (input: string): boolean => {
@@ -116,6 +144,62 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
 };
 
 /**
+ * Extracts error details from task API errors and logs them. Also uploads logs for the error.
+ * This handles the specific error format returned by task API calls.
+ *
+ * @param error - The error object from task API calls with structure: {id: string, details: {trackingId: string, msg: {...}}}
+ * @param methodName - The name of the method where the error occurred.
+ * @param moduleName - The name of the module where the error occurred.
+ * @returns AugmentedError containing structured error details on err.data for metrics and logging
+ * @public
+ * @example
+ * const taskError = generateTaskErrorObject(error, 'transfer', 'TaskModule');
+ * throw taskError.error;
+ * @ignore
+ */
+export const generateTaskErrorObject = (
+  error: any,
+  methodName: string,
+  moduleName: string
+): AugmentedError => {
+  const trackingId = error?.details?.trackingId || error?.trackingId || '';
+  const errorMsg = error?.details?.msg;
+
+  const fallbackMessage =
+    (error && typeof error.message === 'string' && error.message) ||
+    `Error while performing ${methodName}`;
+  const errorMessage = errorMsg?.errorMessage || fallbackMessage;
+  const errorType =
+    errorMsg?.errorType ||
+    (error && typeof error.name === 'string' && error.name) ||
+    'Unknown Error';
+  const errorData = errorMsg?.errorData || '';
+  const reasonCode = errorMsg?.reasonCode || 0;
+
+  // Log and upload for Task API formatted errors
+  LoggerProxy.error(`${methodName} failed: ${errorMessage} (${errorType})`, {
+    module: moduleName,
+    method: methodName,
+    trackingId,
+  });
+  WebexRequest.getInstance().uploadLogs({
+    correlationId: trackingId,
+  });
+
+  const reason = `${errorType}: ${errorMessage}${errorData ? ` (${errorData})` : ''}`;
+  const err: AugmentedError = new Error(reason);
+  err.data = {
+    message: errorMessage,
+    errorType,
+    errorData,
+    reasonCode,
+    trackingId,
+  };
+
+  return err;
+};
+
+/**
  * Creates an error details object suitable for use with the Err.Details class.
  *
  * @param errObj - The Webex request payload object.
@@ -129,4 +213,74 @@ export const createErrDetailsObject = (errObj: WebexRequestPayload) => {
   const details = getCommonErrorDetails(errObj);
 
   return new Err.Details('Service.reqs.generic.failure', details);
+};
+
+/**
+ * Derives the consult transfer destination type based on the provided task data.
+ *
+ * Logic parity with desktop behavior:
+ * - If agent action is dialing a number (DN/EPDN/ENTRYPOINT):
+ *   - ENTRYPOINT/EPDN map to ENTRYPOINT
+ *   - DN maps to DIALNUMBER
+ * - Otherwise defaults to AGENT
+ *
+ * @param taskData - The task data used to infer the agent action and destination type
+ * @returns The normalized destination type to be used for consult transfer
+ */
+/**
+ * Checks if a participant type represents a non-customer participant.
+ * Non-customer participants include agents, dial numbers, entry point dial numbers,
+ * and entry points.
+ */
+const isNonCustomerParticipant = (participantType: string): boolean => {
+  return (
+    participantType === 'Agent' ||
+    participantType === 'DN' ||
+    participantType === 'EpDn' ||
+    participantType === 'entryPoint'
+  );
+};
+
+/**
+ * Gets the destination agent ID from participants data by finding the first
+ * non-customer participant that is not the current agent and is not in wrap-up state.
+ *
+ * @param participants - The participants data from the interaction
+ * @param agentId - The current agent's ID to exclude from the search
+ * @returns The destination agent ID, or empty string if none found
+ */
+export const getDestinationAgentId = (
+  participants: Interaction['participants'],
+  agentId: string
+): string => {
+  let id = '';
+
+  if (participants) {
+    Object.keys(participants).forEach((participant) => {
+      const participantData = participants[participant];
+      if (
+        isNonCustomerParticipant(participantData.type) &&
+        participantData.id !== agentId &&
+        !participantData.isWrapUp
+      ) {
+        id = participantData.id;
+      }
+    });
+  }
+
+  return id;
+};
+
+export const deriveConsultTransferDestinationType = (
+  taskData?: TaskData
+): ConsultTransferPayLoad['destinationType'] => {
+  const agentActionType = getAgentActionTypeFromTask(taskData);
+
+  if (agentActionType === 'DIAL_NUMBER') {
+    return isEntryPointOrEpdn(taskData?.destinationType)
+      ? CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT
+      : CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
+  }
+
+  return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
 };

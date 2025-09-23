@@ -276,4 +276,54 @@ describe('Utils', () => {
       });
     });
   });
+
+  describe('getDestinationAgentId', () => {
+    const currentAgentId = 'agent-current-123';
+
+    it('returns another Agent id when present and not in wrap-up', () => {
+      const participants: any = {
+        [currentAgentId]: {type: 'Agent', id: currentAgentId, isWrapUp: false},
+        agent1: {type: 'Agent', id: 'agent-1', isWrapUp: false},
+        customer1: {type: 'Customer', id: 'cust-1', isWrapUp: false},
+      };
+
+      const result = Utils.getDestinationAgentId(participants, currentAgentId);
+      expect(result).toBe('agent-1');
+    });
+
+    it('ignores self and wrap-up participants', () => {
+      const participants: any = {
+        [currentAgentId]: {type: 'Agent', id: currentAgentId, isWrapUp: false},
+        agentWrap: {type: 'Agent', id: 'agent-wrap', isWrapUp: true},
+      };
+
+      const result = Utils.getDestinationAgentId(participants, currentAgentId);
+      expect(result).toBe('');
+    });
+
+    it('supports DN, EpDn and entryPoint types', () => {
+      const participantsDN: any = {
+        [currentAgentId]: {type: 'Agent', id: currentAgentId, isWrapUp: false},
+        dn1: {type: 'DN', id: 'dn-1', isWrapUp: false},
+      };
+      expect(Utils.getDestinationAgentId(participantsDN, currentAgentId)).toBe('dn-1');
+
+      const participantsEpDn: any = {
+        [currentAgentId]: {type: 'Agent', id: currentAgentId, isWrapUp: false},
+        epdn1: {type: 'EpDn', id: 'epdn-1', isWrapUp: false},
+      };
+      expect(Utils.getDestinationAgentId(participantsEpDn, currentAgentId)).toBe('epdn-1');
+
+      const participantsEntry: any = {
+        [currentAgentId]: {type: 'Agent', id: currentAgentId, isWrapUp: false},
+        entry1: {type: 'entryPoint', id: 'entry-1', isWrapUp: false},
+      };
+      expect(Utils.getDestinationAgentId(participantsEntry, currentAgentId)).toBe('entry-1');
+    });
+
+    it('returns empty string when participants is missing or empty', () => {
+      expect(Utils.getDestinationAgentId(undefined as any, currentAgentId)).toBe('');
+      expect(Utils.getDestinationAgentId({} as any, currentAgentId)).toBe('');
+    });
+  });
 });
