@@ -257,7 +257,9 @@ function toggleTransferOptions() {
 
 async function getQueueListForTelephonyChannel() {
   try {
-    let queueList = await webex.cc.getQueues();
+    // Need to access via data as that is the list of queues
+    const queueResponse = await webex.cc.queue.getQueues();
+    let queueList = queueResponse.data;
     queueList = queueList.filter(queue => queue.channelType === 'TELEPHONY');
   
     return queueList;
@@ -268,8 +270,8 @@ async function getQueueListForTelephonyChannel() {
 
 async function getEntryPoints() {
   try {
-    const entryPoints = await webex.cc.entryPoints.getAllEntryPoints();
-    return entryPoints || [];
+    const entryPoints = await webex.cc.entryPoint.getEntryPoints();
+    return entryPoints.data || [];
   } catch (error) {
     console.log('Failed to fetch entry points', error);
     return [];
@@ -1326,9 +1328,9 @@ function doAgentLogin() {
     updateAgentProfileElm.classList.remove('hidden');
     // Read auxCode and lastStateChangeTimestamp from login response
     const DEFAULT_CODE = '0'; // Default code when no aux code is present
-    const auxCodeId = response.data.auxCodeId?.trim() !== '' ? response.data.auxCodeId : DEFAULT_CODE;
-    const lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
-    const lastIdleCodeChangeTimestamp = response.data.lastIdleCodeChangeTimestamp;
+    const auxCodeId = response.auxCodeId?.trim() !== '' ? response.auxCodeId : DEFAULT_CODE;
+    const lastStateChangeTimestamp = response.lastStateChangeTimestamp;
+    const lastIdleCodeChangeTimestamp = response.lastIdleCodeChangeTimestamp;
     const index = [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
     idleCodesDropdown.selectedIndex = index !== -1 ? index : 0;
     startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp);

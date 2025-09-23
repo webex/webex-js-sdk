@@ -329,6 +329,48 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'agent_device_type_update',
     verb: 'fail',
   },
+
+  // EntryPoint API Events
+  [METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'entrypoint_fetch',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'entrypoint_fetch',
+    verb: 'fail',
+  },
+
+  // AddressBook API Events
+  [METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'addressbook_fetch',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'addressbook_fetch',
+    verb: 'fail',
+  },
+
+  // Queue API Events
+  [METRIC_EVENT_NAMES.QUEUE_FETCH_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'queue_fetch',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.QUEUE_FETCH_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'queue_fetch',
+    verb: 'fail',
+  },
 };
 
 /**

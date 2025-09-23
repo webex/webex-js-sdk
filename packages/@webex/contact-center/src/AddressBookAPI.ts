@@ -191,8 +191,32 @@ export class AddressBookAPI {
       }
     }
 
-    // Start timing only for actual API calls (not cache hits)
+    // Start timing for the operation
     this.metricsManager.timeEvent(METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_SUCCESS);
+
+    // Validate address book id early to avoid bad requests
+    if (!bookId) {
+      const errorData = {
+        orgId,
+        bookId,
+        isSearchRequest,
+        page,
+        pageSize,
+        error: 'Missing addressBookId for agent. Ensure agent profile contains addressBookId.',
+      };
+      LoggerProxy.error('AddressBookAPI called without a valid addressBookId', {
+        module: 'AddressBookAPI',
+        method: 'getEntries',
+        data: errorData,
+      });
+
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_FAILED, errorData, [
+        'behavioral',
+        'operational',
+      ]);
+
+      throw new Error('AddressBookAPI: addressBookId is not available for the current agent.');
+    }
 
     try {
       // Build query parameters according to spec
