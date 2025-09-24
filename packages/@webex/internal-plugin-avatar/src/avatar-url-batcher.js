@@ -5,9 +5,19 @@
 import {Batcher} from '@webex/webex-core';
 import {uniq} from 'lodash';
 
-const AvatarUrlBatcher = Batcher.extend({
-  namespace: 'Avatar',
+/**
+ * AvatarUrlBatcher class for handling avatar URL request batching
+ * @class
+ * @extends Batcher
+ */
+class AvatarUrlBatcher extends Batcher {
+  namespace = 'Avatar';
 
+  /**
+   * Handle successful HTTP response
+   * @param {any} res - The HTTP response object
+   * @returns {Promise<void>} Promise resolving when all items are processed
+   */
   handleHttpSuccess(res) {
     // eslint-disable-next-line arrow-body-style
     return Promise.all(
@@ -24,9 +34,14 @@ const AvatarUrlBatcher = Batcher.extend({
           })
         );
       })
-    );
-  },
+    ).then(() => {});
+  }
 
+  /**
+   * Handle HTTP error
+   * @param {any} reason - The error reason
+   * @returns {Promise<void>} Promise resolving when all errors are handled
+   */
   handleHttpError(reason) {
     const msg = reason.message || reason.body || reason;
 
@@ -46,9 +61,14 @@ const AvatarUrlBatcher = Batcher.extend({
           )
         );
       })
-    );
-  },
+    ).then(() => {});
+  }
 
+  /**
+   * Check if the item failed
+   * @param {any} item - The item to check
+   * @returns {Promise<boolean>} Promise resolving to failure status
+   */
   didItemFail(item) {
     if (item.response) {
       if (item.size !== item.response.size) {
@@ -59,14 +79,24 @@ const AvatarUrlBatcher = Batcher.extend({
     }
 
     return Promise.resolve(true);
-  },
+  }
 
+  /**
+   * Handle item failure
+   * @param {any} item - The item that failed
+   * @returns {Promise<void>} Promise resolving when failure is handled
+   */
   handleItemFailure(item) {
     return this.getDeferredForRequest(item).then((defer) => {
       defer.reject(new Error(item.response || 'Failed to retrieve avatar'));
     });
-  },
+  }
 
+  /**
+   * Handle item success
+   * @param {any} item - The item that succeeded
+   * @returns {Promise<void>} Promise resolving when success is handled
+   */
   handleItemSuccess(item) {
     return this.getDeferredForResponse(item).then((defer) =>
       defer.resolve({
@@ -76,16 +106,31 @@ const AvatarUrlBatcher = Batcher.extend({
         url: item.response.url,
       })
     );
-  },
+  }
 
+  /**
+   * Create fingerprint for request
+   * @param {any} item - The item to fingerprint
+   * @returns {Promise<string>} Promise resolving to the fingerprint
+   */
   fingerprintRequest(item) {
     return Promise.resolve(`${item.uuid}-${item.size}`);
-  },
+  }
 
+  /**
+   * Create fingerprint for response
+   * @param {any} item - The item to fingerprint
+   * @returns {Promise<string>} Promise resolving to the fingerprint
+   */
   fingerprintResponse(item) {
     return Promise.resolve(`${item.uuid}-${item.size}`);
-  },
+  }
 
+  /**
+   * Prepare the request from the queue
+   * @param {any[]} queue - Array of items to prepare
+   * @returns {Promise<any[]>} Promise resolving to the prepared request
+   */
   prepareRequest(queue) {
     const map = queue.reduce((m, item) => {
       let o = m.get(item.uuid);
@@ -109,8 +154,13 @@ const AvatarUrlBatcher = Batcher.extend({
     });
 
     return Promise.resolve(payload);
-  },
+  }
 
+  /**
+   * Submit the HTTP request
+   * @param {any} payload - The payload to submit
+   * @returns {Promise<any>} Promise resolving to the HTTP response
+   */
   submitHttpRequest(payload) {
     return this.webex.request({
       method: 'POST',
@@ -118,7 +168,7 @@ const AvatarUrlBatcher = Batcher.extend({
       resource: 'profiles/urls',
       body: payload,
     });
-  },
-});
+  }
+}
 
 export default AvatarUrlBatcher;

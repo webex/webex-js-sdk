@@ -15,7 +15,7 @@ import {WebexPlugin, Page} from '@webex/webex-core';
 /**
  * @class
  */
-const Teams = WebexPlugin.extend({
+class Teams extends WebexPlugin {
   /**
    * Create a new team.
    * @instance
@@ -40,7 +40,7 @@ const Teams = WebexPlugin.extend({
       resource: 'teams',
       body: team,
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Returns a single team
@@ -71,7 +71,7 @@ const Teams = WebexPlugin.extend({
       resource: `teams/${id}`,
       qs: options,
     }).then((res) => res.body.items || res.body);
-  },
+  }
 
   /**
    * List teams.
@@ -110,7 +110,7 @@ const Teams = WebexPlugin.extend({
       resource: 'teams/',
       qs: options,
     }).then((res) => new Page(res, this.webex));
-  },
+  }
 
   /**
    * Update a team.
@@ -146,7 +146,7 @@ const Teams = WebexPlugin.extend({
       resource: `teams/${id}`,
       body: team,
     }).then((res) => res.body);
-  },
-});
+  }
+}
 
 export default Teams;

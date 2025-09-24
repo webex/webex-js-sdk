@@ -1,17 +1,35 @@
-import AmpState from 'ampersand-state';
-import {ServiceUrl} from './types';
+import {ServiceUrl, IServiceDetail} from './types';
 
 /**
+ * ServiceDetail class for managing service URLs and priorities
+ * Migrated from AmpState to modern TypeScript class
  * @class
  */
-const ServiceDetail = AmpState.extend({
-  namespace: 'ServiceDetail',
+class ServiceDetail implements IServiceDetail {
+  public serviceUrls: ServiceUrl[];
+  public serviceName: string;
+  public id: string;
 
-  props: {
-    serviceUrls: ['array', false, () => []],
-    serviceName: ['string', true, undefined],
-    id: ['string', true, undefined],
-  },
+  /**
+   * Constructor for ServiceDetail
+   * @param {object} params - Parameters for the service detail
+   * @param {string} params.id - The service cluster ID
+   * @param {string} params.serviceName - The name of the service
+   * @param {ServiceUrl[]} params.serviceUrls - Array of service URLs
+   */
+  constructor({
+    id,
+    serviceName,
+    serviceUrls = [],
+  }: {
+    id: string;
+    serviceName: string;
+    serviceUrls?: ServiceUrl[];
+  }) {
+    this.id = id;
+    this.serviceName = serviceName;
+    this.serviceUrls = serviceUrls;
+  }
 
   /**
    * Generate a host url based on the host
@@ -19,7 +37,7 @@ const ServiceDetail = AmpState.extend({
    * @param {ServiceUrl} serviceUrl
    * @returns {string}
    */
-  _generateHostUrl(serviceUrl: ServiceUrl): string {
+  private _generateHostUrl(serviceUrl: ServiceUrl): string {
     const url = new URL(serviceUrl.baseUrl);
 
     // setting url.hostname will not apply during Url.format(), set host via
@@ -27,14 +45,14 @@ const ServiceDetail = AmpState.extend({
     url.host = `${serviceUrl.host}${url.port ? `:${url.port}` : ''}`;
 
     return url.href;
-  },
+  }
 
   /**
    * Get the current host url with the highest priority. This will only return a URL with a filtered host that has the
    * `homeCluster` value set to `true`.
    * @returns {string} - The priority host url.
    */
-  _getPriorityHostUrl(): string {
+  private _getPriorityHostUrl(): string {
     // format of catalog ensures that array is sorted by highest priority
     let priorityServiceUrl = this._searchForValidPriorityHost();
 
@@ -49,15 +67,15 @@ const ServiceDetail = AmpState.extend({
     }
 
     return priorityServiceUrl ? this._generateHostUrl(priorityServiceUrl) : '';
-  },
+  }
 
   /**
    * Searches for a valid service URL with a priority greater than 0 that has not failed.
    * @returns {ServiceUrl | undefined} - The first valid service URL found, or undefined if none exist.
    */
-  _searchForValidPriorityHost(): ServiceUrl | undefined {
+  private _searchForValidPriorityHost(): ServiceUrl | undefined {
     return this.serviceUrls.find((serviceUrl) => serviceUrl.priority > 0 && !serviceUrl.failed);
-  },
+  }
 
   /**
    * Attempt to mark a host from this `ServiceDetail` as failed and return true
@@ -76,7 +94,7 @@ const ServiceDetail = AmpState.extend({
     }
 
     return foundHost !== undefined;
-  },
+  }
 
   /**
    * Generate a url using the host with the
@@ -91,7 +109,7 @@ const ServiceDetail = AmpState.extend({
     }
 
     return this._getPriorityHostUrl();
-  },
-});
+  }
+}
 
 export default ServiceDetail;

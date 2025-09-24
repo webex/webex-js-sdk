@@ -24,6 +24,7 @@
     "@webex/common-timers": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/webex-core": "workspace:*",
+    "babel-eslint": "^10.1.0",
     "lodash": "^4.17.21",
     "uuid": "^3.3.2"
   },
@@ -38,7 +39,8 @@
     "@webex/test-helper-test-users": "workspace:*",
     "eslint": "^8.24.0",
     "prettier": "^2.7.1",
-    "sinon": "^9.2.4"
+    "sinon": "^9.2.4",
+    "typescript": "4.9.5"
   },
   "scripts": {
     "build": "yarn build:src",

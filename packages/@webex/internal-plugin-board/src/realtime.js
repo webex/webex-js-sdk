@@ -13,12 +13,12 @@ import RealtimeChannelCollection from './realtime-channel-collection';
  * @extends {Mercury}
  * @memberof Board
  */
-const RealtimeService = WebexPlugin.extend({
-  namespace: 'Board',
+export default class RealtimeService extends WebexPlugin {
+  namespace = 'Board';
 
-  collections: {
+  collections = {
     realtimeChannels: RealtimeChannelCollection,
-  },
+  };
 
   /**
    * Sends the message via the socket. Assumes that the message is already properly formatted
@@ -47,7 +47,7 @@ const RealtimeService = WebexPlugin.extend({
     return encryptionPromise.then((encryptedPayloadAndKeyUrl) =>
       this.publishEncrypted(channel, encryptedPayloadAndKeyUrl, contentType)
     );
-  },
+  }
 
   /**
    * Sends the message via the socket. The message should already have been
@@ -96,7 +96,7 @@ const RealtimeService = WebexPlugin.extend({
     }
 
     return realtimeChannel.send(data);
-  },
+  }
 
   createRealtimeChannel(channel) {
     const requestBindings = [this._boardChannelIdToMercuryBinding(channel.channelId)];
@@ -111,7 +111,7 @@ const RealtimeService = WebexPlugin.extend({
 
       return this.realtimeChannels.get(channel.channelId);
     });
-  },
+  }
 
   /**
    * Open new mercury connection
@@ -134,7 +134,7 @@ const RealtimeService = WebexPlugin.extend({
     }
 
     return promise.then(() => realtimeChannel.connect(realtimeChannel.socketUrl));
-  },
+  }
 
   /**
    * Disconnect connection
@@ -156,7 +156,7 @@ const RealtimeService = WebexPlugin.extend({
         // continue on execution
         .then(tap(() => this.realtimeChannels.remove(channel.channelId)))
     );
-  },
+  }
 
   /**
    * Ensure board channelId is compatible with mercury bindings by replacing
@@ -168,7 +168,7 @@ const RealtimeService = WebexPlugin.extend({
   _boardChannelIdToMercuryBinding(channelId) {
     // make channelId mercury compatible replace `-` with `.` and `_` with `#`
     return this.config.mercuryBindingPrefix + channelId.replace(/-/g, '.').replace(/_/g, '#');
-  },
+  }
 
   /**
    * Connect and use an exisiting mercury connection
@@ -210,7 +210,7 @@ const RealtimeService = WebexPlugin.extend({
 
       return res;
     });
-  },
+  }
 
   handleBoardActivityMessages(event) {
     const realtimeChannel = this.realtimeChannels.get(event.data.envelope.channelId);
@@ -218,13 +218,13 @@ const RealtimeService = WebexPlugin.extend({
     if (realtimeChannel) {
       realtimeChannel._emit('event:board.activity', event);
     }
-  },
+  }
 
   refreshMercurySocketReference() {
     this.realtimeChannels.forEach((realtimeChannel) => {
       realtimeChannel.socket = this.webex.internal.mercury.socket;
     });
-  },
+  }
 
   /**
    * Remove board binding from existing mercury connection
@@ -246,7 +246,5 @@ const RealtimeService = WebexPlugin.extend({
         // removed from the collection
         .then(tap(() => this.realtimeChannels.remove(channel.channelId)))
     );
-  },
-});
-
-export default RealtimeService;
+  }
+}

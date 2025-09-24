@@ -12,14 +12,14 @@ import UserUUIDStore from './user-uuid-store';
 /**
  * @class
  */
-const User = WebexPlugin.extend({
-  namespace: 'User',
+class User extends WebexPlugin {
+  namespace = 'User';
 
-  children: {
+  children = {
     batcher: UserUUIDBatcher,
-  },
+  };
 
-  props: {
+  props = {
     /**
      * Indicates if the current user is known to have a password.
      * @instance
@@ -30,16 +30,16 @@ const User = WebexPlugin.extend({
       default: false,
       type: 'boolean',
     },
-  },
+  };
 
-  session: {
+  session = {
     store: {
       default() {
         return new UserUUIDStore();
       },
       type: 'any',
     },
-  },
+  };
 
   @waitForValue('@')
   /**
@@ -85,7 +85,7 @@ const User = WebexPlugin.extend({
 
       return res.body;
     });
-  },
+  }
 
   /**
    * Converts a user-identifying object to a uuid, perhaps by doing a network
@@ -119,7 +119,7 @@ const User = WebexPlugin.extend({
     }
 
     return this.getUUID(email, options);
-  },
+  }
 
   /**
    * Requests a uuid from the api
@@ -135,7 +135,8 @@ const User = WebexPlugin.extend({
         create: options && options.create,
       })
       .then((user) => this.recordUUID({emailAddress: email, ...user}).then(() => user.id));
-  },
+  }
+
   /**
    * Generates One Time Password.
    * @instance
@@ -158,7 +159,7 @@ const User = WebexPlugin.extend({
         pass: this.webex.config.credentials.client_secret,
       },
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Fetches details about the current user
@@ -180,7 +181,7 @@ const User = WebexPlugin.extend({
           })
         )
       );
-  },
+  }
 
   /**
    * Converts an email address to a uuid, perhaps by doing a network lookup
@@ -205,12 +206,12 @@ const User = WebexPlugin.extend({
         return user.id;
       })
       .catch(() => this.fetchUUID(email, options));
-  },
+  }
 
   @persist('@')
   initialize(...args) {
     return Reflect.apply(WebexPlugin.prototype.initialize, this, args);
-  },
+  }
 
   /**
    * Caches the uuid for the specified email address
@@ -241,12 +242,12 @@ const User = WebexPlugin.extend({
     }
 
     return this.store.add(user);
-  },
+  }
 
   @deprecated('Use User#verify()')
   register(...args) {
     return this.verify(...args);
-  },
+  }
 
   /**
    * Updates a user with webex.
@@ -265,7 +266,7 @@ const User = WebexPlugin.extend({
         body,
       })
     );
-  },
+  }
 
   /**
    * Updates a user's password with webex.
@@ -290,7 +291,7 @@ const User = WebexPlugin.extend({
 
       return res.body;
     });
-  },
+  }
 
   /**
    * Updates a user's name with webex.
@@ -313,7 +314,7 @@ const User = WebexPlugin.extend({
       name: {givenName, familyName},
       displayName,
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Updates the current user's display name
@@ -333,7 +334,7 @@ const User = WebexPlugin.extend({
       resource: 'users/user',
       body: options,
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Validated One Time Password.
@@ -368,7 +369,7 @@ const User = WebexPlugin.extend({
 
       return res.body;
     });
-  },
+  }
 
   /**
    * Determines if the specified user needs to signup or can signin.
@@ -411,7 +412,7 @@ const User = WebexPlugin.extend({
 
         return res.body;
       });
-  },
+  }
 
   /**
    * If the passed-in lookupCI is true, retrieve the user's
@@ -440,7 +441,7 @@ const User = WebexPlugin.extend({
       idBrokerUrl: this.webex.config.credentials.idbroker.url,
       identityUrl: this.webex.config.credentials.identity.url,
     });
-  },
+  }
 
   /**
    * Extracts the uuid from a user identifying object
@@ -450,7 +451,7 @@ const User = WebexPlugin.extend({
    */
   _extractUUID(user) {
     return user.entryUUID || user.id || user;
-  },
+  }
 
   /**
    * Extracts the email address from a user identifying object
@@ -460,7 +461,7 @@ const User = WebexPlugin.extend({
    */
   _extractEmailAddress(user) {
     return user.email || user.emailAddress || user.entryEmail || user;
-  },
-});
+  }
+}
 
 export default User;

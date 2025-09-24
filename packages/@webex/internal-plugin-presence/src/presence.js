@@ -17,21 +17,21 @@ const USER_PRESENCE_ENABLED = 'user-presence-enabled';
  * @class
  * @extends WebexPlugin
  */
-const Presence = WebexPlugin.extend({
-  namespace: 'Presence',
+class Presence extends WebexPlugin {
+  namespace = 'Presence';
 
-  children: {
+  children = {
     batcher: PresenceBatcher,
-  },
+  };
 
-  session: {
+  session = {
     worker: {
       default() {
         return new PresenceWorker();
       },
       type: 'any',
     },
-  },
+  };
 
   /**
    * Initialize the presence plugin
@@ -43,7 +43,7 @@ const Presence = WebexPlugin.extend({
         this.worker.initialize(this.webex);
       }
     });
-  },
+  }
 
   /**
    * Initializes the presence worker.
@@ -57,7 +57,7 @@ const Presence = WebexPlugin.extend({
         this.worker.initialize(this.webex);
       });
     }
-  },
+  }
 
   /**
    * Trigger an event.
@@ -69,7 +69,7 @@ const Presence = WebexPlugin.extend({
     if (payload.type && payload.payload) {
       this.trigger(event, payload);
     }
-  },
+  }
 
   /**
    * Enables presence feature
@@ -79,7 +79,7 @@ const Presence = WebexPlugin.extend({
     return this.webex.internal.feature
       .setFeature(USER, USER_PRESENCE_ENABLED, true)
       .then((response) => response.value);
-  },
+  }
 
   /**
    * Disables presence feature
@@ -89,7 +89,7 @@ const Presence = WebexPlugin.extend({
     return this.webex.internal.feature
       .setFeature(USER, USER_PRESENCE_ENABLED, false)
       .then((response) => response.value);
-  },
+  }
 
   /**
    * Returns true if presence is enabled, false otherwise
@@ -97,7 +97,7 @@ const Presence = WebexPlugin.extend({
    */
   isEnabled() {
     return this.webex.internal.feature.getFeature(USER, USER_PRESENCE_ENABLED);
-  },
+  }
 
   /**
    * The status object
@@ -136,7 +136,7 @@ const Presence = WebexPlugin.extend({
         resource: `compositions?userId=${personId}`,
       })
       .then((response) => response.body);
-  },
+  }
 
   /**
    * @typedef {Object} PresenceStatusesObject
@@ -155,7 +155,7 @@ const Presence = WebexPlugin.extend({
     return Promise.all(personIds.map((id) => this.batcher.request(id))).then((presences) => ({
       statusList: presences,
     }));
-  },
+  }
 
   /**
    * Subscribes to a person's presence status updates
@@ -198,7 +198,7 @@ const Presence = WebexPlugin.extend({
           .then((response) => response.body.responses)
       )
     ).then((idBatches) => ({responses: [].concat(...idBatches)}));
-  },
+  }
 
   /**
    * Unsubscribes from a person or group of people's presence subscription
@@ -227,7 +227,7 @@ const Presence = WebexPlugin.extend({
         includeStatus: true,
       },
     });
-  },
+  }
 
   /**
    * Sets the status of the current user
@@ -253,7 +253,7 @@ const Presence = WebexPlugin.extend({
         },
       })
       .then((response) => response.body);
-  },
+  }
 
   /**
    * Retrieves and subscribes to a user's presence.
@@ -262,7 +262,7 @@ const Presence = WebexPlugin.extend({
    */
   enqueue(id) {
     return this.worker.enqueue(id);
-  },
+  }
 
   /**
    * Retract from subscribing to a user's presence.
@@ -271,7 +271,7 @@ const Presence = WebexPlugin.extend({
    */
   dequeue(id) {
     return this.worker.dequeue(id);
-  },
-});
+  }
+}
 
 export default Presence;

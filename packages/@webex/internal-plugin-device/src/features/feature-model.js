@@ -1,6 +1,6 @@
 // External dependencies.
-import AmpState from 'ampersand-state';
 import {defaults, isObject} from 'lodash';
+import {WebexEventEmitter} from '@webex/common';
 
 import {FEATURE_TYPES} from '../constants';
 
@@ -19,72 +19,42 @@ import {FEATURE_TYPES} from '../constants';
  * This model contains details on a single feature and is received from the
  * **WDM** service upon registration.
  */
-const FeatureModel = AmpState.extend({
-  idAttribute: 'key', // needed by Ampersand to determine unique item
-
-  // Ampersand property members.
-
-  props: {
-    /**
-     * Contains the unique identifier for this feature to be addressed by.
-     *
-     * @type {string}
-     */
-    key: 'string',
-
-    /**
-     * This property contains the date in which this feature was last modified.
-     *
-     * @type {date}
-     */
-    lastModified: 'date',
-
-    /**
-     * This property defines whether or not the feature is mutable.
-     *
-     * @type {boolean}
-     */
-    mutable: 'boolean',
-
-    /**
-     * This property contains the data type the string value should be
-     * interpreted as.
-     *
-     * @type {FEATURE_TYPES}
-     */
-    type: 'string',
-
-    /**
-     * This property contains the string value of this feature.
-     *
-     * @type {string}
-     */
-    val: 'string',
-
-    /**
-     * This property contains the interpreted value of this feature.
-     *
-     * @type {any}
-     */
-    value: 'any',
-  },
-
+class FeatureModel extends WebexEventEmitter {
   /**
    * Class object constructor. This method safely initializes the class object
    * prior to it fully loading to allow data to be accessed and modified
    * immediately after construction instead of initialization.
    *
-   * @override
    * @param {Object} attrs - An object to map against the feature's properties.
-   * @param {Object} [options={}] - Ampersand options for `parse` and `parent`.
+   * @param {Object} [options={}] - Options for `parse` and other configuration.
    */
-  constructor(attrs, options = {}) {
+  constructor(attrs = {}, options = {}) {
+    super();
+
     defaults(options, {parse: true});
 
-    return Reflect.apply(AmpState.prototype.constructor, this, [attrs, options]);
-  },
+    // Initialize properties
+    this.key = '';
+    this.lastModified = null;
+    this.mutable = false;
+    this.type = '';
+    this.val = '';
+    this.value = null;
 
-  // Ampsersand method members.
+    // Parse and set initial attributes
+    if (attrs && typeof attrs === 'object') {
+      const parsedAttrs = options.parse ? this.parse(attrs) : attrs;
+      this.set(parsedAttrs);
+    }
+  }
+
+  /**
+   * Get the ID attribute (key) for this feature model
+   * @returns {string} The key that serves as the unique identifier
+   */
+  get id() {
+    return this.key;
+  }
 
   /**
    * Parse {@link FeatureModel} properties recieved as strings from **WDM**
@@ -99,7 +69,7 @@ const FeatureModel = AmpState.extend({
   parse(model) {
     // Validate that a model was provided and that it is an object.
     if (!model || typeof model !== 'object') {
-      // Return an empty object to satisfy the requirements of `Ampersand`.
+      // Return an empty object to satisfy the requirements.
       return {};
     }
 
@@ -128,41 +98,42 @@ const FeatureModel = AmpState.extend({
     }
 
     return parsedModel;
-  },
+  }
 
   /**
-   * Serialize the feature using the parent ampersand method with its date as an
-   * ISO string. This converts the feature into a request-transportable object.
+   * Serialize the feature with its date as an ISO string.
+   * This converts the feature into a request-transportable object.
    *
-   * @override
-   * @param  {Record<string,boolean>} [args] - List of properties to serialize.
    * @returns {Object} - The request-ready transport object.
    */
-  serialize(...args) {
-    // Call the overloaded class member.
-    const attrs = Reflect.apply(AmpState.prototype.serialize, this, args);
+  serialize() {
+    // Get all properties for serialization
+    const attrs = {
+      key: this.key,
+      lastModified: this.lastModified,
+      mutable: this.mutable,
+      type: this.type,
+      val: this.val,
+      value: this.value,
+    };
 
-    // Validate that the overloaded class member returned an object with the
-    // `lastModified` key-value pair and instance it as an ISO string.
+    // Validate that the object has a `lastModified` key-value pair and convert it to ISO string.
     if (attrs.lastModified) {
       attrs.lastModified = new Date(attrs.lastModified).toISOString();
     }
 
     return attrs;
-  },
+  }
 
   /**
-   * Set a property of this object to a specific value. This method utilizes
-   * code that exists within the `ampersand-state` dependency to handle
+   * Set a property of this object to a specific value. This method handles
    * scenarios in which `key = {"key": "value"}` or
-   * `key = "key", value = "value"`. Since the snippet is pulled directly from
-   * `ampersand-state`, there is no need to test both scenarios.
+   * `key = "key", value = "value"`.
    *
-   * @override
    * @param {object | string} key - The key value, or object to be set.
    * @param {any} value - The key value or object to set the keyed pair to.
-   * @param {any} options - The object to set the keyed pair to.
-   * @returns {any} - The changed property.
+   * @param {any} options - Options for setting the property.
+   * @returns {FeatureModel} - Returns this instance for chaining.
    */
   set(key, value, options) {
     // Declare formatted output variables for properly setting the targetted
@@ -180,10 +151,29 @@ const FeatureModel = AmpState.extend({
       optns = options;
     }
 
-    attrs = this.parse(attrs, optns);
+    if (attrs) {
+      attrs = this.parse(attrs, optns);
 
-    return Reflect.apply(AmpState.prototype.set, this, [attrs, optns]);
-  },
-});
+      // Set properties directly
+      Object.keys(attrs).forEach((attrKey) => {
+        if (
+          Object.prototype.hasOwnProperty.call(this, attrKey) ||
+          ['key', 'lastModified', 'mutable', 'type', 'val', 'value'].includes(attrKey)
+        ) {
+          const oldValue = this[attrKey];
+          this[attrKey] = attrs[attrKey];
+
+          // Emit change event
+          if (oldValue !== attrs[attrKey]) {
+            this.emit('change', attrKey, attrs[attrKey], oldValue);
+            this.emit(`change:${attrKey}`, attrs[attrKey], oldValue);
+          }
+        }
+      });
+    }
+
+    return this;
+  }
+}
 
 export default FeatureModel;

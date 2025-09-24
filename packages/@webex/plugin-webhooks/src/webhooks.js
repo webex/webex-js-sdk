@@ -21,7 +21,7 @@ import {WebexPlugin, Page} from '@webex/webex-core';
  * notified when a new message is posted into a specific room.
  * @class
  */
-const Webhooks = WebexPlugin.extend({
+class Webhooks extends WebexPlugin {
   /**
    * Posts a webhook.
    * @instance
@@ -58,7 +58,7 @@ const Webhooks = WebexPlugin.extend({
       resource: 'webhooks',
       body: webhook,
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Shows details for a webhook.
@@ -96,7 +96,7 @@ const Webhooks = WebexPlugin.extend({
       service: 'hydra',
       resource: `webhooks/${id}`,
     }).then((res) => res.body.items || res.body);
-  },
+  }
 
   /**
    * Lists all webhooks.
@@ -137,7 +137,7 @@ const Webhooks = WebexPlugin.extend({
       resource: 'webhooks/',
       qs: options,
     }).then((res) => new Page(res, this.webex));
-  },
+  }
 
   /**
    * Delete a webhook.
@@ -190,7 +190,7 @@ const Webhooks = WebexPlugin.extend({
 
       return res.body;
     });
-  },
+  }
 
   /**
    * Update a webhook.
@@ -234,7 +234,7 @@ const Webhooks = WebexPlugin.extend({
       resource: `webhooks/${id}`,
       body: webhook,
     }).then((res) => res.body);
-  },
-});
+  }
+}
 
 export default Webhooks;

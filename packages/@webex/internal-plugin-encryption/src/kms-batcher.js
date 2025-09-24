@@ -10,15 +10,17 @@ import {KmsError, KmsTimeoutError, handleKmsKeyRevokedEncryptionFailure} from '.
 export const TIMEOUT_SYMBOL = Symbol('TIMEOUT_SYMBOL');
 
 /**
+ * KmsBatcher class for handling KMS message batching and submission
  * @class
+ * @extends Batcher
  */
-const KmsBatcher = Batcher.extend({
-  namespace: 'Encryption',
+class KmsBatcher extends Batcher {
+  namespace = 'Encryption';
 
   /**
    * Accepts a kmsMessage event and passes its contents to acceptItem
-   * @param {Object} event
-   * @returns {Promise}
+   * @param {Object} event - The KMS message event
+   * @returns {Promise<void>} Promise resolving when all messages are processed
    */
   processKmsMessageEvent(event) {
     this.logger.info('kms-batcher: received kms message');
@@ -35,13 +37,13 @@ const KmsBatcher = Batcher.extend({
             resolve(this.acceptItem(kmsMessage));
           })
       )
-    );
-  },
+    ).then(() => {});
+  }
 
   /**
    * Attaches a timeout to the given KMS message
-   * @param {Object} item
-   * @returns {Promise<Object>}
+   * @param {Object} item - The KMS message item
+   * @returns {Promise<Object>} Promise resolving to the prepared item
    */
   prepareItem(item) {
     return this.getDeferredForRequest(item).then((defer) => {
@@ -72,23 +74,24 @@ const KmsBatcher = Batcher.extend({
 
       return item;
     });
-  },
+  }
 
   /**
    * Attaches the final bits of cluster info to the payload
-   * @param {Array} queue
-   * @returns {Promise<Array>}
+   * @param {Array} queue - The queue of items to prepare
+   * @returns {Promise<Object>} Promise resolving to the prepared request
    */
   prepareRequest(queue) {
     return this.webex.internal.encryption.kms._getKMSCluster().then((cluster) => ({
       destination: cluster,
       kmsMessages: queue.map((req) => req.wrapped),
     }));
-  },
+  }
 
   /**
-   * @param {Object} payload
-   * @returns {Promise<HttpResponseObject>}
+   * Submit the HTTP request to the KMS service
+   * @param {Object} payload - The payload to submit
+   * @returns {Promise<any>} Promise resolving to the HTTP response
    */
   submitHttpRequest(payload) {
     this.logger.info('kms: batched-request-length', payload.kmsMessages.length);
@@ -99,38 +102,41 @@ const KmsBatcher = Batcher.extend({
       resource: '/kms/messages',
       body: payload,
     });
-  },
+  }
 
   /**
    * Does nothing; the http response doesn't carry our response data
-   * @returns {Promise}
+   * @returns {Promise<void>} Promise resolving immediately
    */
   handleHttpSuccess() {
     return Promise.resolve();
-  },
+  }
 
   /**
-   * @param {Object} item
-   * @returns {Promise<boolean>}
+   * Check if the item failed
+   * @param {Object} item - The item to check
+   * @returns {Promise<boolean>} Promise resolving to failure status
    */
   didItemFail(item) {
     return Promise.resolve(item.status >= 400);
-  },
+  }
 
   /**
-   * @param {Object} item
-   * @returns {Promise}
+   * Handle item success
+   * @param {Object} item - The item that succeeded
+   * @returns {Promise<void>} Promise resolving when success is handled
    */
   handleItemSuccess(item) {
     return this.getDeferredForResponse(item).then((defer) => {
       defer.resolve(item.body);
     });
-  },
+  }
 
   /**
-   * @param {Object} item
-   * @param {KmsError} [reason]
-   * @returns {Promise}
+   * Handle item failure
+   * @param {Object} item - The item that failed
+   * @param {KmsError} [reason] - The failure reason
+   * @returns {Promise<void>} Promise resolving when failure is handled
    */
   handleItemFailure(item, reason) {
     handleKmsKeyRevokedEncryptionFailure(item, this.webex);
@@ -138,23 +144,25 @@ const KmsBatcher = Batcher.extend({
     return this.getDeferredForResponse(item).then((defer) => {
       defer.reject(reason || new KmsError(item.body));
     });
-  },
+  }
 
   /**
-   * @param {Object} item
-   * @returns {Promise}
+   * Create fingerprint for request
+   * @param {Object} item - The item to fingerprint
+   * @returns {Promise<string>} Promise resolving to the fingerprint
    */
   fingerprintRequest(item) {
     return Promise.resolve(item.requestId);
-  },
+  }
 
   /**
-   * @param {Object} item
-   * @returns {Promise}
+   * Create fingerprint for response
+   * @param {Object} item - The item to fingerprint
+   * @returns {Promise<string>} Promise resolving to the fingerprint
    */
   fingerprintResponse(item) {
     return Promise.resolve(item.requestId);
-  },
-});
+  }
+}
 
 export default KmsBatcher;

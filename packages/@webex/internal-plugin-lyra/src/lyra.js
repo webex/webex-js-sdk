@@ -7,7 +7,7 @@ import {WebexPlugin} from '@webex/webex-core';
 import Space from './space';
 import Device from './device';
 
-const Lyra = WebexPlugin.extend({
+class Lyra extends WebexPlugin {
   /**
    * @typedef {Object} Endpoint
    * @property {Object} advertiser
@@ -25,11 +25,11 @@ const Lyra = WebexPlugin.extend({
    * @property {Object} token
    * @property {string} token.value
    */
-  namespace: 'Lyra',
-  children: {
-    space: Space,
-    device: Device,
-  },
+  namespace = 'Lyra';
+
+  space = Space;
+
+  device = Device;
 
   /**
    * Get the endpoint information
@@ -47,7 +47,7 @@ const Lyra = WebexPlugin.extend({
         },
       })
       .then((res) => res.body);
-  },
-});
+  }
+}
 
 export default Lyra;

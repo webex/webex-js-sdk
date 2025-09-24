@@ -10,13 +10,17 @@ import uuid from 'uuid';
 import {LYRA_SPACE, UC_CLOUD, DEFAULT_PRODUCT_NAME} from './constants';
 import DeviceCollection from './collection';
 
-const DeviceManager = WebexPlugin.extend({
-  namespace: 'DeviceManager',
-  _devicePendingPinChallenge: null,
-  _pairedDevice: null,
-  _boundSpace: null,
+class DeviceManager extends WebexPlugin {
+  namespace = 'DeviceManager';
 
-  initialize() {
+  _devicePendingPinChallenge = null;
+
+  _pairedDevice = null;
+
+  _boundSpace = null;
+
+  constructor(...args) {
+    super(...args);
     // Initialize the paired method property
     this._pairedMethod = 'Manual';
 
@@ -24,7 +28,7 @@ const DeviceManager = WebexPlugin.extend({
     this.webex.internal.mercury.on('event:lyra.space_updated', ({data}) => {
       this._receiveDeviceUpdates(data);
     });
-  },
+  }
 
   /**
    * Gets a list of all recent devices associated with the user
@@ -33,7 +37,7 @@ const DeviceManager = WebexPlugin.extend({
    */
   getAll() {
     return DeviceCollection.getAll();
-  },
+  }
 
   /**
    * Gets a list of all recent devices associated with the user
@@ -73,7 +77,7 @@ const DeviceManager = WebexPlugin.extend({
       .catch((err) => {
         this.logger.error('DeviceManager#refresh: failed to fetch recent devices', err);
       });
-  },
+  }
 
   /**
    * Search for a device by name
@@ -102,7 +106,7 @@ const DeviceManager = WebexPlugin.extend({
 
         throw err;
       });
-  },
+  }
 
   /**
    * Caches the device info and also registers to Redis for subsequent fetches
@@ -154,7 +158,7 @@ const DeviceManager = WebexPlugin.extend({
           return Promise.reject(err);
         })
     );
-  },
+  }
 
   /**
    * Retreives device info of a particular device
@@ -190,7 +194,7 @@ const DeviceManager = WebexPlugin.extend({
 
         return Promise.reject(err);
       });
-  },
+  }
 
   /**
    * Unregisters the device from Redis, will not fetch in subsequent loads,
@@ -216,7 +220,7 @@ const DeviceManager = WebexPlugin.extend({
 
         return Promise.reject(error);
       });
-  },
+  }
 
   /**
    * Requests to display PIN on the device
@@ -268,7 +272,7 @@ const DeviceManager = WebexPlugin.extend({
 
         return Promise.reject(err);
       });
-  },
+  }
 
   /**
    * pairs the device with the user (manual pairing), also adds it to
@@ -305,7 +309,7 @@ const DeviceManager = WebexPlugin.extend({
     this.logger.error('DeviceManager#pair: no device to pair');
 
     return Promise.reject(new Error('DeviceManager#pair: no device to pair'));
-  },
+  }
 
   /**
    * unpairs the device with the user (manual/ultrasonic pairing), but still
@@ -329,7 +333,7 @@ const DeviceManager = WebexPlugin.extend({
 
       return Promise.reject(err);
     });
-  },
+  }
 
   /**
    * binds the space to the paired device (if supported)
@@ -372,7 +376,7 @@ const DeviceManager = WebexPlugin.extend({
 
       return Promise.reject(err);
     });
-  },
+  }
 
   /**
    * unbinds the space to the paired device (if supported)
@@ -404,7 +408,7 @@ const DeviceManager = WebexPlugin.extend({
 
         return Promise.reject(err);
       });
-  },
+  }
 
   /**
    * Gets the audio state of the paired device
@@ -421,7 +425,7 @@ const DeviceManager = WebexPlugin.extend({
     }
 
     return this.webex.internal.lyra.device.getAudioState(this._pairedDevice);
-  },
+  }
 
   /**
    * Updates audio state of the paired device, should be called every 10 minutes
@@ -433,7 +437,7 @@ const DeviceManager = WebexPlugin.extend({
    */
   putAudioState(space, audioState = {}) {
     return this.webex.internal.lyra.device.putAudioState(space, audioState);
-  },
+  }
 
   /**
    * Mutes paired device
@@ -448,7 +452,7 @@ const DeviceManager = WebexPlugin.extend({
     }
 
     return this.webex.internal.lyra.device.mute(this._pairedDevice);
-  },
+  }
 
   /**
    * Unmutes paired device
@@ -463,7 +467,7 @@ const DeviceManager = WebexPlugin.extend({
     }
 
     return this.webex.internal.lyra.device.unmute(this._pairedDevice);
-  },
+  }
 
   /**
    * Increases paired device's volume
@@ -480,7 +484,7 @@ const DeviceManager = WebexPlugin.extend({
     }
 
     return this.webex.internal.lyra.device.increaseVolume(this._pairedDevice);
-  },
+  }
 
   /**
    * Decreases paired device's volume
@@ -497,7 +501,7 @@ const DeviceManager = WebexPlugin.extend({
     }
 
     return this.webex.internal.lyra.device.decreaseVolume(this._pairedDevice);
-  },
+  }
 
   /**
    * Sets paired device's volume but should use increase and decrease api instead
@@ -513,7 +517,7 @@ const DeviceManager = WebexPlugin.extend({
     }
 
     return this.webex.internal.lyra.device.setVolume(this._pairedDevice, level);
-  },
+  }
 
   /**
    * Utility function to update decrypted device name on device object
@@ -544,7 +548,7 @@ const DeviceManager = WebexPlugin.extend({
           })
       )
     ).then(() => Promise.resolve(devices));
-  },
+  }
 
   /**
    * Utility function to update decrypted device name on device object
@@ -579,7 +583,7 @@ const DeviceManager = WebexPlugin.extend({
     }
 
     return Promise.resolve(device);
-  },
+  }
 
   /**
    * Utility function to update device info on mercury updates
@@ -640,7 +644,7 @@ const DeviceManager = WebexPlugin.extend({
     }
 
     return Promise.resolve();
-  },
+  }
 
   /**
    * gets the currently paired device info if paired
@@ -655,7 +659,7 @@ const DeviceManager = WebexPlugin.extend({
     const pairedDeviceId = this._pairedDevice?.id || this._pairedDevice?.identity?.id;
 
     return DeviceCollection.get(pairedDeviceId);
-  },
+  }
 
   /**
    * Gets the currently set paired method
@@ -663,7 +667,7 @@ const DeviceManager = WebexPlugin.extend({
    */
   getPairedMethod() {
     return this._pairedMethod || 'Manual';
-  },
+  }
 
   /**
    * Sets the paired method
@@ -672,7 +676,7 @@ const DeviceManager = WebexPlugin.extend({
    */
   setPairedMethod(pairedMethod) {
     this._pairedMethod = pairedMethod;
-  },
-});
+  }
+}
 
 export default DeviceManager;

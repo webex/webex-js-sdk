@@ -29,8 +29,13 @@ import {
 } from './constants';
 import {decryptCitedAnswer, decryptMessage, decryptToolUse} from './utils';
 
-const AIAssistant = WebexPlugin.extend({
-  namespace: 'AIAssistant',
+/**
+ * AI Assistant plugin class for Webex SDK
+ * @class AIAssistant
+ * @extends WebexPlugin
+ */
+class AIAssistant extends WebexPlugin {
+  namespace = 'AIAssistant';
 
   /**
    * registered value indicating events registration is successful
@@ -38,18 +43,15 @@ const AIAssistant = WebexPlugin.extend({
    * @type {Boolean}
    * @memberof AIAssistant
    */
-  registered: false,
+  private registered = false;
 
   /**
-   * Initializer
-   * @private
-   * @param {Object} attrs
-   * @param {Object} options
-   * @returns {undefined}
+   * Constructor
+   * @param {any[]} args Arguments passed to plugin constructor
    */
-  initialize(...args) {
-    Reflect.apply(WebexPlugin.prototype.initialize, this, args);
-  },
+  constructor(...args: any[]) {
+    super(...args);
+  }
 
   /**
    * Explicitly sets up the AI assistant plugin by connecting to mercury, and listening for AI assistant events.
@@ -57,7 +59,7 @@ const AIAssistant = WebexPlugin.extend({
    * @public
    * @memberof AIAssistant
    */
-  register() {
+  public register(): Promise<void> {
     if (!this.webex.canAuthorize) {
       this.logger.error('AI assistant->register#ERROR, Unable to register, SDK cannot authorize');
 
@@ -82,7 +84,7 @@ const AIAssistant = WebexPlugin.extend({
 
         return Promise.reject(error);
       });
-  },
+  }
 
   /**
    * Explicitly tears down the AI assistant plugin by disconnecting from mercury, and stops listening to AI assistant events
@@ -90,7 +92,7 @@ const AIAssistant = WebexPlugin.extend({
    * @public
    * @memberof AIAssistant
    */
-  unregister() {
+  public unregister(): Promise<void> {
     if (!this.registered) {
       this.logger.info('AI assistant->unregister#INFO, AI assistant plugin already unregistered');
 
@@ -103,27 +105,27 @@ const AIAssistant = WebexPlugin.extend({
       this.trigger(AI_ASSISTANT_UNREGISTERED);
       this.registered = false;
     });
-  },
+  }
 
   /**
    * registers for Assistant API events through mercury
    * @returns {undefined}
    * @private
    */
-  listenForEvents() {
+  private listenForEvents(): void {
     this.webex.internal.mercury.on(ASSISTANT_API_RESPONSE_EVENT, (envelope) => {
       this._handleEvent(envelope.data);
     });
-  },
+  }
 
   /**
    * unregisteres all the Assistant API events from mercury
    * @returns {undefined}
    * @private
    */
-  stopListeningForEvents() {
+  private stopListeningForEvents(): void {
     this.webex.internal.mercury.off(ASSISTANT_API_RESPONSE_EVENT);
-  },
+  }
 
   /**
    * constructs the event name based on request id
@@ -131,9 +133,9 @@ const AIAssistant = WebexPlugin.extend({
    * @param {UUID} requestId the id of the request
    * @returns {string}
    */
-  _getResultEventName(requestId: string) {
+  private _getResultEventName(requestId: string): string {
     return `${AI_ASSISTANT_RESULT}:${requestId}`;
-  },
+  }
 
   /**
    * constructs the stream event name based on request id
@@ -141,25 +143,25 @@ const AIAssistant = WebexPlugin.extend({
    * @param {UUID} requestId the id of the request
    * @returns {string}
    */
-  _getStreamEventName(requestId: string) {
+  private _getStreamEventName(requestId: string): string {
     return `${AI_ASSISTANT_STREAM}:${requestId}`;
-  },
+  }
 
   /**
    * Takes incoming data and triggers correct events
    * @param {Object} data the event data
    * @returns {undefined}
    */
-  _handleEvent(data) {
+  private _handleEvent(data: any): void {
     this.trigger(this._getResultEventName(data.clientRequestId), data);
-  },
+  }
 
   /**
    * Decrypts the response content in place
    * @param {any} responseContent the content object from the assistant-api response
    * @returns {Promise} resolves once decryption is complete
    */
-  async _decryptContent(responseContent) {
+  private async _decryptContent(responseContent: any): Promise<void> {
     switch (responseContent.name) {
       case RESPONSE_NAMES.MESSAGE: {
         await decryptMessage(responseContent, this.webex);
@@ -182,7 +184,7 @@ const AIAssistant = WebexPlugin.extend({
           `AI assistant->_decryptContent#ERROR, Unknown response content name: ${responseContent.name}`
         );
     }
-  },
+  }
 
   /**
    * Makes the request to the AI assistant service
@@ -191,7 +193,7 @@ const AIAssistant = WebexPlugin.extend({
    * @param {Mixed} options.params additional params for the body of the request
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
-  _request(options: RequestOptions): Promise<RequestResponse> {
+  private _request(options: RequestOptions): Promise<RequestResponse> {
     const {resource, params} = options;
 
     const timeout = this.config.requestTimeout;
@@ -261,7 +263,7 @@ const AIAssistant = WebexPlugin.extend({
           timer.start();
         });
     });
-  },
+  }
 
   /**
    * Common method to make AI assistant requests for meeting analysis
@@ -276,7 +278,7 @@ const AIAssistant = WebexPlugin.extend({
    * @param {Object} options.locale optional locale to use for the request, defaults to 'en_US'
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
-  async _makeMeetingRequest(options: MakeMeetingRequestOptions): Promise<RequestResponse> {
+  private async _makeMeetingRequest(options: MakeMeetingRequestOptions): Promise<RequestResponse> {
     let value = options.contentValue;
 
     if (options.contentType === 'message') {
@@ -308,7 +310,7 @@ const AIAssistant = WebexPlugin.extend({
         ...(options.assistant ? {assistant: options.assistant} : {}),
       },
     });
-  },
+  }
 
   /**
    * Returns the summary of a meeting
@@ -320,7 +322,7 @@ const AIAssistant = WebexPlugin.extend({
    * @param {number} options.lastMinutes Optional number of minutes to summarize from the end of the meeting. If not included, summarizes from the start.
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
-  summarizeMeeting(options: SummarizeMeetingOptions): Promise<RequestResponse> {
+  public summarizeMeeting(options: SummarizeMeetingOptions): Promise<RequestResponse> {
     return this._makeMeetingRequest({
       ...options,
       contentType: CONTENT_TYPES.ACTION,
@@ -334,7 +336,7 @@ const AIAssistant = WebexPlugin.extend({
       ],
       ...(options.lastMinutes ? {parameters: {lastMinutes: options.lastMinutes}} : {}),
     });
-  },
+  }
 
   /**
    * Checks if the user's name was mentioned in a meeting
@@ -345,7 +347,7 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
-  wasMyNameMentioned(options: SummarizeMeetingOptions): Promise<RequestResponse> {
+  public wasMyNameMentioned(options: SummarizeMeetingOptions): Promise<RequestResponse> {
     return this._makeMeetingRequest({
       ...options,
       contextResources: [
@@ -358,7 +360,7 @@ const AIAssistant = WebexPlugin.extend({
       contentType: CONTENT_TYPES.ACTION,
       contentValue: ACTION_TYPES.WAS_MY_NAME_MENTIONED,
     });
-  },
+  }
 
   /**
    * Returns all action items from a meeting
@@ -369,7 +371,7 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
-  showAllActionItems(options: SummarizeMeetingOptions): Promise<RequestResponse> {
+  public showAllActionItems(options: SummarizeMeetingOptions): Promise<RequestResponse> {
     return this._makeMeetingRequest({
       ...options,
       contextResources: [
@@ -382,7 +384,7 @@ const AIAssistant = WebexPlugin.extend({
       contentType: CONTENT_TYPES.ACTION,
       contentValue: ACTION_TYPES.SHOW_ALL_ACTION_ITEMS,
     });
-  },
+  }
 
   /**
    * Helper method to encrypt text using the encryption key URL
@@ -391,11 +393,17 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.encryptionKeyUrl the encryption key URL to use for encryption
    * @returns {Promise<string>} returns a promise that resolves with the encrypted text
    */
-  async _encryptData({text, encryptionKeyUrl}) {
+  private async _encryptData({
+    text,
+    encryptionKeyUrl,
+  }: {
+    text: string;
+    encryptionKeyUrl: string;
+  }): Promise<string> {
     const result = await this.webex.internal.encryption.encryptText(encryptionKeyUrl, text);
 
     return result;
-  },
+  }
 
   /**
    * Ask any question about the meeting content
@@ -407,7 +415,9 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.question the question to ask about the meeting content
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
-  askMeAnything(options: SummarizeMeetingOptions & {question: string}): Promise<RequestResponse> {
+  public askMeAnything(
+    options: SummarizeMeetingOptions & {question: string}
+  ): Promise<RequestResponse> {
     return this._makeMeetingRequest({
       ...options,
       contextResources: [
@@ -420,7 +430,7 @@ const AIAssistant = WebexPlugin.extend({
       contentType: CONTENT_TYPES.MESSAGE,
       contentValue: options.question,
     });
-  },
-});
+  }
+}
 
 export default AIAssistant;

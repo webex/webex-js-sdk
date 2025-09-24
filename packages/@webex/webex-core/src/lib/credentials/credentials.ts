@@ -6,7 +6,7 @@ import querystring from 'querystring';
 import url from 'url';
 
 import jwt from 'jsonwebtoken';
-import {base64, makeStateDataType, oneFlight, tap, whileInFlight} from '@webex/common';
+import {whileInFlight, oneFlight, base64, tap} from '@webex/common';
 import {safeSetTimeout} from '@webex/common-timers';
 import {clone, cloneDeep, isObject, isEmpty} from 'lodash';
 
@@ -19,122 +19,157 @@ import Token from './token';
 import TokenCollection from './token-collection';
 import {METRICS} from '../constants';
 
+export interface CredentialsState {
+  supertoken?: Token;
+  userTokens?: TokenCollection;
+  isRefreshing?: boolean;
+  ready?: boolean;
+  refreshTimer?: any;
+}
+
+export interface BuildLoginUrlOptions {
+  clientType?: 'public' | 'confidential';
+  state?: any;
+  client_id?: string;
+  redirect_uri?: string;
+  scope?: string;
+  response_type?: string;
+  [key: string]: any;
+}
+
+export interface GetClientTokenOptions {
+  uri?: string;
+  scope?: string;
+}
+
 /**
- * @class
+ * Credentials plugin for managing OAuth tokens and authentication
  */
-const Credentials = WebexPlugin.extend({
-  collections: {
-    userTokens: TokenCollection,
-  },
+export class Credentials extends WebexPlugin {
+  namespace = 'Credentials';
 
-  dataTypes: {
-    token: makeStateDataType(Token, 'token').dataType,
-  },
+  // Collections
+  userTokens: TokenCollection;
 
-  derived: {
-    canAuthorize: {
-      deps: ['supertoken', 'supertoken.canAuthorize', 'canRefresh'],
-      fn() {
-        return Boolean((this.supertoken && this.supertoken.canAuthorize) || this.canRefresh);
-      },
-    },
-    canRefresh: {
-      deps: ['supertoken', 'supertoken.canRefresh'],
-      fn() {
-        // If we're operating in JWT mode, we have to delegate to the consumer
-        if (this.config.jwtRefreshCallback) {
-          return true;
+  // State properties
+  supertoken?: Token;
+  isRefreshing = false;
+  ready = false;
+  refreshTimer?: any;
+
+  constructor(attrs: any = {}, options: any = {}) {
+    super(attrs, options);
+
+    // Initialize collections
+    this.userTokens = new TokenCollection([], {parent: this});
+
+    // Initialize from constructor similar to original
+    this._initializeCredentials(attrs);
+  }
+
+  /**
+   * Initialize credentials from various input formats
+   * @private
+   */
+  private _initializeCredentials(attrs: any): void {
+    if (attrs) {
+      if (typeof attrs === 'string') {
+        this.supertoken = new Token({access_token: attrs}, {parent: this});
+      } else if (attrs.access_token) {
+        this.supertoken = new Token(attrs, {parent: this});
+      } else if (attrs.authorization) {
+        if (attrs.authorization.supertoken) {
+          this.supertoken = new Token(attrs.authorization.supertoken, {parent: this});
+        } else {
+          this.supertoken = new Token(attrs.authorization, {parent: this});
         }
+      }
 
-        return Boolean(this.supertoken && this.supertoken.canRefresh);
-      },
-    },
-    isUnverifiedGuest: {
-      deps: ['supertoken'],
-      /**
-       * Returns true if the user is an unverified guest
-       * @returns {boolean}
-       */
-      fn() {
-        let isGuest = false;
-        try {
-          isGuest =
-            JSON.parse(base64.decode(this.supertoken.access_token.split('.')[1])).user_type ===
-            'guest';
-        } catch {
-          /* the non-guest token is formatted differently so catch is expected */
-        }
+      // Schedule refresh if token has expiration
+      if (this.supertoken && this.supertoken.get('expires')) {
+        this.scheduleRefresh(this.supertoken.get('expires'));
+      }
+    }
+  }
 
-        return isGuest;
-      },
-    },
-  },
+  /**
+   * Indicates if this credentials instance can authorize requests
+   * @returns {boolean}
+   */
+  get canAuthorize(): boolean {
+    return Boolean((this.supertoken && this.supertoken.canAuthorize) || this.canRefresh);
+  }
 
-  props: {
-    supertoken: makeStateDataType(Token, 'token').prop,
-  },
+  /**
+   * Indicates if this credentials instance can refresh tokens
+   * @returns {boolean}
+   */
+  get canRefresh(): boolean {
+    // If we're operating in JWT mode, we have to delegate to the consumer
+    if (this.config.jwtRefreshCallback) {
+      return true;
+    }
 
-  namespace: 'Credentials',
+    return Boolean(this.supertoken && this.supertoken.canRefresh);
+  }
 
-  session: {
-    isRefreshing: {
-      default: false,
-      type: 'boolean',
-    },
-    /**
-     * Becomes `true` once the {@link loaded} event fires.
-     * @see {@link WebexPlugin#ready}
-     * @instance
-     * @memberof Credentials
-     * @type {boolean}
-     */
-    ready: {
-      default: false,
-      type: 'boolean',
-    },
-    refreshTimer: {
-      default: undefined,
-      type: 'any',
-    },
-  },
+  /**
+   * Returns true if the user is an unverified guest
+   * @returns {boolean}
+   */
+  get isUnverifiedGuest(): boolean {
+    if (!this.supertoken) {
+      return false;
+    }
+
+    let isGuest = false;
+    try {
+      const accessToken = this.supertoken.get('access_token');
+      if (accessToken) {
+        const decoded = JSON.parse(base64.decode(accessToken.split('.')[1]));
+        isGuest = decoded.user_type === 'guest';
+      }
+    } catch {
+      /* the non-guest token is formatted differently so catch is expected */
+    }
+
+    return isGuest;
+  }
 
   /**
    * Generates an OAuth Login URL. Prefers the api.ciscospark.com proxy if the
    * instance is initialize with an authorizatUrl, but fallsback to idbroker
    * as the base otherwise.
-   * @instance
-   * @memberof Credentials
-   * @param {Object} [options={}]
+   * @param {BuildLoginUrlOptions} [options={}]
    * @returns {string}
    */
-  buildLoginUrl(options = {clientType: 'public'}) {
+  buildLoginUrl(options: BuildLoginUrlOptions = {clientType: 'public'}): string {
     /* eslint-disable camelcase */
     if (options.state && !isObject(options.state)) {
       throw new Error('if specified, `options.state` must be an object');
     }
 
-    options.client_id = this.config.client_id;
-    options.redirect_uri = this.config.redirect_uri;
-    options.scope = this.config.scope;
+    const opts = cloneDeep(options);
+    opts.client_id = this.config.client_id;
+    opts.redirect_uri = this.config.redirect_uri;
+    opts.scope = this.config.scope;
 
-    options = cloneDeep(options);
-
-    if (!options.response_type) {
-      options.response_type = options.clientType === 'public' ? 'token' : 'code';
+    if (!opts.response_type) {
+      opts.response_type = opts.clientType === 'public' ? 'token' : 'code';
     }
-    Reflect.deleteProperty(options, 'clientType');
+    Reflect.deleteProperty(opts, 'clientType');
 
-    if (options.state) {
-      if (!isEmpty(options.state)) {
-        options.state = base64.toBase64Url(JSON.stringify(options.state));
+    if (opts.state) {
+      if (!isEmpty(opts.state)) {
+        opts.state = base64.toBase64Url(JSON.stringify(opts.state));
       } else {
-        delete options.state;
+        delete opts.state;
       }
     }
 
-    return `${this.config.authorizeUrl}?${querystring.stringify(options)}`;
+    return `${this.config.authorizeUrl}?${querystring.stringify(opts)}`;
     /* eslint-enable camelcase */
-  },
+  }
 
   /**
    * Get the determined OrgId.
@@ -142,27 +177,31 @@ const Credentials = WebexPlugin.extend({
    * @throws {Error} - If the OrgId could not be determined.
    * @returns {string} - The OrgId.
    */
-  getOrgId() {
+  getOrgId(): string {
     this.logger.info('credentials: attempting to retrieve the OrgId from token');
+
+    if (!this.supertoken) {
+      throw new Error('No supertoken available to extract OrgId from');
+    }
 
     try {
       // Attempt to extract a client-authenticated token's OrgId.
       this.logger.info('credentials: trying to extract OrgId from JWT');
 
-      return this.extractOrgIdFromJWT(this.supertoken.access_token);
+      return this.extractOrgIdFromJWT(this.supertoken.get('access_token'));
     } catch (e) {
       // Attempt to extract a user token's OrgId.
       this.logger.info('credentials: could not extract OrgId from JWT');
       this.logger.info('credentials: attempting to extract OrgId from user token');
 
       try {
-        return this.extractOrgIdFromUserToken(this.supertoken?.access_token);
+        return this.extractOrgIdFromUserToken(this.supertoken.get('access_token'));
       } catch (f) {
         this.logger.info('credentials: could not extract OrgId from user token');
         throw f;
       }
     }
-  },
+  }
 
   /**
    * Extract the OrgId [realm] from a provided JWT.
@@ -172,9 +211,9 @@ const Credentials = WebexPlugin.extend({
    * @throws {Error} - If the token does not pass JWT general/realm validation.
    * @returns {string} - The OrgId.
    */
-  extractOrgIdFromJWT(token = '') {
+  private extractOrgIdFromJWT(token = ''): string {
     // Decoded the provided token.
-    const decodedJWT = jwt.decode(token);
+    const decodedJWT = jwt.decode(token) as any;
 
     // Validate that the provided token is a JWT.
     if (!decodedJWT) {
@@ -187,7 +226,7 @@ const Credentials = WebexPlugin.extend({
 
     // Return the OrgId [realm].
     return decodedJWT.realm;
-  },
+  }
 
   /**
    * Extract the OrgId [realm] from a provided user token.
@@ -197,7 +236,7 @@ const Credentials = WebexPlugin.extend({
    * @throws {Error} - Will throw an error if the provided token is invalid.
    * @returns {string} - The OrgId.
    */
-  extractOrgIdFromUserToken(token = '') {
+  private extractOrgIdFromUserToken(token = ''): string {
     // Split the provided token into subsections.
     const fields = token.split('_');
 
@@ -210,58 +249,43 @@ const Credentials = WebexPlugin.extend({
 
     // Return the token section that contains the OrgId.
     return fields[2];
-  },
+  }
 
   /**
    * Generates a Logout URL
-   * @instance
-   * @memberof Credentials
-   * @param {Object} [options={}]
-   * @returns {[type]}
+   * @param {any} [options={}]
+   * @returns {string}
    */
-  buildLogoutUrl(options = {}) {
+  buildLogoutUrl(options: any = {}): string {
     return `${this.config.logoutUrl}?${querystring.stringify({
       cisService: this.config.service,
       goto: this.config.redirect_uri,
       ...options,
     })}`;
-  },
+  }
 
   /**
    * Generates a number between 60% - 90% of expired value
-   * @instance
-   * @memberof Credentials
    * @param {number} expiration
    * @private
    * @returns {number}
    */
-  calcRefreshTimeout(expiration) {
+  private calcRefreshTimeout(expiration: number): number {
     return Math.floor(((Math.floor(Math.random() * 4) + 6) / 10) * expiration);
-  },
-
-  constructor(...args) {
-    // HACK to deal with the fact that AmpersandState#dataTypes#set is a pure
-    // function.
-    this._dataTypes = cloneDeep(this._dataTypes);
-    Object.keys(this._dataTypes).forEach((key) => {
-      if (this._dataTypes[key].set) {
-        this._dataTypes[key].set = this._dataTypes[key].set.bind(this);
-      }
-    });
-    // END HACK
-    Reflect.apply(WebexPlugin, this, args);
-  },
+  }
 
   /**
    * Downscopes a token
-   * @instance
-   * @memberof Credentials
    * @param {string} scope
    * @private
    * @returns {Promise<Token>}
    */
-  downscope(scope) {
-    return this.supertoken.downscope(scope).catch((reason) => {
+  private downscope(scope: string): Promise<Token> {
+    if (!this.supertoken) {
+      return Promise.reject(new Error('No supertoken available for downscoping'));
+    }
+
+    return this.supertoken.downscope(scope).catch((reason: any) => {
       const failReason = reason?.body ?? reason;
       this.logger.warn(`credentials: failed to downscope supertoken to "${scope}"`, failReason);
       this.logger.trace(`credentials: falling back to supertoken for ${scope}`);
@@ -272,22 +296,18 @@ const Credentials = WebexPlugin.extend({
         },
       });
 
-      return Promise.resolve(new Token({scope, ...this.supertoken.serialize()}), {
-        parent: this,
-      });
+      return Promise.resolve(new Token({scope, ...this.supertoken!.getState()}, {parent: this}));
     });
-  },
+  }
 
   /**
    * Requests a client credentials grant and returns the token. Given the
    * limited use for such tokens as this time, this method does not cache its
    * token.
-   * @instance
-   * @memberof Credentials
-   * @param {Object} options
+   * @param {GetClientTokenOptions} options
    * @returns {Promise<Token>}
    */
-  getClientToken(options = {}) {
+  getClientToken(options: GetClientTokenOptions = {}): Promise<Token> {
     this.logger.info('credentials: requesting client credentials grant');
 
     return this.webex
@@ -308,8 +328,8 @@ const Credentials = WebexPlugin.extend({
         shouldRefreshAccessToken: false,
         /* eslint-enable camelcase */
       })
-      .then((res) => new Token(res.body, {parent: this}))
-      .catch((res) => {
+      .then((res: any) => new Token(res.body, {parent: this}))
+      .catch((res: any) => {
         if (res.statusCode !== 400) {
           return Promise.reject(res);
         }
@@ -318,23 +338,21 @@ const Credentials = WebexPlugin.extend({
 
         return Promise.reject(new ErrorConstructor(res._res || res));
       });
-  },
+  }
 
-  @oneFlight({keyFactory: (scope) => scope})
-  @waitForValue('@')
   /**
    * Resolves with a token with the specified scopes. If no scope is specified,
    * defaults to omit(webex.credentials.scope, 'spark:kms'). If no such token is
    * available, downscopes the supertoken to that scope.
-   * @instance
-   * @memberof Credentials
    * @param {string} scope
    * @returns {Promise<Token>}
    */
-  getUserToken(scope) {
+  @oneFlight({keyFactory: (scope: string) => scope})
+  @waitForValue('@')
+  getUserToken(scope?: string): Promise<Token> {
     return Promise.resolve(
       !this.isRefreshing ||
-        new Promise((resolve) => {
+        new Promise<void>((resolve) => {
           this.logger.info(
             'credentials: token refresh inflight; delaying getUserToken until refresh completes'
           );
@@ -350,13 +368,17 @@ const Credentials = WebexPlugin.extend({
         return Promise.reject(new Error('Current state cannot produce an access token'));
       }
 
+      if (!scope && this.supertoken) {
+        scope = filterScope('spark:kms', this.supertoken.get('scope'));
+      }
+
       if (!scope) {
-        scope = filterScope('spark:kms', this.supertoken.scope);
+        return Promise.reject(new Error('No scope specified and no supertoken available'));
       }
 
       scope = sortScope(scope);
 
-      if (scope === sortScope(this.supertoken.scope)) {
+      if (this.supertoken && scope === sortScope(this.supertoken.get('scope'))) {
         return Promise.resolve(this.supertoken);
       }
 
@@ -364,49 +386,23 @@ const Credentials = WebexPlugin.extend({
 
       // we should also check for the token.access_token since token object does
       // not get cleared on unsetting while logging out.
-      if (!token || !token.access_token) {
-        return this.downscope(scope).then(tap((t) => this.userTokens.add(t)));
+      if (!token || !token.get('access_token')) {
+        return this.downscope(scope).then(tap((t: Token) => this.userTokens.add(t)));
       }
 
       return Promise.resolve(token);
     });
-  },
+  }
 
-  @persist('@')
   /**
    * Initializer
-   * @instance
-   * @memberof Credentials
-   * @param {Object} attrs
-   * @param {Object} options
+   * @param {any} attrs
+   * @param {any} options
    * @private
-   * @returns {Credentials}
    */
-  initialize(attrs, options) {
-    if (attrs) {
-      if (typeof attrs === 'string') {
-        this.supertoken = attrs;
-      }
-
-      if (attrs.access_token) {
-        this.supertoken = attrs;
-      }
-
-      if (attrs.authorization) {
-        if (attrs.authorization.supertoken) {
-          this.supertoken = attrs.authorization.supertoken;
-        } else {
-          this.supertoken = attrs.authorization;
-        }
-      }
-
-      // schedule refresh
-      if (this.supertoken && this.supertoken.expires) {
-        this.scheduleRefresh(this.supertoken.expires);
-      }
-    }
-
-    Reflect.apply(WebexPlugin.prototype.initialize, this, [attrs, options]);
+  @persist('@')
+  initialize(attrs?: any, options?: any): void {
+    super.initialize(attrs, options);
 
     this.listenToOnce(this.parent, 'change:config', () => {
       if (this.config.authorizationString) {
@@ -424,37 +420,35 @@ const Credentials = WebexPlugin.extend({
     this.webex.once('loaded', () => {
       this.ready = true;
     });
-  },
+  }
 
-  @oneFlight
-  @waitForValue('@')
   /**
    * Clears all tokens from store them from the stores.
    *
    * This is no longer quite the right name for this method, but all of the
    * alternatives I'm coming up with are already taken.
-   * @instance
-   * @memberof Credentials
-   * @returns {Promise}
+   * @returns {Promise<void>}
    */
-  invalidate() {
+  @oneFlight
+  @waitForValue('@')
+  invalidate(): Promise<void> {
     this.logger.info('credentials: invalidating tokens');
 
     // clear refresh timer
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
-      this.unset('refreshTimer');
+      this.refreshTimer = undefined;
     }
 
     try {
-      this.unset('supertoken');
+      this.supertoken = undefined;
     } catch (err) {
       this.logger.warn('credentials: failed to clear supertoken', err);
     }
 
-    while (this.userTokens.models.length) {
+    while (this.userTokens.getModels().length) {
       try {
-        this.userTokens.remove(this.userTokens.models[0]);
+        this.userTokens.remove(this.userTokens.getModels()[0]);
       } catch (err) {
         this.logger.warn('credentials: failed to remove user token', err);
       }
@@ -465,25 +459,27 @@ const Credentials = WebexPlugin.extend({
     // Return a promise to give the storage layer a tick or two to clear
     // localStorage
     return Promise.resolve();
-  },
+  }
 
-  @oneFlight
-  @whileInFlight('isRefreshing')
-  @waitForValue('@')
   /**
    * Removes the supertoken and child tokens, then refreshes the supertoken;
    * subsequent calls to {@link Credentials#getUserToken()} will re-downscope
    * child tokens. Enqueus revocation of previous previousTokens. Yes, that's
    * the correct number of "previous"es.
-   * @instance
-   * @memberof Credentials
-   * @returns {Promise}
+   * @returns {Promise<void>}
    */
-  refresh() {
+  @oneFlight
+  @whileInFlight('isRefreshing')
+  @waitForValue('@')
+  refresh(): Promise<void> {
     this.logger.info('credentials: refresh requested');
 
+    if (!this.supertoken) {
+      return Promise.reject(new Error('No supertoken available for refresh'));
+    }
+
     const {supertoken} = this;
-    const tokens = clone(this.userTokens.models);
+    const tokens = clone(this.userTokens.getModels());
 
     // This is kind of a leaky abstraction, since it relies on the authorization
     // plugin, but the only alternatives I see are
@@ -492,12 +488,9 @@ const Credentials = WebexPlugin.extend({
     // while I like #2 from a code simplicity standpoint, the third-party DX
     // isn't great
     if (this.config.jwtRefreshCallback) {
-      return (
-        this.config
-          .jwtRefreshCallback(this.webex)
-          // eslint-disable-next-line no-shadow
-          .then((jwt) => this.webex.authorization.requestAccessTokenFromJwt({jwt}))
-      );
+      return this.config
+        .jwtRefreshCallback(this.webex)
+        .then((jwt: string) => this.webex.authorization.requestAccessTokenFromJwt({jwt}));
     }
 
     if (this.webex.internal.services) {
@@ -506,14 +499,14 @@ const Credentials = WebexPlugin.extend({
 
     return supertoken
       .refresh()
-      .catch((error) => {
+      .catch((error: any) => {
         if (error instanceof OAuthError) {
           // Error: super token refresh failed with 400 status code.
           // Hence emit an event to the client, an opportunity to logout.
-          this.unset('supertoken');
-          while (this.userTokens.models.length) {
+          this.supertoken = undefined;
+          while (this.userTokens.getModels().length) {
             try {
-              this.userTokens.remove(this.userTokens.models[0]);
+              this.userTokens.remove(this.userTokens.getModels()[0]);
             } catch (err) {
               this.logger.warn('credentials: failed to remove user token', err);
             }
@@ -523,15 +516,15 @@ const Credentials = WebexPlugin.extend({
 
         return Promise.reject(error);
       })
-      .then((st) => {
+      .then((st: Token) => {
         // clear refresh timer
         if (this.refreshTimer) {
           clearTimeout(this.refreshTimer);
-          this.unset('refreshTimer');
+          this.refreshTimer = undefined;
         }
         this.supertoken = st;
 
-        const invalidScopes = diffScopes(this.config.scope, st.scope);
+        const invalidScopes = diffScopes(this.config.scope, st.get('scope'));
 
         if (invalidScopes !== '') {
           this.logger.warn(
@@ -544,43 +537,41 @@ const Credentials = WebexPlugin.extend({
         }
 
         return Promise.all(
-          tokens.map((token) => {
-            const tokenScope = filterScope(diffScopes(token.scope, st.scope), token.scope);
-
-            return (
-              this.downscope(tokenScope)
-                // eslint-disable-next-line max-nested-callbacks
-                .then((t) => {
-                  this.logger.info(`credentials: revoking token for ${token.scope}`);
-
-                  return token
-                    .revoke()
-                    .catch((err) => {
-                      this.logger.warn('credentials: failed to revoke user token', err);
-                    })
-                    .then(() => {
-                      this.userTokens.remove(token.scope);
-                      this.userTokens.add(t);
-                    });
-                })
+          tokens.map((token: Token) => {
+            const tokenScope = filterScope(
+              diffScopes(token.get('scope'), st.get('scope')),
+              token.get('scope')
             );
+
+            return this.downscope(tokenScope).then((t: Token) => {
+              this.logger.info(`credentials: revoking token for ${token.get('scope')}`);
+
+              return token
+                .revoke()
+                .catch((err: any) => {
+                  this.logger.warn('credentials: failed to revoke user token', err);
+                })
+                .then(() => {
+                  this.userTokens.remove(token.get('scope'));
+                  this.userTokens.add(t);
+                });
+            });
           })
         );
       })
       .then(() => {
-        this.scheduleRefresh(this.supertoken.expires);
+        if (this.supertoken) {
+          this.scheduleRefresh(this.supertoken.get('expires'));
+        }
       });
-  },
+  }
 
   /**
    * Schedules a token refresh or refreshes the token if token has expired
-   * @instance
-   * @memberof Credentials
    * @param {number} expires
    * @private
-   * @returns {undefined}
    */
-  scheduleRefresh(expires) {
+  private scheduleRefresh(expires: number): void {
     const expiresIn = expires - Date.now();
 
     if (expiresIn > 0) {
@@ -590,7 +581,7 @@ const Credentials = WebexPlugin.extend({
     } else {
       this.refresh();
     }
-  },
-});
+  }
+}
 
 export default Credentials;

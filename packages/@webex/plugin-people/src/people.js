@@ -18,12 +18,13 @@ import PeopleBatcher from './people-batcher';
 /**
  * @class
  */
-const People = WebexPlugin.extend({
-  namespace: 'People',
+class People extends WebexPlugin {
+  namespace = 'People';
 
-  children: {
+  children = {
     batcher: PeopleBatcher,
-  },
+  };
+
   /**
    * Returns a single person by ID
    * @instance
@@ -64,7 +65,7 @@ const People = WebexPlugin.extend({
     const id = person.personId || person.id || person;
 
     return this.batcher.request(id);
-  },
+  }
 
   /**
    * Returns a list of people
@@ -157,7 +158,7 @@ const People = WebexPlugin.extend({
       resource: 'people',
       qs: options,
     }).then((res) => new Page(res, this.webex));
-  },
+  }
 
   /**
    * Converts a uuid to a hydra id without a network dip.
@@ -177,7 +178,7 @@ const People = WebexPlugin.extend({
     }
 
     return base64.encode(`ciscospark://us/PEOPLE/${id}`);
-  },
+  }
 
   /**
    * Fetches the current user from the /people/me endpoint
@@ -194,7 +195,7 @@ const People = WebexPlugin.extend({
         resource: 'people/me',
       })
       .then((res) => res.body);
-  },
-});
+  }
+}
 
 export default People;

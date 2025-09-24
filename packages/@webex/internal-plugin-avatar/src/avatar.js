@@ -10,25 +10,28 @@ import {defaults} from 'lodash';
 import AvatarUrlStore from './avatar-url-store';
 import AvatarUrlBatcher from './avatar-url-batcher';
 
-const Avatar = WebexPlugin.extend({
-  namespace: 'Avatar',
+/**
+ * @class
+ */
+class Avatar extends WebexPlugin {
+  /**
+   * @constructs
+   * @private
+   */
+  constructor(...args) {
+    super(...args);
+    this.batcher = new AvatarUrlBatcher(this);
+    this.store = new AvatarUrlStore();
+    this.enableThumbnails = true;
+  }
 
-  children: {
-    batcher: AvatarUrlBatcher,
-  },
-
-  session: {
-    store: {
-      default() {
-        return new AvatarUrlStore();
-      },
-      type: 'any',
-    },
-    enableThumbnails: {
-      default: true,
-      type: 'boolean',
-    },
-  },
+  /**
+   * @private
+   * @returns {string}
+   */
+  static get namespace() {
+    return 'Avatar';
+  }
 
   @oneFlight({keyFactory: (uuid) => uuid})
   _fetchAllAvatarUrlSizes(uuid, options) {
@@ -40,7 +43,7 @@ const Avatar = WebexPlugin.extend({
           .then((item) => this.store.add(defaults({cacheControl: options.cacheControl}, item)))
       )
     );
-  },
+  }
 
   /**
    * @private
@@ -64,7 +67,7 @@ const Avatar = WebexPlugin.extend({
           this.store.add(defaults({cacheControl: options.cacheControl}, item))
         )
     );
-  },
+  }
 
   /**
    * Retrieves an Avatar from a cache or the api on misses.
@@ -96,7 +99,7 @@ const Avatar = WebexPlugin.extend({
 
         return item.url;
       });
-  },
+  }
 
   /**
    * Upload a new avatar for the current user
@@ -142,7 +145,7 @@ const Avatar = WebexPlugin.extend({
 
         return res.url;
       });
-  },
-});
+  }
+}
 
 export default Avatar;

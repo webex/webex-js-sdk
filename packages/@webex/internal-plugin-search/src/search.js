@@ -6,8 +6,8 @@ import {get} from 'lodash';
 import {oneFlight} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 
-const Search = WebexPlugin.extend({
-  namespace: 'Search',
+class Search extends WebexPlugin {
+  namespace = 'Search';
 
   people(options) {
     options = options || {};
@@ -27,7 +27,7 @@ const Search = WebexPlugin.extend({
       method: 'POST',
       body: options,
     }).then((res) => res.body);
-  },
+  }
 
   @oneFlight
   bindSearchKey() {
@@ -39,7 +39,7 @@ const Search = WebexPlugin.extend({
         })
         .then(() => this.webex.internal.device.set('searchEncryptionKeyUrl', key.uri))
     );
-  },
+  }
 
   /**
    * Fetches search result activities
@@ -105,7 +105,7 @@ const Search = WebexPlugin.extend({
 
         return resActivities;
       });
-  },
-});
+  }
+}
 
 export default Search;

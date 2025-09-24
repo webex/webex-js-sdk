@@ -12,49 +12,42 @@ import breakoutEvent from './events';
 /**
  * @class
  */
-const Breakout = WebexPlugin.extend({
-  idAttribute: 'sessionId',
+class Breakout extends WebexPlugin {
+  idAttribute = 'sessionId';
 
-  namespace: MEETINGS,
+  namespace = MEETINGS;
 
-  breakoutRequest: BreakoutRequest,
-  props: {
-    active: ['boolean', false, false], // this session is active
-    allowed: ['boolean', false, false], // allowed to join this session
-    assigned: ['boolean', false, false], // assigned to this session, but not necessarily joined yet
-    assignedCurrent: ['boolean', false, false], // assigned AND current session
-    requested: ['boolean', false, false], // requested by the host to join this session
-    current: ['boolean', false, false], // the current joined session
-    name: 'string',
-    sessionId: 'string',
-    sessionType: 'string',
-    groupId: 'string',
-    url: 'string', // where to send requests to
-    requestedLastModifiedTime: 'string',
-  },
+  breakoutRequest: BreakoutRequest;
+  active: boolean;
+  allowed: boolean;
+  assigned: boolean;
+  assignedCurrent: boolean;
+  requested: boolean;
+  current: boolean;
+  name: string;
+  sessionId: string;
+  sessionType: string;
+  groupId: string;
+  url: string;
+  requestedLastModifiedTime: string;
+  isMain: boolean;
+  members: Members;
+  breakoutRosterLocus: any;
+  parent: any;
+  collection: any;
+  webex: any;
+  request: any;
 
-  derived: {
-    isMain: {
-      cache: false, // fix issue: sometimes the derived will not change even if the deps changed
-      deps: ['sessionType'],
-      /**
-       * If the breakout has no name, assume it is the main session
-       * @returns {boolean}
-       */
-      fn() {
-        return this.sessionType === 'MAIN';
-      },
-    },
-  },
   /**
    * initializer for the Breakout class
    * @returns {void}
    */
-  initialize() {
+  constructor(...args) {
+    super(...args);
     // @ts-ignore
     this.breakoutRequest = new BreakoutRequest({webex: this.webex});
     this.breakoutRosterLocus = null;
-  },
+  }
 
   /**
    * Joins the breakout session
@@ -87,7 +80,7 @@ const Breakout = WebexPlugin.extend({
     );
 
     return result;
-  },
+  }
 
   /**
    * Leaves the breakout session to return to the main session
@@ -106,7 +99,7 @@ const Breakout = WebexPlugin.extend({
     }
 
     return mainSession.join();
-  },
+  }
 
   /**
    * Sends a help request for the current breakout
@@ -121,7 +114,7 @@ const Breakout = WebexPlugin.extend({
         sessionId: this.sessionId,
       },
     });
-  },
+  }
 
   /**
    * inits the members object
@@ -136,7 +129,7 @@ const Breakout = WebexPlugin.extend({
       },
       {parent: this.webex}
     );
-  },
+  }
 
   /**
    * check sequence and determine whether to update the new roster or not
@@ -151,7 +144,8 @@ const Breakout = WebexPlugin.extend({
     const currentSequence = locus.sequence.entries[0];
 
     return currentSequence > prevSequence;
-  },
+  }
+
   /**
    * Parses the participants from the locus object
    * @param {Object} locus Locus object
@@ -166,7 +160,7 @@ const Breakout = WebexPlugin.extend({
     }
     this.breakoutRosterLocus = locus;
     this.members.locusParticipantsUpdate(locus);
-  },
+  }
 
   /**
    * Broadcast message to this breakout session's participants
@@ -182,7 +176,7 @@ const Breakout = WebexPlugin.extend({
       groupId: this.groupId,
       sessionId: this.sessionId,
     });
-  },
-});
+  }
+}
 
 export default Breakout;

@@ -3,7 +3,7 @@
  */
 
 import {inBrowser, patterns} from '@webex/common';
-import {WebexPlugin} from '@webex/webex-core';
+import WebexPlugin from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
 
 const precedence = {
@@ -40,7 +40,7 @@ const authTokenKeyPattern = /[Aa]uthorization/;
 /**
  * Recursively strips "authorization" fields from the specified object
  * @param {Object} object
- * @param {Array<mixed>} [visited]
+ * @param {Array<any>} [visited]
  * @private
  * @returns {Object}
  */
@@ -82,67 +82,66 @@ function walkAndFilter(object, visited = []) {
 /**
  * @class
  */
-const Logger = WebexPlugin.extend({
-  namespace: 'Logger',
+class Logger extends WebexPlugin {
+  namespace = 'Logger';
 
-  derived: {
-    level: {
-      cache: false,
-      fn() {
-        return this.getCurrentLevel();
-      },
-    },
-    client_level: {
-      cache: false,
-      fn() {
-        return this.getCurrentClientLevel();
-      },
-    },
-  },
-  session: {
-    // for when configured to use single buffer
-    buffer: {
-      type: 'object',
-      default() {
-        return {
-          buffer: [],
-          nextIndex: 0,
-        };
-      },
-    },
-    groupLevel: {
-      type: 'number',
-      default() {
-        return 0;
-      },
-    },
-    // for when configured to use separate buffers
-    sdkBuffer: {
-      type: 'object',
-      default() {
-        return {
-          buffer: [],
-          nextIndex: 0,
-        };
-      },
-    },
-    clientBuffer: {
-      type: 'object',
-      default() {
-        return {
-          buffer: [],
-          nextIndex: 0,
-        };
-      },
-    },
-  },
+  private buffer: {buffer: any[]; nextIndex: number};
+  private groupLevel: number;
+  private sdkBuffer: {buffer: any[]; nextIndex: number};
+  private clientBuffer: {buffer: any[]; nextIndex: number};
+  [key: string]: any;
+
+  constructor(attrs, options) {
+    super(attrs, options);
+
+    this.buffer = {
+      buffer: [],
+      nextIndex: 0,
+    };
+    this.groupLevel = 0;
+    this.sdkBuffer = {
+      buffer: [],
+      nextIndex: 0,
+    };
+    this.clientBuffer = {
+      buffer: [],
+      nextIndex: 0,
+    };
+
+    levels.forEach((level) => {
+      let impls = fallbacks[level];
+      let impl = level;
+
+      if (impls) {
+        impls = impls.slice();
+        // eslint-disable-next-line no-console
+        while (!console[impl]) {
+          impl = impls.pop();
+        }
+      }
+
+      this[`client_${level}`] = this.makeLoggerMethod(level, impl, LOG_TYPES.CLIENT);
+      this[level] = this.makeLoggerMethod(level, impl, LOG_TYPES.SDK);
+    });
+
+    this.client_logToBuffer = this.makeLoggerMethod('info', 'info', LOG_TYPES.CLIENT, true, true);
+    this.logToBuffer = this.makeLoggerMethod('info', 'info', LOG_TYPES.SDK, true, true);
+  }
+
+  get level() {
+    return this.getCurrentLevel();
+  }
+
+  get client_level() {
+    return this.getCurrentClientLevel();
+  }
 
   /**
    * Ensures auth headers don't get printed in logs
-   * @param {Array<mixed>} args
+   * @param {Array<any>} args
    * @private
    * @memberof Logger
-   * @returns {Array<mixed>}
+   * @returns {Array<any>}
    */
   filter(...args) {
     return args.map((arg) => {
@@ -168,7 +167,7 @@ const Logger = WebexPlugin.extend({
 
       return walkAndFilter(arg);
     });
-  },
+  }
 
   /**
    * Determines if the current level allows logs at the specified level to be
@@ -184,7 +183,7 @@ const Logger = WebexPlugin.extend({
       precedence[level] <=
       precedence[type === LOG_TYPES.SDK ? this.getCurrentLevel() : this.getCurrentClientLevel()]
     );
-  },
+  }
 
   /**
    * Determines if the current level allows logs at the specified level to be
@@ -193,7 +192,6 @@ const Logger = WebexPlugin.extend({
    * runtime (they're helpful for debugging locally, but really just pollute the
    * uploaded logs and push useful info out).
    * @param {string} level
-   * @param {string} type type of log, SDK or client
    * @private
    * @memberof Logger
    * @returns {boolean}
@@ -203,7 +201,7 @@ const Logger = WebexPlugin.extend({
       precedence[level] <=
       (this.config.bufferLogLevel ? precedence[this.config.bufferLogLevel] : precedence.info)
     );
-  },
+  }
 
   /**
    * Indicates the current SDK log level based on env vars, feature toggles, and
@@ -211,7 +209,6 @@ const Logger = WebexPlugin.extend({
    * @instance
    * @memberof Logger
    * @private
-   * @memberof Logger
    * @returns {string}
    */
   // eslint-disable-next-line complexity
@@ -241,14 +238,13 @@ const Logger = WebexPlugin.extend({
     }
 
     return 'error';
-  },
+  }
 
   /**
    * Indicates the current client log level based on config, defaults to SDK level
    * @instance
    * @memberof Logger
    * @private
-   * @memberof Logger
    * @returns {string}
    */
   getCurrentClientLevel() {
@@ -259,7 +255,7 @@ const Logger = WebexPlugin.extend({
 
     // otherwise default to SDK level
     return this.getCurrentLevel();
-  },
+  }
 
   /**
    * Format logs (for upload)
@@ -269,12 +265,11 @@ const Logger = WebexPlugin.extend({
    * @instance
    * @memberof Logger
    * @public
-   * @memberof Logger
    * @param {Object} options
    * @param {boolean} options.diff whether to only format the diff from last call to formatLogs(), false by default
    * @returns {string} formatted buffer
    */
-  formatLogs(options = {}) {
+  formatLogs(options: {diff?: boolean} = {}) {
     function getDate(log) {
       return log[1];
     }
@@ -321,164 +316,133 @@ const Logger = WebexPlugin.extend({
     }
 
     return buffer.join('\n');
-  },
-});
-
-/**
- * Creates a logger method
- *
- *
- * @param {string} level level to create (info, error, warn, etc.)
- * @param {string} impl the level to use when writing to console
- * @param {string} type type of log, SDK or client
- * @param {bool} neverPrint function never prints to console
- * @param {bool} alwaysBuffer function always logs to log buffer
- * @instance
- * @memberof Logger
- * @private
- * @memberof Logger
- * @returns {function} logger method with specified params
- */
-function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = false) {
-  // Much of the complexity in the following function is due to a test-mode-only
-  // helper
-  return function wrappedConsoleMethod(...args) {
-    // it would be easier to just pass in the name and buffer here, but the config isn't completely initialized
-    // in Ampersand, even if the initialize method is used to set this up.  so we keep the type to achieve
-    // a sort of late binding to allow retrieving a name from config.
-    const logType = type;
-    const clientName =
-      logType === LOG_TYPES.SDK ? SDK_LOG_TYPE_NAME : this.config.clientName || logType;
-
-    let bufferRef;
-    let historyLength;
-
-    if (this.config.separateLogBuffers) {
-      historyLength = this.config.clientHistoryLength
-        ? this.config.clientHistoryLength
-        : this.config.historyLength;
-      bufferRef = logType === LOG_TYPES.SDK ? this.sdkBuffer : this.clientBuffer;
-    } else {
-      bufferRef = this.buffer;
-      historyLength = this.config.historyLength;
-    }
-
-    try {
-      const shouldPrint = !neverPrint && this.shouldPrint(level, logType);
-      const shouldBuffer = alwaysBuffer || this.shouldBuffer(level);
-
-      if (!shouldBuffer && !shouldPrint) {
-        return;
-      }
-
-      const filtered = [clientName, ...this.filter(...args)];
-      const stringified = filtered.map((item) => {
-        if (item instanceof Error) {
-          return item.toString();
-        }
-        if (typeof item === 'object') {
-          let cache = [];
-          let returnItem;
-          try {
-            returnItem = JSON.stringify(item, (_key, value) => {
-              if (typeof value === 'object' && value !== null) {
-                if (cache.includes(value)) {
-                  // Circular reference found, discard key
-                  return undefined;
-                }
-                // Store value in our collection
-                cache.push(value);
-              }
-
-              return value;
-            });
-          } catch (e) {
-            returnItem = `Failed to stringify: ${item}`;
-          }
-          cache = null;
-
-          return returnItem;
-        }
-
-        return item;
-      });
-
-      if (shouldPrint) {
-        // when logging an object in browsers, we tend to get a dynamic
-        // reference, thus going back to look at the logged value doesn't
-        // necessarily show the state at log time, thus we print the stringified
-        // value.
-        const toPrint = inBrowser ? stringified : filtered;
-
-        /* istanbul ignore if */
-        if (process.env.NODE_ENV === 'test' && has(this, 'webex.internal.device.url')) {
-          toPrint.unshift(this.webex.internal.device.url.slice(-3));
-        }
-        // eslint-disable-next-line no-console
-        console[impl](...toPrint);
-      }
-
-      if (shouldBuffer) {
-        const logDate = new Date();
-
-        stringified.unshift(logDate.toISOString());
-        stringified.unshift('|  '.repeat(this.groupLevel));
-        bufferRef.buffer.push(stringified);
-        if (bufferRef.buffer.length > historyLength) {
-          // we've gone over the buffer limit, trim it down
-          const deleteCount = bufferRef.buffer.length - historyLength;
-
-          bufferRef.buffer.splice(0, deleteCount);
-
-          // and adjust the corresponding buffer index used for log diff uploads
-          bufferRef.nextIndex -= deleteCount;
-          if (bufferRef.nextIndex < 0) {
-            bufferRef.nextIndex = 0;
-          }
-        }
-        if (level === 'group') this.groupLevel += 1;
-        if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;
-      }
-    } catch (reason) {
-      if (!neverPrint) {
-        /* istanbul ignore next */
-        // eslint-disable-next-line no-console
-        console.warn(`failed to execute Logger#${level}`, reason);
-      }
-    }
-  };
-}
-
-levels.forEach((level) => {
-  let impls = fallbacks[level];
-  let impl = level;
-
-  if (impls) {
-    impls = impls.slice();
-    // eslint-disable-next-line no-console
-    while (!console[impl]) {
-      impl = impls.pop();
-    }
   }
 
-  // eslint-disable-next-line complexity
-  Logger.prototype[`client_${level}`] = makeLoggerMethod(level, impl, LOG_TYPES.CLIENT);
-  Logger.prototype[level] = makeLoggerMethod(level, impl, LOG_TYPES.SDK);
-});
+  /**
+   * Creates a logger method
+   *
+   *
+   * @param {string} level level to create (info, error, warn, etc.)
+   * @param {string} impl the level to use when writing to console
+   * @param {string} type type of log, SDK or client
+   * @param {bool} neverPrint function never prints to console
+   * @param {bool} alwaysBuffer function always logs to log buffer
+   * @instance
+   * @memberof Logger
+   * @private
+   * @returns {function} logger method with specified params
+   */
+  makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = false) {
+    // Much of the complexity in the following function is due to a test-mode-only
+    // helper
+    const wrappedConsoleMethod = (...args) => {
+      // it would be easier to just pass in the name and buffer here, but the config isn't completely initialized
+      // in Ampersand, even if the initialize method is used to set this up.  so we keep the type to achieve
+      // a sort of late binding to allow retrieving a name from config.
+      const logType = type;
+      const clientName =
+        logType === LOG_TYPES.SDK ? SDK_LOG_TYPE_NAME : this.config.clientName || logType;
 
-Logger.prototype.client_logToBuffer = makeLoggerMethod(
-  levels.info,
-  levels.info,
-  LOG_TYPES.CLIENT,
-  true,
-  true
-);
-Logger.prototype.logToBuffer = makeLoggerMethod(
-  levels.info,
-  levels.info,
-  LOG_TYPES.SDK,
-  true,
-  true
-);
+      let bufferRef;
+      let historyLength;
+
+      if (this.config.separateLogBuffers) {
+        historyLength = this.config.clientHistoryLength
+          ? this.config.clientHistoryLength
+          : this.config.historyLength;
+        bufferRef = logType === LOG_TYPES.SDK ? this.sdkBuffer : this.clientBuffer;
+      } else {
+        bufferRef = this.buffer;
+        historyLength = this.config.historyLength;
+      }
+
+      try {
+        const shouldPrint = !neverPrint && this.shouldPrint(level, logType);
+        const shouldBuffer = alwaysBuffer || this.shouldBuffer(level);
+
+        if (!shouldBuffer && !shouldPrint) {
+          return;
+        }
+
+        const filtered = [clientName, ...this.filter(...args)];
+        const stringified = filtered.map((item) => {
+          if (item instanceof Error) {
+            return item.toString();
+          }
+          if (typeof item === 'object') {
+            let cache = [];
+            let returnItem;
+            try {
+              returnItem = JSON.stringify(item, (_key, value) => {
+                if (typeof value === 'object' && value !== null) {
+                  if (cache.includes(value)) {
+                    // Circular reference found, discard key
+                    return undefined;
+                  }
+                  // Store value in our collection
+                  cache.push(value);
+                }
+
+                return value;
+              });
+            } catch (e) {
+              returnItem = `Failed to stringify: ${item}`;
+            }
+            cache = null;
+
+            return returnItem;
+          }
+
+          return item;
+        });
+
+        if (shouldPrint) {
+          // when logging an object in browsers, we tend to get a dynamic
+          // reference, thus going back to look at the logged value doesn't
+          // necessarily show the state at log time, thus we print the stringified
+          // value.
+          const toPrint = inBrowser ? stringified : filtered;
+
+          /* istanbul ignore if */
+          if (process.env.NODE_ENV === 'test' && has(this, 'webex.internal.device.url')) {
+            toPrint.unshift(this.webex.internal.device.url.slice(-3));
+          }
+          // eslint-disable-next-line no-console
+          console[impl](...toPrint);
+        }
+
+        if (shouldBuffer) {
+          const logDate = new Date();
+
+          stringified.unshift(logDate.toISOString());
+          stringified.unshift('|  '.repeat(this.groupLevel));
+          bufferRef.buffer.push(stringified);
+          if (bufferRef.buffer.length > historyLength) {
+            // we've gone over the buffer limit, trim it down
+            const deleteCount = bufferRef.buffer.length - historyLength;
+
+            bufferRef.buffer.splice(0, deleteCount);
+
+            // and adjust the corresponding buffer index used for log diff uploads
+            bufferRef.nextIndex -= deleteCount;
+            if (bufferRef.nextIndex < 0) {
+              bufferRef.nextIndex = 0;
+            }
+          }
+          if (level === 'group') this.groupLevel += 1;
+          if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;
+        }
+      } catch (reason) {
+        if (!neverPrint) {
+          /* istanbul ignore next */
+          // eslint-disable-next-line no-console
+          console.warn(`failed to execute Logger#${level}`, reason);
+        }
+      }
+    };
+
+    return wrappedConsoleMethod;
+  }
+}
 
 export default Logger;

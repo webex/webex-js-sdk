@@ -8,12 +8,39 @@ import {MEETINGS} from '../constants';
 
 import SILanguage from './siLanguage';
 
-const SILanguageCollection = AmpCollection.extend({
-  model: SILanguage,
+/**
+ * @class SILanguageCollection
+ * @extends {AmpCollection}
+ * @description A collection of SILanguage models, representing the available languages for simultaneous interpretation.
+ */
+class SILanguageCollection extends AmpCollection<SILanguage> {
+  /**
+   * The model type for this collection.
+   * @type {SILanguage}
+   */
+  model = SILanguage;
 
-  namespace: MEETINGS,
+  /**
+   * The namespace for this collection.
+   * @type {string}
+   */
+  namespace = MEETINGS;
 
-  mainIndex: 'languageName',
-});
+  /**
+   * The main index for this collection.
+   * @type {string}
+   */
+  mainIndex = 'languageName';
+
+  /**
+   * The parent object of this collection.
+   * @type {any}
+   */
+  parent: any;
+
+  reset(siLanguages: any[]) {
+    this.reset(siLanguages);
+  }
+}
 
 export default SILanguageCollection;

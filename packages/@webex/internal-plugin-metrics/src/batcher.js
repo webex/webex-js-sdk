@@ -8,16 +8,18 @@ import {safeSetTimeout} from '@webex/common-timers';
 const sym = Symbol('metric id');
 
 /**
+ * MetricsBatcher class for handling metrics batching and submission
  * @class
  * @extends Batcher
  * @memberof Metrics
  */
-const MetricsBatcher = Batcher.extend({
-  namespace: 'Metrics',
+class MetricsBatcher extends Batcher {
+  namespace = 'Metrics';
 
   /**
-   * @param {any} item
-   * @returns {Promise<any>}
+   * Prepare an individual metric item before batching
+   * @param {any} item - The metric item to prepare
+   * @returns {Promise<any>} Promise resolving to the prepared item
    */
   prepareItem(item) {
     // Keep non-prod data out of metrics
@@ -29,11 +31,12 @@ const MetricsBatcher = Batcher.extend({
     item.version = item.version || this.webex.version;
 
     return Promise.resolve(item);
-  },
+  }
 
   /**
-   * @param {any[]} queue
-   * @returns {Promise<any[]>}
+   * Prepare the request payload from the queue of items
+   * @param {any[]} queue - Array of metric items to prepare
+   * @returns {Promise<any[]>} Promise resolving to the prepared request payload
    */
   prepareRequest(queue) {
     return Promise.resolve(
@@ -43,11 +46,12 @@ const MetricsBatcher = Batcher.extend({
         return item;
       })
     );
-  },
+  }
 
   /**
-   * @param {any} payload
-   * @returns {Promise<any>}
+   * Submit the HTTP request to the metrics service
+   * @param {any} payload - The prepared payload to submit
+   * @returns {Promise<any>} Promise resolving to the HTTP response
    */
   submitHttpRequest(payload) {
     return this.webex.request({
@@ -59,19 +63,21 @@ const MetricsBatcher = Batcher.extend({
       },
       waitForServiceTimeout: this.webex.config.metrics.waitForServiceTimeout,
     });
-  },
+  }
 
   /**
-   * @param {any} res
-   * @returns {Promise<any>}
+   * Handle successful HTTP response
+   * @param {any} res - The HTTP response object
+   * @returns {Promise<any>} Promise resolving when all items are accepted
    */
   handleHttpSuccess(res) {
     return Promise.all(res.options.body.metrics.map((item) => this.acceptItem(item)));
-  },
+  }
 
   /**
-   * @param {any} reason
-   * @returns {Promise<any>}
+   * Handle HTTP error responses and retry logic
+   * @param {any} reason - The error reason
+   * @returns {Promise<any>} Promise resolving when error is handled
    */
   handleHttpError(reason) {
     if (reason instanceof WebexHttpError.NetworkOrCORSError) {
@@ -96,12 +102,13 @@ const MetricsBatcher = Batcher.extend({
       );
     }
 
-    return Reflect.apply(Batcher.prototype.handleHttpError, this, [reason]);
-  },
+    return super.handleHttpError(reason);
+  }
 
   /**
-   * @param {any} item
-   * @returns {Promise<any>}
+   * Re-request a failed item with retry logic
+   * @param {any} item - The metric item to re-request
+   * @returns {Promise<any>} Promise resolving when item is re-queued
    */
   rerequest(item) {
     return Promise.all([this.getDeferredForRequest(item), this.prepareItem(item)]).then(
@@ -111,11 +118,12 @@ const MetricsBatcher = Batcher.extend({
           .catch((reason) => defer.reject(reason));
       }
     );
-  },
+  }
 
   /**
-   * @param {any} item
-   * @returns {Promise<any>}
+   * Create a fingerprint for request tracking
+   * @param {any} item - The metric item to fingerprint
+   * @returns {Promise<any>} Promise resolving to the fingerprint
    */
   fingerprintRequest(item) {
     item[sym] = item[sym] || {
@@ -123,15 +131,16 @@ const MetricsBatcher = Batcher.extend({
     };
 
     return Promise.resolve(item[sym]);
-  },
+  }
 
   /**
-   * @param {any} item
-   * @returns {Promise<any>}
+   * Create a fingerprint for response tracking
+   * @param {any} item - The metric item to fingerprint
+   * @returns {Promise<any>} Promise resolving to the fingerprint
    */
   fingerprintResponse(item) {
     return Promise.resolve(item[sym]);
-  },
-});
+  }
+}
 
 export default MetricsBatcher;

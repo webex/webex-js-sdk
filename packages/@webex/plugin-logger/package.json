@@ -3,7 +3,7 @@
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
-  "devMain": "src/index.js",
+  "devMain": "src/index.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",

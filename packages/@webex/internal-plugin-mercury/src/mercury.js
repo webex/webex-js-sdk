@@ -22,11 +22,12 @@ import {
 
 const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
 
-const Mercury = WebexPlugin.extend({
-  namespace: 'Mercury',
-  lastError: undefined,
+class Mercury extends WebexPlugin {
+  namespace = 'Mercury';
 
-  session: {
+  lastError = undefined;
+
+  session = {
     connected: {
       default: false,
       type: 'boolean',
@@ -45,16 +46,16 @@ const Mercury = WebexPlugin.extend({
       default: undefined,
       type: 'number',
     },
-  },
+  };
 
-  derived: {
+  derived = {
     listening: {
       deps: ['connected'],
       fn() {
         return this.connected;
       },
     },
-  },
+  };
 
   initialize() {
     /*
@@ -68,7 +69,7 @@ const Mercury = WebexPlugin.extend({
         this.webex.internal.feature.updateFeature(envelope.data.featureToggle);
       }
     });
-  },
+  }
 
   /**
    * Get the last error.
@@ -76,7 +77,7 @@ const Mercury = WebexPlugin.extend({
    */
   getLastError() {
     return this.lastError;
-  },
+  }
 
   @oneFlight
   connect(webSocketUrl) {
@@ -101,7 +102,7 @@ const Mercury = WebexPlugin.extend({
 
       return this._connectWithBackoff(webSocketUrl);
     });
-  },
+  }
 
   logout() {
     this.logger.info(`${this.namespace}: logout() called`);
@@ -116,7 +117,7 @@ const Mercury = WebexPlugin.extend({
         ? {code: 3050, reason: this.config.beforeLogoutOptionsCloseReason}
         : undefined
     );
-  },
+  }
 
   @oneFlight
   disconnect(options) {
@@ -134,23 +135,23 @@ const Mercury = WebexPlugin.extend({
 
       resolve();
     });
-  },
+  }
 
   @deprecated('Mercury#listen(): Use Mercury#connect() instead')
   listen() {
     /* eslint no-invalid-this: [0] */
     return this.connect();
-  },
+  }
 
   @deprecated('Mercury#stopListening(): Use Mercury#disconnect() instead')
   stopListening() {
     /* eslint no-invalid-this: [0] */
     return this.disconnect();
-  },
+  }
 
   processRegistrationStatusEvent(message) {
     this.localClusterServiceUrls = message.localClusterServiceUrls;
-  },
+  }
 
   _applyOverrides(event) {
     if (!event || !event.headers) {
@@ -161,7 +162,7 @@ const Mercury = WebexPlugin.extend({
     headerKeys.forEach((keyPath) => {
       set(event, keyPath, event.headers[keyPath]);
     });
-  },
+  }
 
   _prepareUrl(webSocketUrl) {
     if (!webSocketUrl) {
@@ -205,7 +206,7 @@ const Mercury = WebexPlugin.extend({
 
         return url.format(webSocketUrl);
       });
-  },
+  }
 
   _attemptConnection(socketUrl, callback) {
     const socket = new Socket();
@@ -335,7 +336,7 @@ const Mercury = WebexPlugin.extend({
         this.logger.error(`${this.namespace}: failed to handle connection failure`, reason);
         callback(reason);
       });
-  },
+  }
 
   _connectWithBackoff(webSocketUrl) {
     return new Promise((resolve, reject) => {
@@ -409,7 +410,7 @@ const Mercury = WebexPlugin.extend({
 
       this.backoffCall = call;
     });
-  },
+  }
 
   _emit(...args) {
     try {
@@ -422,7 +423,7 @@ const Mercury = WebexPlugin.extend({
         args
       );
     }
-  },
+  }
 
   _getEventHandlers(eventType) {
     const [namespace, name] = eventType.split('.');
@@ -442,7 +443,7 @@ const Mercury = WebexPlugin.extend({
     }
 
     return handlers;
-  },
+  }
 
   _onclose(event) {
     // I don't see any way to avoid the complexity or statement count in here.
@@ -506,7 +507,7 @@ const Mercury = WebexPlugin.extend({
     } catch (error) {
       this.logger.error(`${this.namespace}: error occurred in close handler`, error);
     }
-  },
+  }
 
   _onmessage(event) {
     this._setTimeOffset(event);
@@ -551,20 +552,20 @@ const Mercury = WebexPlugin.extend({
       .catch((reason) => {
         this.logger.error(`${this.namespace}: error occurred processing socket message`, reason);
       });
-  },
+  }
 
   _setTimeOffset(event) {
     const {wsWriteTimestamp} = event.data;
     if (typeof wsWriteTimestamp === 'number' && wsWriteTimestamp > 0) {
       this.mercuryTimeOffset = Date.now() - wsWriteTimestamp;
     }
-  },
+  }
 
   _reconnect(webSocketUrl) {
     this.logger.info(`${this.namespace}: reconnecting`);
 
     return this.connect(webSocketUrl);
-  },
-});
+  }
+}
 
 export default Mercury;

@@ -45,15 +45,26 @@ function wrapConsoleMethod(level) {
   };
 }
 
-const Logger = WebexPlugin.extend({
-  namespace: 'Logger',
-  error: wrapConsoleMethod('error'),
-  warn: wrapConsoleMethod('warn'),
-  log: wrapConsoleMethod('log'),
-  info: wrapConsoleMethod('info'),
-  debug: wrapConsoleMethod('debug'),
-  trace: wrapConsoleMethod('trace'),
-});
+/**
+ * Logger plugin class for Webex SDK
+ * @class Logger
+ * @extends WebexPlugin
+ */
+class Logger extends WebexPlugin {
+  namespace = 'Logger';
+
+  error = wrapConsoleMethod('error');
+
+  warn = wrapConsoleMethod('warn');
+
+  log = wrapConsoleMethod('log');
+
+  info = wrapConsoleMethod('info');
+
+  debug = wrapConsoleMethod('debug');
+
+  trace = wrapConsoleMethod('trace');
+}
 
 registerPlugin('logger', Logger);
 

@@ -5,14 +5,14 @@
  */
 import {MemoryStoreAdapter} from '@webex/webex-core';
 
-require('@webex/plugin-authorization');
-require('@webex/internal-plugin-device');
-require('@webex/internal-plugin-calendar');
-require('@webex/plugin-logger');
-require('@webex/plugin-device-manager');
+import '@webex/plugin-authorization';
+import '@webex/internal-plugin-device';
+import '@webex/internal-plugin-calendar';
+import '@webex/plugin-logger';
+import '@webex/plugin-device-manager';
 
-const merge = require('lodash/merge');
-const WebexCore = require('@webex/webex-core').default;
+import merge from 'lodash/merge';
+import WebexCore from '@webex/webex-core';
 
 const config = {
   hydraServiceUrl: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1',
@@ -28,15 +28,21 @@ const config = {
   },
 };
 
-const Webex = WebexCore.extend({
-  webex: true,
-  version: PACKAGE_VERSION,
-});
+class Webex extends WebexCore {
+  constructor(attrs) {
+    super(attrs);
+    this.webex = true;
+    this.version = PACKAGE_VERSION;
+  }
 
-Webex.init = function init(attrs = {}) {
-  attrs.config = merge({}, config, attrs.config); // eslint-disable-line no-param-reassign
+  static init(attrs = {}) {
+    const newAttrs = {...attrs};
+    newAttrs.config = merge({}, config, newAttrs.config);
 
-  return new WebexCore(attrs);
-};
+    return new Webex(newAttrs);
+  }
+}
 
 window.webex = Webex;
+
+export default Webex;

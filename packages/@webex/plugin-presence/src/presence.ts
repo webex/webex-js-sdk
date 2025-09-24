@@ -18,21 +18,39 @@ const USER_PRESENCE_ENABLED = 'user-presence-enabled';
  * @class
  * @extends WebexPlugin
  */
-const Presence: IPresence = WebexPlugin.extend({
-  namespace: 'Presence',
+class Presence extends WebexPlugin implements IPresence {
+  namespace = 'Presence';
 
-  children: {
+  children = {
     batcher: PresenceBatcher,
-  },
+  };
 
   session: {
+    worker: {
+      default(): PresenceWorker;
+      type: string;
+    };
+  } = {
     worker: {
       default() {
         return new PresenceWorker();
       },
       type: 'any',
     },
-  },
+  };
+
+  // Add a constructor to call super
+  constructor(...args) {
+    super(...args);
+    this.worker.initialize = this.worker.initialize.bind(this);
+  }
+
+  // Declare properties that are dynamically added
+  webex: any;
+  config: any;
+  worker: PresenceWorker;
+  batcher: PresenceBatcher;
+  trigger: (event: string, payload: any) => void;
 
   /**
    * Initialize the presence plugin
@@ -44,7 +62,7 @@ const Presence: IPresence = WebexPlugin.extend({
         this.worker.initialize(this.webex);
       }
     });
-  },
+  }
 
   /**
    * Initializes the presence worker.
@@ -58,7 +76,7 @@ const Presence: IPresence = WebexPlugin.extend({
         this.worker.initialize(this.webex);
       });
     }
-  },
+  }
 
   /**
    * Trigger an event.
@@ -70,7 +88,7 @@ const Presence: IPresence = WebexPlugin.extend({
     if (payload.type && payload.payload) {
       this.trigger(event, payload);
     }
-  },
+  }
 
   /**
    * Enables presence feature
@@ -80,7 +98,7 @@ const Presence: IPresence = WebexPlugin.extend({
     return this.webex.internal.feature
       .setFeature(USER, USER_PRESENCE_ENABLED, true)
       .then((response) => response.value);
-  },
+  }
 
   /**
    * Disables presence feature
@@ -90,7 +108,7 @@ const Presence: IPresence = WebexPlugin.extend({
     return this.webex.internal.feature
       .setFeature(USER, USER_PRESENCE_ENABLED, false)
       .then((response) => response.value);
-  },
+  }
 
   /**
    * Returns true if presence is enabled, false otherwise
@@ -98,7 +116,7 @@ const Presence: IPresence = WebexPlugin.extend({
    */
   isEnabled(): Promise<boolean> {
     return this.webex.internal.feature.getFeature(USER, USER_PRESENCE_ENABLED);
-  },
+  }
 
   /**
    * The status object
@@ -137,7 +155,7 @@ const Presence: IPresence = WebexPlugin.extend({
         resource: `compositions?userId=${personId}`,
       })
       .then((response) => response.body);
-  },
+  }
 
   /**
    * @typedef {Object} PresenceStatusesObject
@@ -156,7 +174,7 @@ const Presence: IPresence = WebexPlugin.extend({
     return Promise.all(personIds.map((id) => this.batcher.request(id))).then((presences) => ({
       statusList: presences,
     }));
-  },
+  }
 
   /**
    * Subscribes to a person's presence status updates
@@ -202,7 +220,7 @@ const Presence: IPresence = WebexPlugin.extend({
           .then((response) => response.body.responses)
       )
     ).then((idBatches) => ({responses: [].concat(...idBatches)}));
-  },
+  }
 
   /**
    * Unsubscribes from a person or group of people's presence subscription
@@ -231,7 +249,7 @@ const Presence: IPresence = WebexPlugin.extend({
         includeStatus: true,
       },
     });
-  },
+  }
 
   /**
    * Sets the status of the current user
@@ -257,7 +275,7 @@ const Presence: IPresence = WebexPlugin.extend({
         },
       })
       .then((response) => response.body);
-  },
+  }
 
   /**
    * Retrieves and subscribes to a user's presence.
@@ -266,7 +284,7 @@ const Presence: IPresence = WebexPlugin.extend({
    */
   enqueue(id: string): void {
     return this.worker.enqueue(id);
-  },
+  }
 
   /**
    * Retract from subscribing to a user's presence.
@@ -275,7 +293,7 @@ const Presence: IPresence = WebexPlugin.extend({
    */
   dequeue(id: string): void {
     return this.worker.dequeue(id);
-  },
-});
+  }
+}
 
 export default Presence;

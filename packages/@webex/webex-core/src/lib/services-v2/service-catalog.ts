@@ -1,56 +1,73 @@
-import AmpState from 'ampersand-state';
-
 import {union} from 'lodash';
+import {WebexEventEmitter} from '@webex/common';
 import ServiceDetail from './service-detail';
-import {IServiceDetail, ServiceGroup} from './types';
+import {IServiceDetail, ServiceGroup, IServiceCatalog} from './types';
 
 /**
+ * ServiceCatalog class for managing service discovery and routing
+ * Migrated from AmpState to modern TypeScript class
  * @class
  */
-const ServiceCatalog = AmpState.extend({
-  namespace: 'ServiceCatalog',
+class ServiceCatalog extends WebexEventEmitter implements IServiceCatalog {
+  public serviceGroups: {
+    discovery: Array<IServiceDetail>;
+    override: Array<IServiceDetail>;
+    preauth: Array<IServiceDetail>;
+    postauth: Array<IServiceDetail>;
+    signin: Array<IServiceDetail>;
+  };
 
-  props: {
-    serviceGroups: [
-      'object',
-      true,
-      () => ({
-        discovery: [],
-        override: [],
-        preauth: [],
-        postauth: [],
-        signin: [],
-      }),
-    ],
-    status: [
-      'object',
-      true,
-      () => ({
-        discovery: {
-          ready: false,
-          collecting: false,
-        },
-        override: {
-          ready: false,
-          collecting: false,
-        },
-        preauth: {
-          ready: false,
-          collecting: false,
-        },
-        postauth: {
-          ready: false,
-          collecting: false,
-        },
-        signin: {
-          ready: false,
-          collecting: false,
-        },
-      }),
-    ],
-    isReady: ['boolean', false, false],
-    allowedDomains: ['array', false, () => []],
-  },
+  public status: {
+    discovery: {ready: boolean; collecting: boolean};
+    override: {ready: boolean; collecting: boolean};
+    preauth: {ready: boolean; collecting: boolean};
+    postauth: {ready: boolean; collecting: boolean};
+    signin: {ready: boolean; collecting: boolean};
+  };
+
+  public isReady: boolean;
+  public allowedDomains: string[];
+
+  /**
+   * Constructor for ServiceCatalog
+   */
+  constructor() {
+    super();
+
+    this.serviceGroups = {
+      discovery: [],
+      override: [],
+      preauth: [],
+      postauth: [],
+      signin: [],
+    };
+
+    this.status = {
+      discovery: {
+        ready: false,
+        collecting: false,
+      },
+      override: {
+        ready: false,
+        collecting: false,
+      },
+      preauth: {
+        ready: false,
+        collecting: false,
+      },
+      postauth: {
+        ready: false,
+        collecting: false,
+      },
+      signin: {
+        ready: false,
+        collecting: false,
+      },
+    };
+
+    this.isReady = false;
+    this.allowedDomains = [];
+  }
 
   /**
    * @private
@@ -71,7 +88,7 @@ const ServiceCatalog = AmpState.extend({
           ];
 
     return serviceDetails;
-  },
+  }
 
   /**
    * @private
@@ -85,7 +102,7 @@ const ServiceCatalog = AmpState.extend({
     const serviceDetails = this._getAllServiceDetails(serviceGroup);
 
     return serviceDetails.find((serviceDetail: IServiceDetail) => serviceDetail.id === clusterId);
-  },
+  }
 
   /**
    * @private
@@ -105,7 +122,7 @@ const ServiceCatalog = AmpState.extend({
         this.serviceGroups[serviceGroup].push(service);
       }
     });
-  },
+  }
 
   /**
    * @private
@@ -128,7 +145,7 @@ const ServiceCatalog = AmpState.extend({
         );
       }
     });
-  },
+  }
 
   /**
    * Clear all collected catalog data and reset catalog status.
@@ -139,10 +156,10 @@ const ServiceCatalog = AmpState.extend({
     this.serviceGroups.preauth.length = 0;
     this.serviceGroups.signin.length = 0;
     this.serviceGroups.postauth.length = 0;
-    this.status.preauth = {ready: false};
-    this.status.signin = {ready: false};
-    this.status.postauth = {ready: false};
-  },
+    this.status.preauth = {ready: false, collecting: false};
+    this.status.signin = {ready: false, collecting: false};
+    this.status.postauth = {ready: false, collecting: false};
+  }
 
   /**
    * Search over all service groups to find a cluster id based
@@ -162,7 +179,7 @@ const ServiceCatalog = AmpState.extend({
       // If the URL is invalid or can't be found, return undefined
       return undefined;
     }
-  },
+  }
 
   /**
    * Search over all service groups and return a service value from a provided
@@ -187,7 +204,7 @@ const ServiceCatalog = AmpState.extend({
     }
 
     return undefined;
-  },
+  }
 
   /**
    * Find a service based on the provided url.
@@ -206,7 +223,7 @@ const ServiceCatalog = AmpState.extend({
 
       return false;
     });
-  },
+  }
 
   /**
    * Finds an allowed domain that matches a specific url.
@@ -214,7 +231,7 @@ const ServiceCatalog = AmpState.extend({
    * @param {string} url - The url to match the allowed domains against.
    * @returns {string} - The matching allowed domain.
    */
-  findAllowedDomain(url: string): string {
+  findAllowedDomain(url: string): string | undefined {
     try {
       const urlObj = new URL(url);
 
@@ -223,7 +240,7 @@ const ServiceCatalog = AmpState.extend({
       // If the URL is invalid or can't be found, return undefined
       return undefined;
     }
-  },
+  }
 
   /**
    * Get a service url from the current services list by name. Return undefined
@@ -236,7 +253,7 @@ const ServiceCatalog = AmpState.extend({
     const serviceDetail = this._getServiceDetail(clusterId, serviceGroup);
 
     return serviceDetail ? serviceDetail.get() : undefined;
-  },
+  }
 
   /**
    * Get the current allowed domains list.
@@ -245,7 +262,7 @@ const ServiceCatalog = AmpState.extend({
    */
   getAllowedDomains(): Array<string> {
     return [...this.allowedDomains];
-  },
+  }
 
   /**
    * Mark a priority host service url as failed.
@@ -272,7 +289,7 @@ const ServiceCatalog = AmpState.extend({
     }
 
     return serviceDetailWithFailedHost.get();
-  },
+  }
 
   /**
    * Set the allowed domains for the catalog.
@@ -282,7 +299,7 @@ const ServiceCatalog = AmpState.extend({
    */
   setAllowedDomains(allowedDomains: Array<string>): void {
     this.allowedDomains = [...allowedDomains];
-  },
+  }
 
   /**
    *
@@ -291,7 +308,7 @@ const ServiceCatalog = AmpState.extend({
    */
   addAllowedDomains(newAllowedDomains: Array<string>): void {
     this.allowedDomains = union(this.allowedDomains, newAllowedDomains);
-  },
+  }
 
   /**
    * Update the current list of `ServiceDetail`s against a provided
@@ -302,7 +319,7 @@ const ServiceCatalog = AmpState.extend({
    * @param {Array<IServiceDetail>} serviceDetails
    * @returns {void}
    */
-  updateServiceGroups(serviceGroup: ServiceGroup, serviceDetails: Array<IServiceDetail>) {
+  updateServiceGroups(serviceGroup: ServiceGroup, serviceDetails: Array<IServiceDetail>): void {
     const currentServiceDetails = this.serviceGroups[serviceGroup];
 
     const unusedServicesDetails = currentServiceDetails.filter((serviceDetail) =>
@@ -322,8 +339,8 @@ const ServiceCatalog = AmpState.extend({
     });
 
     this.status[serviceGroup].ready = true;
-    this.trigger(serviceGroup);
-  },
+    this.emit(serviceGroup);
+  }
 
   /**
    * Wait until the service catalog is available,
@@ -336,6 +353,8 @@ const ServiceCatalog = AmpState.extend({
     return new Promise<void>((resolve, reject) => {
       if (this.status[serviceGroup].ready) {
         resolve();
+
+        return;
       }
 
       const validatedTimeout = typeof timeout === 'number' && timeout >= 0 ? timeout : 60;
@@ -355,7 +374,7 @@ const ServiceCatalog = AmpState.extend({
         resolve();
       });
     });
-  },
-});
+  }
+}
 
 export default ServiceCatalog;

@@ -2,16 +2,53 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {WebexPlugin} from '@webex/webex-core';
+import WebexPlugin from '@webex/webex-core';
 import {defaults} from 'lodash';
-import uuid from 'uuid';
+import {v4 as uuid} from 'uuid';
 
-const Support = WebexPlugin.extend({
-  namespace: 'Support',
+export interface SupportMetadata {
+  locusId?: string;
+  appVersion?: string;
+  callStart?: string;
+  feedbackId?: string;
+  correlationId?: string;
+  meetingId?: string;
+  surveySessionId?: string;
+  productAreaTag?: string;
+  issueTypeTag?: string;
+  issueDescTag?: string;
+  locussessionid?: string;
+  autoupload?: boolean;
+}
 
-  getFeedbackUrl(options) {
-    options = options || {};
+export interface FileMetadataEntry {
+  key: string;
+  value: string;
+}
 
+export interface SubmitLogsOptions {
+  type?: 'full' | 'diff';
+}
+
+export interface SupportConfig {
+  appVersion?: string;
+  appType?: string;
+  languageCode?: string;
+  incrementalLogs?: boolean;
+}
+
+/**
+ * @class Support
+ */
+class Support extends WebexPlugin {
+  namespace = 'Support';
+
+  /**
+   * Gets a feedback URL for the user
+   * @param {Object} options - Options for feedback URL generation
+   * @returns {Promise<string>} The feedback URL
+   */
+  getFeedbackUrl(options: Partial<SupportMetadata> = {}): Promise<string> {
     return this.request({
       method: 'POST',
       api: 'conversation',
@@ -19,13 +56,17 @@ const Support = WebexPlugin.extend({
       body: defaults(options, {
         appVersion: this.config.appVersion,
         appType: this.config.appType,
-        feedbackId: options.feedbackId || uuid.v4(),
+        feedbackId: options.feedbackId || uuid(),
         languageCode: this.config.languageCode,
       }),
     }).then((res) => res.body.url);
-  },
+  }
 
-  getSupportUrl() {
+  /**
+   * Gets the support URL for the user
+   * @returns {Promise<string>} The support URL
+   */
+  getSupportUrl(): Promise<string> {
     return this.webex
       .request({
         method: 'GET',
@@ -36,26 +77,26 @@ const Support = WebexPlugin.extend({
         },
       })
       .then((res) => res.body.url);
-  },
+  }
 
   /**
    * Sends logs to the backend
    *
-   * @param {Object} metadata metadata about the logs
-   * @param {Array} logs logs to send, if undefined, SDK's logs will be sent
-   * @param {Object} options additional options
-   * @param {string} options.type 'full' or 'diff', if not specified then the config.incrementalLogs value is used to determine the type,
-   *                               this option only applies if logs parameter is undefined
-   *                               'diff' means that only the logs since the last log upload will be sent
-   *                               'full' means that all the logs from internal buffers will be sent
-   * @returns {Promise}
+   * @param {SupportMetadata} metadata metadata about the logs
+   * @param {string} logs logs to send, if undefined, SDK's logs will be sent
+   * @param {SubmitLogsOptions} options additional options
+   * @returns {Promise<any>}
    */
-  submitLogs(metadata, logs, options = {}) {
+  submitLogs(
+    metadata: SupportMetadata,
+    logs?: string,
+    options: SubmitLogsOptions = {}
+  ): Promise<any> {
     const metadataArray = this._constructFileMetadata(metadata);
 
     const {type} = options;
 
-    // this is really testing that Ampersand is fully ready.  once it's ready, these exist
+    // this is really testing that the logger is fully ready
     if (
       !logs &&
       this.webex.logger.sdkBuffer &&
@@ -67,7 +108,7 @@ const Support = WebexPlugin.extend({
       logs = this.webex.logger.formatLogs({diff});
     }
 
-    let filename;
+    let filename: string;
 
     if (metadata.locusId && metadata.callStart) {
       filename = `${metadata.locusId}_${metadata.callStart}.txt`;
@@ -75,7 +116,7 @@ const Support = WebexPlugin.extend({
       filename = `${this.webex.sessionId}.txt`;
     }
 
-    let userId;
+    let userId: string;
 
     return this.webex.credentials
       .getUserToken()
@@ -83,7 +124,7 @@ const Support = WebexPlugin.extend({
       .then(async (token) => {
         const headers = {authorization: token.toString()};
 
-        const initalOpts = {
+        const initialOpts = {
           service: 'clientLogs',
           resource: 'logs/urls',
         };
@@ -93,7 +134,7 @@ const Support = WebexPlugin.extend({
           resource: 'logs/meta',
         };
 
-        const uploadOptions = defaults(initalOpts, {
+        const uploadOptions = defaults(initialOpts, {
           file: logs,
           shouldAttemptReauth: false,
           headers,
@@ -104,10 +145,10 @@ const Support = WebexPlugin.extend({
               },
             },
             upload: {
-              $uri: (session) => session.tempURL,
+              $uri: (session: any) => session.tempURL,
             },
             finalize: defaults(finalOpts, {
-              $body: (session) => {
+              $body: (session: any) => {
                 userId = session.userId;
 
                 return {
@@ -122,22 +163,22 @@ const Support = WebexPlugin.extend({
 
         return this.webex.upload(uploadOptions);
       })
-      .then((body) => {
+      .then((body: any) => {
         if (userId && !body.userId) {
           body.userId = userId;
         }
 
         return body;
       });
-  },
+  }
 
   /**
    * Constructs an array of key-value pairs for log upload.
-   * @param {*} metadata
-   * @returns {array}
+   * @param {SupportMetadata} metadata
+   * @returns {FileMetadataEntry[]}
    */
-  _constructFileMetadata(metadata) {
-    const metadataArray = [
+  private _constructFileMetadata(metadata: SupportMetadata): FileMetadataEntry[] {
+    const metadataArray: FileMetadataEntry[] = [
       'locusId',
       'appVersion',
       'callStart',
@@ -152,16 +193,17 @@ const Support = WebexPlugin.extend({
       'autoupload',
     ]
       .map((key) => {
-        if (metadata[key]) {
+        const value = metadata[key as keyof SupportMetadata];
+        if (value !== undefined) {
           return {
             key,
-            value: metadata[key],
+            value: String(value),
           };
         }
 
         return null;
       })
-      .filter((entry) => Boolean(entry));
+      .filter((entry): entry is FileMetadataEntry => Boolean(entry));
 
     if (this.webex.sessionId) {
       metadataArray.push({
@@ -192,7 +234,7 @@ const Support = WebexPlugin.extend({
     }
 
     return metadataArray;
-  },
-});
+  }
+}
 
 export default Support;

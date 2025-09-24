@@ -34,18 +34,18 @@ function getSparkUserAgent(webex) {
   return sparkUserAgent;
 }
 
-const Metrics = WebexPlugin.extend({
-  children: {
+class Metrics extends WebexPlugin {
+  children = {
     batcher: Batcher,
     clientMetricsBatcher: ClientMetricsBatcher,
     clientMetricsPreloginBatcher: ClientMetricsPreloginBatcher,
-  },
+  };
 
-  namespace: 'Metrics',
+  namespace = 'Metrics';
 
   submit(key, value) {
     return this.batcher.request({key, ...value});
-  },
+  }
 
   /**
    * Returns the payload for submitting client metrics.
@@ -106,7 +106,7 @@ const Metrics = WebexPlugin.extend({
     payload.timestamp = new Date().valueOf();
 
     return payload;
-  },
+  }
 
   /**
    * This corresponds to #sendSemiStructured() in the deprecated metrics handler
@@ -125,7 +125,7 @@ const Metrics = WebexPlugin.extend({
     }
 
     return this.clientMetricsBatcher.request(payload);
-  },
+  }
 
   /**
    * Issue request to alias a user's pre-login ID with their CI UUID
@@ -145,7 +145,7 @@ const Metrics = WebexPlugin.extend({
         alias: true,
       },
     });
-  },
-});
+  }
+}
 
 export default Metrics;

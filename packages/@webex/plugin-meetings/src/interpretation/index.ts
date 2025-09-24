@@ -10,93 +10,102 @@ import SILanguageCollection from './collection';
 /**
  * @class SimultaneousInterpretation
  */
-const SimultaneousInterpretation = WebexPlugin.extend({
-  namespace: MEETINGS,
-  collections: {
-    siLanguages: SILanguageCollection,
-  },
+class SimultaneousInterpretation extends WebexPlugin {
+  namespace = MEETINGS;
+  siLanguages: SILanguageCollection;
+  locusUrl: string; // appears current meeting's locus url
+  approvalUrl: string; // appears current meeting's approval url for handoff between interpreters
+  originalLanguage: string; // appears current meeting's original language
+  sourceLanguage: string; // appears self interpreter's source language
+  targetLanguage: string; // appears self interpreter's target language
+  receiveLanguage: string; // appears self's receive language
+  order: number; // appears the order of self as interpreter
+  isActive: boolean; // appears self is interpreter and is active
+  selfParticipantId: string; // appears the self participant id
+  canManageInterpreters: boolean; // appears the ability to manage interpreters
+  supportLanguages: any[]; // appears the support languages
+  meetingSIEnabled: boolean; // appears the meeting support SI feature
+  hostSIEnabled: boolean; // appears the meeting host/interpreter feature of SI enabled
+  selfIsInterpreter: boolean; // current user is interpreter or not
+  webex: any;
+  request: any;
 
-  props: {
-    locusUrl: 'string', // appears current meeting's locus url
-    approvalUrl: 'string', // appears current meeting's approval url for handoff between interpreters
-    originalLanguage: 'string', // appears current meeting's original language
-    sourceLanguage: 'string', // appears self interpreter's source language
-    targetLanguage: 'string', // appears self interpreter's target language
-    receiveLanguage: 'string', // appears self's receive language
-    order: 'number', // appears the order of self as interpreter
-    isActive: 'boolean', // appears self is interpreter and is active
-    selfParticipantId: 'string', // appears the self participant id
-    canManageInterpreters: 'boolean', // appears the ability to manage interpreters
-    supportLanguages: 'array', // appears the support languages
-    meetingSIEnabled: 'boolean', // appears the meeting support SI feature
-    hostSIEnabled: 'boolean', // appears the meeting host/interpreter feature of SI enabled
-    selfIsInterpreter: 'boolean', // current user is interpreter or not
-  },
-  derived: {
-    shouldQuerySupportLanguages: {
-      cache: false,
-      deps: ['canManageInterpreters', 'hostSIEnabled', 'locusUrl'],
-      /**
-       * Returns should query support languages or not
-       * @returns {boolean}
-       */
-      fn() {
-        return !!(this.canManageInterpreters && this.hostSIEnabled && this.locusUrl);
-      },
-    },
-  },
+  /**
+   * Returns should query support languages or not
+   * @returns {boolean}
+   */
+  get shouldQuerySupportLanguages() {
+    return !!(this.canManageInterpreters && this.hostSIEnabled && this.locusUrl);
+  }
+
   /**
    * initialize for interpretation
    * @returns {void}
    */
-  initialize() {
-    this.listenTo(this, 'change:shouldQuerySupportLanguages', () => {
+  constructor(...args) {
+    super(...args);
+    this.siLanguages = new SILanguageCollection();
+    this.siLanguages.parent = this;
+    this.webex.emitter.on('interpretation:change:shouldQuerySupportLanguages', () => {
       if (this.shouldQuerySupportLanguages && !this.supportLanguages) {
         this.querySupportLanguages();
       }
     });
     this.listenToHandoffRequests();
-  },
+  }
 
   /**
    * Calls this to clean up listeners
    * @returns {void}
    */
   cleanUp() {
-    this.stopListening();
-  },
+    this.webex.emitter.off('interpretation:change:shouldQuerySupportLanguages');
+    this.webex.internal.mercury.off('event:locus.approval_request');
+  }
+
   /**
    * Update the current locus url of the meeting
    * @param {string} locusUrl // locus url
    * @returns {void}
    */
   locusUrlUpdate(locusUrl) {
-    this.set('locusUrl', locusUrl);
-  },
+    this.locusUrl = locusUrl;
+  }
+
   /**
    * Update the approval url for handoff
    * @param {string} approvalUrl // approval url
    * @returns {void}
    */
   approvalUrlUpdate(approvalUrl) {
-    this.set('approvalUrl', approvalUrl);
-  },
+    this.approvalUrl = approvalUrl;
+  }
+
   /**
    * Update whether self has capability to manage interpreters (only host can manage it)
    * @param {boolean} canManageInterpreters
    * @returns {void}
    */
   updateCanManageInterpreters(canManageInterpreters) {
-    this.set('canManageInterpreters', canManageInterpreters);
-  },
+    const previousValue = this.canManageInterpreters;
+    this.canManageInterpreters = canManageInterpreters;
+    if (previousValue !== canManageInterpreters) {
+      this.webex.emitter.emit('interpretation:change:shouldQuerySupportLanguages');
+    }
+  }
+
   /**
    * Update whether the meeting's host si is enabled or not
    * @param {boolean} hostSIEnabled
    * @returns {void}
    */
   updateHostSIEnabled(hostSIEnabled) {
-    this.set('hostSIEnabled', hostSIEnabled);
-  },
+    const previousValue = this.hostSIEnabled;
+    this.hostSIEnabled = hostSIEnabled;
+    if (previousValue !== hostSIEnabled) {
+      this.webex.emitter.emit('interpretation:change:shouldQuerySupportLanguages');
+    }
+  }
 
   /**
    * Update whether the meeting support SI feature or not from meeting info
@@ -105,9 +114,9 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @returns {void}
    */
   updateMeetingSIEnabled(meetingSIEnabled: boolean, selfIsInterpreter): void {
-    this.set('meetingSIEnabled', meetingSIEnabled);
-    this.set('selfIsInterpreter', selfIsInterpreter);
-  },
+    this.meetingSIEnabled = meetingSIEnabled;
+    this.selfIsInterpreter = selfIsInterpreter;
+  }
 
   /**
    * Update the interpretation languages channels which user can choose to subscribe
@@ -115,8 +124,9 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @returns {void}
    */
   updateInterpretation(interpretation) {
-    this.siLanguages.set(interpretation?.siLanguages || []);
-  },
+    this.siLanguages.reset(interpretation?.siLanguages || []);
+  }
+
   /**
    * Update self's interpretation information (self is interpreter)
    * @param {Object} interpretation
@@ -127,12 +137,17 @@ const SimultaneousInterpretation = WebexPlugin.extend({
     const preTargetLanguage = this.targetLanguage;
     const {originalLanguage, sourceLanguage, order, isActive, targetLanguage, receiveLanguage} =
       interpretation || {};
-    this.set({originalLanguage, sourceLanguage, order, isActive, targetLanguage, receiveLanguage});
-    this.set('selfParticipantId', selfParticipantId);
-    this.set('selfIsInterpreter', !!targetLanguage);
+    this.originalLanguage = originalLanguage;
+    this.sourceLanguage = sourceLanguage;
+    this.order = order;
+    this.isActive = isActive;
+    this.targetLanguage = targetLanguage;
+    this.receiveLanguage = receiveLanguage;
+    this.selfParticipantId = selfParticipantId;
+    this.selfIsInterpreter = !!targetLanguage;
 
     return !!(preTargetLanguage !== targetLanguage);
-  },
+  }
 
   /**
    * Get the language code of the interpreter target language
@@ -140,11 +155,12 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    */
   getTargetLanguageCode() {
     if (this.selfIsInterpreter) {
+      // @ts-ignore
       return this.siLanguages.get(this.targetLanguage)?.languageCode;
     }
 
     return 0;
-  },
+  }
 
   /**
    * query interpretation languages
@@ -156,14 +172,15 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       uri: `${this.locusUrl}/languages/interpretation`,
     })
       .then((result) => {
-        this.set('supportLanguages', result.body?.siLanguages);
-        this.trigger(INTERPRETATION.EVENTS.SUPPORT_LANGUAGES_UPDATE);
+        this.supportLanguages = result.body?.siLanguages;
+        this.webex.emitter.emit(INTERPRETATION.EVENTS.SUPPORT_LANGUAGES_UPDATE);
       })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:interpretation#querySupportLanguages failed', error);
         throw error;
       });
-  },
+  }
+
   /**
    * get interpreters of the meeting
    * @returns {Promise}
@@ -176,7 +193,8 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:interpretation#getInterpreters failed', error);
       throw error;
     });
-  },
+  }
+
   /**
    * update interpreters of the meeting
    * @param {Array} interpreters
@@ -195,7 +213,8 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:interpretation#updateInterpreters failed', error);
       throw error;
     });
-  },
+  }
+
   /**
    * Change direction of interpretation for an interpreter participant
    * @returns {Promise}
@@ -224,13 +243,14 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:interpretation#changeDirection failed', error);
       throw error;
     });
-  },
+  }
+
   /**
    * Sets up a listener for handoff requests from mercury
    * @returns {void}
    */
   listenToHandoffRequests() {
-    this.listenTo(this.webex.internal.mercury, 'event:locus.approval_request', (event) => {
+    this.webex.internal.mercury.on('event:locus.approval_request', (event) => {
       if (event?.data?.approval?.resourceType === INTERPRETATION.RESOURCE_TYPE) {
         const {receivers, initiator, actionType, url} = event.data.approval;
         const receiverId = receivers?.[0]?.participantId;
@@ -240,7 +260,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
         if (!isReceiver && !isSender) {
           return;
         }
-        this.trigger(INTERPRETATION.EVENTS.HANDOFF_REQUESTS_ARRIVED, {
+        this.webex.emitter.emit(INTERPRETATION.EVENTS.HANDOFF_REQUESTS_ARRIVED, {
           actionType,
           isReceiver,
           isSender,
@@ -250,7 +270,8 @@ const SimultaneousInterpretation = WebexPlugin.extend({
         });
       }
     });
-  },
+  }
+
   /**
    * handoff the active interpreter role to another interpreter in same group, only the interpreter is allowed to call this api
    * @param {string} participantId the participant id you want to hand off
@@ -280,7 +301,8 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:interpretation#handoffInterpreter failed', error);
       throw error;
     });
-  },
+  }
+
   /**
    * the in-active interpreter request to hand off the active role to self
    * @returns {Promise}
@@ -301,7 +323,8 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:interpretation#requestHandoff failed', error);
       throw error;
     });
-  },
+  }
+
   /**
    * accept the request of handoff
    * @param {String} url the url get from last approval event
@@ -322,7 +345,8 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:interpretation#acceptRequest failed', error);
       throw error;
     });
-  },
+  }
+
   /**
    * decline the request of handoff
    * @param {String} url the url get from last approval event
@@ -343,7 +367,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:interpretation#declineRequest failed', error);
       throw error;
     });
-  },
-});
+  }
+}
 
 export default SimultaneousInterpretation;

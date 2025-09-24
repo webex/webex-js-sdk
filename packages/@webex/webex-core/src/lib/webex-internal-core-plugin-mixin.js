@@ -12,6 +12,17 @@ import {get, has, isArray, isFunction, merge, union} from 'lodash';
  * @returns {AmpState}
  */
 export default function mixinWebexInternalCorePlugins(State, config, interceptors) {
+  // Initialize required ampersand-state properties if they don't exist
+  if (!State.prototype._children) {
+    State.prototype._children = {};
+  }
+  if (!State.prototype._derived) {
+    State.prototype._derived = {};
+  }
+  if (!State.prototype._deps) {
+    State.prototype._deps = {};
+  }
+
   // eslint-disable-next-line complexity
   State.registerPlugin = function registerPlugin(name, constructor, options = {}) {
     if (State.prototype._children[name] && !options.replace) {

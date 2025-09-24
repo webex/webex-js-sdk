@@ -34,19 +34,7 @@ const debug = require('debug')('attachmentActions');
  * for more details
  * @class
  */
-const AttachmentActions = WebexPlugin.extend({
-  /**
-   * Initializer used to generate AttachmentActions
-   * as a plugin wrapped around the provided arguments.
-   * @private
-   * @see WebexPlugin.initialize
-   * @param  {...any} args
-   * @returns {undefined}
-   */
-  initialize(...args) {
-    Reflect.apply(WebexPlugin.prototype.initialize, this, args);
-  },
-
+class AttachmentActions extends WebexPlugin {
   /**
    * Register to listen for incoming attachmentAction events
    * This is an alternate approach to registering for attachmentAction webhooks.
@@ -89,7 +77,7 @@ const AttachmentActions = WebexPlugin.extend({
         });
       }
     );
-  },
+  }
 
   /**
    * Post a new attachment action for a message with attachment.
@@ -163,7 +151,7 @@ const AttachmentActions = WebexPlugin.extend({
       resource: 'attachment/actions',
       body: attachmentAction,
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Returns a single attachment action.
@@ -234,7 +222,7 @@ const AttachmentActions = WebexPlugin.extend({
       service: 'hydra',
       resource: `attachment/actions/${id}`,
     }).then((res) => res.body.items || res.body);
-  },
+  }
 
   /**
    * This function is called when an internal mercury events fires,
@@ -267,7 +255,7 @@ const AttachmentActions = WebexPlugin.extend({
         break;
       }
     }
-  },
+  }
 
   /**
    * Constructs the data object for an event on the attachmentAction resource,
@@ -311,7 +299,7 @@ const AttachmentActions = WebexPlugin.extend({
 
       return null;
     }
-  },
-});
+  }
+}
 
 export default AttachmentActions;

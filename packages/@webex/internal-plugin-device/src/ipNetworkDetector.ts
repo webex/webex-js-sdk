@@ -13,21 +13,36 @@ const STATE = {
 /**
  * @class
  */
-const IpNetworkDetector = WebexPlugin.extend({
-  idAttribute: 'IpNetworkDetectorId',
+export default class IpNetworkDetector extends WebexPlugin {
+  idAttribute = 'IpNetworkDetectorId';
 
-  namespace: 'Device',
+  namespace = 'Device';
 
-  props: {
+  firstIpV4: number;
+  firstIpV6: number;
+  firstMdns: number;
+  totalTime: number;
+  state: string;
+  pendingDetection: {force: boolean};
+  webex: any;
+  supportsIpV4: boolean | undefined;
+  supportsIpV6: boolean | undefined;
+
+  props = {
     firstIpV4: ['number', true, -1], // time [ms] it took to receive first IPv4 candidate
     firstIpV6: ['number', true, -1], // time [ms] it took to receive first IPv6 candidate
     firstMdns: ['number', true, -1], // time [ms] it took to receive first mDNS candidate
     totalTime: ['number', true, -1], // total time [ms] it took to do the last IP network detection
     state: ['string', true, STATE.INITIAL],
     pendingDetection: ['object', false, undefined],
-  },
+  };
 
   derived: {
+    [key: string]: {
+      deps: string[];
+      fn: () => boolean | undefined;
+    };
+  } = {
     /**
      * True if we know we're on an IPv4 network,
      * False if we know that we are not on an IPv4 network,
@@ -79,7 +94,7 @@ const IpNetworkDetector = WebexPlugin.extend({
         return false;
       },
     },
-  },
+  };
 
   /**
    * Returns true if we have received only mDNS candidates - browsers usually do that if we don't have any user media permissions
@@ -89,7 +104,7 @@ const IpNetworkDetector = WebexPlugin.extend({
    */
   receivedOnlyMDnsCandidates() {
     return this.totalTime >= 0 && this.firstMdns >= 0 && this.firstIpV4 < 0 && this.firstIpV6 < 0;
-  },
+  }
 
   /**
    *
@@ -157,7 +172,7 @@ const IpNetworkDetector = WebexPlugin.extend({
           reject(e);
         });
     });
-  },
+  }
 
   /**
    * Detects if we are on IPv4 and/or IPv6 network. Once it resolves, read the
@@ -167,7 +182,6 @@ const IpNetworkDetector = WebexPlugin.extend({
    * @returns {Promise<void>}
    */
   async detect(force = false) {
-    let results;
     let pc;
 
     if (this.state === STATE.IN_PROGRESS) {
@@ -186,7 +200,7 @@ const IpNetworkDetector = WebexPlugin.extend({
 
       pc = new RTCPeerConnection();
 
-      results = await this.gatherLocalCandidates(pc);
+      await this.gatherLocalCandidates(pc);
     } finally {
       pc.close();
       this.state = STATE.IDLE;
@@ -198,7 +212,5 @@ const IpNetworkDetector = WebexPlugin.extend({
       this.pendingDetection = undefined;
       this.detect(forceParam);
     }
-  },
-});
-
-export default IpNetworkDetector;
+  }
+}

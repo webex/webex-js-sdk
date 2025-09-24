@@ -2,9 +2,8 @@
 /*!
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
-/* eslint-disable no-underscore-dangle */
 import uuid from 'uuid';
-import {WebexPlugin} from '@webex/webex-core';
+import WebexPlugin from '@webex/webex-core';
 import '@webex/internal-plugin-mercury';
 import {range, isEqual, get} from 'lodash';
 
@@ -34,34 +33,35 @@ import DssBatcher from './dss-batcher';
 import {DssTimeoutError} from './dss-errors';
 import {BatcherOptions, RequestOptions, RequestResult} from './types';
 
-const DSS = WebexPlugin.extend({
-  namespace: 'DSS',
+/**
+ * @class DSS
+ */
+class DSS extends WebexPlugin {
+  namespace = 'DSS';
 
   /**
    * registered value indicating events registration is successful
    * @instance
    * @type {Boolean}
-   * @memberof DSS
    */
-  registered: false,
+  registered = false;
+
+  batchers: {[key: string]: DssBatcher} = {};
 
   /**
    * Initializer
-   * @private
    * @param {Object} attrs
    * @param {Object} options
-   * @returns {undefined}
    */
-  initialize(...args) {
-    Reflect.apply(WebexPlugin.prototype.initialize, this, args);
+  constructor(attrs: any, options: any) {
+    super(attrs, options);
     this.batchers = {};
-  },
+  }
 
   /**
    * Explicitly sets up the DSS plugin by connecting to mercury, and listening for DSS events.
    * @returns {Promise}
    * @public
-   * @memberof DSS
    */
   register() {
     if (!this.webex.canAuthorize) {
@@ -80,7 +80,7 @@ const DSS = WebexPlugin.extend({
       .connect()
       .then(() => {
         this.listenForEvents();
-        this.trigger(DSS_REGISTERED);
+        this.emit(DSS_REGISTERED);
         this.registered = true;
       })
       .catch((error) => {
@@ -88,13 +88,12 @@ const DSS = WebexPlugin.extend({
 
         return Promise.reject(error);
       });
-  },
+  }
 
   /**
    * Explicitly tears down the DSS plugin by disconnecting from mercury, and stops listening to DSS events
    * @returns {Promise}
    * @public
-   * @memberof DSS
    */
   unregister() {
     if (!this.registered) {
@@ -106,15 +105,15 @@ const DSS = WebexPlugin.extend({
     this.stopListeningForEvents();
 
     return this.webex.internal.mercury.disconnect().then(() => {
-      this.trigger(DSS_UNREGISTERED);
+      this.emit(DSS_UNREGISTERED);
       this.registered = false;
     });
-  },
+  }
 
   /**
    * registers for DSS events through mercury
-   * @returns {undefined}
    * @private
+   * @returns {void}
    */
   listenForEvents() {
     this.webex.internal.mercury.on(DSS_LOOKUP_MERCURY_EVENT, (envelope) => {
@@ -123,36 +122,36 @@ const DSS = WebexPlugin.extend({
     this.webex.internal.mercury.on(DSS_SEARCH_MERCURY_EVENT, (envelope) => {
       this._handleEvent(envelope.data);
     });
-  },
+  }
 
   /**
    * unregisteres all the DSS events from mercury
-   * @returns {undefined}
    * @private
+   * @returns {void}
    */
   stopListeningForEvents() {
     this.webex.internal.mercury.off(DSS_LOOKUP_MERCURY_EVENT);
     this.webex.internal.mercury.off(DSS_SEARCH_MERCURY_EVENT);
-  },
+  }
 
   /**
    * constructs the event name based on request id
    * @param {UUID} requestId the id of the request
    * @returns {string}
    */
-  _getResultEventName(requestId) {
+  _getResultEventName(requestId: string) {
     return `${DSS_RESULT}${requestId}`;
-  },
+  }
 
   /**
    * Takes incoming data and triggers correct events
    * @param {Object} data the event data
-   * @returns {undefined}
+   * @returns {void}
    */
-  _handleEvent(data) {
-    this.trigger(this._getResultEventName(data.requestId), data);
-    this.trigger(DSS_LOOKUP_RESULT, data);
-  },
+  _handleEvent(data: any) {
+    this.emit(this._getResultEventName(data.requestId), data);
+    this.emit(DSS_LOOKUP_RESULT, data);
+  }
 
   /**
    * Makes the request to the directory service
@@ -163,9 +162,6 @@ const DSS = WebexPlugin.extend({
    * @param {string} [options.foundPath] the path to get the lookups of the found data
    * @param {string} [options.notFoundPath] the path to get the lookups of the not found data
    * @returns {Promise<Object>} result Resolves with an object
-   * @returns {Array} result.resultArray an array of entities found
-   * @returns {Array} result.foundArray an array of the lookups of the found entities (if foundPath provided)
-   * @returns {Array} result.notFoundArray an array of the lookups of the not found entities (if notFoundPath provided)
    * @throws {DssTimeoutError} when server does not respond in the specified timeframe
    */
   _request(options: RequestOptions): Promise<RequestResult> {
@@ -180,11 +176,11 @@ const DSS = WebexPlugin.extend({
 
     return new Promise((resolve, reject) => {
       const timer = new Timer(() => {
-        this.stopListening(this, eventName);
+        this.removeAllListeners(eventName);
         reject(new DssTimeoutError({requestId, timeout, resource, params}));
       }, timeout);
 
-      this.listenTo(this, eventName, (data) => {
+      this.on(eventName, (data) => {
         timer.reset();
         const resultData = get(data, dataPath, []);
         let found;
@@ -230,7 +226,7 @@ const DSS = WebexPlugin.extend({
             resolveValue.notFoundArray = notFoundArray;
           }
           resolve(resolveValue);
-          this.stopListening(this, eventName);
+          this.removeAllListeners(eventName);
         }
       });
       this.webex.request({
@@ -240,9 +236,8 @@ const DSS = WebexPlugin.extend({
         contentType: 'application/json',
         body: {requestId, ...params},
       });
-      timer.start();
     });
-  },
+  }
 
   /**
    * Uses a batcher to make the request to the directory service
@@ -271,7 +266,7 @@ const DSS = WebexPlugin.extend({
       });
 
     return this.batchers[resource].request(lookupValue);
-  },
+  }
 
   /**
    * Retrieves detailed information about an entity
@@ -290,14 +285,13 @@ const DSS = WebexPlugin.extend({
       foundPath: LOOKUP_FOUND_PATH,
       resource,
     }).then(({resultArray, foundArray}) => {
-      // TODO: find out what is actually returned!
       if (foundArray[0] === id) {
         return resultArray[0];
       }
 
       return null;
     });
-  },
+  }
 
   /**
    * Retrieves basic information about an entity within an organization
@@ -336,7 +330,7 @@ const DSS = WebexPlugin.extend({
 
       return null;
     });
-  },
+  }
 
   /**
    * Retrieves basic information about an enitity within an organization
@@ -363,7 +357,7 @@ const DSS = WebexPlugin.extend({
 
       return null;
     });
-  },
+  }
 
   /**
    * Search for information about entities
@@ -399,7 +393,7 @@ const DSS = WebexPlugin.extend({
         includePersonalDevices,
       },
     }).then(({resultArray}) => resultArray);
-  },
+  }
 
   /**
    * Search for information about places
@@ -420,11 +414,11 @@ const DSS = WebexPlugin.extend({
         isOnlySchedulableRooms,
       },
     }).catch((error) => {
-      this.logger.error(`DSS->search place#ERROR, search place failure, ${error.message}`);
+      this.logger.error('DSS:search-place', 'search place failure', error.message);
 
       return Promise.reject(error);
     });
-  },
-});
+  }
+}
 
 export default DSS;

@@ -37,17 +37,13 @@ function createOneFlightKey(reportId, options) {
  * @class EDiscovery is used by compliance officers to run compliance reports
  *
  */
-const EDiscovery = WebexPlugin.extend({
-  namespace: 'EDiscovery',
+class EDiscovery extends WebexPlugin {
+  namespace = 'EDiscovery';
 
-  session: {
-    contentContainerCache: {
-      type: 'object',
-      default() {
-        return new Map();
-      }
-    }
-  },
+  constructor(...args) {
+    super(...args);
+    this.contentContainerCache = new Map();
+  }
 
   @waitForValue('@')
   /**
@@ -79,7 +75,7 @@ const EDiscovery = WebexPlugin.extend({
     catch (reason) {
       return this._handleReportRequestError(reason);
     }
-  },
+  }
 
   /**
    * Checks the error from createReport and ensures the appropriate error is sent to the client
@@ -106,7 +102,7 @@ const EDiscovery = WebexPlugin.extend({
     }
 
     return Promise.reject(reason);
-  },
+  }
 
   @waitForValue('@')
   /**
@@ -130,7 +126,7 @@ const EDiscovery = WebexPlugin.extend({
       resource: `reports/${reportId}`,
       timeout: options.timeoutMs
     });
-  },
+  }
 
   @waitForValue('@')
   /**
@@ -152,7 +148,7 @@ const EDiscovery = WebexPlugin.extend({
       qs: {offset: options.offset, size: options.size},
       timeout: options.timeoutMs
     });
-  },
+  }
 
   @waitForValue('@')
   /**
@@ -176,7 +172,7 @@ const EDiscovery = WebexPlugin.extend({
       resource: `reports/${reportId}`,
       timeout: options.timeoutMs
     });
-  },
+  }
 
   @waitForValue('@')
   /**
@@ -200,7 +196,7 @@ const EDiscovery = WebexPlugin.extend({
       resource: `reports/${reportId}`,
       timeout: options.timeoutMs
     });
-  },
+  }
 
   @waitForValue('@')
   @oneFlight({keyFactory: (reportId, options) => createOneFlightKey(reportId, options)})
@@ -229,7 +225,7 @@ const EDiscovery = WebexPlugin.extend({
       qs: {offset: options.offset, size: options.size},
       timeout: options.timeoutMs
     });
-  },
+  }
 
   @waitForValue('@')
   @oneFlight({keyFactory: (reportId, options) => createOneFlightKey(reportId, options)})
@@ -264,7 +260,7 @@ const EDiscovery = WebexPlugin.extend({
     await this._writeToContentContainerCache(reportUUID, res.body);
 
     return res;
-  },
+  }
 
   @waitForValue('@')
   @oneFlight({keyFactory: (reportId, containerId) => String(reportId + containerId)})
@@ -303,7 +299,7 @@ const EDiscovery = WebexPlugin.extend({
     await this._writeToContentContainerCache(reportUUID, [res.body]);
 
     return res;
-  },
+  }
 
   /**
    * The results of a getContentContainer or getContentContainerByContainerId request are written to the contentContainerCache
@@ -334,7 +330,7 @@ const EDiscovery = WebexPlugin.extend({
         this.logger.error('Error adding undefined container to contentContainerCache');
       }
     }
-  },
+  }
 
   /**
    * Wipe the cache used by eDiscovery to store the space summaries and content containers.
@@ -343,7 +339,7 @@ const EDiscovery = WebexPlugin.extend({
    */
   clearCache() {
     this.contentContainerCache.clear();
-  },
+  }
 
   /**
    * Retrieves a uuid string from a report url
@@ -361,12 +357,12 @@ const EDiscovery = WebexPlugin.extend({
     }
 
     return '';
-  },
+  }
 
   _isUrl(string) {
     // Regex found from `https://ihateregex.io/expr/url`
     return /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)/g.test(string);
-  },
+  }
 
   /**
    * Create the appropriate request options based on whether the reportId is a url or a uuid.
@@ -406,7 +402,7 @@ const EDiscovery = WebexPlugin.extend({
     }
 
     return [requestOptions, reportUUID];
-  },
+  }
 
   @waitForValue('@')
   /**
@@ -425,7 +421,7 @@ const EDiscovery = WebexPlugin.extend({
       resource: 'reports/clientconfig',
       timeout: options.timeoutMs
     });
-  },
+  }
 
   @waitForValue('@')
   /**
@@ -451,7 +447,6 @@ const EDiscovery = WebexPlugin.extend({
       timeout: options.timeoutMs
     });
   }
-
-});
+}
 
 export default EDiscovery;

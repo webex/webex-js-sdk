@@ -5,14 +5,12 @@
 import {WebexPlugin} from '@webex/webex-core';
 import {MEETINGS} from '../constants';
 
-const SILanguage = WebexPlugin.extend({
-  idAttribute: 'languageName',
+class SILanguage extends WebexPlugin {
+  idAttribute = 'languageName';
 
-  namespace: MEETINGS,
-  props: {
-    languageCode: 'number',
-    languageName: 'string',
-  },
-});
+  namespace = MEETINGS;
+  languageCode: number;
+  languageName: string;
+}
 
 export default SILanguage;

@@ -13,9 +13,12 @@ const WebexCore = require('@webex/webex-core').default;
 
 const config = require('./config');
 
-const Webex = WebexCore.extend({
-  webex: true,
-});
+class Webex extends WebexCore {
+  constructor(attrs) {
+    super(attrs);
+    this.webex = true;
+  }
+}
 
 const CALLING_FILE = 'Calling';
 

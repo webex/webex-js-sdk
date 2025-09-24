@@ -78,9 +78,9 @@ const getConvoLimit = (options = {}) => {
   return limit;
 };
 
-const Conversation = WebexPlugin.extend({
-  namespace: 'Conversation',
-  initialize() {
+class Conversation extends WebexPlugin {
+  constructor(...args) {
+    super(...args);
     this.listenToOnce(this.webex, 'ready', () => {
       if (Array.isArray(this.webex.config.payloadTransformer?.transforms)) {
         this.webex.config.payloadTransformer.transforms =
@@ -89,7 +89,7 @@ const Conversation = WebexPlugin.extend({
             .concat(this.config.includeEncryptionTransforms ? encryptionTransforms : []);
       }
     });
-  },
+  }
 
   /**
    * @param {String} cluster the cluster containing the id
@@ -106,7 +106,7 @@ const Conversation = WebexPlugin.extend({
     );
 
     return id ? `${url}/conversations/${id}` : url;
-  },
+  }
 
   /**
    * @param {Object} conversation
@@ -131,7 +131,7 @@ const Conversation = WebexPlugin.extend({
         url: object.url,
       },
     }).then((a) => this.submit(a));
-  },
+  }
 
   /**
    * Adds a participant to a conversation
@@ -162,7 +162,7 @@ const Conversation = WebexPlugin.extend({
         },
       }).then((a) => this.submit(a))
     );
-  },
+  }
 
   /**
    * Creates a conversation
@@ -234,7 +234,7 @@ const Conversation = WebexPlugin.extend({
           return c;
         });
       });
-  },
+  }
 
   /**
    * @private
@@ -261,7 +261,7 @@ const Conversation = WebexPlugin.extend({
 
         return Promise.resolve(hmac);
       });
-  },
+  }
 
   /**
    * @typedef {Object} ReactionPayload
@@ -300,7 +300,7 @@ const Conversation = WebexPlugin.extend({
       target: this.prepareConversation(convoWithUrl),
       object: pick(reactionPayload, 'id', 'url', 'objectType'),
     }).then((act) => this.submit(act));
-  },
+  }
 
   /**
    * create a reaction
@@ -331,7 +331,7 @@ const Conversation = WebexPlugin.extend({
     }
 
     return this.sendReaction(conversation, deleteReactionPayload);
-  },
+  }
 
   /**
    * create a reaction
@@ -372,7 +372,7 @@ const Conversation = WebexPlugin.extend({
     }
 
     return this.sendReaction(conversation, addReactionPayload);
-  },
+  }
 
   /**
    * delete content
@@ -408,7 +408,7 @@ const Conversation = WebexPlugin.extend({
     }
 
     return this.prepare(activity, request).then((a) => this.submit(a));
-  },
+  }
 
   /**
    * Downloads the file specified in item.scr or item.url
@@ -457,7 +457,7 @@ const Conversation = WebexPlugin.extend({
     proxyEvents(shunt, promise);
 
     return promise;
-  },
+  }
 
   /**
    * Downloads an unencrypted file
@@ -477,7 +477,7 @@ const Conversation = WebexPlugin.extend({
     proxyEvents(options.download, promise);
 
     return promise;
-  },
+  }
 
   /**
    * Helper method that expands a set of parameters into an activty object
@@ -514,7 +514,7 @@ const Conversation = WebexPlugin.extend({
     }
 
     return activity;
-  },
+  }
 
   /**
    * Gets an array of activities with an array of activity URLS
@@ -574,7 +574,7 @@ const Conversation = WebexPlugin.extend({
 
       return activitiesArr;
     });
-  },
+  }
 
   /**
    * Fetches a single conversation
@@ -637,7 +637,7 @@ const Conversation = WebexPlugin.extend({
         })
       )
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Leaves the conversation or removes the specified user from the specified
@@ -675,7 +675,7 @@ const Conversation = WebexPlugin.extend({
         );
       })
       .then((a) => this.submit(a));
-  },
+  }
 
   /**
    * Lists a set of conversations. By default does not fetch activities or
@@ -703,7 +703,7 @@ const Conversation = WebexPlugin.extend({
 
       return results;
     });
-  },
+  }
 
   /**
    * Paginates through a set of conversations. By default does not fetch activities or
@@ -766,7 +766,7 @@ const Conversation = WebexPlugin.extend({
 
       return response;
     });
-  },
+  }
 
   /**
    * Lists the conversations the current user has left. By default does not
@@ -787,7 +787,7 @@ const Conversation = WebexPlugin.extend({
 
       return results;
     });
-  },
+  }
 
   /**
    * List activities for the specified conversation
@@ -797,7 +797,7 @@ const Conversation = WebexPlugin.extend({
    */
   listActivities(options) {
     return this._listActivities(Object.assign(options, {resource: 'activities'}));
-  },
+  }
 
   /**
    * @typedef QueryOptions
@@ -827,7 +827,7 @@ const Conversation = WebexPlugin.extend({
     const response = await this.request(params);
 
     return response.body;
-  },
+  }
 
   /**
    * Returns a list of _all_ child activities for a given parentId within a given conversation
@@ -866,7 +866,7 @@ const Conversation = WebexPlugin.extend({
     }
 
     return items;
-  },
+  }
 
   /**
    * Return a list of child activities with a given conversation, parentId and other constraints.
@@ -889,7 +889,7 @@ const Conversation = WebexPlugin.extend({
     };
 
     return this.request(params);
-  },
+  }
 
   /**
    * Return an array of reactionSummary and reactionSelfSummary objects
@@ -912,7 +912,7 @@ const Conversation = WebexPlugin.extend({
       : [];
 
     return reactionObjects;
-  },
+  }
 
   /**
    * Lists activities in which the current user was mentioned
@@ -925,7 +925,7 @@ const Conversation = WebexPlugin.extend({
       resource: 'mentions',
       qs: omit(options, 'mentions'),
     });
-  },
+  }
 
   /**
    * Mutes the mentions of a conversation
@@ -941,7 +941,7 @@ const Conversation = WebexPlugin.extend({
       },
       activity
     );
-  },
+  }
 
   /**
    * Mutes the messages of a conversation
@@ -957,7 +957,7 @@ const Conversation = WebexPlugin.extend({
       },
       activity
     );
-  },
+  }
 
   /**
    * Starts ignoring conversation
@@ -973,7 +973,7 @@ const Conversation = WebexPlugin.extend({
       },
       activity
     );
-  },
+  }
 
   /**
    * @param {Object} conversation
@@ -995,7 +995,7 @@ const Conversation = WebexPlugin.extend({
       target: this.prepareConversation(convoWithUrl),
       object: {objectType: 'submit', ...inputs},
     }).then((a) => this.submit(a));
-  },
+  }
 
   /**
    * Posts a message to a conversation
@@ -1021,7 +1021,7 @@ const Conversation = WebexPlugin.extend({
       target: this.prepareConversation(convoWithUrl),
       object: {objectType: 'comment', ...message},
     }).then((a) => this.submit(a));
-  },
+  }
 
   prepareConversation(conversation) {
     return defaults(
@@ -1037,7 +1037,7 @@ const Conversation = WebexPlugin.extend({
         objectType: 'conversation',
       }
     );
-  },
+  }
 
   prepare(activity, params) {
     params = params || {};
@@ -1116,7 +1116,7 @@ const Conversation = WebexPlugin.extend({
 
       return act;
     });
-  },
+  }
 
   /**
    * Get a subset of threads for a user.
@@ -1129,7 +1129,7 @@ const Conversation = WebexPlugin.extend({
       resource: 'threads',
       qs: omit(options, 'showAllTypes'),
     });
-  },
+  }
 
   /**
    * Handles incoming conversation.activity mercury messages
@@ -1138,7 +1138,7 @@ const Conversation = WebexPlugin.extend({
    */
   processActivityEvent(event) {
     return this.webex.transform('inbound', event).then(() => event);
-  },
+  }
 
   /**
    * Handles incoming conversation.inmeetingchat.activity mercury messages
@@ -1147,7 +1147,7 @@ const Conversation = WebexPlugin.extend({
    */
   processInmeetingchatEvent(event) {
     return this.webex.transform('inbound', event).then(() => event);
-  },
+  }
 
   /**
    * Removes all mute-related tags
@@ -1168,7 +1168,7 @@ const Conversation = WebexPlugin.extend({
       },
       activity
     );
-  },
+  }
 
   /**
    * Creates a ShareActivty for the specified conversation
@@ -1183,7 +1183,7 @@ const Conversation = WebexPlugin.extend({
     // web-client. This fixes the issue where the image activities do not come
     // back properly oriented from the server since the clientTempId is missing
     return ShareActivity.create(conversation, activity, this.webex);
-  },
+  }
 
   /**
    * Assigns an avatar to a room
@@ -1218,7 +1218,7 @@ const Conversation = WebexPlugin.extend({
 
         return this.submit(a);
       });
-  },
+  }
 
   /**
    * Get url from convo object. If there isn't one, get it from the cache
@@ -1261,7 +1261,7 @@ const Conversation = WebexPlugin.extend({
     }
 
     throw Error('The space needs a `url` property');
-  },
+  }
 
   /**
    * Sets the typing status of the current user in a conversation
@@ -1300,7 +1300,7 @@ const Conversation = WebexPlugin.extend({
     };
 
     return this.request(params);
-  },
+  }
 
   /**
    * Shares files to the specified conversation
@@ -1326,7 +1326,7 @@ const Conversation = WebexPlugin.extend({
     return this.prepare(activity, {
       target: this.prepareConversation(convoWithUrl),
     }).then((a) => this.submit(a));
-  },
+  }
 
   /**
    * Submits an activity to the conversation service
@@ -1408,7 +1408,8 @@ const Conversation = WebexPlugin.extend({
           throw error;
         }
       });
-  },
+  }
+
   /**
    * Remove the avatar from a room
    * @param {Conversation~ConversationObject} conversation
@@ -1428,7 +1429,7 @@ const Conversation = WebexPlugin.extend({
         },
       },
     }).then((a) => this.submit(a));
-  },
+  }
 
   /**
    * Mutes the mentions of a conversation
@@ -1444,7 +1445,7 @@ const Conversation = WebexPlugin.extend({
       },
       activity
     );
-  },
+  }
 
   /**
    * Mutes the messages of a conversation
@@ -1460,7 +1461,7 @@ const Conversation = WebexPlugin.extend({
       },
       activity
     );
-  },
+  }
 
   /**
    * Stops ignoring conversation
@@ -1476,7 +1477,7 @@ const Conversation = WebexPlugin.extend({
       },
       activity
     );
-  },
+  }
 
   /**
    * Update an existing activity
@@ -1497,7 +1498,7 @@ const Conversation = WebexPlugin.extend({
       target: this.prepareConversation(convoWithUrl),
       object,
     }).then((a) => this.submit(a));
-  },
+  }
 
   /**
    * Sets a new key for the conversation
@@ -1515,7 +1516,7 @@ const Conversation = WebexPlugin.extend({
       activitiesLimit: 0,
       includeParticipants: true,
     }).then((c) => this._updateKey(c, key, activity));
-  },
+  }
 
   /**
    * Sets a new key for the conversation
@@ -1566,7 +1567,7 @@ const Conversation = WebexPlugin.extend({
 
       return this.prepare(activity, params).then((a) => this.submit(a));
     });
-  },
+  }
 
   /**
    * @param {Object} payload
@@ -1584,7 +1585,7 @@ const Conversation = WebexPlugin.extend({
         forceCreate: options.allowPartialCreation,
       },
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * @param {Object} params
@@ -1594,7 +1595,7 @@ const Conversation = WebexPlugin.extend({
    */
   _createGrouped(params, options) {
     return this._create(this._prepareConversationForCreation(params), options);
-  },
+  }
 
   /**
    * @param {Object} params
@@ -1608,7 +1609,7 @@ const Conversation = WebexPlugin.extend({
     payload.tags = ['ONE_ON_ONE'];
 
     return this._create(payload);
-  },
+  }
 
   /**
    * Get the current conversation url.
@@ -1636,7 +1637,7 @@ const Conversation = WebexPlugin.extend({
 
         return Promise.reject(error);
       });
-  },
+  }
 
   /**
    * @param {Object} conversation
@@ -1676,7 +1677,7 @@ const Conversation = WebexPlugin.extend({
     }
 
     return Promise.resolve(conversation);
-  },
+  }
 
   /**
    * @param {Object} options
@@ -1694,7 +1695,7 @@ const Conversation = WebexPlugin.extend({
       qs: omit(options, 'resource'),
       url: `${url}/${resource}`,
     });
-  },
+  }
 
   /**
    * common interface for facade of generator functions
@@ -1807,7 +1808,7 @@ const Conversation = WebexPlugin.extend({
       getNewer,
       getOlder,
     };
-  },
+  }
 
   /**
    * Represents reactions to messages
@@ -2208,7 +2209,7 @@ const Conversation = WebexPlugin.extend({
         return;
       }
     }
-  },
+  }
 
   /**
    * @typedef {object} EditActivity
@@ -2266,7 +2267,7 @@ const Conversation = WebexPlugin.extend({
         return activity;
       }
     }
-  },
+  }
 
   /**
    * @param {Object} options
@@ -2342,7 +2343,7 @@ const Conversation = WebexPlugin.extend({
     await Promise.all(list.map((item) => this._recordUUIDs(item)));
 
     return list;
-  },
+  }
 
   /**
    * @param {Object} params
@@ -2379,7 +2380,7 @@ const Conversation = WebexPlugin.extend({
 
         return this._createOneOnOne(params);
       });
-  },
+  }
 
   /**
    * @param {Object} params
@@ -2446,7 +2447,7 @@ const Conversation = WebexPlugin.extend({
     }
 
     return payload;
-  },
+  }
 
   /**
    * @param {Object} conversation
@@ -2471,8 +2472,10 @@ const Conversation = WebexPlugin.extend({
           .catch((err) => this.logger.warn('Could not record uuid', err));
       })
     );
-  },
-});
+  }
+}
+
+Conversation.namespace = 'Conversation';
 
 ['favorite', 'hide', 'lock', 'mute', 'unfavorite', 'unhide', 'unlock', 'unmute'].forEach((verb) => {
   Conversation.prototype[verb] = function submitSimpleActivity(conversation, activity) {

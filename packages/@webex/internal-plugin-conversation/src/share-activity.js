@@ -18,59 +18,46 @@ const PROMISE_SYMBOL = Symbol('PROMISE_SYMBOL');
 /**
  * @class
  */
-const ShareActivity = WebexPlugin.extend({
-  getSymbols() {
-    return {
-      file: FILE_SYMBOL,
-      emitter: EMITTER_SYMBOL,
-    };
-  },
+class ShareActivity extends WebexPlugin {
+  /**
+   * Instantiates a ShareActivity
+   * @param {Object} conversation
+   * @param {ShareActivity|Object|array} object
+   * @param {ProxyWebex} webex
+   * @returns {ShareActivity}
+   */
+  static create(conversation, object, webex) {
+    if (object instanceof ShareActivity) {
+      return object;
+    }
 
-  namespace: 'Conversation',
+    let files;
 
-  derived: {
-    target: {
-      deps: ['conversation'],
-      fn() {
-        return this.conversation;
+    if (object?.object?.files) {
+      files = object.object.files;
+      Reflect.deleteProperty(object.object, 'files');
+    }
+
+    const share = new ShareActivity(
+      {
+        conversation,
+        ...object,
       },
-    },
-  },
+      {
+        parent: webex,
+      }
+    );
 
-  session: {
-    claimedFileType: 'string',
-    conversation: {
-      required: true,
-      type: 'object',
-    },
+    files = files?.items ?? files;
+    if (files) {
+      files.forEach((file) => share.add(file));
+    }
 
-    content: 'string',
+    return share;
+  }
 
-    clientTempId: 'string',
-
-    displayName: 'string',
-
-    enableThumbnails: {
-      default: true,
-      type: 'boolean',
-    },
-
-    hiddenSpaceUrl: 'object',
-
-    mentions: 'object',
-
-    spaceUrl: 'object',
-
-    uploads: {
-      type: 'object',
-      default() {
-        return new Map();
-      },
-    },
-  },
-
-  initialize(attrs, options) {
-    Reflect.apply(WebexPlugin.prototype.initialize, this, [attrs, options]);
+  constructor(attrs, options) {
+    super(attrs, options);
 
     if (attrs && attrs.conversation) {
       this.spaceUrl = Promise.resolve(
@@ -90,7 +77,14 @@ const ShareActivity = WebexPlugin.extend({
           })
       );
     }
-  },
+  }
+
+  getSymbols() {
+    return {
+      file: FILE_SYMBOL,
+      emitter: EMITTER_SYMBOL,
+    };
+  }
 
   /**
    * Adds an additional GIF to the share activity
@@ -144,7 +138,7 @@ const ShareActivity = WebexPlugin.extend({
         thumbnailScr.loc = gif.image.url;
         gifToAdd.image.scr = thumbnailScr;
       });
-  },
+  }
 
   /**
    * Adds an additional file to the share and begins submitting it to webex
@@ -238,7 +232,7 @@ const ShareActivity = WebexPlugin.extend({
     proxyEvents(emitter, promise);
 
     return promise;
-  },
+  }
 
   /**
    * Fetches the files from the share
@@ -252,7 +246,7 @@ const ShareActivity = WebexPlugin.extend({
     }
 
     return files;
-  },
+  }
 
   /**
    * @param {File} file
@@ -290,7 +284,7 @@ const ShareActivity = WebexPlugin.extend({
         },
       },
     });
-  },
+  }
 
   /**
    * Removes the specified file from the share (Does not currently delete the
@@ -303,7 +297,7 @@ const ShareActivity = WebexPlugin.extend({
 
     // Returns a promise for future-proofiness.
     return Promise.resolve();
-  },
+  }
 
   /**
    * @private
@@ -338,7 +332,7 @@ const ShareActivity = WebexPlugin.extend({
     activity.object.contentCategory = this._determineContentCategory(activity.object.files.items);
 
     return Promise.all(promises).then(() => activity);
-  },
+  }
 
   /**
    * @param {Array} items
@@ -348,7 +342,7 @@ const ShareActivity = WebexPlugin.extend({
    */
   _itemContainsActionWithMimeType(items, mimeType) {
     return some(items.map((item) => some(item.actions, {mimeType})));
-  },
+  }
 
   /**
    * @param {Array} items
@@ -380,7 +374,7 @@ const ShareActivity = WebexPlugin.extend({
     }
 
     return `${contentCategory}s`;
-  },
+  }
 
   /**
    * @param {string} uri
@@ -393,44 +387,50 @@ const ShareActivity = WebexPlugin.extend({
         uri,
       })
       .then((res) => res.body.spaceUrl);
-  },
-});
-
-/**
- * Instantiates a ShareActivity
- * @param {Object} conversation
- * @param {ShareActivity|Object|array} object
- * @param {ProxyWebex} webex
- * @returns {ShareActivity}
- */
-ShareActivity.create = function create(conversation, object, webex) {
-  if (object instanceof ShareActivity) {
-    return object;
   }
+}
 
-  let files;
+ShareActivity.namespace = 'Conversation';
 
-  if (object?.object?.files) {
-    files = object.object.files;
-    Reflect.deleteProperty(object.object, 'files');
-  }
-
-  const share = new ShareActivity(
-    {
-      conversation,
-      ...object,
+ShareActivity.derived = {
+  target: {
+    deps: ['conversation'],
+    fn() {
+      return this.conversation;
     },
-    {
-      parent: webex,
-    }
-  );
+  },
+};
 
-  files = files?.items ?? files;
-  if (files) {
-    files.forEach((file) => share.add(file));
-  }
+ShareActivity.session = {
+  claimedFileType: 'string',
+  conversation: {
+    required: true,
+    type: 'object',
+  },
 
-  return share;
+  content: 'string',
+
+  clientTempId: 'string',
+
+  displayName: 'string',
+
+  enableThumbnails: {
+    default: true,
+    type: 'boolean',
+  },
+
+  hiddenSpaceUrl: 'object',
+
+  mentions: 'object',
+
+  spaceUrl: 'object',
+
+  uploads: {
+    type: 'object',
+    default() {
+      return new Map();
+    },
+  },
 };
 
 export default ShareActivity;

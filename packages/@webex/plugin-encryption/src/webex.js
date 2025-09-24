@@ -2,34 +2,30 @@
  * Copyright (c) 2015-2025 Cisco Systems, Inc. See the LICENSE file.
  */
 
-// Note: this file is written using commonjs instead of import/export to
-// simplify consumption by those less familiar with the current state of
-// JavaScript modularization
+import '@babel/polyfill';
 
-/* istanbul ignore else */
-if (!global._babelPolyfill) {
-  /* eslint global-require: [0] */
-  require('@babel/polyfill');
+import '@webex/plugin-authorization';
+import '@webex/internal-plugin-encryption'; // required
+import './index';
+
+import merge from 'lodash/merge';
+import WebexCore from '@webex/webex-core';
+
+import config from './webex-config';
+
+class Webex extends WebexCore {
+  constructor(attrs) {
+    super(attrs);
+    this.webex = true;
+    this.version = PACKAGE_VERSION;
+  }
+
+  static init(attrs = {}) {
+    const newAttrs = {...attrs};
+    newAttrs.config = merge({}, config, newAttrs.config);
+
+    return new Webex(newAttrs);
+  }
 }
 
-require('@webex/plugin-authorization');
-require('@webex/internal-plugin-encryption'); // required
-require('./index');
-
-const merge = require('lodash/merge');
-const WebexCore = require('@webex/webex-core').default;
-
-const config = require('./webex-config');
-
-const Webex = WebexCore.extend({
-  webex: true,
-  version: PACKAGE_VERSION,
-});
-
-Webex.init = function init(attrs = {}) {
-  attrs.config = merge({}, config, attrs.config); // eslint-disable-line no-param-reassign
-
-  return new Webex(attrs);
-};
-
-module.exports = Webex;
+export default Webex;

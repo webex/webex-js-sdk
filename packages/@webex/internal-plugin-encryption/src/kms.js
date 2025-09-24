@@ -26,12 +26,12 @@ const consoleDebug = require('debug')('kms');
 /**
  * @class
  */
-const KMS = WebexPlugin.extend({
-  namespace: 'Encryption',
+class KMS extends WebexPlugin {
+  namespace = 'Encryption';
 
-  children: {
+  children = {
     batcher: KMSBatcher,
-  },
+  };
 
   /**
    * Binds a key to a resource
@@ -67,7 +67,7 @@ const KMS = WebexPlugin.extend({
 
       return res.key;
     });
-  },
+  }
 
   /**
    * Creates a new KMS Resource
@@ -111,7 +111,7 @@ const KMS = WebexPlugin.extend({
 
       return res.resource;
     });
-  },
+  }
 
   /**
    * Authorizes a user or KRO to a KRO
@@ -152,7 +152,7 @@ const KMS = WebexPlugin.extend({
 
       return res.authorizations;
     });
-  },
+  }
 
   /**
    * Retrieve a list of users that have been authorized to the KRO
@@ -176,7 +176,7 @@ const KMS = WebexPlugin.extend({
 
       return res.authorizations;
     });
-  },
+  }
 
   /**
    * Deauthorizes a user or KRO from a KRO
@@ -211,7 +211,7 @@ const KMS = WebexPlugin.extend({
 
       return res.authorizations;
     });
-  },
+  }
 
   /**
    * Requests `count` unbound keys from the kms
@@ -236,7 +236,7 @@ const KMS = WebexPlugin.extend({
 
       return Promise.all(res.keys.map(this.asKey));
     });
-  },
+  }
 
   /**
    * @typedef {Object} FetchPublicKeyResponse
@@ -262,7 +262,7 @@ const KMS = WebexPlugin.extend({
 
       return res.publicKey;
     });
-  },
+  }
 
   /**
    * @typedef {Object} UploadCmkResponse
@@ -303,7 +303,7 @@ const KMS = WebexPlugin.extend({
 
       return res;
     });
-  },
+  }
 
   /**
    * get all customer master keys for one org.
@@ -325,7 +325,7 @@ const KMS = WebexPlugin.extend({
 
       return res;
     });
-  },
+  }
 
   /**
    * @typedef {Object} ActivateCmkResponse
@@ -368,7 +368,7 @@ const KMS = WebexPlugin.extend({
 
       return res;
     });
-  },
+  }
 
   /**
    * this is for test case. it will delete all CMKs, no matter what their status is. This is mainly for test purpose
@@ -390,7 +390,7 @@ const KMS = WebexPlugin.extend({
 
       return res;
     });
-  },
+  }
 
   /**
    * return to use global master key for one org.
@@ -412,7 +412,7 @@ const KMS = WebexPlugin.extend({
 
       return res;
     });
-  },
+  }
 
   /**
    * Fetches the specified key from the kms
@@ -464,7 +464,7 @@ const KMS = WebexPlugin.extend({
 
       return this.asKey(res.key);
     });
-  },
+  }
 
   /**
    * Pings the kms. Mostly for testing
@@ -475,7 +475,7 @@ const KMS = WebexPlugin.extend({
       method: 'update',
       uri: '/ping',
     });
-  },
+  }
 
   /**
    * Ensures a key obect is Key instance
@@ -488,7 +488,7 @@ const KMS = WebexPlugin.extend({
 
       return key;
     });
-  },
+  }
 
   /**
    * Adds appropriate metadata to the KMS request
@@ -522,7 +522,7 @@ const KMS = WebexPlugin.extend({
         });
       }
     );
-  },
+  }
 
   /**
    * Accepts a kms message event, decrypts it, and passes it to the batcher
@@ -568,7 +568,7 @@ const KMS = WebexPlugin.extend({
         return Promise.reject(reason);
       })
       .then(() => event);
-  },
+  }
 
   /**
    * Decrypts a kms message
@@ -582,7 +582,7 @@ const KMS = WebexPlugin.extend({
       .get(this)
       .then((context) => res.unwrap(context))
       .then(() => res.body);
-  },
+  }
 
   /**
    * Determines if the kms message is an ecdhe message or a normal message
@@ -601,7 +601,7 @@ const KMS = WebexPlugin.extend({
 
       return header.kid === kmsStaticPubKey.kid;
     });
-  },
+  }
 
   /**
    * Sends a request to the kms
@@ -690,7 +690,7 @@ const KMS = WebexPlugin.extend({
           return Promise.reject(reason);
         })
     );
-  },
+  }
 
   /**
    * @private
@@ -698,7 +698,7 @@ const KMS = WebexPlugin.extend({
    */
   _getAuthorization() {
     return this.webex.credentials.getUserToken('spark:kms').then((token) => token.access_token);
-  },
+  }
 
   @oneFlight
   /**
@@ -724,7 +724,7 @@ const KMS = WebexPlugin.extend({
 
       return context;
     });
-  },
+  }
 
   /**
    * @private
@@ -734,7 +734,7 @@ const KMS = WebexPlugin.extend({
     this.logger.info('kms: retrieving KMS cluster');
 
     return this._getKMSDetails().then(({kmsCluster}) => kmsCluster);
-  },
+  }
 
   /**
    * @private
@@ -768,7 +768,7 @@ const KMS = WebexPlugin.extend({
     }
 
     return details;
-  },
+  }
 
   /**
    * @private
@@ -778,7 +778,7 @@ const KMS = WebexPlugin.extend({
     this.logger.info('kms: retrieving KMS static public key');
 
     return this._getKMSDetails().then(({rsaPublicKey}) => rsaPublicKey);
-  },
+  }
 
   /**
    * @private
@@ -841,7 +841,7 @@ const KMS = WebexPlugin.extend({
 
         return Promise.reject(reason);
       });
-  },
+  }
 
   /**
    * KMS 'retrieve' requests can be made on behalf of another user. This is useful
@@ -870,7 +870,7 @@ const KMS = WebexPlugin.extend({
     context.ephemeralKey = originalContext.ephemeralKey;
 
     return context;
-  },
-});
+  }
+}
 
 export default KMS;

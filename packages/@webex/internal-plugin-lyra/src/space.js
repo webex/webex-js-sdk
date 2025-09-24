@@ -12,8 +12,8 @@ import {base64} from '@webex/common';
  * @extends {Lyra}
  * @memberof Lyra
  */
-const Space = WebexPlugin.extend({
-  namespace: 'Lyra',
+class Space extends WebexPlugin {
+  namespace = 'Lyra';
 
   /**
    * Lists lyra spaces associated with user
@@ -28,7 +28,7 @@ const Space = WebexPlugin.extend({
         resource: '/spaces',
       })
       .then((res) => res.body.items);
-  },
+  }
 
   /**
    * Retrieves a lyra space info
@@ -51,7 +51,7 @@ const Space = WebexPlugin.extend({
         resource: `/spaces/${spaceId}`,
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Joins a lyra space, update every 10 minutes to keep alive for MANUAL
@@ -100,7 +100,7 @@ const Space = WebexPlugin.extend({
       resource: `${space.url}/occupants/@me`,
       body,
     });
-  },
+  }
 
   /**
    * Leaves a lyra space
@@ -127,7 +127,7 @@ const Space = WebexPlugin.extend({
       api: 'lyra',
       resource: uri,
     });
-  },
+  }
 
   /**
    * Verifies a space occupant (to be used by the lyra device)
@@ -148,7 +148,7 @@ const Space = WebexPlugin.extend({
       uri: `${space.url}/occupants/${occupantId}`,
       body,
     });
-  },
+  }
 
   /**
    * Gets the state of bindings in this Lyra space
@@ -163,7 +163,7 @@ const Space = WebexPlugin.extend({
         uri: `${space.url}/bindings`,
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Binds a conversation to lyra space
@@ -224,7 +224,7 @@ const Space = WebexPlugin.extend({
     return this._bindConversation(spaceId)
       .then(() => this.webex.request(request))
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Binds a conversation to lyra space by posting capabilities to Lyra.
@@ -234,24 +234,12 @@ const Space = WebexPlugin.extend({
    * @param {String} spaceId space ID
    * @returns {Promise<LyraBindings>} bindings response body
    */
+  // eslint-disable-next-line no-unused-vars
   _bindConversation(spaceId) {
     // Skip until we can bind a conversation to lyra space by posting capabilities to Lyra.
     /* eslint no-unreachable: 1 */
     return Promise.resolve();
-
-    // PUT /lyra/api/v1/spaces/{spaceId}/devices/{encodedDeviceUrl}/capabilities
-    const encodedDeviceUrl = base64.encode(this.webex.internal.device.url);
-    const resource = `spaces/${spaceId}/devices/${encodedDeviceUrl}/capabilities`;
-
-    return this.webex.request({
-      method: 'PUT',
-      api: 'lyra',
-      resource,
-      body: {
-        bindingCleanupAfterCall: true,
-      },
-    });
-  },
+  }
 
   /**
    * Removes binding between a conversation and a lyra space using conversation
@@ -313,7 +301,7 @@ const Space = WebexPlugin.extend({
         resource: `${space.url}/bindings?${querystring.stringify(parameters)}`,
       });
     });
-  },
+  }
 
   /**
    * Delete a binding using binding id
@@ -361,7 +349,7 @@ const Space = WebexPlugin.extend({
         uri: `${space.url}/bindings/${options.bindingId}?${querystring.stringify(parameters)}`,
       });
     });
-  },
-});
+  }
+}
 
 export default Space;

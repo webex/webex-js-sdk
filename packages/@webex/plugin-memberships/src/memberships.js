@@ -39,7 +39,7 @@ const debug = require('debug')('memberships');
  * @class
  * @name Memberships
  */
-const Memberships = WebexPlugin.extend({
+class Memberships extends WebexPlugin {
   /**
    * Register to listen for incoming membership events
    * This is an alternate approach to registering for membership webhooks.
@@ -98,7 +98,7 @@ const Memberships = WebexPlugin.extend({
         });
       }
     );
-  },
+  }
 
   /**
    * Adds a person to a room. The person can be added by ID (`personId`) or by
@@ -136,7 +136,7 @@ const Memberships = WebexPlugin.extend({
       resource: 'memberships',
       body: membership,
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Returns a single membership.
@@ -171,7 +171,7 @@ const Memberships = WebexPlugin.extend({
       service: 'hydra',
       resource: `memberships/${id}`,
     }).then((res) => res.body.items || res.body);
-  },
+  }
 
   /**
    * Returns a list of memberships. In most cases the results will only contain
@@ -215,7 +215,7 @@ const Memberships = WebexPlugin.extend({
       resource: 'memberships',
       qs: options,
     }).then((res) => new Page(res, this.webex));
-  },
+  }
 
   /**
    * Returns a list of memberships with details about the lastSeenId for each
@@ -310,7 +310,7 @@ const Memberships = WebexPlugin.extend({
           })
       )
     );
-  },
+  }
 
   /**
    * Deletes a single membership.
@@ -363,7 +363,7 @@ const Memberships = WebexPlugin.extend({
 
       return res.body;
     });
-  },
+  }
 
   /**
    * Used to update a single membership's properties
@@ -436,7 +436,7 @@ const Memberships = WebexPlugin.extend({
       resource: `memberships/${id}`,
       body: membership,
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Updates the lastSeenId attribute of a membership.
@@ -473,7 +473,7 @@ const Memberships = WebexPlugin.extend({
         created: ack.published,
       }))
     );
-  },
+  }
 
   /**
    * This function is called when an internal membership events fires,
@@ -566,7 +566,7 @@ const Memberships = WebexPlugin.extend({
       default:
         break;
     }
-  },
+  }
 
   /**
    * Constructs the data object for an event on the memberships resource,
@@ -648,7 +648,7 @@ const Memberships = WebexPlugin.extend({
 
       return null;
     }
-  },
-});
+  }
+}
 
 export default Memberships;

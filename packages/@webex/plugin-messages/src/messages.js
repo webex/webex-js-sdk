@@ -46,19 +46,7 @@ const getRoomType = (roomTags) =>
  * for a list of supported media types.
  * @class
  */
-const Messages = WebexPlugin.extend({
-  /**
-   * Initializer used to generate Messages
-   * as a plugin wrapped around the provided arguments.
-   * @private
-   * @see WebexPlugin.initialize
-   * @param  {...any} args
-   * @returns {undefined}
-   */
-  initialize(...args) {
-    Reflect.apply(WebexPlugin.prototype.initialize, this, args);
-  },
-
+class Messages extends WebexPlugin {
   /**
    * Register to listen for incoming messages events
    * This is an alternate approach to registering for messages webhooks.
@@ -106,7 +94,7 @@ const Messages = WebexPlugin.extend({
         });
       }
     );
-  },
+  }
 
   /**
    * Post a new message and/or media content into a room.
@@ -159,7 +147,8 @@ const Messages = WebexPlugin.extend({
     };
 
     return this.request(options).then((res) => res.body);
-  },
+  }
+
   /**
    * Put an updated message and/or media content into a room instead of existing message.
    * @instance
@@ -236,7 +225,7 @@ const Messages = WebexPlugin.extend({
     }
 
     return null;
-  },
+  }
 
   /**
    * Returns a single message.
@@ -271,7 +260,7 @@ const Messages = WebexPlugin.extend({
       service: 'hydra',
       resource: `messages/${id}`,
     }).then((res) => res.body.items || res.body);
-  },
+  }
 
   /**
    * Returns a list of messages. In most cases the results will only contain
@@ -318,7 +307,7 @@ const Messages = WebexPlugin.extend({
       resource: 'messages',
       qs: options,
     }).then((res) => new Page(res, this.webex));
-  },
+  }
 
   /**
    * Deletes a single message. Deleting a message will notify all members of the
@@ -376,7 +365,7 @@ const Messages = WebexPlugin.extend({
 
       return res.body;
     });
-  },
+  }
 
   /**
    * Curry the 'trigger' method
@@ -387,7 +376,7 @@ const Messages = WebexPlugin.extend({
    */
   fire(type) {
     return (event) => this.trigger(type, event);
-  },
+  }
 
   /**
    * This function is called when an internal membership events fires,
@@ -408,7 +397,7 @@ const Messages = WebexPlugin.extend({
     }
 
     this.getMessageEvent(activity, type).then(this.fire(type));
-  },
+  }
 
   /**
    * Constructs the data object for an event on the messages resource,
@@ -455,7 +444,7 @@ const Messages = WebexPlugin.extend({
       actorId: data.personId,
       data,
     }));
-  },
-});
+  }
+}
 
 export default Messages;

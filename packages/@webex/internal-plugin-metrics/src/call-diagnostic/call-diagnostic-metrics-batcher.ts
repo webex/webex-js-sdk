@@ -4,24 +4,30 @@ import {prepareDiagnosticMetricItem} from './call-diagnostic-metrics.util';
 import {CALL_DIAGNOSTIC_LOG_IDENTIFIER} from './config';
 import {generateCommonErrorMetadata} from '../utils';
 
-const CallDiagnosticEventsBatcher = Batcher.extend({
-  namespace: 'Metrics',
+/**
+ * CallDiagnosticEventsBatcher class for handling call diagnostic metrics request batching
+ * @class
+ * @extends Batcher
+ */
+class CallDiagnosticEventsBatcher extends Batcher {
+  namespace = 'Metrics';
+  webex: any;
 
   /**
    * Prepare item
-   * @param {any} item
-   * @returns {Promise<any>}
+   * @param {any} item - The item to prepare
+   * @returns {Promise<any>} Promise resolving to the prepared item
    */
-  prepareItem(item) {
+  prepareItem(item: any): Promise<any> {
     return Promise.resolve(prepareDiagnosticMetricItem(this.webex, item));
-  },
+  }
 
   /**
    * Prepare request, add time sensitive date etc.
-   * @param {any[]} queue
-   * @returns {Promise<any[]>}
+   * @param {any[]} queue - Array of items to prepare
+   * @returns {Promise<any[]>} Promise resolving to the prepared request
    */
-  prepareRequest(queue) {
+  prepareRequest(queue: any[]): Promise<any[]> {
     // Add sent timestamp
     queue.forEach((item) => {
       item.eventPayload.originTime = item.eventPayload.originTime || {};
@@ -29,14 +35,14 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
     });
 
     return Promise.resolve(queue);
-  },
+  }
 
   /**
-   *
-   * @param {any} payload
-   * @returns {Promise<any>}
+   * Submit the HTTP request
+   * @param {any} payload - The payload to submit
+   * @returns {Promise<any>} Promise resolving to the HTTP response
    */
-  submitHttpRequest(payload) {
+  request(payload: any): Promise<any> {
     const batchId = uniqueId('ca-batch-');
 
     return this.webex
@@ -49,7 +55,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
         },
         waitForServiceTimeout: this.webex.config.metrics.waitForServiceTimeout,
       })
-      .then((res) => {
+      .then((res: any) => {
         this.webex.logger.log(
           CALL_DIAGNOSTIC_LOG_IDENTIFIER,
           `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request successful.`
@@ -57,7 +63,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
 
         return res;
       })
-      .catch((err) => {
+      .catch((err: any) => {
         this.webex.logger.error(
           CALL_DIAGNOSTIC_LOG_IDENTIFIER,
           `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request failed:`,
@@ -66,7 +72,7 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
 
         return Promise.reject(err);
       });
-  },
-});
+  }
+}
 
 export default CallDiagnosticEventsBatcher;

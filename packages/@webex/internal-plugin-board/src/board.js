@@ -10,12 +10,12 @@ import {assign, defaults, chunk, pick} from 'lodash';
 
 import Realtime from './realtime';
 
-const Board = WebexPlugin.extend({
-  namespace: 'Board',
+export default class Board extends WebexPlugin {
+  namespace = 'Board';
 
-  children: {
+  children = {
     realtime: Realtime,
-  },
+  };
 
   /**
    * Adds Content to a Channel
@@ -35,7 +35,7 @@ const Board = WebexPlugin.extend({
     // we want the first promise to resolve before continuing with the next
     // chunk or else we'll have race conditions among patches
     return promiseSeries(chunks.map((part) => this._addContentChunk.bind(this, channel, part)));
-  },
+  }
 
   /**
    * Adds Image to a Channel
@@ -62,7 +62,7 @@ const Board = WebexPlugin.extend({
         },
       ])
     );
-  },
+  }
 
   /**
    * Set a snapshot image for a board
@@ -106,7 +106,7 @@ const Board = WebexPlugin.extend({
         });
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Creates a Channel
@@ -124,7 +124,7 @@ const Board = WebexPlugin.extend({
         body: this._prepareChannel(conversation, channel),
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Prepare a create request body to the board services based on the provided
@@ -151,7 +151,7 @@ const Board = WebexPlugin.extend({
     }
 
     return results;
-  },
+  }
 
   /**
    * Deletes a Channel from a Conversation
@@ -192,7 +192,7 @@ const Board = WebexPlugin.extend({
         })
       )
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Locks and marks a channel for deletion
@@ -211,7 +211,7 @@ const Board = WebexPlugin.extend({
         },
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Keeps a channel as 'active' to prevent other people from deleting it
@@ -223,7 +223,7 @@ const Board = WebexPlugin.extend({
       method: 'POST',
       uri: `${channel.channelUrl}/keepAlive`,
     });
-  },
+  }
 
   /**
    * Decrypts a collection of content objects
@@ -251,7 +251,7 @@ const Board = WebexPlugin.extend({
         });
       })
     );
-  },
+  }
 
   /**
    * Decryts a single STRING content object
@@ -264,7 +264,7 @@ const Board = WebexPlugin.extend({
     return this.webex.internal.encryption
       .decryptText(encryptionKeyUrl, encryptedData)
       .then((res) => JSON.parse(res));
-  },
+  }
 
   /**
    * Decryts a single FILE content object
@@ -302,7 +302,7 @@ const Board = WebexPlugin.extend({
 
         return encryptedContent;
       });
-  },
+  }
 
   /**
    * Deletes all Content from a Channel
@@ -317,7 +317,7 @@ const Board = WebexPlugin.extend({
         uri: `${channel.channelUrl}/contents`,
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Deletes Contents from a Channel except the ones listed in contentsToKeep
@@ -341,7 +341,7 @@ const Board = WebexPlugin.extend({
         },
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Encrypts a collection of content
@@ -376,7 +376,7 @@ const Board = WebexPlugin.extend({
         );
       })
     );
-  },
+  }
 
   /**
    * Encrypts a single STRING content object
@@ -392,7 +392,7 @@ const Board = WebexPlugin.extend({
         payload: res,
         encryptionKeyUrl,
       }));
-  },
+  }
 
   /**
    * Encrypts a single FILE content object
@@ -424,7 +424,7 @@ const Board = WebexPlugin.extend({
         payload: content.metadata,
         encryptionKeyUrl,
       }));
-  },
+  }
 
   /**
    * Retrieves contents from a specified channel
@@ -447,7 +447,7 @@ const Board = WebexPlugin.extend({
     assign(params.qs, pick(options, 'contentsLimit'));
 
     return this.request(params).then((res) => new Page(res, this.webex));
-  },
+  }
 
   /**
    * Gets a Channel
@@ -462,7 +462,7 @@ const Board = WebexPlugin.extend({
         uri: channel.channelUrl,
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Gets Channels
@@ -491,7 +491,7 @@ const Board = WebexPlugin.extend({
     assign(params.qs, pick(options, 'channelsLimit', 'type'));
 
     return this.request(params).then((res) => new Page(res, this.webex));
-  },
+  }
 
   /**
    * Pings persistence
@@ -506,7 +506,7 @@ const Board = WebexPlugin.extend({
         resource: '/ping',
       })
       .then((res) => res.body);
-  },
+  }
 
   processActivityEvent(message) {
     let decryptionPromise;
@@ -529,7 +529,7 @@ const Board = WebexPlugin.extend({
 
       return message;
     });
-  },
+  }
 
   /**
    * Registers with Mercury
@@ -546,7 +546,7 @@ const Board = WebexPlugin.extend({
         body: data,
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Registers with Mercury for sharing web socket
@@ -584,7 +584,7 @@ const Board = WebexPlugin.extend({
         });
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Remove board binding from existing mercury connection
@@ -608,7 +608,7 @@ const Board = WebexPlugin.extend({
         body: data,
       })
       .then((res) => res.body);
-  },
+  }
 
   _addContentChunk(channel, contentChunk) {
     return this.webex.internal.board
@@ -621,7 +621,7 @@ const Board = WebexPlugin.extend({
         })
       )
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Encrypts and uploads image to WebexFiles
@@ -642,7 +642,7 @@ const Board = WebexPlugin.extend({
         Promise.all([scr, this._uploadImageToWebexFiles(channel, cdata, options.hiddenSpace)])
       )
       .then(([scr, res]) => assign(scr, {loc: res.downloadUrl}));
-  },
+  }
 
   _getSpaceUrl(channel, hiddenSpace) {
     let requestUri = `${channel.channelUrl}/spaces/open`;
@@ -657,7 +657,7 @@ const Board = WebexPlugin.extend({
         uri: requestUri,
       })
       .then((res) => res.body.spaceUrl);
-  },
+  }
 
   _uploadImageToWebexFiles(channel, file, hiddenSpace) {
     const fileSize = file.length || file.size || file.byteLength;
@@ -685,7 +685,7 @@ const Board = WebexPlugin.extend({
         },
       })
     );
-  },
+  }
 
   /** Authorize transcoder (for sharing whiteboard to mobile)
    *
@@ -728,7 +728,7 @@ const Board = WebexPlugin.extend({
          */
         Promise.resolve(err)
       );
-  },
+  }
 
   /** Unauthorize transcoder (for stopping whiteboard share to mobile)
    *
@@ -774,7 +774,5 @@ const Board = WebexPlugin.extend({
 
         return Promise.resolve([]);
       });
-  },
-});
-
-export default Board;
+  }
+}

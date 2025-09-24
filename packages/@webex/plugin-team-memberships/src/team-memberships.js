@@ -25,7 +25,7 @@ import {WebexPlugin, Page} from '@webex/webex-core';
  * its memberships or invite people.
  * @class
  */
-const TeamMemberships = WebexPlugin.extend({
+class TeamMemberships extends WebexPlugin {
   /**
    * Add someone to a team by Person ID or email address; optionally making them
    * a moderator.
@@ -60,7 +60,7 @@ const TeamMemberships = WebexPlugin.extend({
       resource: 'team/memberships',
       body: membership,
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Get details for a membership by ID.
@@ -95,7 +95,7 @@ const TeamMemberships = WebexPlugin.extend({
       service: 'hydra',
       resource: `team/memberships/${id}`,
     }).then((res) => res.body.items || res.body);
-  },
+  }
 
   /**
    * Lists all team memberships. By default, lists memberships for teams to
@@ -134,7 +134,7 @@ const TeamMemberships = WebexPlugin.extend({
       resource: 'team/memberships',
       qs: options,
     }).then((res) => new Page(res, this.webex));
-  },
+  }
 
   /**
    * Deletes a membership by ID.
@@ -187,7 +187,7 @@ const TeamMemberships = WebexPlugin.extend({
 
       return res.body;
     });
-  },
+  }
 
   /**
    * Updates properties for a membership.
@@ -205,7 +205,7 @@ const TeamMemberships = WebexPlugin.extend({
       resource: `team/memberships/${id}`,
       body: membership,
     }).then((res) => res.body);
-  },
-});
+  }
+}
 
 export default TeamMemberships;

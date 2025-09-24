@@ -12,21 +12,31 @@ import LoggerProxy from '../common/logs/logger-proxy';
 /**
  * @class Webinar
  */
-const Webinar = WebexPlugin.extend({
-  namespace: MEETINGS,
-  collections: {
-    webinar: WebinarCollection,
-  },
+class Webinar extends WebexPlugin {
+  namespace = MEETINGS;
 
-  props: {
-    locusUrl: 'string', // appears current webinar's locus url
-    webcastInstanceUrl: 'string', // current webinar's webcast instance url
-    canManageWebcast: 'boolean', // appears the ability to manage webcast
-    selfIsPanelist: 'boolean', // self is panelist
-    selfIsAttendee: 'boolean', // self is attendee
-    practiceSessionEnabled: 'boolean', // practice session enabled
-    meetingId: 'string',
-  },
+  private _webinar: WebinarCollection;
+
+  locusUrl: string; // appears current webinar's locus url
+  webcastInstanceUrl: string; // current webinar's webcast instance url
+  canManageWebcast: boolean; // appears the ability to manage webcast
+  selfIsPanelist: boolean; // self is panelist
+  selfIsAttendee: boolean; // self is attendee
+  practiceSessionEnabled: boolean; // practice session enabled
+  meetingId: string;
+  webex: any;
+  request: any;
+
+  /**
+   * @returns {WebinarCollection}
+   */
+  get webinar(): WebinarCollection {
+    if (!this._webinar) {
+      this._webinar = new WebinarCollection();
+    }
+
+    return this._webinar;
+  }
 
   /**
    * Update the current locus url of the webinar
@@ -34,8 +44,8 @@ const Webinar = WebexPlugin.extend({
    * @returns {void}
    */
   locusUrlUpdate(locusUrl) {
-    this.set('locusUrl', locusUrl);
-  },
+    this.locusUrl = locusUrl;
+  }
 
   /**
    * Update the current webcast instance url of the meeting
@@ -43,8 +53,8 @@ const Webinar = WebexPlugin.extend({
    * @returns {void}
    */
   updateWebcastUrl(payload) {
-    this.set('webcastInstanceUrl', get(payload, 'resources.webcastInstance.url'));
-  },
+    this.webcastInstanceUrl = get(payload, 'resources.webcastInstance.url');
+  }
 
   /**
    * Update whether self has capability to manage start/stop webcast (only host can manage it)
@@ -52,8 +62,8 @@ const Webinar = WebexPlugin.extend({
    * @returns {void}
    */
   updateCanManageWebcast(canManageWebcast) {
-    this.set('canManageWebcast', canManageWebcast);
-  },
+    this.canManageWebcast = canManageWebcast;
+  }
 
   /**
    * Updates user roles and manages associated state transitions
@@ -71,13 +81,13 @@ const Webinar = WebexPlugin.extend({
     const isDemoted =
       (oldRoles.includes(SELF_ROLES.PANELIST) && newRoles.includes(SELF_ROLES.ATTENDEE)) ||
       (!oldRoles.includes(SELF_ROLES.ATTENDEE) && newRoles.includes(SELF_ROLES.ATTENDEE)); // for attendee just join meeting case
-    this.set('selfIsPanelist', newRoles.includes(SELF_ROLES.PANELIST));
-    this.set('selfIsAttendee', newRoles.includes(SELF_ROLES.ATTENDEE));
+    this.selfIsPanelist = newRoles.includes(SELF_ROLES.PANELIST);
+    this.selfIsAttendee = newRoles.includes(SELF_ROLES.ATTENDEE);
     this.updateCanManageWebcast(newRoles.includes(SELF_ROLES.MODERATOR));
     this.updateStatusByRole({isPromoted, isDemoted});
 
     return {isPromoted, isDemoted};
-  },
+  }
 
   /**
    * should join practice session data channel or not
@@ -100,7 +110,7 @@ const Webinar = WebexPlugin.extend({
       // may need change data channel in practice session
       meeting?.updateLLMConnection();
     }
-  },
+  }
 
   /**
    * should join practice session data channel or not
@@ -108,7 +118,7 @@ const Webinar = WebexPlugin.extend({
    */
   isJoinPracticeSessionDataChannel() {
     return this.selfIsPanelist && this.practiceSessionEnabled;
-  },
+  }
 
   /**
    * start or stop practice session for webinar
@@ -128,7 +138,7 @@ const Webinar = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:webinar#setPracticeSessionState failed', error);
       throw error;
     });
-  },
+  }
 
   /**
    * update practice session status
@@ -136,8 +146,8 @@ const Webinar = WebexPlugin.extend({
    * @returns {void}
    */
   updatePracticeSessionStatus(payload) {
-    this.set('practiceSessionEnabled', !!payload?.enabled);
-  },
+    this.practiceSessionEnabled = !!payload?.enabled;
+  }
 
   /**
    * start webcast mode for webinar
@@ -173,7 +183,7 @@ const Webinar = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:webinar#startWebcast failed', error);
       throw error;
     });
-  },
+  }
 
   /**
    * stop webcast mode for webinar
@@ -195,7 +205,7 @@ const Webinar = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:webinar#stopWebcast failed', error);
       throw error;
     });
-  },
+  }
 
   /**
    * query webcast layout for webinar
@@ -213,7 +223,7 @@ const Webinar = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:webinar#queryWebcastLayout failed', error);
       throw error;
     });
-  },
+  }
 
   /**
    * update webcast layout for webinar
@@ -239,7 +249,7 @@ const Webinar = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:webinar#updateWebcastLayout failed', error);
       throw error;
     });
-  },
+  }
 
   /**
    * view all webcast attendees
@@ -258,7 +268,7 @@ const Webinar = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:webinar#viewAllWebcastAttendees failed', error);
       throw error;
     });
-  },
+  }
 
   /**
    * search webcast attendees by query string
@@ -277,7 +287,7 @@ const Webinar = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:webinar#searchWebcastAttendees failed', error);
       throw error;
     });
-  },
+  }
 
   /**
    * expel webcast attendee by participantId
@@ -296,7 +306,7 @@ const Webinar = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:webinar#expelWebcastAttendee failed', error);
       throw error;
     });
-  },
-});
+  }
+}
 
 export default Webinar;

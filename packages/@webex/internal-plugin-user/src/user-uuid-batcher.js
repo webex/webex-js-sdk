@@ -5,22 +5,26 @@
 import {Batcher, WebexPlugin} from '@webex/webex-core';
 
 /**
+ * AbstractUserUUIDRequestBatcher class for handling user UUID request batching
  * @class
+ * @extends Batcher
  */
-const AbstractUserUUIDRequestBatcher = Batcher.extend({
-  namespace: 'User',
+class AbstractUserUUIDRequestBatcher extends Batcher {
+  namespace = 'User';
 
   /**
-   * @param {string} item
-   * @returns {Promise<Object>}
+   * Prepare an individual item for batching
+   * @param {string} item - The item to prepare
+   * @returns {Promise<Object>} Promise resolving to the prepared item
    */
   prepareItem(item) {
     return Promise.resolve({email: item});
-  },
+  }
 
   /**
-   * @param {HttpResponseObject} res
-   * @returns {Promise}
+   * Handle successful HTTP response
+   * @param {HttpResponseObject} res - The HTTP response object
+   * @returns {Promise} Promise resolving when all items are processed
    */
   handleHttpSuccess(res) {
     return Promise.all(
@@ -32,49 +36,61 @@ const AbstractUserUUIDRequestBatcher = Batcher.extend({
         return this.handleItemFailure(email, res.body[email]);
       })
     );
-  },
+  }
 
+  /**
+   * Handle item failure
+   * @param {string} email - The email that failed
+   * @param {any} response - The response object
+   * @returns {Promise} Promise resolving when failure is handled
+   */
   handleItemFailure(email, response) {
     return this.getDeferredForResponse(email).then((defer) => {
       defer.reject(response);
     });
-  },
+  }
 
   /**
-   * @param {string} email
-   * @param {Object} response
-   * @returns {Promise}
+   * Handle item success
+   * @param {string} email - The email that succeeded
+   * @param {Object} response - The response object
+   * @returns {Promise} Promise resolving when success is handled
    */
   handleItemSuccess(email, response) {
     return this.getDeferredForResponse(email).then((defer) => {
       defer.resolve(response);
     });
-  },
+  }
 
   /**
-   * @param {string} email
-   * @returns {Promise<string>}
+   * Create fingerprint for request
+   * @param {string} email - The email to fingerprint
+   * @returns {Promise<string>} Promise resolving to the fingerprint
    */
   fingerprintRequest(email) {
     return Promise.resolve(email.email || email);
-  },
+  }
 
   /**
-   * @param {string} email
-   * @returns {Promise<string>}
+   * Create fingerprint for response
+   * @param {string} email - The email to fingerprint
+   * @returns {Promise<string>} Promise resolving to the fingerprint
    */
   fingerprintResponse(email) {
     return Promise.resolve(email);
-  },
-});
+  }
+}
 
 /**
+ * FakeUserUUIDRequestBatcher class for handling fake user UUID requests
  * @class
+ * @extends AbstractUserUUIDRequestBatcher
  */
-const FakeUserUUIDRequestBatcher = AbstractUserUUIDRequestBatcher.extend({
+class FakeUserUUIDRequestBatcher extends AbstractUserUUIDRequestBatcher {
   /**
-   * @param {Object} payload
-   * @returns {Promise<HttpResponseObject>}
+   * Submit the HTTP request
+   * @param {Object} payload - The payload to submit
+   * @returns {Promise<HttpResponseObject>} Promise resolving to the HTTP response
    */
   submitHttpRequest(payload) {
     return this.webex.request({
@@ -83,16 +99,19 @@ const FakeUserUUIDRequestBatcher = AbstractUserUUIDRequestBatcher.extend({
       resource: '/users',
       body: payload,
     });
-  },
-});
+  }
+}
 
 /**
+ * RealUserUUIDRequestBatcher class for handling real user UUID requests
  * @class
+ * @extends AbstractUserUUIDRequestBatcher
  */
-const RealUserUUIDRequestBatcher = AbstractUserUUIDRequestBatcher.extend({
+class RealUserUUIDRequestBatcher extends AbstractUserUUIDRequestBatcher {
   /**
-   * @param {Object} payload
-   * @returns {Promise<HttpResponseObject>}
+   * Submit the HTTP request
+   * @param {Object} payload - The payload to submit
+   * @returns {Promise<HttpResponseObject>} Promise resolving to the HTTP response
    */
   submitHttpRequest(payload) {
     return this.webex.request({
@@ -104,25 +123,28 @@ const RealUserUUIDRequestBatcher = AbstractUserUUIDRequestBatcher.extend({
         shouldCreateUsers: true,
       },
     });
-  },
-});
+  }
+}
 
 /**
+ * UserUUIDBatcher class for managing user UUID batching
  * @class
+ * @extends WebexPlugin
  */
-const UserUUIDBatcher = WebexPlugin.extend({
-  children: {
+class UserUUIDBatcher extends WebexPlugin {
+  children = {
     faker: FakeUserUUIDRequestBatcher,
     creator: RealUserUUIDRequestBatcher,
-  },
+  };
 
   /**
-   * @param {Object} payload
-   * @returns {Promise<Object>}
+   * Process a request
+   * @param {Object} payload - The payload containing email and create flag
+   * @returns {Promise<Object>} Promise resolving to the response
    */
   request(payload) {
     return payload.create ? this.creator.request(payload.email) : this.faker.request(payload.email);
-  },
-});
+  }
+}
 
 export default UserUUIDBatcher;

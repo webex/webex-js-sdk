@@ -4,10 +4,10 @@
 
 import '@webex/internal-plugin-device';
 import {partition} from 'lodash';
-import * as WebexCore from '@webex/webex-core';
+import {WebexPlugin} from '@webex/webex-core';
 
-const Feature = WebexCore.WebexPlugin.extend({
-  namespace: 'Feature',
+class Feature extends WebexPlugin {
+  namespace = 'Feature';
 
   /**
    * Returns the value of the requested feature toggle.
@@ -39,7 +39,7 @@ const Feature = WebexCore.WebexPlugin.extend({
     }
 
     return Promise.resolve(feature.value);
-  },
+  }
 
   /**
    * Handles a feature toggle update from the server.
@@ -59,7 +59,7 @@ const Feature = WebexCore.WebexPlugin.extend({
         this.webex.internal.device.features[keyType].add([feature], {merge: true});
       }
     }
-  },
+  }
 
   /**
    * Issues request to server to set a value for a feature toggle.
@@ -84,7 +84,7 @@ const Feature = WebexCore.WebexPlugin.extend({
         val: value,
       },
     }).then((res) => this.webex.internal.device.features[keyType].add(res.body, {merge: true}));
-  },
+  }
 
   /**
    * Issues request to server to set a value for a feature toggle.
@@ -110,10 +110,10 @@ const Feature = WebexCore.WebexPlugin.extend({
       this.webex.internal.device.features.user.add(partitionedToggles[0], {merge: true});
       this.webex.internal.device.features.developer.add(partitionedToggles[1], {merge: true});
     });
-  },
+  }
 
   initialize(...args) {
-    Reflect.apply(WebexCore.WebexPlugin.prototype.initialize, this, args);
+    Reflect.apply(super.initialize, this, args);
 
     this.listenToAndRun(
       this.webex,
@@ -130,7 +130,7 @@ const Feature = WebexCore.WebexPlugin.extend({
       'change:internal.device.features.user',
       this.trigger.bind(this, 'change:user')
     );
-  },
-});
+  }
+}
 
 export default Feature;

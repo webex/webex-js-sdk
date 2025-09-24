@@ -13,16 +13,16 @@ import SCR from 'node-scr';
 import ensureBuffer from './ensure-buffer';
 import KMS from './kms';
 
-const Encryption = WebexPlugin.extend({
-  children: {
+class Encryption extends WebexPlugin {
+  children = {
     kms: KMS,
-  },
+  };
 
-  namespace: 'Encryption',
+  namespace = 'Encryption';
 
   processKmsMessageEvent(event) {
     return this.kms.processKmsMessageEvent(event);
-  },
+  }
 
   decryptBinary(scr, buffer) {
     return ensureBuffer(buffer).then((b) => {
@@ -33,7 +33,7 @@ const Encryption = WebexPlugin.extend({
 
       return scr.decrypt(b);
     });
-  },
+  }
 
   /**
    * Decrypt a SCR (Secure Content Resource) using the supplied key uri.
@@ -46,7 +46,7 @@ const Encryption = WebexPlugin.extend({
    */
   decryptScr(key, cipherScr, options) {
     return this.getKey(key, options).then((k) => SCR.fromJWE(k.jwk, cipherScr));
-  },
+  }
 
   /**
    * Decrypt text using the supplied key uri.
@@ -63,7 +63,7 @@ const Encryption = WebexPlugin.extend({
         .decrypt(ciphertext)
         .then((result) => result.plaintext.toString())
     );
-  },
+  }
 
   /**
    * Validate and initiate a Download request for requested file
@@ -99,7 +99,7 @@ const Encryption = WebexPlugin.extend({
     proxyEvents(shunt, promise);
 
     return promise;
-  },
+  }
 
   /**
    * Fetch Download URL for the requested file
@@ -170,7 +170,7 @@ const Encryption = WebexPlugin.extend({
 
         return fileUrl;
       });
-  },
+  }
 
   encryptBinary(file) {
     return ensureBuffer(file).then((buffer) =>
@@ -182,7 +182,7 @@ const Encryption = WebexPlugin.extend({
           .then((cdata) => ({scr, cdata}))
       )
     );
-  },
+  }
 
   /**
    * Encrypt a SCR (Secure Content Resource) using the supplied key uri.
@@ -200,7 +200,7 @@ const Encryption = WebexPlugin.extend({
     }
 
     return this.getKey(key, options).then((k) => scr.toJWE(k.jwk));
-  },
+  }
 
   /**
    * Encrypt plaintext using the supplied key uri.
@@ -221,7 +221,7 @@ const Encryption = WebexPlugin.extend({
         reference: null,
       }).final(plaintext, 'utf8')
     );
-  },
+  }
 
   /**
    * Fetch the key associated with the supplied KMS uri.
@@ -251,8 +251,8 @@ const Encryption = WebexPlugin.extend({
           .fetchKey({uri, onBehalfOf})
           .then(tap((key) => this.unboundedStorage.put(storageKey, JSON.stringify(key, replacer))))
       );
-  },
-});
+  }
+}
 
 /**
  * JSON.stringify replacer that ensures private key data is serialized.

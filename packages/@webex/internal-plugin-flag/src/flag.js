@@ -2,10 +2,10 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import {flatten} from 'lodash';
-import * as WebexCore from '@webex/webex-core';
+import {WebexPlugin} from '@webex/webex-core';
 
-const Flag = WebexCore.WebexPlugin.extend({
-  namespace: 'Flag',
+class Flag extends WebexPlugin {
+  namespace = 'Flag';
 
   /**
    * Archive a flag
@@ -28,7 +28,7 @@ const Flag = WebexCore.WebexPlugin.extend({
     };
 
     return this.webex.request(params).then((res) => res.body);
-  },
+  }
 
   /**
    * Flags an activity
@@ -54,7 +54,7 @@ const Flag = WebexCore.WebexPlugin.extend({
     };
 
     return this.webex.request(params).then((res) => res.body);
-  },
+  }
 
   /**
    * Gets a list of Flags for a user
@@ -74,7 +74,7 @@ const Flag = WebexCore.WebexPlugin.extend({
     };
 
     return this.webex.request(params).then((res) => res.body.items);
-  },
+  }
 
   /**
    * Gets an array of activities where the status is 200
@@ -127,7 +127,7 @@ const Flag = WebexCore.WebexPlugin.extend({
     );
 
     return flatten(responses);
-  },
+  }
 
   /**
    * Delete a flag
@@ -147,7 +147,7 @@ const Flag = WebexCore.WebexPlugin.extend({
     };
 
     return this.request(params).then((res) => res.body);
-  },
+  }
 
   /**
    * UnFlags an activity
@@ -170,7 +170,7 @@ const Flag = WebexCore.WebexPlugin.extend({
     };
 
     return this.webex.request(params).then((res) => res.body);
-  },
-});
+  }
+}
 
 export default Flag;

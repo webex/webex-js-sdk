@@ -8,8 +8,17 @@ import uuid from 'uuid';
 import {find, pick, uniq} from 'lodash';
 import {WebexPlugin} from '@webex/webex-core';
 
-const Team = WebexPlugin.extend({
-  namespace: 'Team',
+/**
+ * @class
+ */
+class Team extends WebexPlugin {
+  /**
+   * @private
+   * @returns {string}
+   */
+  static get namespace() {
+    return 'Team';
+  }
 
   /**
    * Move an existing group conversation into a team.
@@ -39,7 +48,7 @@ const Team = WebexPlugin.extend({
         })
       )
       .then((a) => this.webex.internal.conversation.submit(a));
-  },
+  }
 
   /**
    * Add a member to a team
@@ -54,7 +63,7 @@ const Team = WebexPlugin.extend({
     return this._ensureGeneralConversation(team).then((generalConversation) =>
       this.webex.internal.conversation.add(generalConversation, participant, activity)
     );
-  },
+  }
 
   /**
    * Create a team
@@ -92,7 +101,7 @@ const Team = WebexPlugin.extend({
         })
       )
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Create a conversation within a team. Currently does not support
@@ -137,7 +146,7 @@ const Team = WebexPlugin.extend({
         })
       )
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Retrieve a single team
@@ -164,7 +173,7 @@ const Team = WebexPlugin.extend({
         qs: params,
       })
       .then((res) => this._recordUUIDs(res.body).then(() => res.body));
-  },
+  }
 
   /**
    * Get the list of conversations for a particular team
@@ -182,7 +191,7 @@ const Team = WebexPlugin.extend({
         uri: `${url}/conversations`,
       })
       .then((res) => res.body.items);
-  },
+  }
 
   /**
    * Join a team conversation
@@ -220,7 +229,7 @@ const Team = WebexPlugin.extend({
         body,
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Retrieve all teams
@@ -267,7 +276,7 @@ const Team = WebexPlugin.extend({
     await Promise.all(res.body.items.map((team) => this._recordUUIDs(team)));
 
     return list;
-  },
+  }
 
   /**
    * Remove a member from a team
@@ -282,7 +291,7 @@ const Team = WebexPlugin.extend({
     return this._ensureGeneralConversation(team).then((generalConversation) =>
       this.webex.internal.conversation.leave(generalConversation, participant, activity)
     );
-  },
+  }
 
   /**
    * Remove a team conversation from a team.
@@ -309,7 +318,7 @@ const Team = WebexPlugin.extend({
         return this.webex.internal.conversation.prepare(activity, properties);
       })
       .then((a) => this.webex.internal.conversation.submit(a));
-  },
+  }
 
   /**
    * Update the displayName, summary, or teamColor field for a team.
@@ -322,7 +331,7 @@ const Team = WebexPlugin.extend({
    */
   update(team, object, activity) {
     return this.webex.internal.conversation.update(team, object, activity);
-  },
+  }
 
   /* eslint-disable require-jsdoc */
   _ensureGeneralConversation(team) {
@@ -341,9 +350,9 @@ const Team = WebexPlugin.extend({
     }
 
     return this.webex.internal.conversation.get({id: team.generalConversationUuid});
-  },
+  }
 
-  _prepareTeam: function _prepareTeam(params) {
+  _prepareTeam(params) {
     const payload = this.webex.internal.conversation._prepareConversationForCreation(params);
 
     payload.objectType = 'team';
@@ -353,7 +362,7 @@ const Team = WebexPlugin.extend({
     }
 
     return Promise.resolve(payload);
-  },
+  }
 
   _prepareTeamConversation(teamConversation, params) {
     if (!teamConversation.kmsResourceObjectUrl) {
@@ -367,7 +376,7 @@ const Team = WebexPlugin.extend({
     payload.kmsMessage.userIds.push(teamConversation.kmsResourceObjectUrl);
 
     return Promise.resolve(payload);
-  },
+  }
 
   _recordUUIDs(team) {
     if (!team.teamMembers || !team.teamMembers.items) {
@@ -387,9 +396,9 @@ const Team = WebexPlugin.extend({
           .catch((err) => this.logger.warn('Could not record uuid', err));
       })
     );
-  },
+  }
   /* eslint-enable require-jsdoc */
-});
+}
 
 /**
  * Assign or unassign a team member to be a moderator of a team

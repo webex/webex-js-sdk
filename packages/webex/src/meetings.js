@@ -31,24 +31,29 @@ const WebexCore = require('@webex/webex-core').default;
 
 const config = require('./config');
 
-const Webex = WebexCore.extend({
-  webex: true,
-  version: PACKAGE_VERSION,
-});
+class Webex extends WebexCore {
+  constructor(attrs) {
+    super(attrs);
+    this.webex = true;
+    this.version = PACKAGE_VERSION;
+  }
 
-Webex.init = function init(attrs = {}) {
-  attrs.config = merge(
-    {
-      sdkType: 'meetings',
-      meetings: {
-        disableHydraId: true,
+  static init(attrs = {}) {
+    const newAttrs = {...attrs};
+
+    newAttrs.config = merge(
+      {
+        sdkType: 'meetings',
+        meetings: {
+          disableHydraId: true,
+        },
       },
-    },
-    config,
-    attrs.config
-  ); // eslint-disable-line no-param-reassign
+      config,
+      newAttrs.config
+    );
 
-  return new Webex(attrs);
-};
+    return new Webex(newAttrs);
+  }
+}
 
 module.exports = Webex;

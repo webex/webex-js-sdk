@@ -1,19 +1,25 @@
 import Url from 'url';
+import {WebexState} from '@webex/common';
 
-import AmpState from 'ampersand-state';
+export interface ServiceUrlHost {
+  host: string;
+  priority: number;
+  id?: string;
+  homeCluster?: boolean;
+  failed?: boolean;
+}
 
-/* eslint-disable no-underscore-dangle */
+export interface ServiceUrlState {
+  defaultUrl: string;
+  hosts: ServiceUrlHost[];
+  name: string;
+}
+
 /**
- * @class
+ * ServiceUrl class for managing service URLs with host failover
  */
-const ServiceUrl = AmpState.extend({
-  namespace: 'ServiceUrl',
-
-  props: {
-    defaultUrl: ['string', true, undefined],
-    hosts: ['array', false, () => []],
-    name: ['string', true, undefined],
-  },
+export class ServiceUrl extends WebexState<ServiceUrlState> {
+  namespace = 'ServiceUrl';
 
   /**
    * Generate a host url based on the host
@@ -21,27 +27,27 @@ const ServiceUrl = AmpState.extend({
    * @param {string} hostUri
    * @returns {string}
    */
-  _generateHostUrl(hostUri) {
-    const url = Url.parse(this.defaultUrl);
+  private _generateHostUrl(hostUri: string): string {
+    const url = Url.parse(this.get('defaultUrl'));
 
     // setting url.hostname will not apply during Url.format(), set host via
     // a string literal instead.
     url.host = `${hostUri}${url.port ? `:${url.port}` : ''}`;
 
     return Url.format(url);
-  },
+  }
 
   /**
    * Generate a list of urls based on this
    * `ServiceUrl`'s known hosts.
-   * @returns {string[]}
+   * @returns {Array<{url: string, priority: number}>}
    */
-  _getHostUrls() {
-    return this.hosts.map((host) => ({
+  private _getHostUrls(): Array<{url: string; priority: number}> {
+    return this.get('hosts').map((host) => ({
       url: this._generateHostUrl(host.host),
       priority: host.priority,
     }));
-  },
+  }
 
   /**
    * Get the current host url with the highest priority. If a clusterId is not
@@ -51,14 +57,16 @@ const ServiceUrl = AmpState.extend({
    * @param {string} [clusterId] - The clusterId to filter for a priority host.
    * @returns {string} - The priority host url.
    */
-  _getPriorityHostUrl(clusterId) {
-    if (this.hosts.length === 0) {
-      return this.defaultUrl;
+  private _getPriorityHostUrl(clusterId?: string): string {
+    const hosts = this.get('hosts');
+
+    if (hosts.length === 0) {
+      return this.get('defaultUrl');
     }
 
     let filteredHosts = clusterId
-      ? this.hosts.filter((host) => host.id === clusterId)
-      : this.hosts.filter((host) => host.homeCluster);
+      ? hosts.filter((host) => host.id === clusterId)
+      : hosts.filter((host) => host.homeCluster);
 
     const aliveHosts = filteredHosts.filter((host) => !host.failed);
 
@@ -76,10 +84,10 @@ const ServiceUrl = AmpState.extend({
       filteredHosts.reduce(
         (previous, current) =>
           previous.priority > current.priority || !previous.homeCluster ? current : previous,
-        {}
+        {} as ServiceUrlHost
       ).host
     );
-  },
+  }
 
   /**
    * Attempt to mark a host from this `ServiceUrl` as failed and return true
@@ -88,20 +96,25 @@ const ServiceUrl = AmpState.extend({
    * @param {string} url
    * @returns {boolean}
    */
-  failHost(url) {
-    if (url === this.defaultUrl) {
+  failHost(url: string): boolean {
+    const defaultUrl = this.get('defaultUrl');
+
+    if (url === defaultUrl) {
       return true;
     }
 
     const {hostname} = Url.parse(url);
-    const foundHost = this.hosts.find((hostObj) => hostObj.host === hostname);
+    const hosts = this.get('hosts');
+    const foundHost = hosts.find((hostObj) => hostObj.host === hostname);
 
     if (foundHost) {
       foundHost.failed = true;
+      // Trigger a change event since we modified the hosts array
+      this.set('hosts', [...hosts]);
     }
 
     return foundHost !== undefined;
-  },
+  }
 
   /**
    * Get the current `defaultUrl` or generate a url using the host with the
@@ -111,14 +124,22 @@ const ServiceUrl = AmpState.extend({
    * @param {string} [clusterId] - Cluster to match a host against.
    * @returns {string} - The full service url.
    */
-  get(priorityHost, clusterId) {
+  get(key?: keyof ServiceUrlState): any;
+  get(priorityHost?: boolean, clusterId?: string): string;
+  get(keyOrPriorityHost?: keyof ServiceUrlState | boolean, clusterId?: string): any {
+    // Handle the overloaded method signatures
+    if (typeof keyOrPriorityHost === 'string') {
+      return super.get(keyOrPriorityHost);
+    }
+
+    const priorityHost = keyOrPriorityHost;
+
     if (!priorityHost) {
-      return this.defaultUrl;
+      return this.get('defaultUrl');
     }
 
     return this._getPriorityHostUrl(clusterId);
-  },
-});
-/* eslint-enable no-underscore-dangle */
+  }
+}
 
 export default ServiceUrl;

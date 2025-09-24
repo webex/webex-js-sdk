@@ -21,6 +21,7 @@ module.exports = {
     'prettier',
     'chai-friendly',
     'inclusive-language',
+    'eslint-import-resolver-typescript',
   ],
   extends: [
     'eslint:recommended',
@@ -41,6 +42,7 @@ module.exports = {
       ],
       plugins: ['@typescript-eslint'],
       rules: {
+        'valid-jsdoc': 0,
         'default-case': 0,
         'no-undef': 'off',
         'react/prop-types': 'off',
@@ -258,6 +260,9 @@ module.exports = {
   settings: {
     'import/core-modules': ['chai', 'sinon'],
     'import/resolver': {
+      typescript: {
+        alwaysTryTypes: true,
+      },
       node: {
         extensions: ['.js', '.ts'],
         paths: ['src'],

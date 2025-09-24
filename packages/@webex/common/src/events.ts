@@ -1,8 +1,21 @@
-/*!
- * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
- */
-
+import {EventEmitter} from 'events';
 import {isArray} from 'lodash';
+
+/**
+ * A modern, typed event emitter that serves as a replacement for
+ * ampersand-events. It provides a consistent event interface
+ * across the SDK.
+ */
+export class WebexEventEmitter extends EventEmitter {
+  /**
+   * Fires when the object has been destroyed.
+   * @returns {void}
+   */
+  destroy() {
+    this.emit('destroy');
+    this.removeAllListeners();
+  }
+}
 
 /**
  * Proxies the event binding methods of emitter onto proxy
@@ -10,9 +23,9 @@ import {isArray} from 'lodash';
  * @param {mixed} proxy (probably a promise)
  * @returns {EventEmitter} Returns the source emitter to ease use in promise chains
  */
-export function proxyEvents(emitter, proxy) {
+export function proxyEvents(emitter: any, proxy: any): any {
   ['on', 'once'].forEach((key) => {
-    proxy[key] = (...args) => {
+    proxy[key] = (...args: any[]) => {
       emitter[key](...args);
 
       return proxy;
@@ -29,11 +42,11 @@ export function proxyEvents(emitter, proxy) {
  * @param {EventEmitter} drain
  * @returns {undefined}
  */
-export function transferEvents(events, source, drain) {
-  events = isArray(events) ? events : [events];
-  events.forEach((event) => {
+export function transferEvents(events: string | string[], source: any, drain: any): void {
+  const eventArray = isArray(events) ? events : [events];
+  eventArray.forEach((event) => {
     if (source.on) {
-      source.on(event, (...args) => emit(drain, event, ...args));
+      source.on(event, (...args: any[]) => emit(drain, event, ...args));
     }
   });
 }
@@ -43,7 +56,7 @@ export function transferEvents(events, source, drain) {
  * @param {EventEmitter} target The EventEmitter from which to emit an event
  * @returns {mixed}
  */
-function emit(target, ...rest) {
+function emit(target: any, ...rest: any[]): any {
   const method = target.trigger || target.emit;
 
   /* istanbul ignore if */

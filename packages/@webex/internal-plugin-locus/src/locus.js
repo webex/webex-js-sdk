@@ -37,8 +37,8 @@ function compareToAction(result) {
 /**
  * @class
  */
-const Locus = WebexPlugin.extend({
-  namespace: 'Locus',
+class Locus extends WebexPlugin {
+  namespace = 'Locus';
 
   /**
    * Alert the specified locus that the local user has been notified of the
@@ -57,7 +57,7 @@ const Locus = WebexPlugin.extend({
         sequence: locus.sequence,
       },
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Compares two loci to determine which one contains the most recent state
@@ -93,7 +93,7 @@ const Locus = WebexPlugin.extend({
     }
 
     return compareToAction(this.compareSequence(current.sequence, incoming.sequence));
-  },
+  }
 
   /**
    * Compares two loci sequences (with delta params) and indicates what action
@@ -121,7 +121,7 @@ const Locus = WebexPlugin.extend({
       default:
         return FETCH;
     }
-  },
+  }
 
   /**
    * Compares two Locus sequences
@@ -246,7 +246,7 @@ const Locus = WebexPlugin.extend({
     }
 
     return LESS_THAN;
-  },
+  }
 
   /**
    * Calls the specified invitee and offers the specified media via
@@ -302,7 +302,7 @@ const Locus = WebexPlugin.extend({
           return res.body.locus;
         })
     );
-  },
+  }
 
   /**
    * This is mostly an internal function to simplify the phone plugin. Decides
@@ -320,7 +320,7 @@ const Locus = WebexPlugin.extend({
     }
 
     return this.create(target, options);
-  },
+  }
 
   /**
    * Decline to join the specified Locus
@@ -346,7 +346,7 @@ const Locus = WebexPlugin.extend({
 
         return Promise.reject(reason);
       });
-  },
+  }
 
   /**
    * Retrieves a single Locus
@@ -360,7 +360,7 @@ const Locus = WebexPlugin.extend({
       method: 'GET',
       uri: `${locus.url}`,
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Retrieves the call history for the current user
@@ -379,7 +379,7 @@ const Locus = WebexPlugin.extend({
       resource: 'history/userSessions',
       qs: {from},
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Join the specified Locus and offer to send it media
@@ -430,7 +430,7 @@ const Locus = WebexPlugin.extend({
           return res.body.locus;
         })
     );
-  },
+  }
 
   /**
    * Leave the specified Locus
@@ -456,7 +456,7 @@ const Locus = WebexPlugin.extend({
 
         return Promise.reject(reason);
       });
-  },
+  }
 
   /**
    * Lists active loci
@@ -470,7 +470,7 @@ const Locus = WebexPlugin.extend({
       service: 'locus',
       resource: 'loci',
     }).then((res) => res.body.loci);
-  },
+  }
 
   /**
    * Merges two locus DTOs (for the same locus)
@@ -539,7 +539,7 @@ const Locus = WebexPlugin.extend({
     }
 
     return next;
-  },
+  }
 
   /**
    * Signals to locus that the current user is done sharing their additional
@@ -560,7 +560,7 @@ const Locus = WebexPlugin.extend({
         },
       })
       .then(({body}) => body);
-  },
+  }
 
   /**
    * Signals to locus that the current user would like to share an additional
@@ -585,7 +585,7 @@ const Locus = WebexPlugin.extend({
         },
       })
       .then(({body}) => body);
-  },
+  }
 
   /**
    * Sends a string of DTMF tones to the locus
@@ -607,7 +607,7 @@ const Locus = WebexPlugin.extend({
         },
       },
     });
-  },
+  }
 
   /**
    * Fetches the delta for the locus from its syncUrl. *Does not merge*
@@ -626,7 +626,7 @@ const Locus = WebexPlugin.extend({
         // object in that case.
         .then((res) => res.body || {})
     );
-  },
+  }
 
   /**
    * Send a new sdp to Linus via the Locus API to update media state (e.g. to
@@ -666,7 +666,7 @@ const Locus = WebexPlugin.extend({
         sequence: locus.sequence,
       },
     }).then((res) => res.body.locus);
-  },
-});
+  }
+}
 
 export default Locus;

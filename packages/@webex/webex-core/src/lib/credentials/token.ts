@@ -20,7 +20,7 @@ import grantErrors, {OAuthError} from './grant-errors';
  * @private
  * @returns {GrantError}
  */
-function processGrantError(res) {
+function processGrantError(res: any) {
   if (res.statusCode !== 400) {
     return Promise.reject(res);
   }
@@ -37,210 +37,119 @@ function processGrantError(res) {
   return Promise.reject(new ErrorConstructor(res._res || res));
 }
 
+export interface TokenState {
+  scope?: string;
+  access_token?: string;
+  expires?: number;
+  expires_in?: number;
+  refresh_token?: string;
+  refresh_token_expires?: number;
+  refresh_token_expires_in?: number;
+  token_type?: string;
+  _isExpired?: boolean;
+  previousToken?: Token;
+}
+
 /**
- * @class
+ * Token class for managing OAuth tokens
  */
-const Token = WebexPlugin.extend({
-  derived: {
-    /**
-     * Indicates if this token can be used in an auth header. `true` iff
-     * {@link Token#access_token} is defined and {@link Token#isExpired} is
-     * false.
-     * @instance
-     * @memberof Token
-     * @readonly
-     * @type {boolean}
-     */
-    canAuthorize: {
-      deps: ['access_token', 'isExpired'],
-      fn() {
-        return !!this.access_token && !this.isExpired;
-      },
-    },
+export class Token extends WebexPlugin {
+  namespace = 'Credentials';
 
-    /**
-     * Indicates that this token can be downscoped. `true` iff
-     * {@link config.credentials.client_id} is defined and if
-     * {@link Token#canAuthorize} is true
-     *
-     * Note: since {@link config} is not evented, we can't listen for changes to
-     * {@link config.credentials.client_id}. As such,
-     * {@link config.credentials.client_id} must always be set before
-     * instantiating a {@link Token}
-     * @instance
-     * @memberof Token
-     * @readonly
-     * @type {boolean}
-     */
-    canDownscope: {
-      deps: ['canAuthorize'],
-      fn() {
-        return this.canAuthorize && !!this.config.client_id;
-      },
-    },
+  constructor(attrs: TokenState = {}, options: any = {}) {
+    super(attrs, options);
 
-    /**
-     * Indicates if this token can be refreshed. `true` iff
-     * {@link Token@refresh_token} is defined and
-     * {@link config.credentials.refreshCallback()} is defined
-     *
-     * Note: since {@link config} is not evented, we can't listen for changes to
-     * {@link config.credentials.refreshCallback()}. As such,
-     * {@link config.credentials.refreshCallback()} must always be set before
-     * instantiating a {@link Token}
-     * @instance
-     * @memberof Token
-     * @readonly
-     * @type {boolean}
-     */
-    canRefresh: {
-      deps: ['refresh_token'],
-      fn() {
-        if (inBrowser) {
-          return !!this.refresh_token && !!this.config.refreshCallback;
-        }
+    if (typeof attrs === 'string') {
+      this.set('access_token', attrs);
+    }
 
-        return !!this.refresh_token && !!this.config.client_secret;
-      },
-    },
+    if (!this.get('access_token')) {
+      throw new Error('`access_token` is required');
+    }
 
-    /**
-     * Indicates if this `Token` is expired. `true` iff {@link Token#expires} is
-     * defined and is less than {@link Date.now()}.
-     * @instance
-     * @memberof Token
-     * @readonly
-     * @type {boolean}
-     */
-    isExpired: {
-      deps: ['expires', '_isExpired'],
-      fn() {
-        // in order to avoid setting `cache:false`, we'll use a private property
-        // and a timer rather than comparing to `Date.now()`;
-        return !!this.expires && this._isExpired;
-      },
-    },
+    // Set default token_type
+    if (!this.get('token_type')) {
+      this.set('token_type', 'Bearer');
+    }
 
-    /**
-     * Cache for toString()
-     * @instance
-     * @memberof Token
-     * @private
-     * @readonly
-     * @type {string}
-     */
-    _string: {
-      deps: ['access_token', 'token_type'],
-      fn() {
-        if (!this.access_token || !this.token_type) {
-          return '';
-        }
+    // We don't want the derived property `isExpired` to need {cache:false}, so
+    // we'll set up a timer the runs when this token should expire.
+    if (this.get('expires')) {
+      if (this.get('expires') < Date.now()) {
+        this.set('_isExpired', true);
+      } else {
+        safeSetTimeout(() => {
+          this.set('_isExpired', true);
+        }, this.get('expires') - Date.now());
+      }
+    }
+  }
 
-        return `${this.token_type} ${this.access_token}`;
-      },
-    },
-  },
+  /**
+   * Indicates if this token can be used in an auth header. `true` iff
+   * access_token is defined and isExpired is false.
+   * @returns {boolean}
+   */
+  get canAuthorize(): boolean {
+    return !!this.get('access_token') && !this.isExpired;
+  }
 
-  namespace: 'Credentials',
+  /**
+   * Indicates that this token can be downscoped. `true` iff
+   * config.credentials.client_id is defined and if canAuthorize is true
+   * @returns {boolean}
+   */
+  get canDownscope(): boolean {
+    return this.canAuthorize && !!this.config.client_id;
+  }
 
-  props: {
-    /**
-     * Used for indexing in the credentials userTokens collection
-     * @instance
-     * @memberof Token
-     * @private
-     * @type {string}
-     */
-    scope: 'string',
-    /**
-     * @instance
-     * @memberof Token
-     * @type {string}
-     */
-    access_token: 'string',
-    /**
-     * @instance
-     * @memberof Token
-     * @type {number}
-     */
-    expires: 'number',
-    /**
-     * @instance
-     * @memberof Token
-     * @type {number}
-     */
-    expires_in: 'number',
-    /**
-     * @instance
-     * @memberof Token
-     * @type {string}
-     */
-    refresh_token: 'string',
-    /**
-     * @instance
-     * @memberof Token
-     * @type {number}
-     */
-    refresh_token_expires: 'number',
-    /**
-     * @instance
-     * @memberof Token
-     * @type {number}
-     */
-    refresh_token_expires_in: 'number',
-    /**
-     * @default "Bearer"
-     * @instance
-     * @memberof Token
-     * @type {string}
-     */
-    token_type: {
-      default: 'Bearer',
-      type: 'string',
-    },
-  },
+  /**
+   * Indicates if this token can be refreshed. `true` iff
+   * refresh_token is defined and config.credentials.refreshCallback() is defined
+   * @returns {boolean}
+   */
+  get canRefresh(): boolean {
+    if (inBrowser) {
+      return !!this.get('refresh_token') && !!this.config.refreshCallback;
+    }
 
-  session: {
-    /**
-     * Used by {@link Token#isExpired} to avoid doing a Date comparison.
-     * @instance
-     * @memberof Token
-     * @private
-     * @type {boolean}
-     */
-    _isExpired: {
-      default: false,
-      type: 'boolean',
-    },
-    /**
-     * Handle to the previous token that we'll revoke when we refresh this
-     * token. The idea is to keep allow two valid tokens when a refresh occurs;
-     * we don't want revoke a token that's in the middle of being used, so when
-     * we do a token refresh, we won't revoke the token being refreshed, but
-     * we'll revoke the previous one.
-     * @instance
-     * @memberof Token
-     * @private
-     * @type {Object}
-     */
-    previousToken: {
-      type: 'state',
-    },
-  },
+    return !!this.get('refresh_token') && !!this.config.client_secret;
+  }
 
-  @oneFlight({
-    keyFactory(scope) {
-      return scope;
-    },
-  })
+  /**
+   * Indicates if this `Token` is expired. `true` iff expires is
+   * defined and is less than Date.now().
+   * @returns {boolean}
+   */
+  get isExpired(): boolean {
+    // in order to avoid setting `cache:false`, we'll use a private property
+    // and a timer rather than comparing to `Date.now()`;
+    return !!this.get('expires') && this.get('_isExpired');
+  }
+
+  /**
+   * Cache for toString()
+   * @returns {string}
+   */
+  private get _string(): string {
+    if (!this.get('access_token') || !this.get('token_type')) {
+      return '';
+    }
+
+    return `${this.get('token_type')} ${this.get('access_token')}`;
+  }
+
   /**
    * Uses this token to request a new Token with a subset of this Token's scopes
-   * @instance
-   * @memberof Token
    * @param {string} scope
    * @returns {Promise<Token>}
    */
-  downscope(scope) {
+  @oneFlight({
+    keyFactory(scope: string) {
+      return scope;
+    },
+  })
+  downscope(scope: string): Promise<Token> {
     this.logger.info(`token: downscoping token to ${scope}`);
 
     if (this.isExpired) {
@@ -287,66 +196,30 @@ const Token = WebexPlugin.extend({
         addAuthHeader: false,
         form: {
           grant_type: 'urn:cisco:oauth:grant-type:scope-reduction',
-          token: this.access_token,
+          token: this.get('access_token'),
           scope,
           client_id: this.config.client_id,
           self_contained_token: true,
         },
       })
-      .then((res) => {
+      .then((res: any) => {
         this.logger.info(`token: downscoped token to ${scope}`);
 
         return new Token(Object.assign(res.body, {scope}), {parent: this.parent});
       });
-  },
+  }
 
   /**
-   * Initializer
-   * @instance
-   * @memberof Token
-   * @param {Object} [attrs={}]
-   * @param {Object} [options={}]
-   * @see {@link WebexPlugin#initialize()}
-   * @returns {Token}
-   */
-  initialize(attrs = {}, options = {}) {
-    Reflect.apply(WebexPlugin.prototype.initialize, this, [attrs, options]);
-
-    if (typeof attrs === 'string') {
-      this.access_token = attrs;
-    }
-
-    if (!this.access_token) {
-      throw new Error('`access_token` is required');
-    }
-
-    // We don't want the derived property `isExpired` to need {cache:false}, so
-    // we'll set up a timer the runs when this token should expire.
-    if (this.expires) {
-      if (this.expires < Date.now()) {
-        this._isExpired = true;
-      } else {
-        safeSetTimeout(() => {
-          this._isExpired = true;
-        }, this.expires - Date.now());
-      }
-    }
-  },
-
-  @oneFlight
-  /**
-   * Refreshes this Token. Relies on
-   * {@link config.credentials.refreshCallback()}
-   * @instance
-   * @memberof Token
+   * Refreshes this Token. Relies on config.credentials.refreshCallback()
    * @returns {Promise<Token>}
    */
-  refresh() {
+  @oneFlight
+  refresh(): Promise<Token> {
     if (!this.canRefresh) {
       throw new Error('Not enough information available to refresh this access token');
     }
 
-    let promise;
+    let promise: Promise<any> | undefined;
 
     if (inBrowser) {
       if (!this.config.refreshCallback) {
@@ -365,7 +238,7 @@ const Token = WebexPlugin.extend({
           form: {
             grant_type: 'refresh_token',
             redirect_uri: this.config.redirect_uri,
-            refresh_token: this.refresh_token,
+            refresh_token: this.get('refresh_token'),
           },
           auth: {
             user: this.config.client_id,
@@ -374,9 +247,9 @@ const Token = WebexPlugin.extend({
           },
           shouldRefreshAccessToken: false,
         })
-        .then((res) => res.body)
+        .then((res: any) => res.body)
     )
-      .then((obj) => {
+      .then((obj: any) => {
         if (!obj) {
           throw new Error('token: refreshCallback() did not produce an object');
         }
@@ -386,44 +259,47 @@ const Token = WebexPlugin.extend({
         if (!obj.refresh_token) {
           Object.assign(
             obj,
-            pick(this, 'refresh_token', 'refresh_token_expires', 'refresh_token_expires_in')
+            pick(
+              this.getState(),
+              'refresh_token',
+              'refresh_token_expires',
+              'refresh_token_expires_in'
+            )
           );
         }
 
         // If the new token is the same as the previous token, then we may have
         // found a bug in CI; log the details and reject the Promise
-        if (this.access_token === obj.access_token) {
+        if (this.get('access_token') === obj.access_token) {
           this.logger.error('token: new token matches current token');
           // log the tokens if it is not production
           if (process.env.NODE_ENV !== 'production') {
-            this.logger.error('token: current token:', this.access_token);
+            this.logger.error('token: current token:', this.get('access_token'));
             this.logger.error('token: new token:', obj.access_token);
           }
 
           return Promise.reject(new Error('new token matches current token'));
         }
 
-        if (this.previousToken) {
-          this.previousToken.revoke();
-          this.unset('previousToken');
+        if (this.get('previousToken')) {
+          (this.get('previousToken') as Token).revoke();
+          this.set('previousToken', undefined);
         }
 
         obj.previousToken = this;
-        obj.scope = this.scope;
+        obj.scope = this.get('scope');
 
         return new Token(obj, {parent: this.parent});
       })
       .catch(processGrantError);
-  },
+  }
 
-  @oneFlight
   /**
    * Revokes this token and unsets its local properties
-   * @instance
-   * @memberof Token
    * @returns {Promise}
    */
-  revoke() {
+  @oneFlight
+  revoke(): Promise<void> {
     if (this.isExpired) {
       this.logger.info('token: already expired, not making making revocation request');
 
@@ -455,7 +331,7 @@ const Token = WebexPlugin.extend({
         method: 'POST',
         uri: this.config.revokeUrl,
         form: {
-          token: this.access_token,
+          token: this.get('access_token'),
           token_type_hint: 'access_token',
         },
         auth: {
@@ -466,21 +342,35 @@ const Token = WebexPlugin.extend({
         shouldRefreshAccessToken: false,
       })
       .then(() => {
-        this.unset(['access_token', 'expires', 'expires_in', 'token_type']);
+        this.set('access_token', undefined);
+        this.set('expires', undefined);
+        this.set('expires_in', undefined);
+        this.set('token_type', undefined);
         this.logger.info('token: access token revoked');
       })
       .catch(processGrantError);
-  },
+  }
 
-  set(...args) {
-    // eslint-disable-next-line prefer-const
-    let [attrs, options] = this._filterSetParameters(...args);
+  /**
+   * Override set method to handle token parsing and expiration calculation
+   */
+  set(key: string, value: any): void;
+  set(attrs: Partial<TokenState>): void;
+  set(keyOrAttrs: string | Partial<TokenState>, value?: any): void {
+    let attrs: Partial<TokenState>;
+
+    if (typeof keyOrAttrs === 'string') {
+      attrs = {[keyOrAttrs]: value};
+    } else {
+      attrs = keyOrAttrs;
+    }
 
     if (!attrs.token_type && attrs.access_token && attrs.access_token.includes(' ')) {
       const [token_type, access_token] = attrs.access_token.split(' ');
 
       attrs = {...attrs, access_token, token_type};
     }
+
     const now = Date.now();
 
     if (!attrs.expires && attrs.expires_in) {
@@ -495,33 +385,30 @@ const Token = WebexPlugin.extend({
       attrs.scope = sortScope(attrs.scope);
     }
 
-    return Reflect.apply(WebexPlugin.prototype.set, this, [attrs, options]);
-  },
+    // Call parent set method for each property
+    Object.keys(attrs).forEach((key) => {
+      super.set(key, attrs[key as keyof TokenState]);
+    });
+  }
 
   /**
    * Renders the token object as an HTTP Header Value
-   * @instance
-   * @memberof Token
    * @returns {string}
-   * @see {@link Object#toString()}
    */
-  toString() {
+  toString(): string {
     if (!this._string) {
       throw new Error('cannot stringify Token');
     }
 
     return this._string;
-  },
+  }
 
   /**
-   * Uses a non-producation api to return information about this token. This
+   * Uses a non-production api to return information about this token. This
    * method is primarily for tests and will throw if NODE_ENV === production
-   * @instance
-   * @memberof Token
-   * @private
    * @returns {Promise}
    */
-  validate() {
+  validate(): Promise<any> {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Token#validate() must not be used in production');
     }
@@ -532,10 +419,10 @@ const Token = WebexPlugin.extend({
         service: 'conversation',
         resource: 'users/validateAuthToken',
         body: {
-          token: this.access_token,
+          token: this.get('access_token'),
         },
       })
-      .catch((reason) => {
+      .catch((reason: any) => {
         if ('statusCode' in reason) {
           return Promise.reject(reason);
         }
@@ -553,15 +440,15 @@ const Token = WebexPlugin.extend({
           method: 'POST',
           uri: `${convApi}/users/validateAuthToken`,
           body: {
-            token: this.access_token,
+            token: this.get('access_token'),
           },
           headers: {
-            authorization: `Bearer ${this.access_token}`,
+            authorization: `Bearer ${this.get('access_token')}`,
           },
         });
       })
-      .then((res) => res.body);
-  },
-});
+      .then((res: any) => res.body);
+  }
+}
 
 export default Token;

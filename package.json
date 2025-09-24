@@ -255,7 +255,10 @@
   },
   "packageManager": "yarn@3.4.1",
   "dependencies": {
-    "querystring-es3": "^0.2.1"
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "querystring-es3": "^0.2.1",
+    "reflect-metadata": "^0.2.2"
   },
   "//": "Todo: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-490729"
 }

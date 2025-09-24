@@ -35,7 +35,7 @@ const debug = require('debug')('rooms');
  * @class
  * @name Rooms
  */
-const Rooms = WebexPlugin.extend({
+class Rooms extends WebexPlugin {
   /**
    * Register to listen for incoming rooms events
    * This is an alternate approach to registering for rooms webhooks.
@@ -74,7 +74,7 @@ const Rooms = WebexPlugin.extend({
         );
       });
     });
-  },
+  }
 
   /**
    * Creates a new room. The authenticated user is automatically added as a
@@ -103,7 +103,7 @@ const Rooms = WebexPlugin.extend({
       resource: 'rooms',
       body: room,
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * Returns a single room.
@@ -134,7 +134,7 @@ const Rooms = WebexPlugin.extend({
       resource: `rooms/${id}`,
       qs: options,
     }).then((res) => res.body.items || res.body);
-  },
+  }
 
   /**
    * Returns a list of rooms. In most cases the results will only contain rooms
@@ -174,7 +174,7 @@ const Rooms = WebexPlugin.extend({
       resource: 'rooms/',
       qs: options,
     }).then((res) => new Page(res, this.webex));
-  },
+  }
 
   /**
    * Returns a list of rooms with details about the data of the last
@@ -245,7 +245,7 @@ const Rooms = WebexPlugin.extend({
       .waitForCatalog('postauth')
       .then(() => this.webex.internal.conversation.list(options))
       .then((conversations) => buildRoomInfoList(this.webex, conversations));
-  },
+  }
 
   /**
    * Returns a single room object with details about the data of the last
@@ -294,7 +294,7 @@ const Rooms = WebexPlugin.extend({
         })
         .then((convo) => buildRoomInfo(this.webex, convo))
     );
-  },
+  }
 
   /**
    * Deletes a single room.
@@ -339,7 +339,7 @@ const Rooms = WebexPlugin.extend({
 
       return res.body;
     });
-  },
+  }
 
   /**
    * Used to update a single room's properties.
@@ -374,7 +374,7 @@ const Rooms = WebexPlugin.extend({
       resource: `rooms/${id}`,
       body: room,
     }).then((res) => res.body);
-  },
+  }
 
   /**
    * This function is called when an internal membership events fires,
@@ -424,7 +424,7 @@ const Rooms = WebexPlugin.extend({
       default:
         break;
     }
-  },
+  }
 
   /**
    * Constructs the data object for an event on the rooms resource,
@@ -483,8 +483,8 @@ const Rooms = WebexPlugin.extend({
 
       return null;
     }
-  },
-});
+  }
+}
 
 export default Rooms;
 

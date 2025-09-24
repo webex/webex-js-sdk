@@ -6,14 +6,13 @@ import {EventEmitter} from 'events';
 import util from 'util';
 
 import {proxyEvents, retry, transferEvents} from '@webex/common';
+import {WebexEventEmitter} from '@webex/common';
 import {
-  HttpStatusInterceptor,
   defaults as requestDefaults,
   protoprepareFetchOptions as prepareFetchOptions,
   setTimingsAndFetch as _setTimingsAndFetch,
 } from '@webex/http-core';
 import {defaultsDeep, get, isFunction, isString, last, merge, omit, set, unset} from 'lodash';
-import AmpState from 'ampersand-state';
 import uuid from 'uuid';
 
 import AuthInterceptor from './interceptors/auth';
@@ -38,6 +37,66 @@ import {makeWebexStore} from './lib/storage';
 import mixinWebexCorePlugins from './lib/webex-core-plugin-mixin';
 import mixinWebexInternalCorePlugins from './lib/webex-internal-core-plugin-mixin';
 import WebexInternalCore from './webex-internal-core';
+
+// TypeScript interfaces for better type safety
+export interface WebexCoreOptions {
+  config?: any;
+  credentials?: any;
+  authorization?: any;
+  [key: string]: any;
+}
+
+export interface UploadOptions {
+  file: any;
+  phases?: {
+    initialize?: any;
+    upload?: any;
+    finalize?: any;
+  };
+  [key: string]: any;
+}
+
+export interface TransformPredicate {
+  direction?: string;
+  name: string;
+  test: (ctx: any, object: any) => Promise<boolean>;
+  extract: (object: any) => Promise<any>;
+}
+
+export interface Transform {
+  name: string;
+  direction?: string;
+  alias?: string;
+  fn: (ctx: any, ...rest: any[]) => any;
+}
+
+export interface PayloadTransformerConfig {
+  predicates: TransformPredicate[];
+  transforms: Transform[];
+}
+
+export interface WebexCoreConfig {
+  trackingIdPrefix?: string;
+  trackingIdBase?: string;
+  trackingIdSuffix?: string;
+  interceptors?: any;
+  payloadTransformer?: PayloadTransformerConfig;
+  onBeforeLogout?: Array<{plugin: string; fn: Function}>;
+  [key: string]: any;
+}
+
+// Declare global PACKAGE_VERSION
+declare const PACKAGE_VERSION: string;
+
+// Create a simplified HttpStatusInterceptor creator
+const createHttpStatusInterceptor = () => {
+  // Import dynamically to avoid module resolution issues
+  const {HttpStatusInterceptor: HSI} = require('@webex/http-core');
+
+  return HSI.create({
+    error: WebexHttpError,
+  });
+};
 
 // TODO replace the Interceptor.create with Reflect.construct (
 // Interceptor.create exists because new was really hard to call on an array of
@@ -66,11 +125,7 @@ const interceptors = {
   PayloadTransformerInterceptor: PayloadTransformerInterceptor.create,
   ConversationInterceptor: undefined,
   RedirectInterceptor: RedirectInterceptor.create,
-  HttpStatusInterceptor() {
-    return HttpStatusInterceptor.create({
-      error: WebexHttpError,
-    });
-  },
+  HttpStatusInterceptor: createHttpStatusInterceptor,
   NetworkTimingInterceptor: NetworkTimingInterceptor.create,
   EmbargoInterceptor: EmbargoInterceptor.create,
   DefaultOptionsInterceptor: DefaultOptionsInterceptor.create,
@@ -96,16 +151,76 @@ const postInterceptors = [
 const MAX_FILE_SIZE_IN_MB = 2048;
 
 /**
- * @class
+ * @class WebexCore
+ * 
+ * Modern TypeScript implementation extending WebexEventEmitter that serves as the main
+ * entry point for the Webex JavaScript SDK. This class manages plugin registration,
+ * instantiation, and lifecycle.
+ * 
+ * PLUGIN SYSTEM OVERVIEW:
+ * 
+ * The WebexCore uses a plugin-based architecture where functionality is organized into
+ * discrete plugins (e.g., meetings, messaging, device management). The system works in
+ * three main phases:
+ * 
+ * 1. REGISTRATION PHASE (build time):
+ *    - Plugins call registerPlugin() or registerInternalPlugin()
+ *    - Plugin constructors are stored in _children collections on prototype
+ *    - This happens when modules are imported/required
+ * 
+ * 2. INSTANTIATION PHASE (runtime - during WebexCore construction):
+ *    - Constructor calls initialize() automatically (replicating AmpersandState behavior)
+ *    - initialize() calls _initializePlugins()
+ *    - _initializePlugins() creates instances from registered constructors
+ *    - Plugins become available as webex.pluginName and webex.internal.pluginName
+ * 
+ * 3. INITIALIZATION PHASE (runtime - after instantiation):
+ *    - Each plugin's initialize() method is called with config
+ *    - Plugins set up their internal state, event listeners, etc.
+ *    - System becomes ready for use
+ * 
+ * HISTORICAL CONTEXT:
+ * This implementation replaces the original AmpersandState-based WebexCore.
+ * AmpersandState automatically called initialize() and handled children instantiation.
+ * This TypeScript version manually replicates that behavior for compatibility.
  */
-const WebexCore = AmpState.extend({
-  version: PACKAGE_VERSION,
+class WebexCore extends WebexEventEmitter {
+  static version = PACKAGE_VERSION;
+  version = PACKAGE_VERSION;
 
-  children: {
-    internal: WebexInternalCore,
-  },
+  // Core WebexCore components
+  internal: typeof WebexInternalCore;  // Internal plugins (webex.internal.*)
+  config: WebexCoreConfig;             // SDK configuration
+  loaded: boolean;                     // Storage loading complete flag
+  request: any;                        // HTTP request function with interceptors
+  sessionId: string;                   // Unique session identifier
+  prepareFetchOptions: any;            // Fetch options preparation function
+  setTimingsAndFetch: any;             // Timing and fetch wrapper function
 
-  constructor(attrs = {}, options) {
+  // Initialize tracking to prevent double initialization
+  private _initialized: boolean = false;
+
+  // Properties from plugins that may be attached dynamically
+  // These become available after plugin instantiation:
+  credentials?: any;    // webex.credentials (authentication)
+  authorization?: any;  // webex.authorization (OAuth flow)
+  logger?: any;         // webex.logger (logging)
+  metrics?: any;        // webex.metrics (telemetry)
+  meetings?: any;       // webex.meetings (meeting functionality) 
+  messages?: any;       // webex.messages (messaging functionality)
+  // ... other plugins get attached here dynamically
+
+  // EventEmitter methods inherited from WebexEventEmitter
+  on: (event: string, listener: (...args: any[]) => void) => this;
+  once: (event: string, listener: (...args: any[]) => void) => this;
+  off: (event: string, listener: (...args: any[]) => void) => this;
+  emit: (event: string, ...args: any[]) => boolean;
+  removeAllListeners: (event?: string) => this;
+
+  constructor(attrs: WebexCoreOptions | string = {}, options?: any) {
+    super();
+
+    // Handle string input (access token) - convenience for simple authentication
     if (typeof attrs === 'string') {
       attrs = {
         credentials: {
@@ -116,6 +231,9 @@ const WebexCore = AmpState.extend({
         },
       };
     } else {
+      // Handle various credential formats
+      attrs = {...attrs}; // Clone to avoid mutations
+
       // Reminder: order is important here
       [
         'credentials.authorization',
@@ -154,82 +272,63 @@ const WebexCore = AmpState.extend({
       }
     }
 
-    return Reflect.apply(AmpState, this, [attrs, options]);
-  },
+    // Initialize child components
+    this.internal = new WebexInternalCore(attrs, options);
+    this.loaded = false;
+    this.config = {} as WebexCoreConfig;
+    this.sessionId = '';
 
-  derived: {
-    boundedStorage: {
-      deps: [],
-      fn() {
-        return makeWebexStore('bounded', this);
-      },
-    },
-    unboundedStorage: {
-      deps: [],
-      fn() {
-        return makeWebexStore('unbounded', this);
-      },
-    },
-    ready: {
-      deps: ['loaded', 'internal.ready'],
-      fn() {
-        return (
-          this.loaded &&
-          Object.keys(this._children).reduce(
-            (ready, name) => ready && this[name] && this[name].ready !== false,
-            true
-          )
-        );
-      },
-    },
-  },
+    // Defer initialization until after full construction chain is complete
+    // This prevents double initialization when subclasses call super()
+    setTimeout(() => {
+      if (!this._initialized) {
+        this.initialize(attrs);
+      }
+    }, 0);
+  }
 
-  session: {
-    config: {
-      type: 'object',
-    },
-    /**
-     * When true, indicates that the initial load from the storage layer is
-     * complete
-     * @instance
-     * @memberof WebexCore
-     * @type {boolean}
-     */
-    loaded: {
-      default: false,
-      type: 'boolean',
-    },
-    request: {
-      setOnce: true,
-      // It's supposed to be a function, but that's not a type defined in
-      // Ampersand
-      type: 'any',
-    },
-    sessionId: {
-      type: 'string',
-    },
-  },
+  /**
+   * Storage getters using the established pattern
+   */
+  get boundedStorage() {
+    return makeWebexStore('bounded', this);
+  }
+
+  get unboundedStorage() {
+    return makeWebexStore('unbounded', this);
+  }
+
+  get ready(): boolean {
+    return (
+      this.loaded &&
+      Object.keys((this.constructor as any).prototype._children || {}).reduce(
+        (ready, name) => ready && this[name] && this[name].ready !== false,
+        true
+      )
+    );
+  }
 
   /**
    * @instance
    * @memberof WebexCore
-   * @param {[type]} args
-   * @returns {[type]}
+   * @param {...any} args
+   * @returns {Promise<any>}
    */
-  refresh(...args) {
-    return this.credentials.refresh(...args);
-  },
+  refresh(...args: any[]): Promise<any> {
+    return this.credentials?.refresh(...args) || Promise.resolve();
+  }
 
   /**
    * Applies the directionally appropriate transforms to the specified object
    * @param {string} direction
-   * @param {Object} object
-   * @returns {Promise}
+   * @param {any} object
+   * @returns {Promise<any>}
    */
-  transform(direction, object) {
-    const predicates = this.config.payloadTransformer.predicates.filter(
-      (p) => !p.direction || p.direction === direction
-    );
+  transform(direction: string, object: any): Promise<any> {
+    const predicates =
+      this.config.payloadTransformer?.predicates?.filter(
+        (p) => !p.direction || p.direction === direction
+      ) || [];
     const ctx = {
       webex: this,
     };
@@ -270,34 +369,36 @@ const WebexCore = AmpState.extend({
           )
       )
       .then(() => object);
-  },
+  }
 
   /**
    * Applies the directionally appropriate transform to the specified parameters
    * @param {string} direction
-   * @param {Object} ctx
+   * @param {any} ctx
    * @param {string} name
-   * @returns {Promise}
+   * @param {...any} rest
+   * @returns {Promise<any>}
    */
-  applyNamedTransform(direction, ctx, name, ...rest) {
+  applyNamedTransform(direction: string, ctx: any, name?: string, ...rest: any[]): Promise<any> {
     if (isString(ctx)) {
       rest.unshift(name);
       name = ctx;
       ctx = {
         webex: this,
-        transform: (...args) => this.applyNamedTransform(direction, ctx, ...args),
+        transform: (...args: any[]) => this.applyNamedTransform(direction, ctx, ...args),
       };
     }
 
-    const transforms = ctx.webex.config.payloadTransformer.transforms.filter(
-      (tx) => tx.name === name && (!tx.direction || tx.direction === direction)
-    );
+    const transforms =
+      ctx.webex.config.payloadTransformer?.transforms?.filter(
+        (tx: Transform) => tx.name === name && (!tx.direction || tx.direction === direction)
+      ) || [];
 
     // too many implicit returns on the same line is difficult to interpret
     // eslint-disable-next-line arrow-body-style
     return transforms
       .reduce(
-        (promise, tx) =>
+        (promise: Promise<any>, tx: Transform) =>
           promise.then(() => {
             if (tx.alias) {
               return ctx.transform(tx.alias, ...rest);
@@ -308,16 +409,99 @@ const WebexCore = AmpState.extend({
         Promise.resolve()
       )
       .then(() => last(rest));
-  },
+  }
 
   /**
    * @private
    * @returns {Window}
    */
-  getWindow() {
+  getWindow(): Window {
     // eslint-disable-next-line
     return window;
-  },
+  }
+
+  /**
+   * CRITICAL PLUGIN SYSTEM METHOD
+   * 
+   * Initializes plugins from the _children collection. This method is the heart of the
+   * plugin system and solves the original issue where plugins were registered but not instantiated.
+   * 
+   * HOW PLUGIN REGISTRATION WORKS:
+   * 
+   * 1. REGISTRATION (Build Time):
+   *    - When plugin modules are imported, they call registerPlugin() or registerInternalPlugin()
+   *    - These functions store plugin constructors in _children collections:
+   *      * WebexCore.prototype._children = { meetings: MeetingsConstructor, messages: MessagesConstructor }
+   *      * WebexInternalCore.prototype._children = { dss: DSSConstructor, device: DeviceConstructor }
+   * 
+   * 2. INSTANTIATION (Runtime - this method):
+   *    - Called automatically during WebexCore construction via initialize()
+   *    - Loops through registered constructors and creates instances
+   *    - Attaches instances to webex object: webex.meetings, webex.internal.dss, etc.
+   * 
+   * 3. RESULT:
+   *    - webex.meetings = new MeetingsConstructor()
+   *    - webex.internal.dss = new DSSConstructor()  ← This fixes the original "webex.internal.dss is undefined" issue
+   *    - webex.messages = new MessagesConstructor()
+   * 
+   * WHY THIS WAS MISSING:
+   * In AmpersandState, this happened automatically via the "children" mechanism.
+   * The TypeScript version needed to manually replicate this behavior.
+   * 
+   * @private
+   * @returns {void}
+   */
+  private _initializePlugins(): void {
+    // PART 1: Instantiate regular plugins (webex.meetings, webex.messages, etc.)
+    // Access the _children collection where registerPlugin() stored constructors
+    const children = (this.constructor as any).prototype._children || {};
+    
+    Object.keys(children).forEach(name => {
+      if (!this[name]) { // Only instantiate if not already done (safety check)
+        const ChildConstructor = children[name];
+        try {
+          // Create plugin instance and attach to webex object
+          // Example: this['meetings'] = new MeetingsConstructor({}, { parent: this, namespace: 'meetings' })
+          this[name] = new ChildConstructor({}, {
+            parent: this,        // Give plugin access to webex core
+            namespace: name      // Plugin knows its own name
+          });
+          
+          console.debug(`WebexCore: Initialized plugin '${name}'`);
+        } catch (error) {
+          console.warn(`Failed to initialize plugin '${name}':`, error);
+        }
+      }
+    });
+
+    // PART 2: Instantiate internal plugins (webex.internal.dss, webex.internal.device, etc.)
+    // These are registered via registerInternalPlugin() and stored on WebexInternalCore
+    if (this.internal) {
+      const internalChildren = (this.internal.constructor as any).prototype._children || {};
+      
+      Object.keys(internalChildren).forEach(name => {
+        if (!this.internal[name]) { // Only instantiate if not already done (safety check)
+          const ChildConstructor = internalChildren[name];
+          try {
+            // Create internal plugin instance and attach to webex.internal
+            // Example: this.internal['dss'] = new DSSConstructor({}, { parent: this.internal, namespace: 'dss' })
+            this.internal[name] = new ChildConstructor({}, {
+              parent: this.internal,  // Give plugin access to webex internal core
+              namespace: name         // Plugin knows its own name
+            });
+            
+            console.debug(`WebexCore: Initialized internal plugin '${name}'`);
+          } catch (error) {
+            console.warn(`Failed to initialize internal plugin '${name}':`, error);
+          }
+        }
+      });
+    }
+    
+    // At this point, all registered plugins are now available:
+    // - webex.meetings, webex.messages (regular plugins)
+    // - webex.internal.dss, webex.internal.device (internal plugins)
+  }
 
   /**
    * Initializer
@@ -326,18 +510,17 @@ const WebexCore = AmpState.extend({
    * @emits WebexCore#ready
    * @instance
    * @memberof WebexCore
-   * @param {Object} attrs
+   * @param {WebexCoreOptions} attrs
    * @returns {WebexCore}
    */
-  initialize(attrs = {}) {
+  initialize(attrs: WebexCoreOptions = {}): void {
     this.config = merge({}, config, attrs.config);
 
-    // There's some unfortunateness with the way {@link AmpersandState#children}
-    // get initialized. We'll fire the change:config event so that
-    // {@link WebexPlugin#initialize()} can use
-    // `this.listenToOnce(parent, 'change:config', () => {});` to act on config
-    // during initialization
-    this.trigger('change:config');
+    // Initialize plugins after config is set
+    this._initializePlugins();
+
+    // Fire the change:config event for plugin initialization
+    this.emit('change:config');
 
     const onLoaded = () => {
       if (this.loaded) {
@@ -347,15 +530,16 @@ const WebexCore = AmpState.extend({
          * @instance
          * @memberof WebexCore
          */
-        this.trigger('loaded');
+        this.emit('loaded');
 
-        this.stopListening(this, 'change:loaded', onLoaded);
+        this.off('change:loaded', onLoaded);
       }
     };
 
     // This needs to run on nextTick or we'll never be able to wire up listeners
     process.nextTick(() => {
-      this.listenToAndRun(this, 'change:loaded', onLoaded);
+      this.on('change:loaded', onLoaded);
+      onLoaded(); // Check initial state
     });
 
     const onReady = () => {
@@ -366,26 +550,27 @@ const WebexCore = AmpState.extend({
          * @instance
          * @memberof WebexCore
          */
-        this.trigger('ready');
+        this.emit('ready');
 
-        this.stopListening(this, 'change:ready', onReady);
+        this.off('change:ready', onReady);
       }
     };
 
     // This needs to run on nextTick or we'll never be able to wire up listeners
     process.nextTick(() => {
-      this.listenToAndRun(this, 'change:ready', onReady);
+      this.on('change:ready', onReady);
+      onReady(); // Check initial state
     });
 
     // Make nested events propagate in a consistent manner
-    Object.keys(this.constructor.prototype._children).forEach((key) => {
-      this.listenTo(this[key], 'change', (...args) => {
+    Object.keys((this.constructor as any).prototype._children || {}).forEach((key) => {
+      this.on(this[key], 'change', (...args: any[]) => {
         args.unshift(`change:${key}`);
-        this.trigger(...args);
+        this.emit(...args);
       });
     });
 
-    const addInterceptor = (ints, key) => {
+    const addInterceptor = (ints: any[], key: string) => {
       const interceptorsObj = this.config.interceptors || interceptors;
       const interceptor = interceptorsObj[key];
 
@@ -398,7 +583,7 @@ const WebexCore = AmpState.extend({
       return ints;
     };
 
-    let ints = [];
+    let ints: any[] = [];
 
     if (this.config.interceptors) {
       Object.keys(this.config.interceptors).reduce(addInterceptor, ints);
@@ -433,7 +618,7 @@ const WebexCore = AmpState.extend({
     }
 
     this.sessionId = sessionId;
-  },
+  }
 
   /**
    * setConfig
@@ -442,12 +627,12 @@ const WebexCore = AmpState.extend({
    *
    * @instance
    * @memberof WebexCore
-   * @param {Object} newConfig
-   * @returns {null}
+   * @param {Partial<WebexCoreConfig>} newConfig
+   * @returns {void}
    */
-  setConfig(newConfig = {}) {
+  setConfig(newConfig: Partial<WebexCoreConfig> = {}): void {
     this.config = merge({}, this.config, newConfig);
-  },
+  }
 
   /**
    *
@@ -456,7 +641,7 @@ const WebexCore = AmpState.extend({
    * @param {string} token
    * @returns {string}
    */
-  bearerValidator(token) {
+  bearerValidator(token: string): string {
     if (token.includes('Bearer') && token.split(' ').length - 1 === 0) {
       console.warn(
         `Your access token does not have a space between 'Bearer' and the token, please add a space to it or replace it with this already fixed version:\n\n${token
@@ -485,31 +670,32 @@ const WebexCore = AmpState.extend({
     }
 
     return token.replace(/\s+/g, ' '); // Clean it anyway (just in case)
-  },
+  }
 
   /**
    * @instance
-   * @memberof WebexPlugin
+   * @memberof WebexCore
    * @param {number} depth
    * @private
-   * @returns {Object}
+   * @returns {string}
    */
-  inspect(depth) {
+  inspect(depth?: number): string {
     return util.inspect(
-      omit(
-        this.serialize({
-          props: true,
-          session: true,
-          derived: true,
-        }),
-        'boundedStorage',
-        'unboundedStorage',
-        'request',
-        'config'
-      ),
+      omit(this.toJSON?.() || {}, 'boundedStorage', 'unboundedStorage', 'request', 'config'),
       {depth}
     );
-  },
+  }
+
+  /**
+   * Serialize method that mimics Ampersand behavior
+   */
+  toJSON(): any {
+    return {
+      version: this.version,
+      loaded: this.loaded,
+      sessionId: this.sessionId,
+    };
+  }
 
   /**
    * Invokes all `onBeforeLogout` handlers in the scope of their plugin, clears
@@ -520,27 +706,28 @@ const WebexCore = AmpState.extend({
    * or {@link `webex.phone.unregister()`|Phone#unregister}
    * @instance
    * @memberof WebexCore
-   * @param {Object} options Passed as the first argument to all
+   * @param {any} options Passed as the first argument to all
    * `onBeforeLogout` handlers
-   * @returns {Promise}
+   * @param {...any} rest
+   * @returns {Promise<void>}
    */
-  logout(options, ...rest) {
+  logout(options?: any, ...rest: any[]): Promise<void> {
     // prefer the refresh token, but for clients that don't have one, fallback
     // to the access token
     const token =
-      this.credentials.supertoken &&
+      this.credentials?.supertoken &&
       (this.credentials.supertoken.refresh_token || this.credentials.supertoken.access_token);
 
-    options = Object.assign({token}, options);
+    options = {token, ...options};
 
     // onBeforeLogout should be executed in the opposite order in which handlers
     // were registered. In that way, wdm unregister() will be above mercury
     // disconnect(), but disconnect() will execute first.
     // eslint-disable-next-line arrow-body-style
-    return this.config.onBeforeLogout
+    return (this.config.onBeforeLogout || [])
       .reverse()
       .reduce(
-        (promise, {plugin, fn}) =>
+        (promise: Promise<any>, {plugin, fn}: {plugin: string; fn: Function}) =>
           promise.then(() => {
             return (
               Promise.resolve(
@@ -548,45 +735,46 @@ const WebexCore = AmpState.extend({
               )
                 // eslint-disable-next-line max-nested-callbacks
                 .catch((err) => {
-                  this.logger.warn(`onBeforeLogout from plugin ${plugin}: failed`, err);
+                  this.logger?.warn(`onBeforeLogout from plugin ${plugin}: failed`, err);
                 })
             );
           }),
         Promise.resolve()
       )
       .then(() => Promise.all([this.boundedStorage.clear(), this.unboundedStorage.clear()]))
-      .then(() => this.credentials.invalidate(...rest))
+      .then(() => this.credentials?.invalidate(...rest))
       .then(
         () =>
           this.authorization &&
           this.authorization.logout &&
           this.authorization.logout(options, ...rest)
       )
-      .then(() => this.trigger('client:logout'));
-  },
+      .then(() => this.emit('client:logout'));
+  }
 
   /**
    * General purpose wrapper to submit metrics via the metrics plugin (if the
    * metrics plugin is installed)
    * @instance
    * @memberof WebexCore
-   * @returns {Promise}
+   * @param {...any} args
+   * @returns {Promise<any>}
    */
-  measure(...args) {
+  measure(...args: any[]): Promise<any> {
     if (this.metrics) {
       return this.metrics.sendUnstructured(...args);
     }
 
     return Promise.resolve();
-  },
+  }
 
   /**
    * Uploads a file provided in `file` property
    *
-   * @param {Object} options
-   * @returns {Promise}
+   * @param {UploadOptions} options
+   * @returns {Promise<any>}
    */
-  upload(options) {
+  upload(options: UploadOptions): Promise<any> {
     if (!options || !options.file) {
       return Promise.reject(new Error('`options.file` is required'));
     }
@@ -636,19 +824,19 @@ const WebexCore = AmpState.extend({
 
         return p;
       })
-      .then((...args) => this._uploadPhaseFinalize(options, ...args))
+      .then((...args: any[]) => this._uploadPhaseFinalize(options, ...args))
       .then((res) => ({...res.body, ...res.headers}));
 
     proxyEvents(shunt, promise);
 
     return promise;
-  },
+  }
 
-  _uploadPhaseInitialize: function _uploadPhaseInitialize(options) {
-    this.logger.debug('client: initiating upload session');
+  private _uploadPhaseInitialize(options: UploadOptions): Promise<any> {
+    this.logger?.debug('client: initiating upload session');
 
-    return this.request(options.phases.initialize)
-      .then((...args) => {
+    return this.request(options.phases!.initialize)
+      .then((...args: any[]) => {
         const fileUploadSizeLimitInBytes =
           (args[0].body.fileUploadSizeLimit || MAX_FILE_SIZE_IN_MB) * 1024 * 1024;
         const currentFileSizeInBytes = options.file.byteLength;
@@ -659,22 +847,22 @@ const WebexCore = AmpState.extend({
 
         return this._uploadApplySession(options, ...args);
       })
-      .then((res) => {
-        this.logger.debug('client: initiated upload session');
+      .then((res: any) => {
+        this.logger?.debug('client: initiated upload session');
 
         return res;
       });
-  },
+  }
 
-  _uploadAbortSession(currentFileSizeInBytes, response) {
-    this.logger.debug('client: deleting uploaded file');
+  private _uploadAbortSession(currentFileSizeInBytes: number, response: any): Promise<never> {
+    this.logger?.debug('client: deleting uploaded file');
 
     return this.request({
       method: 'DELETE',
       url: response.body.url,
       headers: response.options.headers,
     }).then(() => {
-      this.logger.debug('client: deleting uploaded file complete');
+      this.logger?.debug('client: deleting uploaded file complete');
 
       const abortErrorDetails = {
         currentFileSizeInBytes,
@@ -684,13 +872,13 @@ const WebexCore = AmpState.extend({
 
       return Promise.reject(new Error(`${JSON.stringify(abortErrorDetails)}`));
     });
-  },
+  }
 
-  _uploadApplySession(options, res) {
+  private _uploadApplySession(options: UploadOptions, res: any): void {
     const session = res.body;
 
     ['upload', 'finalize'].reduce((opts, key) => {
-      opts[key] = Object.keys(opts[key]).reduce((phaseOptions, phaseKey) => {
+      opts[key] = Object.keys(opts[key]).reduce((phaseOptions: any, phaseKey: string) => {
         if (phaseKey.startsWith('$')) {
           phaseOptions[phaseKey.substr(1)] = phaseOptions[phaseKey](session);
           Reflect.deleteProperty(phaseOptions, phaseKey);
@@ -700,44 +888,43 @@ const WebexCore = AmpState.extend({
       }, opts[key]);
 
       return opts;
-    }, options.phases);
-  },
+    }, options.phases!);
+  }
 
   @retry
-  _uploadPhaseUpload(options) {
-    this.logger.debug('client: uploading file');
+  private _uploadPhaseUpload(options: UploadOptions): Promise<any> {
+    this.logger?.debug('client: uploading file');
 
-    const promise = this.request(options.phases.upload).then((res) => {
-      this.logger.debug('client: uploaded file');
+    const promise = this.request(options.phases!.upload).then((res: any) => {
+      this.logger?.debug('client: uploaded file');
 
       return res;
     });
 
-    proxyEvents(options.phases.upload.upload, promise);
+    proxyEvents(options.phases!.upload.upload, promise);
 
     /* istanbul ignore else */
     if (process.env.NODE_ENV === 'test') {
-      promise.on('progress', (event) => {
-        this.logger.info('upload progress', event.loaded, event.total);
+      promise.on('progress', (event: any) => {
+        this.logger?.info('upload progress', event.loaded, event.total);
       });
     }
 
     return promise;
-  },
+  }
 
-  _uploadPhaseFinalize: function _uploadPhaseFinalize(options) {
-    this.logger.debug('client: finalizing upload session');
+  private _uploadPhaseFinalize(options: UploadOptions): Promise<any> {
+    this.logger?.debug('client: finalizing upload session');
 
-    return this.request(options.phases.finalize).then((res) => {
-      this.logger.debug('client: finalized upload session');
+    return this.request(options.phases!.finalize).then((res: any) => {
+      this.logger?.debug('client: finalized upload session');
 
       return res;
     });
-  },
-});
+  }
+}
 
-WebexCore.version = PACKAGE_VERSION;
-
+// Initialize mixins
 mixinWebexInternalCorePlugins(WebexInternalCore, config, interceptors);
 mixinWebexCorePlugins(WebexCore, config, interceptors);
 
@@ -746,26 +933,26 @@ export default WebexCore;
 /**
  * @method registerPlugin
  * @param {string} name
- * @param {function} constructor
- * @param {Object} options
+ * @param {Function} constructor
+ * @param {any} options
  * @param {Array<string>} options.proxies
- * @param {Object} options.interceptors
- * @returns {null}
+ * @param {any} options.interceptors
+ * @returns {void}
  */
-export function registerPlugin(name, constructor, options = {}) {
-  WebexCore.registerPlugin(name, constructor, options);
+export function registerPlugin(name: string, constructor: Function, options: any = {}): void {
+  (WebexCore as any).registerPlugin(name, constructor, options);
 }
 
 /**
  * Registers plugins used by internal products that do not talk to public APIs.
  * @method registerInternalPlugin
  * @param {string} name
- * @param {function} constructor
- * @param {Object} options
- * @param {Object} options.interceptors
+ * @param {Function} constructor
+ * @param {any} options
+ * @param {any} options.interceptors
  * @private
- * @returns {null}
+ * @returns {void}
  */
-export function registerInternalPlugin(name, constructor, options) {
-  WebexInternalCore.registerPlugin(name, constructor, options);
+export function registerInternalPlugin(name: string, constructor: Function, options?: any): void {
+  (WebexInternalCore as any).registerPlugin(name, constructor, options);
 }

@@ -9,8 +9,8 @@ import {WebexPlugin} from '@webex/webex-core';
  * @extends {Lyra}
  * @memberof Lyra
  */
-const Device = WebexPlugin.extend({
-  namespace: 'Lyra',
+class Device extends WebexPlugin {
+  namespace = 'Lyra';
 
   /**
    * Gets the audio state of the device
@@ -25,7 +25,7 @@ const Device = WebexPlugin.extend({
         uri: `${space.url}/audio`,
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Updates audio state for lyra device, should be called every 10 minutes or
@@ -52,7 +52,7 @@ const Device = WebexPlugin.extend({
         body: audioState,
       })
       .then((res) => res.body);
-  },
+  }
 
   /**
    * Mutes lyra device
@@ -65,7 +65,7 @@ const Device = WebexPlugin.extend({
       method: 'POST',
       uri: `${space.url}/audio/microphones/actions/mute/invoke`,
     });
-  },
+  }
 
   /**
    * Unmutes lyra device
@@ -78,7 +78,7 @@ const Device = WebexPlugin.extend({
       method: 'POST',
       uri: `${space.url}/audio/microphones/actions/un-mute/invoke`,
     });
-  },
+  }
 
   /**
    * Increases lyra device's volume
@@ -91,7 +91,7 @@ const Device = WebexPlugin.extend({
       method: 'POST',
       uri: `${space.url}/audio/volume/actions/increase/invoke`,
     });
-  },
+  }
 
   /**
    * Decreases lyra device's volume
@@ -104,7 +104,7 @@ const Device = WebexPlugin.extend({
       method: 'POST',
       uri: `${space.url}/audio/volume/actions/decrease/invoke`,
     });
-  },
+  }
 
   /**
    * Sets lyra device's volume but should use increase and decrease api instead
@@ -121,7 +121,7 @@ const Device = WebexPlugin.extend({
         level,
       },
     });
-  },
-});
+  }
+}
 
 export default Device;

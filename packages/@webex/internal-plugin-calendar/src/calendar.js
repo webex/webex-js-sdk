@@ -57,8 +57,8 @@ import {
 import EncryptHelper from './calendar.encrypt.helper';
 import DecryptHelper from './calendar.decrypt.helper';
 
-const Calendar = WebexPlugin.extend({
-  namespace: 'Calendar',
+class Calendar extends WebexPlugin {
+  namespace = 'Calendar';
 
   /**
    * registered value indicating events registration is successful
@@ -66,17 +66,17 @@ const Calendar = WebexPlugin.extend({
    * @type {Boolean}
    * @memberof Calendar
    */
-  registered: false,
+  registered = false;
 
   /**
    * Cache all rpc event request locally
    * */
-  rpcEventRequests: [],
+  rpcEventRequests = [];
 
   /**
    * Cache KMS encryptionKeyUrl
    * */
-  encryptionKeyUrl: null,
+  encryptionKeyUrl = null;
 
   /**
    * Pre-fetch a KMS encryption key url to improve performance.
@@ -108,7 +108,7 @@ const Calendar = WebexPlugin.extend({
           this.logger.info('calendar->retrieve the KMS encryption key url and cache it');
         });
     });
-  },
+  }
 
   /**
    * WebexPlugin initialize method. This triggers once Webex has completed its
@@ -125,7 +125,7 @@ const Calendar = WebexPlugin.extend({
     this.listenToOnce(this.webex, 'ready', () => {
       this.prefetchEncryptionKey();
     });
-  },
+  }
 
   /**
    * Explicitly sets up the calendar plugin by registering
@@ -160,7 +160,7 @@ const Calendar = WebexPlugin.extend({
 
         return Promise.reject(error);
       });
-  },
+  }
 
   /**
    * Explicitly tears down the calendar plugin by deregistering
@@ -186,7 +186,7 @@ const Calendar = WebexPlugin.extend({
         this.trigger(CALENDAR_UNREGISTERED);
         this.registered = false;
       });
-  },
+  }
 
   /**
    * registers for calendar events through mercury
@@ -213,7 +213,7 @@ const Calendar = WebexPlugin.extend({
     this.webex.internal.mercury.on('event:calendar.free_busy', (envelope) => {
       this._handleFreeBusy(envelope.data);
     });
-  },
+  }
 
   /**
    * unregisteres all the calendar events from mercury
@@ -227,7 +227,7 @@ const Calendar = WebexPlugin.extend({
     this.webex.internal.mercury.off('event:calendar.meeting.update.minimal');
     this.webex.internal.mercury.off('event:calendar.meeting.delete');
     this.webex.internal.mercury.off('event:calendar.free_busy');
-  },
+  }
 
   /**
    * handles update events, triggers after collection updates
@@ -239,7 +239,7 @@ const Calendar = WebexPlugin.extend({
     const id = CalendarCollection.set(data.calendarMeetingExternal);
 
     this.trigger(CALENDAR_UPDATED, CalendarCollection.get(id));
-  },
+  }
 
   /**
    * handles create events, triggers after collection updates
@@ -251,7 +251,7 @@ const Calendar = WebexPlugin.extend({
     const id = CalendarCollection.set(data.calendarMeetingExternal);
 
     this.trigger(CALENDAR_CREATE, CalendarCollection.get(id));
-  },
+  }
 
   /**
    * handles delete events, triggers after collection updates
@@ -263,7 +263,7 @@ const Calendar = WebexPlugin.extend({
     const item = CalendarCollection.remove(data.calendarMeetingExternal.id);
 
     this.trigger(CALENDAR_DELETE, item);
-  },
+  }
 
   /**
    * handles free_busy events
@@ -289,7 +289,7 @@ const Calendar = WebexPlugin.extend({
         this.logger.log('webex.internal.calendar - receive other requests.');
       }
     });
-  },
+  }
 
   /**
    * Retrieves a collection of calendars based on the request parameters
@@ -305,7 +305,8 @@ const Calendar = WebexPlugin.extend({
 
       return CalendarCollection.getAll();
     });
-  },
+  }
+
   /**
    * get the calendar item that has a matching value
    * @param {String} key meeting property
@@ -317,7 +318,7 @@ const Calendar = WebexPlugin.extend({
       return CalendarCollection.getBy(key, value);
     }
     throw new Error('key must be one of, spaceURI, spaceMeetURL, or conversationId');
-  },
+  }
 
   /**
    * gets all the calendar items that have been populated
@@ -325,7 +326,7 @@ const Calendar = WebexPlugin.extend({
    */
   getAll() {
     return CalendarCollection.getAll();
-  },
+  }
 
   /**
    * Decrypts an encrypted incoming calendar event
@@ -334,7 +335,7 @@ const Calendar = WebexPlugin.extend({
    */
   processMeetingEvent(event) {
     return this.webex.transform('inbound', event).then(() => event);
-  },
+  }
 
   /**
    * Retrieves an array of meeting participants for the meeting participantsUrl
@@ -346,7 +347,7 @@ const Calendar = WebexPlugin.extend({
       method: 'GET',
       uri: participantsUrl,
     });
-  },
+  }
 
   /**
    * get meeting notes using notesUrl from meeting object.
@@ -358,7 +359,7 @@ const Calendar = WebexPlugin.extend({
       method: 'GET',
       uri: notesUrl,
     });
-  },
+  }
 
   /**
    * Retrieves a collection of meetings based on the request parameters
@@ -371,7 +372,7 @@ const Calendar = WebexPlugin.extend({
       service: 'calendar',
       resource: `calendarEvents/${base64.encode(id)}/notes`,
     });
-  },
+  }
 
   /**
    * Retrieves a collection of meetings based on the request parameters
@@ -406,7 +407,7 @@ const Calendar = WebexPlugin.extend({
 
         return Promise.all(promises).then(() => meetingObjects);
       });
-  },
+  }
 
   /**
    * Create calendar event
@@ -424,7 +425,7 @@ const Calendar = WebexPlugin.extend({
         qs: query || {},
       })
     );
-  },
+  }
 
   /**
    * Update calendar event
@@ -443,7 +444,7 @@ const Calendar = WebexPlugin.extend({
         qs: query || {},
       })
     );
-  },
+  }
 
   /**
    * Delete calendar event
@@ -458,7 +459,7 @@ const Calendar = WebexPlugin.extend({
       resource: `calendarEvents/${base64.encode(id)}/sync`,
       qs: query || {},
     });
-  },
+  }
 
   /**
    * @typedef QuerySchedulerDataOptions
@@ -490,7 +491,7 @@ const Calendar = WebexPlugin.extend({
     }).then((response) => {
       return DecryptHelper.decryptSchedulerDataResponse(this, response.body).then(() => response);
     });
-  },
+  }
 
   /**
    * Get free busy status from calendar service
@@ -517,7 +518,7 @@ const Calendar = WebexPlugin.extend({
       .catch((error) => {
         throw error;
       });
-  },
-});
+  }
+}
 
 export default Calendar;

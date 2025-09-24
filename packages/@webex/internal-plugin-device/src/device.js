@@ -1,6 +1,7 @@
 // Internal Dependencies
-import {deprecated, oneFlight} from '@webex/common';
-import {persist, waitForValue, WebexPlugin} from '@webex/webex-core';
+import {deprecated} from '@webex/common';
+import {oneFlight} from '@webex/common';
+import {persist, WebexPlugin} from '@webex/webex-core';
 import {safeSetTimeout} from '@webex/common-timers';
 import {orderBy} from 'lodash';
 import uuid from 'uuid';
@@ -20,320 +21,66 @@ function decider() {
   return !this.config.ephemeral;
 }
 
-const Device = WebexPlugin.extend({
-  // Ampersand property members.
-
-  namespace: 'Device',
+class Device extends WebexPlugin {
+  namespace = 'Device';
 
   // Allow for extra properties to prevent the plugin from failing due to
   // **WDM** service DTO changes.
-  extraProperties: 'allow',
+  extraProperties = 'allow';
 
-  idAttribute: 'url',
+  idAttribute = 'url';
 
-  children: {
-    /**
-     * The class object that contains all of the feature collections.
-     *
-     * @type {FeaturesModel}
-     */
+  children = {
     features: FeaturesModel,
-    /**
-     * Helper class for detecting what IP network version (ipv4, ipv6) we're on.
-     *
-     * @type {IpNetworkDetector}
-     */
     ipNetworkDetector: IpNetworkDetector,
-  },
+  };
 
-  /**
-   * A collection of device properties mostly assigned by the retrieved DTO from
-   * the **WDM** service that are mapped against the ampersand properties.
-   *
-   * @type {Object}
-   */
-  props: {
-    /**
-     * This property determines whether or not giphy support is enabled.
-     *
-     * @type {'ALLOW' | 'BLOCK'}
-     */
+  props = {
     clientMessagingGiphy: 'string',
-
-    /**
-     * This property should store the company name.
-     *
-     * @type {string}
-     */
     customerCompanyName: 'string',
-
-    /**
-     * This property should store the logo url.
-     *
-     * @type {string}
-     */
     customerLogoUrl: 'string',
-
-    /**
-     * This property doesn't have any real values, but is sent during device
-     * refresh to prevent the **wdm** service from falling back to an iOS device
-     * type.
-     *
-     * @type {string}
-     */
     deviceType: 'string',
-
-    /**
-     * This property should store the help url.
-     *
-     * @type {string}
-     */
     helpUrl: 'string',
-
-    /**
-     * This property should store the intranet inactivity timer duration.
-     *
-     * @type {number}
-     */
     intranetInactivityDuration: 'number',
-
-    /**
-     * This property stores the url required to validate if the device is able
-     * to actively reach the intranet network.
-     *
-     * @type {string}
-     */
     intranetInactivityCheckUrl: 'string',
-
-    /**
-     * This property stores the inactivity timer duration, and could possibly
-     * deprecate the `intranetInactivityDuration` property.
-     *
-     * @type {number}
-     */
     inNetworkInactivityDuration: 'number',
-
-    /**
-     * This property stores the ECM (external content management) enabled value
-     * for the whole organization.
-     *
-     * @type {boolean}
-     */
     ecmEnabledForAllUsers: ['boolean', false, false],
-
-    /**
-     * This property stores an array of ECM (external content management)
-     * providers that are currently available.
-     *
-     * @returns {Array<string>}
-     */
     ecmSupportedStorageProviders: ['array', false, () => []],
-
-    /**
-     * This property stores the modification time value retrieved from the
-     * **WDM** endpoint formatted as ISO 8601.
-     *
-     * @type {string}
-     */
     modificationTime: 'string',
-
-    /**
-     * This property stores the navigation bar color.
-     *
-     * @type {string}
-     */
     navigationBarColor: 'string',
-
-    /**
-     * This property stores the partner company's name when available.
-     *
-     * @type {string}
-     */
     partnerCompanyName: 'string',
-
-    /**
-     * This property stores the partner company's logo when available.
-     *
-     * @type {string}
-     */
     partnerLogoUrl: 'string',
-
-    /**
-     * This property stores the availability of people data from the **WDM**
-     * service.
-     *
-     * @type {boolean}
-     */
     peopleInsightsEnabled: 'boolean',
-
-    /**
-     * This property stores the reporting site's description when available.
-     *
-     * @type {string}
-     */
     reportingSiteDesc: 'string',
-
-    /**
-     * This property stores the reporting site's access url when available.
-     *
-     * @type {string}
-     */
     reportingSiteUrl: 'string',
-
-    /**
-     * This property stores the encryption key url when available.
-     *
-     * @type {string}
-     */
     searchEncryptionKeyUrl: 'string',
-
-    /**
-     * This property stores the availability of support-provided text from the
-     * **WDM** service.
-     *
-     * @type {boolean}
-     */
     showSupportText: 'boolean',
-
-    /**
-     * This property stores the support provider's company name when available.
-     *
-     * @type {string}
-     */
     supportProviderCompanyName: 'string',
-
-    /**
-     * This property stores the support provider's logo url when available.
-     *
-     * @type {string}
-     */
     supportProviderLogoUrl: 'string',
-
-    /**
-     * This property stores the device's url retrieved from a registration
-     * request. This property gets set via the initial registration process by a
-     * `this.set()` method.
-     *
-     * @type {string}
-     */
     url: 'string',
-
-    /**
-     * This property stores the device's userId uuid value, which can also be
-     * derived from the device's registerd user's userId retrieved from
-     * the **Hydra** service.
-     *
-     * @type {string}
-     */
     userId: 'string',
-
-    /**
-     * This property stores whether or not file sharing is enabled
-     *
-     * @type {'BLOCK_BOTH' | 'BLOCK_UPLOAD'}
-     */
     webFileShareControl: 'string',
-
-    /**
-     * This property stores the current web socket url used by the registered
-     * device.
-     *
-     * @type {string}
-     */
     webSocketUrl: 'string',
-
-    /**
-     * This property stores the value indicating whether or not white board file
-     * sharing is enabled for the current device.
-     *
-     * @type {'ALLOW' | 'BLOCK'}
-     */
     whiteboardFileShareControl: 'string',
-  },
+  };
 
-  /**
-   * A list of derived properties that populate based when their parent data
-   * available via the device's properties.
-   *
-   * @type {Object}
-   */
-  derived: {
-    /**
-     * This property determines if the current device is registered.
-     *
-     * @type {boolean}
-     */
+  derived = {
     registered: {
       deps: ['url'],
-
-      /**
-       * Checks if the device is registered by validating that the url exists.
-       * Amperstand does not allow this to method to be written as an arrow
-       * function.
-       *
-       * @returns {boolean}
-       */
       fn() {
         return !!this.url;
       },
     },
-  },
+  };
 
-  /**
-   * Stores timer data as well as other state details.
-   *
-   * @type {Object}
-   */
-  session: {
-    /**
-     * This property stores the logout timer object
-     *
-     * @type {any}
-     */
+  session = {
     logoutTimer: 'any',
-
-    /**
-     * This property stores the date for the last activity the user made
-     * with the current device.
-     *
-     * @type {number}
-     */
     lastUserActivityDate: 'number',
-
-    /**
-     * This property stores whether or not the reachability check has been
-     * performed to prevent the reachability check from performing its
-     * operation more than once after a successful check.
-     *
-     * @returns {boolean}
-     */
     isReachabilityChecked: ['boolean', false, false],
-
-    /**
-     * This property stores whether or not the next refresh or register request should request energy forecast data
-     * in order to prevent over fetching energy forecasts
-     *
-     * @type {boolean}
-     */
     energyForecastConfig: 'boolean',
-
-    /**
-     * This property stores whether or not the current device is in a meeting
-     * to prevent an unneeded timeout of a meeting due to inactivity.
-     *
-     * @type {boolean}
-     */
     isInMeeting: 'boolean',
-
-    /**
-     * This property identifies if the device is currently in network to prevent
-     * the `resetLogoutTimer()` method from being called repeatedly once its
-     * known client is connected to the organization's internal network.
-     *
-     * @type {boolean}
-     */
     isInNetwork: 'boolean',
-  },
+  };
 
   // Event method members.
 
@@ -344,7 +91,7 @@ const Device = WebexPlugin.extend({
    */
   meetingStarted() {
     this.webex.trigger('meeting started');
-  },
+  }
 
   /**
    * Trigger meeting ended event for webex instance. Used by web-client team.
@@ -353,7 +100,7 @@ const Device = WebexPlugin.extend({
    */
   meetingEnded() {
     this.webex.trigger('meeting ended');
-  },
+  }
 
   /**
    * Set the value of energy forecast config for the current registered device.
@@ -362,7 +109,7 @@ const Device = WebexPlugin.extend({
    */
   setEnergyForecastConfig(energyForecastConfig = false) {
     this.energyForecastConfig = energyForecastConfig;
-  },
+  }
 
   // Registration method members
 
@@ -373,8 +120,7 @@ const Device = WebexPlugin.extend({
    * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
-  @oneFlight
-  @waitForValue('@')
+  @oneFlight()
   refresh(deviceRegistrationOptions = {}) {
     this.logger.info('device: refreshing');
 
@@ -452,7 +198,8 @@ const Device = WebexPlugin.extend({
           return Promise.reject(reason);
         });
     });
-  },
+  }
+
   /**
    * Fetches the web devices and deletes the third of them which are not recent devices in use
    * @returns {Promise<void, Error>}
@@ -497,12 +244,11 @@ const Device = WebexPlugin.extend({
 
         return Promise.reject(error);
       });
-  },
+  }
 
   /**
    * Registers and when fails deletes devices
    */
-  @waitForValue('@')
   register(deviceRegistrationOptions = {}) {
     this.logger.info('device: registering');
 
@@ -526,14 +272,14 @@ const Device = WebexPlugin.extend({
         throw error;
       });
     });
-  },
+  }
 
   _getBody() {
     return {
       ...(this.config.defaults.body ? this.config.defaults.body : {}),
       ...(this.config.body ? this.config.body : {}),
     };
-  },
+  }
 
   /**
    * Register or refresh a device depending on the current device state. Device
@@ -544,8 +290,7 @@ const Device = WebexPlugin.extend({
    * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
-  @oneFlight
-  @waitForValue('@')
+  @oneFlight()
   _registerInternal(deviceRegistrationOptions = {}) {
     this.logger.info('device: making registration request');
 
@@ -614,7 +359,8 @@ const Device = WebexPlugin.extend({
         });
         throw error;
       });
-  },
+  }
+
   /**
    * Unregister the current registered device if available. Unregistering a
    * device utilizes the services plugin to send the request to the **WDM**
@@ -622,8 +368,7 @@ const Device = WebexPlugin.extend({
    *
    * @returns {Promise<void, Error>}
    */
-  @oneFlight
-  @waitForValue('@')
+  @oneFlight()
   unregister() {
     this.logger.info('device: unregistering');
 
@@ -648,7 +393,7 @@ const Device = WebexPlugin.extend({
         }
         throw reason;
       });
-  },
+  }
   /* eslint-enable require-jsdoc */
 
   // Helper method members
@@ -680,7 +425,7 @@ const Device = WebexPlugin.extend({
             )
           )
     );
-  },
+  }
 
   /**
    * Check if the device can currently reach the inactivity check url.
@@ -730,7 +475,7 @@ const Device = WebexPlugin.extend({
 
         return Promise.resolve(this.resetLogoutTimer());
       });
-  },
+  }
 
   /**
    * Clears the registration ttl value if available.
@@ -743,7 +488,7 @@ const Device = WebexPlugin.extend({
 
     // Prototype the extended class in order to preserve the parent member.
     Reflect.apply(WebexPlugin.prototype.clear, this, args);
-  },
+  }
 
   /**
    * Get the current websocket url with the appropriate priority host.
@@ -784,7 +529,7 @@ const Device = WebexPlugin.extend({
     }
 
     return Promise.reject(new Error('device: failed to get the current websocket url'));
-  },
+  }
 
   /**
    * Process a successful device registration.
@@ -833,7 +578,7 @@ const Device = WebexPlugin.extend({
 
     // Emit the registration:success event.
     this.trigger(DEVICE_EVENT_REGISTRATION_SUCCESS, this);
-  },
+  }
 
   /**
    * Reset the current local logout timer for the registered device if
@@ -866,7 +611,7 @@ const Device = WebexPlugin.extend({
         this.setLogoutTimer(this.intranetInactivityDuration);
       }
     }
-  },
+  }
 
   /**
    * Set the value of the logout timer for the current registered device.
@@ -890,7 +635,7 @@ const Device = WebexPlugin.extend({
     this.logoutTimer = safeSetTimeout(() => {
       this.webex.logout();
     }, duration * 1000);
-  },
+  }
 
   /**
    * Wait for the device to be registered.
@@ -916,7 +661,7 @@ const Device = WebexPlugin.extend({
         resolve();
       });
     });
-  },
+  }
 
   // Deprecated methods.
 
@@ -929,7 +674,7 @@ const Device = WebexPlugin.extend({
   @deprecated('device#markUrlFailedAndGetNew(): Use services#markFailedUrl()')
   markUrlFailedAndGetNew(url) {
     return Promise.resolve(this.webex.internal.services.markFailedUrl(url));
-  },
+  }
 
   // Ampersand method members
 
@@ -985,8 +730,8 @@ const Device = WebexPlugin.extend({
       this.isInMeeting = false;
       this.resetLogoutTimer();
     });
-  },
+  }
   /* eslint-enable require-jsdoc */
-});
+}
 
 export default Device;
