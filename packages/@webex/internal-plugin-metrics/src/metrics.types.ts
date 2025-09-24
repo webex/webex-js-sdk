@@ -138,7 +138,7 @@ export type SubmitClientEventOptions = {
   triggeredTime?: string;
   emailInput?: ClientEmailInput;
   userNameInput?: ClientUserNameInput;
-  vendor?: string;
+  vendorId?: string;
 };
 
 export type SubmitMQEOptions = {
