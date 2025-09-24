@@ -17,6 +17,14 @@ export const decryptToolUse = async (data, webex) => {
 };
 
 export const decryptCitedAnswer = async (data, webex) => {
+  if (data.value.citations) {
+    await Promise.all(
+      data.value.citations.map((citation, index) => {
+        return decryptInPlace(data, `value.citations.${index}.name`, 'encryptionKeyUrl', webex);
+      })
+    );
+  }
+
   await decryptInPlace(data, 'value.value', 'encryptionKeyUrl', webex);
 };
 
