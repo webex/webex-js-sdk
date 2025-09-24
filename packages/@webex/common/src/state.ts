@@ -1,11 +1,11 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
 import {WebexEventEmitter} from './events';
 
 /**
- * @description Represents the payload for a 'change' event.
- * @export
- * @interface IChangePayload
- * @template T - The type of the state object.
- * @template K - A key within the state object.
+ * Interface for change payload that gets emitted when state changes
  */
 export interface IChangePayload<T, K extends keyof T> {
   key: K;
@@ -16,60 +16,152 @@ export interface IChangePayload<T, K extends keyof T> {
 /**
  * @class WebexState
  * @extends {WebexEventEmitter}
- * @template T - A generic type for the state, which must be a record of string keys to any value.
- * @description A modern, typed state management class that serves as a replacement
- * for ampersand-state. It provides a structured way to manage state
- * and emit change events.
+ * @description Base class for state management in Webex plugins. Provides reactive state
+ * management with automatic change event emission when properties are modified.
+ * This replaces the old AmpersandState functionality with a modern TypeScript implementation.
  */
-export class WebexState<T extends Record<string, any>> extends WebexEventEmitter {
-  private attributes: T;
+export class WebexState<T = any> extends WebexEventEmitter {
+  /**
+   * Internal state storage
+   */
+  private _state: Partial<T> = {};
 
   /**
    * @constructs WebexState
-   * @param {T} attributes - The initial attributes to set on the state object.
+   * @param {Partial<T>} initialState - Initial state values
    */
-  constructor(attributes: T) {
-    super();
-    this.attributes = attributes;
+  constructor(initialState: Partial<T> = {}) {
+    super(); // Initialize WebexEventEmitter which initializes EventEmitter
+
+    // Set initial state values
+    Object.assign(this._state, initialState);
+
+    // Set up property accessors for reactive state management
+    this._setupReactiveProperties();
   }
 
   /**
-   * Gets a value from the state.
-   *
-   * @template K
-   * @param {K} key - The key of the attribute to retrieve.
-   * @returns {T[K]} The value of the attribute.
+   * Set up reactive properties that emit change events when modified
+   * @private
+   * @returns {void}
    */
-  public get<K extends keyof T>(key: K): T[K] {
-    return this.attributes[key];
+  private _setupReactiveProperties(): void {
+    // Create getters and setters for all initial state keys
+    Object.keys(this._state).forEach((key) => {
+      this._createReactiveProperty(key as keyof T);
+    });
   }
 
   /**
-   * Sets a value in the state and emits a change event if the value has changed.
-   * It emits two events:
-   * 1. `change:{key}` with the new and old values.
-   * 2. `change` with a payload containing the key, new value, and old value.
-   *
-   * @template K
-   * @param {K} key - The key of the attribute to set.
-   * @param {T[K]} value - The new value for the attribute.
+   * Create a reactive property that emits change events
+   * @private
+   * @param {keyof T} key - The property key
+   * @returns {void}
+   */
+  private _createReactiveProperty(key: keyof T): void {
+    Object.defineProperty(this, key, {
+      get(): T[keyof T] {
+        return this._state[key];
+      },
+      set(newValue: T[keyof T]): void {
+        const oldValue = this._state[key];
+        if (oldValue !== newValue) {
+          this._state[key] = newValue;
+          this.emit('change', {
+            key,
+            value: newValue,
+            old: oldValue,
+          } as IChangePayload<T, keyof T>);
+          this.emit(`change:${String(key)}`, newValue, oldValue);
+        }
+      },
+      enumerable: true,
+      configurable: true,
+    });
+  }
+
+  /**
+   * Set a property value and emit change events
+   * @param {keyof T} key - The property key
+   * @param {T[keyof T]} value - The new value
+   * @returns {void}
    */
   public set<K extends keyof T>(key: K, value: T[K]): void {
-    const old = this.attributes[key];
+    // Create reactive property if it doesn't exist
+    if (!(key in this)) {
+      this._createReactiveProperty(key);
+    }
 
-    if (old !== value) {
-      this.attributes[key] = value;
-      this.emit(`change:${String(key)}`, value, old);
-      this.emit('change', {key, value, old} as IChangePayload<T, K>);
+    // Set the value (this will trigger the setter and emit events)
+    (this as any)[key] = value;
+  }
+
+  /**
+   * Get a property value
+   * @param {keyof T} key - The property key
+   * @returns {T[keyof T]} The property value
+   */
+  public get<K extends keyof T>(key: K): T[K] {
+    return (this as any)[key];
+  }
+
+  /**
+   * Check if a property has been set
+   * @param {keyof T} key - The property key
+   * @returns {boolean} True if the property exists
+   */
+  public has(key: keyof T): boolean {
+    return key in this._state;
+  }
+
+  /**
+   * Remove a property and emit change events
+   * @param {keyof T} key - The property key
+   * @returns {void}
+   */
+  public unset(key: keyof T): void {
+    if (this.has(key)) {
+      const oldValue = this._state[key];
+      delete this._state[key];
+      delete (this as any)[key];
+
+      this.emit('change', {
+        key,
+        value: undefined,
+        old: oldValue,
+      } as IChangePayload<T, keyof T>);
+      this.emit(`change:${String(key)}`, undefined, oldValue);
     }
   }
 
   /**
-   * @function getState
-   * @returns {T} A shallow copy of the full state object.
-   * @description Returns the full state object.
+   * Get all state as a plain object
+   * @returns {Partial<T>} A copy of the current state
    */
-  public getState(): T {
-    return {...this.attributes};
+  public toJSON(): Partial<T> {
+    return {...this._state};
+  }
+
+  /**
+   * Clear all state and emit change events
+   * @returns {void}
+   */
+  public clear(): void {
+    Object.keys(this._state).forEach((key) => {
+      this.unset(key as keyof T);
+    });
+  }
+
+  /**
+   * Set multiple properties at once
+   * @param {Partial<T>} values - Object containing key-value pairs to set
+   * @returns {void}
+   */
+  public setAll(values: Partial<T>): void {
+    Object.entries(values).forEach(([key, value]) => {
+      this.set(key as keyof T, value as T[keyof T]);
+    });
   }
 }
+
+export default WebexState;

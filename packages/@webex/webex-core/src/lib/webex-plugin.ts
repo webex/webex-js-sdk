@@ -1,4 +1,4 @@
-import {WebexState, IChangePayload} from '@webex/common';
+import {WebexEventEmitter} from '@webex/common';
 import {makeWebexPluginStore} from './storage';
 
 // Define a type for the constructor options to ensure type safety.
@@ -8,21 +8,21 @@ type WebexPluginOptions = {
   namespace?: string;
 };
 
+// Define change payload interface
+interface IChangePayload<T, K> {
+  key: K;
+  value: T;
+  old: T;
+}
+
 /**
  * @class WebexPlugin
- * @extends {WebexState<any>}
+ * @extends {WebexEventEmitter}
  * @description Base class for all Webex plugins. It provides a standard
  * structure for plugins, including state management, event handling, and
  * access to the core Webex instance.
  */
-class WebexPlugin extends WebexState<any> {
-  // EventEmitter methods
-  on: (event: string, listener: (...args: any[]) => void) => this;
-  once: (event: string, listener: (...args: any[]) => void) => this;
-  off: (event: string, listener: (...args: any[]) => void) => this;
-  emit: (event: string, ...args: any[]) => boolean;
-  removeAllListeners: (event: string) => this;
-
+class WebexPlugin extends WebexEventEmitter {
   // Explicitly type the properties of the class.
   public parent: any;
   public collection: any;
@@ -30,19 +30,39 @@ class WebexPlugin extends WebexState<any> {
 
   /**
    * @constructs WebexPlugin
-   * @param {any} attrs - Attributes to pass to the state constructor.
+   * @param {any} attrs - Attributes to pass to the plugin constructor.
    * @param {WebexPluginOptions} options - Options for the plugin, including parent, collection, and namespace.
    */
   constructor(attrs: any, options: WebexPluginOptions) {
-    super({...attrs, ...options});
+    super();
+
+    // Set attributes as properties on this instance
+    Object.assign(this, attrs);
 
     // Set properties from options.
     this.parent = options.parent;
     this.collection = options.collection;
     this.namespace = options.namespace;
 
+    // Explicitly assign EventEmitter methods from the prototype chain
+    // This resolves both TypeScript and runtime inheritance issues
+    const emitterMethods = [
+      'on',
+      'once',
+      'off',
+      'emit',
+      'removeAllListeners',
+      'addListener',
+      'removeListener',
+    ];
+    emitterMethods.forEach((method) => {
+      if (typeof super[method] === 'function') {
+        (this as any)[method] = super[method].bind(this);
+      }
+    });
+
     // Set up a listener for change events on the plugin's state.
-    this.on('change', (payload: IChangePayload<any, any>) => {
+    (this as any).on('change', (payload: IChangePayload<any, any>) => {
       if (this.parent) {
         // Trigger a change event on the parent, prefixed with the plugin's namespace.
         this.parent.emit(`change:${this.getNamespace().toLowerCase()}`, this.parent, this, payload);
@@ -87,7 +107,7 @@ class WebexPlugin extends WebexState<any> {
    */
   public when(eventName: string): Promise<any[]> {
     return new Promise((resolve) => {
-      this.once(eventName, (...args: any[]) => resolve(args));
+      (this as any).once(eventName, (...args: any[]) => resolve(args));
     });
   }
 

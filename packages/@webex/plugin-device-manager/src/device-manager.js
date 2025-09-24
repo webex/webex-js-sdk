@@ -24,10 +24,21 @@ class DeviceManager extends WebexPlugin {
     // Initialize the paired method property
     this._pairedMethod = 'Manual';
 
-    // Lyra mercury events listener
-    this.webex.internal.mercury.on('event:lyra.space_updated', ({data}) => {
-      this._receiveDeviceUpdates(data);
-    });
+    // Use standard EventEmitter on method instead of direct access
+    // Defer execution to ensure webex is available
+    setTimeout(() => {
+      if (
+        this.webex &&
+        this.webex.internal &&
+        this.webex.internal.mercury &&
+        typeof this.webex.internal.mercury.on === 'function'
+      ) {
+        // Lyra mercury events listener
+        this.webex.internal.mercury.on('event:lyra.space_updated', ({data}) => {
+          this._receiveDeviceUpdates(data);
+        });
+      }
+    }, 0);
   }
 
   /**

@@ -81,14 +81,21 @@ const getConvoLimit = (options = {}) => {
 class Conversation extends WebexPlugin {
   constructor(...args) {
     super(...args);
-    this.listenToOnce(this.webex, 'ready', () => {
-      if (Array.isArray(this.webex.config.payloadTransformer?.transforms)) {
-        this.webex.config.payloadTransformer.transforms =
-          this.webex.config.payloadTransformer.transforms
-            .concat(this.config.includeDecryptionTransforms ? decryptionTransforms : [])
-            .concat(this.config.includeEncryptionTransforms ? encryptionTransforms : []);
+
+    // Use standard EventEmitter once method instead of listenToOnce
+    // Defer execution to ensure webex is available
+    setTimeout(() => {
+      if (this.webex && typeof this.webex.once === 'function') {
+        this.webex.once('ready', () => {
+          if (Array.isArray(this.webex.config.payloadTransformer?.transforms)) {
+            this.webex.config.payloadTransformer.transforms =
+              this.webex.config.payloadTransformer.transforms
+                .concat(this.config.includeDecryptionTransforms ? decryptionTransforms : [])
+                .concat(this.config.includeEncryptionTransforms ? encryptionTransforms : []);
+          }
+        });
       }
-    });
+    }, 0);
   }
 
   /**

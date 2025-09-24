@@ -7,6 +7,10 @@ import {isArray} from 'lodash';
  * across the SDK.
  */
 export class WebexEventEmitter extends EventEmitter {
+  constructor() {
+    super();
+  }
+
   /**
    * Fires when the object has been destroyed.
    * @returns {void}

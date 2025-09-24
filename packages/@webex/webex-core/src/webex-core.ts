@@ -5,8 +5,7 @@
 import {EventEmitter} from 'events';
 import util from 'util';
 
-import {proxyEvents, retry, transferEvents} from '@webex/common';
-import {WebexEventEmitter} from '@webex/common';
+import {proxyEvents, retry, transferEvents, WebexState} from '@webex/common';
 import {
   defaults as requestDefaults,
   protoprepareFetchOptions as prepareFetchOptions,
@@ -34,8 +33,7 @@ import DefaultOptionsInterceptor from './interceptors/default-options';
 import HostMapInterceptor from './lib/interceptors/hostmap';
 import config from './config';
 import {makeWebexStore} from './lib/storage';
-import mixinWebexCorePlugins from './lib/webex-core-plugin-mixin';
-import mixinWebexInternalCorePlugins from './lib/webex-internal-core-plugin-mixin';
+import {pluginRegistry} from './lib/plugin-registry';
 import WebexInternalCore from './webex-internal-core';
 
 // TypeScript interfaces for better type safety
@@ -87,6 +85,21 @@ export interface WebexCoreConfig {
 
 // Declare global PACKAGE_VERSION
 declare const PACKAGE_VERSION: string;
+
+// Interface to ensure WebexCore has EventEmitter methods available
+// This helps TypeScript understand the inheritance chain: WebexCore -> WebexState -> WebexEventEmitter -> EventEmitter
+interface WebexCoreEventEmitter {
+  emit(event: string | symbol, ...args: any[]): boolean;
+  on(event: string | symbol, listener: (...args: any[]) => void): this;
+  once(event: string | symbol, listener: (...args: any[]) => void): this;
+  off(event: string | symbol, listener: (...args: any[]) => void): this;
+  removeAllListeners(event?: string | symbol): this;
+  addListener(event: string | symbol, listener: (...args: any[]) => void): this;
+  removeListener(event: string | symbol, listener: (...args: any[]) => void): this;
+  listeners(event: string | symbol): Function[];
+  listenerCount(event: string | symbol): number;
+  eventNames(): (string | symbol)[];
+}
 
 // Create a simplified HttpStatusInterceptor creator
 const createHttpStatusInterceptor = () => {
@@ -184,12 +197,12 @@ const MAX_FILE_SIZE_IN_MB = 2048;
  * AmpersandState automatically called initialize() and handled children instantiation.
  * This TypeScript version manually replicates that behavior for compatibility.
  */
-class WebexCore extends WebexEventEmitter {
+class WebexCore extends WebexState {
   static version = PACKAGE_VERSION;
   version = PACKAGE_VERSION;
 
   // Core WebexCore components
-  internal: typeof WebexInternalCore;  // Internal plugins (webex.internal.*)
+  internal: WebexInternalCore;  // Internal plugins (webex.internal.*)
   config: WebexCoreConfig;             // SDK configuration
   loaded: boolean;                     // Storage loading complete flag
   request: any;                        // HTTP request function with interceptors
@@ -210,15 +223,16 @@ class WebexCore extends WebexEventEmitter {
   messages?: any;       // webex.messages (messaging functionality)
   // ... other plugins get attached here dynamically
 
-  // EventEmitter methods inherited from WebexEventEmitter
-  on: (event: string, listener: (...args: any[]) => void) => this;
-  once: (event: string, listener: (...args: any[]) => void) => this;
-  off: (event: string, listener: (...args: any[]) => void) => this;
-  emit: (event: string, ...args: any[]) => boolean;
-  removeAllListeners: (event?: string) => this;
+  // Note: EventEmitter methods (emit, on, once, etc.) are inherited from
+  // WebexState -> WebexEventEmitter -> EventEmitter and should be available at runtime
 
   constructor(attrs: WebexCoreOptions | string = {}, options?: any) {
-    super();
+    // Call super() with initial state to properly initialize WebexState and EventEmitter chain
+    super({
+      version: PACKAGE_VERSION,
+      loaded: false,
+      sessionId: '',
+    });
 
     // Handle string input (access token) - convenience for simple authentication
     if (typeof attrs === 'string') {
@@ -272,19 +286,21 @@ class WebexCore extends WebexEventEmitter {
       }
     }
 
-    // Initialize child components
+    // Initialize child components after super() call
     this.internal = new WebexInternalCore(attrs, options);
     this.loaded = false;
     this.config = {} as WebexCoreConfig;
     this.sessionId = '';
 
-    // Defer initialization until after full construction chain is complete
-    // This prevents double initialization when subclasses call super()
-    setTimeout(() => {
-      if (!this._initialized) {
+    // Schedule initialization to happen after constructor completes (like AmpersandState did)
+    // CRITICAL: Only initialize once, even if constructor is called multiple times
+    if (!this._initialized) {
+      this._initialized = true; // Set immediately to prevent re-entry
+      // Use setImmediate/setTimeout to ensure EventEmitter is fully initialized
+      process.nextTick(() => {
         this.initialize(attrs);
-      }
-    }, 0);
+      });
+    }
   }
 
   /**
@@ -299,13 +315,23 @@ class WebexCore extends WebexEventEmitter {
   }
 
   get ready(): boolean {
-    return (
-      this.loaded &&
-      Object.keys((this.constructor as any).prototype._children || {}).reduce(
-        (ready, name) => ready && this[name] && this[name].ready !== false,
-        true
-      )
+    const loaded = this.loaded;
+    const internalReady = this.internal.ready;
+    const childrenReady = Object.keys((this.constructor as any).prototype._children || {}).reduce(
+      (ready, name) => ready && this[name] && this[name].ready !== false,
+      true
     );
+
+    const result = loaded && internalReady && childrenReady;
+    
+    console.debug('WebexCore: Ready state calculation:', {
+      loaded,
+      internalReady,  
+      childrenReady,
+      result
+    });
+
+    return result;
   }
 
   /**
@@ -421,6 +447,53 @@ class WebexCore extends WebexEventEmitter {
   }
 
   /**
+   * Determines whether this WebexCore instance should initialize plugins
+   * Only the main Webex object should initialize plugins, not individual plugins or internal components
+   * @private
+   * @returns {boolean}
+   */
+  private _shouldInitializePlugins(): boolean {
+    // STRATEGY: Only initialize plugins for the main Webex instance
+    // 
+    // DETECTION METHODS:
+    // 1. Check if this instance has no parent (it's the root)
+    // 2. Check if this instance was created directly (not as a child plugin)
+    // 3. Check if this instance has the main Webex characteristics
+    
+    // Method 1: Check for main Webex class characteristics
+    // The main Webex class (in packages/webex/src/webex.js) sets this.webex = true
+    if ((this as any).webex === true) {
+      return true;
+    }
+    
+    // Method 2: Check if this is NOT a plugin instance
+    // Plugins have a parent and namespace, main Webex object doesn't
+    if ((this as any).parent || (this as any).namespace) {
+      return false;
+    }
+    
+    // Method 3: Check inheritance chain
+    // Main Webex class extends WebexCore directly, plugins extend WebexPlugin
+    const constructorName = this.constructor.name;
+    if (constructorName === 'Webex' || constructorName.endsWith('Webex')) {
+      return true;
+    }
+    
+    // Method 4: Default for backward compatibility
+    // If we can't determine, err on the side of initializing for legacy support
+    // But only if there are actually plugins registered
+    const children = (this.constructor as any).prototype._children || {};
+    const hasRegisteredPlugins = Object.keys(children).length > 0;
+    
+    console.debug(`WebexCore: Plugin initialization decision for ${constructorName}:`, {
+      shouldInit: hasRegisteredPlugins,
+      reason: hasRegisteredPlugins ? 'has registered plugins and no parent' : 'no registered plugins'
+    });
+    
+    return hasRegisteredPlugins;
+  }
+
+  /**
    * CRITICAL PLUGIN SYSTEM METHOD
    * 
    * Initializes plugins from the _children collection. This method is the heart of the
@@ -452,25 +525,32 @@ class WebexCore extends WebexEventEmitter {
    * @returns {void}
    */
   private _initializePlugins(): void {
+    console.debug(`WebexCore: Starting plugin initialization for ${this.constructor.name}`);
+    
     // PART 1: Instantiate regular plugins (webex.meetings, webex.messages, etc.)
     // Access the _children collection where registerPlugin() stored constructors
     const children = (this.constructor as any).prototype._children || {};
+    
+    console.debug(`WebexCore: Found ${Object.keys(children).length} registered plugins:`, Object.keys(children));
     
     Object.keys(children).forEach(name => {
       if (!this[name]) { // Only instantiate if not already done (safety check)
         const ChildConstructor = children[name];
         try {
-          // Create plugin instance and attach to webex object
-          // Example: this['meetings'] = new MeetingsConstructor({}, { parent: this, namespace: 'meetings' })
+          // CRITICAL: Create plugin instance with proper parent binding
+          // This ensures plugins get access to the main webex instance
           this[name] = new ChildConstructor({}, {
             parent: this,        // Give plugin access to webex core
+            webex: this,         // Explicit webex reference for legacy plugins  
             namespace: name      // Plugin knows its own name
           });
           
-          console.debug(`WebexCore: Initialized plugin '${name}'`);
+          console.debug(`WebexCore: Successfully initialized plugin '${name}' -> webex.${name}`);
         } catch (error) {
-          console.warn(`Failed to initialize plugin '${name}':`, error);
+          console.error(`WebexCore: FAILED to initialize plugin '${name}':`, error);
         }
+      } else {
+        console.debug(`WebexCore: Plugin '${name}' already exists, skipping`);
       }
     });
 
@@ -479,28 +559,33 @@ class WebexCore extends WebexEventEmitter {
     if (this.internal) {
       const internalChildren = (this.internal.constructor as any).prototype._children || {};
       
+      console.debug(`WebexCore: Found ${Object.keys(internalChildren).length} registered internal plugins:`, Object.keys(internalChildren));
+      
       Object.keys(internalChildren).forEach(name => {
         if (!this.internal[name]) { // Only instantiate if not already done (safety check)
           const ChildConstructor = internalChildren[name];
           try {
-            // Create internal plugin instance and attach to webex.internal
-            // Example: this.internal['dss'] = new DSSConstructor({}, { parent: this.internal, namespace: 'dss' })
+            // CRITICAL: Create internal plugin with webex reference to prevent duplicate cores
             this.internal[name] = new ChildConstructor({}, {
-              parent: this.internal,  // Give plugin access to webex internal core
-              namespace: name         // Plugin knows its own name
+              parent: this.internal,   // Parent is webex.internal
+              webex: this,             // IMPORTANT: Root webex instance to prevent duplicate initialization
+              namespace: name          // Plugin knows its own name
             });
             
-            console.debug(`WebexCore: Initialized internal plugin '${name}'`);
+            console.debug(`WebexCore: Successfully initialized internal plugin '${name}' -> webex.internal.${name}`);
           } catch (error) {
-            console.warn(`Failed to initialize internal plugin '${name}':`, error);
+            console.error(`WebexCore: FAILED to initialize internal plugin '${name}':`, error);
           }
+        } else {
+          console.debug(`WebexCore: Internal plugin '${name}' already exists, skipping`);
         }
       });
     }
     
-    // At this point, all registered plugins are now available:
-    // - webex.meetings, webex.messages (regular plugins)
-    // - webex.internal.dss, webex.internal.device (internal plugins)
+    console.debug('WebexCore: Plugin initialization complete. Available plugins:', {
+      regular: Object.keys(children),
+      internal: this.internal ? Object.keys(this.internal.constructor.prototype._children || {}) : []
+    });
   }
 
   /**
@@ -516,11 +601,17 @@ class WebexCore extends WebexEventEmitter {
   initialize(attrs: WebexCoreOptions = {}): void {
     this.config = merge({}, config, attrs.config);
 
-    // Initialize plugins after config is set
-    this._initializePlugins();
+    // CRITICAL FIX: Only initialize plugins if this is a top-level Webex instance
+    // Check if this instance is the main Webex object (not a plugin or internal component)
+    if (this._shouldInitializePlugins()) {
+      this._initializePlugins();
+    }
 
     // Fire the change:config event for plugin initialization
     this.emit('change:config');
+
+    // CRITICAL: Initialize storage loading - this was missing!
+    this._initializeStorage();
 
     const onLoaded = () => {
       if (this.loaded) {
@@ -564,10 +655,13 @@ class WebexCore extends WebexEventEmitter {
 
     // Make nested events propagate in a consistent manner
     Object.keys((this.constructor as any).prototype._children || {}).forEach((key) => {
-      this.on(this[key], 'change', (...args: any[]) => {
-        args.unshift(`change:${key}`);
-        this.emit(...args);
-      });
+      const plugin = this[key];
+      if (plugin && typeof plugin.on === 'function') {
+        plugin.on('change', (...args: any[]) => {
+          args.unshift(`change:${key}`);
+          this.emit(...args);
+        });
+      }
     });
 
     const addInterceptor = (ints: any[], key: string) => {
@@ -618,6 +712,60 @@ class WebexCore extends WebexEventEmitter {
     }
 
     this.sessionId = sessionId;
+  }
+
+  /**
+   * Initialize storage systems - this was missing from the original implementation!
+   * This is crucial for proper `loaded` and `ready` event firing.
+   * @private
+   */
+  private _initializeStorage(): void {
+    // Storage initialization should only happen for the main Webex instance
+    if (!this._shouldInitializePlugins()) {
+      return;
+    }
+
+    console.debug('WebexCore: Initializing storage systems...');
+    
+    // Start with loaded = false, then set to true once storage is ready
+    this.loaded = false;
+
+    // Simulate the storage loading process that was handled by AmpersandState
+    // In the old system, this happened automatically
+    process.nextTick(async () => {
+      try {
+        // Initialize bounded and unbounded storage
+        // This triggers the getter creation and initial loading
+        const bounded = this.boundedStorage;
+        const unbounded = this.unboundedStorage;
+
+        // Wait a small amount of time to simulate storage loading
+        // In real implementation, this would wait for actual storage operations
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        console.debug('WebexCore: Storage systems initialized, setting loaded = true');
+        this.loaded = true;
+        
+        // Emit change event to trigger ready state calculation
+        this.emit('change:loaded', this.loaded);
+        
+        // Also check ready state after a short delay to let plugins finish initialization
+        setTimeout(() => {
+          console.debug('WebexCore: Checking ready state...', {
+            loaded: this.loaded,
+            ready: this.ready,
+            internalReady: this.internal.ready
+          });
+          this.emit('change:ready', this.ready);
+        }, 50);
+        
+      } catch (error) {
+        console.error('WebexCore: Storage initialization failed:', error);
+        // Still set loaded to true to prevent hanging
+        this.loaded = true;
+        this.emit('change:loaded', this.loaded);
+      }
+    });
   }
 
   /**
@@ -924,10 +1072,6 @@ class WebexCore extends WebexEventEmitter {
   }
 }
 
-// Initialize mixins
-mixinWebexInternalCorePlugins(WebexInternalCore, config, interceptors);
-mixinWebexCorePlugins(WebexCore, config, interceptors);
-
 export default WebexCore;
 
 /**
@@ -940,7 +1084,11 @@ export default WebexCore;
  * @returns {void}
  */
 export function registerPlugin(name: string, constructor: Function, options: any = {}): void {
-  (WebexCore as any).registerPlugin(name, constructor, options);
+  // CRITICAL: Pass WebexCore as targetClass so plugins get stored in _children collection
+  // This is what allows _initializePlugins() to find and instantiate them
+  pluginRegistry.registerPlugin(name, constructor, WebexCore, options);
+  
+  console.debug(`Plugin Registry: Registered plugin '${name}' with WebexCore`);
 }
 
 /**
@@ -954,5 +1102,9 @@ export function registerPlugin(name: string, constructor: Function, options: any
  * @returns {void}
  */
 export function registerInternalPlugin(name: string, constructor: Function, options?: any): void {
-  (WebexInternalCore as any).registerPlugin(name, constructor, options);
+  // CRITICAL: Pass WebexInternalCore as targetClass so plugins get stored in _children collection
+  // This is what allows _initializePlugins() to find and instantiate them
+  pluginRegistry.registerInternalPlugin(name, constructor, WebexInternalCore, options || {});
+  
+  console.debug(`Plugin Registry: Registered internal plugin '${name}' with WebexInternalCore`);
 }

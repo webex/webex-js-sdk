@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {WebexPlugin, Page} from '@webex/webex-core';
+import {WebexPlugin, Page, registerPlugin} from '@webex/webex-core';
 import {base64, oneFlight} from '@webex/common';
 
 import PeopleBatcher from './people-batcher';
