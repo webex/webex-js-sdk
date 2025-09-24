@@ -143,6 +143,7 @@ const Support = WebexPlugin.extend({
       'callStart',
       'feedbackId',
       'correlationId',
+      'broadworksCorrelationInfo',
       'meetingId',
       'surveySessionId',
       'productAreaTag',
