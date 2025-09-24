@@ -61,13 +61,17 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Register to the websocket
    * @param {string} llmSocketUrl
+   * @param {string} datachannelToken
    * @returns {Promise<void>}
    */
-  private register = (llmSocketUrl: string): Promise<void> =>
+  private register = (llmSocketUrl: string, datachannelToken: string): Promise<void> =>
     this.request({
       method: 'POST',
       url: llmSocketUrl,
       body: {deviceUrl: this.webex.internal.device.url},
+      headers: {
+        'Data-Channel-Auth-Token': datachannelToken,
+      },
     })
       .then((res: {body: {webSocketUrl: string; binding: string}}) => {
         this.webSocketUrl = res.body.webSocketUrl;
@@ -82,10 +86,15 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Register and connect to the websocket
    * @param {string} locusUrl
    * @param {string} datachannelUrl
+   * @param {string} datachannelToken
    * @returns {Promise<void>}
    */
-  public registerAndConnect = (locusUrl: string, datachannelUrl: string): Promise<void> =>
-    this.register(datachannelUrl).then(() => {
+  public registerAndConnect = (
+    locusUrl: string,
+    datachannelUrl: string,
+    datachannelToken: string
+  ): Promise<void> =>
+    this.register(datachannelUrl, datachannelToken).then(() => {
       if (!locusUrl || !datachannelUrl) return undefined;
       this.locusUrl = locusUrl;
       this.datachannelUrl = datachannelUrl;

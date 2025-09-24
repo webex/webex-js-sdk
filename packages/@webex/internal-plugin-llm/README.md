@@ -29,7 +29,8 @@ import WebexCore from '@webex/webex-core';
 const webex = new WebexCore();
 // locusUrl is got from meeting.locusInfo.url;
 // datachannelUrl is got from meeting.locusInfo.info.datachannelUrl;
-webex.internal.llm.registerAndConnect(locusUrl, datachannelUrl);
+// datachannelToken is got from meeting.locusInfo.self.datachannelToken;
+webex.internal.llm.registerAndConnect(locusUrl, datachannelUrl,datachannelToken);
 
 // Checks if LLM is connected
 webex.internal.llm.isConnected();
