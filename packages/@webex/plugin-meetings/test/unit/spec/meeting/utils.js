@@ -1310,6 +1310,27 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('getCaEventLabelsForIpVersion', () => {
+      [
+        {ipver: IP_VERSION.unknown, expectedLabels: undefined},
+        {ipver: IP_VERSION.only_ipv4, expectedLabels: ['hasIpv4_true']},
+        {ipver: IP_VERSION.only_ipv6, expectedLabels: ['hasIpv6_true']},
+        {
+          ipver: IP_VERSION.ipv4_and_ipv6,
+          expectedLabels: ['hasIpv4_true', 'hasIpv6_true'],
+        },
+      ].forEach(({ipver, expectedLabels}) => {
+        it(`returns expected labels when ipver=${ipver}`, () => {
+          sinon.stub(MeetingUtil, 'getIpVersion').returns(ipver);
+
+          const result = MeetingUtil.getCaEventLabelsForIpVersion(webex);
+
+          assert.calledOnceWithExactly(MeetingUtil.getIpVersion, webex);
+          assert.deepEqual(result, expectedLabels);
+        });
+      });
+    });
+
     describe('getChangeMeetingFloorErrorPayload', () => {
       [
         {
