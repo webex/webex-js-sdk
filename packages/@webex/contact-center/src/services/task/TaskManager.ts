@@ -271,6 +271,7 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONSULTING:
             // Received when agent is in an active consult state
             // TODO: Check if we can use backend consult state instead of isConsulted
+            task = this.updateTaskData(task, payload.data);
             if (task.data.isConsulted) {
               // Fire only if you are the agent who received the consult request
               task.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, task);
