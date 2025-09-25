@@ -88,6 +88,7 @@ export interface WebexSDK {
       url: string;
       userId: string;
       orgId: string;
+      deviceId: string;
       version: string;
       callingBehavior: string;
       features: {
@@ -114,6 +115,16 @@ export interface WebexSDK {
           type: 'diff' | 'full';
         }
       ) => Promise<UploadLogsResponse>;
+      initPeriodicLogUpload: (config: {
+        enablePeriodicUpload: boolean;
+        intervals: number[];
+        multiplicationFactor: number;
+        isActiveSessionCheck: () => boolean;
+        metadata: Record<string, any>;
+        getContextualMetadata?: () => Record<string, any>;
+      }) => void;
+      startPeriodicLogUpload: () => void;
+      stopPeriodicLogUpload: () => void;
     };
     services: {
       _hostCatalog: Record<string, ServiceHost[]>;

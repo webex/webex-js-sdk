@@ -181,6 +181,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * 1. Retrieves list of servers.
    * 2. Creates a line.
    * 3. Sets up network change detection.
+   * 4. Initializes periodic log upload.
    *
    * This method should be called once to initialize the `callingClient`.
    *
@@ -193,6 +194,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     /* Better to run the timer once rather than after every registration */
     this.detectNetworkChange();
+
+    // Initialize periodic log upload
+    this.initializePeriodicLogUpload();
   }
 
   /**
@@ -468,6 +472,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       file: CALLING_CLIENT_FILE,
       method: METHODS.CALLS_CLEARED_HANDLER,
     });
+
+    // Stop periodic log upload when all calls are cleared
+    this.stopPeriodicLogUpload();
+
     // this is a temporary logic to get registration obj
     // it will change once we have proper lineId and multiple lines as well
     const {registration} = Object.values(this.lineDict)[0];
@@ -564,7 +572,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * Retrieves call objects for all the active calls present in the client
    */
   public getActiveCalls(): Record<string, ICall[]> {
-    const activeCalls = {};
+    const activeCalls: Record<string, ICall[]> = {};
     const calls = this.callManager.getActiveCalls();
     Object.keys(calls).forEach((correlationId) => {
       const call = calls[correlationId];
@@ -610,6 +618,107 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     return result;
+  }
+
+  /**
+   * Gets contextual metadata for log uploads (both manual and auto)
+   * @private
+   */
+  private getLogUploadMetadata() {
+    try {
+      const connectedCall = this.getConnectedCall();
+
+      return {
+        deviceId: this.webex.internal?.device?.deviceId,
+        callId: connectedCall?.getCallId(),
+        correlationID: connectedCall?.getCorrelationId(),
+      };
+    } catch (error) {
+      return {};
+    }
+  }
+
+  /**
+   * Initializes periodic log upload functionality for the Calling SDK
+   * @private
+   */
+  private initializePeriodicLogUpload(): void {
+    try {
+      // Initialize periodic log upload using the support plugin
+      this.webex.internal.support.initPeriodicLogUpload({
+        enablePeriodicUpload: true,
+        intervals: [0.1, 15, 30, 60], // minutes - start with 6 seconds, then 15, 30, 60 minutes
+        multiplicationFactor: 1,
+        isActiveSessionCheck: () => {
+          // Check if there are any active lines registered
+          return (
+            Object.keys(this.lineDict).length > 0 &&
+            Object.values(this.lineDict).some((line) => line.getStatus() === 'REGISTERED')
+          );
+        },
+        metadata: {
+          plugin: 'calling-sdk',
+          userId: this.webex.internal?.device?.userId,
+          deviceId: this.webex.internal?.device?.deviceId,
+        },
+        getContextualMetadata: () => this.getLogUploadMetadata(),
+      });
+
+      // Start the periodic upload
+      this.webex.internal.support.startPeriodicLogUpload();
+
+      log.info('Periodic log upload initialized for Calling SDK', {
+        file: CALLING_CLIENT_FILE,
+        method: 'initializePeriodicLogUpload',
+      });
+    } catch (error) {
+      log.error(error as ExtendedError, {
+        file: CALLING_CLIENT_FILE,
+        method: 'initializePeriodicLogUpload',
+      });
+    }
+  }
+
+  /**
+   * Starts periodic log upload functionality for the Calling SDK
+   * @private
+   */
+  private startPeriodicLogUpload(): void {
+    try {
+      if (this.webex.internal.support && this.webex.internal.support.startPeriodicLogUpload) {
+        this.webex.internal.support.startPeriodicLogUpload();
+        log.info('Periodic log upload started for Calling SDK', {
+          file: CALLING_CLIENT_FILE,
+          method: 'startPeriodicLogUpload',
+        });
+      }
+    } catch (error) {
+      log.error(error as ExtendedError, {
+        file: CALLING_CLIENT_FILE,
+        method: 'startPeriodicLogUpload',
+      });
+    }
+  }
+
+  /**
+   * Stops periodic log upload functionality for the Calling SDK
+   * @private
+   */
+  private stopPeriodicLogUpload(): void {
+    try {
+      if (this.webex.internal.support && this.webex.internal.support.stopPeriodicLogUpload) {
+        this.webex.internal.support.stopPeriodicLogUpload();
+        log.info('Periodic log upload stopped for Calling SDK', {
+          file: CALLING_CLIENT_FILE,
+          method: 'stopPeriodicLogUpload',
+        });
+      }
+    } catch (error) {
+      log.error(error as ExtendedError, {
+        file: CALLING_CLIENT_FILE,
+        method: 'stopPeriodicLogUpload',
+      });
+    }
   }
 }
 

@@ -6,8 +6,26 @@ import {WebexPlugin} from '@webex/webex-core';
 import {defaults} from 'lodash';
 import uuid from 'uuid';
 
+/**
+ * Configuration options for periodic log uploads
+ * @typedef {Object} LogUploadConfig
+ * @property {boolean} enablePeriodicUpload - Whether to enable periodic log uploads
+ * @property {number[]} intervals - Array of time intervals in minutes for progressive uploads
+ * @property {number} multiplicationFactor - Factor to multiply intervals by
+ * @property {Function} isActiveSessionCheck - Function that returns true if there's an active session
+ * @property {string[]} [events] - Additional events that should trigger log uploads
+ * @property {Object} [metadata] - Plugin-specific metadata to include with uploads
+ */
+
 const Support = WebexPlugin.extend({
   namespace: 'Support',
+
+  initialize() {
+    // Initialize log upload manager properties
+    this.logUploadTimers = [];
+    this.isPeriodicUploadActive = false;
+    this.logUploadConfig = null;
+  },
 
   getFeedbackUrl(options) {
     options = options || {};
@@ -193,6 +211,140 @@ const Support = WebexPlugin.extend({
     }
 
     return metadataArray;
+  },
+
+  /**
+   * Initializes periodic log upload functionality for a plugin
+   * This should be called by plugins that want to use automated log uploads
+   *
+   * @param {LogUploadConfig} config - Configuration for periodic log uploads
+   * @returns {void}
+   * @example
+   * ```javascript
+   * // In plugin-cc initialization
+   * this.webex.internal.support.initPeriodicLogUpload({
+   *   enablePeriodicUpload: true,
+   *   intervals: [0.1, 15, 30, 60], // minutes
+   *   multiplicationFactor: 1,
+   *   isActiveSessionCheck: () => this.agentConfig?.isAgentLoggedIn,
+   *   metadata: { plugin: 'plugin-cc' },
+   *   getContextualMetadata: () => this.getActiveSessionMetadata()
+   * });
+   * ```
+   */
+  initPeriodicLogUpload(config) {
+    this.logUploadConfig = defaults(config, {
+      enablePeriodicUpload: true,
+      intervals: [0.1, 15, 30, 60], // minutes
+      multiplicationFactor: 1,
+      isActiveSessionCheck: () => true,
+      events: [],
+      metadata: {},
+      getContextualMetadata: null, // Function to get current contextual metadata
+    });
+  },
+
+  /**
+   * Starts the periodic log upload system using progressive intervals
+   * Will only start if not already active and if periodic uploads are enabled
+   *
+   * @returns {void}
+   */
+  startPeriodicLogUpload() {
+    if (!this.logUploadConfig || !this.logUploadConfig.enablePeriodicUpload) {
+      return;
+    }
+
+    if (this.isPeriodicUploadActive) {
+      return;
+    }
+
+    this.isPeriodicUploadActive = true;
+    this._setLogUploadTimer(0);
+  },
+
+  /**
+   * Sets up a timer for the next log upload with progressive intervals
+   * Each subsequent upload uses a longer interval up to the maximum defined
+   *
+   * @param {number} intervalIndex - Index into the intervals array
+   * @returns {void}
+   * @private
+   */
+  _setLogUploadTimer(intervalIndex) {
+    // Safety check to ensure we have an active session before setting up the timer
+    if (!this.logUploadConfig || !this.logUploadConfig.isActiveSessionCheck()) {
+      this.isPeriodicUploadActive = false;
+
+      return;
+    }
+
+    // Get the interval for this iteration, capping at the last interval in the array
+    const currentIntervalIndex = Math.min(intervalIndex, this.logUploadConfig.intervals.length - 1);
+    const intervalMinutes = this.logUploadConfig.intervals[currentIntervalIndex];
+    const intervalMs = intervalMinutes * this.logUploadConfig.multiplicationFactor * 60 * 1000;
+
+    const timerId = setTimeout(async () => {
+      // Check again if we still have an active session before uploading
+      if (this.logUploadConfig && this.logUploadConfig.isActiveSessionCheck()) {
+        try {
+          // Get contextual metadata from the plugin if available
+          let contextualMetadata = {};
+          if (
+            this.logUploadConfig.getContextualMetadata &&
+            typeof this.logUploadConfig.getContextualMetadata === 'function'
+          ) {
+            try {
+              contextualMetadata = this.logUploadConfig.getContextualMetadata() || {};
+            } catch (error) {
+              // Silently handle contextual metadata collection errors
+            }
+          }
+
+          await this.submitLogs(
+            {
+              ...this.logUploadConfig.metadata,
+              ...contextualMetadata,
+              triggerType: 'periodic',
+              intervalIndex: currentIntervalIndex,
+              intervalMinutes,
+              autoupload: true,
+              timestamp: new Date().toISOString(),
+              sdkVersion: this.webex.version || 'unknown',
+            },
+            undefined,
+            {type: 'diff'}
+          ); // Force incremental logs for periodic uploads to avoid bandwidth waste
+        } catch (error) {
+          // Silently handle periodic upload errors to avoid breaking the cycle
+        }
+
+        // Set up the next timer with the next interval
+        const nextIndex = intervalIndex + 1;
+        this._setLogUploadTimer(nextIndex);
+      } else {
+        // No active session, stop the periodic uploads
+        this.isPeriodicUploadActive = false;
+      }
+    }, intervalMs);
+
+    this.logUploadTimers.push(timerId);
+  },
+
+  /**
+   * Stops all periodic log uploads and cleans up timers
+   * Should be called when the plugin is being deregistered or session ends
+   *
+   * @returns {void}
+   */
+  stopPeriodicLogUpload() {
+    if (!this.isPeriodicUploadActive && this.logUploadTimers.length === 0) {
+      return;
+    }
+
+    this.logUploadTimers.forEach((timerId) => clearTimeout(timerId));
+    this.logUploadTimers = [];
+    this.isPeriodicUploadActive = false;
   },
 });
 

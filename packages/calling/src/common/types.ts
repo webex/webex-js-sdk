@@ -20,6 +20,7 @@ export enum RegistrationStatus {
   IDLE = 'IDLE',
   ACTIVE = 'active',
   INACTIVE = 'inactive',
+  REGISTERED = 'REGISTERED',
 }
 
 export enum CALLING_BACKEND {

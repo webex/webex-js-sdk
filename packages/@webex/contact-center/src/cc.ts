@@ -389,6 +389,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         method: METHODS.REGISTER,
       });
 
+      // Initialize periodic log upload
+      this.initializePeriodicLogUpload();
+
       return resp;
     } catch (error) {
       this.metricsManager.trackEvent(
@@ -448,6 +451,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WEBSOCKET_DEREGISTER_FAIL,
       ]);
 
+      // Stop periodic log upload
+      this.stopPeriodicLogUpload();
+
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
       this.taskManager.unregisterIncomingCallEvent();
@@ -499,6 +505,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       LoggerProxy.error(`Error during deregister: ${error}`, {
         module: CC_FILE,
         method: METHODS.DEREGISTER,
+      });
+
+      // Upload logs automatically for deregister failures
+      this.uploadLogs().catch((uploadError) => {
+        LoggerProxy.error(`Failed to upload logs after deregister error: ${uploadError}`, {
+          module: CC_FILE,
+          method: METHODS.DEREGISTER,
+        });
       });
 
       throw error;
@@ -1487,6 +1501,33 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Gets contextual metadata for log uploads (both manual and auto)
+   * @private
+   */
+  private getLogUploadMetadata() {
+    try {
+      // Get active task for interaction details
+      const activeTasks = this.taskManager ? this.taskManager.getAllTasks?.() || {} : {};
+      const activeTaskArray = Object.values(activeTasks);
+      const firstActiveTask = activeTaskArray.length > 0 ? activeTaskArray[0] : null;
+
+      return {
+        correlationId: firstActiveTask?.data?.interactionId || uuidv4(),
+        agentId: this.agentConfig?.agentId,
+        webRtcEnabled: this.agentConfig?.webRtcEnabled,
+        interactionId: firstActiveTask?.data?.interactionId,
+        sdkVersion: this.$webex.version || 'unknown',
+        teamId: this.agentConfig?.currentTeamId,
+        agentState: this.agentConfig?.lastStateAuxCodeId,
+        deviceType: this.agentConfig?.deviceType,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      return {};
+    }
+  }
+
+  /**
    * Uploads logs to help troubleshoot SDK issues.
    *
    * This method collects the current SDK logs including network requests, WebSocket
@@ -1509,7 +1550,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async uploadLogs(): Promise<UploadLogsResponse> {
-    return this.webexRequest.uploadLogs();
+    return this.webexRequest.uploadLogs(this.getLogUploadMetadata());
   }
 
   /**
@@ -1628,6 +1669,58 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         trackingId,
       });
       throw error;
+    }
+  }
+
+  /**
+   * Initializes periodic log upload functionality for the CC plugin
+   * @private
+   */
+  private initializePeriodicLogUpload(): void {
+    try {
+      // Initialize periodic log upload using the support plugin
+      this.$webex.internal.support.initPeriodicLogUpload({
+        enablePeriodicUpload: true,
+        intervals: [0.1, 15, 30, 60], // minutes - start with 6 seconds, then 15, 30, 60 minutes
+        multiplicationFactor: 1,
+        isActiveSessionCheck: () => {
+          // Check if agent is logged in and active
+          return this.agentConfig?.isAgentLoggedIn || false;
+        },
+        metadata: {
+          plugin: 'plugin-cc',
+          agentId: this.agentConfig?.agentId,
+          teamId: this.agentConfig?.currentTeamId,
+        },
+        getContextualMetadata: () => this.getLogUploadMetadata(),
+      });
+
+      // Start the periodic upload
+      this.$webex.internal.support.startPeriodicLogUpload();
+    } catch (error) {
+      LoggerProxy.error('Failed to initialize periodic log upload', {
+        module: CC_FILE,
+        method: 'initializePeriodicLogUpload',
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Stops periodic log upload functionality for the CC plugin
+   * @private
+   */
+  private stopPeriodicLogUpload(): void {
+    try {
+      if (this.$webex.internal.support) {
+        this.$webex.internal.support.stopPeriodicLogUpload();
+      }
+    } catch (error) {
+      LoggerProxy.error('Failed to stop periodic log upload', {
+        module: CC_FILE,
+        method: 'stopPeriodicLogUpload',
+        error: error.message,
+      });
     }
   }
 }

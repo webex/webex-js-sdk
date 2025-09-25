@@ -946,6 +946,31 @@ export default class Meetings extends WebexPlugin {
     ])
       .then(() => {
         this.listenForEvents();
+
+        // Initialize periodic log upload for meetings plugin (only if autoUploadLogs is enabled)
+        // @ts-ignore
+        if (this.config.autoUploadLogs) {
+          // @ts-ignore
+          this.webex.internal.support.initPeriodicLogUpload({
+            enablePeriodicUpload: true,
+            intervals: [0.1, 15, 30, 60], // minutes: immediate, 15min, 30min, 60min
+            multiplicationFactor: 1,
+            isActiveSessionCheck: () => this.hasActiveMeetings(),
+            metadata: {
+              plugin: 'plugin-meetings',
+              // @ts-ignore
+              sdkVersion: this.webex.version || 'unknown',
+            },
+            getContextualMetadata: () => this.getActiveMeetingsMetadata(),
+          });
+
+          // Start periodic log uploads if there are active meetings
+          if (this.hasActiveMeetings()) {
+            // @ts-ignore
+            this.webex.internal.support.startPeriodicLogUpload();
+          }
+        }
+
         Trigger.trigger(
           this,
           {
@@ -989,6 +1014,10 @@ export default class Meetings extends WebexPlugin {
     }
 
     this.stopListeningForEvents();
+
+    // Stop periodic log uploads when unregistering
+    // @ts-ignore
+    this.webex.internal.support.stopPeriodicLogUpload();
 
     return (
       // @ts-ignore
@@ -1279,6 +1308,13 @@ export default class Meetings extends WebexPlugin {
       getCurUserType: meeting.getCurUserType,
     });
     this.meetingCollection.delete(meeting.id);
+
+    // Stop periodic log uploads when no more active meetings
+    if (!this.hasActiveMeetings()) {
+      // @ts-ignore
+      this.webex.internal.support.stopPeriodicLogUpload();
+    }
+
     Trigger.trigger(
       this,
       {
@@ -1422,6 +1458,14 @@ export default class Meetings extends WebexPlugin {
             ).then((createdMeeting: any) => {
               // If the meeting was successfully created.
               if (createdMeeting && createdMeeting.on) {
+                // Start periodic log uploads when a meeting is created (only if autoUploadLogs is enabled)
+                // The support plugin handles multiple calls gracefully
+                // @ts-ignore
+                if (this.config.autoUploadLogs) {
+                  // @ts-ignore
+                  this.webex.internal.support.startPeriodicLogUpload();
+                }
+
                 // Create a destruction event for the meeting.
                 createdMeeting.on(EVENTS.DESTROY_MEETING, (payload) => {
                   // @ts-ignore
@@ -1710,6 +1754,40 @@ export default class Meetings extends WebexPlugin {
    */
   public getAllMeetings() {
     return this.meetingCollection.getAll();
+  }
+
+  /**
+   * Check if there are any active meetings with media
+   * @returns {boolean} True if there are active meetings with media, false otherwise
+   * @public
+   * @memberof Meetings
+   */
+  public hasActiveMeetings(): boolean {
+    return !!this.getActiveWebrtcMeeting();
+  }
+
+  /**
+   * Gets contextual metadata from the currently active meeting (with media) for log uploads
+   * This replaces the individual meeting event-based metadata collection
+   * @returns {Object} Metadata from the active meeting with media
+   * @public
+   * @memberof Meetings
+   */
+  public getActiveMeetingsMetadata(): object {
+    const activeMeeting = this.getActiveWebrtcMeeting();
+
+    if (!activeMeeting) {
+      return {};
+    }
+
+    return {
+      callStart: activeMeeting.locusInfo?.fullState?.lastActive,
+      locussessionid: activeMeeting.locusInfo?.fullState?.sessionId,
+      correlationId: activeMeeting.correlationId,
+      feedbackId: activeMeeting.correlationId,
+      locusId: activeMeeting.locusId,
+      meetingId: activeMeeting.locusInfo?.info?.webExMeetingId,
+    };
   }
 
   /**
