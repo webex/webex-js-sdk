@@ -9,6 +9,7 @@ import {
   getRecommendedMaxBitrateForFrameSize,
   RecommendedOpusBitrates,
   NamedMediaGroup,
+  AV1Codec,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce, isEmpty} from 'lodash';
 
@@ -355,18 +356,7 @@ export class MediaRequestManager {
               : new ReceiverSelectedInfo(mr.policyInfo.csi),
             mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
             this.getMaxPayloadBitsPerSecond(mr),
-            mr.codecInfo && [
-              new WcmeCodecInfo(
-                0x80,
-                new H264Codec(
-                  mr.codecInfo.maxFs,
-                  mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-                  this.getH264MaxMbps(mr),
-                  mr.codecInfo.maxWidth,
-                  mr.codecInfo.maxHeight
-                )
-              ),
-            ]
+            [WcmeCodecInfo.fromAv1(45, new AV1Codec(5, 0, 5504, 3096, 8160, 39938400))]
           )
         );
       }
