@@ -657,9 +657,6 @@ const MeetingUtil = {
     displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD) &&
     !!policies[SELF_POLICY.SUPPORT_WHITEBOARD],
 
-  canShowAutoEndMeetingWarning: (displayHints) =>
-    displayHints.includes(DISPLAY_HINTS.SHOW_AUTO_END_MEETING_WARNING),
-
   canMoveToLobby: (displayHints) => displayHints.includes(DISPLAY_HINTS.MOVE_TO_LOBBY),
 
   /**

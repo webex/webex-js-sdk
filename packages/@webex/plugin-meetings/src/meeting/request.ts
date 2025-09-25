@@ -893,18 +893,24 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {string} params.meetingInstanceId - The unique ID of the meeting instance.
    * @param {string} params.participantId - The ID of the participant requesting the extension.
    * @param {number} params.extensionMinutes - The number of minutes to extend the meeting by.
+   * @param {string} params.meetingPolicyUrl - The base URL for meeting policy service (from locus links).
    * @returns {Promise<any>} A promise that resolves with the server response.
    */
   extendMeeting({
     meetingInstanceId,
     participantId,
     extensionMinutes,
+    meetingPolicyUrl,
   }: {
     meetingInstanceId: string;
     participantId: string;
     extensionMinutes: number;
+    meetingPolicyUrl: string;
   }) {
-    const uri = `https://locus-meeting-policy-b.wbx2.com/locus-meeting-policy/api/v1/continueMeeting`;
+    if (!meetingPolicyUrl) {
+      return Promise.reject(new Error('meetingPolicyUrl is required'));
+    }
+    const uri = `${meetingPolicyUrl}/continueMeeting`;
 
     // @ts-ignore
     return this.request({

@@ -11421,10 +11421,6 @@ describe('plugin-meetings', () => {
               requiredDisplayHints: [DISPLAY_HINTS.SHARE_WHITEBOARD],
               requiredPolicies: [SELF_POLICY.SUPPORT_WHITEBOARD],
             },
-            {
-              actionName: 'canShowAutoEndMeetingWarning',
-              requiredDisplayHints: [DISPLAY_HINTS.SHOW_AUTO_END_MEETING_WARNING],
-            },
           ],
           ({
             actionName,
