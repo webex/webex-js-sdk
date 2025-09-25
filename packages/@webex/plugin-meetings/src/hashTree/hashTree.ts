@@ -1,8 +1,9 @@
 import {XXH3_128} from 'xxh3-ts';
 import {EMPTY_HASH} from './constants';
+import {ObjectType} from './types';
 
 export type LeafDataItem = {
-  type: string;
+  type: ObjectType;
   id: number;
   version: number;
 };

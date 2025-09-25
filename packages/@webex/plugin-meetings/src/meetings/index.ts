@@ -1,5 +1,5 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-import {cloneDeep, clone} from 'lodash';
+import {cloneDeep, clone, set} from 'lodash';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
@@ -66,7 +66,7 @@ import JoinWebinarError from '../common/errors/join-webinar-error';
 import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 import NoMeetingInfoError from '../common/errors/no-meeting-info';
 import JoinForbiddenError from '../common/errors/join-forbidden-error';
-import {DataSet} from '../hashTree/hashTreeParser';
+import {HashTreeMessage} from '../hashTree/hashTreeParser';
 
 let mediaLogger;
 
@@ -95,6 +95,21 @@ class MediaLogger {
     LoggerProxy.logger.debug(...args);
   }
 }
+
+// ideally this type should be defined as a union for classic vs hash tree locus events, but existing code for classic locus events
+// is so messed up in terms of types that it's too much effort to fix it right now, so instead I've put comments to explain
+// which fields are for which type of locus event
+export type LocusEvent = {
+  eventType: string;
+
+  // fields populated for "classic" locus events (eventType = 'locus.difference' maybe others?)
+  locusUrl?: string;
+  locus?: any;
+
+  // fields populated for "hash tree" locus events (eventType = 'locus.state_message')
+  stateElementsMessage?: HashTreeMessage;
+};
+
 /**
  * Meetings Ready Event
  * Emitted when the meetings instance on webex is ready
@@ -407,7 +422,7 @@ export default class Meetings extends WebexPlugin {
    * @private
    * @memberof Meetings
    */
-  getCorrespondingMeetingByLocus(data) {
+  getCorrespondingMeetingByLocus(data: LocusEvent) {
     if (data.eventType === 'locus.state_message' && data.stateElementsMessage?.locusUrl) {
       return this.meetingCollection.getByKey(
         MEETING_KEY.LOCUS_URL,
@@ -453,33 +468,37 @@ export default class Meetings extends WebexPlugin {
    * @private
    * @memberof Meetings
    */
-  private handleLocusEvent(
-    data: {locusUrl: string; locus: any; dataSets?: DataSet[]},
-    useRandomDelayForInfo = false
-  ) {
+  private handleLocusEvent(data: LocusEvent, useRandomDelayForInfo = false) {
     let meeting = this.getCorrespondingMeetingByLocus(data);
 
     // Special case when locus has got replaced, This only happend once if a replace locus exists
     // https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-changing-mid-call
 
-    if (!meeting && data.locus?.replaces?.length > 0) {
-      // Always the last element in the replace is the active one
-      meeting = this.meetingCollection.getByKey(
-        MEETING_KEY.LOCUS_URL,
-        data.locus.replaces[data.locus.replaces.length - 1].locusUrl
-      );
-    }
+    if (data.eventType !== 'locus.state_message') {
+      if (!meeting && data.locus?.replaces?.length > 0) {
+        // Always the last element in the replace is the active one
+        meeting = this.meetingCollection.getByKey(
+          MEETING_KEY.LOCUS_URL,
+          data.locus.replaces[data.locus.replaces.length - 1].locusUrl
+        );
+      }
 
-    if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
-      meeting.locusInfo.updateMainSessionLocusCache(data.locus);
-    }
-    if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
-      LoggerProxy.logger.log(
-        `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
-      );
+      if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
+        meeting.locusInfo.updateMainSessionLocusCache(data.locus);
+      }
+      if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
+        LoggerProxy.logger.log(
+          `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
+        );
 
-      return;
+        return;
+      }
     }
+    console.log(
+      `marcin: handleLocusEvent: ${
+        meeting ? `found existing meeting: ${meeting.id}` : 'creating meeting'
+      }`
+    );
     if (!meeting) {
       // TODO: create meeting when we get a meeting object
       // const checkForEnded = (locus) => {
@@ -500,42 +519,62 @@ export default class Meetings extends WebexPlugin {
       // };
       // rather then locus object change to locus url
 
-      if (
-        data.locus &&
-        data.locus.fullState &&
-        data.locus.fullState.state === LOCUS.STATE.INACTIVE
-      ) {
-        // just ignore the event as its already ended and not active
-        LoggerProxy.logger.warn(
-          'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
-        );
+      if (data.eventType !== 'locus.state_message') {
+        if (
+          data.locus &&
+          data.locus.fullState &&
+          data.locus.fullState.state === LOCUS.STATE.INACTIVE
+        ) {
+          // just ignore the event as its already ended and not active
+          LoggerProxy.logger.warn(
+            'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
+          );
 
-        return;
+          return;
+        }
+
+        // When its wireless share or guest and user leaves the meeting we dont have to keep the meeting object
+        // Any future events will be neglected
+
+        if (
+          data.locus &&
+          data.locus.self &&
+          data.locus.self.state === _LEFT_ &&
+          data.locus.self.removed === true
+        ) {
+          // just ignore the event as its already ended and not active
+          LoggerProxy.logger.warn(
+            'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
+          );
+
+          return;
+        }
       }
 
-      // When its wireless share or guest and user leaves the meeting we dont have to keep the meeting object
-      // Any future events will be neglected
-
-      if (
-        data.locus &&
-        data.locus.self &&
-        data.locus.self.state === _LEFT_ &&
-        data.locus.self.removed === true
-      ) {
-        // just ignore the event as its already ended and not active
-        LoggerProxy.logger.warn(
-          'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
-        );
-
-        return;
+      if (data.eventType === 'locus.state_message') {
+        // in hash tree messages we don't ge the locus object, but the meeting constructor needs at least locus.url
+        set(data, 'locus.url', data.stateElementsMessage.locusUrl);
       }
 
       this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
         .then((newMeeting) => {
           meeting = newMeeting;
 
-          // It's a new meeting so initialize the locus data
-          meeting.locusInfo.initialSetup(data.locus, data.dataSets);
+          try {
+            // It's a new meeting so initialize the locus data
+            meeting.locusInfo.initialSetup({
+              trigger: 'locus-message',
+              locus: data.locus,
+              hashTreeMessage: data.stateElementsMessage,
+            });
+          } catch (error) {
+            LoggerProxy.logger.warn(
+              `Meetings:index#handleLocusEvent --> Error initializing locus data: ${error.message}`
+            );
+            // @ts-ignore
+            this.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+          }
+
           this.checkHandleBreakoutLocus(data.locus);
         })
         .catch((e) => {
@@ -1750,6 +1789,7 @@ export default class Meetings extends WebexPlugin {
           lociToUpdate.forEach((locus) => {
             activeLocusUrl.push(locus.url);
             this.handleLocusEvent({
+              eventType: 'fakeEventFromSyncMeetings',
               locus,
               locusUrl: locus.url,
             });
@@ -1797,6 +1837,7 @@ export default class Meetings extends WebexPlugin {
         (mainLocus) => mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
       );
       const existCorrespondingMeeting = this.getCorrespondingMeetingByLocus({
+        eventType: 'fakeEventFromSortLocusArrayToUpdate',
         locus: breakoutLocus,
         locusUrl: breakoutLocus.url,
       });
@@ -1843,6 +1884,7 @@ export default class Meetings extends WebexPlugin {
 
     const associateBreakoutLocus = this.breakoutLocusForHandleLater[existIndex];
     this.handleLocusEvent({
+      eventType: 'fakeEventFromCheckHandleBreakoutLocus',
       locus: associateBreakoutLocus,
       locusUrl: associateBreakoutLocus.url,
     });

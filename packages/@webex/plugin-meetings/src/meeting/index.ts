@@ -4564,30 +4564,31 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  setLocus(
-    locus:
-      | {
-          locus: LocusDTO;
-          mediaConnections: Array<any>;
-          locusUrl: string;
-          locusId: string;
-          mediaId: string;
-          host: object;
-          dataSets: DataSet[];
-        }
-      | any
-  ) {
-    const mtgLocus: any = locus.locus || locus;
+  setLocus(data: {
+    locus: LocusDTO;
+    mediaConnections: Array<any>;
+    locusUrl: string;
+    locusId: string;
+    mediaId: string;
+    host: object;
+    selfId: string;
+    dataSets: DataSet[];
+  }) {
+    const mtgLocus: any = data.locus;
 
     // LocusInfo object saves the locus object
     // this.locus = mtgLocus;
-    this.mediaConnections = locus.mediaConnections;
-    this.locusUrl = locus.locusUrl || locus.url;
-    this.locusId = locus.locusId;
-    this.selfId = locus.selfId;
-    this.mediaId = locus.mediaId;
+    this.mediaConnections = data.mediaConnections;
+    this.locusUrl = data.locusUrl;
+    this.locusId = data.locusId;
+    this.selfId = data.selfId;
+    this.mediaId = data.mediaId;
     this.hostId = mtgLocus.host ? mtgLocus.host.id : this.hostId;
-    this.locusInfo.initialSetup(mtgLocus, locus.dataSets);
+    this.locusInfo.initialSetup({
+      trigger: 'join-response',
+      locus: mtgLocus,
+      dataSets: data.dataSets,
+    });
   }
 
   /**
