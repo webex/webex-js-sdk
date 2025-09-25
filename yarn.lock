@@ -7982,19 +7982,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/event-dictionary-ts@npm:^1.0.1819":
-  version: 1.0.1819
-  resolution: "@webex/event-dictionary-ts@npm:1.0.1819"
-  dependencies:
-    amf-client-js: ^5.2.6
-    json-schema-to-typescript: ^12.0.0
-    minimist: ^1.2.8
-    shelljs: ^0.8.5
-    webapi-parser: ^0.5.0
-  checksum: 89ecf888b1caec2c5965f8e66ea00996b52b3b8ab51ca1cf6c81da789fdb0c7e68d3e9beea3026a4e1307b8bec866343c63413d24574037bccdf4c6204da50fe
-  languageName: node
-  linkType: hard
-
 "@webex/event-dictionary-ts@npm:^1.0.1930":
   version: 1.0.1930
   resolution: "@webex/event-dictionary-ts@npm:1.0.1930"
@@ -9162,7 +9149,7 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.1819
+    "@webex/event-dictionary-ts": ^1.0.1930
     "@webex/internal-media-core": 2.18.5
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
