@@ -93,6 +93,53 @@ describe('Encryption', function () {
         .then((plaintext) => assert.equal(plaintext, PLAINTEXT)));
   });
 
+  describe('#decryptBinaryData()', () => {
+    it('decrypts binary data', () =>
+      webex.internal.encryption
+        .encryptText(key, FILE.toString('base64'))
+        .then((ciphertext) => {
+          assert.notEqual(ciphertext, FILE.toString('base64'));
+
+          return webex.internal.encryption.decryptBinaryData(key, ciphertext);
+        })
+        .then((decryptedData) => {
+          assert.isTrue(isBuffer(decryptedData));
+          assert.equal(decryptedData.toString('base64'), FILE.toString('base64'));
+        }));
+
+    it('decrypts binary data with Buffer input', () => {
+      const binaryData = Buffer.from('test binary data', 'utf8');
+
+      return webex.internal.encryption
+        .encryptText(key, binaryData.toString('base64'))
+        .then((ciphertext) => {
+          assert.notEqual(ciphertext, binaryData.toString('base64'));
+
+          return webex.internal.encryption.decryptBinaryData(key, ciphertext);
+        })
+        .then((decryptedData) => {
+          assert.isTrue(isBuffer(decryptedData));
+          assert.equal(decryptedData.toString('utf8'), 'test binary data');
+        });
+    });
+
+    it('decrypts binary data with options parameter', () => {
+      const binaryData = Buffer.from('test binary data with options', 'utf8');
+
+      return webex.internal.encryption
+        .encryptText(key, binaryData.toString('base64'))
+        .then((ciphertext) => {
+          assert.notEqual(ciphertext, binaryData.toString('base64'));
+
+          return webex.internal.encryption.decryptBinaryData(key, ciphertext, {});
+        })
+        .then((decryptedData) => {
+          assert.isTrue(isBuffer(decryptedData));
+          assert.equal(decryptedData.toString('utf8'), 'test binary data with options');
+        });
+    });
+  });
+
   describe('#getKey()', () => {
     let fetchKeySpy, otherWebex, otherUser, storageGetSpy;
 
@@ -360,6 +407,24 @@ describe('Encryption', function () {
           });
         })
         .then((plaintext) => assert.equal(plaintext, PLAINTEXT)));
+
+    it('decrypt binary data', () => {
+      const binaryData = Buffer.from('compliance test binary data', 'utf8');
+
+      return webex.internal.encryption
+        .encryptText(key, binaryData.toString('base64'))
+        .then((ciphertext) => {
+          assert.notEqual(ciphertext, binaryData.toString('base64'));
+
+          return complianceUser.webex.internal.encryption.decryptBinaryData(key, ciphertext, {
+            onBehalfOf: user.id,
+          });
+        })
+        .then((decryptedData) => {
+          assert.isTrue(isBuffer(decryptedData));
+          assert.equal(decryptedData.toString('utf8'), 'compliance test binary data');
+        });
+    });
 
     it('encrypt and decrypt text', () =>
       complianceUser.webex.internal.encryption
