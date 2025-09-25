@@ -269,6 +269,7 @@ export enum ScreenShareFloorStatus {
 type FetchMeetingInfoParams = {
   password?: string;
   registrationId?: string;
+  classificationId?: string;
   captchaCode?: string;
   extraParams?: Record<string, any>;
   sendCAevents?: boolean;
@@ -1902,6 +1903,7 @@ export default class Meeting extends StatelessWebexPlugin {
     extraParams = {},
     sendCAevents = false,
     registrationId = null,
+    classificationId = null,
   }): Promise<void> {
     try {
       const captchaInfo = captchaCode
@@ -1918,7 +1920,9 @@ export default class Meeting extends StatelessWebexPlugin {
         this.locusId,
         extraParams,
         {meetingId: this.id, sendCAevents},
-        registrationId
+        registrationId,
+        null,
+        classificationId
       );
 
       this.parseMeetingInfo(info?.body, this.destination, info?.errors);
