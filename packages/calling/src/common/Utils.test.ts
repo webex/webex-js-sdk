@@ -1827,14 +1827,15 @@ describe('uploadLogs', () => {
         'web-calling-sdk-upload-logs-failed',
         {
           fields: {
-            call_id: undefined,
-            calling_sdk_version: 'unknown',
-            correlation_id: 'Failed to upload Logs Error: Upload failed',
             device_url: undefined,
-            error: undefined,
-            feedback_id: 'test-correlation',
             mobius_url: undefined,
-            tracking_id: 'mocked-uuid-12345',
+            calling_sdk_version: 'unknown',
+            correlation_id: 'test-correlation',
+            broadworksCorrelationInfo: undefined,
+            tracking_id: undefined,
+            feedback_id: 'mocked-uuid-12345',
+            call_id: undefined,
+            error: 'Failed to upload Logs Error: Upload failed',
           },
           tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
           type: 'behavioral',
@@ -1844,7 +1845,10 @@ describe('uploadLogs', () => {
   });
 
   it('should log error and not throw an error if the upload fails with throw exception false', async () => {
-    const mockMetaData = {correlationId: 'test-correlation'};
+    const mockMetaData = {
+      correlationId: 'test-correlation',
+      broadworksCorrelationInfo: 'test-broadworks-correlation',
+    };
     const mockError = new Error('Upload failed');
 
     // Mock the submitLogs to fail
@@ -1868,14 +1872,15 @@ describe('uploadLogs', () => {
       'web-calling-sdk-upload-logs-failed',
       {
         fields: {
-          call_id: undefined,
-          calling_sdk_version: 'unknown',
-          correlation_id: 'Failed to upload Logs Error: Upload failed',
           device_url: undefined,
-          error: undefined,
-          feedback_id: 'test-correlation',
           mobius_url: undefined,
-          tracking_id: 'mocked-uuid-12345',
+          calling_sdk_version: 'unknown',
+          correlation_id: 'test-correlation',
+          broadworksCorrelationInfo: 'test-broadworks-correlation',
+          tracking_id: undefined,
+          feedback_id: 'mocked-uuid-12345',
+          call_id: undefined,
+          error: 'Failed to upload Logs Error: Upload failed',
         },
         tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
         type: 'behavioral',

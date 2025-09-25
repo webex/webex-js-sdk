@@ -117,6 +117,9 @@ export const METRIC_EVENT_NAMES = {
   WEBSOCKET_DEREGISTER_SUCCESS: 'Websocket Deregister Success',
   WEBSOCKET_DEREGISTER_FAIL: 'Websocket Deregister Failed',
 
+  // WebSocket message events
+  WEBSOCKET_EVENT_RECEIVED: 'Websocket Event Received',
+
   AGENT_DEVICE_TYPE_UPDATE_SUCCESS: 'Agent Device Type Update Success',
   AGENT_DEVICE_TYPE_UPDATE_FAILED: 'Agent Device Type Update Failed',
 } as const;
