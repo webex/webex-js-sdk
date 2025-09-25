@@ -254,7 +254,7 @@ export const jsonResponse = [
             {
               id: '6ccc8286e2084e05a6b9a29faae77095',
               index: 1,
-              name: 'Meeting name',
+              name: 'json_5_encrypted_citation_0',
               url: 'https://co.webex.com/webappng/sites/co/recording/playback/6ccc8286e2084e05a6b9a29faae77095',
               metadata: {
                 provider: 'webex',

@@ -1095,6 +1095,7 @@ describe('plugin-meetings', () => {
         const FAKE_USE_RANDOM_DELAY = true;
         const correlationId = 'my-correlationId';
         const sessionCorrelationId = 'my-session-correlationId';
+        const classificationId = 'my-classificationId';
         const callStateForMetrics = {
           sessionCorrelationId: 'my-session-correlationId2',
           correlationId: 'my-correlationId2',
@@ -1115,7 +1116,8 @@ describe('plugin-meetings', () => {
             callStateForMetrics,
             undefined,
             undefined,
-            sessionCorrelationId
+            sessionCorrelationId,
+            classificationId
           );
           assert.calledOnceWithExactly(fakeMeeting.updateCallStateForMetrics, {
             ...callStateForMetrics,
@@ -1194,6 +1196,13 @@ describe('plugin-meetings', () => {
           await checkCallCreateMeeting(
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, undefined, true, callStateForMetrics],
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, callStateForMetrics, true]
+          );
+        });
+
+        it('calls createMeeting with classificationId and returns its promise', async () => {
+          await checkCallCreateMeeting(
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, undefined, true, callStateForMetrics, undefined, undefined, undefined, classificationId],
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, callStateForMetrics, true, undefined, undefined, classificationId],
           );
         });
 
