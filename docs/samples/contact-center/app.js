@@ -793,6 +793,8 @@ function registerTaskListeners(task) {
 
   // Conference event listeners
   task.on('task:conference.started', (task) => {
+    updateTaskList();
+    showConsultButton();
     console.info('Conference started event received:', {
       currentTaskId: currentTask?.data?.interactionId,
       eventTaskId: task.data?.interactionId,
@@ -808,6 +810,8 @@ function registerTaskListeners(task) {
   });
 
   task.on('task:conference.ended', (task) => {
+    updateTaskList();
+    showConsultButton();
     console.info('Conference ended event received:', {
       currentTaskId: currentTask?.data?.interactionId,
       eventTaskId: task.data?.interactionId,
