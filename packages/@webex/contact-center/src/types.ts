@@ -7,6 +7,7 @@ import {
 import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
 import {Profile} from './services/config/types';
+import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
 
 /**
  * Generic type for converting a const enum object into a union type of its values.
@@ -623,6 +624,136 @@ export type StationReLoginResponse = Agent.ReloginSuccess | Error;
  * @ignore
  */
 export type SetStateResponse = Agent.StateChangeSuccess | Error;
+
+/**
+ * AddressBook types
+ */
+export interface AddressBookEntry {
+  id: string;
+  organizationId?: string;
+  version?: number;
+  name: string;
+  number: string;
+  createdTime?: number;
+  lastUpdatedTime?: number;
+}
+
+export type AddressBookEntriesResponse = PaginatedResponse<AddressBookEntry>;
+
+export interface AddressBookEntrySearchParams extends BaseSearchParams {
+  addressBookId?: string;
+}
+
+/**
+ * EntryPoint types
+ */
+export interface EntryPoint {
+  id: string;
+  name: string;
+  description?: string;
+  type: string;
+  isActive: boolean;
+  orgId: string;
+  createdAt?: string;
+  updatedAt?: string;
+  settings?: Record<string, any>;
+}
+
+export type EntryPointListResponse = PaginatedResponse<EntryPoint>;
+export type EntryPointSearchParams = BaseSearchParams;
+
+/**
+ * Queue types
+ */
+export interface QueueSkillRequirement {
+  organizationId?: string;
+  id?: string;
+  version?: number;
+  skillId: string;
+  skillName?: string;
+  skillType?: string;
+  condition: string;
+  skillValue: string;
+  createdTime?: number;
+  lastUpdatedTime?: number;
+}
+
+export interface QueueAgent {
+  id: string;
+  ciUserId?: string;
+}
+
+export interface AgentGroup {
+  teamId: string;
+}
+
+export interface CallDistributionGroup {
+  agentGroups: AgentGroup[];
+  order: number;
+  duration?: number;
+}
+
+export interface AssistantSkillMapping {
+  assistantSkillId?: string;
+  assistantSkillUpdatedTime?: number;
+}
+
+export interface ContactServiceQueue {
+  organizationId?: string;
+  id?: string;
+  version?: number;
+  name: string;
+  description?: string;
+  queueType: 'INBOUND' | 'OUTBOUND';
+  checkAgentAvailability: boolean;
+  channelType: 'TELEPHONY' | 'EMAIL' | 'FAX' | 'CHAT' | 'VIDEO' | 'OTHERS' | 'SOCIAL_CHANNEL';
+  socialChannelType?:
+    | 'MESSAGEBIRD'
+    | 'MESSENGER'
+    | 'WHATSAPP'
+    | 'APPLE_BUSINESS_CHAT'
+    | 'GOOGLE_BUSINESS_MESSAGES';
+  serviceLevelThreshold: number;
+  maxActiveContacts: number;
+  maxTimeInQueue: number;
+  defaultMusicInQueueMediaFileId: string;
+  timezone?: string;
+  active: boolean;
+  outdialCampaignEnabled?: boolean;
+  monitoringPermitted: boolean;
+  parkingPermitted: boolean;
+  recordingPermitted: boolean;
+  recordingAllCallsPermitted: boolean;
+  pauseRecordingPermitted: boolean;
+  recordingPauseDuration?: number;
+  controlFlowScriptUrl: string;
+  ivrRequeueUrl: string;
+  overflowNumber?: string;
+  vendorId?: string;
+  routingType: 'LONGEST_AVAILABLE_AGENT' | 'SKILLS_BASED' | 'CIRCULAR' | 'LINEAR';
+  skillBasedRoutingType?: 'LONGEST_AVAILABLE_AGENT' | 'BEST_AVAILABLE_AGENT';
+  queueRoutingType: 'TEAM_BASED' | 'SKILL_BASED' | 'AGENT_BASED';
+  queueSkillRequirements?: QueueSkillRequirement[];
+  agents?: QueueAgent[];
+  callDistributionGroups: CallDistributionGroup[];
+  xspVersion?: string;
+  subscriptionId?: string;
+  assistantSkill?: AssistantSkillMapping;
+  systemDefault?: boolean;
+  agentsLastUpdatedByUserName?: string;
+  agentsLastUpdatedByUserEmailPrefix?: string;
+  agentsLastUpdatedTime?: number;
+  createdTime?: number;
+  lastUpdatedTime?: number;
+}
+
+export type ContactServiceQueuesResponse = PaginatedResponse<ContactServiceQueue>;
+
+export interface ContactServiceQueueSearchParams extends BaseSearchParams {
+  desktopProfileFilter?: boolean;
+  provisioningView?: boolean;
+  singleObjectResponse?: boolean;
+}
 
 /**
  * Response type for buddy agents query operations.

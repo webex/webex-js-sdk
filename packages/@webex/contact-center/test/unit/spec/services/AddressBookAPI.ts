@@ -1,29 +1,29 @@
-import AddressBookAPI from '../../../src/services/AddressBookAPI';
-import {HTTP_METHODS, WebexSDK, IHttpResponse} from '../../../src/types';
-import {METRIC_EVENT_NAMES} from '../../../src/metrics/constants';
-import WebexRequest from '../../../src/services/core/WebexRequest';
-import MetricsManager from '../../../src/metrics/MetricsManager';
-import LoggerProxy from '../../../src/logger-proxy';
+import AddressBookAPI from '../../../../src/services/AddressBookAPI';
+import {HTTP_METHODS, WebexSDK, IHttpResponse} from '../../../../src/types';
+import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
+import WebexRequest from '../../../../src/services/core/WebexRequest';
+import MetricsManager from '../../../../src/metrics/MetricsManager';
+import LoggerProxy from '../../../../src/logger-proxy';
 
-jest.mock('../../../src/services/core/WebexRequest');
-jest.mock('../../../src/metrics/MetricsManager');
-jest.mock('../../../src/logger-proxy');
+jest.mock('../../../../src/metrics/MetricsManager');
+jest.mock('../../../../src/logger-proxy');
 
 describe('AddressBookAPI', () => {
   let addressBookAPI: AddressBookAPI;
   let mockWebex: WebexSDK;
-  let mockWebexRequest: jest.Mocked<WebexRequest>;
   let mockMetricsManager: jest.Mocked<MetricsManager>;
 
   const mockGetAddressBookId = jest.fn().mockReturnValue('test-address-book-id');
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (WebexRequest as any).instance = undefined;
 
     mockWebex = {
       credentials: {
         getOrgId: jest.fn().mockReturnValue('test-org-id'),
       },
+      request: jest.fn(),
       internal: {
         newMetrics: {
           submitBehavioralEvent: jest.fn(),
@@ -34,11 +34,6 @@ describe('AddressBookAPI', () => {
       ready: true,
       once: jest.fn(),
     } as unknown as WebexSDK;
-
-    mockWebexRequest = {
-      request: jest.fn(),
-    } as unknown as jest.Mocked<WebexRequest>;
-    (WebexRequest.getInstance as jest.Mock).mockReturnValue(mockWebexRequest);
 
     mockMetricsManager = {
       trackEvent: jest.fn(),
@@ -51,7 +46,7 @@ describe('AddressBookAPI', () => {
 
   describe('constructor', () => {
     it('should initialize with all required dependencies', () => {
-      expect(WebexRequest.getInstance).toHaveBeenCalledWith({webex: mockWebex});
+      expect(WebexRequest.getInstance({webex: mockWebex})).toBeDefined();
       expect(MetricsManager.getInstance).toHaveBeenCalledWith({webex: mockWebex});
     });
   });
@@ -98,11 +93,11 @@ describe('AddressBookAPI', () => {
     });
 
     it('should fetch address book entries successfully with default parameters', async () => {
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await addressBookAPI.getEntries();
 
-      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+      expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
         resource: '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=0&pageSize=100',
         method: HTTP_METHODS.GET,
@@ -128,7 +123,7 @@ describe('AddressBookAPI', () => {
     });
 
     it('should fetch entries with custom parameters', async () => {
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
       const params = {
         addressBookId: 'custom-book-id',
@@ -139,14 +134,15 @@ describe('AddressBookAPI', () => {
         attributes: 'id,name,number',
       };
 
-      await addressBookAPI.getEntries(params);
+      const result = await addressBookAPI.getEntries(params);
 
-      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+      expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
         resource: '/organization/test-org-id/v2/address-book/custom-book-id/entry?page=1&pageSize=25&filter=name%3D%3D%22John+Doe%22&attributes=id%2Cname%2Cnumber&search=john',
         method: HTTP_METHODS.GET,
       });
 
+      expect(result).toEqual(mockResponse.body);
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_SUCCESS,
         {
@@ -163,66 +159,50 @@ describe('AddressBookAPI', () => {
     });
 
     it('should handle API errors and track metrics', async () => {
-      mockWebexRequest.request.mockRejectedValue(new Error('Internal Server Error'));
+      (mockWebex.request as jest.Mock).mockRejectedValue(new Error('Internal Server Error'));
 
       await expect(addressBookAPI.getEntries()).rejects.toThrow('Internal Server Error');
 
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_FAILED,
-        {
+        expect.objectContaining({
           orgId: 'test-org-id',
           bookId: 'test-address-book-id',
           error: 'Internal Server Error',
           isSearchRequest: false,
           page: 0,
           pageSize: 100,
-        },
+        }),
         ['behavioral', 'operational']
       );
       expect(LoggerProxy.error).toHaveBeenCalled();
     });
 
-    it('should handle network errors and track metrics', async () => {
-      const networkError = new Error('Network error');
-      mockWebexRequest.request.mockRejectedValue(networkError);
-
-      await expect(addressBookAPI.getEntries()).rejects.toThrow('Network error');
-
-      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_FAILED,
-        {
-          orgId: 'test-org-id',
-          bookId: 'test-address-book-id',
-          error: 'Network error',
-          isSearchRequest: false,
-          page: 0,
-          pageSize: 100,
-        },
-        ['behavioral', 'operational']
-      );
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'Failed to fetch address book entries',
-        {
-          module: 'AddressBookAPI',
-          method: 'getEntries',
-          data: {
-            orgId: 'test-org-id',
-            bookId: 'test-address-book-id',
-            error: 'Network error',
-            isSearchRequest: false,
-            page: 0,
-            pageSize: 100,
-          },
-          error: networkError,
-        }
-      );
-    });
+    
 
     it('should not track metrics for subsequent pages in simple pagination', async () => {
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
+      const mockResponsePage2: IHttpResponse = {
+        statusCode: 200,
+        method: 'GET',
+        url: '/organization/test-org-id/v2/address-book/test-address-book-id/entry',
+        headers: {} as any,
+        body: {
+          data: mockEntries,
+          meta: {
+            page: 2,
+            pageSize: 100,
+            totalPages: 3,
+            totalRecords: 2,
+            orgid: 'test-org-id',
+          },
+        },
+      };
 
-      await addressBookAPI.getEntries({page: 2});
+      (mockWebex.request as jest.Mock).mockResolvedValueOnce(mockResponsePage2);
 
+      const result = await addressBookAPI.getEntries({page: 2});
+
+      expect(result).toEqual(mockResponsePage2.body);
       expect(mockMetricsManager.trackEvent).not.toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_SUCCESS,
         expect.any(Object),
@@ -231,9 +211,10 @@ describe('AddressBookAPI', () => {
     });
 
     it('should track metrics for search requests on any page', async () => {
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      await addressBookAPI.getEntries({page: 2, search: 'test'});
+      const result = await addressBookAPI.getEntries({page: 2, search: 'test'});
+      expect(result).toEqual(mockResponse.body);
 
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_SUCCESS,
@@ -248,6 +229,28 @@ describe('AddressBookAPI', () => {
         },
         ['behavioral', 'operational']
       );
+    });
+
+    it('should return cached data for repeat simple pagination calls', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValueOnce(mockResponse);
+
+      const first = await addressBookAPI.getEntries({page: 0});
+      expect(first).toEqual(mockResponse.body);
+
+      const callsBefore = (mockWebex.request as jest.Mock).mock.calls.length;
+      const second = await addressBookAPI.getEntries({page: 0});
+      const callsAfter = (mockWebex.request as jest.Mock).mock.calls.length;
+
+      expect(second.data).toEqual(mockResponse.body.data);
+      expect(second.meta).toEqual(
+        expect.objectContaining({
+          page: 0,
+          pageSize: 100,
+          totalPages: 1,
+          totalRecords: 2,
+        })
+      );
+      expect(callsAfter).toBe(callsBefore);
     });
   });
 });

@@ -4,53 +4,14 @@
  */
 
 import {HTTP_METHODS, WebexSDK} from '../types';
+import type {EntryPoint, EntryPointListResponse, EntryPointSearchParams} from '../types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
-import PageCache, {
-  PaginatedResponse,
-  BaseSearchParams,
-  PAGINATION_DEFAULTS,
-} from '../utils/PageCache';
+import PageCache, {PAGINATION_DEFAULTS} from '../utils/PageCache';
 import MetricsManager from '../metrics/MetricsManager';
 import {WCC_API_GATEWAY} from './constants';
+import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-
-/**
- * Interface for EntryPoint item
- * @public
- */
-export interface EntryPoint {
-  /** Unique identifier for the entry point */
-  id: string;
-  /** Display name of the entry point */
-  name: string;
-  /** Description of the entry point */
-  description?: string;
-  /** Type of entry point (voice, chat, email, etc.) */
-  type: string;
-  /** Whether the entry point is active */
-  isActive: boolean;
-  /** Organization ID this entry point belongs to */
-  orgId: string;
-  /** Creation timestamp */
-  createdAt?: string;
-  /** Last modified timestamp */
-  updatedAt?: string;
-  /** Additional configuration settings */
-  settings?: Record<string, any>;
-}
-
-/**
- * Interface for paginated EntryPoint response
- * @public
- */
-export type EntryPointListResponse = PaginatedResponse<EntryPoint>;
-
-/**
- * Interface for EntryPoint search parameters
- * @public
- */
-export type EntryPointSearchParams = BaseSearchParams;
 
 /**
  * EntryPoint API class for managing Webex Contact Center entry points.
@@ -192,7 +153,7 @@ export class EntryPointAPI {
       if (attributes) queryParams.append('attributes', attributes);
       if (sortBy) queryParams.append('sortBy', sortBy);
 
-      const resource = `/organization/${orgId}/v2/entry-point?${queryParams.toString()}`;
+      const resource = endPointMap.entryPointList(orgId, queryParams.toString());
 
       LoggerProxy.log(
         `Making API request to fetch entry points - resource: ${resource}, service: ${WCC_API_GATEWAY}`,

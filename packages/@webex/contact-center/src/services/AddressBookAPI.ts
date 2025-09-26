@@ -4,53 +4,18 @@
  */
 
 import {HTTP_METHODS, WebexSDK} from '../types';
+import type {
+  AddressBookEntry,
+  AddressBookEntriesResponse,
+  AddressBookEntrySearchParams,
+} from '../types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
-import PageCache, {
-  PaginatedResponse,
-  BaseSearchParams,
-  PAGINATION_DEFAULTS,
-} from '../utils/PageCache';
+import PageCache, {PAGINATION_DEFAULTS} from '../utils/PageCache';
 import MetricsManager from '../metrics/MetricsManager';
 import {WCC_API_GATEWAY} from './constants';
 import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-
-/**
- * Interface for AddressBook entry item based on AddressBookEntryDTO from spec
- * @public
- */
-export interface AddressBookEntry {
-  /** Unique identifier for the entry */
-  id: string;
-  /** Organization ID this entry belongs to */
-  organizationId?: string;
-  /** Version of the entry */
-  version?: number;
-  /** Name of the entry */
-  name: string;
-  /** Phone number for the entry */
-  number: string;
-  /** Creation timestamp in epoch millis */
-  createdTime?: number;
-  /** Last updated timestamp in epoch millis */
-  lastUpdatedTime?: number;
-}
-
-/**
- * Interface for paginated AddressBook entries response based on spec
- * @public
- */
-export type AddressBookEntriesResponse = PaginatedResponse<AddressBookEntry>;
-
-/**
- * Interface for AddressBook entry search parameters based on spec
- * @public
- */
-export interface AddressBookEntrySearchParams extends BaseSearchParams {
-  /** Address book ID (optional, uses agent's address book if not provided) */
-  addressBookId?: string;
-}
 
 /**
  * AddressBook API class for managing Webex Contact Center address book entries.

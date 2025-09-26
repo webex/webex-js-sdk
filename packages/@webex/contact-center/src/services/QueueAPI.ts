@@ -4,200 +4,19 @@
  */
 
 import {HTTP_METHODS, WebexSDK} from '../types';
+import type {
+  ContactServiceQueue,
+  ContactServiceQueuesResponse,
+  ContactServiceQueueSearchParams,
+} from '../types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
-import PageCache, {
-  PaginatedResponse,
-  BaseSearchParams,
-  PAGINATION_DEFAULTS,
-} from '../utils/PageCache';
+import PageCache, {PAGINATION_DEFAULTS} from '../utils/PageCache';
 import MetricsManager from '../metrics/MetricsManager';
 import {WCC_API_GATEWAY} from './constants';
+import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-
-/**
- * Interface for Queue Skill Requirement based on QueueSkillRequirementDTO from spec
- * @public
- */
-export interface QueueSkillRequirement {
-  /** Organization ID */
-  organizationId?: string;
-  /** Unique identifier for the skill requirement */
-  id?: string;
-  /** Version of the skill requirement */
-  version?: number;
-  /** Skill ID reference */
-  skillId: string;
-  /** Name of the skill */
-  skillName?: string;
-  /** Type of skill (PROFICIENCY, BOOLEAN, TEXT, ENUM) */
-  skillType?: string;
-  /** Condition for the skill requirement */
-  condition: string;
-  /** Value that represents the skill */
-  skillValue: string;
-  /** Creation timestamp in epoch millis */
-  createdTime?: number;
-  /** Last updated timestamp in epoch millis */
-  lastUpdatedTime?: number;
-}
-
-/**
- * Interface for Queue Agent based on QueueAgentsDTO from spec
- * @public
- */
-export interface QueueAgent {
-  /** ID of an agent in WxCC */
-  id: string;
-  /** ID of an agent in Common Identity */
-  ciUserId?: string;
-}
-
-/**
- * Interface for Agent Group based on AgentGroupDTO from spec
- * @public
- */
-export interface AgentGroup {
-  /** ID of a team */
-  teamId: string;
-}
-
-/**
- * Interface for Call Distribution Group based on CallDistributionGroupDTO from spec
- * @public
- */
-export interface CallDistributionGroup {
-  /** Agent groups who are part of this call distribution group */
-  agentGroups: AgentGroup[];
-  /** Order of this call distribution group */
-  order: number;
-  /** Duration in seconds after which a contact in queue will be distributed to this group */
-  duration?: number;
-}
-
-/**
- * Interface for Assistant Skill Mapping based on AssistantSkillMappingDTO from spec
- * @public
- */
-export interface AssistantSkillMapping {
-  /** ID of an Assistant Skill mapped to the Contact Service Queue */
-  assistantSkillId?: string;
-  /** Time when assistant skill mapping was last updated */
-  assistantSkillUpdatedTime?: number;
-}
-
-/**
- * Interface for Contact Service Queue based on ContactServiceQueueDTO from spec
- * @public
- */
-export interface ContactServiceQueue {
-  /** Organization ID */
-  organizationId?: string;
-  /** Unique identifier for the queue */
-  id?: string;
-  /** Version of the queue */
-  version?: number;
-  /** Name of the Contact Service Queue */
-  name: string;
-  /** Description of the queue */
-  description?: string;
-  /** Queue type (INBOUND, OUTBOUND) */
-  queueType: 'INBOUND' | 'OUTBOUND';
-  /** Whether to check agent availability */
-  checkAgentAvailability: boolean;
-  /** Channel type (TELEPHONY, EMAIL, SOCIAL_CHANNEL, CHAT, etc.) */
-  channelType: 'TELEPHONY' | 'EMAIL' | 'FAX' | 'CHAT' | 'VIDEO' | 'OTHERS' | 'SOCIAL_CHANNEL';
-  /** Social channel type for SOCIAL_CHANNEL channelType */
-  socialChannelType?:
-    | 'MESSAGEBIRD'
-    | 'MESSENGER'
-    | 'WHATSAPP'
-    | 'APPLE_BUSINESS_CHAT'
-    | 'GOOGLE_BUSINESS_MESSAGES';
-  /** Service level threshold in seconds */
-  serviceLevelThreshold: number;
-  /** Maximum number of simultaneous contacts */
-  maxActiveContacts: number;
-  /** Maximum time in queue in seconds */
-  maxTimeInQueue: number;
-  /** Default music in queue media file ID */
-  defaultMusicInQueueMediaFileId: string;
-  /** Timezone for routing strategies */
-  timezone?: string;
-  /** Whether the queue is active */
-  active: boolean;
-  /** Whether outdial campaign is enabled */
-  outdialCampaignEnabled?: boolean;
-  /** Whether monitoring is permitted */
-  monitoringPermitted: boolean;
-  /** Whether parking is permitted */
-  parkingPermitted: boolean;
-  /** Whether recording is permitted */
-  recordingPermitted: boolean;
-  /** Whether recording all calls is permitted */
-  recordingAllCallsPermitted: boolean;
-  /** Whether pausing recording is permitted */
-  pauseRecordingPermitted: boolean;
-  /** Recording pause duration in seconds */
-  recordingPauseDuration?: number;
-  /** Control flow script URL */
-  controlFlowScriptUrl: string;
-  /** IVR requeue URL */
-  ivrRequeueUrl: string;
-  /** Overflow number for telephony */
-  overflowNumber?: string;
-  /** Vendor ID */
-  vendorId?: string;
-  /** Routing type */
-  routingType: 'LONGEST_AVAILABLE_AGENT' | 'SKILLS_BASED' | 'CIRCULAR' | 'LINEAR';
-  /** Skills-based routing type */
-  skillBasedRoutingType?: 'LONGEST_AVAILABLE_AGENT' | 'BEST_AVAILABLE_AGENT';
-  /** Queue routing type */
-  queueRoutingType: 'TEAM_BASED' | 'SKILL_BASED' | 'AGENT_BASED';
-  /** Queue skill requirements */
-  queueSkillRequirements?: QueueSkillRequirement[];
-  /** List of agents for agent-based queue */
-  agents?: QueueAgent[];
-  /** Call distribution groups */
-  callDistributionGroups: CallDistributionGroup[];
-  /** XSP version */
-  xspVersion?: string;
-  /** Subscription ID */
-  subscriptionId?: string;
-  /** Assistant skill mapping */
-  assistantSkill?: AssistantSkillMapping;
-  /** Whether this is a system default queue */
-  systemDefault?: boolean;
-  /** User who last updated agents list */
-  agentsLastUpdatedByUserName?: string;
-  /** Email of user who last updated agents list */
-  agentsLastUpdatedByUserEmailPrefix?: string;
-  /** When agents list was last updated */
-  agentsLastUpdatedTime?: number;
-  /** Creation timestamp in epoch millis */
-  createdTime?: number;
-  /** Last updated timestamp in epoch millis */
-  lastUpdatedTime?: number;
-}
-
-/**
- * Interface for paginated Contact Service Queues response based on spec
- * @public
- */
-export type ContactServiceQueuesResponse = PaginatedResponse<ContactServiceQueue>;
-
-/**
- * Interface for Contact Service Queue search parameters based on spec
- * @public
- */
-export interface ContactServiceQueueSearchParams extends BaseSearchParams {
-  /** Desktop profile filter */
-  desktopProfileFilter?: boolean;
-  /** Provisioning view */
-  provisioningView?: boolean;
-  /** Single object response */
-  singleObjectResponse?: boolean;
-}
+import {METHODS} from '../constants';
 
 /**
  * Queue API class for managing Webex Contact Center contact service queues.
@@ -301,7 +120,7 @@ export class QueueAPI {
 
     LoggerProxy.info('Fetching contact service queues', {
       module: 'QueueAPI',
-      method: 'getQueues',
+      method: METHODS.GET_QUEUES,
       data: {
         orgId,
         page,
@@ -365,11 +184,11 @@ export class QueueAPI {
       if (singleObjectResponse !== undefined)
         queryParams.append('singleObjectResponse', singleObjectResponse.toString());
 
-      const resource = `/organization/${orgId}/v2/contact-service-queue?${queryParams.toString()}`;
+      const resource = endPointMap.queueList(orgId, queryParams.toString());
 
       LoggerProxy.log('Making API request to fetch contact service queues', {
         module: 'QueueAPI',
-        method: 'getQueues',
+        method: METHODS.GET_QUEUES,
         data: {
           resource,
           service: WCC_API_GATEWAY,
@@ -389,7 +208,7 @@ export class QueueAPI {
 
       LoggerProxy.log(`Successfully retrieved ${recordCount} contact service queues`, {
         module: 'QueueAPI',
-        method: 'getQueues',
+        method: METHODS.GET_QUEUES,
         data: {
           statusCode: response.statusCode,
           duration,
@@ -424,7 +243,7 @@ export class QueueAPI {
 
         LoggerProxy.log('Cached contact service queues for future requests', {
           module: 'QueueAPI',
-          method: 'getQueues',
+          method: METHODS.GET_QUEUES,
           data: {
             cacheKey,
             recordCount,
@@ -444,7 +263,7 @@ export class QueueAPI {
 
       LoggerProxy.error('Failed to fetch contact service queues', {
         module: 'QueueAPI',
-        method: 'getQueues',
+        method: METHODS.GET_QUEUES,
         data: errorData,
         error,
       });

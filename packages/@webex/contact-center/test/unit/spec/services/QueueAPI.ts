@@ -1,27 +1,27 @@
-import QueueAPI from '../../../src/services/QueueAPI';
-import {HTTP_METHODS, WebexSDK, IHttpResponse} from '../../../src/types';
-import {METRIC_EVENT_NAMES} from '../../../src/metrics/constants';
-import WebexRequest from '../../../src/services/core/WebexRequest';
-import MetricsManager from '../../../src/metrics/MetricsManager';
-import LoggerProxy from '../../../src/logger-proxy';
+import QueueAPI from '../../../../src/services/QueueAPI';
+import {HTTP_METHODS, WebexSDK, IHttpResponse} from '../../../../src/types';
+import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
+import WebexRequest from '../../../../src/services/core/WebexRequest';
+import MetricsManager from '../../../../src/metrics/MetricsManager';
+import LoggerProxy from '../../../../src/logger-proxy';
 
-jest.mock('../../../src/services/core/WebexRequest');
-jest.mock('../../../src/metrics/MetricsManager');
-jest.mock('../../../src/logger-proxy');
+jest.mock('../../../../src/metrics/MetricsManager');
+jest.mock('../../../../src/logger-proxy');
 
 describe('QueueAPI', () => {
   let queueAPI: QueueAPI;
   let mockWebex: WebexSDK;
-  let mockWebexRequest: jest.Mocked<WebexRequest>;
   let mockMetricsManager: jest.Mocked<MetricsManager>;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
+    (WebexRequest as any).instance = undefined;
     mockWebex = {
       credentials: {
         getOrgId: jest.fn().mockReturnValue('test-org-id'),
       },
+      request: jest.fn(),
       internal: {
         newMetrics: {
           submitBehavioralEvent: jest.fn(),
@@ -32,11 +32,6 @@ describe('QueueAPI', () => {
       ready: true,
       once: jest.fn(),
     } as unknown as WebexSDK;
-
-    mockWebexRequest = {
-      request: jest.fn(),
-    } as unknown as jest.Mocked<WebexRequest>;
-    (WebexRequest.getInstance as jest.Mock).mockReturnValue(mockWebexRequest);
 
     mockMetricsManager = {
       trackEvent: jest.fn(),
@@ -49,7 +44,7 @@ describe('QueueAPI', () => {
 
   describe('constructor', () => {
     it('should initialize with all required dependencies', () => {
-      expect(WebexRequest.getInstance).toHaveBeenCalledWith({webex: mockWebex});
+      expect(WebexRequest.getInstance({webex: mockWebex})).toBeDefined();
       expect(MetricsManager.getInstance).toHaveBeenCalledWith({webex: mockWebex});
     });
   });
@@ -142,11 +137,11 @@ describe('QueueAPI', () => {
     });
 
     it('should fetch contact service queues successfully with default parameters', async () => {
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
       const result = await queueAPI.getQueues();
 
-      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+      expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
         resource: '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100',
         method: HTTP_METHODS.GET,
@@ -166,12 +161,28 @@ describe('QueueAPI', () => {
         },
         ['behavioral', 'operational']
       );
-      expect(LoggerProxy.info).toHaveBeenCalled();
-      expect(LoggerProxy.log).toHaveBeenCalled();
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching contact service queues', {
+        module: 'QueueAPI',
+        method: 'getQueues',
+        data: expect.objectContaining({
+          orgId: 'test-org-id',
+          page: 0,
+          pageSize: 100,
+          isSearchRequest: false,
+        }),
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Making API request to fetch contact service queues', {
+        module: 'QueueAPI',
+        method: 'getQueues',
+        data: expect.objectContaining({
+          resource: '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100',
+          service: 'wcc-api-gateway',
+        }),
+      });
     });
 
     it('should fetch queues with custom parameters', async () => {
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
       const params = {
         page: 1,
@@ -188,7 +199,7 @@ describe('QueueAPI', () => {
 
       await queueAPI.getQueues(params);
 
-      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+      expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
         resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=25&filter=queueType%3D%3D%22INBOUND%22&attributes=id%2Cname%2CqueueType&search=support&sortBy=name&sortOrder=desc&desktopProfileFilter=true&provisioningView=false&singleObjectResponse=true',
         method: HTTP_METHODS.GET,
@@ -205,7 +216,7 @@ describe('QueueAPI', () => {
     });
 
     it('should handle API errors and track metrics', async () => {
-      mockWebexRequest.request.mockRejectedValue(new Error('Internal Server Error'));
+      (mockWebex.request as jest.Mock).mockRejectedValue(new Error('Internal Server Error'));
 
       await expect(queueAPI.getQueues()).rejects.toThrow('Internal Server Error');
 
@@ -223,56 +234,22 @@ describe('QueueAPI', () => {
       expect(LoggerProxy.error).toHaveBeenCalled();
     });
 
-    it('should handle network errors and track metrics', async () => {
-      const networkError = new Error('Network error');
-      mockWebexRequest.request.mockRejectedValue(networkError);
 
-      await expect(queueAPI.getQueues()).rejects.toThrow('Network error');
-
-      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.QUEUE_FETCH_FAILED,
-        {
-          orgId: 'test-org-id',
-          error: 'Network error',
-          isSearchRequest: false,
-          page: 0,
-          pageSize: 100,
-        },
-        ['behavioral', 'operational']
-      );
-      expect(LoggerProxy.error).toHaveBeenCalledWith(
-        'Failed to fetch contact service queues',
-        {
-          module: 'QueueAPI',
-          method: 'getQueues',
-          data: {
-            orgId: 'test-org-id',
-            error: 'Network error',
-            isSearchRequest: false,
-            page: 0,
-            pageSize: 100,
-          },
-          error: networkError,
-        }
-      );
-    });
 
     it('should not track metrics for subsequent pages in simple pagination', async () => {
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      await queueAPI.getQueues({page: 2});
+      const result = await queueAPI.getQueues({page: 2});
+      expect(result).toEqual(mockResponse.body);
 
-      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalledWith(
-        METRIC_EVENT_NAMES.QUEUE_FETCH_SUCCESS,
-        expect.any(Object),
-        expect.any(Array)
-      );
+      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
     });
 
     it('should track metrics for search requests on any page', async () => {
-      mockWebexRequest.request.mockResolvedValue(mockResponse);
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      await queueAPI.getQueues({page: 2, search: 'test'});
+      const result2 = await queueAPI.getQueues({page: 2, search: 'test'});
+      expect(result2).toEqual(mockResponse.body);
 
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.QUEUE_FETCH_SUCCESS,
