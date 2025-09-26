@@ -356,7 +356,18 @@ export class MediaRequestManager {
               : new ReceiverSelectedInfo(mr.policyInfo.csi),
             mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
             this.getMaxPayloadBitsPerSecond(mr),
-            [WcmeCodecInfo.fromAv1(45, new AV1Codec(5, 0, 5504, 3096, 8160, 39938400))]
+            mr.codecInfo && [
+              WcmeCodecInfo.fromH264(
+                0x80,
+                new H264Codec(
+                  mr.codecInfo.maxFs,
+                  mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
+                  mr.codecInfo.maxMbps,
+                  mr.codecInfo.maxWidth,
+                  mr.codecInfo.maxHeight
+                )
+              ),
+            ]
           )
         );
       }
