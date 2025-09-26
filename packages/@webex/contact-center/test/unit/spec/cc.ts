@@ -8,10 +8,10 @@ import {
 } from '../../../src/types';
 import ContactCenter from '../../../src/cc';
 import EntryPointAPI from '../../../src/services/EntryPointAPI';
-import type {EntryPointListResponse} from '../../../src/services/EntryPointAPI';
+import type {EntryPointListResponse} from '../../../src/types';
 import AddressBookAPI from '../../../src/services/AddressBookAPI';
 import QueueAPI from '../../../src/services/QueueAPI';
-import type {ContactServiceQueuesResponse} from '../../../src/services/QueueAPI';
+import type {ContactServiceQueuesResponse} from '../../../src/types';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess, AGENT_EVENTS} from '../../../src/services/agent/types';
 import {SetStateResponse} from '../../../src/types';

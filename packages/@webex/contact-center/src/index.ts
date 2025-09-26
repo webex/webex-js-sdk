@@ -34,19 +34,13 @@ export type {
   EntryPoint,
   EntryPointListResponse,
   EntryPointSearchParams,
-} from './services/EntryPointAPI';
-/** AddressBook API types */
-export type {
   AddressBookEntry,
   AddressBookEntriesResponse,
   AddressBookEntrySearchParams,
-} from './services/AddressBookAPI';
-/** Queue API types */
-export type {
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
-  ContactServiceQueue as QueueContactServiceQueue,
-} from './services/QueueAPI';
+  ContactServiceQueue,
+} from './types';
 
 // Enums
 /**
@@ -179,8 +173,6 @@ export type {
 export type {
   /** Profile interface */
   Profile,
-  /** Contact service queue interface */
-  ContactServiceQueue,
   /** Response type from getUserUsingCI method */
   AgentResponse,
   /** Response from getDesktopProfileById */

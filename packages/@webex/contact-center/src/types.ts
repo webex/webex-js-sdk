@@ -698,52 +698,97 @@ export interface AssistantSkillMapping {
   assistantSkillUpdatedTime?: number;
 }
 
+/**
+ * Configuration for a contact service queue
+ * @public
+ */
 export interface ContactServiceQueue {
+  /** Organization ID */
   organizationId?: string;
+  /** Unique identifier for the queue */
   id?: string;
+  /** Version of the queue */
   version?: number;
+  /** Name of the Contact Service Queue */
   name: string;
+  /** Description of the queue */
   description?: string;
+  /** Queue type (INBOUND, OUTBOUND) */
   queueType: 'INBOUND' | 'OUTBOUND';
+  /** Whether to check agent availability */
   checkAgentAvailability: boolean;
+  /** Channel type (TELEPHONY, EMAIL, SOCIAL_CHANNEL, CHAT, etc.) */
   channelType: 'TELEPHONY' | 'EMAIL' | 'FAX' | 'CHAT' | 'VIDEO' | 'OTHERS' | 'SOCIAL_CHANNEL';
+  /** Social channel type for SOCIAL_CHANNEL channelType */
   socialChannelType?:
     | 'MESSAGEBIRD'
     | 'MESSENGER'
     | 'WHATSAPP'
     | 'APPLE_BUSINESS_CHAT'
     | 'GOOGLE_BUSINESS_MESSAGES';
+  /** Service level threshold in seconds */
   serviceLevelThreshold: number;
+  /** Maximum number of simultaneous contacts */
   maxActiveContacts: number;
+  /** Maximum time in queue in seconds */
   maxTimeInQueue: number;
+  /** Default music in queue media file ID */
   defaultMusicInQueueMediaFileId: string;
+  /** Timezone for routing strategies */
   timezone?: string;
+  /** Whether the queue is active */
   active: boolean;
+  /** Whether outdial campaign is enabled */
   outdialCampaignEnabled?: boolean;
+  /** Whether monitoring is permitted */
   monitoringPermitted: boolean;
+  /** Whether parking is permitted */
   parkingPermitted: boolean;
+  /** Whether recording is permitted */
   recordingPermitted: boolean;
+  /** Whether recording all calls is permitted */
   recordingAllCallsPermitted: boolean;
+  /** Whether pausing recording is permitted */
   pauseRecordingPermitted: boolean;
+  /** Recording pause duration in seconds */
   recordingPauseDuration?: number;
+  /** Control flow script URL */
   controlFlowScriptUrl: string;
+  /** IVR requeue URL */
   ivrRequeueUrl: string;
+  /** Overflow number for telephony */
   overflowNumber?: string;
+  /** Vendor ID */
   vendorId?: string;
+  /** Routing type */
   routingType: 'LONGEST_AVAILABLE_AGENT' | 'SKILLS_BASED' | 'CIRCULAR' | 'LINEAR';
+  /** Skills-based routing type */
   skillBasedRoutingType?: 'LONGEST_AVAILABLE_AGENT' | 'BEST_AVAILABLE_AGENT';
+  /** Queue routing type */
   queueRoutingType: 'TEAM_BASED' | 'SKILL_BASED' | 'AGENT_BASED';
+  /** Queue skill requirements */
   queueSkillRequirements?: QueueSkillRequirement[];
+  /** List of agents for agent-based queue */
   agents?: QueueAgent[];
+  /** Call distribution groups */
   callDistributionGroups: CallDistributionGroup[];
+  /** XSP version */
   xspVersion?: string;
+  /** Subscription ID */
   subscriptionId?: string;
+  /** Assistant skill mapping */
   assistantSkill?: AssistantSkillMapping;
+  /** Whether this is a system default queue */
   systemDefault?: boolean;
+  /** User who last updated agents list */
   agentsLastUpdatedByUserName?: string;
+  /** Email of user who last updated agents list */
   agentsLastUpdatedByUserEmailPrefix?: string;
+  /** When agents list was last updated */
   agentsLastUpdatedTime?: number;
+  /** Creation timestamp in epoch millis */
   createdTime?: number;
+  /** Last updated timestamp in epoch millis */
   lastUpdatedTime?: number;
 }
 
