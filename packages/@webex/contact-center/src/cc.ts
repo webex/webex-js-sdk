@@ -56,11 +56,12 @@ import {Failure} from './services/core/GlobalTypes';
 import EntryPointAPI from './services/EntryPointAPI';
 import AddressBookAPI from './services/AddressBookAPI';
 import QueueAPI from './services/QueueAPI';
-import type {EntryPointListResponse, EntryPointSearchParams} from './services/EntryPointAPI';
 import type {
+  EntryPointListResponse,
+  EntryPointSearchParams,
   ContactServiceQueuesResponse,
   ContactServiceQueueSearchParams,
-} from './services/QueueAPI';
+} from './types';
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
