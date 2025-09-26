@@ -218,6 +218,7 @@ describe('plugin-meetings', () => {
             invitees: invitee,
             installedOrgID: undefined,
             schedule: true,
+            classificationId: undefined,
           },
         });
 
@@ -652,7 +653,8 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(
           meetingInfo.createAdhocSpaceMeeting,
           'conversationUrl',
-          installedOrgID
+          installedOrgID,
+          null,
         );
         assert.notCalled(webex.request);
         meetingInfo.createAdhocSpaceMeeting.restore();
@@ -1148,6 +1150,7 @@ describe('plugin-meetings', () => {
     describe('createAdhocSpaceMeeting', () => {
       const conversationUrl = 'https://conversationUrl/xxx';
       const installedOrgID = '12345';
+      const classificationId = '123456';
 
       const setup = () => {
         const invitee = [];
@@ -1173,7 +1176,7 @@ describe('plugin-meetings', () => {
           body: conversation,
         });
 
-        const result = await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
+        const result = await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID, classificationId);
 
         assert.calledWith(webex.request, {
           uri: conversationUrl,
@@ -1192,6 +1195,7 @@ describe('plugin-meetings', () => {
             invitees: invitee,
             installedOrgID: installedOrgID,
             schedule: false,
+            classificationId,
           },
         });
         assert.calledOnce(Metrics.sendBehavioralMetric);
@@ -1206,7 +1210,7 @@ describe('plugin-meetings', () => {
         webex.request = sinon.stub().resolves({
           body: conversation,
         });
-        await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
+        await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID, classificationId);
 
         assert.calledWith(webex.request, {
           uri: conversationUrl,
@@ -1224,6 +1228,7 @@ describe('plugin-meetings', () => {
             invitees: invitee,
             installedOrgID,
             schedule: false,
+            classificationId,
           },
         });
         assert(Metrics.sendBehavioralMetric.calledOnce);

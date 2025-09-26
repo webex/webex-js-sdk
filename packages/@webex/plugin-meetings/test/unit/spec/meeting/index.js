@@ -2216,6 +2216,7 @@ describe('plugin-meetings', () => {
           });
           meeting.audio = muteStateStub;
           meeting.video = muteStateStub;
+          sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.ipv4_and_ipv6);
           sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
           sinon.stub(meeting, 'setupMediaConnectionListeners');
           sinon.stub(meeting, 'setMercuryListener');
@@ -2337,6 +2338,7 @@ describe('plugin-meetings', () => {
               selected_subnet: null,
               numTransports: 1,
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
         });
@@ -2384,6 +2386,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             })
           );
 
@@ -2452,6 +2455,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             }
           );
         });
@@ -2512,6 +2516,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             })
           );
 
@@ -2572,6 +2577,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             })
           );
 
@@ -3096,6 +3102,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             },
           ]);
 
@@ -3297,6 +3304,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               selectedCandidatePairChanges: 2,
               ipVersion: 'IPv6',
+              ipver: 1,
               numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: true,
@@ -3443,6 +3451,7 @@ describe('plugin-meetings', () => {
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
           meeting.iceCandidateErrors.set('701_turn_host_lookup_received_error', 1);
+          MeetingUtil.getIpVersion.returns(IP_VERSION.only_ipv6);
 
           await meeting.addMedia({
             mediaSettings: {},
@@ -3458,6 +3467,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               selectedCandidatePairChanges: 2,
               ipVersion: 'IPv6',
+              ipver: 6,
               numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: false,
@@ -3536,6 +3546,7 @@ describe('plugin-meetings', () => {
               selected_cluster: null,
               selected_subnet: null,
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
 
@@ -3600,6 +3611,7 @@ describe('plugin-meetings', () => {
               selected_cluster: null,
               selected_subnet: null,
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
 
@@ -3646,6 +3658,7 @@ describe('plugin-meetings', () => {
             locus_id: meeting.locusUrl.split('/').pop(),
             connectionType: 'udp',
             ipVersion: 'IPv6',
+            ipver: 1,
             selectedCandidatePairChanges: 2,
             numTransports: 1,
             isMultistream: false,
@@ -3726,6 +3739,7 @@ describe('plugin-meetings', () => {
               selected_cluster: 'some.cluster',
               selected_subnet: '1.X.X.X',
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
 
@@ -7464,6 +7478,8 @@ describe('plugin-meetings', () => {
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
@@ -7510,6 +7526,8 @@ describe('plugin-meetings', () => {
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
@@ -7565,6 +7583,8 @@ describe('plugin-meetings', () => {
               permissionToken: FAKE_PERMISSION_TOKEN,
             },
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
@@ -9006,11 +9026,16 @@ describe('plugin-meetings', () => {
             meeting.hasMediaConnectionConnectedAtLeastOnce = false;
             meeting.setupMediaConnectionListeners();
 
+            sinon.stub(MeetingUtil, 'getCaEventLabelsForIpVersion').returns(['fake labels']);
+
             simulateConnectionStateChange(ConnectionState.Connecting);
 
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.ice.start',
+              payload: {
+                labels: ['fake labels'],
+              },
               options: {
                 meetingId: meeting.id,
               },
