@@ -41,11 +41,10 @@ import HashTreeParser, {
   LocusInfoUpdateType,
 } from '../hashTree/hashTreeParser';
 import {ObjectType} from '../hashTree/types';
-import {DataSetNames} from '../hashTree/constants';
 
 export type LocusLLMEvent = {
   data: {
-    eventType: 'locus.state_message';
+    eventType: typeof LOCUSEVENT.HASH_TREE_DATA_UPDATED;
     stateElementsMessage: HashTreeMessage;
   };
 };
@@ -408,6 +407,27 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Creates the HashTreeParser instance.
+   * @param {Object} initial locus data
+   * @returns {void}
+   */
+  private createHashTreeParser({
+    initialLocus,
+  }: {
+    initialLocus: {
+      dataSets: Array<DataSet>;
+      locus: any;
+    };
+  }) {
+    return new HashTreeParser({
+      initialLocus,
+      webexRequest: this.webex.request.bind(this.webex),
+      locusInfoUpdateCallback: this.updateFromHashTree.bind(this),
+      debugId: `HT-${this.meetingId.substring(0, 4)}`,
+    });
+  }
+
+  /**
    * @param {Object} data - data to initialize locus info with. It may be from a join response or from a Mercury event that triggers a creation of meeting object
    * @param {DataSet[]} [dataSets=[]] - Array of data sets
    * @returns {undefined}
@@ -450,14 +470,11 @@ export default class LocusInfo extends EventsScope {
           );
           // first create the HashTreeParser, but don't initialize it with any data yet
           // pass just a fake locus that contains only the visibleDataSets
-          this.hashTreeParser = new HashTreeParser({
+          this.hashTreeParser = this.createHashTreeParser({
             initialLocus: {
               locus: {self: {visibleDataSets: selfObject.data.visibleDataSets}},
               dataSets: [], // empty, because they will be populated in initializeFromMessage() call  // dataSets: data.hashTreeMessage.dataSets,
             },
-            webexRequest: this.webex.request.bind(this.webex),
-            locusInfoUpdateCallback: this.updateFromHashTree.bind(this),
-            debugId: `HT-${this.meetingId.substring(0, 4)}`,
           });
 
           // now handle the message - that should populate all the visible datasets
@@ -715,7 +732,7 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   parse(meeting: any, data: any) {
-    if (data.eventType === 'locus.state_message') {
+    if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
       // this is the new hashmap Locus message format (only applicable to webinars for now)
       this.handleHashTreeMessage(meeting, data.stateElementsMessage as HashTreeMessage);
     } else {
@@ -793,11 +810,8 @@ export default class LocusInfo extends EventsScope {
           ' and locus:',
           locus
         );
-        this.hashTreeParser = new HashTreeParser({
+        this.hashTreeParser = this.createHashTreeParser({
           initialLocus: {locus, dataSets},
-          webexRequest: this.webex.request.bind(this.webex),
-          locusInfoUpdateCallback: this.updateFromHashTree.bind(this),
-          debugId: `HT-${this.meetingId.substring(0, 4)}`,
         });
       } else {
         // in this case the Locus we're getting is not necessarily the full one

@@ -126,6 +126,8 @@ import {
   JOIN_BEFORE_HOST,
   REGISTRATION_ID_STATUS,
   STAGE_MANAGER_TYPE,
+  LOCUSEVENT,
+  LOCUS_LLM_EVENT,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -5707,7 +5709,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {void}
    */
   private processLocusLLMEvent = (event: LocusLLMEvent): void => {
-    if (event.data.eventType === 'locus.state_message') {
+    if (event.data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
       this.locusInfo.parse(this, event.data);
     } else {
       LoggerProxy.logger.warn(
@@ -6128,7 +6130,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore - Fix type
       this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
       // @ts-ignore - Fix type
-      this.webex.internal.llm.off('event:locus.state_message', this.processLocusLLMEvent);
+      this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
     }
 
     if (!isJoined) {
@@ -6144,9 +6146,9 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - Fix type
         this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
         // @ts-ignore - Fix type
-        this.webex.internal.llm.off('event:locus.state_message', this.processLocusLLMEvent);
+        this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
         // @ts-ignore - Fix type
-        this.webex.internal.llm.on('event:locus.state_message', this.processLocusLLMEvent);
+        this.webex.internal.llm.on(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
         );
@@ -9399,7 +9401,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore - fix types
     this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
     // @ts-ignore - Fix type
-    this.webex.internal.llm.off('event:locus.state_message', this.processLocusLLMEvent);
+    this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
   };
 
   /**

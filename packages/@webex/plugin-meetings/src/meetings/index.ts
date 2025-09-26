@@ -102,11 +102,11 @@ class MediaLogger {
 export type LocusEvent = {
   eventType: string;
 
-  // fields populated for "classic" locus events (eventType = 'locus.difference' maybe others?)
+  // fields populated for "classic" locus events (eventType = 'locus.difference' and others, see LOCUSEVENT)
   locusUrl?: string;
   locus?: any;
 
-  // fields populated for "hash tree" locus events (eventType = 'locus.state_message')
+  // fields populated for "hash tree" locus events (eventType = 'locus.state_message' - see LOCUSEVENT.HASH_TREE_DATA_UPDATED)
   stateElementsMessage?: HashTreeMessage;
 };
 
@@ -423,7 +423,10 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   getCorrespondingMeetingByLocus(data: LocusEvent) {
-    if (data.eventType === 'locus.state_message' && data.stateElementsMessage?.locusUrl) {
+    if (
+      data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED &&
+      data.stateElementsMessage?.locusUrl
+    ) {
       return this.meetingCollection.getByKey(
         MEETING_KEY.LOCUS_URL,
         data.stateElementsMessage.locusUrl
@@ -474,7 +477,7 @@ export default class Meetings extends WebexPlugin {
     // Special case when locus has got replaced, This only happend once if a replace locus exists
     // https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-changing-mid-call
 
-    if (data.eventType !== 'locus.state_message') {
+    if (data.eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
       if (!meeting && data.locus?.replaces?.length > 0) {
         // Always the last element in the replace is the active one
         meeting = this.meetingCollection.getByKey(
@@ -519,7 +522,7 @@ export default class Meetings extends WebexPlugin {
       // };
       // rather then locus object change to locus url
 
-      if (data.eventType !== 'locus.state_message') {
+      if (data.eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
         if (
           data.locus &&
           data.locus.fullState &&
@@ -551,7 +554,7 @@ export default class Meetings extends WebexPlugin {
         }
       }
 
-      if (data.eventType === 'locus.state_message') {
+      if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
         // in hash tree messages we don't ge the locus object, but the meeting constructor needs at least locus.url
         set(data, 'locus.url', data.stateElementsMessage.locusUrl);
       }
