@@ -136,7 +136,7 @@
     "chromedriver": "^119.0.1",
     "circular-dependency-plugin": "^5.2.2",
     "core-js": "^3.26.0",
-    "debug": "^4.3.4",
+    "debug": "^4.4.3",
     "detective": "^5.2.1",
     "documentation": "^14.0.1",
     "documentation-theme-utils": "^3.0.0",

@@ -79,7 +79,7 @@
     "browserify": "^17.0.0",
     "browserify-middleware": "^8.1.1",
     "chai": "^4.3.7",
-    "debug": "^4.3.4",
+    "debug": "^4.4.3",
     "envify": "^4.1.0",
     "fs-extra": "^11.1.0",
     "glob": "^9.3.0",

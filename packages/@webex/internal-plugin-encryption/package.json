@@ -46,7 +46,7 @@
     "@webex/test-helper-file": "workspace:*",
     "@webex/webex-core": "workspace:*",
     "asn1js": "^2.0.26",
-    "debug": "^4.3.4",
+    "debug": "^4.4.3",
     "isomorphic-webcrypto": "^2.3.8",
     "lodash": "^4.17.21",
     "node-jose": "^2.2.0",

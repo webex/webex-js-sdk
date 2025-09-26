@@ -42,7 +42,7 @@
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/webex-core": "workspace:*",
-    "debug": "^4.3.4",
+    "debug": "^4.4.3",
     "lodash": "^4.17.21"
   },
   "peerDependencies": {
