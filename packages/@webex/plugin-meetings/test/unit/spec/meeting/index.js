@@ -487,7 +487,7 @@ describe('plugin-meetings', () => {
 
         it('pstnCorrelationId getter/setter should work correctly', () => {
           const testPstnCorrelationId = uuid.v4();
-          
+
           meeting.pstnCorrelationId = testPstnCorrelationId;
           assert.equal(meeting.pstnCorrelationId, testPstnCorrelationId);
           assert.equal(meeting.callStateForMetrics.pstnCorrelationId, testPstnCorrelationId);
@@ -1989,21 +1989,25 @@ describe('plugin-meetings', () => {
             });
           });
 
-          it('should post error event if failed', async () => {
+          it('should handle join failure', async () => {
             MeetingUtil.isPinOrGuest = sinon.stub().returns(false);
+            webex.internal.newMetrics.submitClientEvent = sinon.stub();
+
             await meeting.join().catch(() => {
-              assert.deepEqual(
-                webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].name,
-                'client.locus.join.response'
-              );
-              assert.match(
-                webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].options.rawError,
+              assert.calledOnce(MeetingUtil.joinMeeting);
+
+              // Assert that client.locus.join.response error event is not sent from this function, it is now emitted from MeetingUtil.joinMeeting
+              assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+              assert.calledWithMatch(
+                webex.internal.newMetrics.submitClientEvent,
                 {
-                  code: 2,
-                  error: null,
-                  joinOptions: {},
-                  sdkMessage:
-                    'There was an issue joining the meeting, meeting could be in a bad state.',
+                  name: 'client.call.initiated',
+                  payload: {
+                    trigger: 'user-interaction',
+                    isRoapCallEnabled: true,
+                    pstnAudioType: undefined
+                  },
+                  options: {meetingId: meeting.id},
                 }
               );
             });
@@ -2212,6 +2216,7 @@ describe('plugin-meetings', () => {
           });
           meeting.audio = muteStateStub;
           meeting.video = muteStateStub;
+          sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.ipv4_and_ipv6);
           sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
           sinon.stub(meeting, 'setupMediaConnectionListeners');
           sinon.stub(meeting, 'setMercuryListener');
@@ -2333,6 +2338,7 @@ describe('plugin-meetings', () => {
               selected_subnet: null,
               numTransports: 1,
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
         });
@@ -2380,6 +2386,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             })
           );
 
@@ -2448,6 +2455,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             }
           );
         });
@@ -2508,6 +2516,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             })
           );
 
@@ -2568,6 +2577,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             })
           );
 
@@ -3092,6 +3102,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             },
           ]);
 
@@ -3293,6 +3304,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               selectedCandidatePairChanges: 2,
               ipVersion: 'IPv6',
+              ipver: 1,
               numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: true,
@@ -3439,6 +3451,7 @@ describe('plugin-meetings', () => {
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
           meeting.iceCandidateErrors.set('701_turn_host_lookup_received_error', 1);
+          MeetingUtil.getIpVersion.returns(IP_VERSION.only_ipv6);
 
           await meeting.addMedia({
             mediaSettings: {},
@@ -3454,6 +3467,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               selectedCandidatePairChanges: 2,
               ipVersion: 'IPv6',
+              ipver: 6,
               numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: false,
@@ -3532,6 +3546,7 @@ describe('plugin-meetings', () => {
               selected_cluster: null,
               selected_subnet: null,
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
 
@@ -3596,6 +3611,7 @@ describe('plugin-meetings', () => {
               selected_cluster: null,
               selected_subnet: null,
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
 
@@ -3642,6 +3658,7 @@ describe('plugin-meetings', () => {
             locus_id: meeting.locusUrl.split('/').pop(),
             connectionType: 'udp',
             ipVersion: 'IPv6',
+            ipver: 1,
             selectedCandidatePairChanges: 2,
             numTransports: 1,
             isMultistream: false,
@@ -3722,6 +3739,7 @@ describe('plugin-meetings', () => {
               selected_cluster: 'some.cluster',
               selected_subnet: '1.X.X.X',
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
 
@@ -4027,13 +4045,14 @@ describe('plugin-meetings', () => {
             });
           });
 
-          it('counts the number of members that are in the meeting for MEDIA_QUALITY event', async () => {
+          it('counts the number of members that are in the meeting or lobby for MEDIA_QUALITY event', async () => {
             let fakeMembersCollection = {
               members: {
-                member1: {isInMeeting: true},
-                member2: {isInMeeting: true},
-                member3: {isInMeeting: false},
-              },
+                member1: {isInMeeting: true, isInLobby: false},
+                member2: {isInMeeting: false, isInLobby: true},
+                member3: {isInMeeting: false, isInLobby: false},
+                member4: {isInMeeting: true, isInLobby: false},
+              }
             };
             sinon.stub(meeting, 'getMembers').returns({membersCollection: fakeMembersCollection});
             const fakeData = {intervalMetadata: {}};
@@ -4051,11 +4070,12 @@ describe('plugin-meetings', () => {
               },
               payload: {
                 intervals: [
-                  sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 2)),
+                  sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 3)),
                 ],
               },
             });
-            fakeMembersCollection.members.member2.isInMeeting = false;
+            // Move member2 from lobby to neither in meeting nor lobby
+            fakeMembersCollection.members.member2.isInLobby = false;
 
             statsAnalyzerStub.emit(
               {file: 'test', function: 'test'},
@@ -4070,7 +4090,7 @@ describe('plugin-meetings', () => {
               },
               payload: {
                 intervals: [
-                  sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 1)),
+                  sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 2)),
                 ],
               },
             });
@@ -6544,7 +6564,7 @@ describe('plugin-meetings', () => {
             clientUrl: meeting.deviceUrl,
           });
           assert.notCalled(meeting.meetingRequest.dialOut);
-          
+
           // Verify pstnCorrelationId was set
           assert.exists(meeting.pstnCorrelationId);
           assert.notEqual(meeting.pstnCorrelationId, meeting.correlationId);
@@ -6621,7 +6641,7 @@ describe('plugin-meetings', () => {
             throw new Error('Promise resolved when it should have rejected');
           } catch (e) {
             assert.equal(e, error);
-            
+
             // Verify behavioral metric was sent with dial_in_correlation_id
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_DIAL_IN_FAILURE, {
               correlation_id: meeting.correlationId,
@@ -6632,7 +6652,7 @@ describe('plugin-meetings', () => {
               reason: error.error.message,
               stack: error.stack,
             });
-            
+
             // Verify pstnCorrelationId was cleared after error
             assert.equal(meeting.pstnCorrelationId, undefined);
           }
@@ -6648,7 +6668,7 @@ describe('plugin-meetings', () => {
             throw new Error('Promise resolved when it should have rejected');
           } catch (e) {
             assert.equal(e, error);
-            
+
             // Verify behavioral metric was sent with dial_out_correlation_id
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_DIAL_OUT_FAILURE, {
               correlation_id: meeting.correlationId,
@@ -6659,7 +6679,7 @@ describe('plugin-meetings', () => {
               reason: error.error.message,
               stack: error.stack,
             });
-            
+
             // Verify pstnCorrelationId was cleared after error
             assert.equal(meeting.pstnCorrelationId, undefined);
           }
@@ -6682,12 +6702,12 @@ describe('plugin-meetings', () => {
 
         it('should disconnect phone audio and clear pstnCorrelationId', async () => {
           meeting.pstnCorrelationId = 'test-pstn-correlation-id';
-          
+
           await meeting.disconnectPhoneAudio();
-          
+
           // Verify that pstnCorrelationId is cleared
           assert.equal(meeting.pstnCorrelationId, undefined);
-          
+
           // Verify that MeetingUtil.disconnectPhoneAudio was called for both dial-in and dial-out
           assert.calledTwice(MeetingUtil.disconnectPhoneAudio);
           assert.calledWith(MeetingUtil.disconnectPhoneAudio, meeting, meeting.dialInUrl);
@@ -6698,9 +6718,9 @@ describe('plugin-meetings', () => {
           meeting.dialInDeviceStatus = 'IDLE';
           meeting.dialOutDeviceStatus = 'IDLE';
           meeting.pstnCorrelationId = 'test-pstn-correlation-id';
-          
+
           await meeting.disconnectPhoneAudio();
-          
+
           // Verify that pstnCorrelationId is still cleared even when no phone connection is active
           assert.equal(meeting.pstnCorrelationId, undefined);
            // And verify no disconnect was attempted
@@ -7458,6 +7478,8 @@ describe('plugin-meetings', () => {
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
@@ -7504,6 +7526,8 @@ describe('plugin-meetings', () => {
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
@@ -7559,6 +7583,8 @@ describe('plugin-meetings', () => {
               permissionToken: FAKE_PERMISSION_TOKEN,
             },
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
@@ -9000,11 +9026,16 @@ describe('plugin-meetings', () => {
             meeting.hasMediaConnectionConnectedAtLeastOnce = false;
             meeting.setupMediaConnectionListeners();
 
+            sinon.stub(MeetingUtil, 'getCaEventLabelsForIpVersion').returns(['fake labels']);
+
             simulateConnectionStateChange(ConnectionState.Connecting);
 
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.ice.start',
+              payload: {
+                labels: ['fake labels'],
+              },
               options: {
                 meetingId: meeting.id,
               },
@@ -12258,6 +12289,7 @@ describe('plugin-meetings', () => {
             meeting.deviceUrl = 'deviceUrl.com';
             webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
             webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration = sinon.stub().returns(1000);
+            webex.internal.newMetrics.submitClientEvent = sinon.stub();
           });
           it('should stop the whiteboard share', async () => {
             const whiteboardShare = meeting.stopWhiteboardShare();
@@ -12359,6 +12391,9 @@ describe('plugin-meetings', () => {
             meeting.selfId = '9528d952-e4de-46cf-8157-fd4823b98377';
             meeting.deviceUrl = 'my-web-url';
             meeting.locusInfo.info = {isWebinar: false};
+            webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
+            webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration = sinon.stub().returns(1500);
+            webex.internal.newMetrics.submitClientEvent = sinon.stub();
           });
 
           const USER_IDS = {
@@ -13504,7 +13539,54 @@ describe('plugin-meetings', () => {
               payloadTestHelper([data1, data2, data3]);
             });
           });
-        });
+
+          it('should send share stopped metric when whiteboard sharing stops', () => {
+            // Start whiteboard sharing (this won't trigger metrics)
+            const data1 = generateData(
+              blankPayload,
+              true, // isGranting: true
+              false, // isContent: false (whiteboard)
+              USER_IDS.ME,
+              RESOURCE_URLS.WHITEBOARD_A
+            );
+
+            // Stop whiteboard sharing (this should trigger metrics)
+            const data2 = generateData(
+              data1.payload,
+              false, // isGranting: false (stopping share)
+              false, // isContent: false (whiteboard)
+              USER_IDS.ME
+            );
+
+            // Trigger the events
+            meeting.locusInfo.emit(
+              {function: 'test', file: 'test'},
+              EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+              data1.payload
+            );
+
+            meeting.locusInfo.emit(
+              {function: 'test', file: 'test'},
+              EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+              data2.payload
+            );
+
+            // Verify metrics were called when whiteboard sharing stopped
+            assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+              key: 'internal.client.share.stopped',
+            });
+
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.stopped',
+              payload: {
+                mediaType: 'whiteboard',
+                shareDuration: 1500, // mocked return value
+              },
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
 
         describe('handleShareVideoStreamMuteStateChange', () => {
           it('should emit MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE event with correct fields', () => {
@@ -13530,6 +13612,7 @@ describe('plugin-meetings', () => {
             );
           });
         });
+      });
       });
 
       describe('#startKeepAlive', () => {

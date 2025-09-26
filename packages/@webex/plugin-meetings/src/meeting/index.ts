@@ -269,6 +269,7 @@ export enum ScreenShareFloorStatus {
 type FetchMeetingInfoParams = {
   password?: string;
   registrationId?: string;
+  classificationId?: string;
   captchaCode?: string;
   extraParams?: Record<string, any>;
   sendCAevents?: boolean;
@@ -1902,6 +1903,7 @@ export default class Meeting extends StatelessWebexPlugin {
     extraParams = {},
     sendCAevents = false,
     registrationId = null,
+    classificationId = null,
   }): Promise<void> {
     try {
       const captchaInfo = captchaCode
@@ -1918,7 +1920,9 @@ export default class Meeting extends StatelessWebexPlugin {
         this.locusId,
         extraParams,
         {meetingId: this.id, sendCAevents},
-        registrationId
+        registrationId,
+        null,
+        classificationId
       );
 
       this.parseMeetingInfo(info?.body, this.destination, info?.errors);
@@ -3149,6 +3153,23 @@ export default class Meeting extends StatelessWebexPlugin {
               },
               EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD
             );
+            // @ts-ignore
+            this.webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp({
+              key: 'internal.client.share.stopped',
+            });
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.share.stopped',
+              payload: {
+                mediaType: 'whiteboard',
+                shareDuration:
+                  // @ts-ignore
+                  this.webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration(),
+              },
+              options: {
+                meetingId: this.id,
+              },
+            });
             break;
 
           case SHARE_STATUS.NO_SHARE:
@@ -5952,15 +5973,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingFiniteStateMachine.fail(error);
         LoggerProxy.logger.error('Meeting:index#join --> Failed', error);
 
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.locus.join.response',
-          payload: {
-            identifiers: {meetingLookupUrl: this.meetingInfo?.meetingLookupUrl},
-          },
-          options: {meetingId: this.id, rawError: error},
-        });
-
         // TODO:  change this to error codes and pre defined dictionary
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_FAILURE, {
           correlation_id: this.correlationId,
@@ -6788,6 +6800,10 @@ export default class Meeting extends StatelessWebexPlugin {
             // @ts-ignore
             this.webex.internal.newMetrics.submitClientEvent({
               name: 'client.ice.start',
+              payload: {
+                // @ts-ignore
+                labels: MeetingUtil.getCaEventLabelsForIpVersion(this.webex),
+              },
               options: {
                 meetingId: this.id,
               },
@@ -6957,10 +6973,10 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       }
 
-      // Count members that are in the meeting.
+      // Count members that are in the meeting or in the lobby.
       const {members} = this.getMembers().membersCollection;
       event.data.intervalMetadata.meetingUserCount = Object.values(members).filter(
-        (member: Member) => member.isInMeeting
+        (member: Member) => member.isInMeeting || member.isInLobby
       ).length;
 
       // @ts-ignore
@@ -7828,6 +7844,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.allowMediaInLobby = options?.allowMediaInLobby;
 
+    // @ts-ignore
+    const ipver = MeetingUtil.getIpVersion(this.webex); // used just for metrics
+
     // If the user is unjoined or guest waiting in lobby dont allow the user to addMedia
     // @ts-ignore - isUserUnadmitted coming from SelfUtil
     if (this.isUserUnadmitted && !this.wirelessShare && !this.allowMediaInLobby) {
@@ -7926,6 +7945,7 @@ export default class Meeting extends StatelessWebexPlugin {
         locus_id: this.locusUrl.split('/').pop(),
         connectionType,
         ipVersion,
+        ipver,
         selectedCandidatePairChanges,
         numTransports,
         isMultistream: this.isMultistream,
@@ -7994,6 +8014,7 @@ export default class Meeting extends StatelessWebexPlugin {
         ...reachabilityMetrics,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
+        ipver,
       });
 
       await this.cleanUpOnAddMediaFailure();

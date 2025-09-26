@@ -973,7 +973,8 @@ describe('plugin-meetings', () => {
         expectedMemberId,
         expectedRequestingParticipantId,
         expectedAlias,
-        expectedLocusUrl
+        expectedLocusUrl,
+        expectedSuffix
       ) => {
         await assert.isFulfilled(resultPromise);
         assert.calledOnceWithExactly(
@@ -981,13 +982,15 @@ describe('plugin-meetings', () => {
           expectedMemberId,
           expectedRequestingParticipantId,
           expectedAlias,
-          expectedLocusUrl
+          expectedLocusUrl,
+          expectedSuffix
         );
         assert.calledOnceWithExactly(spies.editDisplayNameMember, {
           memberId: expectedMemberId,
           requestingParticipantId: expectedRequestingParticipantId,
           alias: expectedAlias,
           locusUrl: expectedLocusUrl,
+          suffix: expectedSuffix,
         });
         assert.strictEqual(resultPromise, spies.editDisplayNameMember.getCall(0).returnValue);
       };
@@ -1017,6 +1020,31 @@ describe('plugin-meetings', () => {
       });
 
       it('should make the correct request when called with respective parameters', async () => {
+        const requestingParticipantId = uuid.v4();
+        const memberId = uuid.v4();
+        const alias = 'aliasName';
+        const suffix = 'suffixName';
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.editDisplayName(
+          memberId,
+          requestingParticipantId,
+          alias,
+          suffix
+        );
+
+        await checkValid(
+          resultPromise,
+          spies,
+          memberId,
+          requestingParticipantId,
+          alias,
+          url1,
+          suffix
+        );
+      });
+
+      it('should make the correct request when called with respective parameters - no suffix', async () => {
         const requestingParticipantId = uuid.v4();
         const memberId = uuid.v4();
         const alias = 'aliasName';

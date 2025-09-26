@@ -1633,7 +1633,10 @@ export async function uploadLogs(
       METRIC_TYPE.BEHAVIORAL,
       response?.trackingid,
       feedbackId,
-      metaData?.correlationId
+      metaData?.correlationId,
+      undefined,
+      metaData?.callId,
+      metaData?.broadworksCorrelationInfo
     );
 
     return {
@@ -1641,6 +1644,9 @@ export async function uploadLogs(
       ...(response.url ? {url: response.url} : {}),
       ...(response.userId ? {userId: response.userId} : {}),
       ...(response.correlationId ? {correlationId: response.correlationId} : {}),
+      ...(metaData?.broadworksCorrelationInfo
+        ? {broadworksCorrelationInfo: metaData?.broadworksCorrelationInfo}
+        : {}),
       feedbackId,
     };
   } catch (error) {
@@ -1654,9 +1660,12 @@ export async function uploadLogs(
       METRIC_EVENT.UPLOAD_LOGS_FAILED,
       UPLOAD_LOGS_ACTION,
       METRIC_TYPE.BEHAVIORAL,
+      undefined,
       feedbackId,
       metaData?.correlationId,
-      errorLog.message
+      errorLog.message,
+      metaData?.callId,
+      metaData?.broadworksCorrelationInfo
     );
 
     if (throwError) {
