@@ -3,7 +3,6 @@ import MetricsManager from '../../../../src/metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
 import {WebexSDK} from '../../../../src/types';
 import {EventPayload} from '@webex/internal-plugin-metrics/src/metrics.types';
-import LoggerProxy from '../../../../src/logger-proxy';
 
 describe('MetricsManagerImplementation', () => {
   let webex: WebexSDK;
