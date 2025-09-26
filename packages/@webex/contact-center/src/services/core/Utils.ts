@@ -1,6 +1,6 @@
 import * as Err from './Err';
 import {LoginOption, WebexRequestPayload} from '../../types';
-import {Failure} from './GlobalTypes';
+import {Failure, AugmentedError} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
 import {
@@ -141,6 +141,62 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
     error: err,
     reason,
   };
+};
+
+/**
+ * Extracts error details from task API errors and logs them. Also uploads logs for the error.
+ * This handles the specific error format returned by task API calls.
+ *
+ * @param error - The error object from task API calls with structure: {id: string, details: {trackingId: string, msg: {...}}}
+ * @param methodName - The name of the method where the error occurred.
+ * @param moduleName - The name of the module where the error occurred.
+ * @returns AugmentedError containing structured error details on err.data for metrics and logging
+ * @public
+ * @example
+ * const taskError = generateTaskErrorObject(error, 'transfer', 'TaskModule');
+ * throw taskError.error;
+ * @ignore
+ */
+export const generateTaskErrorObject = (
+  error: any,
+  methodName: string,
+  moduleName: string
+): AugmentedError => {
+  const trackingId = error?.details?.trackingId || error?.trackingId || '';
+  const errorMsg = error?.details?.msg;
+
+  const fallbackMessage =
+    (error && typeof error.message === 'string' && error.message) ||
+    `Error while performing ${methodName}`;
+  const errorMessage = errorMsg?.errorMessage || fallbackMessage;
+  const errorType =
+    errorMsg?.errorType ||
+    (error && typeof error.name === 'string' && error.name) ||
+    'Unknown Error';
+  const errorData = errorMsg?.errorData || '';
+  const reasonCode = errorMsg?.reasonCode || 0;
+
+  // Log and upload for Task API formatted errors
+  LoggerProxy.error(`${methodName} failed: ${errorMessage} (${errorType})`, {
+    module: moduleName,
+    method: methodName,
+    trackingId,
+  });
+  WebexRequest.getInstance().uploadLogs({
+    correlationId: trackingId,
+  });
+
+  const reason = `${errorType}: ${errorMessage}${errorData ? ` (${errorData})` : ''}`;
+  const err: AugmentedError = new Error(reason);
+  err.data = {
+    message: errorMessage,
+    errorType,
+    errorData,
+    reasonCode,
+    trackingId,
+  };
+
+  return err;
 };
 
 /**

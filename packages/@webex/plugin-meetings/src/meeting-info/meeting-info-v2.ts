@@ -371,6 +371,7 @@ export default class MeetingInfoV2 {
    * @param {String} conversationUrl conversationUrl to start adhoc meeting on
    * @param {String} installedOrgID org ID of user's machine
    * @param {Boolean} enableStaticMeetingLink whether or not to enable static meeting link
+   * @param {String} classificationId need it to start adhoc meeting if space support classification
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -379,7 +380,8 @@ export default class MeetingInfoV2 {
     conversationUrl: string,
     installedOrgID?: string,
     // setting this to true enables static meeting link
-    enableStaticMeetingLink = false
+    enableStaticMeetingLink = false,
+    classificationId = undefined
   ) {
     const getInvitees = (particpants = []) => {
       const invitees = [];
@@ -407,6 +409,7 @@ export default class MeetingInfoV2 {
           invitees: getInvitees(conversation.participants?.items),
           installedOrgID,
           schedule: enableStaticMeetingLink,
+          classificationId,
         };
 
         if (installedOrgID) {
@@ -429,16 +432,26 @@ export default class MeetingInfoV2 {
    * Creates adhoc space meetings for a space by fetching the conversation infomation
    * @param {String} conversationUrl conversationUrl to start adhoc meeting on
    * @param {String} installedOrgID org ID of user's machine
+   * @param {String} classificationId if space is support classification, it needs provide it during start instant meeting
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
    */
-  async createAdhocSpaceMeeting(conversationUrl: string, installedOrgID?: string) {
+  async createAdhocSpaceMeeting(
+    conversationUrl: string,
+    installedOrgID?: string,
+    classificationId?: string
+  ) {
     if (!this.webex.meetings.preferredWebexSite) {
       throw Error('No preferred webex site found');
     }
 
-    return this.createAdhocSpaceMeetingOrEnableStaticMeetingLink(conversationUrl, installedOrgID)
+    return this.createAdhocSpaceMeetingOrEnableStaticMeetingLink(
+      conversationUrl,
+      installedOrgID,
+      false,
+      classificationId
+    )
       .then((requestResult) => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
 
@@ -618,6 +631,7 @@ export default class MeetingInfoV2 {
    * @param {Object} options
    * @param {String} registrationId
    * @param {String} fullSiteUrl
+   * @param {String} classificationId
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -635,7 +649,8 @@ export default class MeetingInfoV2 {
     extraParams: object = {},
     options: {meetingId?: string; sendCAevents?: boolean} = {},
     registrationId: string = null,
-    fullSiteUrl: string = null
+    fullSiteUrl: string = null,
+    classificationId: string = null
   ) {
     const {meetingId, sendCAevents} = options;
 
@@ -650,7 +665,11 @@ export default class MeetingInfoV2 {
       this.webex.config.meetings.experimental.enableAdhocMeetings &&
       this.webex.meetings.preferredWebexSite
     ) {
-      return this.createAdhocSpaceMeeting(destinationType.destination, installedOrgID);
+      return this.createAdhocSpaceMeeting(
+        destinationType.destination,
+        installedOrgID,
+        classificationId
+      );
     }
 
     const body = await MeetingInfoUtil.getRequestBody({

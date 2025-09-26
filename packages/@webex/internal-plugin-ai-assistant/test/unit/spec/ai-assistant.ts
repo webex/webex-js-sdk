@@ -296,59 +296,267 @@ describe('plugin-ai-assistant', () => {
         // first event is a tool use with an encrypted value
         await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[0]));
 
-        expect(triggerSpy.getCall(0).args[0]).to.equal(`aiassistant:result:${jsonResponse[0].clientRequestId}`);
-        
-        let expectedResult = set(
-          cloneDeep(jsonResponse[0]),
-          'response.content.value.value',
-          'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_0_encrypted_value'
-        );
-        
-        expect(triggerSpy.getCall(0).args[1]).to.deep.equal(
+        await waitForAsync();
+
+        let expectedResult: any = {
+          sessionId: '3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          sessionUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageId: '3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseId: '3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          content: {
+            name: 'tool_use',
+            type: 'json',
+            value: {
+              id: 'call_vrnUKW2CLWVN1O40qcY0Y4tD',
+              name: '',
+              type: 'markdown',
+              value:
+                'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_0_encrypted_value',
+            },
+            encryptionKeyUrl: 'kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e',
+          },
+          createdAt: '2025-09-16T13:08:28.714399642Z',
+          creator: {
+            role: 'assistant',
+          },
+          // the below fields are added by the SDK
+          errorCode: undefined,
+          errorMessage: undefined,
+          finished: false,
+          requestId: 'test-request-id',
+          responseType: 'thought',
+        };
+        expect(triggerSpy.getCall(1).args[0]).to.deep.equal('aiassistant:stream:test-request-id');
+        expect(triggerSpy.getCall(1).args[1]).to.deep.equal(
           expectedResult
         );
+
+        triggerSpy.resetHistory();
 
         // second event is a tool result which has no encrypted value
         await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[1]));
 
-        expectedResult = cloneDeep(jsonResponse[1]);
+        await waitForAsync();
+
+        expectedResult = {
+          sessionId: '3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          sessionUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageId: '3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseId: '3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          content: {
+            name: 'tool_result',
+            type: 'json',
+            value: {
+              id: 'call_vrnUKW2CLWVN1O40qcY0Y4tD',
+              name: '',
+              type: 'markdown',
+              status: 'success',
+            },
+          },
+          createdAt: '2025-09-16T13:08:28.857717340Z',
+          creator: {
+            role: 'assistant',
+          },
+          // the below fields are added by the SDK
+          errorCode: undefined,
+          errorMessage: undefined,
+          finished: false,
+          requestId: 'test-request-id',
+          responseType: 'thought',
+        };
+        expect(triggerSpy.getCall(1).args[0]).to.deep.equal('aiassistant:stream:test-request-id');
         expect(triggerSpy.getCall(1).args[1]).to.deep.equal(expectedResult);
+
+        triggerSpy.resetHistory();
 
         // third event is another tool use with an encrypted value
         await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[2]));
 
-        expectedResult = set(
-          cloneDeep(jsonResponse[2]),
-          'response.content.value.value',
-          'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_2_encrypted_value'
-        );
-        expect(triggerSpy.getCall(3).args[1]).to.deep.equal(expectedResult);
+        await waitForAsync();
+
+        expectedResult = {
+          sessionId: '3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          sessionUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageId: '3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseId: '3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          content: {
+            name: 'tool_use',
+            type: 'json',
+            value: {
+              id: 'call_Ay3G8P0WYtIltRYZOtz6qXDz',
+              name: '',
+              type: 'markdown',
+              value:
+                'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_2_encrypted_value',
+            },
+            encryptionKeyUrl: 'kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e',
+          },
+          createdAt: '2025-09-16T13:08:29.597605274Z',
+          creator: {
+            role: 'assistant',
+          },
+          // the below fields are added by the SDK
+          errorCode: undefined,
+          errorMessage: undefined,
+          finished: false,
+          requestId: 'test-request-id',
+          responseType: 'thought',
+        };
+
+        expect(triggerSpy.getCall(1).args[0]).to.deep.equal('aiassistant:stream:test-request-id');
+        expect(triggerSpy.getCall(1).args[1]).to.deep.equal(expectedResult);
+
+        triggerSpy.resetHistory();
 
         // fourth event is a cited answer with an encrypted value
         await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[3]));
 
-        expectedResult = set(
-          cloneDeep(jsonResponse[3]),
-          'response.content.value.value',
-          'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_3_encrypted_value'
-        );
-        expect(triggerSpy.getCall(4).args[1]).to.deep.equal(expectedResult);
+        await waitForAsync();
+
+        expectedResult = {
+          sessionId: '3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          sessionUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageId: '3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseId: '3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          content: {
+            name: 'cited_answer',
+            type: 'json',
+            encryptionKeyUrl: 'kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e',
+            value: {
+              value: 'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_3_encrypted_value',
+              type: 'markdown',
+            },
+          },
+          createdAt: '2025-09-16T13:08:30.566298862Z',
+          creator: {
+            role: 'assistant',
+          },
+          // the below fields are added by the SDK
+          errorCode: undefined,
+          errorMessage: undefined,
+          finished: false,
+          requestId: 'test-request-id',
+          responseType: 'response',
+        };
+
+        expect(triggerSpy.getCall(1).args[0]).to.deep.equal('aiassistant:stream:test-request-id');
+        expect(triggerSpy.getCall(1).args[1]).to.deep.equal(expectedResult);
+
+        triggerSpy.resetHistory();
 
         // fifth event is a tool result which has no encrypted value
         await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[4]));
 
-        expectedResult = cloneDeep(jsonResponse[4]);
-        expect(triggerSpy.getCall(6).args[1]).to.deep.equal(expectedResult);
+        expectedResult = {
+          sessionId: '3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          sessionUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageId: '3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseId: '3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          content: {
+            name: 'tool_result',
+            type: 'json',
+            value: {
+              id: 'call_Ay3G8P0WYtIltRYZOtz6qXDz',
+              name: '',
+              type: 'markdown',
+              status: 'success',
+            },
+          },
+          createdAt: '2025-09-16T13:08:30.574636837Z',
+          creator: {
+            role: 'assistant',
+          },
+          // the below fields are added by the SDK
+          errorCode: undefined,
+          errorMessage: undefined,
+          finished: false,
+          requestId: 'test-request-id',
+          responseType: 'thought',
+        };
+
+        await waitForAsync();
+
+        expect(triggerSpy.getCall(1).args[0]).to.deep.equal('aiassistant:stream:test-request-id');
+        expect(triggerSpy.getCall(1).args[1]).to.deep.equal(expectedResult);
+
+        triggerSpy.resetHistory();
 
         // sixth event is a cited answer with an encrypted value
         await webex.internal.aiAssistant._handleEvent(cloneDeep(jsonResponse[5]));
 
-        expectedResult = set(
-          cloneDeep(jsonResponse[5]),
-          'response.content.value.value',
-          'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_5_encrypted_value'
-        );
-        expect(triggerSpy.getCall(8).args[1]).to.deep.equal(expectedResult);
+        await waitForAsync();
+
+        expectedResult = {
+          sessionId: '3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          sessionUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageId: '3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          messageUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseId: '3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          responseUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+          content: {
+            name: 'cited_answer',
+            type: 'json',
+            encryptionKeyUrl: 'kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e',
+            value: {
+              value:
+                'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_5_encrypted_value',
+              type: 'markdown',
+              citations: [
+                {
+                  id: '6ccc8286e2084e05a6b9a29faae77095',
+                  index: 1,
+                  name: 'decrypted-with-kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e-json_5_encrypted_citation_0',
+                  url: 'https://co.webex.com/webappng/sites/co/recording/playback/6ccc8286e2084e05a6b9a29faae77095',
+                  metadata: {
+                    provider: 'webex',
+                    type: 'meeting_recording',
+                  },
+                },
+              ],
+            },
+          },
+          createdAt: '2025-09-16T13:08:30.594220705Z',
+          creator: {
+            role: 'assistant',
+          },
+          // the below fields are added by the SDK
+          errorCode: undefined,
+          errorMessage: undefined,
+          finished: true,
+          requestId: 'test-request-id',
+          responseType: 'response',
+        };
+
+        expect(triggerSpy.getCall(1).args[0]).to.deep.equal('aiassistant:stream:test-request-id');
+        expect(triggerSpy.getCall(1).args[1]).to.deep.equal(expectedResult);
       });
 
       it('decrypts and emits data when receiving event data', async () => {
