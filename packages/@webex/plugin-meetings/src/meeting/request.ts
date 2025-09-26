@@ -893,7 +893,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {string} params.meetingInstanceId - The unique ID of the meeting instance.
    * @param {string} params.participantId - The ID of the participant requesting the extension.
    * @param {number} params.extensionMinutes - The number of minutes to extend the meeting by.
-   * @param {string} params.meetingPolicyUrl - The base URL for meeting policy service (from locus links).
+   * @param {string} params.meetingPolicyUrl - The base URL for meeting policy service (dynamic, from locus links)
    * @returns {Promise<any>} A promise that resolves with the server response.
    */
   extendMeeting({

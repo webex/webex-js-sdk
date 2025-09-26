@@ -9408,18 +9408,25 @@ export default class Meeting extends StatelessWebexPlugin {
    * @public
    * @memberof Meeting
    */
-  public extendMeeting(extensionMinutes = 30) {
-    const meetingInstanceId = this.locusInfo?.info?.meetingInstanceId;
-    const participantId = this.members?.selfId;
-
+  public extendMeeting({
+    meetingPolicyUrl,
+    meetingInstanceId,
+    participantId,
+    extensionMinutes = 30,
+  }) {
     if (!meetingInstanceId || !participantId) {
       return Promise.reject(new Error('Missing meetingInstanceId or participantId'));
+    }
+
+    if (!meetingPolicyUrl) {
+      return Promise.reject(new Error('Missing meetingPolicyUrl'));
     }
 
     return this.meetingRequest.extendMeeting({
       meetingInstanceId,
       participantId,
       extensionMinutes,
+      meetingPolicyUrl,
     });
   }
 
