@@ -210,10 +210,10 @@ describe('AddressBookAPI', () => {
       );
     });
 
-    it('should track metrics for search requests on any page', async () => {
+    it('should track metrics for search requests on a valid non-first page', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await addressBookAPI.getEntries({page: 2, search: 'test'});
+      const result = await addressBookAPI.getEntries({page: 1, search: 'test'});
       expect(result).toEqual(mockResponse.body);
 
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
