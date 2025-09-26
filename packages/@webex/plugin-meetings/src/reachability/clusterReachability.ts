@@ -9,7 +9,8 @@ import {
   CONNECTION_STATE,
   Enum,
   ICE_GATHERING_STATE,
-  STUN_SERVER_URL_REGEX,
+  STUN_GENERIC_URL_REGEX,
+  TURN_GENERIC_URL_REGEX,
   PROTOCOLS_LIST,
 } from '../constants';
 import {ClusterReachabilityResult, NatType, SubnetDetails, ClusterNode} from './reachability.types';
@@ -62,7 +63,7 @@ export class ClusterReachability extends EventsScope {
   private startTimestamp: number;
   private srflxIceCandidates: RTCIceCandidate[] = [];
   public readonly isVideoMesh: boolean;
-  public readonly name;
+  public readonly name: string;
 
   public clusterInfo: ClusterNode;
 
@@ -75,12 +76,10 @@ export class ClusterReachability extends EventsScope {
     super();
     this.name = name;
     this.clusterInfo = clusterInfo;
-    this.isVideoMesh = clusterInfo.isVideoMesh;
-    this.numUdpUrls = clusterInfo.udp.length;
-    this.numTcpUrls = clusterInfo.tcp.length;
-    this.numXTlsUrls = clusterInfo.xtls.length;
-
-    this.pc = this.createPeerConnection(clusterInfo);
+    this.isVideoMesh = !!clusterInfo.isVideoMesh;
+    this.numUdpUrls = Array.isArray(clusterInfo.udp) ? clusterInfo.udp.length : 0;
+    this.numTcpUrls = Array.isArray(clusterInfo.tcp) ? clusterInfo.tcp.length : 0;
+    this.numXTlsUrls = Array.isArray(clusterInfo.xtls) ? clusterInfo.xtls.length : 0;
 
     this.defer = new Defer();
     this.result = {
@@ -97,6 +96,171 @@ export class ClusterReachability extends EventsScope {
         details: [],
       },
     };
+    this.startTimestamp = 0;
+  }
+
+  public ICE_GATHERING_TIMEOUT = 5000;
+
+  private perUrlProtocols: Set<'udp' | 'tcp' | 'xtls'> = new Set();
+
+  public enablePerUrlMode(protocols: ('udp' | 'tcp' | 'xtls')[] = ['udp']) {
+    this.perUrlProtocols = new Set(protocols);
+  }
+
+  private buildSingleServerConfig(
+    protocol: 'udp' | 'tcp' | 'xtls',
+    rawUrl: string
+  ): RTCConfiguration {
+    let urls = rawUrl;
+    if (protocol === 'tcp') {
+      urls = convertStunUrlToTurn(rawUrl, 'tcp');
+    } else if (protocol === 'xtls') {
+      urls = convertStunUrlToTurnTls(rawUrl);
+    }
+    const entry =
+      protocol === 'udp'
+        ? {username: '', credential: '', urls: [urls]}
+        : {username: 'webexturnreachuser', credential: 'webexturnreachpwd', urls: [urls]};
+
+    return {iceServers: [entry], iceTransportPolicy: 'all', iceCandidatePoolSize: 0};
+  }
+
+  // Ensure upsert uses raw host string even if not a literal IP.
+  private upsertDetailByHost(protocol: 'udp' | 'tcp' | 'xtls', host: string, port: number) {
+    const {details} = this.result[protocol];
+    let existing = details.find((subnet) => subnet.serverIp === host && subnet.port === port);
+    if (!existing) {
+      existing = {
+        serverIp: host,
+        port,
+        'answered-tx': 0,
+        'lost-tx': 0,
+        latencies: [],
+      };
+      details.push(existing);
+    }
+
+    return existing;
+  }
+
+  private parseStunUrl(rawUrl: string): {host?: string; port?: number} {
+    const match = rawUrl.match(STUN_GENERIC_URL_REGEX);
+    if (match) {
+      return {host: match[1], port: Number(match[2])};
+    }
+    const stripped = rawUrl.replace(/^stun:/i, '').split(';')[0];
+    const parts = stripped.split(':');
+    if (parts.length >= 2) {
+      const port = Number(parts.pop());
+
+      return {host: parts.join(':'), port: Number.isNaN(port) ? undefined : port};
+    }
+
+    return {};
+  }
+
+  private isLiteralIp(host?: string): boolean {
+    if (!host) return false;
+
+    return Address4.isValid(host) || Address6.isValid(host);
+  }
+
+  private prePopulateDetails(protocols: ('udp' | 'tcp' | 'xtls')[]) {
+    protocols.forEach((protocol) => {
+      const urls = this.clusterInfo[protocol] || [];
+      urls.forEach((url) => {
+        const {host, port} = this.parseStunUrl(url);
+        if (!host || port == null) return;
+        if (!this.isLiteralIp(host)) return;
+        this.upsertDetailByHost(protocol, host, port);
+        if (this.result[protocol].result === 'untested') {
+          this.result[protocol].result = 'unreachable';
+        }
+      });
+    });
+  }
+
+  private async probeSingleUrl(protocol: 'udp' | 'tcp' | 'xtls', rawUrl: string): Promise<void> {
+    const {host, port} = this.parseStunUrl(rawUrl);
+    if (host && port != null && this.isLiteralIp(host)) {
+      this.upsertDetailByHost(protocol, host, port);
+    }
+
+    const pc = new RTCPeerConnection(this.buildSingleServerConfig(protocol, rawUrl));
+    const startTs = performance.now();
+    let answered = false;
+
+    const finalize = (success: boolean) => {
+      if (!success && host && port != null) {
+        const det = this.result[protocol].details.find(
+          (d) => d.serverIp === host && d.port === port
+        );
+        if (det && det['answered-tx'] === 0) {
+          det['lost-tx'] = 1;
+          if (this.result[protocol].latencyInMilliseconds !== undefined) {
+            this.emit(
+              {file: 'clusterReachability', function: 'probeFinalize'},
+              Events.resultDetailsUpdated,
+              {protocol, ...this.result[protocol]}
+            );
+          }
+        }
+      }
+      try {
+        pc.close();
+      } catch (e) {
+        // swallow close errors intentionally
+      }
+    };
+
+    return new Promise((resolve) => {
+      const startAsync = async () => {
+        const timeoutId = setTimeout(() => {
+          finalize(false);
+          resolve();
+        }, this.ICE_GATHERING_TIMEOUT);
+
+        pc.onicecandidate = (ev) => {
+          const c = ev.candidate;
+          if (!c) return;
+
+          if (c.type === 'srflx' && protocol === 'udp') {
+            if (host && port !== undefined) {
+              const latency = Math.round(performance.now() - startTs);
+              this.saveResult('udp', latency, (c as any).address, host, port);
+              this.determineNatType(c);
+              answered = true;
+            }
+          }
+
+          if (answered) {
+            clearTimeout(timeoutId);
+            finalize(true);
+            resolve();
+          }
+        };
+
+        pc.onicegatheringstatechange = () => {
+          if (pc.iceGatheringState === ICE_GATHERING_STATE.COMPLETE && !answered) {
+            clearTimeout(timeoutId);
+            finalize(false);
+            resolve();
+          }
+        };
+
+        try {
+          pc.createDataChannel('probe');
+          const offer = await pc.createOffer({offerToReceiveAudio: true});
+          await pc.setLocalDescription(offer);
+        } catch (err) {
+          clearTimeout(timeoutId);
+          finalize(false);
+          resolve();
+        }
+      };
+      // kick off async flow
+      startAsync();
+    });
   }
 
   /**
@@ -193,6 +357,14 @@ export class ClusterReachability extends EventsScope {
    * @returns {void}
    */
   private finishReachabilityCheck() {
+    for (const protocol of PROTOCOLS_LIST) {
+      const transport = this.result[protocol];
+      if (transport) {
+        for (const d of transport.details) {
+          if (d['answered-tx'] === 0) d['lost-tx'] = 1;
+        }
+      }
+    }
     this.defer.resolve();
   }
 
@@ -204,8 +376,10 @@ export class ClusterReachability extends EventsScope {
   public abort() {
     const {CLOSED} = CONNECTION_STATE;
 
-    if (this.pc.connectionState !== CLOSED) {
+    if (this.pc && this.pc.connectionState !== CLOSED) {
       this.closePeerConnection();
+      this.finishReachabilityCheck();
+    } else if (!this.pc) {
       this.finishReachabilityCheck();
     }
   }
@@ -282,55 +456,61 @@ export class ClusterReachability extends EventsScope {
     port?: number | null
   ) {
     const result = this.result[protocol];
-    const subnet = result.details.find((s) => s.serverIp === serverIp && s.port === port);
+    if (serverIp == null || port == null) return;
 
-    if (subnet) {
-      subnet['answered-tx'] = 1;
-      subnet['lost-tx'] = 0;
-      subnet.latencies = [latency];
-    } else {
-      result.details.push({
+    let subnet = result.details.find((s) => s.serverIp === serverIp && s.port === port);
+    if (!subnet) {
+      if (protocol === 'udp' && this.perUrlProtocols.size === 0) {
+        // legacy mode: never add new UDP entries
+        return;
+      }
+      // per-url mode or tcp/xtls: allow create
+      subnet = {
         serverIp,
         port,
-        'answered-tx': 1,
+        'answered-tx': 0,
         'lost-tx': 0,
-        latencies: [latency],
-      });
+        latencies: [],
+      };
+      result.details.push(subnet);
+      if (result.result === 'untested') result.result = 'unreachable';
     }
+
+    // LEGACY UDP MODE GUARD:
+    // If we already marked one UDP subnet reachable (latency set) in legacy mode,
+    // do NOT convert any other (still unanswered) subnet to answered.
+    if (
+      protocol === 'udp' &&
+      this.perUrlProtocols.size === 0 && // legacy (single-PC) mode
+      result.latencyInMilliseconds !== undefined && // already have a success
+      subnet['answered-tx'] === 0 // this one was still lost
+    ) {
+      // Ignore this additional successful candidate to keep only first as answered.
+      // (Still allow NAT detection elsewhere since determineNatType already ran.)
+      return;
+    }
+
+    subnet['answered-tx'] = 1;
+    subnet['lost-tx'] = 0;
+    subnet.latencies = [latency];
 
     if (result.latencyInMilliseconds === undefined) {
       LoggerProxy.logger.log(
-        `Reachability:index#saveResult --> Successfully reached ${this.name} over ${protocol}: ${latency}ms`
+        `Reachability:cluster#saveResult --> Reached ${this.name} over ${protocol}: ${latency}ms`
       );
       result.latencyInMilliseconds = latency;
       result.result = 'reachable';
-      if (publicIp) {
-        result.clientMediaIPs = [publicIp];
-      }
-      this.emit(
-        {
-          file: 'clusterReachability',
-          function: 'saveResult',
-        },
-        Events.resultReady,
-        {
-          protocol,
-          ...result,
-        }
-      );
+      if (publicIp) result.clientMediaIPs = [publicIp];
+      this.emit({file: 'clusterReachability', function: 'saveResult'}, Events.resultReady, {
+        protocol,
+        ...result,
+      });
     } else {
       this.emit(
-        {
-          file: 'clusterReachability',
-          function: 'saveResult',
-        },
+        {file: 'clusterReachability', function: 'saveResult'},
         Events.resultDetailsUpdated,
-        {
-          protocol,
-          ...result,
-        }
+        {protocol, ...result}
       );
-
       this.addPublicIP(protocol, publicIp);
     }
   }
@@ -379,44 +559,87 @@ export class ClusterReachability extends EventsScope {
    * @returns {void}
    */
   private registerIceCandidateListener() {
-    this.pc.onicecandidate = ({candidate}) => {
-      const TURN_TLS_PORT = 443;
-      const CANDIDATE_TYPES = {
-        SERVER_REFLEXIVE: 'srflx',
-        RELAY: 'relay',
-      };
+    if (this.perUrlProtocols.size > 0) {
+      this.pc.onicecandidate = ({candidate}) => {
+        if (!candidate) return;
+        const TURN_TLS_PORT = 443;
+        const CANDIDATE_TYPES = {
+          SERVER_REFLEXIVE: 'srflx',
+          RELAY: 'relay',
+        };
+        const latencyInMilliseconds = this.getElapsedTime();
 
-      const latencyInMilliseconds = this.getElapsedTime();
-
-      if (candidate) {
-        let serverIp = null;
-        let port = null;
+        let serverIp: string = null;
+        let port: number = null;
 
         if (candidate.url) {
-          const match = candidate.url?.match(STUN_SERVER_URL_REGEX);
-          if (match) {
-            [, serverIp, port] = match;
-            port = Number(port);
+          const stunMatch = candidate.url.match(STUN_GENERIC_URL_REGEX);
+          if (stunMatch) {
+            const [, host, p] = stunMatch; // prefer-destructuring (no reassignment to array indices)
+            serverIp = host;
+            port = Number(p);
+          } else {
+            const turnMatch = candidate.url.match(TURN_GENERIC_URL_REGEX);
+            if (turnMatch) {
+              const [, , host, p] = turnMatch;
+              serverIp = host;
+              port = Number(p);
+            }
           }
         }
 
-        if (!serverIp && candidate.address) {
-          serverIp = candidate.address;
-        }
-
-        if (!port && candidate.port) {
-          port = candidate.port;
+        if (!port && (candidate as any).port) port = (candidate as any).port;
+        if (candidate.type === CANDIDATE_TYPES.RELAY && !serverIp && (candidate as any).address) {
+          serverIp = (candidate as any).address;
         }
 
         if (candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          this.saveResult('udp', latencyInMilliseconds, candidate.address, serverIp, port);
+          if (!serverIp && this.result.udp.details.length) {
+            const first =
+              this.result.udp.details.find((d) => d['answered-tx'] === 0) ||
+              this.result.udp.details[0];
+            if (first) {
+              serverIp = first.serverIp;
+              port = first.port;
+            }
+          }
+          this.saveResult('udp', latencyInMilliseconds, (candidate as any).address, serverIp, port);
           this.determineNatType(candidate);
-        }
-
-        if (candidate.type === CANDIDATE_TYPES.RELAY) {
-          const protocol = candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
+        } else if (candidate.type === CANDIDATE_TYPES.RELAY) {
+          const protocol = port === TURN_TLS_PORT ? 'xtls' : 'tcp';
           this.saveResult(protocol, latencyInMilliseconds, null, serverIp, port);
         }
+      };
+
+      return;
+    }
+
+    this.pc.onicecandidate = ({candidate}) => {
+      if (!candidate) return;
+      const TURN_TLS_PORT = 443;
+      const CANDIDATE_TYPES = {SERVER_REFLEXIVE: 'srflx', RELAY: 'relay'};
+      const latencyInMilliseconds = this.getElapsedTime();
+
+      let serverIp: string = null;
+      let port: number = null;
+
+      if (candidate.url) {
+        const match = candidate.url.match(STUN_GENERIC_URL_REGEX);
+        if (match) {
+          const [, host, p] = match; // prefer-destructuring
+          serverIp = host;
+          port = Number(p);
+        }
+      }
+      if (!serverIp && (candidate as any).address) serverIp = (candidate as any).address;
+      if (!port && (candidate as any).port) port = (candidate as any).port;
+
+      if (candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
+        this.saveResult('udp', latencyInMilliseconds, (candidate as any).address, serverIp, port);
+        this.determineNatType(candidate);
+      } else if (candidate.type === CANDIDATE_TYPES.RELAY) {
+        const protocol = port === TURN_TLS_PORT ? 'xtls' : 'tcp';
+        this.saveResult(protocol, latencyInMilliseconds, null, serverIp, port);
       }
     };
   }
@@ -428,14 +651,59 @@ export class ClusterReachability extends EventsScope {
    * @returns {Promise}
    */
   async start(): Promise<ClusterReachabilityResult> {
-    if (!this.pc) {
-      LoggerProxy.logger.warn(
-        `Reachability:ClusterReachability#start --> Error: peerConnection is undefined`
-      );
+    const perUrlUdpOnly = this.perUrlProtocols.size === 1 && this.perUrlProtocols.has('udp');
+
+    // Per‑URL UDP multi‑PC mode
+    if (perUrlUdpOnly) {
+      if (
+        (!this.pc || this.pc.connectionState === 'closed') &&
+        (this.numTcpUrls > 0 || this.numXTlsUrls > 0)
+      ) {
+        this.pc = this.createPeerConnection({...this.clusterInfo, udp: []} as ClusterNode);
+        if (!this.pc) {
+          LoggerProxy.logger.warn(
+            'Reachability:ClusterReachability#start --> Unable to create shared peerConnection for tcp/xtls (will still run per-URL UDP probes)'
+          );
+        }
+      }
+
+      const udpUrls = Array.isArray(this.clusterInfo.udp) ? this.clusterInfo.udp : [];
+      this.result.udp = {
+        result: udpUrls.length ? 'unreachable' : 'untested',
+        details: [],
+      };
+
+      // Pre-populate literal IP endpoints (udp/tcp/xtls) to keep legacy detail style
+      this.prePopulateDetails(['udp', 'tcp', 'xtls']);
+
+      const udpPromises = udpUrls.map((u) => this.probeSingleUrl('udp', u));
+      let sharedPcPromise: Promise<any> = Promise.resolve();
+
+      if (this.pc) {
+        try {
+          const offer = await this.pc.createOffer({offerToReceiveAudio: true});
+          this.startTimestamp = performance.now();
+          const gatherPromise = this.gatherIceCandidates();
+          this.pc.setLocalDescription(offer);
+          sharedPcPromise = gatherPromise;
+        } catch {
+          // ignore
+        }
+      }
+
+      await Promise.all([...udpPromises, sharedPcPromise]);
+
+      for (const protocol of PROTOCOLS_LIST as ('udp' | 'tcp' | 'xtls')[]) {
+        this.emitUnreachableIfNeeded(protocol);
+      }
 
       return this.result;
     }
 
+    if (!this.pc || this.pc.connectionState === 'closed') {
+      this.pc = this.createPeerConnection(this.clusterInfo);
+      if (!this.pc) return this.result;
+    }
     // Initialize each protocol in this.result as saying that nothing is reachable.
     // It will get updated as we go along and successfully gather ICE candidates.
     this.result.udp = {
@@ -452,18 +720,18 @@ export class ClusterReachability extends EventsScope {
     };
 
     for (const protocol of PROTOCOLS_LIST) {
-      const urls = this.clusterInfo[protocol];
+      const urls = this.clusterInfo[protocol] || [];
       for (const url of urls) {
-        const match = url.match(STUN_SERVER_URL_REGEX);
+        const match = url.match(STUN_GENERIC_URL_REGEX);
         if (match) {
-          const [, serverIp, port] = match;
+          const [, serverIp, port] = match; // explicit destructuring (prefer-destructuring)
           try {
             if (Address4.isValid(serverIp) || Address6.isValid(serverIp)) {
               this.result[protocol].details.push({
                 serverIp,
                 port: Number(port),
                 'answered-tx': 0,
-                'lost-tx': 1,
+                'lost-tx': 1, // will flip to 0 if answered
                 latencies: [],
               });
             }
@@ -494,7 +762,23 @@ export class ClusterReachability extends EventsScope {
       LoggerProxy.logger.warn(`Reachability:ClusterReachability#start --> Error: `, error);
     }
 
+    for (const protocol of PROTOCOLS_LIST as ('udp' | 'tcp' | 'xtls')[]) {
+      this.emitUnreachableIfNeeded(protocol);
+    }
+
     return this.result;
+  }
+
+  private emitUnreachableIfNeeded(protocol: 'udp' | 'tcp' | 'xtls') {
+    const r = this.result[protocol];
+    if (!r) return;
+    if (r.result === 'unreachable' && r.latencyInMilliseconds === undefined) {
+      this.emit(
+        {file: 'clusterReachability', function: 'emitUnreachableIfNeeded'},
+        Events.resultReady,
+        {protocol, ...r}
+      );
+    }
   }
 
   /**

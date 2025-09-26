@@ -1373,8 +1373,9 @@ export const INITIAL_REGISTRATION_STATUS = {
   checkH264Support: false,
 };
 
-// Regular expression to match STUN server URLs
-export const STUN_SERVER_URL_REGEX = /stun:([\w-.]+|\[[\dA-Fa-f:.]+\]):(\d+)/;
+// Regular expression to match STUN and TURN server URLs
+export const STUN_GENERIC_URL_REGEX = /^stun:([^:;]+):(\d+)(?:;.*)?$/i;
+export const TURN_GENERIC_URL_REGEX = /^(turns?|stun):([^:;]+):(\d+)(?:;.*)?$/i;
 
 export const PROTOCOLS_LIST: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
 

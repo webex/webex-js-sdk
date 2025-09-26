@@ -152,32 +152,42 @@ export default class Reachability extends EventsScope {
     LoggerProxy.logger.info(
       `Reachability:index#isSubnetReachable --> Looking for subnet: ${selectedSubnetFirstOctet}.X.X.X`
     );
+    if (!this.clusterReachability || Object.keys(this.clusterReachability).length === 0) {
+      LoggerProxy.logger.info(
+        'Reachability:index#isSubnetReachable --> No cluster reachability data available'
+      );
+
+      return false;
+    }
 
     const matchingReachedClusters = Object.values(this.clusterReachability).reduce(
       (acc, cluster) => {
-        const reachedSubnetsArray = PROTOCOLS_LIST.flatMap((protocol) =>
-          cluster.getResult()[protocol].details.filter((subnet) => subnet['answered-tx'] > 0)
-        );
+        const result = cluster.getResult?.() || {};
+        const reachedSubnetsArray =
+          PROTOCOLS_LIST.flatMap((protocol) =>
+            (result[protocol]?.details || []).filter((d) => d['answered-tx'] > 0)
+          ) || [];
 
-        const uniqueReachedSubnetsArray = uniqBy(
-          reachedSubnetsArray,
-          (subnet) => `${subnet.serverIp}:${subnet.port}`
+        if (reachedSubnetsArray.length === 0) {
+          return acc;
+        }
+
+        const uniqueReachedSubnetsArray = uniqBy(reachedSubnetsArray, (subnet) => subnet.serverIp);
+        const uniqueIps = uniqueReachedSubnetsArray.map((s) => s.serverIp);
+        LoggerProxy.logger.info(
+          `Reachability:index#isSubnetReachable --> Cluster ${
+            cluster.name
+          } reached [${uniqueIps.join(',')}]`
         );
-        let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
         for (const subnet of uniqueReachedSubnetsArray) {
-          const reachedSubnetFirstOctet = subnet.serverIp.split('.')[0];
+          const ip = subnet.serverIp || '';
+          const reachedSubnetFirstOctet = ip.split('.')[0];
 
           if (selectedSubnetFirstOctet === reachedSubnetFirstOctet) {
             acc.add(cluster.name);
+            break;
           }
-
-          logMessage += `${subnet.serverIp},`;
         }
-        logMessage = logMessage.slice(0, -1);
-
-        logMessage += `]`;
-
-        LoggerProxy.logger.info(logMessage);
 
         return acc;
       },
@@ -898,9 +908,7 @@ export default class Reachability extends EventsScope {
    */
   private async performReachabilityChecks(clusterList: ClusterList) {
     const results: ReachabilityResults = {};
-
     this.clusterReachability = {};
-
     this.startTime = performance.now();
 
     LoggerProxy.logger.log(
@@ -914,6 +922,9 @@ export default class Reachability extends EventsScope {
     );
 
     this.resetResultCounters();
+
+    // @ts-ignore
+    const perUrlUdpMode = !!this.webex.config.meetings.reachabilityEnablePerUrlForUdp;
 
     // sanitize the urls in the clusterList
     Object.keys(clusterList).forEach((key) => {
@@ -945,115 +956,78 @@ export default class Reachability extends EventsScope {
         isVideoMesh: cluster.isVideoMesh,
       };
 
-      // update expected results counters to include this cluster
-      this.expectedResultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'].udp +=
-        cluster.udp.length;
+      if (cluster.udp.length) {
+        this.expectedResultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'].udp += 1;
+      }
       if (!cluster.isVideoMesh) {
-        this.expectedResultsCount.public.tcp += cluster.tcp.length;
-        this.expectedResultsCount.public.xtls += cluster.xtls.length;
+        if (cluster.tcp.length) this.expectedResultsCount.public.tcp += 1;
+        if (cluster.xtls.length) this.expectedResultsCount.public.xtls += 1;
       }
     });
 
-    const isFirstResult = {
-      udp: true,
-      tcp: true,
-      xtls: true,
-    };
-
-    // save the initialized results (in case we don't get any "resultReady" events at all)
     await this.storeResults(results);
-
-    if (!clusterList || !Object.keys(clusterList).length) {
-      // nothing to do, finish immediately
-      this.resolveReachabilityPromise(false);
-
-      this.emit(
-        {
-          file: 'reachability',
-          function: 'performReachabilityChecks',
-        },
-        'reachability:done',
-        {}
-      );
-
-      return;
-    }
-
     this.startTimers();
 
-    // now start the reachability on all the clusters
     Object.keys(clusterList).forEach((key) => {
       const cluster = clusterList[key];
 
-      this.clusterReachability[key] = new ClusterReachability(key, cluster);
-      this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
-        const {protocol, result, clientMediaIPs, latencyInMilliseconds, details} = data;
+      const clusterChecker = new ClusterReachability(key, cluster);
+      if (perUrlUdpMode) {
+        clusterChecker.enablePerUrlMode(['udp']);
+      }
+      this.clusterReachability[key] = clusterChecker;
 
-        if (isFirstResult[protocol]) {
-          this.emit(
-            {
-              file: 'reachability',
-              function: 'resultReady event handler',
-            },
-            'reachability:firstResultAvailable',
-            {
-              protocol,
-            }
-          );
-          isFirstResult[protocol] = false;
+      clusterChecker.on(Events.resultReady, (data: ResultEventData) => {
+        results[key][data.protocol] = {
+          result: data.result,
+          details: data.details,
+          latencyInMilliseconds: data.latencyInMilliseconds,
+          clientMediaIPs: data.clientMediaIPs,
+        } as any;
+
+        if (cluster.isVideoMesh) {
+          if (data.protocol === 'udp') this.resultsCount.videoMesh.udp += 1;
+        } else {
+          this.resultsCount.public[data.protocol] += 1;
         }
-        this.resultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'][protocol] += 1;
 
-        const areAllResultsReady = this.areAllResultsReady();
+        this.storeResults(results).catch(() => {});
 
-        results[key][protocol].result = result;
-        results[key][protocol].clientMediaIPs = clientMediaIPs;
-        results[key][protocol].latencyInMilliseconds = latencyInMilliseconds;
-        results[key][protocol].details = details;
-        await this.storeResults(results);
-
-        if (areAllResultsReady) {
-          this.clearTimer('overallTimer');
+        if (this.areAllResultsReady()) {
+          this.resolveReachabilityPromise();
           this.emit(
-            {
-              file: 'reachability',
-              function: 'performReachabilityChecks',
-            },
+            {file: 'reachability', function: 'performReachabilityChecks'},
             'reachability:done',
             {}
           );
-          this.sendMetric();
-
-          LoggerProxy.logger.log(
-            `Reachability:index#gatherReachability --> Reachability checks fully completed`
-          );
-          this.resolveReachabilityPromise();
         }
       });
 
-      // clientMediaIps can be updated independently from the results, so we need to listen for them too
-      this.clusterReachability[key].on(
-        Events.clientMediaIpsUpdated,
-        async (data: ClientMediaIpsUpdatedEventData) => {
-          results[key][data.protocol].clientMediaIPs = data.clientMediaIPs;
-
-          await this.storeResults(results);
+      clusterChecker.on(Events.resultDetailsUpdated, (data: ResultEventData) => {
+        const existing = results[key][data.protocol];
+        if (existing) {
+          existing.details = data.details;
+          existing.latencyInMilliseconds =
+            existing.latencyInMilliseconds || data.latencyInMilliseconds;
         }
-      );
-
-      this.clusterReachability[key].on(Events.resultDetailsUpdated, async ({protocol, details}) => {
-        results[key][protocol].details = details;
-        await this.storeResults(results);
+        this.storeResults(results).catch(() => {});
       });
 
-      this.clusterReachability[key].on(
-        Events.natTypeUpdated,
-        async (data: NatTypeUpdatedEventData) => {
+      clusterChecker.on(Events.clientMediaIpsUpdated, (data: ClientMediaIpsUpdatedEventData) => {
+        const existing = results[key][data.protocol];
+        if (existing) {
+          (existing as any).clientMediaIPs = data.clientMediaIPs;
+          this.storeResults(results).catch(() => {});
+        }
+      });
+
+      clusterChecker.on(Events.natTypeUpdated, (data: NatTypeUpdatedEventData) => {
+        if (this.natType === NatType.Unknown && data.natType) {
           this.natType = data.natType;
         }
-      );
+      });
 
-      this.clusterReachability[key].start(); // not awaiting on purpose
+      clusterChecker.start();
     });
   }
 
