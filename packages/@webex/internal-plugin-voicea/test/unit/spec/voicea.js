@@ -901,9 +901,7 @@ describe('plugin-voicea', () => {
 
         assert.calledOnceWithExactly(functionSpy, voiceaPayload);
 
-        assert.calledOnceWithExactly(triggerSpy, {
-          isListening: false,
-        });
+        assert.calledOnceWithExactly(triggerSpy, {languageCode: 'pl'});
       });
 
     });
