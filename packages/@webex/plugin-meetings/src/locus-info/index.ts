@@ -31,6 +31,51 @@ import LocusDeltaParser from './parser';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
+export type LocusDTO = {
+  controls?: any;
+  fullState?: {
+    active: boolean;
+    count: number;
+    lastActive: string;
+    locked: boolean;
+    sessionId: string;
+    seessionIds: string[];
+    startTime: number;
+    state: string;
+    type: string;
+  };
+  host?: {
+    id: string;
+    incomingCallProtocols: any[];
+    isExternal: boolean;
+    name: string;
+    orgId: string;
+  };
+  info?: any;
+  links?: any;
+  mediaShares?: any[];
+  meetings?: any[];
+  participants: any[];
+  replaces?: any[];
+  self?: any;
+  sequence?: {
+    dirtyParticipants: number;
+    entries: number[];
+    rangeEnd: number;
+    rangeStart: number;
+    sequenceHash: number;
+    sessionToken: string;
+    since: string;
+    totalParticipants: number;
+  };
+  syncUrl?: string;
+  url?: string;
+};
+
+export type LocusApiResponseBody = {
+  locus: LocusDTO; // this LocusDTO here might not be the full one (for example it won't have all the participants, but it should have self)
+};
+
 /**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object
  * @export
@@ -321,6 +366,16 @@ export default class LocusInfo extends EventsScope {
 
     // Change it to true after it receives it first locus object
     this.emitChange = true;
+  }
+
+  /**
+   * Handles HTTP response from Locus API call.
+   * @param {Meeting} meeting meeting object
+   * @param {LocusApiResponseBody} responseBody body of the http response from Locus API call
+   * @returns {void}
+   */
+  handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
+    this.handleLocusDelta(responseBody.locus, meeting);
   }
 
   /**

@@ -59,18 +59,16 @@ const MeetingUtil = {
       );
     }
 
-    return meeting.locusMediaRequest
-      .send({
-        type: 'LocalMute',
-        selfUrl: meeting.selfUrl,
-        mediaId: meeting.mediaId,
-        sequence: meeting.locusInfo.sequence,
-        muteOptions: {
-          audioMuted,
-          videoMuted,
-        },
-      })
-      .then((response) => response?.body?.locus);
+    return meeting.locusMediaRequest.send({
+      type: 'LocalMute',
+      selfUrl: meeting.selfUrl,
+      mediaId: meeting.mediaId,
+      sequence: meeting.locusInfo.sequence,
+      muteOptions: {
+        audioMuted,
+        videoMuted,
+      },
+    });
   },
 
   hasOwner: (info) => info && info.owner,
@@ -695,22 +693,20 @@ const MeetingUtil = {
   },
 
   /**
-   * Updates the locus info for the meeting with the delta locus
-   * returned from requests that include the sequence information
+   * Updates the locus info for the meeting with the locus
+   * information returned from API requests made to Locus
    * Returns the original response object
    * @param {Object} meeting The meeting object
    * @param {Object} response The response of the http request
    * @returns {Object}
    */
-  updateLocusWithDelta: (meeting, response) => {
+  updateLocusFromApiResponse: (meeting, response) => {
     if (!meeting) {
       return response;
     }
 
-    const locus = response?.body?.locus;
-
-    if (locus) {
-      meeting.locusInfo.handleLocusDelta(locus, meeting);
+    if (response?.body?.locus) {
+      meeting.locusInfo.handleLocusAPIResponse(meeting, response.body);
     }
 
     return response;
@@ -757,7 +753,7 @@ const MeetingUtil = {
 
       return meeting
         .request(options)
-        .then((response) => MeetingUtil.updateLocusWithDelta(meeting, response));
+        .then((response) => MeetingUtil.updateLocusFromApiResponse(meeting, response));
     };
 
     return locusDeltaRequest;
