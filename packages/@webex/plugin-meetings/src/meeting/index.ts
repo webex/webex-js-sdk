@@ -2255,25 +2255,29 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private setUpLocusInfoListeners() {
-    // meeting update listeners
-    this.setUpLocusInfoSelfListener();
-    this.setUpLocusInfoMeetingListener();
-    this.setUpLocusServicesListener();
-    this.setUpLocusResourcesListener();
-    // members update listeners
-    this.setUpLocusFullStateListener();
-    this.setUpLocusUrlListener();
-    this.setUpLocusHostListener();
-    this.setUpLocusSelfListener();
-    this.setUpLocusParticipantsListener();
-    this.setupLocusControlsListener();
-    this.setUpLocusMediaSharesListener();
-    this.setUpLocusEmbeddedAppsListener();
-    this.setUpLocusInfoMeetingInfoListener();
-    this.setUpLocusInfoAssignHostListener();
-    this.setUpLocusInfoMediaInactiveListener();
-    this.setUpBreakoutsListener();
-    this.setUpInterpretationListener();
+    try {
+      this.setUpLocusInfoSelfListener();
+      this.setUpLocusInfoMeetingListener();
+      this.setUpLocusServicesListener();
+      this.setUpLocusResourcesListener();
+      this.setUpLocusFullStateListener();
+      this.setUpLocusUrlListener();
+      this.setUpLocusHostListener();
+      this.setUpLocusSelfListener();
+      this.setUpLocusParticipantsListener();
+      this.setupLocusControlsListener();
+      this.setUpLocusMediaSharesListener();
+      this.setUpLocusEmbeddedAppsListener();
+      this.setUpLocusInfoMeetingInfoListener();
+      this.setUpLocusInfoAssignHostListener();
+      this.setUpLocusInfoMediaInactiveListener();
+      this.setUpBreakoutsListener();
+      this.setUpInterpretationListener();
+    } catch (error) {
+      LoggerProxy.logger.error(
+        `Meeting:index#setUpLocusInfoListeners --> Error setting up locus info listeners: ${error}`
+      );
+    }
   }
 
   /**
@@ -3504,6 +3508,8 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setUpLocusInfoSelfListener() {
     // Store reference to the meeting instance to ensure proper context
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const meetingInstance = this;
 
     this.locusInfo.on(LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED, (payload) => {
