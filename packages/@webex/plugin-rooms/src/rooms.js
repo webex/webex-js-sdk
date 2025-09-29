@@ -61,15 +61,15 @@ class Rooms extends WebexPlugin {
    * // Some app logic...
    * // WHen it is time to cleanup
    * webex.rooms.stopListening();
-   * webex.rooms.off('created');
-   * webex.rooms.off('updated');
+   * webex.rooms.removeAllListeners('created');
+   * webex.rooms.removeAllListeners('updated');
    */
   listen() {
     return createEventEnvelope(this.webex, SDK_EVENT.EXTERNAL.RESOURCE.ROOMS).then((envelope) => {
       this.eventEnvelope = envelope;
 
       return this.webex.internal.mercury.connect().then(() => {
-        this.listenTo(this.webex.internal.mercury, SDK_EVENT.INTERNAL.WEBEX_ACTIVITY, (event) =>
+        this.webex.internal.mercury.on(SDK_EVENT.INTERNAL.WEBEX_ACTIVITY, (event) =>
           this.onWebexApiEvent(event)
         );
       });
@@ -400,7 +400,7 @@ class Rooms extends WebexPlugin {
         if (roomCreatedEvent) {
           debug(`room "created" payload: \
             ${JSON.stringify(roomCreatedEvent)}`);
-          this.trigger(SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED, roomCreatedEvent);
+          this.emit(SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED, roomCreatedEvent);
         }
         break;
 
@@ -417,7 +417,7 @@ class Rooms extends WebexPlugin {
         if (roomUpdatedEvent) {
           debug(`room "updated" payload: \
             ${JSON.stringify(roomUpdatedEvent)}`);
-          this.trigger(SDK_EVENT.EXTERNAL.EVENT_TYPE.UPDATED, roomUpdatedEvent);
+          this.emit(SDK_EVENT.EXTERNAL.EVENT_TYPE.UPDATED, roomUpdatedEvent);
         }
         break;
 

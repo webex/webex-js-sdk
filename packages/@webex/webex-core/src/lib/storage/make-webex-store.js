@@ -2,8 +2,9 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import Events from 'ampersand-events';
+import {EventEmitter} from 'events';
 import {oneFlight} from '@webex/common';
+import MemoryStoreAdapter from './memory-store-adapter';
 
 const bindings = new WeakMap();
 
@@ -18,23 +19,56 @@ export default function makeWebexStore(type, webex) {
   /**
    * Lazy Key-Value Store Interface
    */
-  class WebexStore {
+  class WebexStore extends EventEmitter {
     /**
      * @param {Object} attrs
      * @param {Object} options
      * @returns {Store}
      */
     constructor() {
+      super(); // Initialize EventEmitter
       webex.logger.debug(`webex-store: constructing ${type}Storage`);
       bindings.set(this, new Map());
+      this._adapter = null; // Cache for lazy-loaded adapter
     }
 
     /**
      * Provides easy access to the storage adapter identified in config.
+     * Implements lazy loading like the old AmpState derived properties.
      * @returns {Object}
      */
     get adapter() {
-      return webex.config.storage[`${type}Adapter`];
+      // Return cached adapter if available
+      if (this._adapter) {
+        return this._adapter;
+      }
+
+      // Safety check: ensure storage config exists before accessing adapter
+      if (!webex.config || !webex.config.storage) {
+        webex.logger.warn(
+          `webex-store: storage config not available for ${type}Storage, using MemoryStoreAdapter`
+        );
+        // Use MemoryStoreAdapter as fallback
+        this._adapter = MemoryStoreAdapter;
+
+        return this._adapter;
+      }
+
+      const adapter = webex.config.storage[`${type}Adapter`];
+      if (!adapter) {
+        webex.logger.warn(
+          `webex-store: ${type}Adapter not found in config, using MemoryStoreAdapter`
+        );
+        // Use MemoryStoreAdapter as fallback
+        this._adapter = MemoryStoreAdapter;
+
+        return this._adapter;
+      }
+
+      // Cache the adapter for future use
+      this._adapter = adapter;
+
+      return this._adapter;
     }
 
     /**
@@ -55,7 +89,12 @@ export default function makeWebexStore(type, webex) {
         promises.push(binding.clear());
       });
 
-      return Promise.all(promises);
+      return Promise.all(promises).then((result) => {
+        // Emit clear event for listeners
+        this.emit('clear');
+
+        return result;
+      });
     }
 
     /**
@@ -67,7 +106,14 @@ export default function makeWebexStore(type, webex) {
     del(namespace, key) {
       webex.logger.debug(`webex-store: removing ${namespace}:${key}`);
 
-      return this._getBinding(namespace).then((binding) => binding.del(key));
+      return this._getBinding(namespace).then((binding) => {
+        return binding.del(key).then((result) => {
+          // Emit delete event for listeners
+          this.emit('delete', namespace, key);
+
+          return result;
+        });
+      });
     }
 
     /**
@@ -80,7 +126,14 @@ export default function makeWebexStore(type, webex) {
     get(namespace, key) {
       webex.logger.debug(`webex-store: retrieving ${namespace}:${key}`);
 
-      return this._getBinding(namespace).then((binding) => binding.get(key));
+      return this._getBinding(namespace).then((binding) => {
+        return binding.get(key).then((value) => {
+          // Emit get event for listeners (useful for caching strategies)
+          this.emit('get', namespace, key, value);
+
+          return value;
+        });
+      });
     }
 
     /**
@@ -99,7 +152,12 @@ export default function makeWebexStore(type, webex) {
 
       return this._getBinding(namespace)
         .then((binding) => binding.put(key, value.serialize ? value.serialize() : value))
-        .then(() => value);
+        .then(() => {
+          // Emit put event for listeners
+          this.emit('put', namespace, key, value);
+
+          return value;
+        });
     }
 
     @oneFlight({keyFactory: (namespace) => namespace})
@@ -127,14 +185,15 @@ export default function makeWebexStore(type, webex) {
             webex.logger.debug(`storage: made binding for \`${namespace}\``);
             this.bindings.set(namespace, _binding);
 
+            // Emit binding created event
+            this.emit('binding:created', namespace, _binding);
+
             return _binding;
           })
         );
       });
     }
   }
-
-  Object.assign(WebexStore.prototype, Events);
 
   return new WebexStore();
 }

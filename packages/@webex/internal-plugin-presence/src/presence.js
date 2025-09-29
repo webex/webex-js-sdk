@@ -67,7 +67,7 @@ class Presence extends WebexPlugin {
    */
   emitEvent(event, payload) {
     if (payload.type && payload.payload) {
-      this.trigger(event, payload);
+      this.emit(event, payload);
     }
   }
 

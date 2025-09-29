@@ -19,8 +19,9 @@ class DeviceManager extends WebexPlugin {
 
   _boundSpace = null;
 
-  constructor(...args) {
-    super(...args);
+  constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
     // Initialize the paired method property
     this._pairedMethod = 'Manual';
 

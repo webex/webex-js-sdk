@@ -256,12 +256,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Creates an instance of ContactCenter plugin
    * @param {any[]} args Arguments passed to plugin constructor
    */
-  constructor(...args) {
-    super(...args);
+constructor(attrs: any, options: any) {
+    super(attrs, options);
+
 
     this.eventEmitter = new EventEmitter();
     // @ts-ignore
-    this.$webex = this.webex;
+
+    // WARNING :  we have to add webex object in the constructor to make sure that
+    // it is available in the initialize method. This is needed for backward compatibility
+    // as we are calling initialize method from the constructor itself.
+    this.$webex = options.webex;
 
     this.$webex.once(READY, () => {
       // @ts-ignore
@@ -300,7 +305,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private handleIncomingTask = (task: ITask) => {
     // @ts-ignore
-    this.trigger(TASK_EVENTS.TASK_INCOMING, task);
+    this.emit(TASK_EVENTS.TASK_INCOMING, task);
   };
 
   /**
@@ -310,7 +315,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private handleTaskHydrate = (task: ITask) => {
     // @ts-ignore
-    this.trigger(TASK_EVENTS.TASK_HYDRATE, task);
+    this.emit(TASK_EVENTS.TASK_HYDRATE, task);
   };
 
   /**

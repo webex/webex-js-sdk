@@ -27,8 +27,9 @@ export default class RateLimitInterceptor extends Interceptor {
    * @param {mixed} args
    * @returns {Exception}
    */
-  constructor(...args) {
-    super(...args);
+  constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
     rateLimitExpiryTime.set(this, new Map());
   }
 

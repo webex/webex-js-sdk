@@ -76,7 +76,7 @@ class AIAssistant extends WebexPlugin {
       .connect()
       .then(() => {
         this.listenForEvents();
-        this.trigger(AI_ASSISTANT_REGISTERED);
+        this.emit(AI_ASSISTANT_REGISTERED);
         this.registered = true;
       })
       .catch((error) => {
@@ -102,7 +102,7 @@ class AIAssistant extends WebexPlugin {
     this.stopListeningForEvents();
 
     return this.webex.internal.mercury.disconnect().then(() => {
-      this.trigger(AI_ASSISTANT_UNREGISTERED);
+      this.emit(AI_ASSISTANT_UNREGISTERED);
       this.registered = false;
     });
   }
@@ -153,7 +153,7 @@ class AIAssistant extends WebexPlugin {
    * @returns {undefined}
    */
   private _handleEvent(data: any): void {
-    this.trigger(this._getResultEventName(data.clientRequestId), data);
+    this.emit(this._getResultEventName(data.clientRequestId), data);
   }
 
   /**
@@ -204,8 +204,8 @@ class AIAssistant extends WebexPlugin {
     // eslint-disable-next-line no-async-promise-executor
     return new Promise((resolve, reject) => {
       const timer = new Timer(() => {
-        this.stopListening(this, eventName);
-        this.trigger(streamEventName, {
+        this.removeAllListeners(eventName);
+        this.emit(streamEventName, {
           requestId,
           finished: true,
           errorMessage: AI_ASSISTANT_ERRORS.AI_ASSISTANT_TIMEOUT,
@@ -213,7 +213,7 @@ class AIAssistant extends WebexPlugin {
         });
       }, timeout);
 
-      this.listenTo(this, eventName, async (data) => {
+      this.on(eventName, async (data) => {
         timer.reset();
         const resultData = get(data, 'response.content', {});
         const errorMessage = get(data, 'response.errorMessage');
@@ -222,7 +222,7 @@ class AIAssistant extends WebexPlugin {
 
         if (data.finished) {
           timer.cancel();
-          this.stopListening(this, eventName);
+          this.removeAllListeners(eventName);
         }
 
         let decryptErrorMessage;
@@ -235,7 +235,7 @@ class AIAssistant extends WebexPlugin {
           decryptErrorMessage = decryptError.message;
         }
 
-        this.trigger(
+        this.emit(
           streamEventName,
           merge({}, data.response, {
             responseType,

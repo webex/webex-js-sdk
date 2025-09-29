@@ -86,7 +86,7 @@ class Calendar extends WebexPlugin {
    */
   prefetchEncryptionKey() {
     if (!this.webex.canAuthorize) {
-      this.listenToOnce(this.webex, 'change:canAuthorize', () => {
+      this.webex.once('change:canAuthorize', () => {
         this.prefetchEncryptionKey();
       });
 
@@ -122,7 +122,7 @@ class Calendar extends WebexPlugin {
   initialize() {
     // Used to perform actions after webex is fully qualified and ready for
     // operation.
-    this.listenToOnce(this.webex, 'ready', () => {
+    this.webex.once('ready', () => {
       this.prefetchEncryptionKey();
     });
   }
@@ -152,7 +152,7 @@ class Calendar extends WebexPlugin {
       .then(() => this.webex.internal.mercury.connect())
       .then(() => {
         this.listenForEvents();
-        this.trigger(CALENDAR_REGISTERED);
+        this.emit(CALENDAR_REGISTERED);
         this.registered = true;
       })
       .catch((error) => {
@@ -183,7 +183,7 @@ class Calendar extends WebexPlugin {
       .disconnect()
       .then(() => this.webex.internal.device.unregister())
       .then(() => {
-        this.trigger(CALENDAR_UNREGISTERED);
+        this.emit(CALENDAR_UNREGISTERED);
         this.registered = false;
       });
   }
@@ -238,7 +238,7 @@ class Calendar extends WebexPlugin {
   _handleUpdate(data) {
     const id = CalendarCollection.set(data.calendarMeetingExternal);
 
-    this.trigger(CALENDAR_UPDATED, CalendarCollection.get(id));
+    this.emit(CALENDAR_UPDATED, CalendarCollection.get(id));
   }
 
   /**
@@ -250,7 +250,7 @@ class Calendar extends WebexPlugin {
   _handleCreate(data) {
     const id = CalendarCollection.set(data.calendarMeetingExternal);
 
-    this.trigger(CALENDAR_CREATE, CalendarCollection.get(id));
+    this.emit(CALENDAR_CREATE, CalendarCollection.get(id));
   }
 
   /**
@@ -262,7 +262,7 @@ class Calendar extends WebexPlugin {
   _handleDelete(data) {
     const item = CalendarCollection.remove(data.calendarMeetingExternal.id);
 
-    this.trigger(CALENDAR_DELETE, item);
+    this.emit(CALENDAR_DELETE, item);
   }
 
   /**

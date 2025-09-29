@@ -642,7 +642,7 @@ class KMS extends WebexPlugin {
 
           // KMS Error. Notify the user
           if (reason instanceof KMSError) {
-            this.webex.trigger('client:InvalidRequestError');
+            this.webex.emit('client:InvalidRequestError');
 
             return Promise.reject(reason);
           }

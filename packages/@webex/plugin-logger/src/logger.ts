@@ -3,7 +3,7 @@
  */
 
 import {inBrowser, patterns} from '@webex/common';
-import WebexPlugin from '@webex/webex-core';
+import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
 
 const precedence = {

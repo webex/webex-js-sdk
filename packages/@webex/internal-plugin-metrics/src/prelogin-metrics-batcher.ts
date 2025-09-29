@@ -1,5 +1,5 @@
 import {uniqueId} from 'lodash';
-import Batcher from './batcher';
+import {Batcher} from '@webex/webex-core';
 import {prepareDiagnosticMetricItem} from './call-diagnostic/call-diagnostic-metrics.util';
 import {generateCommonErrorMetadata} from './utils';
 
@@ -14,6 +14,10 @@ class PreLoginMetricsBatcher extends Batcher {
   namespace = 'Metrics';
   preLoginId: string | undefined = undefined;
   webex: any;
+  // eslint-disable-next-line no-useless-constructor
+  constructor(attrs, options) {
+    super(attrs, options);
+  }
 
   /**
    * Save the pre-login ID.

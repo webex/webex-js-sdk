@@ -60,7 +60,7 @@ export default class StatelessWebexPlugin {
    * @param {WebexCore} [options.parent]
    */
   constructor(attrs = {}, options = {}) {
-    let webex = attrs.webex || options.parent;
+    let webex = options.webex || options.parent || attrs.webex;
 
     if (!webex) {
       throw new Error(

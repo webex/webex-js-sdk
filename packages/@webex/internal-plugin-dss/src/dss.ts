@@ -3,7 +3,7 @@
  * Copyright (c) 2015-2022 Cisco Systems, Inc. See LICENSE file.
  */
 import uuid from 'uuid';
-import WebexPlugin from '@webex/webex-core';
+import {WebexPlugin} from '@webex/webex-core';
 import '@webex/internal-plugin-mercury';
 import {range, isEqual, get} from 'lodash';
 
@@ -130,8 +130,8 @@ class DSS extends WebexPlugin {
    * @returns {void}
    */
   stopListeningForEvents() {
-    this.webex.internal.mercury.off(DSS_LOOKUP_MERCURY_EVENT);
-    this.webex.internal.mercury.off(DSS_SEARCH_MERCURY_EVENT);
+    this.webex.internal.mercury.removeAllListeners(DSS_LOOKUP_MERCURY_EVENT);
+    this.webex.internal.mercury.removeAllListeners(DSS_SEARCH_MERCURY_EVENT);
   }
 
   /**

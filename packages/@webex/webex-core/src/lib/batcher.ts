@@ -21,18 +21,27 @@ export interface BatcherConfig {
 class Batcher extends WebexPlugin {
   private deferreds: Map<any, Defer<any>>;
   private queue: any[];
-  private bounce: (...args: any[]) => void;
+  private _bounce?: (...args: any[]) => void;
 
   constructor(attrs: any, options: any) {
     super(attrs, options);
 
     this.deferreds = new Map();
     this.queue = [];
+  }
 
-    this.bounce = cappedDebounce(() => this.executeQueue(), this.config.batcherWait, {
-      maxCalls: this.config.batcherMaxCalls,
-      maxWait: this.config.batcherMaxWait,
-    });
+  /**
+   * Get bounce function (created lazily like AmpState derived properties)
+   */
+  private get bounce(): (...args: any[]) => void {
+    if (!this._bounce) {
+      this._bounce = cappedDebounce(() => this.executeQueue(), this.config.batcherWait, {
+        maxCalls: this.config.batcherMaxCalls,
+        maxWait: this.config.batcherMaxWait,
+      });
+    }
+
+    return this._bounce;
   }
 
   /**
@@ -106,7 +115,7 @@ class Batcher extends WebexPlugin {
   executeQueue(): Promise<void> {
     const queue = this.queue.splice(0, this.config.batcherMaxCalls);
 
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       resolve(
         this.prepareRequest(queue)
           .then((payload) =>

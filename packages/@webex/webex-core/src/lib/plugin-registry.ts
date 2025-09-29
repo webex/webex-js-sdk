@@ -25,6 +25,7 @@ export interface PluginOptions {
 export class PluginRegistry {
   private plugins: Map<string, any> = new Map();
   private internalPlugins: Map<string, any> = new Map();
+  private pluginDefaultConfigs: Map<string, any> = new Map();
   private config: Record<string, any> = {};
   private interceptors: Record<string, any> = {};
 
@@ -32,8 +33,8 @@ export class PluginRegistry {
    * Register a plugin with the registry
    * @param {string} name - The name of the plugin
    * @param {any} constructor - The plugin constructor
-   * @param {PluginOptions} options - Plugin options
    * @param {any} targetClass - The target class to register plugin on
+   * @param {PluginOptions} options - Plugin options
    * @returns {void}
    */
   registerPlugin(
@@ -63,8 +64,8 @@ export class PluginRegistry {
    * Register an internal plugin with the registry
    * @param {string} name - The name of the plugin
    * @param {any} constructor - The plugin constructor
-   * @param {PluginOptions} options - Plugin options
    * @param {any} targetClass - The target class to register plugin on
+   * @param {PluginOptions} options - Plugin options
    * @returns {void}
    */
   registerInternalPlugin(
@@ -92,6 +93,9 @@ export class PluginRegistry {
 
   /**
    * Handle common plugin options (config, interceptors, etc.)
+   * @param {string} name - The plugin name
+   * @param {PluginOptions} options - The plugin options
+   * @returns {void}
    * @private
    */
   private _handlePluginOptions(name: string, options: PluginOptions): void {

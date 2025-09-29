@@ -40,8 +40,9 @@ function createOneFlightKey(reportId, options) {
 class EDiscovery extends WebexPlugin {
   namespace = 'EDiscovery';
 
-  constructor(...args) {
-    super(...args);
+constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
     this.contentContainerCache = new Map();
   }
 

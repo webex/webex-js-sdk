@@ -7,6 +7,10 @@ import {HTTP_VERBS} from '../constants';
  * @class BreakoutRequest
  */
 export default class BreakoutRequest extends StatelessWebexPlugin {
+  constructor(attrs: any = {}, options: any = {}) {
+    super(attrs, options);
+  }
+
   /**
    * Broadcast message to all breakout session's participants
    * @param {String} url

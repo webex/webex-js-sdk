@@ -12,6 +12,10 @@ import Batcher from './batcher';
 class ClientMetricsBatcher extends Batcher {
   namespace = 'Metrics';
 
+  constructor(attrs, options) {
+    super(attrs, options);
+  }
+
   /**
    * Prepare an individual item for batching
    * @param {any} item - The item to prepare

@@ -24,10 +24,9 @@ export default abstract class GenericMetrics extends StatelessWebexPlugin {
    * Constructor
    * @param {any[]} args
    */
-  constructor(...args) {
-    super(...args);
-    // @ts-ignore
-    this.logger = this.webex.logger;
+  constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
     // @ts-ignore
     this.clientMetricsBatcher = new ClientMetricsBatcher({}, {parent: this.webex});
     // @ts-ignore

@@ -120,14 +120,15 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * Constructor
    * @param args
    */
-  constructor(...args) {
-    super(...args);
+  constructor(args, options) {
+    super(args, options);
     // @ts-ignore
     this.logger = this.webex.logger;
     // @ts-ignore
-    this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher({}, {parent: this.webex});
     // @ts-ignore
-    this.preLoginMetricsBatcher = new PreLoginMetricsBatcher({}, {parent: this.webex});
+    this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher({}, options);
+    // @ts-ignore
+    this.preLoginMetricsBatcher = new PreLoginMetricsBatcher({}, options);
   }
 
   /**
@@ -525,7 +526,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       type: ['business'],
     };
 
-    return this.callDiagnosticEventsBatcher.request(finalEvent);
+    return this.callDiagnosticEventsBatcher.submitHttpRequest(finalEvent);
   }
 
   /**
@@ -1314,7 +1315,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       type: ['diagnostic-event'],
     };
 
-    return this.callDiagnosticEventsBatcher.request(finalEvent);
+    return this.callDiagnosticEventsBatcher.submitHttpRequest(finalEvent);
   }
 
   /**

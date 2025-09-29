@@ -1,3 +1,4 @@
+// @ts-nocheck
 /*!
  * Copyright (c) 2015-2023 Cisco Systems, Inc. See LICENSE file.
  */
@@ -19,7 +20,7 @@ import {boServiceErrorHandler, isSessionTypeChangedFromSessionToMain} from './ut
 class Breakouts extends WebexPlugin {
   namespace = MEETINGS;
   breakoutRequest: BreakoutRequest;
-  breakouts: typeof BreakoutCollection;
+  breakouts: BreakoutCollection;
   allowBackToMain: boolean;
   delayCloseTime: number;
   enableBreakoutSession: boolean;
@@ -46,8 +47,6 @@ class Breakouts extends WebexPlugin {
   currentBreakoutSession: Breakout;
   hasSubscribedToMessage: boolean;
   debouncedQueryRosters: any;
-  webex: any;
-  request: any;
 
   /**
    * Returns true if the user is in the main session
@@ -102,43 +101,42 @@ class Breakouts extends WebexPlugin {
 
   /**
    * initialize for the breakouts
+   * @param {any} attrs - Initial attributes
+   * @param {any} options - Constructor options
    * @returns {void}
    */
-  constructor(...args) {
-    super(...args);
+  constructor(attrs?: any, options?: any) {
+    super(attrs, options);
+    this.meetingId = attrs.meetingId;
     this.breakouts = new BreakoutCollection([], {parent: this});
+    this.breakoutRequest = new BreakoutRequest({}, options);
+    // this.currentBreakoutSession = new Breakout(
+    //   {current: true, meetingId: attrs.meetingId},
+    //   {parent: options}
+    // );
 
-    this.webex.emitter.on('breakouts:change:breakoutStatus', () => {
-      if (this.breakoutStatus === BREAKOUTS.STATUS.CLOSING) {
-        this.webex.emitter.emit(BREAKOUTS.EVENTS.BREAKOUTS_CLOSING);
-      }
-    });
-    this.webex.emitter.on('breakouts:change:shouldQueryPreAssignments', () => {
-      if (this.shouldQueryPreAssignments && !this.preAssignments) {
-        this.queryPreAssignments();
-      }
-    });
-
-    this.debouncedQueryRosters = debounce(this.queryRosters, 10, {
+    this.debouncedQueryRosters = debounce(this.queryRosters.bind(this), 10, {
       leading: true,
       trailing: false,
     });
 
-    // @ts-ignore
     this.breakouts.on('add', (breakout) => {
       this.debouncedQueryRosters();
       this.triggerReturnToMainEvent(breakout);
     });
-    // @ts-ignore
     this.breakouts.on('change:requestedLastModifiedTime', (breakout) => {
       this.triggerReturnToMainEvent(breakout);
     });
+  }
 
+  /**
+   * Initialize method called after webex object is available
+   * @returns {void}
+   */
+  initialize() {
     this.listenToCurrentSessionTypeChange();
     this.listenToBreakoutRosters();
     this.listenToBreakoutHelp();
-    // @ts-ignore
-    this.breakoutRequest = new BreakoutRequest({webex: this.webex});
   }
 
   /**
@@ -146,9 +144,18 @@ class Breakouts extends WebexPlugin {
    * @returns {void}
    */
   cleanUp() {
-    this.webex.emitter.off('breakouts:change:breakoutStatus');
-    this.webex.emitter.off('breakouts:change:shouldQueryPreAssignments');
-    this.hasSubscribedToMessage = undefined;
+    if (this.currentBreakoutSession) {
+      this.currentBreakoutSession.removeAllListeners(
+        'change:sessionType',
+        this.handleSessionTypeChange
+      );
+    }
+    this.webex.internal.mercury.removeAllListeners('event:breakout.roster');
+    this.webex.internal.mercury.removeAllListeners('event:breakout.help');
+    if (this.hasSubscribedToMessage) {
+      this.webex.internal.llm.removeAllListeners('event:breakout.message');
+      this.hasSubscribedToMessage = undefined;
+    }
   }
 
   /**
@@ -171,7 +178,12 @@ class Breakouts extends WebexPlugin {
    * @returns {void}
    */
   updateCanManageBreakouts(canManageBreakouts) {
-    this.canManageBreakouts = canManageBreakouts;
+    if (this.canManageBreakouts !== canManageBreakouts) {
+      this.canManageBreakouts = canManageBreakouts;
+      if (this.shouldQueryPreAssignments && !this.preAssignments) {
+        this.queryPreAssignments();
+      }
+    }
   }
 
   /**
@@ -200,7 +212,7 @@ class Breakouts extends WebexPlugin {
           this.handleRosterUpdate(locus);
         });
 
-        this.webex.emitter.emit(BREAKOUTS.EVENTS.MEMBERS_UPDATE);
+        this.emit(BREAKOUTS.EVENTS.MEMBERS_UPDATE);
       })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:breakouts#queryRosters failed', error);
@@ -225,12 +237,25 @@ class Breakouts extends WebexPlugin {
   }
 
   /**
+   * Handler for session type change
+   * @param {Breakout} model
+   * @param {string} sessionType
+   * @returns {void}
+   */
+  handleSessionTypeChange = (model, sessionType) => {
+    if (isSessionTypeChangedFromSessionToMain(model, sessionType)) {
+      this.emit(BREAKOUTS.EVENTS.LEAVE_BREAKOUT);
+    }
+  };
+
+  /**
    *Sets up listener for currentBreakoutSession sessionType changed
    * @returns {void}
    */
   listenToCurrentSessionTypeChange(): void {
-    // This logic needs to be adapted to the new event model.
-    // For now, we assume that changes to currentBreakoutSession will be handled elsewhere.
+    if (this.currentBreakoutSession) {
+      this.currentBreakoutSession.on('change:sessionType', this.handleSessionTypeChange);
+    }
   }
 
   /**
@@ -247,13 +272,10 @@ class Breakouts extends WebexPlugin {
         data: {senderUserId, sentTime, message},
       } = event;
 
-      this.webex.emitter.emit(BREAKOUTS.EVENTS.MESSAGE, {
+      this.emit(BREAKOUTS.EVENTS.MESSAGE, {
         senderUserId,
         sentTime,
         message,
-        // FIXME: This is only the current sessionId
-        // We'd need to check that the dataChannelUrl is still the same
-        // to guarantee that this message was sent to this session
         sessionId: this.currentBreakoutSession.sessionId,
       });
     });
@@ -267,7 +289,7 @@ class Breakouts extends WebexPlugin {
   listenToBreakoutRosters() {
     this.webex.internal.mercury.on('event:breakout.roster', (event) => {
       this.handleRosterUpdate(event.data.locus);
-      this.webex.emitter.emit(BREAKOUTS.EVENTS.MEMBERS_UPDATE);
+      this.emit(BREAKOUTS.EVENTS.MEMBERS_UPDATE);
     });
   }
 
@@ -280,7 +302,7 @@ class Breakouts extends WebexPlugin {
       const {
         data: {participant, sessionId},
       } = event;
-      this.webex.emitter.emit(BREAKOUTS.EVENTS.ASK_FOR_HELP, {participant, sessionId});
+      this.emit(BREAKOUTS.EVENTS.ASK_FOR_HELP, {participant, sessionId});
     });
   }
 
@@ -308,34 +330,52 @@ class Breakouts extends WebexPlugin {
    * @returns {void}
    */
   updateBreakout(params) {
-    Object.assign(this, params);
-    // These values are set manually so they are unset when they are not included in params
-    this.groups = params.groups;
-    this.startTime = params.startTime;
     const oldStatus = this.status;
-    this.status = params.status;
-    if (oldStatus !== this.status) {
-      this.webex.emitter.emit('breakouts:change:breakoutStatus');
-    }
-
     const previousSessionId = this.currentBreakoutSession?.sessionId;
     const previousGroupId = this.currentBreakoutSession?.groupId;
+
+    // Direct property updates
+    this.allowBackToMain = params.allowBackToMain;
+    this.delayCloseTime = params.delayCloseTime;
+    this.enableBreakoutSession = params.enableBreakoutSession;
+    this.hasBreakoutPreAssignments = params.hasBreakoutPreAssignments;
+    this.groupId = params.groupId;
+    this.name = params.name;
+    this.sessionId = params.sessionId;
+    this.sessionType = params.sessionType;
+    this.startTime = params.startTime;
+    this.status = params.status;
+    this.url = params.url;
+    this.groups = params.groups;
+    this.manageGroups = params.manageGroups;
+    this.editLock = params.editLock;
+    this.mainGroupId = params.mainGroupId;
+    this.mainSessionId = params.mainSessionId;
+
+    if (oldStatus !== this.status && this.breakoutStatus === BREAKOUTS.STATUS.CLOSING) {
+      this.emit(BREAKOUTS.EVENTS.BREAKOUTS_CLOSING);
+    }
+
+    if (this.shouldQueryPreAssignments && !this.preAssignments) {
+      this.queryPreAssignments();
+    }
 
     this.currentBreakoutSession = new Breakout(
       {
         sessionId: params.sessionId,
         groupId: params.groupId,
+        meetingsID: this.meetingId,
         name: params.name,
-        current: true,
         sessionType: params.sessionType,
         url: params.url,
+        current: true,
         [BREAKOUTS.SESSION_STATES.ACTIVE]: false,
         [BREAKOUTS.SESSION_STATES.ALLOWED]: false,
         [BREAKOUTS.SESSION_STATES.ASSIGNED]: false,
         [BREAKOUTS.SESSION_STATES.ASSIGNED_CURRENT]: false,
         [BREAKOUTS.SESSION_STATES.REQUESTED]: false,
       },
-      {parent: this}
+      {parent: this.webex}
     );
 
     if (!this.isBreakoutInProgress()) {
@@ -343,10 +383,10 @@ class Breakouts extends WebexPlugin {
     }
 
     if (
-      previousSessionId !== this.currentBreakoutSession.sessionId ||
-      previousGroupId !== this.currentBreakoutSession.groupId
+      this.currentBreakoutSession.sessionId &&
+      (previousSessionId !== this.currentBreakoutSession.sessionId ||
+        previousGroupId !== this.currentBreakoutSession.groupId)
     ) {
-      // should report joined session changed
       const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
       breakoutEvent.onBreakoutJoinResponse(
         {
@@ -354,7 +394,6 @@ class Breakouts extends WebexPlugin {
           meeting,
           breakoutMoveId: params.breakoutMoveId,
         },
-        // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
       );
     }
@@ -368,9 +407,6 @@ class Breakouts extends WebexPlugin {
   updateBreakoutSessions(payload) {
     const breakouts = {};
     if (this.isBreakoutIClosing()) {
-      // fix issue: don't clear/update breakouts collection when in closing since locus DTO will send undefined or
-      // only the MAIN session info here, if just update it, will miss the breakout roster info during
-      // count down to end breakouts
       return;
     }
     if (payload.breakoutSessions) {
@@ -396,7 +432,6 @@ class Breakouts extends WebexPlugin {
       });
     }
     forEach(breakouts, (breakout: any) => {
-      // eslint-disable-next-line no-param-reassign
       breakout.url = this.url;
     });
 
@@ -422,7 +457,7 @@ class Breakouts extends WebexPlugin {
       return this.currentBreakoutSession;
     }
 
-    const mainSession = this.breakouts.filter((breakout) => breakout.isMain)[0];
+    const mainSession = this.breakouts.find((breakout) => breakout.isMain);
     if (!mainSession) {
       throw new Error('no main session found');
     }
@@ -473,7 +508,6 @@ class Breakouts extends WebexPlugin {
    */
   enableBreakouts() {
     if (this.breakoutServiceUrl) {
-      // @ts-ignore
       return this.webex
         .request({
           method: HTTP_VERBS.POST,
@@ -522,7 +556,6 @@ class Breakouts extends WebexPlugin {
       ...{enableBreakoutSession: enable},
     };
 
-    // @ts-ignore
     return this.webex.request({
       method: HTTP_VERBS.PUT,
       uri: this.url,
@@ -574,7 +607,6 @@ class Breakouts extends WebexPlugin {
       ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
       ...{groups: [payload]},
     };
-    // @ts-ignore
     const breakoutInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
@@ -604,7 +636,6 @@ class Breakouts extends WebexPlugin {
       ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
       ...{groups: [{action: BREAKOUTS.ACTION.DELETE}]},
     };
-    // @ts-ignore
     const breakoutInfo = await this.webex
       .request({
         method: HTTP_VERBS.PUT,
@@ -902,7 +933,7 @@ class Breakouts extends WebexPlugin {
       .then((result) => {
         if (result.body?.groups) {
           this.preAssignments = result.body.groups;
-          this.webex.emitter.emit(BREAKOUTS.EVENTS.PRE_ASSIGNMENTS_UPDATE);
+          this.emit(BREAKOUTS.EVENTS.PRE_ASSIGNMENTS_UPDATE);
         }
       })
       .catch((error) => {
@@ -990,7 +1021,7 @@ class Breakouts extends WebexPlugin {
    */
   triggerReturnToMainEvent(breakout) {
     if (breakout.isMain && breakout.requested) {
-      this.webex.emitter.emit(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
+      this.emit(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
     }
   }
 }

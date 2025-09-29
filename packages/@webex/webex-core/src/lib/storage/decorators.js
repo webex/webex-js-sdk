@@ -86,9 +86,10 @@ export function waitForValue(key) {
     blockingKeys.add(target, prop, key);
     descriptor.value = wrap(descriptor.value, function waitForValueExecutor(fn, ...args) {
       const keys = blockingKeys.get(target, prop);
+      const self = this; // Capture the context to prevent `this` from becoming undefined
 
       return Promise.all([...keys].map((k) => this.boundedStorage.waitFor(k))).then(() =>
-        Reflect.apply(fn, this, args)
+        Reflect.apply(fn, self, args)
       );
     });
 
@@ -172,16 +173,67 @@ function prepareInitialize(target, prop) {
         // Then prepare a function for setting values retrieved from storage
         const set = curry((key, value) => {
           this.logger.debug(`storage:(${namespace}): got \`${key}\` for first time`);
-          if (key === '@') {
-            self.parent.set({
-              [namespace.toLowerCase()]: value,
-            });
-          } else if (result(self[key], 'isState')) {
-            self[key].set(value);
-          } else {
-            self.set(key, value);
+
+          try {
+            if (key === '@') {
+              // Enhanced logging for debugging trigger errors
+              if (!self.webex || (!self.webex.emit && !self.webex.trigger)) {
+                this.logger.error(
+                  `storage:(${namespace}): self.webex missing emit/trigger methods for key '@'`,
+                  {
+                    hasWebex: !!self.webex,
+                    webexType: typeof self.webex,
+                    webexConstructor: self.webex?.constructor?.name,
+                    webexKeys: self.webex ? Object.keys(self.webex).slice(0, 10) : [],
+                    namespace,
+                    key,
+                    value: typeof value,
+                  }
+                );
+              }
+
+              self.webex.set({
+                [namespace.toLowerCase()]: value,
+              });
+            } else if (result(self[key], 'isState')) {
+              // Enhanced logging for state objects
+              if (!self[key] || (!self[key].emit && !self[key].trigger)) {
+                this.logger.error(
+                  `storage:(${namespace}): self[${key}] missing emit/trigger methods`,
+                  {
+                    hasTarget: !!self[key],
+                    targetType: typeof self[key],
+                    targetConstructor: self[key]?.constructor?.name,
+                    targetKeys: self[key] ? Object.keys(self[key]).slice(0, 10) : [],
+                    namespace,
+                    key,
+                    value: typeof value,
+                  }
+                );
+              }
+
+              self[key].set(value);
+            } else {
+              // Enhanced logging for fallback set
+              if (!self || (!self.emit && !self.trigger)) {
+                this.logger.error(`storage:(${namespace}): self missing emit/trigger methods`, {
+                  hasSelf: !!self,
+                  selfType: typeof self,
+                  selfConstructor: self?.constructor?.name,
+                  selfKeys: self ? Object.keys(self).slice(0, 10) : [],
+                  namespace,
+                  key,
+                  value: typeof value,
+                });
+              }
+
+              self.set(key, value);
+            }
+            this.logger.debug(`storage:(${namespace}): set \`${key}\` for first time`);
+          } catch (error) {
+            this.logger.error(`storage:(${namespace}): Error setting key \`${key}\`:`, error);
+            throw error;
           }
-          this.logger.debug(`storage:(${namespace}): set \`${key}\` for first time`);
         });
 
         // And prepare an error handler for when those keys can't be found

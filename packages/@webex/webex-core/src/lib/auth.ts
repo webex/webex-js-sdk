@@ -108,7 +108,7 @@ const Auth = (base) =>
             this.authorization.logout &&
             this.authorization.logout(options, ...rest)
         )
-        .then(() => this.trigger('client:logout'));
+        .then(() => this.emit('client:logout'));
     }
   };
 

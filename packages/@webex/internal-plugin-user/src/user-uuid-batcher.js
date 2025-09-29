@@ -12,6 +12,10 @@ import {Batcher, WebexPlugin} from '@webex/webex-core';
 class AbstractUserUUIDRequestBatcher extends Batcher {
   namespace = 'User';
 
+  constructor(attrs, options) {
+    super(attrs, options);
+  }
+
   /**
    * Prepare an individual item for batching
    * @param {string} item - The item to prepare

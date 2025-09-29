@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2023 Cisco Systems, Inc. See LICENSE file.
  */
 import {WebexPlugin, config} from '@webex/webex-core';
+
 import uuid from 'uuid';
 import {get} from 'lodash';
 import {_ID_, HEADERS, HTTP_VERBS, MEETINGS, SELF_ROLES, SHARE_STATUS} from '../constants';
@@ -24,8 +25,15 @@ class Webinar extends WebexPlugin {
   selfIsAttendee: boolean; // self is attendee
   practiceSessionEnabled: boolean; // practice session enabled
   meetingId: string;
-  webex: any;
-  request: any;
+
+  /**
+   * Constructorl
+   * @param {Object} attrs
+   * @param {Object} options
+   */
+  constructor(attrs, options) {
+    super(attrs, options);
+  }
 
   /**
    * @returns {WebinarCollection}
@@ -95,6 +103,7 @@ class Webinar extends WebexPlugin {
    * @returns {void}
    */
   updateStatusByRole({isPromoted, isDemoted}) {
+    // @ts-ignore
     const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
 
     if (
@@ -126,6 +135,7 @@ class Webinar extends WebexPlugin {
    * @returns {Promise}
    */
   setPracticeSessionState(enabled) {
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri: `${this.locusUrl}/controls`,
@@ -163,10 +173,12 @@ class Webinar extends WebexPlugin {
       throw new Error('Meeting parameter does not meet expectations');
     }
 
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: `${this.webcastInstanceUrl}/streaming`,
       headers: {
+        // @ts-ignore
         authorization: await this.webex.credentials.getUserToken(),
         trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
         [HEADERS.CONTENT_TYPE]: HEADERS.CONTENT_TYPE_VALUE.APPLICATION_JSON,
@@ -190,10 +202,12 @@ class Webinar extends WebexPlugin {
    * @returns {Promise}
    */
   async stopWebcast() {
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: `${this.webcastInstanceUrl}/streaming`,
       headers: {
+        // @ts-ignore
         authorization: await this.webex.credentials.getUserToken(),
         trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
         [HEADERS.CONTENT_TYPE]: HEADERS.CONTENT_TYPE_VALUE.APPLICATION_JSON,
@@ -212,10 +226,12 @@ class Webinar extends WebexPlugin {
    * @returns {Promise}
    */
   async queryWebcastLayout() {
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.GET,
       uri: `${this.webcastInstanceUrl}/layout`,
       headers: {
+        // @ts-ignore
         authorization: await this.webex.credentials.getUserToken(),
         trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
       },
@@ -231,10 +247,12 @@ class Webinar extends WebexPlugin {
    * @returns {Promise}
    */
   async updateWebcastLayout(layout) {
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: `${this.webcastInstanceUrl}/layout`,
       headers: {
+        // @ts-ignore
         authorization: await this.webex.credentials.getUserToken(),
         trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
         [HEADERS.CONTENT_TYPE]: HEADERS.CONTENT_TYPE_VALUE.APPLICATION_JSON,
@@ -257,10 +275,12 @@ class Webinar extends WebexPlugin {
    * @returns {Promise}
    */
   async viewAllWebcastAttendees() {
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.GET,
       uri: `${this.webcastInstanceUrl}/attendees`,
       headers: {
+        // @ts-ignore
         authorization: await this.webex.credentials.getUserToken(),
         trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
       },
@@ -276,10 +296,12 @@ class Webinar extends WebexPlugin {
    * @returns {Promise}
    */
   async searchWebcastAttendees(queryString = '') {
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.GET,
       uri: `${this.webcastInstanceUrl}/attendees?keyword=${encodeURIComponent(queryString)}`,
       headers: {
+        // @ts-ignore
         authorization: await this.webex.credentials.getUserToken(),
         trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
       },
@@ -295,10 +317,12 @@ class Webinar extends WebexPlugin {
    * @returns {Promise}
    */
   async expelWebcastAttendee(participantId) {
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.DELETE,
       uri: `${this.webcastInstanceUrl}/attendees/${participantId}`,
       headers: {
+        // @ts-ignore
         authorization: await this.webex.credentials.getUserToken(),
         trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
       },

@@ -12,6 +12,10 @@ import {Batcher} from '@webex/webex-core';
 class PersonUUIDRequestBatcher extends Batcher {
   namespace = 'People';
 
+  constructor(attrs, options) {
+    super(attrs, options);
+  }
+
   /**
    * Handle successful HTTP response
    * @param {any} res - The HTTP response object

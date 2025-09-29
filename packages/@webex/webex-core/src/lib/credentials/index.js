@@ -7,7 +7,8 @@ import {registerPlugin} from '../../webex-core';
 import Credentials from './credentials';
 
 registerPlugin('credentials', Credentials, {
-  proxies: ['canAuthorize', 'canRefresh'],
+  // Removed proxies - now using direct getters on WebexCore class
+  // The modern WebexCore has get canAuthorize() and get canRefresh() methods
 });
 
 export {default as Credentials} from './credentials';

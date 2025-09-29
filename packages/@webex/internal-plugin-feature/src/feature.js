@@ -10,6 +10,16 @@ class Feature extends WebexPlugin {
   namespace = 'Feature';
 
   /**
+   * @constructs Feature
+   * @param {any} attrs - Attributes to pass to the plugin constructor.
+   * @param {Object} options - Options for the plugin, including parent, collection, and namespace.
+   */
+  constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
+  }
+
+  /**
    * Returns the value of the requested feature toggle.
    * @param {string} keyType <developer|user|entitlement>
    * @param {string} key
@@ -112,23 +122,16 @@ class Feature extends WebexPlugin {
     });
   }
 
-  initialize(...args) {
-    Reflect.apply(super.initialize, this, args);
-
-    this.listenToAndRun(
-      this.webex,
-      'change:internal.device.features.developer',
-      this.trigger.bind(this, 'change:developer')
+  initialize() {
+    // Use emit instead of trigger for EventEmitter-based architecture
+    this.listenToAndRun(this.webex, 'change:internal.device.features.developer', () =>
+      this.emit('change:developer')
     );
-    this.listenToAndRun(
-      this.webex,
-      'change:internal.device.features.entitlement',
-      this.trigger.bind(this, 'change:entitlement')
+    this.listenToAndRun(this.webex, 'change:internal.device.features.entitlement', () =>
+      this.emit('change:entitlement')
     );
-    this.listenToAndRun(
-      this.webex,
-      'change:internal.device.features.user',
-      this.trigger.bind(this, 'change:user')
+    this.listenToAndRun(this.webex, 'change:internal.device.features.user', () =>
+      this.emit('change:user')
     );
   }
 }

@@ -13,6 +13,27 @@ import {WebexEventEmitter} from './events';
  */
 export class WebexCollection<T> extends WebexEventEmitter {
   private models: T[] = [];
+  protected parent?: any;
+  protected options: any;
+
+  /**
+   * Creates an instance of WebexCollection.
+   * @param {T[]} [models=[]] - Initial array of models to add to collection
+   * @param {any} [options={}] - Options including parent reference
+   * @memberof WebexCollection
+   */
+  constructor(models: T[] = [], options: any = {}) {
+    super();
+
+    // Store options and parent reference
+    this.options = options;
+    this.parent = options.parent;
+
+    // Initialize with models if provided
+    if (models && models.length > 0) {
+      models.forEach((model) => this.add(model));
+    }
+  }
 
   /**
    * Adds an item to the collection.
@@ -22,6 +43,13 @@ export class WebexCollection<T> extends WebexEventEmitter {
    * @memberof WebexCollection
    */
   add(model: T): void {
+    // Set parent reference if available and model supports it
+    if (this.parent && model && typeof (model as any).parent !== 'undefined') {
+      if (!(model as any).parent) {
+        (model as any).parent = this.parent;
+      }
+    }
+
     this.models.push(model);
     this.emit('add', model);
     this.emit('change');
@@ -62,5 +90,15 @@ export class WebexCollection<T> extends WebexEventEmitter {
    */
   getModels(): T[] {
     return [...this.models];
+  }
+
+  /**
+   * Gets the parent reference for compatibility with ampersand patterns
+   *
+   * @returns {any} - The parent object
+   * @memberof WebexCollection
+   */
+  getParent(): any {
+    return this.parent;
   }
 }

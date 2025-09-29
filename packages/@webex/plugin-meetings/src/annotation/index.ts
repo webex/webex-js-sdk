@@ -33,8 +33,9 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   /**
    * Initializes annotation module
    */
-  constructor(...args) {
-    super(...args);
+  constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
     this.seqNum = 1;
   }
 

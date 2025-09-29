@@ -414,7 +414,7 @@ class Mercury extends WebexPlugin {
 
   _emit(...args) {
     try {
-      this.trigger(...args);
+      this.emit(...args);
     } catch (error) {
       this.logger.error(
         `${this.namespace}: error occurred in event handler:`,

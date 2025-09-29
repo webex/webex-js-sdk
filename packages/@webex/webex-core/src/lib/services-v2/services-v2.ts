@@ -948,9 +948,9 @@ class Services extends WebexPlugin {
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
             // Attempt to collect the postauth catalog.
-            return this.updateServices().catch(() => {
+            return this.updateServices().catch((error) => {
               this.initFailed = true;
-              this.logger.warn('services: cannot retrieve postauth catalog');
+              this.logger.warn(`services: cannot retrieve postauth catalog, ${error?.message}`);
             });
           }
 

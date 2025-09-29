@@ -16,6 +16,10 @@ import RealtimeChannelCollection from './realtime-channel-collection';
 export default class RealtimeService extends WebexPlugin {
   namespace = 'Board';
 
+  constructor(attrs, options) {
+    super(attrs, options);
+  }
+
   collections = {
     realtimeChannels: RealtimeChannelCollection,
   };

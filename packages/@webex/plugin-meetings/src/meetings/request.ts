@@ -8,6 +8,10 @@ import {HTTP_VERBS, API, RESOURCE} from '../constants';
  * @class MeetingRequest
  */
 export default class MeetingRequest extends StatelessWebexPlugin {
+  constructor(args, options) {
+    super(args, options);
+  }
+
   /**
    *  get all the active meetings for the user
    * @returns {Array} return locus array

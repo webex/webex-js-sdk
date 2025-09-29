@@ -21,6 +21,25 @@ export interface ServiceUrlState {
 export class ServiceUrl extends WebexState<ServiceUrlState> {
   namespace = 'ServiceUrl';
 
+  // Initialize with defaults like AmpState did
+  defaultUrl = '';
+  hosts: ServiceUrlHost[] = [];
+  name = '';
+
+  constructor(attrs: Partial<ServiceUrlState> = {}) {
+    super({
+      defaultUrl: attrs.defaultUrl || '',
+      hosts: attrs.hosts || [], // Critical: Always initialize as empty array
+      name: attrs.name || '',
+      ...attrs,
+    });
+
+    // Set direct properties for compatibility with original AmpState behavior
+    this.defaultUrl = attrs.defaultUrl || '';
+    this.hosts = attrs.hosts || [];
+    this.name = attrs.name || '';
+  }
+
   /**
    * Generate a host url based on the host
    * uri provided.
@@ -28,7 +47,7 @@ export class ServiceUrl extends WebexState<ServiceUrlState> {
    * @returns {string}
    */
   private _generateHostUrl(hostUri: string): string {
-    const url = Url.parse(this.get('defaultUrl'));
+    const url = Url.parse(this.defaultUrl); // Direct property access like original
 
     // setting url.hostname will not apply during Url.format(), set host via
     // a string literal instead.
@@ -43,7 +62,8 @@ export class ServiceUrl extends WebexState<ServiceUrlState> {
    * @returns {Array<{url: string, priority: number}>}
    */
   private _getHostUrls(): Array<{url: string; priority: number}> {
-    return this.get('hosts').map((host) => ({
+    return this.hosts.map((host) => ({
+      // Direct property access like original
       url: this._generateHostUrl(host.host),
       priority: host.priority,
     }));
@@ -58,15 +78,14 @@ export class ServiceUrl extends WebexState<ServiceUrlState> {
    * @returns {string} - The priority host url.
    */
   private _getPriorityHostUrl(clusterId?: string): string {
-    const hosts = this.get('hosts');
-
-    if (hosts.length === 0) {
-      return this.get('defaultUrl');
+    // Direct property access like original - no this.get() calls
+    if (this.hosts.length === 0) {
+      return this.defaultUrl;
     }
 
     let filteredHosts = clusterId
-      ? hosts.filter((host) => host.id === clusterId)
-      : hosts.filter((host) => host.homeCluster);
+      ? this.hosts.filter((host) => host.id === clusterId)
+      : this.hosts.filter((host) => host.homeCluster);
 
     const aliveHosts = filteredHosts.filter((host) => !host.failed);
 
@@ -97,20 +116,18 @@ export class ServiceUrl extends WebexState<ServiceUrlState> {
    * @returns {boolean}
    */
   failHost(url: string): boolean {
-    const defaultUrl = this.get('defaultUrl');
-
-    if (url === defaultUrl) {
+    if (url === this.defaultUrl) {
+      // Direct property access like original
       return true;
     }
 
     const {hostname} = Url.parse(url);
-    const hosts = this.get('hosts');
-    const foundHost = hosts.find((hostObj) => hostObj.host === hostname);
+    const foundHost = this.hosts.find((hostObj) => hostObj.host === hostname); // Direct property access
 
     if (foundHost) {
       foundHost.failed = true;
-      // Trigger a change event since we modified the hosts array
-      this.set('hosts', [...hosts]);
+      // Update the hosts array and notify WebexState of the change
+      this.hosts = [...this.hosts]; // This will trigger change events in WebexState
     }
 
     return foundHost !== undefined;
@@ -124,18 +141,10 @@ export class ServiceUrl extends WebexState<ServiceUrlState> {
    * @param {string} [clusterId] - Cluster to match a host against.
    * @returns {string} - The full service url.
    */
-  get(key?: keyof ServiceUrlState): any;
-  get(priorityHost?: boolean, clusterId?: string): string;
-  get(keyOrPriorityHost?: keyof ServiceUrlState | boolean, clusterId?: string): any {
-    // Handle the overloaded method signatures
-    if (typeof keyOrPriorityHost === 'string') {
-      return super.get(keyOrPriorityHost);
-    }
-
-    const priorityHost = keyOrPriorityHost;
-
+  get(priorityHost?: boolean, clusterId?: string): string {
+    // Simplified like original - no complex overloads
     if (!priorityHost) {
-      return this.get('defaultUrl');
+      return this.defaultUrl; // Direct property access like original
     }
 
     return this._getPriorityHostUrl(clusterId);

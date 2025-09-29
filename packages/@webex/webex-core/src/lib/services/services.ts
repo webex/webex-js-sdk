@@ -1075,9 +1075,9 @@ class Services extends WebexPlugin {
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
             // Attempt to collect the postauth catalog.
-            return this.updateServices().catch(() => {
+            return this.updateServices().catch((error) => {
               this.initFailed = true;
-              this.logger.warn('services: cannot retrieve postauth catalog');
+              this.logger.warn(`services: cannot retrieve postauth catalog, ${error?.message}`);
             });
           }
 
@@ -1104,37 +1104,42 @@ class Services extends WebexPlugin {
     this.states.set(this.webex, state);
 
     // Listen for configuration changes once.
-    this.webex.once('change:config', () => {
-      this.initConfig();
-    });
+    // this.webex.once('change:config', () => {
+    // WARNING : With ampstate migration config merge is synchronous initially
+    this.initConfig();
+    // });
 
     // wait for webex instance to be ready before attempting
     // to update the service catalogs
-    this.webex.once('ready', () => {
-      const {supertoken} = this.webex.credentials;
-      // Validate if the supertoken exists.
-      if (supertoken && supertoken.access_token) {
-        this.initServiceCatalogs()
-          .then(() => {
-            catalog.isReady = true;
-          })
-          .catch((error: any) => {
+    // Fix context binding issue by using bound function to maintain correct 'this' reference
+    this.webex.once(
+      'ready',
+      function () {
+        const {supertoken} = this.webex.credentials;
+        // Validate if the supertoken exists.
+        if (supertoken && supertoken.access_token) {
+          this.initServiceCatalogs()
+            .then(() => {
+              catalog.isReady = true;
+            })
+            .catch((error: any) => {
+              this.initFailed = true;
+              this.logger.error(
+                `services: failed to init initial services when credentials available, ${error?.message}`
+              );
+            });
+        } else {
+          const {email} = this.webex.config;
+
+          this.collectPreauthCatalog(email ? {email} : undefined).catch((error: any) => {
             this.initFailed = true;
             this.logger.error(
-              `services: failed to init initial services when credentials available, ${error?.message}`
+              `services: failed to init initial services when no credentials available, ${error?.message}`
             );
           });
-      } else {
-        const {email} = this.webex.config;
-
-        this.collectPreauthCatalog(email ? {email} : undefined).catch((error: any) => {
-          this.initFailed = true;
-          this.logger.error(
-            `services: failed to init initial services when no credentials available, ${error?.message}`
-          );
-        });
-      }
-    });
+        }
+      }.bind(this)
+    );
 
     return this;
   }

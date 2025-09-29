@@ -16,6 +16,10 @@ class PresenceBatcher extends Batcher implements IPresenceBatcher {
   namespace = 'Presence';
   maxSize: number;
   maxWait: number;
+  constructor(attrs, options) {
+    super(attrs, options);
+  }
+
   getDeferredForResponse: (
     item: string
   ) => Promise<{resolve: (value: any) => void; reject: (reason?: any) => void}>;
@@ -24,8 +28,8 @@ class PresenceBatcher extends Batcher implements IPresenceBatcher {
    * @see {@link Batcher#constructor}
    * @param {Object} options
    */
-  constructor(options: any) {
-    super(options);
+  constructor(attrs, options: any) {
+    super(attrs, options);
     this.maxSize = 100;
     this.maxWait = 100;
   }

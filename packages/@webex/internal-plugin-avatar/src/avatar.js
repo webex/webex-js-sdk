@@ -18,8 +18,9 @@ class Avatar extends WebexPlugin {
    * @constructs
    * @private
    */
-  constructor(...args) {
-    super(...args);
+  constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
     this.batcher = new AvatarUrlBatcher(this);
     this.store = new AvatarUrlStore();
     this.enableThumbnails = true;

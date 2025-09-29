@@ -695,7 +695,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
 
       // @ts-ignore
-      this.trigger(EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION, payload);
+      this.emit(EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION, payload);
     },
     [VOICEAEVENTS.CAPTIONS_TURNED_ON]: () => {
       this.transcription.status = TURN_ON_CAPTION_STATUS.ENABLED;
@@ -717,7 +717,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       // @ts-ignore
-      this.trigger(EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED, {
+      this.emit(EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED, {
         captions: this.transcription.captions,
         interimCaptions: this.transcription.interimCaptions,
       });
@@ -750,7 +750,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   constructor(attrs: any, options: object, callback: (meeting: Meeting) => void) {
-    super({}, options);
+    super(attrs, options);
     /**
      * @instance
      * @type {Object}
@@ -882,7 +882,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore
-    this.annotation = new Annotation({parent: this.webex});
+    this.annotation = new Annotation({}, {parent: this.webex});
     /**
      * @instance
      * @type {Webinar}
@@ -890,7 +890,8 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore
-    this.webinar = new Webinar({meetingId: this.id}, {parent: this.webex});
+    // TODO: fix the parent and webex object
+    this.webinar = new Webinar({meetingId: this.id}, options);
     /**
      * helper class for managing receive slots (for multistream media connections)
      */
@@ -3502,11 +3503,17 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private setUpLocusInfoSelfListener() {
+    // Store reference to the meeting instance to ensure proper context
+    const meetingInstance = this;
+
     this.locusInfo.on(LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED, (payload) => {
-      if (this.audio) {
-        this.audio.handleServerLocalUnmuteRequired(this, payload.unmuteAllowed);
+      if (meetingInstance.audio) {
+        meetingInstance.audio.handleServerLocalUnmuteRequired(
+          meetingInstance,
+          payload.unmuteAllowed
+        );
         Trigger.trigger(
-          this,
+          meetingInstance,
           {
             file: 'meeting/index',
             function: 'setUpLocusInfoSelfListener',
@@ -3521,13 +3528,17 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED, (payload) => {
       if (payload) {
-        if (this.video) {
-          payload.muted = payload.muted ?? this.video.isRemotelyMuted();
-          payload.unmuteAllowed = payload.unmuteAllowed ?? this.video.isUnmuteAllowed();
-          this.video.handleServerRemoteMuteUpdate(this, payload.muted, payload.unmuteAllowed);
+        if (meetingInstance.video) {
+          payload.muted = payload.muted ?? meetingInstance.video.isRemotelyMuted();
+          payload.unmuteAllowed = payload.unmuteAllowed ?? meetingInstance.video.isUnmuteAllowed();
+          meetingInstance.video.handleServerRemoteMuteUpdate(
+            meetingInstance,
+            payload.muted,
+            payload.unmuteAllowed
+          );
         }
         Trigger.trigger(
-          this,
+          meetingInstance,
           {
             file: 'meeting/index',
             function: 'setUpLocusInfoSelfListener',
@@ -3544,15 +3555,19 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED, (payload) => {
       if (payload) {
-        if (this.audio) {
-          this.audio.handleServerRemoteMuteUpdate(this, payload.muted, payload.unmuteAllowed);
+        if (meetingInstance.audio) {
+          meetingInstance.audio.handleServerRemoteMuteUpdate(
+            meetingInstance,
+            payload.muted,
+            payload.unmuteAllowed
+          );
         }
         // with "mute on entry" server will send us remote mute even if we don't have media configured,
         // so if being muted by others, always send the notification,
         // but if being unmuted, only send it if we are also locally unmuted
-        if (payload.muted || !this.audio?.isMuted()) {
+        if (payload.muted || !meetingInstance.audio?.isMuted()) {
           Trigger.trigger(
-            this,
+            meetingInstance,
             {
               file: 'meeting/index',
               function: 'setUpLocusInfoSelfListener',
@@ -3569,7 +3584,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
     this.locusInfo.on(LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUESTED, (payload) => {
       Trigger.trigger(
-        this,
+        meetingInstance,
         {
           file: 'meeting/index',
           function: 'setUpLocusInfoSelfListener',
@@ -3582,10 +3597,10 @@ export default class Meeting extends StatelessWebexPlugin {
     });
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_UNADMITTED_GUEST, (payload) => {
       if (payload) {
-        this.startKeepAlive();
+        meetingInstance.startKeepAlive();
 
         Trigger.trigger(
-          this,
+          meetingInstance,
           {
             file: 'meeting/index',
             function: 'setUpLocusInfoSelfListener',
@@ -3597,22 +3612,22 @@ export default class Meeting extends StatelessWebexPlugin {
         );
 
         // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
+        meetingInstance.webex.internal.newMetrics.submitClientEvent({
           name: 'client.lobby.entered',
-          options: {meetingId: this.id},
+          options: {meetingId: meetingInstance.id},
         });
       }
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.GUEST_ENTERED_LOBBY, {
-        correlation_id: this.correlationId,
+        correlation_id: meetingInstance.correlationId,
       });
-      this.updateLLMConnection();
+      meetingInstance.updateLLMConnection();
     });
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
-      this.stopKeepAlive();
+      meetingInstance.stopKeepAlive();
 
       if (payload) {
         Trigger.trigger(
-          this,
+          meetingInstance,
           {
             file: 'meeting/index',
             function: 'setUpLocusInfoSelfListener',
@@ -3624,28 +3639,28 @@ export default class Meeting extends StatelessWebexPlugin {
         );
 
         // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
+        meetingInstance.webex.internal.newMetrics.submitClientEvent({
           name: 'client.lobby.exited',
-          options: {meetingId: this.id},
+          options: {meetingId: meetingInstance.id},
         });
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.GUEST_EXITED_LOBBY, {
-          correlation_id: this.correlationId,
+          correlation_id: meetingInstance.correlationId,
         });
       }
-      this.rtcMetrics?.sendNextMetrics();
-      this.updateLLMConnection();
+      meetingInstance.rtcMetrics?.sendNextMetrics();
+      meetingInstance.updateLLMConnection();
     });
 
     // @ts-ignore - check if MEDIA_INACTIVITY exists
     this.locusInfo.on(LOCUSINFO.EVENTS.MEDIA_INACTIVITY, () => {
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_MEDIA_INACTIVE, {
-        correlation_id: this.correlationId,
-        locus_id: this.locusId,
+        correlation_id: meetingInstance.correlationId,
+        locus_id: meetingInstance.locusId,
       });
       LoggerProxy.logger.info(
         'Meeting:index#setUpLocusInfoSelfListener --> MEDIA_INACTIVITY received, reconnecting...'
       );
-      this.reconnect();
+      meetingInstance.reconnect();
     });
 
     // There is two stats for mute one is the actual media being sent or received
@@ -3656,17 +3671,21 @@ export default class Meeting extends StatelessWebexPlugin {
         'Meeting:index#setUpLocusInfoSelfListener --> MEDIA_STATUS_CHANGE received, processing...'
       );
 
-      if (this.statsAnalyzer) {
-        this.statsAnalyzer.updateMediaStatus({
+      if (meetingInstance.statsAnalyzer) {
+        meetingInstance.statsAnalyzer.updateMediaStatus({
           actual: status,
           expected: {
             // We need to check what should be the actual direction of media
-            sendAudio: this.mediaProperties.mediaDirection?.sendAudio && !this.audio?.isMuted(),
-            sendVideo: this.mediaProperties.mediaDirection?.sendVideo && !this.video?.isMuted(),
-            sendShare: this.mediaProperties.mediaDirection?.sendShare,
-            receiveAudio: this.mediaProperties.mediaDirection?.receiveAudio,
-            receiveVideo: this.mediaProperties.mediaDirection?.receiveVideo,
-            receiveShare: this.mediaProperties.mediaDirection?.receiveShare,
+            sendAudio:
+              meetingInstance.mediaProperties.mediaDirection?.sendAudio &&
+              !meetingInstance.audio?.isMuted(),
+            sendVideo:
+              meetingInstance.mediaProperties.mediaDirection?.sendVideo &&
+              !meetingInstance.video?.isMuted(),
+            sendShare: meetingInstance.mediaProperties.mediaDirection?.sendShare,
+            receiveAudio: meetingInstance.mediaProperties.mediaDirection?.receiveAudio,
+            receiveVideo: meetingInstance.mediaProperties.mediaDirection?.receiveVideo,
+            receiveShare: meetingInstance.mediaProperties.mediaDirection?.receiveShare,
           },
         });
       } else {
@@ -3678,7 +3697,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE, (payload) => {
       Trigger.trigger(
-        this,
+        meetingInstance,
         {
           file: 'meeting/index',
           function: 'setUpLocusInfoSelfListener',
@@ -3691,9 +3710,9 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_BREAKOUTS_CHANGED, (payload) => {
-      this.breakouts.updateBreakoutSessions(payload);
+      meetingInstance.breakouts.updateBreakoutSessions(payload);
       Trigger.trigger(
-        this,
+        meetingInstance,
         {
           file: 'meeting/index',
           function: 'setUpLocusInfoSelfListener',
@@ -3703,24 +3722,25 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED, (payload) => {
-      const targetChanged = this.simultaneousInterpretation.updateSelfInterpretation(payload);
+      const targetChanged =
+        meetingInstance.simultaneousInterpretation.updateSelfInterpretation(payload);
       Trigger.trigger(
-        this,
+        meetingInstance,
         {
           file: 'meeting/index',
           function: 'setUpLocusInfoSelfListener',
         },
         EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
       );
-      if (targetChanged && this.mediaProperties.audioStream) {
-        this.setSendNamedMediaGroup(MediaType.AudioMain);
+      if (targetChanged && meetingInstance.mediaProperties.audioStream) {
+        meetingInstance.setSendNamedMediaGroup(MediaType.AudioMain);
       }
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED, (payload) => {
-      this.brbState?.handleServerBrbUpdate(payload?.brb?.enabled);
+      meetingInstance.brbState?.handleServerBrbUpdate(payload?.brb?.enabled);
       Trigger.trigger(
-        this,
+        meetingInstance,
         {
           file: 'meeting/index',
           function: 'setUpLocusInfoSelfListener',
@@ -3736,14 +3756,14 @@ export default class Meeting extends StatelessWebexPlugin {
       const isModeratorOrCohost =
         payload.newRoles?.includes(SELF_ROLES.MODERATOR) ||
         payload.newRoles?.includes(SELF_ROLES.COHOST);
-      this.breakouts.updateCanManageBreakouts(isModeratorOrCohost);
-      this.simultaneousInterpretation.updateCanManageInterpreters(
+      meetingInstance.breakouts.updateCanManageBreakouts(isModeratorOrCohost);
+      meetingInstance.simultaneousInterpretation.updateCanManageInterpreters(
         payload.newRoles?.includes(SELF_ROLES.MODERATOR)
       );
-      this.webinar.updateRoleChanged(payload);
+      meetingInstance.webinar.updateRoleChanged(payload);
 
       Trigger.trigger(
-        this,
+        meetingInstance,
         {
           file: 'meeting/index',
           function: 'setUpLocusInfoSelfListener',
@@ -3757,7 +3777,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_IS_SHARING_BLOCKED_CHANGE, (payload) => {
       Trigger.trigger(
-        this,
+        meetingInstance,
         {
           file: 'meeting/index',
           function: 'setUpLocusInfoSelfListener',

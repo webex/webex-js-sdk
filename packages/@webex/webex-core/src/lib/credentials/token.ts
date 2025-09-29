@@ -56,33 +56,77 @@ export interface TokenState {
 export class Token extends WebexPlugin {
   namespace = 'Credentials';
 
-  constructor(attrs: TokenState = {}, options: any = {}) {
-    super(attrs, options);
+  constructor(attrs: TokenState | string = {}, options: any = {}) {
+    super(attrs as TokenState, options);
 
+    // Handle string input (access_token directly)
     if (typeof attrs === 'string') {
       this.set('access_token', attrs);
+    } else if (attrs) {
+      // Handle object input - set all properties
+      this.set(attrs);
     }
 
-    if (!this.get('access_token')) {
+    if (!(this as any).get('access_token')) {
       throw new Error('`access_token` is required');
     }
 
     // Set default token_type
-    if (!this.get('token_type')) {
-      this.set('token_type', 'Bearer');
+    if (!(this as any).get('token_type')) {
+      (this as any).set('token_type', 'Bearer');
     }
 
     // We don't want the derived property `isExpired` to need {cache:false}, so
-    // we'll set up a timer the runs when this token should expire.
-    if (this.get('expires')) {
-      if (this.get('expires') < Date.now()) {
-        this.set('_isExpired', true);
+    // we'll set up a timer that runs when this token should expire.
+    if ((this as any).get('expires')) {
+      if ((this as any).get('expires') < Date.now()) {
+        (this as any).set('_isExpired', true);
       } else {
         safeSetTimeout(() => {
-          this.set('_isExpired', true);
-        }, this.get('expires') - Date.now());
+          (this as any).set('_isExpired', true);
+        }, (this as any).get('expires') - Date.now());
       }
     }
+  }
+
+  /**
+   * Unset properties from the token
+   * @param {string | string[]} keys - Property key(s) to unset
+   */
+  unset(keys: string | string[]): void {
+    const keysArray = Array.isArray(keys) ? keys : [keys];
+    keysArray.forEach((key) => {
+      (this as any).set(key, undefined);
+    });
+  }
+
+  /**
+   * Filter and process set parameters (similar to ampstate _filterSetParameters)
+   * @param {...any} args - Arguments to filter
+   * @returns {[any, any]} Filtered attributes and options
+   */
+  _filterSetParameters(...args: any[]): [any, any] {
+    let attrs = {};
+    let options = {};
+
+    if (args.length === 1) {
+      if (typeof args[0] === 'string') {
+        // Single string argument - not supported in this context
+        throw new Error('Single string argument not supported in set()');
+      } else {
+        attrs = args[0] || {};
+      }
+    } else if (args.length === 2) {
+      if (typeof args[0] === 'string') {
+        // Key-value pair
+        attrs = {[args[0]]: args[1]};
+      } else {
+        attrs = args[0] || {};
+        options = args[1] || {};
+      }
+    }
+
+    return [attrs, options];
   }
 
   /**
@@ -91,7 +135,7 @@ export class Token extends WebexPlugin {
    * @returns {boolean}
    */
   get canAuthorize(): boolean {
-    return !!this.get('access_token') && !this.isExpired;
+    return !!(this as any).get('access_token') && !this.isExpired;
   }
 
   /**
@@ -110,10 +154,10 @@ export class Token extends WebexPlugin {
    */
   get canRefresh(): boolean {
     if (inBrowser) {
-      return !!this.get('refresh_token') && !!this.config.refreshCallback;
+      return !!(this as any).get('refresh_token') && !!this.config.refreshCallback;
     }
 
-    return !!this.get('refresh_token') && !!this.config.client_secret;
+    return !!(this as any).get('refresh_token') && !!this.config.client_secret;
   }
 
   /**
@@ -124,7 +168,7 @@ export class Token extends WebexPlugin {
   get isExpired(): boolean {
     // in order to avoid setting `cache:false`, we'll use a private property
     // and a timer rather than comparing to `Date.now()`;
-    return !!this.get('expires') && this.get('_isExpired');
+    return !!(this as any).get('expires') && (this as any).get('_isExpired');
   }
 
   /**
@@ -132,11 +176,11 @@ export class Token extends WebexPlugin {
    * @returns {string}
    */
   private get _string(): string {
-    if (!this.get('access_token') || !this.get('token_type')) {
+    if (!(this as any).get('access_token') || !(this as any).get('token_type')) {
       return '';
     }
 
-    return `${this.get('token_type')} ${this.get('access_token')}`;
+    return `${(this as any).get('token_type')} ${(this as any).get('access_token')}`;
   }
 
   /**
@@ -196,7 +240,7 @@ export class Token extends WebexPlugin {
         addAuthHeader: false,
         form: {
           grant_type: 'urn:cisco:oauth:grant-type:scope-reduction',
-          token: this.get('access_token'),
+          token: (this as any).get('access_token'),
           scope,
           client_id: this.config.client_id,
           self_contained_token: true,
@@ -238,7 +282,7 @@ export class Token extends WebexPlugin {
           form: {
             grant_type: 'refresh_token',
             redirect_uri: this.config.redirect_uri,
-            refresh_token: this.get('refresh_token'),
+            refresh_token: (this as any).get('refresh_token'),
           },
           auth: {
             user: this.config.client_id,
@@ -260,7 +304,7 @@ export class Token extends WebexPlugin {
           Object.assign(
             obj,
             pick(
-              this.getState(),
+              (this as any).getState(),
               'refresh_token',
               'refresh_token_expires',
               'refresh_token_expires_in'
@@ -270,24 +314,24 @@ export class Token extends WebexPlugin {
 
         // If the new token is the same as the previous token, then we may have
         // found a bug in CI; log the details and reject the Promise
-        if (this.get('access_token') === obj.access_token) {
+        if ((this as any).get('access_token') === obj.access_token) {
           this.logger.error('token: new token matches current token');
           // log the tokens if it is not production
           if (process.env.NODE_ENV !== 'production') {
-            this.logger.error('token: current token:', this.get('access_token'));
+            this.logger.error('token: current token:', (this as any).get('access_token'));
             this.logger.error('token: new token:', obj.access_token);
           }
 
           return Promise.reject(new Error('new token matches current token'));
         }
 
-        if (this.get('previousToken')) {
-          (this.get('previousToken') as Token).revoke();
-          this.set('previousToken', undefined);
+        if ((this as any).get('previousToken')) {
+          ((this as any).get('previousToken') as Token).revoke();
+          (this as any).set('previousToken', undefined);
         }
 
         obj.previousToken = this;
-        obj.scope = this.get('scope');
+        obj.scope = (this as any).get('scope');
 
         return new Token(obj, {parent: this.parent});
       })
@@ -331,7 +375,7 @@ export class Token extends WebexPlugin {
         method: 'POST',
         uri: this.config.revokeUrl,
         form: {
-          token: this.get('access_token'),
+          token: (this as any).get('access_token'),
           token_type_hint: 'access_token',
         },
         auth: {
@@ -342,10 +386,10 @@ export class Token extends WebexPlugin {
         shouldRefreshAccessToken: false,
       })
       .then(() => {
-        this.set('access_token', undefined);
-        this.set('expires', undefined);
-        this.set('expires_in', undefined);
-        this.set('token_type', undefined);
+        (this as any).set('access_token', undefined);
+        (this as any).set('expires', undefined);
+        (this as any).set('expires_in', undefined);
+        (this as any).set('token_type', undefined);
         this.logger.info('token: access token revoked');
       })
       .catch(processGrantError);
@@ -419,7 +463,7 @@ export class Token extends WebexPlugin {
         service: 'conversation',
         resource: 'users/validateAuthToken',
         body: {
-          token: this.get('access_token'),
+          token: (this as any).get('access_token'),
         },
       })
       .catch((reason: any) => {
@@ -440,10 +484,10 @@ export class Token extends WebexPlugin {
           method: 'POST',
           uri: `${convApi}/users/validateAuthToken`,
           body: {
-            token: this.get('access_token'),
+            token: (this as any).get('access_token'),
           },
           headers: {
-            authorization: `Bearer ${this.get('access_token')}`,
+            authorization: `Bearer ${(this as any).get('access_token')}`,
           },
         });
       })

@@ -40,8 +40,8 @@ class Presence extends WebexPlugin implements IPresence {
   };
 
   // Add a constructor to call super
-  constructor(...args) {
-    super(...args);
+  constructor(args, options) {
+    super(args, options);
     this.worker.initialize = this.worker.initialize.bind(this);
   }
 
@@ -86,7 +86,7 @@ class Presence extends WebexPlugin implements IPresence {
    */
   emitEvent(event: string, payload: IEventPayload): void {
     if (payload.type && payload.payload) {
-      this.trigger(event, payload);
+      this.emit(event, payload);
     }
   }
 

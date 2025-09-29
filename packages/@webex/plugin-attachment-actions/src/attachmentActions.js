@@ -71,7 +71,7 @@ class AttachmentActions extends WebexPlugin {
 
         // Register to listen to events
         return this.webex.internal.mercury.connect().then(() => {
-          this.listenTo(this.webex.internal.mercury, SDK_EVENT.INTERNAL.WEBEX_ACTIVITY, (event) =>
+          this.webex.internal.mercury.on(SDK_EVENT.INTERNAL.WEBEX_ACTIVITY, (event) =>
             this.onWebexApiEvent(event)
           );
         });
@@ -247,7 +247,7 @@ class AttachmentActions extends WebexPlugin {
         if (createdEvent) {
           debug(`attachmentAction "created" payload: \
             ${JSON.stringify(createdEvent)}`);
-          this.trigger(SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED, createdEvent);
+          this.emit(SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED, createdEvent);
         }
         break;
 

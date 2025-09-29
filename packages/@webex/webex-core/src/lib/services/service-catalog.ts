@@ -463,7 +463,7 @@ class ServiceCatalog extends WebexEventEmitter {
     });
 
     this.status[serviceGroup].ready = true;
-    this.trigger(serviceGroup);
+    this.emit(serviceGroup);
 
     return this;
   }

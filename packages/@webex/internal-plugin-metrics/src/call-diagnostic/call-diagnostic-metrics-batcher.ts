@@ -1,5 +1,5 @@
 import {uniqueId} from 'lodash';
-import Batcher from '../batcher';
+import {Batcher} from '@webex/webex-core';
 import {prepareDiagnosticMetricItem} from './call-diagnostic-metrics.util';
 import {CALL_DIAGNOSTIC_LOG_IDENTIFIER} from './config';
 import {generateCommonErrorMetadata} from '../utils';
@@ -11,7 +11,11 @@ import {generateCommonErrorMetadata} from '../utils';
  */
 class CallDiagnosticEventsBatcher extends Batcher {
   namespace = 'Metrics';
-  webex: any;
+
+  // eslint-disable-next-line no-useless-constructor
+  constructor(attrs: any, options: any) {
+    super(attrs, options);
+  }
 
   /**
    * Prepare item
@@ -19,6 +23,7 @@ class CallDiagnosticEventsBatcher extends Batcher {
    * @returns {Promise<any>} Promise resolving to the prepared item
    */
   prepareItem(item: any): Promise<any> {
+    // @ts-ignore
     return Promise.resolve(prepareDiagnosticMetricItem(this.webex, item));
   }
 
@@ -42,9 +47,10 @@ class CallDiagnosticEventsBatcher extends Batcher {
    * @param {any} payload - The payload to submit
    * @returns {Promise<any>} Promise resolving to the HTTP response
    */
-  request(payload: any): Promise<any> {
+  submitHttpRequest(payload: any): Promise<any> {
     const batchId = uniqueId('ca-batch-');
 
+    // @ts-ignore
     return this.webex
       .request({
         method: 'POST',
@@ -53,9 +59,11 @@ class CallDiagnosticEventsBatcher extends Batcher {
         body: {
           metrics: payload,
         },
+        // @ts-ignore
         waitForServiceTimeout: this.webex.config.metrics.waitForServiceTimeout,
       })
       .then((res: any) => {
+        // @ts-ignore
         this.webex.logger.log(
           CALL_DIAGNOSTIC_LOG_IDENTIFIER,
           `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request successful.`
@@ -64,6 +72,7 @@ class CallDiagnosticEventsBatcher extends Batcher {
         return res;
       })
       .catch((err: any) => {
+        // @ts-ignore
         this.webex.logger.error(
           CALL_DIAGNOSTIC_LOG_IDENTIFIER,
           `CallDiagnosticEventsBatcher: @submitHttpRequest#${batchId}. Request failed:`,

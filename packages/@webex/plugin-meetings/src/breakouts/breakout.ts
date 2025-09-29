@@ -18,34 +18,46 @@ class Breakout extends WebexPlugin {
   namespace = MEETINGS;
 
   breakoutRequest: BreakoutRequest;
-  active: boolean;
-  allowed: boolean;
-  assigned: boolean;
-  assignedCurrent: boolean;
-  requested: boolean;
-  current: boolean;
+  active = false;
+  allowed = false;
+  assigned = false;
+  assignedCurrent = false;
+  requested = false;
+  current = false;
   name: string;
+  meetingId: string;
   sessionId: string;
   sessionType: string;
   groupId: string;
   url: string;
   requestedLastModifiedTime: string;
-  isMain: boolean;
   members: Members;
   breakoutRosterLocus: any;
-  parent: any;
-  collection: any;
   webex: any;
   request: any;
 
   /**
+   * If the breakout has no name, assume it is the main session
+   * @returns {boolean}
+   */
+  get isMain(): boolean {
+    return this.sessionType === 'MAIN';
+  }
+
+  /**
    * initializer for the Breakout class
+   * @param {any} attrs - Initial attributes
+   * @param {any} options - Constructor options
    * @returns {void}
    */
-  constructor(...args) {
-    super(...args);
-    // @ts-ignore
-    this.breakoutRequest = new BreakoutRequest({webex: this.webex});
+  constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
+
+    // Assign all attributes to instance properties
+    Object.assign(this, attrs);
+
+    this.breakoutRequest = new BreakoutRequest(attrs, options);
     this.breakoutRosterLocus = null;
   }
 
@@ -56,11 +68,9 @@ class Breakout extends WebexPlugin {
   async join() {
     const breakoutMoveId = uuid.v4();
     const deviceUrl = this.webex.internal.device.url;
-    const {meetingId} = this.collection.parent;
-    const meeting = this.webex.meetings.getMeetingByType(_ID_, meetingId);
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
     breakoutEvent.onBreakoutMoveRequest(
       {currentSession: this, meeting, breakoutMoveId},
-      // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
     );
     const result = await this.request({
@@ -75,7 +85,6 @@ class Breakout extends WebexPlugin {
     });
     breakoutEvent.onBreakoutMoveResponse(
       {currentSession: this, meeting, breakoutMoveId},
-      // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
     );
 
@@ -91,8 +100,7 @@ class Breakout extends WebexPlugin {
     if (this.isMain) {
       throw new Error('Cannot leave the main session');
     }
-
-    const mainSession = this.parent.breakouts.filter((breakout) => breakout.isMain)[0];
+    const mainSession = this.webex.breakouts.filter((breakout) => breakout.isMain)[0];
 
     if (!mainSession) {
       throw new Error('Cannot leave, no main session found');
@@ -121,8 +129,7 @@ class Breakout extends WebexPlugin {
    * @returns {void}
    */
   initMembers() {
-    const {meetingId} = this.collection.parent;
-    const meeting = this.webex.meetings.getMeetingByType(_ID_, meetingId);
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
     this.members = new Members(
       {
         meeting,

@@ -22,65 +22,180 @@ function decider() {
 }
 
 class Device extends WebexPlugin {
-  namespace = 'Device';
+  /**
+   * Constructor for the Device plugin
+   * @param {Object} attrs - Initial attributes
+   * @param {Object} options - Plugin options
+   */
+  constructor(attrs = {}, options = {}) {
+    super(attrs, options);
 
-  // Allow for extra properties to prevent the plugin from failing due to
-  // **WDM** service DTO changes.
-  extraProperties = 'allow';
+    // Plugin metadata
+    this.namespace = 'Device';
+    this.extraProperties = 'allow';
+    this.idAttribute = 'url';
 
-  idAttribute = 'url';
+    // Initialize child models
+    this.features = new FeaturesModel();
+    this.ipNetworkDetector = new IpNetworkDetector();
 
-  children = {
-    features: FeaturesModel,
-    ipNetworkDetector: IpNetworkDetector,
-  };
+    // Initialize properties
+    this._initializeProperties(attrs);
+  }
 
-  props = {
-    clientMessagingGiphy: 'string',
-    customerCompanyName: 'string',
-    customerLogoUrl: 'string',
-    deviceType: 'string',
-    helpUrl: 'string',
-    intranetInactivityDuration: 'number',
-    intranetInactivityCheckUrl: 'string',
-    inNetworkInactivityDuration: 'number',
-    ecmEnabledForAllUsers: ['boolean', false, false],
-    ecmSupportedStorageProviders: ['array', false, () => []],
-    modificationTime: 'string',
-    navigationBarColor: 'string',
-    partnerCompanyName: 'string',
-    partnerLogoUrl: 'string',
-    peopleInsightsEnabled: 'boolean',
-    reportingSiteDesc: 'string',
-    reportingSiteUrl: 'string',
-    searchEncryptionKeyUrl: 'string',
-    showSupportText: 'boolean',
-    supportProviderCompanyName: 'string',
-    supportProviderLogoUrl: 'string',
-    url: 'string',
-    userId: 'string',
-    webFileShareControl: 'string',
-    webSocketUrl: 'string',
-    whiteboardFileShareControl: 'string',
-  };
+  /**
+   * Initialize all device properties
+   * @param {Object} attrs - Initial attributes
+   * @private
+   * @returns {void}
+   */
+  _initializeProperties(attrs = {}) {
+    // Core device properties
+    this.clientMessagingGiphy = attrs.clientMessagingGiphy || '';
+    this.customerCompanyName = attrs.customerCompanyName || '';
+    this.customerLogoUrl = attrs.customerLogoUrl || '';
+    this.deviceType = attrs.deviceType || '';
+    this.helpUrl = attrs.helpUrl || '';
+    this.intranetInactivityDuration = attrs.intranetInactivityDuration || 0;
+    this.intranetInactivityCheckUrl = attrs.intranetInactivityCheckUrl || '';
+    this.inNetworkInactivityDuration = attrs.inNetworkInactivityDuration || 0;
+    this.ecmEnabledForAllUsers = attrs.ecmEnabledForAllUsers || false;
+    this.ecmSupportedStorageProviders = attrs.ecmSupportedStorageProviders || [];
+    this.modificationTime = attrs.modificationTime || '';
+    this.navigationBarColor = attrs.navigationBarColor || '';
+    this.partnerCompanyName = attrs.partnerCompanyName || '';
+    this.partnerLogoUrl = attrs.partnerLogoUrl || '';
+    this.peopleInsightsEnabled = attrs.peopleInsightsEnabled || false;
+    this.reportingSiteDesc = attrs.reportingSiteDesc || '';
+    this.reportingSiteUrl = attrs.reportingSiteUrl || '';
+    this.searchEncryptionKeyUrl = attrs.searchEncryptionKeyUrl || '';
+    this.showSupportText = attrs.showSupportText || false;
+    this.supportProviderCompanyName = attrs.supportProviderCompanyName || '';
+    this.supportProviderLogoUrl = attrs.supportProviderLogoUrl || '';
+    this.url = attrs.url || '';
+    this.userId = attrs.userId || '';
+    this.webFileShareControl = attrs.webFileShareControl || '';
+    this.webSocketUrl = attrs.webSocketUrl || '';
+    this.whiteboardFileShareControl = attrs.whiteboardFileShareControl || '';
+    this.etag = attrs.etag || '';
 
-  derived = {
-    registered: {
-      deps: ['url'],
-      fn() {
-        return !!this.url;
-      },
-    },
-  };
+    // Session properties
+    this.logoutTimer = null;
+    this.lastUserActivityDate = attrs.lastUserActivityDate || 0;
+    this.isReachabilityChecked = attrs.isReachabilityChecked || false;
+    this.energyForecastConfig = attrs.energyForecastConfig || false;
+    this.isInMeeting = attrs.isInMeeting || false;
+    this.isInNetwork = attrs.isInNetwork || false;
+    this.refreshTimer = null;
+  }
 
-  session = {
-    logoutTimer: 'any',
-    lastUserActivityDate: 'number',
-    isReachabilityChecked: ['boolean', false, false],
-    energyForecastConfig: 'boolean',
-    isInMeeting: 'boolean',
-    isInNetwork: 'boolean',
-  };
+  /**
+   * Get the registered state based on URL presence
+   * @returns {boolean} - True if device is registered
+   */
+  get registered() {
+    return !!this.url;
+  }
+
+  /**
+   * Set method for updating properties (for compatibility)
+   * Uses WebexState.set() to trigger change events for storage decorators
+   * @param {Object|string} key - Property key or object of properties
+   * @param {any} value - Property value (when key is string)
+   * @param {Object} options - Set options
+   * @returns {this}
+   */
+  set(key, value, options = {}) {
+    if (typeof key === 'object') {
+      // Set multiple properties using WebexState.set() for each
+      Object.keys(key).forEach((prop) => {
+        super.set(prop, key[prop]); // Use WebexState.set() to trigger change events
+      });
+    } else {
+      // Set single property using WebexState.set()
+      super.set(key, value); // Use WebexState.set() to trigger change events
+    }
+
+    return this;
+  }
+
+  /**
+   * Get method for retrieving properties (for compatibility)
+   * @param {string} key - Property key
+   * @returns {any} - Property value
+   */
+  get(key) {
+    return this[key];
+  }
+
+  /**
+   * Unset method for removing properties (for compatibility)
+   * @param {string} key - Property key
+   * @param {Object} options - Unset options
+   * @returns {this}
+   */
+  unset(key, options = {}) {
+    delete this[key];
+
+    if (!options.silent) {
+      this.emit(`change:${key}`, this, undefined, options);
+      this.emit('change', this, options);
+    }
+
+    return this;
+  }
+
+  /**
+   * Serialize the device to JSON (for compatibility)
+   * @returns {Object} - Serialized device data
+   */
+  serialize() {
+    const data = {
+      clientMessagingGiphy: this.clientMessagingGiphy,
+      customerCompanyName: this.customerCompanyName,
+      customerLogoUrl: this.customerLogoUrl,
+      deviceType: this.deviceType,
+      helpUrl: this.helpUrl,
+      intranetInactivityDuration: this.intranetInactivityDuration,
+      intranetInactivityCheckUrl: this.intranetInactivityCheckUrl,
+      inNetworkInactivityDuration: this.inNetworkInactivityDuration,
+      ecmEnabledForAllUsers: this.ecmEnabledForAllUsers,
+      ecmSupportedStorageProviders: this.ecmSupportedStorageProviders,
+      modificationTime: this.modificationTime,
+      navigationBarColor: this.navigationBarColor,
+      partnerCompanyName: this.partnerCompanyName,
+      partnerLogoUrl: this.partnerLogoUrl,
+      peopleInsightsEnabled: this.peopleInsightsEnabled,
+      reportingSiteDesc: this.reportingSiteDesc,
+      reportingSiteUrl: this.reportingSiteUrl,
+      searchEncryptionKeyUrl: this.searchEncryptionKeyUrl,
+      showSupportText: this.showSupportText,
+      supportProviderCompanyName: this.supportProviderCompanyName,
+      supportProviderLogoUrl: this.supportProviderLogoUrl,
+      url: this.url,
+      userId: this.userId,
+      webFileShareControl: this.webFileShareControl,
+      webSocketUrl: this.webSocketUrl,
+      whiteboardFileShareControl: this.whiteboardFileShareControl,
+    };
+
+    // Only include features if they exist
+    if (this.features) {
+      data.features = this.features.serialize ? this.features.serialize() : this.features;
+    }
+
+    return data;
+  }
+
+  /**
+   * Trigger method (for compatibility - maps to emit)
+   * @param {string} event - Event name
+   * @param {...any} args - Event arguments
+   * @returns {boolean}
+   */
+  trigger(event, ...args) {
+    return this.emit(event, ...args);
+  }
 
   // Event method members.
 
@@ -90,7 +205,7 @@ class Device extends WebexPlugin {
    * @returns {void}
    */
   meetingStarted() {
-    this.webex.trigger('meeting started');
+    this.webex.emit('meeting started');
   }
 
   /**
@@ -99,7 +214,7 @@ class Device extends WebexPlugin {
    * @returns {void}
    */
   meetingEnded() {
-    this.webex.trigger('meeting ended');
+    this.webex.emit('meeting ended');
   }
 
   /**
@@ -116,8 +231,8 @@ class Device extends WebexPlugin {
   /**
    * Refresh the current registered device if able.
    *
-   * @param {DeviceRegistrationOptions} options - The options for refresh.
-   * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
+   * @param {DeviceRegistrationOptions} deviceRegistrationOptions - The options for refresh.
+   * @param {CatalogDetails} deviceRegistrationOptions.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
   @oneFlight()
@@ -248,6 +363,8 @@ class Device extends WebexPlugin {
 
   /**
    * Registers and when fails deletes devices
+   * @param {Object} deviceRegistrationOptions - The options for registration
+   * @returns {Promise<void, Error>}
    */
   register(deviceRegistrationOptions = {}) {
     this.logger.info('device: registering');
@@ -286,8 +403,8 @@ class Device extends WebexPlugin {
    * registration utilizes the services plugin to send the request to the
    * **WDM** service.
    *
-   * @param {Object} options - The options for registration.
-   * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
+   * @param {Object} deviceRegistrationOptions - The options for registration.
+   * @param {CatalogDetails} deviceRegistrationOptions.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
   @oneFlight()
@@ -394,7 +511,6 @@ class Device extends WebexPlugin {
         throw reason;
       });
   }
-  /* eslint-enable require-jsdoc */
 
   // Helper method members
 
@@ -486,8 +602,31 @@ class Device extends WebexPlugin {
   clear(...args) {
     this.logger.info('device: clearing registered device');
 
-    // Prototype the extended class in order to preserve the parent member.
-    Reflect.apply(WebexPlugin.prototype.clear, this, args);
+    // Clear timers
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+
+    if (this.logoutTimer) {
+      clearTimeout(this.logoutTimer);
+      this.logoutTimer = null;
+    }
+
+    // Reset all properties
+    this._initializeProperties({});
+
+    // Clear child models
+    if (this.features && typeof this.features.clear === 'function') {
+      this.features.clear();
+    }
+
+    if (this.ipNetworkDetector && typeof this.ipNetworkDetector.clear === 'function') {
+      this.ipNetworkDetector.clear();
+    }
+
+    // Call parent clear method
+    super.clear(...args);
   }
 
   /**
@@ -557,12 +696,42 @@ class Device extends WebexPlugin {
 
       delete body.features;
       // When using the etag feature cache, user and entitlement features are still returned
-      this.features.user.reset(features.user);
-      this.features.entitlement.reset(features.entitlement);
+      if (this.features && features) {
+        if (this.features.user && typeof this.features.user.reset === 'function') {
+          this.features.user.reset(features.user);
+        }
+        if (this.features.entitlement && typeof this.features.entitlement.reset === 'function') {
+          this.features.entitlement.reset(features.entitlement);
+        }
+      }
     }
 
-    // Assign the recieved DTO from **WDM** to this device.
-    this.set(body);
+    // Handle features separately to preserve collection structure
+    const {features, ...otherProps} = body;
+
+    // Set other properties normally
+    this.set(otherProps);
+
+    // Properly handle features through the FeaturesModel to maintain collection structure
+    if (features && this.features) {
+      if (
+        features.developer &&
+        this.features.developer &&
+        typeof this.features.developer.reset === 'function'
+      ) {
+        this.features.developer.reset(features.developer);
+      }
+      if (features.user && this.features.user && typeof this.features.user.reset === 'function') {
+        this.features.user.reset(features.user);
+      }
+      if (
+        features.entitlement &&
+        this.features.entitlement &&
+        typeof this.features.entitlement.reset === 'function'
+      ) {
+        this.features.entitlement.reset(features.entitlement);
+      }
+    }
 
     // Assign the new etag to this device.
     this.set({etag});
@@ -577,7 +746,7 @@ class Device extends WebexPlugin {
     }
 
     // Emit the registration:success event.
-    this.trigger(DEVICE_EVENT_REGISTRATION_SUCCESS, this);
+    this.emit(DEVICE_EVENT_REGISTRATION_SUCCESS, this);
   }
 
   /**
@@ -593,10 +762,10 @@ class Device extends WebexPlugin {
     clearTimeout(this.logoutTimer);
 
     // Remove last activity date event listener.
-    this.off('change:lastUserActivityDate');
+    this.removeAllListeners('change:lastUserActivityDate');
 
     // Remove the logout timer.
-    this.unset('logoutTimer');
+    this.logoutTimer = null;
 
     // Validate if the device is currently in a meeting and is configured to
     // required inactivity enforcement.
@@ -676,9 +845,6 @@ class Device extends WebexPlugin {
     return Promise.resolve(this.webex.internal.services.markFailedUrl(url));
   }
 
-  // Ampersand method members
-
-  /* eslint-disable require-jsdoc */
   /**
    * Initializer method for the device plugin.
    *
@@ -688,50 +854,45 @@ class Device extends WebexPlugin {
    */
   @persist('@', decider)
   initialize(...args) {
-    // Prototype the extended class in order to preserve the parent member.
-    Reflect.apply(WebexPlugin.prototype.initialize, this, args);
-
     // Initialize feature events and listeners.
     FEATURE_COLLECTION_NAMES.forEach((collectionName) => {
-      this.features.on(`change:${collectionName}`, (model, value, options) => {
-        this.trigger('change', this, options);
-        this.trigger('change:features', this, this.features, options);
-      });
+      if (this.features && typeof this.features.on === 'function') {
+        this.features.on(`change:${collectionName}`, (model, value, options) => {
+          this.emit('change', this, options);
+          this.emit('change:features', this, this.features, options);
+        });
+      }
     });
-
     // Initialize network reachability checking event for url change.
     this.on('change:intranetInactivityCheckUrl', () => {
       this.checkNetworkReachability();
     });
-
     // Initialize network reachability checking event for duration change.
     this.on('change:intranetInactivityDuration', () => {
       this.checkNetworkReachability();
     });
-
     // Initialize network reachability checking event for duration change.
     this.on('change:inNetworkInactivityDuration', () => {
       this.checkNetworkReachability();
     });
-
     // Initialize listener for activity checking.
-    this.listenTo(this.webex, 'user-activity', () => {
-      this.lastUserActivityDate = Date.now();
-    });
-
-    // Initialize listener for meeting started event.
-    this.listenTo(this.webex, 'meeting started', () => {
-      this.isInMeeting = true;
-      this.resetLogoutTimer();
-    });
-
-    // Initialize listener for meeting ended event.
-    this.listenTo(this.webex, 'meeting ended', () => {
-      this.isInMeeting = false;
-      this.resetLogoutTimer();
-    });
+    if (this.webex && typeof this.webex.on === 'function') {
+      this.webex.on('user-activity', () => {
+        this.lastUserActivityDate = Date.now();
+        this.emit('change:lastUserActivityDate', this, this.lastUserActivityDate);
+      });
+      // Initialize listener for meeting started event.
+      this.webex.on('meeting started', () => {
+        this.isInMeeting = true;
+        this.resetLogoutTimer();
+      });
+      // Initialize listener for meeting ended event.
+      this.webex.on('meeting ended', () => {
+        this.isInMeeting = false;
+        this.resetLogoutTimer();
+      });
+    }
   }
-  /* eslint-enable require-jsdoc */
 }
 
 export default Device;

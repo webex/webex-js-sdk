@@ -38,6 +38,7 @@ class Metrics extends WebexPlugin {
   // eslint-disable-next-line no-use-before-define
   static instance: Metrics;
 
+  namespace = 'Metrics';
   // Call Diagnostic latencies
   callDiagnosticLatencies: CallDiagnosticLatencies;
   // Helper classes to handle the different types of metrics
@@ -71,11 +72,12 @@ class Metrics extends WebexPlugin {
    * @private
    * @returns
    */
-  constructor(...args) {
-    super(...args);
+  constructor(attrs: any, options: any) {
+    super(attrs, options);
 
     // @ts-ignore
-    this.callDiagnosticLatencies = new CallDiagnosticLatencies({}, {parent: this.webex});
+    this.callDiagnosticLatencies = new CallDiagnosticLatencies({}, options);
+    this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, options);
     this.onReady();
   }
 
@@ -86,7 +88,6 @@ class Metrics extends WebexPlugin {
     // @ts-ignore
     this.webex.once('ready', () => {
       // @ts-ignore
-      this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
       this.isReady = true;
       this.setDelaySubmitClientEvents({
         shouldDelay: this.delaySubmitClientEvents,

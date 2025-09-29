@@ -77,8 +77,8 @@ class Messages extends WebexPlugin {
    * // Some app logic...
    * // When it is time to cleanup
    * webex.messages.stopListening();
-   * webex.messages.off('created');
-   * webex.messages.off('deleted');
+   * webex.messages.removeAllListeners('created');
+   * webex.messages.removeAllListeners('deleted');
    */
   listen() {
     // Create a common envelope that we will wrap all events in
@@ -88,7 +88,7 @@ class Messages extends WebexPlugin {
 
         // Register to listen to events
         return this.webex.internal.mercury.connect().then(() => {
-          this.listenTo(this.webex.internal.mercury, SDK_EVENT.INTERNAL.WEBEX_ACTIVITY, (event) =>
+          this.webex.internal.mercury.on(SDK_EVENT.INTERNAL.WEBEX_ACTIVITY, (event) =>
             this.onWebexApiEvent(event)
           );
         });
@@ -375,7 +375,7 @@ class Messages extends WebexPlugin {
    * @returns {function} takes event and triggers it
    */
   fire(type) {
-    return (event) => this.trigger(type, event);
+    return (event) => this.emit(type, event);
   }
 
   /**

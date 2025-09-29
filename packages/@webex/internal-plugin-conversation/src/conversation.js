@@ -79,8 +79,9 @@ const getConvoLimit = (options = {}) => {
 };
 
 class Conversation extends WebexPlugin {
-  constructor(...args) {
-    super(...args);
+  constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
 
     // Use standard EventEmitter once method instead of listenToOnce
     // Defer execution to ensure webex is available
@@ -1385,7 +1386,7 @@ class Conversation extends WebexPlugin {
     const cloneActivity = cloneDeepWith(params, customActivityCopy);
 
     // triggers user-activity to reset logout timer
-    this.webex.trigger('user-activity');
+    this.webex.emit('user-activity');
 
     return this.request(params)
       .then((res) => res.body)

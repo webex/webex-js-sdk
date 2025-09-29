@@ -1,7 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-
+import {EventEmitter} from 'events';
 import {WebexEventEmitter} from './events';
 
 /**
@@ -20,7 +20,7 @@ export interface IChangePayload<T, K extends keyof T> {
  * management with automatic change event emission when properties are modified.
  * This replaces the old AmpersandState functionality with a modern TypeScript implementation.
  */
-export class WebexState<T = any> extends WebexEventEmitter {
+export class WebexState<T = any> extends WebexEventEmitter implements EventEmitter {
   /**
    * Internal state storage
    */

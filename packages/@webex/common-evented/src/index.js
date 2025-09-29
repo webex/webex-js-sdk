@@ -32,8 +32,8 @@ export default function evented(target, prop, descriptor) {
 
     if (previous !== value) {
       data.set(this, prop, value);
-      this.trigger(`change:${prop}`, value, previous);
-      this.trigger('change');
+      this.emit(`change:${prop}`, value, previous);
+      this.emit('change');
     }
   };
 }

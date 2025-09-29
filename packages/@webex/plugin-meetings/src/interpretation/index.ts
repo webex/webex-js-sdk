@@ -27,8 +27,6 @@ class SimultaneousInterpretation extends WebexPlugin {
   meetingSIEnabled: boolean; // appears the meeting support SI feature
   hostSIEnabled: boolean; // appears the meeting host/interpreter feature of SI enabled
   selfIsInterpreter: boolean; // current user is interpreter or not
-  webex: any;
-  request: any;
 
   /**
    * Returns should query support languages or not
@@ -42,11 +40,12 @@ class SimultaneousInterpretation extends WebexPlugin {
    * initialize for interpretation
    * @returns {void}
    */
-  constructor(...args) {
-    super(...args);
+  constructor(attrs = {}, options = {}) {
+    super(attrs, options);
     this.siLanguages = new SILanguageCollection();
     this.siLanguages.parent = this;
-    this.webex.emitter.on('interpretation:change:shouldQuerySupportLanguages', () => {
+    // @ts-ignore
+    this.on('interpretation:change:shouldQuerySupportLanguages', () => {
       if (this.shouldQuerySupportLanguages && !this.supportLanguages) {
         this.querySupportLanguages();
       }
@@ -59,7 +58,9 @@ class SimultaneousInterpretation extends WebexPlugin {
    * @returns {void}
    */
   cleanUp() {
-    this.webex.emitter.off('interpretation:change:shouldQuerySupportLanguages');
+    // @ts-ignore
+    this.off('interpretation:change:shouldQuerySupportLanguages');
+    // @ts-ignore
     this.webex.internal.mercury.off('event:locus.approval_request');
   }
 
@@ -90,7 +91,8 @@ class SimultaneousInterpretation extends WebexPlugin {
     const previousValue = this.canManageInterpreters;
     this.canManageInterpreters = canManageInterpreters;
     if (previousValue !== canManageInterpreters) {
-      this.webex.emitter.emit('interpretation:change:shouldQuerySupportLanguages');
+      // @ts-ignore
+      this.emit('interpretation:change:shouldQuerySupportLanguages');
     }
   }
 
@@ -103,7 +105,8 @@ class SimultaneousInterpretation extends WebexPlugin {
     const previousValue = this.hostSIEnabled;
     this.hostSIEnabled = hostSIEnabled;
     if (previousValue !== hostSIEnabled) {
-      this.webex.emitter.emit('interpretation:change:shouldQuerySupportLanguages');
+      // @ts-ignore
+      this.emit('interpretation:change:shouldQuerySupportLanguages');
     }
   }
 
@@ -167,13 +170,15 @@ class SimultaneousInterpretation extends WebexPlugin {
    * @returns {Promise}
    */
   querySupportLanguages() {
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.GET,
       uri: `${this.locusUrl}/languages/interpretation`,
     })
       .then((result) => {
         this.supportLanguages = result.body?.siLanguages;
-        this.webex.emitter.emit(INTERPRETATION.EVENTS.SUPPORT_LANGUAGES_UPDATE);
+        // @ts-ignore
+        this.emit(INTERPRETATION.EVENTS.SUPPORT_LANGUAGES_UPDATE);
       })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:interpretation#querySupportLanguages failed', error);
@@ -186,6 +191,7 @@ class SimultaneousInterpretation extends WebexPlugin {
    * @returns {Promise}
    */
   getInterpreters() {
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.GET,
       uri: `${this.locusUrl}/interpretation/interpreters`,
@@ -201,6 +207,7 @@ class SimultaneousInterpretation extends WebexPlugin {
    * @returns {Promise}
    */
   updateInterpreters(interpreters) {
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri: `${this.locusUrl}/controls`,
@@ -228,6 +235,7 @@ class SimultaneousInterpretation extends WebexPlugin {
       return Promise.reject(new Error('Missing self participant id'));
     }
 
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri: `${this.locusUrl}/participant/${this.selfParticipantId}/controls`,
@@ -250,6 +258,7 @@ class SimultaneousInterpretation extends WebexPlugin {
    * @returns {void}
    */
   listenToHandoffRequests() {
+    // @ts-ignore
     this.webex.internal.mercury.on('event:locus.approval_request', (event) => {
       if (event?.data?.approval?.resourceType === INTERPRETATION.RESOURCE_TYPE) {
         const {receivers, initiator, actionType, url} = event.data.approval;
@@ -260,7 +269,8 @@ class SimultaneousInterpretation extends WebexPlugin {
         if (!isReceiver && !isSender) {
           return;
         }
-        this.webex.emitter.emit(INTERPRETATION.EVENTS.HANDOFF_REQUESTS_ARRIVED, {
+        // @ts-ignore
+        this.emit(INTERPRETATION.EVENTS.HANDOFF_REQUESTS_ARRIVED, {
           actionType,
           isReceiver,
           isSender,
@@ -285,6 +295,7 @@ class SimultaneousInterpretation extends WebexPlugin {
       return Promise.reject(new Error('Missing approval url'));
     }
 
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.POST,
       uri: this.approvalUrl,
@@ -312,6 +323,7 @@ class SimultaneousInterpretation extends WebexPlugin {
       return Promise.reject(new Error('Missing approval url'));
     }
 
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.POST,
       uri: this.approvalUrl,
@@ -335,6 +347,7 @@ class SimultaneousInterpretation extends WebexPlugin {
       return Promise.reject(new Error('Missing the url to accept'));
     }
 
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: url,
@@ -357,6 +370,7 @@ class SimultaneousInterpretation extends WebexPlugin {
       return Promise.reject(new Error('Missing the url to decline'));
     }
 
+    // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
       uri: url,

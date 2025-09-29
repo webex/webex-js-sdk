@@ -17,6 +17,10 @@ export const TIMEOUT_SYMBOL = Symbol('TIMEOUT_SYMBOL');
 class KmsBatcher extends Batcher {
   namespace = 'Encryption';
 
+  constructor(attrs, options) {
+    super(attrs, options);
+  }
+
   /**
    * Accepts a kmsMessage event and passes its contents to acceptItem
    * @param {Object} event - The KMS message event

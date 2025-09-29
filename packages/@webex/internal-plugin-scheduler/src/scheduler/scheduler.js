@@ -16,8 +16,9 @@ class Scheduler extends WebexPlugin {
   /**
    * @param {Object} args Arguments for constructing a new Scheduler instance.
    */
-  constructor(...args) {
-    super(...args); // Required to properly mount the singleton class instance.
+  constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options); // Required to properly mount the singleton class instance.
 
     /**
      * The `this.request` method should now be available for usage.
@@ -46,13 +47,13 @@ class Scheduler extends WebexPlugin {
   initialize() {
     // Used to perform actions based on the provided configuration object once
     // the configuration object is ready.
-    this.listenToOnce(this.webex, 'change:config', () => {
+    this.webex.once('change:config', () => {
       /* ...perform actions once the configuration object is mounted... */
     });
 
     // Used to perform actions after webex is fully qualified and ready for
     // operation.
-    this.listenToOnce(this.webex, 'ready', () => {
+    this.webex.once('ready', () => {
       /* ...perform actions once the webex object is fully qualified... */
     });
   }
@@ -91,7 +92,7 @@ class Scheduler extends WebexPlugin {
    * Example event usage. Note that an event engine is mapped to `this`
    * upon extending the `WebexPlugin` class constructor. This includes
    * the following methods:
-   * `this.listenTo()`, `this.stopListening()`, `this.trigger()`, `this.on()`, etc.
+   * `this.listenTo()`, `this.stopListening()`, `this.emit()`, `this.on()`, etc.
    *
    * Note that all methods provided as event handlers should be associated with
    * a namespace so that they can be referenced/destroyed if/when necessary.
@@ -120,12 +121,12 @@ class Scheduler extends WebexPlugin {
     });
 
     // listen for scoped events [using listenTo(), plugin-to-plugin].
-    this.listenTo(this.webex.pluginName, 'event:scope', (event) => {
+    this.webex.pluginName.on('event:scope', (event) => {
       this.logger.log(event);
     });
 
     // stop listening for scoped events [using listenTo(), plugin-to-plugin].
-    this.stopListening(this.webex.pluginName, 'event:scope', () => {
+    this.webex.pluginName.off('event:scope', () => {
       /* use previous `listenTo` method param namespace instead of arrow function */
     });
   }
@@ -141,14 +142,14 @@ class Scheduler extends WebexPlugin {
       // Scope this listener to a trackable namespace
       this.handler = (event) => {
         this.logger.log(event);
-        this.trigger('event:scope', event);
+        this.emit('event:scope', event);
       };
 
       // Start handling events.
-      this.listenTo(this.webex.internal.mercury, 'event:scope', this.handler);
+      this.webex.internal.mercury.on('event:scope', this.handler);
 
       // Stop handling events.
-      this.stopListening(this.webex.internal.mercury, 'event:scope', this.handler);
+      this.webex.internal.mercury.off('event:scope', this.handler);
     });
   }
 }

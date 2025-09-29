@@ -71,8 +71,9 @@ class Authorization extends WebexPlugin {
    * @constructs
    * @private
    */
-  constructor(...args) {
-    super(...args);
+constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
 
     this.eventEmitter = new EventEmitter();
     this.pollingTimer = null;
@@ -130,8 +131,7 @@ class Authorization extends WebexPlugin {
    * automatically—no extra API call needed after Webex.init().
    */
   // eslint-disable-next-line complexity
-  initialize(...attrs) {
-    const ret = super.initialize(...attrs);
+  async initialize(...attrs) {
     const location = url.parse(this.webex.getWindow().location.href, true);
 
     // Check if redirect includes error
@@ -142,7 +142,7 @@ class Authorization extends WebexPlugin {
     // If no authorization code returned, nothing to do
     if (!code) {
       this.ready = true;
-      return ret;
+      return Promise.resolve();
     }
 
     // Decode and parse state object (if present)
@@ -175,22 +175,21 @@ class Authorization extends WebexPlugin {
       preauthCatalogParams = {orgId};
     }
 
-    // Defer token exchange until next tick in case credentials plugin not ready yet
-    process.nextTick(() => {
-      this.webex.internal.services
-        .collectPreauthCatalog(preauthCatalogParams)
-        .catch(() => Promise.resolve()) // Non-fatal if catalog collection fails
-        .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
-        .catch((error) => {
-          this.logger.warn('authorization: failed initial authorization code grant request', error);
-        })
-        .then(() => {
-          // Mark plugin ready regardless of success/failure of token exchange
-          this.ready = true;
-        });
-    });
+    // Wait a tick for credentials plugin readiness, then process token exchange
+    await new Promise(resolve => setTimeout(resolve, 0));
 
-    return ret;
+    try {
+      await this.webex.internal.services
+        .collectPreauthCatalog(preauthCatalogParams)
+        .catch(() => Promise.resolve()); // Non-fatal if catalog collection fails
+      
+      await this.requestAuthorizationCodeGrant({code, codeVerifier});
+    } catch (error) {
+      this.logger.warn('authorization: failed initial authorization code grant request', error);
+    } finally {
+      // Mark plugin ready regardless of success/failure of token exchange
+      this.ready = true;
+    }
   }
 
   /**
@@ -593,6 +592,33 @@ class Authorization extends WebexPlugin {
   }
 
   /**
+   * Modern getter/setter for isAuthorizing property
+   */
+  get isAuthorizing() {
+    return this.webex.credentials.isAuthorizing;
+  }
+
+  set isAuthorizing(value) {
+    this.webex.credentials.isAuthorizing = value;
+  }
+
+  /**
+   * Modern getter/setter for ready property with event emission
+   */
+  get ready() {
+    return this.webex.credentials.ready;
+  }
+
+  set ready(value) {
+    const oldValue = this.webex.credentials.ready;
+    this.webex.credentials.ready = value;
+    // Emit change:ready event when ready state changes on THIS plugin
+    if (oldValue !== value && typeof this.emit === 'function') {
+      this.emit('change:ready', value);
+    }
+  }
+
+  /**
    * Extracts the orgId from the returned code from idbroker.
    *
    * Certain authorization codes encode organization info in a structured
@@ -759,23 +785,5 @@ class Authorization extends WebexPlugin {
   }
 }
 
-Object.defineProperties(Authorization.prototype, {
-  isAuthorizing: {
-    get() {
-      return this.webex.credentials.isAuthorizing;
-    },
-    set(value) {
-      this.webex.credentials.isAuthorizing = value;
-    },
-  },
-  ready: {
-    get() {
-      return this.webex.credentials.ready;
-    },
-    set(value) {
-      this.webex.credentials.ready = value;
-    },
-  },
-});
 
 export default Authorization;

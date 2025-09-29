@@ -55,7 +55,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   constructor(attrs: any, options: any) {
     const {meeting, ...otherAttrs} = attrs;
 
-    super(otherAttrs, options);
+    super(attrs, options);
 
     this.locusDeltaRequest = MeetingUtil.generateLocusDeltaRequest(meeting);
     this.buildLocusDeltaRequestOptions = MeetingUtil.generateBuildLocusDeltaRequestOptions(meeting);

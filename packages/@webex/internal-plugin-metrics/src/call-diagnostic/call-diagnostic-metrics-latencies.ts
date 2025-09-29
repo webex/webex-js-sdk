@@ -20,8 +20,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   /**
    * @constructor
    */
-  constructor(...args) {
-    super(...args);
+  constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
     this.latencyTimestamps = new Map();
     this.precomputedLatencies = new Map();
   }

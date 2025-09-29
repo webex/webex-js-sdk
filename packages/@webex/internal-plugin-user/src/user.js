@@ -208,11 +208,6 @@ class User extends WebexPlugin {
       .catch(() => this.fetchUUID(email, options));
   }
 
-  @persist('@')
-  initialize(...args) {
-    return Reflect.apply(WebexPlugin.prototype.initialize, this, args);
-  }
-
   /**
    * Caches the uuid for the specified email address
    * @param {Object} user

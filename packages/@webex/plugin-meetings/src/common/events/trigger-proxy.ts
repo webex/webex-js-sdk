@@ -7,10 +7,8 @@ import EventsUtil from './util';
 const TriggerProxy: any = {};
 
 TriggerProxy.trigger = (instance, scope, trigger, payload) => {
-  if (!instance || !instance.trigger) {
-    throw new ParameterError(
-      'Instance to trigger from must be defined and have a trigger function.'
-    );
+  if (!instance || !instance.emit) {
+    throw new ParameterError('Instance to trigger from must be defined and have an emit function.');
   }
 
   LoggerProxy.logger.debug(
@@ -19,7 +17,7 @@ TriggerProxy.trigger = (instance, scope, trigger, payload) => {
     }`
   );
 
-  return instance.trigger(trigger, payload);
+  return instance.emit(trigger, payload);
 };
 
 export default TriggerProxy;

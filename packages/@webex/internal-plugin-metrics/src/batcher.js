@@ -16,6 +16,10 @@ const sym = Symbol('metric id');
 class MetricsBatcher extends Batcher {
   namespace = 'Metrics';
 
+  constructor(attrs, options) {
+    super(attrs, options);
+  }
+
   /**
    * Prepare an individual metric item before batching
    * @param {any} item - The metric item to prepare

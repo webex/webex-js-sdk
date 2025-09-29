@@ -194,9 +194,8 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-  constructor(...args) {
-    super(...args);
-
+  constructor(attrs: any, options: any) {
+    super(attrs, options);
     /**
      * The webrtc-core media helpers. This is a temporary solution required for the SDK sample app
      * to be able to call media helper functions.
@@ -216,7 +215,7 @@ export default class Meetings extends WebexPlugin {
      * @memberof Meetings
      */
     // @ts-ignore
-    this.request = new Request({}, {parent: this.webex});
+    this.request = new Request({}, options);
     /**
      * Log upload request helper
      * @instance
@@ -225,7 +224,7 @@ export default class Meetings extends WebexPlugin {
      * @memberof Meetings
      */
     // @ts-ignore
-    this.loggerRequest = new LoggerRequest({webex: this.webex});
+    this.loggerRequest = new LoggerRequest({webex: options.webex});
     this.meetingCollection = new MeetingCollection();
     this.deletedMeetings = new Map();
 
@@ -278,8 +277,6 @@ export default class Meetings extends WebexPlugin {
     this.media = {
       getUserMedia: Media.getUserMedia,
     };
-
-    this.onReady();
   }
 
   /**
@@ -640,11 +637,11 @@ export default class Meetings extends WebexPlugin {
    */
   private stopListeningForEvents() {
     // @ts-ignore
-    this.webex.internal.mercury.off(LOCUSEVENT.LOCUS_MERCURY);
+    this.webex.internal.mercury.removeAllListeners(LOCUSEVENT.LOCUS_MERCURY);
     // @ts-ignore
-    this.webex.internal.mercury.off(ROAP.ROAP_MERCURY);
+    this.webex.internal.mercury.removeAllListeners(ROAP.ROAP_MERCURY);
     // @ts-ignore
-    this.webex.internal.mercury.off(ONLINE);
+    this.webex.internal.mercury.removeAllListeners(ONLINE);
   }
 
   /**
@@ -652,7 +649,7 @@ export default class Meetings extends WebexPlugin {
    * @private
    * @memberof Meetings
    */
-  private onReady() {
+  private initialize() {
     // @ts-ignore
     this.webex.once(READY, () => {
       // @ts-ignore
@@ -1560,6 +1557,8 @@ export default class Meetings extends WebexPlugin {
       {
         // @ts-ignore
         parent: this.webex,
+        // @ts-ignore
+        webex: this.webex,
       },
       (newMeeting) => {
         this.meetingCollection.set(newMeeting);

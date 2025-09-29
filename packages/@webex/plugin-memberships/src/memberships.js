@@ -78,10 +78,10 @@ class Memberships extends WebexPlugin {
    * // App logic goes here...
    * // Later when it is time to clean up
    * webex.memberships.stopListening();
-   * webex.memberships.off('created');
-   * webex.memberships.off('updated');
-   * webex.memberships.off('seen');
-   * webex.memberships.off('deleted');
+   * webex.memberships.removeAllListeners('created');
+   * webex.memberships.removeAllListeners('updated');
+   * webex.memberships.removeAllListeners('seen');
+   * webex.memberships.removeAllListeners('deleted');
 
    */
   listen() {
@@ -92,7 +92,7 @@ class Memberships extends WebexPlugin {
 
         // Register to listen to events
         return this.webex.internal.mercury.connect().then(() => {
-          this.listenTo(this.webex.internal.mercury, SDK_EVENT.INTERNAL.WEBEX_ACTIVITY, (event) =>
+          this.webex.internal.mercury.on(SDK_EVENT.INTERNAL.WEBEX_ACTIVITY, (event) =>
             this.onWebexApiEvent(event)
           );
         });
@@ -504,7 +504,7 @@ class Memberships extends WebexPlugin {
         membershipCreatedEventDataArray.forEach((data) => {
           if (data) {
             debug(`membership "created" payload: ${JSON.stringify(data)}`);
-            this.trigger(SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED, data);
+            this.emit(SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED, data);
           }
         });
         break;
@@ -518,7 +518,7 @@ class Memberships extends WebexPlugin {
         if (membershipCreatedEventData) {
           debug(`membership "created" payload: \
             ${JSON.stringify(membershipCreatedEventData)}`);
-          this.trigger(SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED, membershipCreatedEventData);
+          this.emit(SDK_EVENT.EXTERNAL.EVENT_TYPE.CREATED, membershipCreatedEventData);
         }
         break;
 
@@ -531,7 +531,7 @@ class Memberships extends WebexPlugin {
         if (membershipDeletedEventData) {
           debug(`membership "deleted" payload: \
             ${JSON.stringify(membershipDeletedEventData)}`);
-          this.trigger(SDK_EVENT.EXTERNAL.EVENT_TYPE.DELETED, membershipDeletedEventData);
+          this.emit(SDK_EVENT.EXTERNAL.EVENT_TYPE.DELETED, membershipDeletedEventData);
         }
         break;
 
@@ -546,7 +546,7 @@ class Memberships extends WebexPlugin {
         if (membershipUpdatedEventData) {
           debug(`membership "updated" payload: \
             ${JSON.stringify(membershipUpdatedEventData)}`);
-          this.trigger(SDK_EVENT.EXTERNAL.EVENT_TYPE.UPDATED, membershipUpdatedEventData);
+          this.emit(SDK_EVENT.EXTERNAL.EVENT_TYPE.UPDATED, membershipUpdatedEventData);
         }
         break;
 
@@ -559,7 +559,7 @@ class Memberships extends WebexPlugin {
         if (membershipSeenEventData) {
           debug(`membership "updated" payload: \
             ${JSON.stringify(membershipSeenEventData)}`);
-          this.trigger(SDK_EVENT.EXTERNAL.EVENT_TYPE.SEEN, membershipSeenEventData);
+          this.emit(SDK_EVENT.EXTERNAL.EVENT_TYPE.SEEN, membershipSeenEventData);
         }
         break;
 

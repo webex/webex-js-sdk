@@ -12,6 +12,10 @@ import {Batcher} from '@webex/webex-core';
 class PresenceBatcher extends Batcher {
   namespace = 'Presence';
 
+  constructor(attrs, options) {
+    super(attrs, options);
+  }
+
   /**
    * Handle successful HTTP response
    * @param {HttpResponseObject} res - The HTTP response object

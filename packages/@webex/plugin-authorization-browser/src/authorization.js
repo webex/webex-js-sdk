@@ -30,10 +30,7 @@ class Authorization extends WebexPlugin {
     
     // Initialize session properties
     this.isAuthorizing = false;
-    this.ready = false;
-    
-    // Call initialize method for backward compatibility
-    this.initialize(attrs, options);
+  
   }
 
   /**
@@ -61,7 +58,9 @@ class Authorization extends WebexPlugin {
     // Reminder, we can't do parse based on config, because config is not
     // available until nextTick and we want to be able to throw errors found in
     // the url.
-    if (attrs.parse === false) {
+
+    //TODO: Check on when this is exactly passed it , Couldnt find any reference to it 
+    if (attrs?.parse === false) {
       this.ready = true;
       return this;
     }
@@ -94,7 +93,12 @@ class Authorization extends WebexPlugin {
     
     this._cleanUrl(location);
 
+    // We will set the ready state to true after setting the token on credentials, which is asynchronus 
+    this.ready = false;
+
     // Wait until nextTick in case `credentials` hasn't initialized yet
+
+    // Change to Promise based archirecture where its sucessful once its done 
     process.nextTick(() => {
       this.webex.credentials.set({supertoken: tokenData});
       this.ready = true;

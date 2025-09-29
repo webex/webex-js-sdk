@@ -108,8 +108,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * Initializes Voicea plugin
    * @param {any} args
    */
-  constructor(...args) {
-    super(...args);
+  constructor(attrs = {}, options = {}) {
+    // Call WebexPlugin constructor
+    super(attrs, options);
     this.seqNum = 1;
     this.areCaptionsEnabled = false;
     this.vmcDeviceId = undefined;
@@ -130,7 +131,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       transcriptPayload.type === TRANSCRIPTION_TYPE.MANUAL_CAPTION_INTERIM_RESULT
     ) {
       // @ts-ignore
-      this.trigger(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, {
+      this.emit(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, {
         isFinal: transcriptPayload.type === TRANSCRIPTION_TYPE.MANUAL_CAPTION_FINAL_RESULT,
         transcriptId: transcriptPayload.id,
         transcripts: transcriptPayload.transcripts,
@@ -149,7 +150,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     switch (voiceaPayload.type) {
       case TRANSCRIPTION_TYPE.TRANSCRIPT_INTERIM_RESULTS:
         // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.NEW_CAPTION, {
+        this.emit(EVENT_TRIGGERS.NEW_CAPTION, {
           isFinal: false,
           transcriptId: voiceaPayload.transcript_id,
           transcripts: voiceaPayload.transcripts,
@@ -158,7 +159,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
       case TRANSCRIPTION_TYPE.TRANSCRIPT_FINAL_RESULT:
         // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.NEW_CAPTION, {
+        this.emit(EVENT_TRIGGERS.NEW_CAPTION, {
           isFinal: true,
           transcriptId: voiceaPayload.transcript_id,
           transcripts: voiceaPayload.transcripts.map((transcript) => {
@@ -171,7 +172,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
       case TRANSCRIPTION_TYPE.HIGHLIGHT_CREATED:
         // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.HIGHLIGHT_CREATED, {
+        this.emit(EVENT_TRIGGERS.HIGHLIGHT_CREATED, {
           csis: voiceaPayload.highlight.csis,
           highlightId: voiceaPayload.highlight.highlight_id,
           text: voiceaPayload.highlight.transcript,
@@ -183,7 +184,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
       case TRANSCRIPTION_TYPE.EVA_THANKS:
         // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.EVA_COMMAND, {
+        this.emit(EVENT_TRIGGERS.EVA_COMMAND, {
           isListening: false,
           text: voiceaPayload.command_response,
         });
@@ -192,7 +193,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       case TRANSCRIPTION_TYPE.EVA_WAKE:
       case TRANSCRIPTION_TYPE.EVA_CANCEL:
         // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.EVA_COMMAND, {
+        this.emit(EVENT_TRIGGERS.EVA_COMMAND, {
           isListening: voiceaPayload.type === TRANSCRIPTION_TYPE.EVA_WAKE,
         });
         break;
@@ -210,10 +211,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   private processCaptionLanguageResponse = (voiceaPayload: CaptionLanguageResponse): void => {
     if (voiceaPayload.statusCode === 200) {
       // @ts-ignore
-      this.trigger(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {statusCode: 200});
+      this.emit(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {statusCode: 200});
     } else {
       // @ts-ignore
-      this.trigger(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {
+      this.emit(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {
         statusCode: voiceaPayload.errorCode,
         errorMessage: voiceaPayload.message,
       });
@@ -234,7 +235,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     };
 
     // @ts-ignore
-    this.trigger(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, voiceaLanguageOptions);
+    this.emit(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, voiceaLanguageOptions);
   };
 
   /**
@@ -283,7 +284,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       },
     }).then(() => {
       // @ts-ignore
-      this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode});
+      this.emit(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode});
     });
 
   /**
@@ -392,7 +393,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     })
       .then(() => {
         // @ts-ignore
-        this.trigger(EVENT_TRIGGERS.CAPTIONS_TURNED_ON);
+        this.emit(EVENT_TRIGGERS.CAPTIONS_TURNED_ON);
 
         this.areCaptionsEnabled = true;
         this.captionStatus = TURN_ON_CAPTION_STATUS.ENABLED;
@@ -516,7 +517,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public onSpokenLanguageUpdate = (languageCode: string, meetingId): void => {
     // @ts-ignore
-    this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode, meetingId});
+    this.emit(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode, meetingId});
     this.currentSpokenLanguage = languageCode;
   };
 

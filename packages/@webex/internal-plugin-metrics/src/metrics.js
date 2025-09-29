@@ -35,13 +35,30 @@ function getSparkUserAgent(webex) {
 }
 
 class Metrics extends WebexPlugin {
-  children = {
-    batcher: Batcher,
-    clientMetricsBatcher: ClientMetricsBatcher,
-    clientMetricsPreloginBatcher: ClientMetricsPreloginBatcher,
-  };
-
   namespace = 'Metrics';
+
+  constructor(attrs, options) {
+    super(attrs, options);
+
+    // Initialize child plugins in constructor instead of using children = {}
+    this.batcher = new Batcher(attrs, {
+      parent: this,
+      namespace: 'Batcher',
+      webex: this.webex,
+    });
+
+    this.clientMetricsBatcher = new ClientMetricsBatcher(attrs, {
+      parent: this,
+      namespace: 'ClientMetricsBatcher',
+      webex: this.webex,
+    });
+
+    this.clientMetricsPreloginBatcher = new ClientMetricsPreloginBatcher(attrs, {
+      parent: this,
+      namespace: 'ClientMetricsPreloginBatcher',
+      webex: this.webex,
+    });
+  }
 
   submit(key, value) {
     return this.batcher.request({key, ...value});

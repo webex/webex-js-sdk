@@ -13,6 +13,10 @@ import {uniq} from 'lodash';
 class AvatarUrlBatcher extends Batcher {
   namespace = 'Avatar';
 
+  constructor(attrs, options) {
+    super(attrs, options);
+  }
+
   /**
    * Handle successful HTTP response
    * @param {any} res - The HTTP response object
