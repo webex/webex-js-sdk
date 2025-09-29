@@ -1660,7 +1660,7 @@ describe('Task', () => {
       });
     });
 
-    describe('endConference', () => {
+    describe('exitConference', () => {
       it('should successfully end conference and emit event', async () => {
         const mockResponse = {
           trackingId: 'test-tracking-id-end',
@@ -1668,20 +1668,20 @@ describe('Task', () => {
         };
         contactMock.exitConference.mockResolvedValue(mockResponse);
 
-        const result = await task.endConference();
+        const result = await task.exitConference();
 
         expect(contactMock.exitConference).toHaveBeenCalledWith({
           interactionId: taskId,
         });
         expect(result).toEqual(mockResponse);
-        expect(LoggerProxy.info).toHaveBeenCalledWith('Ending consult conference', {
+        expect(LoggerProxy.info).toHaveBeenCalledWith('Exiting consult conference', {
           module: TASK_FILE,
-          method: 'endConference',
+          method: 'exitConference',
           interactionId: taskId,
         });
-        expect(LoggerProxy.log).toHaveBeenCalledWith('Consult conference ended successfully', {
+        expect(LoggerProxy.log).toHaveBeenCalledWith('Consult conference exited successfully', {
           module: TASK_FILE,
-          method: 'endConference',
+          method: 'exitConference',
           interactionId: taskId,
         });
       });
@@ -1689,7 +1689,7 @@ describe('Task', () => {
       it('should throw error for invalid interaction ID', async () => {
         task.data.interactionId = '';
 
-        await expect(task.endConference()).rejects.toThrow('Error while performing endConference');
+        await expect(task.exitConference()).rejects.toThrow('Error while performing exitConference');
         expect(contactMock.exitConference).not.toHaveBeenCalled();
       });
 
@@ -1698,10 +1698,10 @@ describe('Task', () => {
         contactMock.exitConference.mockRejectedValue(mockError);
         generateTaskErrorObjectSpy.mockReturnValue(mockError);
 
-        await expect(task.endConference()).rejects.toThrow('Conference end failed');
-        expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to end consult conference', {
+        await expect(task.exitConference()).rejects.toThrow('Conference end failed');
+        expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to exit consult conference', {
           module: TASK_FILE,
-          method: 'endConference',
+          method: 'exitConference',
           interactionId: taskId,
         });
       });

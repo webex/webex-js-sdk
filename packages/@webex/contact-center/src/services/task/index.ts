@@ -1524,7 +1524,7 @@ export default class Task extends EventEmitter implements ITask {
     try {
       LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
         module: TASK_FILE,
-        method: METHODS.START_CONSULT_CONFERENCE,
+        method: METHODS.CONSULT_CONFERENCE,
         interactionId: this.data.interactionId,
       });
 
@@ -1553,13 +1553,13 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.log(`Consult conference started successfully`, {
         module: TASK_FILE,
-        method: METHODS.START_CONSULT_CONFERENCE,
+        method: METHODS.CONSULT_CONFERENCE,
         interactionId: this.data.interactionId,
       });
 
       return response;
     } catch (error) {
-      const err = generateTaskErrorObject(error, METHODS.START_CONSULT_CONFERENCE, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.CONSULT_CONFERENCE, TASK_FILE);
       const taskErrorProps = {
         trackingId: err.data?.trackingId,
         errorMessage: err.data?.message,
@@ -1591,7 +1591,7 @@ export default class Task extends EventEmitter implements ITask {
 
       LoggerProxy.error(`Failed to start consult conference`, {
         module: TASK_FILE,
-        method: METHODS.START_CONSULT_CONFERENCE,
+        method: METHODS.CONSULT_CONFERENCE,
         interactionId: this.data.interactionId,
       });
 
@@ -1600,7 +1600,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * Ends the current conference by removing the agent from the conference call
+   * Exits the current conference by removing the agent from the conference call
    *
    * Exits the agent from the conference, leaving the customer and consulted party connected
    * On success, emits a `task:conferenceEnded` event
@@ -1611,18 +1611,18 @@ export default class Task extends EventEmitter implements ITask {
    * @example
    * ```typescript
    * try {
-   *   await task.endConference();
+   *   await task.exitConference();
    *   console.log('Successfully exited conference');
    * } catch (error) {
    *   console.error('Failed to exit conference:', error);
    * }
    * ```
    */
-  public async endConference(): Promise<TaskResponse> {
+  public async exitConference(): Promise<TaskResponse> {
     try {
-      LoggerProxy.info(`Ending consult conference`, {
+      LoggerProxy.info(`Exiting consult conference`, {
         module: TASK_FILE,
-        method: METHODS.END_CONSULT_CONFERENCE,
+        method: METHODS.EXIT_CONFERENCE,
         interactionId: this.data.interactionId,
       });
 
@@ -1645,15 +1645,15 @@ export default class Task extends EventEmitter implements ITask {
         ['operational', 'behavioral', 'business']
       );
 
-      LoggerProxy.log(`Consult conference ended successfully`, {
+      LoggerProxy.log(`Consult conference exited successfully`, {
         module: TASK_FILE,
-        method: METHODS.END_CONSULT_CONFERENCE,
+        method: METHODS.EXIT_CONFERENCE,
         interactionId: this.data.interactionId,
       });
 
       return response;
     } catch (error) {
-      const err = generateTaskErrorObject(error, METHODS.END_CONSULT_CONFERENCE, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.EXIT_CONFERENCE, TASK_FILE);
       const taskErrorProps = {
         trackingId: err.data?.trackingId,
         errorMessage: err.data?.message,
@@ -1674,9 +1674,9 @@ export default class Task extends EventEmitter implements ITask {
         ['operational', 'behavioral', 'business']
       );
 
-      LoggerProxy.error(`Failed to end consult conference`, {
+      LoggerProxy.error(`Failed to exit consult conference`, {
         module: TASK_FILE,
-        method: METHODS.END_CONSULT_CONFERENCE,
+        method: METHODS.EXIT_CONFERENCE,
         interactionId: this.data.interactionId,
       });
 

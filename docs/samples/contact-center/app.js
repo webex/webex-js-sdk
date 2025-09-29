@@ -543,7 +543,7 @@ async function toggleConference() {
     if (isConferenceActive) {
       // End conference
       console.log('Ending conference...');
-      await currentTask.endConference();
+      await currentTask.exitConference();
       console.log('Conference ended successfully');
     } else {
       // Start conference
