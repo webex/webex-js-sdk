@@ -122,6 +122,14 @@ const LocusInfoSetupTrigger = {
 
 export type LocusInfoSetupTrigger = Enum<typeof LocusInfoSetupTrigger>;
 
+const LocusObjectStateAfterUpdates = {
+  unchanged: 'unchanged',
+  removed: 'removed',
+  updated: 'updated',
+} as const;
+
+type LocusObjectStateAfterUpdates = Enum<typeof LocusObjectStateAfterUpdates>;
+
 /**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object
  * @export
@@ -516,21 +524,19 @@ export default class LocusInfo extends EventsScope {
     switch (type) {
       case ObjectType.locus: {
         if (!object.data) {
-          // todo: handle locus removal (happens when moving between unjoined and main datasets)
+          // not doing anything here, as we need Locus to always be there (at least some fields)
+          // and that's already taken care of in updateFromHashTree()
           LoggerProxy.logger.info(
             `Locus-info:index#updateHashTreeObjectInLocus --> LOCUS object removed`
           );
-
-          LocusDtoTopLevelKeys.forEach((key) => {
-            delete locus[key];
-          });
 
           return locus;
         }
         // replace the main locus
 
-        // The Locus object from MAIN dataset has empty participants, so removing them to avoid it overriding the ones in our current locus object
-        // Also, it doesn't have "self". That's OK as it won't override existing locus.self and also existing SDK code can handle that missing self in Locus updates
+        // The Locus object we receive from backend has empty participants, so removing them to avoid it overriding the ones in our current locus object
+        // Also, other fields like mediaShares are managed by other ObjectType updates, so removing them too
+        // BTW, it also doesn't have "self". That's OK as it won't override existing locus.self and also existing SDK code can handle that missing self in Locus updates
         const locusObjectFromData = object.data;
         delete locusObjectFromData.participants;
         delete locusObjectFromData.mediaShares;
@@ -688,22 +694,51 @@ export default class LocusInfo extends EventsScope {
     switch (updateType) {
       case LocusInfoUpdateType.OBJECTS_UPDATED: {
         console.log(`marcin: hashtree OBJECTS_UPDATED length=${data.updatedObjects.length}`, data);
-        // initialize the main locus with what we currently have
-        // but with empty participants array
+
+        // initialize our new locus
         let locus: LocusDTO = {
           participants: [],
           jsSdkMeta: {removedParticipantIds: []},
         };
 
-        LocusDtoTopLevelKeys.forEach((key) => {
-          if (key === 'participants') {
-            locus[key] = [];
-          } else {
-            locus[key] = cloneDeep(this[key]);
+        // first go over all the updates and check what happens with the main locus object
+        let locusObjectStateAfterUpdates: LocusObjectStateAfterUpdates =
+          LocusObjectStateAfterUpdates.unchanged;
+        data.updatedObjects.forEach((object) => {
+          if (object.htMeta.elementId.type.toLowerCase() === ObjectType.locus) {
+            if (locusObjectStateAfterUpdates !== LocusObjectStateAfterUpdates.unchanged) {
+              // this code doesn't supported it right now, especially the cases for
+              // "updated" followed by "removed", or multiple "updated" would need more handling
+              LoggerProxy.logger.warn(
+                `Locus-info:index#updateFromHashTree --> received multiple LOCUS objects in one update, this is unexpected!`
+              );
+            }
+            if (object.data) {
+              locusObjectStateAfterUpdates = LocusObjectStateAfterUpdates.updated;
+            } else {
+              locusObjectStateAfterUpdates = LocusObjectStateAfterUpdates.removed;
+            }
           }
         });
 
-        // apply the updates from the hash tree onto the locus
+        // if Locus object is unchanged or removed, we need to keep using the existing locus
+        // because the rest of the locusInfo code expects locus to always be present (with at least some of the fields)
+        // if it gets updated, we don't need to do anything and we start with an empty one
+        // so that when it gets updated, if the new one is missing some field, that field will
+        // be removed from our locusInfo
+        if (
+          locusObjectStateAfterUpdates === LocusObjectStateAfterUpdates.unchanged ||
+          locusObjectStateAfterUpdates === LocusObjectStateAfterUpdates.removed
+        ) {
+          // copy over existing locus
+          LocusDtoTopLevelKeys.forEach((key) => {
+            if (key !== 'participants') {
+              locus[key] = cloneDeep(this[key]);
+            }
+          });
+        }
+
+        // now apply all the updates from the hash tree onto the locus
         data.updatedObjects.forEach((object) => {
           locus = this.updateHashTreeObjectInLocus(object, locus);
         });

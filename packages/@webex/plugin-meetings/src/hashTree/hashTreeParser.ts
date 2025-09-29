@@ -80,6 +80,7 @@ export function isSelf(object: HashTreeObject) {
  */
 class HashTreeParser {
   dataSets: Record<string, InternalDataSet> = {};
+  dataSetsUrl: string; // url from which we can get info about all data sets
   webexRequest: WebexRequestMethod;
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
   visibleDataSets: string[];
@@ -284,9 +285,10 @@ class HashTreeParser {
       this.processVisibleDataSetChanges(message, removedDataSets, addedDataSets, updatedObjects);
     }
 
-    if (updatedObjects.length > 0) {
-      this.locusInfoUpdateCallback(LocusInfoUpdateType.OBJECTS_UPDATED, {updatedObjects});
-    }
+    this.callLocusInfoUpdateCallback({
+      updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
+      updatedObjects,
+    });
   }
 
   /**
@@ -432,6 +434,17 @@ class HashTreeParser {
    * @returns {void}
    */
   updateDataSetInfo(receivedDataSet: DataSet) {
+    if (!this.dataSets[receivedDataSet.name]) {
+      this.dataSets[receivedDataSet.name] = {
+        ...receivedDataSet,
+      };
+
+      LoggerProxy.logger.info(
+        `HashTreeParser#handleMessage --> ${this.debugId} created entry for "${receivedDataSet.name}" dataset: version=${receivedDataSet.version}, root=${receivedDataSet.root}`
+      );
+
+      return;
+    }
     // update our version of the dataSet
     if (this.dataSets[receivedDataSet.name].version < receivedDataSet.version) {
       this.dataSets[receivedDataSet.name].version = receivedDataSet.version;
@@ -507,7 +520,7 @@ class HashTreeParser {
    * @param {HashTreeObject[]} updatedObjects - The list of updated hash tree objects to which changes will be added.
    * @returns {Promise<void>}
    */
-  private async processVisibleDataSetChanges(
+  private processVisibleDataSetChanges(
     message: HashTreeMessage,
     removedDataSets: string[],
     addedDataSets: string[],
@@ -516,7 +529,7 @@ class HashTreeParser {
     // if a visible data set was removed, we need to tell our client that all objects from it are removed
     const removedObjects: HashTreeObject[] = [];
 
-    removedDataSets.forEach(async (ds) => {
+    removedDataSets.forEach((ds) => {
       if (this.dataSets[ds]?.hashTree) {
         for (let i = 0; i < this.dataSets[ds].hashTree.numLeaves; i += 1) {
           removedObjects.push(
@@ -533,17 +546,39 @@ class HashTreeParser {
         this.deleteHashTree(ds);
       }
     });
+    this.visibleDataSets = this.visibleDataSets.filter((vds) => !removedDataSets.includes(vds));
     updatedObjects.push(...removedObjects);
 
     // if any visible data sets were added, we need to initialize them
+    // it is an async operation, but we don't need to wait for it to complete
+    // and we need to finish processing the current message synchronously to avoid
+    // the next message jumping in front of it, so we ignore the returned promise here
+    this.initializeNewVisibleDataSets(message, addedDataSets);
+
+    return undefined;
+  }
+
+  /**
+   * Adds entries to the passed in updateObjects array
+   * for the changes that result from adding and removing visible data sets.
+   *
+   * @param {HashTreeMessage} message - The hash tree message that triggered the visible data set changes.
+   * @param {string[]} addedDataSets - The list of added data sets.
+   * @returns {Promise<void>}
+   */
+  async initializeNewVisibleDataSets(
+    message: HashTreeMessage,
+    addedDataSets: string[]
+  ): Promise<void> {
     for (const ds of addedDataSets) {
-      let dataSetInfo = message.dataSets.find((d) => d.name === ds);
+      let dataSetInfo = this.dataSets[ds];
 
       if (!dataSetInfo) {
         LoggerProxy.logger.info(
-          `HashTreeParser#handleHashTreeMessage --> ${this.debugId} visible data set "${ds}" added but no info about it in dataSets array in the message`
+          `HashTreeParser#handleHashTreeMessage --> ${this.debugId} visible data set "${ds}" added but no info about it in our dataSets structures`
         );
-
+        // todo: add a metric here
+        console.warn(`marcin: !!!!!! no dataSetInfo for newly visible set ${ds}`);
         // eslint-disable-next-line no-await-in-loop
         const allDataSets = await this.getAllDataSetsMetadata(message.dataSetsUrl);
 
@@ -559,20 +594,12 @@ class HashTreeParser {
       }
 
       // we're awaiting in a loop, because in practice there will be only one new data set at a time,
+      // so no point in trying to parallelize this
       // eslint-disable-next-line no-await-in-loop
-      const newSetResult = await this.initializeNewVisibleDataSet(dataSetInfo);
+      const updates = await this.initializeNewVisibleDataSet(dataSetInfo);
 
-      if (newSetResult.updateType === LocusInfoUpdateType.MEETING_ENDED) {
-        // this is very unlikely to happen that meeting is ended just as a new visible data set was added, but theoretically possible
-        LoggerProxy.logger.info(
-          `HashTreeParser#handleHashTreeMessage --> ${this.debugId} meeting ended while initializing new visible data set "${ds}"`
-        );
-
-        throw new MeetingEndedError();
-      }
+      this.callLocusInfoUpdateCallback(updates);
     }
-
-    return undefined;
   }
 
   /**
@@ -586,7 +613,9 @@ class HashTreeParser {
     message: HashTreeMessage,
     debugText?: string
   ): Promise<{updateType: LocusInfoUpdateType; updatedObjects?: HashTreeObject[]}> {
-    const {dataSets} = message;
+    const {dataSets, dataSetsUrl} = message;
+
+    this.dataSetsUrl = dataSetsUrl;
 
     LoggerProxy.logger.info(
       `HashTreeParser#parseMessage --> ${this.debugId} received message ${debugText || ''}:`,
@@ -635,17 +664,19 @@ class HashTreeParser {
             }
           );
         } else {
-          // todo: check how often this happens, maybe we shouldn't even log it
+          // todo: this happens when Locus sends a message with data for new visible dataset together with the visible data set change
+          // we'll need to change this code and add a new hash tree for that dataset before processing the rest of objects
+          // we'll do this once Locus starts sending visible data sets as separate type "Metadata" - https://sqbu-github.cisco.com/gist/dangard2/d943bce073a381b1bc77ae0c93989c26
           LoggerProxy.logger.info(
             `Locus-info:index#parseMessage --> ${this.debugId} unexpected (not visible) dataSet ${dataSet.name} received in hash tree message`
           );
         }
+      }
 
-        this.updateDataSetInfo(dataSet);
+      this.updateDataSetInfo(dataSet);
 
-        if (!isRosterDropped) {
-          this.runSyncAlgorithm(dataSet);
-        }
+      if (!isRosterDropped) {
+        this.runSyncAlgorithm(dataSet);
       }
     });
 
@@ -664,23 +695,7 @@ class HashTreeParser {
         this.checkForVisibleDataSetChanges(updatedObjects);
 
       if (changeDetected) {
-        try {
-          this.processVisibleDataSetChanges(
-            message,
-            removedDataSets,
-            addedDataSets,
-            updatedObjects
-          );
-        } catch (error) {
-          if (error instanceof MeetingEndedError) {
-            LoggerProxy.logger.info(
-              `HashTreeParser#parseMessage --> ${this.debugId} detected MEETING_ENDED while processing visible data set changes`
-            );
-            this.stopAllTimers();
-
-            return {updateType: LocusInfoUpdateType.MEETING_ENDED};
-          }
-        }
+        this.processVisibleDataSetChanges(message, removedDataSets, addedDataSets, updatedObjects);
       }
 
       // tell the client about all the changes
@@ -701,9 +716,24 @@ class HashTreeParser {
    * @returns {void}
    */
   async handleMessage(message: HashTreeMessage, debugText?: string): Promise<void> {
-    const {updateType, updatedObjects} = await this.parseMessage(message, debugText);
+    const updates = await this.parseMessage(message, debugText);
 
-    if (updatedObjects.length > 0) {
+    this.callLocusInfoUpdateCallback(updates);
+  }
+
+  /**
+   * Calls the updateInfo callback if there are any updates to report
+   *
+   * @param {Object} updates parsed from a Locus message
+   * @returns {void}
+   */
+  callLocusInfoUpdateCallback(updates: {
+    updateType: LocusInfoUpdateType;
+    updatedObjects?: HashTreeObject[];
+  }) {
+    const {updateType, updatedObjects} = updates;
+
+    if (updateType !== LocusInfoUpdateType.OBJECTS_UPDATED || updatedObjects?.length > 0) {
       this.locusInfoUpdateCallback(updateType, {updatedObjects});
     }
   }
