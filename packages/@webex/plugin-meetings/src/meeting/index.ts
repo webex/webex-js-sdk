@@ -3189,8 +3189,10 @@ export default class Meeting extends StatelessWebexPlugin {
               this.shareCAEventSentStatus.receiveStop = false;
 
               // In case of attendee in webinar, the whiteboard is shared by other participants
-              if (!contentShare.beneficiaryId && whiteboardShare.beneficiaryId) {
-                contentShare.beneficiaryId = whiteboardShare.beneficiaryId;
+              if (this.locusInfo?.info?.isWebinar && this.webinar?.selfIsAttendee) {
+                if (!contentShare.beneficiaryId && whiteboardShare.beneficiaryId) {
+                  contentShare.beneficiaryId = whiteboardShare.beneficiaryId;
+                }
               }
 
               Trigger.trigger(
