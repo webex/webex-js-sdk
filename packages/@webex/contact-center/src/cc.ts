@@ -259,7 +259,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * await cc.register();
    * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
    *
-   * // Access IEntryPoint API
+   * // Access EntryPointRecord
    * const response = await cc.entryPoint.getEntryPoints({
    *   page: 0,
    *   pageSize: 50

@@ -330,7 +330,7 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     verb: 'fail',
   },
 
-  // IEntryPoint API Events
+  // EntryPoint API Events
   [METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS]: {
     product,
     agent: 'user',

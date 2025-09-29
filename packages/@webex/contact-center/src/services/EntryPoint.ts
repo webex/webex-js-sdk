@@ -1,5 +1,5 @@
 import {HTTP_METHODS, WebexSDK} from '../types';
-import type {IEntryPoint, EntryPointListResponse, EntryPointSearchParams} from '../types';
+import type {EntryPointRecord, EntryPointListResponse, EntryPointSearchParams} from '../types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
 import PageCache, {PAGINATION_DEFAULTS} from '../utils/PageCache';
@@ -9,7 +9,7 @@ import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
 
 /**
- * IEntryPoint API class for managing Webex Contact Center entry points.
+ * EntryPoint class for managing Webex Contact Center entry points.
  * Provides functionality to fetch, search, and paginate through entry points.
  *
  * @class EntryPoint
@@ -25,7 +25,7 @@ import {METRIC_EVENT_NAMES} from '../metrics/constants';
  * await cc.register();
  * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
  *
- * // Get IEntryPoint API instance from ContactCenter
+ * // Get EntryPoint API instance from ContactCenter
  * const entryPointAPI = cc.entryPoint;
  *
  * // Get all entry points with pagination
@@ -47,7 +47,7 @@ export class EntryPoint {
   private metricsManager: MetricsManager;
 
   // Page cache using the common utility
-  private pageCache: PageCache<IEntryPoint>;
+  private pageCache: PageCache<EntryPointRecord>;
 
   /**
    * Creates an instance of EntryPoint
@@ -57,7 +57,7 @@ export class EntryPoint {
   constructor(webex: WebexSDK) {
     this.webex = webex;
     this.webexRequest = WebexRequest.getInstance({webex});
-    this.pageCache = new PageCache<IEntryPoint>('EntryPoint');
+    this.pageCache = new PageCache<EntryPointRecord>('EntryPoint');
     this.metricsManager = MetricsManager.getInstance({webex});
   }
 
