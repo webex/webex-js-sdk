@@ -6800,6 +6800,10 @@ export default class Meeting extends StatelessWebexPlugin {
             // @ts-ignore
             this.webex.internal.newMetrics.submitClientEvent({
               name: 'client.ice.start',
+              payload: {
+                // @ts-ignore
+                labels: MeetingUtil.getCaEventLabelsForIpVersion(this.webex),
+              },
               options: {
                 meetingId: this.id,
               },
