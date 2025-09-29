@@ -115,6 +115,28 @@ const MeetingUtil = {
     return IP_VERSION.unknown;
   },
 
+  /**
+   * Returns CA event labels related to Orpheus ipver parameter that can be sent to CA with any CA event
+   * @param {any} webex instance
+   * @returns {Array<string>|undefined} array of CA event labels or undefined if no labels should be sent
+   */
+  getCaEventLabelsForIpVersion(webex: any): Array<string> | undefined {
+    const ipver = MeetingUtil.getIpVersion(webex);
+
+    switch (ipver) {
+      case IP_VERSION.unknown:
+        return undefined;
+      case IP_VERSION.only_ipv4:
+        return ['hasIpv4_true'];
+      case IP_VERSION.only_ipv6:
+        return ['hasIpv6_true'];
+      case IP_VERSION.ipv4_and_ipv6:
+        return ['hasIpv4_true', 'hasIpv6_true'];
+      default:
+        return undefined;
+    }
+  },
+
   joinMeeting: async (meeting, options) => {
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
