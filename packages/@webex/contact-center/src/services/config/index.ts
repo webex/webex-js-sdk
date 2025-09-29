@@ -685,5 +685,5 @@ export default class AgentConfigService {
     }
   }
 
-  // getQueues removed - use QueueAPI instead
+  // getQueues removed - use Queue instead
 }

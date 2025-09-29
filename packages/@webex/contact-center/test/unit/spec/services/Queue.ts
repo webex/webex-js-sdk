@@ -1,4 +1,4 @@
-import QueueAPI from '../../../../src/services/QueueAPI';
+import Queue from '../../../../src/services/Queue';
 import {HTTP_METHODS, WebexSDK, IHttpResponse} from '../../../../src/types';
 import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
 import WebexRequest from '../../../../src/services/core/WebexRequest';
@@ -8,8 +8,8 @@ import LoggerProxy from '../../../../src/logger-proxy';
 jest.mock('../../../../src/metrics/MetricsManager');
 jest.mock('../../../../src/logger-proxy');
 
-describe('QueueAPI', () => {
-  let queueAPI: QueueAPI;
+describe('Queue', () => {
+  let queueAPI: Queue;
   let mockWebex: WebexSDK;
   let mockMetricsManager: jest.Mocked<MetricsManager>;
 
@@ -39,7 +39,7 @@ describe('QueueAPI', () => {
     } as unknown as jest.Mocked<MetricsManager>;
     (MetricsManager.getInstance as jest.Mock).mockReturnValue(mockMetricsManager);
 
-    queueAPI = new QueueAPI(mockWebex);
+    queueAPI = new Queue(mockWebex);
   });
 
   describe('constructor', () => {
@@ -162,7 +162,7 @@ describe('QueueAPI', () => {
         ['behavioral', 'operational']
       );
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching contact service queues', {
-        module: 'QueueAPI',
+        module: 'Queue',
         method: 'getQueues',
         data: expect.objectContaining({
           orgId: 'test-org-id',
@@ -172,7 +172,7 @@ describe('QueueAPI', () => {
         }),
       });
       expect(LoggerProxy.log).toHaveBeenCalledWith('Making API request to fetch contact service queues', {
-        module: 'QueueAPI',
+        module: 'Queue',
         method: 'getQueues',
         data: expect.objectContaining({
           resource: '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100',
@@ -259,6 +259,41 @@ describe('QueueAPI', () => {
         }),
         ['behavioral', 'operational']
       );
+    });
+
+    it('should call API when requested page is not cached (cache miss)', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValueOnce(mockResponse);
+
+      await queueAPI.getQueues({page: 0});
+
+      (mockWebex.request as jest.Mock).mockResolvedValueOnce({
+        ...mockResponse,
+        body: {
+          data: mockQueues,
+          meta: {
+            page: 1,
+            pageSize: 100,
+            totalPages: 2,
+            totalRecords: 2,
+            orgid: 'test-org-id',
+          },
+        },
+      });
+
+      const callsBefore = (mockWebex.request as jest.Mock).mock.calls.length;
+      (LoggerProxy.log as jest.Mock).mockClear();
+
+      const result = await queueAPI.getQueues({page: 1});
+      const callsAfter = (mockWebex.request as jest.Mock).mock.calls.length;
+
+      expect(callsAfter).toBe(callsBefore + 1);
+      expect(result.meta.page).toBe(1);
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        service: 'wcc-api-gateway',
+        resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=100',
+        method: HTTP_METHODS.GET,
+      });
+      expect(LoggerProxy.log).toHaveBeenCalled();
     });
   });
 });

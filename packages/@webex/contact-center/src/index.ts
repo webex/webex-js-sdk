@@ -26,12 +26,12 @@ export {default as Task} from './services/task';
  */
 export {default as routingAgent} from './services/agent';
 
-// API exports (AddressBook is public, EntryPoint and Queue are accessed via cc wrappers)
-export {default as AddressBookAPI} from './services/AddressBookAPI';
+// API exports (AddressBook is public, IEntryPoint and Queue are accessed via cc wrappers)
+export {default as AddressBook} from './services/AddressBook';
 
-/** EntryPoint API types */
+/** IEntryPoint API types */
 export type {
-  EntryPoint,
+  IEntryPoint,
   EntryPointListResponse,
   EntryPointSearchParams,
   AddressBookEntry,

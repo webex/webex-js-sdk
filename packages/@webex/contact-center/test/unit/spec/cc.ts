@@ -7,10 +7,10 @@ import {
   WebexSDK,
 } from '../../../src/types';
 import ContactCenter from '../../../src/cc';
-import EntryPointAPI from '../../../src/services/EntryPointAPI';
+import EntryPoint from '../../../src/services/EntryPoint';
 import type {EntryPointListResponse} from '../../../src/types';
-import AddressBookAPI from '../../../src/services/AddressBookAPI';
-import QueueAPI from '../../../src/services/QueueAPI';
+import AddressBook from '../../../src/services/AddressBook';
+import Queue from '../../../src/services/Queue';
 import type {ContactServiceQueuesResponse} from '../../../src/types';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess, AGENT_EVENTS} from '../../../src/services/agent/types';
@@ -1720,9 +1720,9 @@ describe('webex.cc', () => {
   });
 
   describe('API property exposure', () => {
-    it('should provide getEntryPoints wrapper that delegates to EntryPointAPI', async () => {
+    it('should provide getEntryPoints wrapper that delegates to EntryPoint', async () => {
       const spy = jest
-        .spyOn(EntryPointAPI.prototype, 'getEntryPoints')
+        .spyOn(EntryPoint.prototype, 'getEntryPoints')
         .mockResolvedValue({} as EntryPointListResponse);
       await webex.cc.getEntryPoints();
       expect(spy).toHaveBeenCalled();
@@ -1731,12 +1731,12 @@ describe('webex.cc', () => {
 
     it('should expose addressBook API', () => {
       expect(webex.cc.addressBook).toBeDefined();
-      expect(webex.cc.addressBook).toBeInstanceOf(AddressBookAPI);
+      expect(webex.cc.addressBook).toBeInstanceOf(AddressBook);
     });
 
-    it('should provide getQueues wrapper that delegates to QueueAPI', async () => {
+    it('should provide getQueues wrapper that delegates to Queue', async () => {
       const spy = jest
-        .spyOn(QueueAPI.prototype, 'getQueues')
+        .spyOn(Queue.prototype, 'getQueues')
         .mockResolvedValue({} as ContactServiceQueuesResponse);
       await webex.cc.getQueues();
       expect(spy).toHaveBeenCalled();

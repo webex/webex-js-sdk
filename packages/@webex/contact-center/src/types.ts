@@ -645,9 +645,9 @@ export interface AddressBookEntrySearchParams extends BaseSearchParams {
 }
 
 /**
- * EntryPoint types
+ * IEntryPoint types
  */
-export interface EntryPoint {
+export interface IEntryPoint {
   id: string;
   name: string;
   description?: string;
@@ -659,7 +659,7 @@ export interface EntryPoint {
   settings?: Record<string, any>;
 }
 
-export type EntryPointListResponse = PaginatedResponse<EntryPoint>;
+export type EntryPointListResponse = PaginatedResponse<IEntryPoint>;
 export type EntryPointSearchParams = BaseSearchParams;
 
 /**

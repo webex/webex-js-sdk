@@ -1,14 +1,5 @@
-/**
- * @packageDocumentation
- * @module QueueAPI
- */
-
 import {HTTP_METHODS, WebexSDK} from '../types';
-import type {
-  ContactServiceQueue,
-  ContactServiceQueuesResponse,
-  ContactServiceQueueSearchParams,
-} from '../types';
+import type {IEntryPoint, EntryPointListResponse, EntryPointSearchParams} from '../types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
 import PageCache, {PAGINATION_DEFAULTS} from '../utils/PageCache';
@@ -16,13 +7,12 @@ import MetricsManager from '../metrics/MetricsManager';
 import {WCC_API_GATEWAY} from './constants';
 import {endPointMap} from './config/constants';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-import {METHODS} from '../constants';
 
 /**
- * Queue API class for managing Webex Contact Center contact service queues.
- * Provides functionality to fetch contact service queues using the queue API.
+ * IEntryPoint API class for managing Webex Contact Center entry points.
+ * Provides functionality to fetch, search, and paginate through entry points.
  *
- * @class QueueAPI
+ * @class EntryPoint
  * @public
  * @example
  * ```typescript
@@ -35,72 +25,63 @@ import {METHODS} from '../constants';
  * await cc.register();
  * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
  *
- * // Get Queue API instance from ContactCenter
- * const queueAPI = cc.queue;
+ * // Get IEntryPoint API instance from ContactCenter
+ * const entryPointAPI = cc.entryPoint;
  *
- * // Get all queues
- * const queues = await queueAPI.getQueues();
- *
- * // Get queues with pagination
- * const queues = await queueAPI.getQueues({
+ * // Get all entry points with pagination
+ * const response = await entryPointAPI.getEntryPoints({
  *   page: 0,
  *   pageSize: 50
  * });
  *
- * // Search for specific queues
- * const searchResults = await queueAPI.getQueues({
+ * // Search for specific entry points
+ * const searchResults = await entryPointAPI.searchEntryPoints({
  *   search: 'support',
- *   filter: 'name=="Support Queue"'
+ *   filter: 'type=="voice"'
  * });
  * ```
  */
-export class QueueAPI {
+export class EntryPoint {
   private webexRequest: WebexRequest;
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
 
   // Page cache using the common utility
-  private pageCache: PageCache<ContactServiceQueue>;
+  private pageCache: PageCache<IEntryPoint>;
 
   /**
-   * Creates an instance of QueueAPI
+   * Creates an instance of EntryPoint
    * @param {WebexSDK} webex - The Webex SDK instance
    * @public
    */
   constructor(webex: WebexSDK) {
     this.webex = webex;
     this.webexRequest = WebexRequest.getInstance({webex});
-    this.pageCache = new PageCache<ContactServiceQueue>('QueueAPI');
+    this.pageCache = new PageCache<IEntryPoint>('EntryPoint');
     this.metricsManager = MetricsManager.getInstance({webex});
   }
 
   /**
-   * Fetches contact service queues for the organization
-   * @param {ContactServiceQueueSearchParams} [params] - Search and pagination parameters
-   * @returns {Promise<ContactServiceQueuesResponse>} Promise resolving to contact service queues
+   * Fetches entry points for the organization with pagination support
+   * @param {EntryPointSearchParams} [params] - Search and pagination parameters
+   * @returns {Promise<EntryPointListResponse>} Promise resolving to paginated entry points
    * @throws {Error} If the API call fails
    * @public
    * @example
    * ```typescript
-   * // Get all queues with default pagination
-   * const response = await queueAPI.getQueues();
+   * // Get first page of entry points
+   * const response = await entryPointAPI.getEntryPoints();
    *
-   * // Get queues with specific pagination
-   * const response = await queueAPI.getQueues({
-   *   page: 0,
+   * // Get specific page with custom page size
+   * const response = await entryPointAPI.getEntryPoints({
+   *   page: 2,
    *   pageSize: 25
-   * });
-   *
-   * // Search for queues
-   * const response = await queueAPI.getQueues({
-   *   search: 'support',
-   *   filter: 'queueType=="INBOUND"'
    * });
    * ```
    */
-  public async getQueues(
-    params: ContactServiceQueueSearchParams = {}
-  ): Promise<ContactServiceQueuesResponse> {
+  public async getEntryPoints(
+    params: EntryPointSearchParams = {}
+  ): Promise<EntryPointListResponse> {
     const startTime = Date.now();
     const {
       page = PAGINATION_DEFAULTS.PAGE,
@@ -109,25 +90,19 @@ export class QueueAPI {
       filter,
       attributes,
       sortBy,
-      sortOrder,
-      desktopProfileFilter,
-      provisioningView,
-      singleObjectResponse,
+      sortOrder = 'asc',
     } = params;
 
     const orgId = this.webex.credentials.getOrgId();
     const isSearchRequest = !!(search || filter || attributes || sortBy);
 
-    LoggerProxy.info('Fetching contact service queues', {
-      module: 'QueueAPI',
-      method: METHODS.GET_QUEUES,
-      data: {
-        orgId,
-        page,
-        pageSize,
-        isSearchRequest,
-      },
-    });
+    LoggerProxy.info(
+      `Fetching entry points - orgId: ${orgId}, page: ${page}, pageSize: ${pageSize}, isSearchRequest: ${isSearchRequest}`,
+      {
+        module: 'EntryPoint',
+        method: 'getEntryPoints',
+      }
+    );
 
     // Check if we can use cache for simple pagination (no search/filter/attributes/sort)
     if (this.pageCache.canUseCache({search, filter, attributes, sortBy})) {
@@ -137,17 +112,13 @@ export class QueueAPI {
       if (cachedPage) {
         const duration = Date.now() - startTime;
 
-        LoggerProxy.log(`Returning page ${page} from cache`, {
-          module: 'QueueAPI',
-          method: 'getQueues',
-          data: {
-            cacheHit: true,
-            duration,
-            recordCount: cachedPage.data.length,
-            page,
-            pageSize,
-          },
-        });
+        LoggerProxy.log(
+          `Returning page ${page} from cache - cacheHit: true, duration: ${duration}ms, recordCount: ${cachedPage.data.length}, pageSize: ${pageSize}`,
+          {
+            module: 'EntryPoint',
+            method: 'getEntryPoints',
+          }
+        );
 
         return {
           data: cachedPage.data,
@@ -156,44 +127,36 @@ export class QueueAPI {
             pageSize,
             totalPages: cachedPage.totalMeta?.totalPages,
             totalRecords: cachedPage.totalMeta?.totalRecords,
-            orgid: orgId,
           },
         };
       }
     }
 
     // Start timing only for actual API calls (not cache hits)
-    this.metricsManager.timeEvent(METRIC_EVENT_NAMES.QUEUE_FETCH_SUCCESS);
+    this.metricsManager.timeEvent(METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS);
 
     try {
-      // Build query parameters according to spec
+      // Build query parameters
       const queryParams = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
+        sortOrder,
       });
 
+      if (search) queryParams.append('search', search);
       if (filter) queryParams.append('filter', filter);
       if (attributes) queryParams.append('attributes', attributes);
-      if (search) queryParams.append('search', search);
       if (sortBy) queryParams.append('sortBy', sortBy);
-      if (sortOrder) queryParams.append('sortOrder', sortOrder);
-      if (desktopProfileFilter !== undefined)
-        queryParams.append('desktopProfileFilter', desktopProfileFilter.toString());
-      if (provisioningView !== undefined)
-        queryParams.append('provisioningView', provisioningView.toString());
-      if (singleObjectResponse !== undefined)
-        queryParams.append('singleObjectResponse', singleObjectResponse.toString());
 
-      const resource = endPointMap.queueList(orgId, queryParams.toString());
+      const resource = endPointMap.entryPointList(orgId, queryParams.toString());
 
-      LoggerProxy.log('Making API request to fetch contact service queues', {
-        module: 'QueueAPI',
-        method: METHODS.GET_QUEUES,
-        data: {
-          resource,
-          service: WCC_API_GATEWAY,
-        },
-      });
+      LoggerProxy.log(
+        `Making API request to fetch entry points - resource: ${resource}, service: ${WCC_API_GATEWAY}`,
+        {
+          module: 'EntryPoint',
+          method: 'getEntryPoints',
+        }
+      );
 
       const response = await this.webexRequest.request({
         service: WCC_API_GATEWAY,
@@ -206,9 +169,9 @@ export class QueueAPI {
       const recordCount = response.body?.data?.length || 0;
       const totalRecords = response.body?.meta?.totalRecords;
 
-      LoggerProxy.log(`Successfully retrieved ${recordCount} contact service queues`, {
-        module: 'QueueAPI',
-        method: METHODS.GET_QUEUES,
+      LoggerProxy.log(`Successfully retrieved ${recordCount} entry points`, {
+        module: 'EntryPoint',
+        method: 'getEntryPoints',
         data: {
           statusCode: response.statusCode,
           duration,
@@ -223,7 +186,7 @@ export class QueueAPI {
       // Only track metrics for search requests or first page loads to reduce metric volume
       if (isSearchRequest || page === 0) {
         this.metricsManager.trackEvent(
-          METRIC_EVENT_NAMES.QUEUE_FETCH_SUCCESS,
+          METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS,
           {
             orgId,
             statusCode: response.statusCode,
@@ -232,7 +195,7 @@ export class QueueAPI {
             isSearchRequest,
             isFirstPage: page === 0,
           },
-          ['behavioral', 'operational']
+          ['behavioral']
         );
       }
 
@@ -241,13 +204,10 @@ export class QueueAPI {
         const cacheKey = this.pageCache.buildCacheKey(orgId, page, pageSize);
         this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
 
-        LoggerProxy.log('Cached contact service queues for future requests', {
-          module: 'QueueAPI',
-          method: METHODS.GET_QUEUES,
-          data: {
-            cacheKey,
-            recordCount,
-          },
+        LoggerProxy.log('Cached entry points data for future requests', {
+          module: 'EntryPoint',
+          method: 'getEntryPoints',
+          data: {cacheKey, recordCount},
         });
       }
 
@@ -261,17 +221,16 @@ export class QueueAPI {
         pageSize,
       };
 
-      LoggerProxy.error('Failed to fetch contact service queues', {
-        module: 'QueueAPI',
-        method: METHODS.GET_QUEUES,
+      LoggerProxy.error(`Failed to fetch entry points`, {
+        module: 'EntryPoint',
+        method: 'getEntryPoints',
         data: errorData,
         error,
       });
 
       // Track all failures for troubleshooting
-      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.QUEUE_FETCH_FAILED, errorData, [
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_FAILED, errorData, [
         'behavioral',
-        'operational',
       ]);
 
       throw error;
@@ -279,4 +238,4 @@ export class QueueAPI {
   }
 }
 
-export default QueueAPI;
+export default EntryPoint;

@@ -1,8 +1,3 @@
-/**
- * @packageDocumentation
- * @module AddressBookAPI
- */
-
 import {HTTP_METHODS, WebexSDK} from '../types';
 import type {
   AddressBookEntry,
@@ -21,7 +16,7 @@ import {METRIC_EVENT_NAMES} from '../metrics/constants';
  * AddressBook API class for managing Webex Contact Center address book entries.
  * Provides functionality to fetch address book entries using the entry API.
  *
- * @class AddressBookAPI
+ * @class AddressBook
  * @public
  * @example
  * ```typescript
@@ -48,13 +43,13 @@ import {METRIC_EVENT_NAMES} from '../metrics/constants';
  * });
  *
  * // Search for specific entries
- * const searchResults = await addressBookAPI.getEntries({
+ * const searchResults = await addressBook.getEntries({
  *   search: 'john',
  *   filter: 'name=="John Doe"'
  * });
  * ```
  */
-export class AddressBookAPI {
+export class AddressBook {
   private webexRequest: WebexRequest;
   private webex: WebexSDK;
   private getAddressBookId: () => string;
@@ -64,7 +59,7 @@ export class AddressBookAPI {
   private pageCache: PageCache<AddressBookEntry>;
 
   /**
-   * Creates an instance of AddressBookAPI
+   * Creates an instance of AddressBook
    * @param {WebexSDK} webex - The Webex SDK instance
    * @param {() => string} getAddressBookId - Function to get the addressBookId from agent profile
    * @public
@@ -73,7 +68,7 @@ export class AddressBookAPI {
     this.webex = webex;
     this.webexRequest = WebexRequest.getInstance({webex});
     this.getAddressBookId = getAddressBookId;
-    this.pageCache = new PageCache<AddressBookEntry>('AddressBookAPI');
+    this.pageCache = new PageCache<AddressBookEntry>('AddressBook');
     this.metricsManager = MetricsManager.getInstance({webex});
   }
 
@@ -115,7 +110,7 @@ export class AddressBookAPI {
     const isSearchRequest = !!(search || filter || attributes);
 
     LoggerProxy.info('Fetching address book entries', {
-      module: 'AddressBookAPI',
+      module: 'AddressBook',
       method: 'getEntries',
       data: {
         orgId,
@@ -135,7 +130,7 @@ export class AddressBookAPI {
         const duration = Date.now() - startTime;
 
         LoggerProxy.info(`Returning page ${page} from cache`, {
-          module: 'AddressBookAPI',
+          module: 'AddressBook',
           method: 'getEntries',
           data: {
             cacheHit: true,
@@ -171,8 +166,8 @@ export class AddressBookAPI {
         pageSize,
         error: 'Missing addressBookId for agent. Ensure agent profile contains addressBookId.',
       };
-      LoggerProxy.error('AddressBookAPI called without a valid addressBookId', {
-        module: 'AddressBookAPI',
+      LoggerProxy.error('AddressBook called without a valid addressBookId', {
+        module: 'AddressBook',
         method: 'getEntries',
         data: errorData,
       });
@@ -182,7 +177,7 @@ export class AddressBookAPI {
         'operational',
       ]);
 
-      throw new Error('AddressBookAPI: addressBookId is not available for the current agent.');
+      throw new Error('AddressBook: addressBookId is not available for the current agent.');
     }
 
     try {
@@ -199,7 +194,7 @@ export class AddressBookAPI {
       const resource = endPointMap.addressBookEntries(orgId, bookId, queryParams.toString());
 
       LoggerProxy.info('Making API request to fetch address book entries', {
-        module: 'AddressBookAPI',
+        module: 'AddressBook',
         method: 'getEntries',
         data: {
           resource,
@@ -219,7 +214,7 @@ export class AddressBookAPI {
       const totalRecords = response.body?.meta?.totalRecords;
 
       LoggerProxy.info(`Successfully retrieved ${recordCount} address book entries`, {
-        module: 'AddressBookAPI',
+        module: 'AddressBook',
         method: 'getEntries',
         data: {
           statusCode: response.statusCode,
@@ -255,7 +250,7 @@ export class AddressBookAPI {
         this.pageCache.cachePage(cacheKey, response.body.data, response.body.meta);
 
         LoggerProxy.info('Cached address book entries for future requests', {
-          module: 'AddressBookAPI',
+          module: 'AddressBook',
           method: 'getEntries',
           data: {
             cacheKey,
@@ -276,7 +271,7 @@ export class AddressBookAPI {
       };
 
       LoggerProxy.error('Failed to fetch address book entries', {
-        module: 'AddressBookAPI',
+        module: 'AddressBook',
         method: 'getEntries',
         data: errorData,
         error,
@@ -293,4 +288,4 @@ export class AddressBookAPI {
   }
 }
 
-export default AddressBookAPI;
+export default AddressBook;

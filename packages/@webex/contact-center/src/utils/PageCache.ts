@@ -1,8 +1,3 @@
-/**
- * @packageDocumentation
- * @module PageCache
- */
-
 import LoggerProxy from '../logger-proxy';
 
 /**
@@ -119,7 +114,7 @@ const DEFAULT_CACHE_TTL_MINUTES = 5;
  * @example
  * ```typescript
  * // Create a cache instance for a specific data type
- * const cache = new PageCache<AddressBookEntry>('AddressBookAPI');
+ * const cache = new PageCache<AddressBookEntry>('AddressBook');
  *
  * // Check if we can use cache (no search/filter parameters)
  * if (cache.canUseCache({ search, filter })) {

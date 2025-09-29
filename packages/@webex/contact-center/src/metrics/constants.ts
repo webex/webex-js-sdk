@@ -123,7 +123,7 @@ export const METRIC_EVENT_NAMES = {
   AGENT_DEVICE_TYPE_UPDATE_SUCCESS: 'Agent Device Type Update Success',
   AGENT_DEVICE_TYPE_UPDATE_FAILED: 'Agent Device Type Update Failed',
 
-  // EntryPoint API Events
+  // IEntryPoint API Events
   ENTRYPOINT_FETCH_SUCCESS: 'Entrypoint Fetch Success',
   ENTRYPOINT_FETCH_FAILED: 'Entrypoint Fetch Failed',
 

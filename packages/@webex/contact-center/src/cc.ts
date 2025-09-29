@@ -53,9 +53,9 @@ import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/t
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
-import EntryPointAPI from './services/EntryPointAPI';
-import AddressBookAPI from './services/AddressBookAPI';
-import QueueAPI from './services/QueueAPI';
+import EntryPoint from './services/EntryPoint';
+import AddressBook from './services/AddressBook';
+import Queue from './services/Queue';
 import type {
   EntryPointListResponse,
   EntryPointSearchParams,
@@ -251,7 +251,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * API instance for managing Webex Contact Center entry points
    * Provides functionality to fetch entry points with caching support
-   * @type {EntryPointAPI}
+   * @type {EntryPoint}
    * @public
    * @example
    * ```typescript
@@ -259,19 +259,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * await cc.register();
    * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
    *
-   * // Access EntryPoint API
+   * // Access IEntryPoint API
    * const response = await cc.entryPoint.getEntryPoints({
    *   page: 0,
    *   pageSize: 50
    * });
    * ```
    */
-  private entryPoint: EntryPointAPI;
+  private entryPoint: EntryPoint;
 
   /**
    * API instance for managing Webex Contact Center address book contacts
    * Provides functionality to fetch address book entries with caching support
-   * @type {AddressBookAPI}
+   * @type {AddressBook}
    * @public
    * @example
    * ```typescript
@@ -286,12 +286,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * });
    * ```
    */
-  public addressBook: AddressBookAPI;
+  public addressBook: AddressBook;
 
   /**
    * API instance for managing Webex Contact Center queues
    * Provides functionality to fetch queues with caching support
-   * @type {QueueAPI}
+   * @type {Queue}
    * @public
    * @example
    * ```typescript
@@ -311,7 +311,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * });
    * ```
    */
-  private queue: QueueAPI;
+  private queue: Queue;
 
   /**
    * Logger utility for Contact Center plugin
@@ -361,9 +361,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       // Initialize API instances
       // will have future function for indivdual fetch etc so better be in an object
-      this.entryPoint = new EntryPointAPI(this.$webex);
-      this.addressBook = new AddressBookAPI(this.$webex, () => this.agentConfig?.addressBookId);
-      this.queue = new QueueAPI(this.$webex);
+      this.entryPoint = new EntryPoint(this.$webex);
+      this.addressBook = new AddressBook(this.$webex, () => this.agentConfig?.addressBookId);
+      this.queue = new Queue(this.$webex);
 
       // Initialize logger
       LoggerProxy.initialize(this.$webex.logger);
@@ -1636,7 +1636,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * Returns paginated entry points for the organization.
-   * Thin wrapper around internal EntryPointAPI instance.
+   * Thin wrapper around internal EntryPoint instance.
    * @public
    */
   public async getEntryPoints(
@@ -1647,7 +1647,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * Returns paginated contact service queues for the organization.
-   * Thin wrapper around internal QueueAPI instance.
+   * Thin wrapper around internal Queue instance.
    * @public
    */
   public async getQueues(
