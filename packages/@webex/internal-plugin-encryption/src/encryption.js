@@ -68,17 +68,17 @@ const Encryption = WebexPlugin.extend({
   /**
    * Decrypt binary data using the supplied key uri.
    *
-   * @param {string} key - The uri of a key stored in KMS
-   * @param {string} ciphertext - Encrypted binary data as JWE
+   * @param {string} kmsKeyUri - The uri of a key stored in KMS
+   * @param {string} JWE - Encrypted binary data as JWE
    * @param {Object} options
    * @param {string} options.onBehalfOf - Fetch the KMS key on behalf of another user (using the user's UUID), active user requires the 'spark.kms_orgagent' role
    * @returns {Buffer} Decrypted binary data as Buffer
    */
-  decryptBinaryData(key, ciphertext, options) {
-    return this.getKey(key, options).then((k) =>
+  decryptBinaryData(kmsKeyUri, JWE, options) {
+    return this.getKey(kmsKeyUri, options).then((k) =>
       jose.JWE.createDecrypt(k.jwk)
-        .decrypt(ciphertext)
-        .then((result) => result.plaintext)
+        .decrypt(JWE)
+        .then((result) => result.payload)
     );
   },
 

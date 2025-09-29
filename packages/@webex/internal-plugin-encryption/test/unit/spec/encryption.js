@@ -96,11 +96,11 @@ describe('internal-plugin-encryption', () => {
 
     describe('check decryptBinaryData()', () => {
       const testKey = 'https://kms.example.com/keys/test-key-id';
-      const testCiphertext = 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..test.encrypted.data';
+      const testJWE = 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..test.encrypted.data';
       const testOptions = {onBehalfOf: 'test-user-uuid'};
       const mockJwk = {kty: 'oct', k: 'test-key-material'};
       const mockKey = {jwk: mockJwk};
-      const mockDecryptedResult = {plaintext: Buffer.from('decrypted binary data')};
+      const mockDecryptedResult = {payload: Buffer.from('decrypted binary data')};
       let getKeyStub;
       let joseDecryptStub;
 
@@ -115,7 +115,7 @@ describe('internal-plugin-encryption', () => {
       });
 
       it('should call getKey with correct parameters', async () => {
-        await webex.internal.encryption.decryptBinaryData(testKey, testCiphertext, testOptions);
+        await webex.internal.encryption.decryptBinaryData(testKey, testJWE, testOptions);
         
         assert.equal(getKeyStub.calledOnce, true);
         assert.equal(getKeyStub.args[0][0], testKey);
@@ -123,29 +123,29 @@ describe('internal-plugin-encryption', () => {
       });
 
       it('should call jose.JWE.createDecrypt with correct jwk', async () => {
-        await webex.internal.encryption.decryptBinaryData(testKey, testCiphertext, testOptions);
+        await webex.internal.encryption.decryptBinaryData(testKey, testJWE, testOptions);
         
         assert.equal(joseDecryptStub.calledOnce, true);
         assert.equal(joseDecryptStub.args[0][0], mockJwk);
       });
 
       it('should call decrypt with ciphertext', async () => {
-        await webex.internal.encryption.decryptBinaryData(testKey, testCiphertext, testOptions);
+        await webex.internal.encryption.decryptBinaryData(testKey, testJWE, testOptions);
         
         const mockDecryptor = joseDecryptStub.returnValues[0];
         assert.equal(mockDecryptor.decrypt.calledOnce, true);
-        assert.equal(mockDecryptor.decrypt.args[0][0], testCiphertext);
+        assert.equal(mockDecryptor.decrypt.args[0][0], testJWE);
       });
 
-      it('should return the plaintext buffer', async () => {
-        const result = await webex.internal.encryption.decryptBinaryData(testKey, testCiphertext, testOptions);
+      it('should return the payload buffer', async () => {
+        const result = await webex.internal.encryption.decryptBinaryData(testKey, testJWE, testOptions);
         
-        assert.equal(result, mockDecryptedResult.plaintext);
+        assert.equal(result, mockDecryptedResult.payload);
         assert.equal(Buffer.isBuffer(result), true);
       });
 
       it('should work without options parameter', async () => {
-        await webex.internal.encryption.decryptBinaryData(testKey, testCiphertext);
+        await webex.internal.encryption.decryptBinaryData(testKey, testJWE);
         
         assert.equal(getKeyStub.calledOnce, true);
         assert.equal(getKeyStub.args[0][0], testKey);

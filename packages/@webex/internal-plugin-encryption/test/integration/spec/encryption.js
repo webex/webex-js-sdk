@@ -3,6 +3,7 @@
  */
 
 import '@webex/internal-plugin-encryption';
+import '@webex/internal-plugin-metrics';
 
 import {isBuffer} from '@webex/common';
 import {assert, expect} from '@webex/test-helper-chai';
@@ -136,6 +137,42 @@ describe('Encryption', function () {
         .then((decryptedData) => {
           assert.isTrue(isBuffer(decryptedData));
           assert.equal(decryptedData.toString('utf8'), 'test binary data with options');
+        });
+    });
+
+    it('decrypts binary data with dynamically generated 3000 character string', () => {
+      // Generate a 3000-character string dynamically using different character sets
+      const generateLargeString = (length) => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+        let result = '';
+        const charsLength = chars.length;
+        
+        for (let i = 0; i < length; i++) {
+          // Use modulo to cycle through different patterns for variety
+          const index = (i * 7 + Math.floor(i / 100) * 3) % charsLength;
+          result += chars.charAt(index);
+        }
+        
+        return result;
+      };
+
+      const largeString = generateLargeString(3000);
+      const binaryData = Buffer.from(largeString, 'utf8');
+
+      // Verify the string is exactly 3000 characters
+      assert.equal(largeString.length, 3000);
+
+      return webex.internal.encryption
+        .encryptText(key, binaryData.toString('base64'))
+        .then((ciphertext) => {
+          assert.notEqual(ciphertext, binaryData.toString('base64'));
+
+          return webex.internal.encryption.decryptBinaryData(key, ciphertext);
+        })
+        .then((decryptedData) => {
+          assert.isTrue(isBuffer(decryptedData));
+          assert.equal(decryptedData.toString('utf8'), largeString);
+          assert.equal(decryptedData.toString('utf8').length, 3000);
         });
     });
   });
