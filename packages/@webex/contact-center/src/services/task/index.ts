@@ -6,7 +6,6 @@ import {
   deriveConsultTransferDestinationType,
   getDestinationAgentId,
   buildConsultConferenceParamData,
-  extractConsultConferenceData,
 } from '../core/Utils';
 import {Failure} from '../core/GlobalTypes';
 import {LoginOption} from '../../types';
@@ -140,6 +139,7 @@ export default class Task extends EventEmitter implements ITask {
   public webCallMap: Record<TaskId, CallId>;
   private wrapupData: WrapupData;
   public autoWrapup?: AutoWrapup;
+  private agentId: string;
 
   /**
    * Creates a new Task instance which provides the following features:
@@ -152,7 +152,8 @@ export default class Task extends EventEmitter implements ITask {
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    wrapupData: WrapupData
+    wrapupData: WrapupData,
+    agentId: string
   ) {
     super();
     this.contact = contact;
@@ -163,6 +164,7 @@ export default class Task extends EventEmitter implements ITask {
     this.metricsManager = MetricsManager.getInstance();
     this.registerWebCallListeners();
     this.setupAutoWrapupTimer();
+    this.agentId = agentId;
   }
 
   /**
@@ -1496,7 +1498,7 @@ export default class Task extends EventEmitter implements ITask {
    *
    * Creates a three-way conference between the agent, customer, and consulted party
    * Extracts required consultation data from the current task data
-   * On success, emits a `task:conference.started` event
+   * On success, emits a `task:conferenceStarted` event
    *
    * @returns Promise<TaskResponse> - Response from the consultation conference API
    * @throws Error if the operation fails or if consultation data is invalid
@@ -1504,18 +1506,22 @@ export default class Task extends EventEmitter implements ITask {
    * @example
    * ```typescript
    * try {
-   *   await task.startConsultConference();
+   *   await task.consultConference();
    *   console.log('Conference started successfully');
    * } catch (error) {
    *   console.error('Failed to start conference:', error);
    * }
    * ```
    */
-  public async startConsultConference(): Promise<TaskResponse> {
-    try {
-      // Extract consultation conference data from task data
-      const consultationData = extractConsultConferenceData(this.data);
+  public async consultConference(): Promise<TaskResponse> {
+    // Extract consultation conference data from task data (used in both try and catch)
+    const consultationData = {
+      agentId: this.agentId,
+      destAgentId: this.data.destAgentId,
+      destinationType: this.data.destinationType || 'agent',
+    };
 
+    try {
       LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
         module: TASK_FILE,
         method: METHODS.START_CONSULT_CONFERENCE,
@@ -1564,9 +1570,8 @@ export default class Task extends EventEmitter implements ITask {
 
       // Track failure metrics (following consultTransfer pattern)
       // Build conference data for error tracking using extracted data
-      const failedConsultationData = extractConsultConferenceData(this.data);
       const failedParamsData = buildConsultConferenceParamData(
-        failedConsultationData,
+        consultationData,
         this.data.interactionId
       );
 
@@ -1574,9 +1579,9 @@ export default class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED,
         {
           taskId: this.data.interactionId,
-          destination: failedParamsData.data.to || '',
-          destinationType: failedParamsData.data.destinationType || '',
-          agentId: failedParamsData.data.agentId || this.data.agentId || '',
+          destination: failedParamsData.data.to,
+          destinationType: failedParamsData.data.destinationType,
+          agentId: failedParamsData.data.agentId,
           error: error.toString(),
           ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
@@ -1598,7 +1603,7 @@ export default class Task extends EventEmitter implements ITask {
    * Ends the current conference by removing the agent from the conference call
    *
    * Exits the agent from the conference, leaving the customer and consulted party connected
-   * On success, emits a `task:conference.ended` event
+   * On success, emits a `task:conferenceEnded` event
    *
    * @returns Promise<TaskResponse> - Response from the conference exit API
    * @throws Error if the operation fails or if no active conference exists
@@ -1606,14 +1611,14 @@ export default class Task extends EventEmitter implements ITask {
    * @example
    * ```typescript
    * try {
-   *   await task.endConsultConference();
+   *   await task.endConference();
    *   console.log('Successfully exited conference');
    * } catch (error) {
    *   console.error('Failed to exit conference:', error);
    * }
    * ```
    */
-  public async endConsultConference(): Promise<TaskResponse> {
+  public async endConference(): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Ending consult conference`, {
         module: TASK_FILE,
@@ -1684,7 +1689,7 @@ export default class Task extends EventEmitter implements ITask {
    *
    * Moves the entire conference (including all participants) to a new agent,
    * while the current agent exits and goes to wrapup
-   * On success, the current agent receives `task:conference.ended` event
+   * On success, the current agent receives `task:conferenceEnded` event
    *
    * @returns Promise<TaskResponse> - Response from the conference transfer API
    * @throws Error if the operation fails or if no active conference exists

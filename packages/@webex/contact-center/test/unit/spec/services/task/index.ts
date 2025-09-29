@@ -1592,21 +1592,15 @@ describe('Task', () => {
         .spyOn(Utils, 'getDestinationAgentId')
         .mockReturnValue(taskDataMock.destAgentId);
 
-      // Setup extractConsultConferenceData spy for conference methods
-      jest.spyOn(Utils, 'extractConsultConferenceData').mockReturnValue({
-        agentId: taskDataMock.agentId,
-        destAgentId: taskDataMock.destAgentId,
-        destinationType: taskDataMock.destinationType || 'agent'
-      });
 
       task = new Task(contactMock, webCallingService, taskDataMock, {
         wrapUpProps: { wrapUpReasonList: [] },
         autoWrapEnabled: false,
         autoWrapAfterSeconds: 0
-      });
+      }, taskDataMock.agentId);
     });
 
-    describe('startConsultConference', () => {
+    describe('consultConference', () => {
 
       it('should successfully start conference and emit event', async () => {
         const mockResponse = {
@@ -1616,7 +1610,7 @@ describe('Task', () => {
         contactMock.consultConference.mockResolvedValue(mockResponse);
         
 
-        const result = await task.startConsultConference();
+        const result = await task.consultConference();
 
         expect(contactMock.consultConference).toHaveBeenCalledWith({
           interactionId: taskId,
@@ -1629,12 +1623,12 @@ describe('Task', () => {
         expect(result).toEqual(mockResponse);
         expect(LoggerProxy.info).toHaveBeenCalledWith(`Initiating consult conference to ${taskDataMock.destAgentId}`, {
           module: TASK_FILE,
-          method: 'startConsultConference',
+          method: 'consultConference',
           interactionId: taskId,
         });
         expect(LoggerProxy.log).toHaveBeenCalledWith('Consult conference started successfully', {
           module: TASK_FILE,
-          method: 'startConsultConference',
+          method: 'consultConference',
           interactionId: taskId,
         });
       });
@@ -1648,7 +1642,7 @@ describe('Task', () => {
         };
         contactMock.consultConference.mockResolvedValue(mockResponse);
 
-        const result = await task.startConsultConference();
+        const result = await task.consultConference();
         expect(result).toEqual(mockResponse);
       });
 
@@ -1657,16 +1651,16 @@ describe('Task', () => {
         contactMock.consultConference.mockRejectedValue(mockError);
         generateTaskErrorObjectSpy.mockReturnValue(mockError);
 
-        await expect(task.startConsultConference()).rejects.toThrow('Conference start failed');
+        await expect(task.consultConference()).rejects.toThrow('Conference start failed');
         expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to start consult conference', {
           module: TASK_FILE,
-          method: 'startConsultConference',
+          method: 'consultConference',
           interactionId: taskId,
         });
       });
     });
 
-    describe('endConsultConference', () => {
+    describe('endConference', () => {
       it('should successfully end conference and emit event', async () => {
         const mockResponse = {
           trackingId: 'test-tracking-id-end',
@@ -1674,7 +1668,7 @@ describe('Task', () => {
         };
         contactMock.exitConference.mockResolvedValue(mockResponse);
 
-        const result = await task.endConsultConference();
+        const result = await task.endConference();
 
         expect(contactMock.exitConference).toHaveBeenCalledWith({
           interactionId: taskId,
@@ -1682,12 +1676,12 @@ describe('Task', () => {
         expect(result).toEqual(mockResponse);
         expect(LoggerProxy.info).toHaveBeenCalledWith('Ending consult conference', {
           module: TASK_FILE,
-          method: 'endConsultConference',
+          method: 'endConference',
           interactionId: taskId,
         });
         expect(LoggerProxy.log).toHaveBeenCalledWith('Consult conference ended successfully', {
           module: TASK_FILE,
-          method: 'endConsultConference',
+          method: 'endConference',
           interactionId: taskId,
         });
       });
@@ -1695,7 +1689,7 @@ describe('Task', () => {
       it('should throw error for invalid interaction ID', async () => {
         task.data.interactionId = '';
 
-        await expect(task.endConsultConference()).rejects.toThrow('Error while performing endConsultConference');
+        await expect(task.endConference()).rejects.toThrow('Error while performing endConference');
         expect(contactMock.exitConference).not.toHaveBeenCalled();
       });
 
@@ -1704,10 +1698,10 @@ describe('Task', () => {
         contactMock.exitConference.mockRejectedValue(mockError);
         generateTaskErrorObjectSpy.mockReturnValue(mockError);
 
-        await expect(task.endConsultConference()).rejects.toThrow('Conference end failed');
+        await expect(task.endConference()).rejects.toThrow('Conference end failed');
         expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to end consult conference', {
           module: TASK_FILE,
-          method: 'endConsultConference',
+          method: 'endConference',
           interactionId: taskId,
         });
       });

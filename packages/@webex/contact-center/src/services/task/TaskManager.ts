@@ -28,6 +28,7 @@ export default class TaskManager extends EventEmitter {
   private metricsManager: MetricsManager;
   private static taskManager;
   private wrapupData: WrapupData;
+  private agentId: string;
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
@@ -50,6 +51,19 @@ export default class TaskManager extends EventEmitter {
 
   public setWrapupData(wrapupData: WrapupData) {
     this.wrapupData = wrapupData;
+  }
+
+  public setAgentId(agentId: string) {
+    this.agentId = agentId;
+  }
+
+  /**
+   * Gets the current agent ID
+   * @returns {string} The agent ID set for this task manager instance
+   * @public
+   */
+  public getAgentId(): string {
+    return this.agentId;
   }
 
   private handleIncomingWebCall = (call: ICall) => {
@@ -117,7 +131,8 @@ export default class TaskManager extends EventEmitter {
                     payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp ||
                     false,
                 },
-                this.wrapupData
+                this.wrapupData,
+                this.agentId
               );
               this.taskCollection[payload.data.interactionId] = task;
               // Condition 1: The state is=new i.e it is a incoming task
@@ -153,8 +168,9 @@ export default class TaskManager extends EventEmitter {
                 ...payload.data,
                 isConsulted: false,
               },
-              this.wrapupData
-            ); // Ensure isConsulted prop exists
+              this.wrapupData,
+              this.agentId
+            );
             this.taskCollection[payload.data.interactionId] = task;
             if (
               this.webCallingService.loginOption !== LoginOption.BROWSER ||
@@ -325,56 +341,55 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, task);
             break;
           case CC_EVENTS.AGENT_CONSULT_CONFERENCING:
-            // Conference is being established - update task state but don't emit final event yet
-            task = this.updateTaskData(task, {
-              ...payload.data,
-              isConferencing: true,
-            });
+            // Conference is being established - update task state and emit establishing event
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_CONFERENCE_ESTABLISHING, task);
             break;
           case CC_EVENTS.AGENT_CONSULT_CONFERENCED:
             // Conference started successfully - update task state and emit event
-            task = this.updateTaskData(task, {
-              ...payload.data,
-              isConferencing: true,
-            });
+            task = this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONFERENCE_STARTED, task);
             break;
           case CC_EVENTS.AGENT_CONSULT_CONFERENCE_FAILED:
-            // Conference failed - update task state (no event emission needed as contact method will throw)
+            // Conference failed - update task state and emit failure event
             task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_CONFERENCE_FAILED, task);
+            break;
+          case CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED:
+            // Conference ended - update task state and emit event
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
             break;
           case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
-            // Participant joined conference - update task state with participant information
+            // Participant joined conference - update task state with participant information and emit event
             task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_CONFERENCE_PARTICIPANT_JOINED, task);
             break;
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
             // Conference ended - update task state and emit event
-            task = this.updateTaskData(task, {
-              ...payload.data,
-              isConferencing: false,
-            });
+            task = this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
             break;
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED:
-            // Conference exit failed - update task state (no event emission needed as contact method will throw)
+            // Conference exit failed - update task state and emit failure event
             task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_CONFERENCE_PARTICIPANT_LEFT_FAILED, task);
             break;
           case CC_EVENTS.AGENT_CONSULT_CONFERENCE_END_FAILED:
-            // Conference end failed - update task state with error details
+            // Conference end failed - update task state with error details and emit failure event
             task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_CONFERENCE_END_FAILED, task);
             break;
           case CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED:
-            // Conference was transferred - update task state and set to wrapup
-            task = this.updateTaskData(task, {
-              ...payload.data,
-              isConferencing: false,
-              hasLeft: true,
-              isWrapup: true,
-            });
+            // Conference was transferred - update task state and emit transfer success event
+            // Note: Backend should provide hasLeft and wrapUpRequired status
+            task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_CONFERENCE_TRANSFERRED, task);
             break;
           case CC_EVENTS.AGENT_CONFERENCE_TRANSFER_FAILED:
-            // Conference transfer failed - update task state with error details
+            // Conference transfer failed - update task state with error details and emit failure event
             task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED, task);
             break;
           case CC_EVENTS.CONSULTED_PARTICIPANT_MOVING:
             // Participant is being moved/transferred - update task state with movement info

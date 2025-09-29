@@ -372,6 +372,18 @@ export enum TASK_EVENTS {
   TASK_OFFER_CONTACT = 'task:offerContact',
 
   /**
+   * Triggered when a conference is being established
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_ESTABLISHING, (task: ITask) => {
+   *   console.log('Conference establishing:', task.data.interactionId);
+   *   // Handle conference setup in progress
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_ESTABLISHING = 'task:conferenceEstablishing',
+
+  /**
    * Triggered when a conference is started successfully
    * @example
    * ```typescript
@@ -381,7 +393,19 @@ export enum TASK_EVENTS {
    * });
    * ```
    */
-  TASK_CONFERENCE_STARTED = 'task:conference.started',
+  TASK_CONFERENCE_STARTED = 'task:conferenceStarted',
+
+  /**
+   * Triggered when a conference fails to start
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_FAILED, (task: ITask) => {
+   *   console.log('Conference failed:', task.data.interactionId);
+   *   // Handle conference failure
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_FAILED = 'task:conferenceFailed',
 
   /**
    * Triggered when a conference is ended successfully
@@ -393,7 +417,67 @@ export enum TASK_EVENTS {
    * });
    * ```
    */
-  TASK_CONFERENCE_ENDED = 'task:conference.ended',
+  TASK_CONFERENCE_ENDED = 'task:conferenceEnded',
+
+  /**
+   * Triggered when a participant joins the conference
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_PARTICIPANT_JOINED, (task: ITask) => {
+   *   console.log('Participant joined conference:', task.data.interactionId);
+   *   // Handle participant joining
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_PARTICIPANT_JOINED = 'task:conferenceParticipantJoined',
+
+  /**
+   * Triggered when conference transfer is successful
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_TRANSFERRED, (task: ITask) => {
+   *   console.log('Conference transferred:', task.data.interactionId);
+   *   // Handle successful conference transfer
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_TRANSFERRED = 'task:conferenceTransferred',
+
+  /**
+   * Triggered when conference transfer fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED, (task: ITask) => {
+   *   console.log('Conference transfer failed:', task.data.interactionId);
+   *   // Handle failed conference transfer
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_TRANSFER_FAILED = 'task:conferenceTransferFailed',
+
+  /**
+   * Triggered when ending a conference fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_END_FAILED, (task: ITask) => {
+   *   console.log('Conference end failed:', task.data.interactionId);
+   *   // Handle failed conference end
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_END_FAILED = 'task:conferenceEndFailed',
+
+  /**
+   * Triggered when participant exit from conference fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_PARTICIPANT_LEFT_FAILED, (task: ITask) => {
+   *   console.log('Participant failed to leave conference:', task.data.interactionId);
+   *   // Handle failed participant exit
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_PARTICIPANT_LEFT_FAILED = 'task:conferenceParticipantLeftFailed',
 }
 
 /**
@@ -918,36 +1002,6 @@ export type consultConferencePayloadData = {
   destinationType: string;
   /** Identifier of the destination agent */
   destAgentId: string;
-};
-
-/**
- * Consult with conference payload data
- * @public
- */
-export type ConsultWithConferencePayload = {
-  /** Identifier of the agent initiating consult/conference */
-  agentId?: string;
-  /** Target destination agent ID for the consult/conference */
-  destAgentId: string;
-  /** Type of destination (e.g., 'agent', 'queue', 'DN') */
-  destinationType: string;
-};
-
-/**
- * Consultation data for dial number destinations
- * @public
- */
-export type ConsultDN = {
-  /** Identifier of the destination agent */
-  destAgentId: string;
-  /** Target dial number for the consultation */
-  destinationType: string;
-  /** Type of media for the consultation */
-  mediaType: string;
-  /** Optional tracking identifier */
-  trackingId?: string;
-  /** Whether to hold other participants during consultation (always true) */
-  holdParticipants?: boolean;
 };
 
 /**

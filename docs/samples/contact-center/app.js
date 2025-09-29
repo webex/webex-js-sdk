@@ -543,7 +543,7 @@ async function toggleConference() {
     if (isConferenceActive) {
       // End conference
       console.log('Ending conference...');
-      await currentTask.endConsultConference();
+      await currentTask.endConference();
       console.log('Conference ended successfully');
     } else {
       // Start conference
@@ -558,7 +558,7 @@ async function toggleConference() {
       isConferenceActive = true;
       updateConferenceButtonState();
       
-      await currentTask.startConsultConference();
+      await currentTask.consultConference();
       console.log('Conference started successfully');
     }
   } catch (error) {
@@ -792,7 +792,7 @@ function registerTaskListeners(task) {
   });
 
   // Conference event listeners
-  task.on('task:conference.started', (task) => {
+  task.on('task:conferenceStarted', (task) => {
     updateTaskList();
     showConsultButton();
     console.info('Conference started event received:', {
@@ -809,7 +809,7 @@ function registerTaskListeners(task) {
     }
   });
 
-  task.on('task:conference.ended', (task) => {
+  task.on('task:conferenceEnded', (task) => {
     updateTaskList();
     showConsultButton();
     console.info('Conference ended event received:', {

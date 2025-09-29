@@ -8,10 +8,8 @@ import {
   ConsultTransferPayLoad,
   ConsultConferenceData,
   consultConferencePayloadData,
-  ConsultDN,
   CONSULT_TRANSFER_DESTINATION_TYPE,
   Interaction,
-  ConsultWithConferencePayload,
 } from '../task/types';
 
 /**
@@ -290,56 +288,6 @@ export const deriveConsultTransferDestinationType = (
 };
 
 /**
- * Derives the appropriate destination type for consult conference operations
- * based on task data, following the same logic as consultTransfer.
- *
- * @param taskData - The task data containing destination information
- * @returns The appropriate destination type for conference operations
- * @public
- */
-export const deriveConsultConferenceDestinationType = (taskData?: TaskData): string => {
-  const agentActionType = getAgentActionTypeFromTask(taskData);
-
-  if (agentActionType === 'DIAL_NUMBER') {
-    return isEntryPointOrEpdn(taskData?.destinationType)
-      ? CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT
-      : CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
-  }
-
-  return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
-};
-
-/**
- * Helper function to determine destination type for EP/EPDN based on feature flags.
- * Currently simplified - in full Agent Desktop implementation, this would check:
- * - isWxccPersistCallEnabled()
- * - isWxccMultiPartyConfEnabled()
- * For now, we default to ENTRY_POINT as modern behavior.
- */
-// const getDestAgentTypeForEporEPDN = (): string => {
-//   // TODO: Add feature flag support when available
-//   // if (SERVICE.featureflag.isWxccPersistCallEnabled() || SERVICE.featureflag.isWxccMultiPartyConfEnabled()) {
-//   //   return DESTINATION_TYPE.ENTRY_POINT;
-//   // }
-//   // return DESTINATION_TYPE.EPDN;
-//   return CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
-// };
-
-/**
- * Extracts consultation conference data from task data
- * @param taskData - The task data containing agent and destination information
- * @returns Consultation conference data required for buildConsultConferenceParamData
- * @public
- */
-export const extractConsultConferenceData = (taskData: TaskData): consultConferencePayloadData => {
-  return {
-    agentId: taskData.agentId,
-    destAgentId: taskData.destAgentId,
-    destinationType: taskData.destinationType || 'agent',
-  };
-};
-
-/**
  * Builds consult conference parameter data using EXACT Agent Desktop logic.
  * This matches the Agent Desktop's consultConference implementation exactly.
  *
@@ -349,7 +297,7 @@ export const extractConsultConferenceData = (taskData: TaskData): consultConfere
  * @public
  */
 export const buildConsultConferenceParamData = (
-  dataPassed: consultConferencePayloadData | ConsultWithConferencePayload | ConsultDN,
+  dataPassed: consultConferencePayloadData,
   interactionIdPassed: string
 ): {interactionId: string; data: ConsultConferenceData} => {
   const data: ConsultConferenceData = {

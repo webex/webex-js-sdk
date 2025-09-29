@@ -223,45 +223,11 @@ describe("Routing contacts", () => {
     expect(req).toBeDefined();
   });
 
-  it("consultConference success events", () => {
-    fakeAqm.pendingRequests = {};
-    const consultData = {
-      agentId: "current-agent-id",
-      to: "destination-agent-id",
-      destinationType: "agent"
-    };
-    const req = contact.consultConference({
-      interactionId: "test-interaction-789",
-      data: consultData
-    });
-    
-    expect(req).toBeDefined();
-  });
-
-  it("exitConference success events", () => {
-    fakeAqm.pendingRequests = {};
-    const req = contact.exitConference({
-      interactionId: "test-interaction-999"
-    });
-    
-    expect(req).toBeDefined();
-  });
-
   it("conferenceTransfer", () => {
     fakeAqm.pendingRequests = {};
     const req = contact.conferenceTransfer({
       interactionId: "test-interaction-transfer-123"
     });
-    expect(req).toBeDefined();
-
-  });
-
-  it("conferenceTransfer success events", () => {
-    fakeAqm.pendingRequests = {};
-    const req = contact.conferenceTransfer({
-      interactionId: "test-interaction-transfer-456"
-    });
-
     expect(req).toBeDefined();
   });
 });
