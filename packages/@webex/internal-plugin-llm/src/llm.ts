@@ -131,7 +131,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   public getBinding = (sessionId = LLM_DEFAULT_SESSION): string => {
     const sessionData = this.connections.get(sessionId);
 
-    return sessionData?.binding || '';
+    return sessionData?.binding;
   };
 
   /**
@@ -142,7 +142,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   public getLocusUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
     const sessionData = this.connections.get(sessionId);
 
-    return sessionData?.locusUrl || '';
+    return sessionData?.locusUrl;
   };
 
   /**
@@ -153,7 +153,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   public getDatachannelUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
     const sessionData = this.connections.get(sessionId);
 
-    return sessionData?.datachannelUrl || '';
+    return sessionData?.datachannelUrl;
   };
 
   /**
