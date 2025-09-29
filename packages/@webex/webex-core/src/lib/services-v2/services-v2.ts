@@ -159,7 +159,6 @@ const Services = WebexPlugin.extend({
         serviceGroup = 'postauth';
         break;
     }
-
     // confirm catalog update for group is not in progress.
     if (catalog.status[serviceGroup].collecting) {
       return this.waitForCatalog(serviceGroup);
@@ -344,6 +343,40 @@ const Services = WebexPlugin.extend({
           return Promise.reject(response);
         })
     );
+  },
+  /**
+   * Update cluster id via mercury service update. If the cluster id does not exist,
+   * fetch new catalog.
+   *
+   * @param {ActiveServices} newActiveClusters - The new active clusters to switch to.
+   * @returns {Promsie<void>}
+   * */
+  switchActiveClusterIds(newActiveClusters: ActiveServices): Promise<void> {
+    this.logger.info('services: switching active cluster ids');
+
+    const newActiveClusterIds = Object.values(newActiveClusters);
+    let missingClusterIds = false;
+
+    newActiveClusterIds.forEach((clusterId) => {
+      // if the clusterId does not exist in the catalog, fetch the catalog
+      if (!this._services.find((service) => service.id === clusterId)) {
+        missingClusterIds = true;
+      }
+    });
+
+    if (missingClusterIds) {
+      this.logger.warn(
+        'services: some cluster ids do not exist in the catalog, fetching the catalog'
+      );
+
+      // fetch the catalog
+      return this.updateServices({forceRefresh: true});
+    }
+    // update the active services
+    this._updateActiveServices(newActiveClusters);
+    this.logger.info('services: active cluster ids updated successfully');
+
+    return Promise.resolve();
   },
 
   /**

@@ -75,6 +75,7 @@ describe('plugin-mercury', () => {
       webex.internal.services = {
         convertUrlToPriorityHostUrl: sinon.stub().returns(Promise.resolve('ws://example-2.com')),
         markFailedUrl: sinon.stub().returns(Promise.resolve()),
+        switchActiveClusterIds: sinon.stub(),
       };
       webex.internal.metrics.submitClientMetrics = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
@@ -162,6 +163,13 @@ describe('plugin-mercury', () => {
             },
           },
         };
+        const activeClusterEventEnvelope = {
+          data: {
+            activeClusters: {
+              wdm: 'wdm-cluster-id.com',
+            },
+          },
+        };
 
         assert.isFalse(mercury.connected, 'Mercury is not connected');
         assert.isTrue(mercury.connecting, 'Mercury is connecting');
@@ -176,11 +184,16 @@ describe('plugin-mercury', () => {
             webex.internal.feature.updateFeature,
             envelope.data.featureToggle
           );
+          mercury._emit('event:ActiveClusterStatusEvent', activeClusterEventEnvelope);
+          assert.calledOnceWithExactly(
+            webex.internal.services.switchActiveClusterIds,
+            activeClusterEventEnvelope.data.activeClusters
+          );
           sinon.restore();
         });
       });
 
-      it('connects to Mercury but does not call updateFeature', () => {
+      it('connects to Mercury but does not call updateFeature or switchActiveClusterIds', () => {
         webex.internal.feature.updateFeature = sinon.stub();
         const promise = mercury.connect();
         const envelope = {};
@@ -188,6 +201,8 @@ describe('plugin-mercury', () => {
         return promise.then(() => {
           mercury._emit('event:featureToggle_update', envelope);
           assert.notCalled(webex.internal.feature.updateFeature);
+          mercury._emit('event:ActiveClusterStatusEvent', envelope);
+          assert.notCalled(webex.internal.services.switchActiveClusterIds);
           sinon.restore();
         });
       });

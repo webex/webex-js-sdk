@@ -23,6 +23,7 @@ import {
   formattedServiceHostmapEntryConv,
   formattedServiceHostmapEntryMercury,
   formattedServiceHostmapEntryTest,
+  serviceHostmapV2
 } from '../../../fixtures/host-catalog-v2';
 
 // /* eslint-disable no-underscore-dangle */
@@ -510,6 +511,53 @@ describe('webex-core', () => {
         const lastPriorityUrl = priorityServiceUrl._getPriorityHostUrl();
 
         assert.equal(firstPriorityUrl, lastPriorityUrl);
+      });
+    });
+    describe('#switchActiveClusterIds', () => {
+      let requestStub;
+
+      beforeEach(() => {
+        services._formatReceivedHostmap(serviceHostmapV2);
+      });
+
+      afterEach(() => {
+        requestStub.restore();
+      });
+
+      it('fetches new catalog when id does not exist', () => {
+        requestStub = sinon
+          .stub(webex.internal.newMetrics.callDiagnosticLatencies, 'measureLatency')
+          .returns(
+            Promise.resolve({
+              body: {
+                activeServices: {
+                  ...serviceHostmapV2.activeServices,
+                  conversation: 'urn:TEAM:me-central-1_asdf:conversation',
+                },
+                services: [
+                  ...serviceHostmapV2.services,
+                  {
+                    id: 'urn:TEAM:me-central-1_asdf:conversation',
+                    serviceName: 'conversation',
+                    serviceUrls: [{baseUrl: 'baseurl.com', priority: 1}],
+                  },
+                ],
+              },
+            })
+          );
+
+        services
+          .switchActiveClusterIds({
+            conversation: 'urn:TEAM:me-central-1_asdf:conversation',
+          })
+          .then(() => {
+            assert.equal(
+              !!services._services.find(
+                (service) => service.id === 'urn:TEAM:me-central-1_asdf:conversation'
+              ),
+              true
+            );
+          });
       });
     });
 
