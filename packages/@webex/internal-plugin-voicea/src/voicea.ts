@@ -279,7 +279,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public setSpokenLanguage = (
     languageCode: string,
-    languageAssignment = LANGUAGE_ASSIGNMENT.AUTO
+    languageAssignment = LANGUAGE_ASSIGNMENT.DEFAULT
   ): Promise<void> =>
     // @ts-ignore
     this.request({

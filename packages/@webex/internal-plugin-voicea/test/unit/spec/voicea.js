@@ -291,7 +291,7 @@ describe('plugin-voicea', () => {
     describe('#setSpokenLanguage', () => {
       it('sets spoken language', async () => {
         const languageCode = 'en';
-        let languageAssignment = 'AUTO';
+        let languageAssignment = 'DEFAULT';
         const triggerSpy = sinon.spy();
 
         voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
