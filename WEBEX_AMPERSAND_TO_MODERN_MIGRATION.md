@@ -40,6 +40,7 @@ Each plugin would extend from base Ampersand classes and use the `.extend()` pat
 4. **Type Safety**: No built-in TypeScript support
 5. **Modern Tooling**: Limited compatibility with modern JavaScript tooling
 6. **Developer Experience**: Non-standard patterns made onboarding difficult
+7. move away from babel to esbuild
 
 ## Migration Journey
 

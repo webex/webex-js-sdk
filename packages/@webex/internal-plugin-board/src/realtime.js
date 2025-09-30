@@ -18,11 +18,10 @@ export default class RealtimeService extends WebexPlugin {
 
   constructor(attrs, options) {
     super(attrs, options);
-  }
 
-  collections = {
-    realtimeChannels: RealtimeChannelCollection,
-  };
+    // Initialize collections in constructor instead of using legacy collections property
+    this.realtimeChannels = new RealtimeChannelCollection([], {parent: this});
+  }
 
   /**
    * Sends the message via the socket. Assumes that the message is already properly formatted
