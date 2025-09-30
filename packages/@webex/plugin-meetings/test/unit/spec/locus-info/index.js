@@ -772,7 +772,7 @@ describe('plugin-meetings', () => {
           },
         };
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateParticipants({});
+        locusInfo.updateParticipants({}, []);
 
         // if this assertion fails, double-check the attributes used in
         // the updateParticipants function in locus-info/index.js
@@ -790,6 +790,7 @@ describe('plugin-meetings', () => {
             selfId: '2',
             hostId: '3',
             isReplace: undefined,
+            removedParticipantIds: [],
           }
         );
         // note: in a real use case, recordingId, selfId, and hostId would all be the same
@@ -814,7 +815,7 @@ describe('plugin-meetings', () => {
         };
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateParticipants({}, true);
+        locusInfo.updateParticipants({}, [], true);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -830,6 +831,7 @@ describe('plugin-meetings', () => {
             selfId: '2',
             hostId: '3',
             isReplace: true,
+            removedParticipantIds: [],
           }
         );
       });
@@ -847,7 +849,7 @@ describe('plugin-meetings', () => {
         ];
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateParticipants(failureParticipant);
+        locusInfo.updateParticipants(failureParticipant, []);
         assert.calledWith(
           locusInfo.emitScoped,
           {
@@ -2050,7 +2052,7 @@ describe('plugin-meetings', () => {
 
         fakeLocus = {
           meeting: true,
-          participants: true,
+          participants: [],
           url: 'newLocusUrl',
           syncUrl: 'newSyncUrl',
         };
@@ -2525,7 +2527,7 @@ describe('plugin-meetings', () => {
       });
 
       it('onDeltaLocus handle delta data', () => {
-        fakeLocus.participants = {};
+        fakeLocus.participants = [];
         const fakeBreakout = {
           sessionId: 'sessionId',
           groupId: 'groupId',
@@ -2542,11 +2544,11 @@ describe('plugin-meetings', () => {
         };
         locusInfo.updateParticipants = sinon.stub();
         locusInfo.onDeltaLocus(fakeLocus);
-        assert.calledWith(locusInfo.updateParticipants, {}, false);
+        assert.calledWith(locusInfo.updateParticipants, [], undefined, false);
 
         fakeLocus.controls.breakout.sessionId = 'sessionId2';
         locusInfo.onDeltaLocus(fakeLocus);
-        assert.calledWith(locusInfo.updateParticipants, {}, true);
+        assert.calledWith(locusInfo.updateParticipants, [], undefined, true);
       });
 
       it('onDeltaLocus merges delta participants with existing participants', () => {
@@ -2563,7 +2565,7 @@ describe('plugin-meetings', () => {
           existingParticipants,
           FAKE_DELTA_PARTICIPANTS
         );
-        assert.calledWith(locusInfo.updateParticipants, FAKE_DELTA_PARTICIPANTS, false);
+        assert.calledWith(locusInfo.updateParticipants, FAKE_DELTA_PARTICIPANTS, undefined, false);
       });
 
       [true, false].forEach((isDelta) =>
@@ -3074,6 +3076,7 @@ describe('plugin-meetings', () => {
               id: 'test person id',
             },
           },
+          participants: [],
         });
 
         updateLocusInfoStub.resetHistory();

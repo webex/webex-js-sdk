@@ -294,7 +294,7 @@ export default class LocusInfo extends EventsScope {
     this.updateLocusCache(locus);
     // above section only updates the locusInfo object
     // The below section makes sure it updates the locusInfo as well as updates the meeting object
-    this.updateParticipants(locus.participants);
+    this.updateParticipants(locus.participants, []);
     // For 1:1 space meeting the conversation Url does not exist in locus.conversation
     this.updateConversationUrl(locus.conversationUrl, locus.info);
     this.updateControls(locus.controls, locus.self);
@@ -334,6 +334,8 @@ export default class LocusInfo extends EventsScope {
     const {eventType} = data;
     const locus = this.getTheLocusToUpdate(data.locus);
     LoggerProxy.logger.info(`Locus-info:index#parse --> received locus data: ${eventType}`);
+
+    locus.jsSdkMeta = {removedParticipantIds: []};
 
     switch (eventType) {
       case LOCUSEVENT.PARTICIPANT_JOIN:
@@ -400,7 +402,11 @@ export default class LocusInfo extends EventsScope {
     this.participants = locus.participants;
     const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.updateLocusInfo(locus);
-    this.updateParticipants(locus.participants, isReplaceMembers);
+    this.updateParticipants(
+      locus.participants,
+      locus.jsSdkMeta?.removedParticipantIds,
+      isReplaceMembers
+    );
     this.isMeetingActive();
     this.handleOneOnOneEvent(eventType);
     this.updateEmbeddedApps(locus.embeddedApps);
@@ -462,7 +468,11 @@ export default class LocusInfo extends EventsScope {
     const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.mergeParticipants(this.participants, locus.participants);
     this.updateLocusInfo(locus);
-    this.updateParticipants(locus.participants, isReplaceMembers);
+    this.updateParticipants(
+      locus.participants,
+      locus.jsSdkMeta?.removedParticipantIds,
+      isReplaceMembers
+    );
     this.isMeetingActive();
   }
 
@@ -753,11 +763,12 @@ export default class LocusInfo extends EventsScope {
   /**
    * update meeting's members
    * @param {Object} participants new participants object
+   * @param {Array} removedParticipantIds list of removed participants
    * @param {Boolean} isReplace is replace the whole members
    * @returns {Array} updatedParticipants
    * @memberof LocusInfo
    */
-  updateParticipants(participants: object, isReplace?: boolean) {
+  updateParticipants(participants: object, removedParticipantIds?: string[], isReplace?: boolean) {
     this.emitScoped(
       {
         file: 'locus-info',
@@ -766,6 +777,7 @@ export default class LocusInfo extends EventsScope {
       EVENTS.LOCUS_INFO_UPDATE_PARTICIPANTS,
       {
         participants,
+        removedParticipantIds,
         recordingId: this.parsedLocus.controls && this.parsedLocus.controls.record?.modifiedBy,
         selfIdentity: this.parsedLocus.self && this.parsedLocus.self.selfIdentity,
         selfId: this.parsedLocus.self && this.parsedLocus.self.selfId,
