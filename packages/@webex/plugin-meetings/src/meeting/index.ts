@@ -9920,4 +9920,20 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return this.meetingRequest.synchronizeStage(this.locusUrl, videoLayout);
   }
+
+  /**
+   * Notifies the host with the given meeting UUID and display names.
+   *
+   * @param {string} meetingUuid - The UUID of the meeting.
+   * @param {string[]} displayName - An array of display names to notify the host with.
+   * @returns {Promise<any>} The result of the notifyHost request.
+   */
+  notifyHost(meetingUuid: string, displayName: string[]) {
+    return this.meetingRequest.notifyHost(
+      this.meetingInfo.siteFullUrl,
+      this.locusId,
+      meetingUuid,
+      displayName
+    );
+  }
 }
