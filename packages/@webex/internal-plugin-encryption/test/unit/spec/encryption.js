@@ -114,17 +114,13 @@ describe('internal-plugin-encryption', () => {
         joseDecryptStub = sinon.stub(require('node-jose').JWE, 'createDecrypt').returns(mockDecryptor);
       });
 
-      it('should call getKey with correct parameters', async () => {
+      it('should call getKey and jose.JWE.createDecrypt with correct parameters', async () => {
         await webex.internal.encryption.decryptBinaryData(testKey, testJWE, testOptions);
         
         assert.equal(getKeyStub.calledOnce, true);
         assert.equal(getKeyStub.args[0][0], testKey);
         assert.deepEqual(getKeyStub.args[0][1], testOptions);
-      });
 
-      it('should call jose.JWE.createDecrypt with correct jwk', async () => {
-        await webex.internal.encryption.decryptBinaryData(testKey, testJWE, testOptions);
-        
         assert.equal(joseDecryptStub.calledOnce, true);
         assert.equal(joseDecryptStub.args[0][0], mockJwk);
       });

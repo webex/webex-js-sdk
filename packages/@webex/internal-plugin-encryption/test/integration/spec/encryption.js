@@ -2,8 +2,8 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import '@webex/internal-plugin-encryption';
 import '@webex/internal-plugin-metrics';
+import '@webex/internal-plugin-encryption';
 
 import {isBuffer} from '@webex/common';
 import {assert, expect} from '@webex/test-helper-chai';
