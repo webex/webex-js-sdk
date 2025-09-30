@@ -18,7 +18,6 @@ import {
   MEETING_REMOVED_REASON,
   CALL_REMOVED_REASON,
   RECORDING_STATE,
-  BREAKOUTS,
   Enum,
 } from '../constants';
 
@@ -631,9 +630,9 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * Handles HTTP response from Locus API call when hash tree update.
+   * Handles HTTP response from Locus API call.
    * @param {Meeting} meeting meeting object
-   * @param {LocusApiResponseBody} responseBody body of the http reponse from Locus API call
+   * @param {LocusApiResponseBody} responseBody body of the http response from Locus API call
    * @returns {void}
    */
   handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
@@ -871,7 +870,10 @@ export default class LocusInfo extends EventsScope {
     this.scheduledMeeting = locus.meeting || null;
     this.participants = locus.participants;
     this.participants?.forEach((participant) => {
-      this.hashTreeObjectId2ParticipantId.set(participant.htMeta.elementId.id, participant.id);
+      // participant.htMeta is set only for hash tree based locus
+      if (participant.htMeta?.elementId.id) {
+        this.hashTreeObjectId2ParticipantId.set(participant.htMeta.elementId.id, participant.id);
+      }
     });
     const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.updateLocusInfo(locus);
@@ -893,7 +895,6 @@ export default class LocusInfo extends EventsScope {
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  // eslint-disable-next-line @typescript-eslint/no-shadow
   handleOneOnOneEvent(eventType: string) {
     if (
       this.parsedLocus.fullState.type === _CALL_ ||
@@ -2284,7 +2285,6 @@ export default class LocusInfo extends EventsScope {
    * @returns {Array} merged participants
    * @memberof LocusInfo
    */
-  // eslint-disable-next-line class-methods-use-this
   mergeParticipants(participants, sourceParticipants) {
     if (!sourceParticipants || !sourceParticipants.length) return participants;
     if (!participants || !participants.length) {
