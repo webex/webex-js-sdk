@@ -1,7 +1,9 @@
 // This file contains a workaround for a known issue in Windows Chromium-based browsers
+// See: https://issues.chromium.org/issues/332933530
 // There is a rare condition where WebRTC doesn't work on the first try due to ICE gathering issues.
 // This function attempts to "warm up" the ICE gathering process by creating a pair of peer connections
 // and forcing ICE candidate gathering and exchange before the actual call setup.
+// We need to try establishing the connection through the srflx candidates since the host candidate won't work
 // This is intended to be called once at the start of the calling SDK to reduce the likelihood of ICE issues later.
 function waitForIceComplete(pc: RTCPeerConnection, timeoutMs: number) {
   return new Promise((resolve) => {
@@ -61,7 +63,6 @@ export default async function windowsChromiumIceWarmup({
   await pc2.setRemoteDescription(offer);
   pc2.onicecandidate = (e) => {
     if (e.candidate && e.candidate.type !== 'host') {
-      pc1.addIceCandidate(e.candidate).catch(console.error);
       candidates.pc2.push(e.candidate);
     }
   };
@@ -74,12 +75,10 @@ export default async function windowsChromiumIceWarmup({
 
   // Add ice candidates that were gathered
   await Promise.all([
-    ...candidates.pc1.map((candidate) => pc2.addIceCandidate(candidate)),
-    ...candidates.pc2.map((candidate) => pc1.addIceCandidate(candidate)),
+    ...candidates.pc1.map((candidate) => pc2.addIceCandidate(candidate).catch(console.error)),
+    ...candidates.pc2.map((candidate) => pc1.addIceCandidate(candidate).catch(console.error)),
   ]);
 
   pc1.close();
   pc2.close();
-
-  return {ok: true};
 }
