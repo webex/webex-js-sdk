@@ -88,7 +88,6 @@ import {
   TRANSPORT,
   TYPE,
   URL_ENDPOINT,
-  UTILS_FILE,
 } from '../CallingClient/constants';
 import {
   DeleteCallHistoryRecordsResponse,
@@ -134,10 +133,12 @@ import {ContactResponse} from '../Contacts/types';
 import {LineErrorEmitterCallback} from '../CallingClient/line/types';
 import {LineError, createLineError} from '../Errors/catalog/LineError';
 
+const FILE_NAME = 'src/common/Utils.ts';
+
 export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl: string) {
   const logContext = {
-    file: UTILS_FILE,
-    method: filterMobiusUris.name,
+    file: FILE_NAME,
+    method: 'filterMobiusUris',
   };
 
   const urisArrayPrimary = [];
@@ -891,8 +892,8 @@ export async function serviceErrorCodeHandler(
 export function parseMediaQualityStatistics(stats: RTCStatsReport): CallRtpStats {
   if (!stats || navigator.userAgent.indexOf('Firefox') !== -1) {
     log.info('RTCStatsReport is null, adding dummy stats', {
-      file: UTILS_FILE,
-      method: parseMediaQualityStatistics.name,
+      file: FILE_NAME,
+      method: 'parseMediaQualityStatistics',
     });
 
     return DUMMY_METRICS as unknown as CallRtpStats;
@@ -1077,13 +1078,13 @@ export function parseMediaQualityStatistics(stats: RTCStatsReport): CallRtpStats
     byeStats[RTP_RX_STAT] = rxStat;
     byeStats[RTP_TX_STAT] = txStat;
 
-    log.log(JSON.stringify(byeStats), {file: UTILS_FILE, method: parseMediaQualityStatistics.name});
+    log.log(JSON.stringify(byeStats), {file: FILE_NAME, method: 'parseMediaQualityStatistics'});
 
     return byeStats as CallRtpStats;
   } catch (err: unknown) {
     log.warn(`Caught error while parsing RTP stats, ${err}`, {
-      file: UTILS_FILE,
-      method: parseMediaQualityStatistics.name,
+      file: FILE_NAME,
+      method: 'parseMediaQualityStatistics',
     });
 
     return DUMMY_METRICS as unknown as CallRtpStats;
@@ -1153,6 +1154,12 @@ export async function getXsiActionEndpoint(
           uri: `${webex.internal.services._serviceUrls.hydra}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
           method: HTTP_METHODS.GET,
         });
+
+        log.log(`Response code: ${userIdResponse.statusCode}`, {
+          file: FILE_NAME,
+          method: 'getXsiActionEndpoint',
+        });
+
         const response = userIdResponse.body as WebexRequestPayload;
 
         const xsiEndpoint = response[ITEMS][0][XSI_ACTION_ENDPOINT];
@@ -1165,6 +1172,12 @@ export async function getXsiActionEndpoint(
           uri: `${webex.internal.services._serviceUrls.wdm}/${DEVICES}`,
           method: HTTP_METHODS.GET,
         });
+
+        log.log(`Response code: ${bwTokenResponse.statusCode}`, {
+          file: FILE_NAME,
+          method: 'getXsiActionEndpoint',
+        });
+
         const response = bwTokenResponse.body as WebexRequestPayload;
 
         let xsiEndpoint = response[DEVICES][0][SETTINGS][BW_XSI_URL];
@@ -1249,7 +1262,7 @@ export function getSortedVoicemailList(
  */
 export async function scimQuery(filter: string) {
   log.info(`Starting resolution for filter:- ${filter}`, {
-    file: UTILS_FILE,
+    file: FILE_NAME,
     method: 'scimQuery',
   });
   const sdkConnector = SDKConnector;
@@ -1261,14 +1274,21 @@ export async function scimQuery(filter: string) {
   const scimUrl = `${webexHost}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
   const query = scimUrl + encodeURIComponent(filter);
 
-  return <WebexRequestPayload>(<unknown>webex.request({
+  const response = await (<WebexRequestPayload>(<unknown>webex.request({
     uri: query,
     method: HTTP_METHODS.GET,
     headers: {
       [CISCO_DEVICE_URL]: webex.internal.device.url,
       [SPARK_USER_AGENT]: CALLING_USER_AGENT,
     },
-  }));
+  })));
+
+  log.log(`Response code: ${response.statusCode}`, {
+    file: FILE_NAME,
+    method: 'scimQuery',
+  });
+
+  return response;
 }
 
 /**
@@ -1286,14 +1306,14 @@ export async function resolveCallerIdDisplay(filter: string) {
     resolution = response.body as SCIMListResponse;
 
     log.info(`Number of records found for this user :- ${resolution.totalResults}`, {
-      file: UTILS_FILE,
+      file: FILE_NAME,
       method: 'resolveCallerIdDisplay',
     });
   } catch (err) {
     const res = err as WebexRequestPayload;
 
     log.warn(`Error response: - ${res.statusCode}`, {
-      file: UTILS_FILE,
+      file: FILE_NAME,
       method: 'resolveCallerIdDisplay',
     });
   }
@@ -1316,7 +1336,7 @@ export async function resolveCallerIdDisplay(filter: string) {
     } else if (scimResource.phoneNumbers && scimResource.phoneNumbers.length > 0) {
       /* When no primary number exists OR PA-ID/From failed to populate, we take the first number */
       log.info('Failure to resolve caller information. Setting number as caller ID', {
-        file: UTILS_FILE,
+        file: FILE_NAME,
         method: 'resolveCallerIdDisplay',
       });
       displayResult.num = scimResource.phoneNumbers[0].value;
@@ -1353,7 +1373,7 @@ export async function resolveCallerIdByName(name: string) {
 
   await searchDirectory(name).then((results) => {
     log.info(`DS Result: ${results}`, {
-      file: UTILS_FILE,
+      file: FILE_NAME,
       method: 'resolveCallerIdByName',
     });
     if (results && results.items && results.items.length > 0) {
@@ -1378,7 +1398,7 @@ export async function resolveCallerIdByName(name: string) {
       log.info(
         `Extracted details:- name: ${displayResult.name} , number: ${displayResult.num}, photo: ${displayResult.avatarSrc}, id: ${displayResult.id}`,
         {
-          file: UTILS_FILE,
+          file: FILE_NAME,
           method: 'resolveCallerIdByName',
         }
       );
@@ -1547,8 +1567,8 @@ export function modifySdpForIPv4(sdp: string): string {
 
     if (hasIPv6CLine) {
       log.info('Modifying SDP for IPv4 compatibility', {
-        file: UTILS_FILE,
-        method: modifySdpForIPv4.name,
+        file: FILE_NAME,
+        method: 'modifySdpForIPv4',
       });
 
       // Extract an existing IPv4 candidate's IP, if available
@@ -1595,8 +1615,8 @@ export function modifySdpForIPv4(sdp: string): string {
     return sdp;
   } catch (error) {
     log.warn(`Error modifying SDP for IPv4 compatibility: ${error}`, {
-      file: UTILS_FILE,
-      method: modifySdpForIPv4.name,
+      file: FILE_NAME,
+      method: 'modifySdpForIPv4',
     });
 
     return sdp; // Return original SDP in case of an error
@@ -1623,7 +1643,7 @@ export async function uploadLogs(
       {type: 'diff'} // this is to take the diff logs from previous upload
     );
     log.info(`Logs uploaded successfully with feedbackId: ${feedbackId}`, {
-      file: UTILS_FILE,
+      file: FILE_NAME,
       method: 'uploadLogs',
     });
 
@@ -1652,7 +1672,7 @@ export async function uploadLogs(
   } catch (error) {
     const errorLog = new Error(`Failed to upload Logs ${error}`) as ExtendedError;
     log.error(errorLog, {
-      file: UTILS_FILE,
+      file: FILE_NAME,
       method: 'uploadLogs',
     });
 

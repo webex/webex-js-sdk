@@ -1,6 +1,6 @@
 import {CallError, CallingClientError} from '../Errors';
 import {METRIC_FILE, VERSION} from '../CallingClient/constants';
-import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../common/types';
+import {CallId, CorrelationId, IDeviceInfo, MobiusServers, ServiceIndicator} from '../common/types';
 import {WebexSDK} from '../SDKConnector/types';
 import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT, SERVER_TYPE} from './types';
 import {LineError} from '../Errors/catalog/LineError';
@@ -90,6 +90,104 @@ class MetricManager implements IMetricManager {
    */
   public setDeviceInfo(deviceInfo: IDeviceInfo) {
     this.deviceInfo = deviceInfo;
+  }
+
+  /**
+   * @param name - Name of the metric being submitted.
+   * @param metricAction - Type of action sent in the metric.
+   * @param type - Type of metric.
+   * @param region - Region string.
+   * @param trackingId - Tracking ID string.
+   */
+  public submitRegionInfoMetric(
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    clientRegion: string,
+    countryCode: string,
+    trackingId?: string
+  ) {
+    const data = {
+      tags: {
+        action: metricAction,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: ServiceIndicator.CALLING,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        client_region: clientRegion,
+        country_code: countryCode,
+        tracking_id: trackingId,
+      },
+      type,
+    };
+
+    this.webex.internal.metrics.submitClientMetrics(name, data);
+  }
+
+  /**
+   * @param name - Name of the metric being submitted.
+   * @param metricAction - Type of action sent in the metric.
+   * @param type - Type of metric.
+   * @param mobiusServers - Array of Mobius server objects.
+   */
+  public submitMobiusServersMetric(
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    mobiusServers: MobiusServers
+  ) {
+    const data = {
+      tags: {
+        action: metricAction,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: ServiceIndicator.CALLING,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        primary_mobius_servers_region: mobiusServers.primary.region,
+        primary_mobius_servers_uris: mobiusServers.primary.uris.join(','),
+        backup_mobius_servers_region: mobiusServers.backup.region,
+        backup_mobius_servers_uris: mobiusServers.backup.uris.join(','),
+      },
+      type,
+    };
+
+    this.webex.internal.metrics.submitClientMetrics(name, data);
+  }
+
+  /**
+   * @param name - Name of the metric being submitted.
+   * @param metricAction - Type of action sent in the metric.
+   * @param type - Type of metric.
+   * @param mobiusHost - Moius host name string.
+   */
+  public submitMobiusClusterAttemptMetric(
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    mobiusHost: string
+  ) {
+    const data = {
+      tags: {
+        action: metricAction,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: this.serviceIndicator,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        mobius_host: mobiusHost,
+      },
+      type,
+    };
+
+    this.webex.internal.metrics.submitClientMetrics(name, data);
   }
 
   /**

@@ -186,6 +186,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
           headers: {...this.authHeaders},
         });
 
+        log.log(`Response code: ${response.statusCode}`, loggerContext);
+
         const voicemailListResponse = response.body as VoicemailList;
 
         if (

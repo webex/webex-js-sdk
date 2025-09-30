@@ -200,6 +200,7 @@ export const METHODS = {
   GET_CALL_RTP_STATS: 'getCallRtpStats',
   REGISTER: 'register',
   DEREGISTER: 'deregister',
+  DELETE_REGISTRATION: 'deleteRegistration',
   NORMALIZE_LINE: 'normalizeLine',
   LINE_EMITTER: 'lineEmitter',
   GET_LOGGING_LEVEL: 'getLoggingLevel',

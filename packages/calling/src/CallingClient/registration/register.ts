@@ -166,8 +166,10 @@ export class Registration implements IRegistration {
     } catch (error) {
       log.warn(`Delete failed with Mobius ${error}`, {
         file: REGISTRATION_FILE,
-        method: METHODS.DEREGISTER,
+        method: METHODS.DELETE_REGISTRATION,
       });
+
+      await uploadLogs();
     }
 
     this.setStatus(RegistrationStatus.INACTIVE);
@@ -759,6 +761,9 @@ export class Registration implements IRegistration {
         }
         if (abort) {
           this.setStatus(RegistrationStatus.INACTIVE);
+          // eslint-disable-next-line no-await-in-loop
+          await uploadLogs();
+
           break;
         }
       }
@@ -838,6 +843,7 @@ export class Registration implements IRegistration {
                 this.clearKeepaliveTimer();
                 this.clearFailbackTimer();
                 this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+                await uploadLogs();
 
                 if (!abort) {
                   /* In case of non-final error, re-attempt registration */
@@ -884,6 +890,8 @@ export class Registration implements IRegistration {
         file: REGISTRATION_FILE,
         method: METHODS.DEREGISTER,
       });
+
+      await uploadLogs();
     }
 
     this.clearKeepaliveTimer();

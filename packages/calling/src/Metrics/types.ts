@@ -1,6 +1,6 @@
 import {LineError} from '../Errors/catalog/LineError';
 import {CallError, CallingClientError} from '../Errors';
-import {CallId, CorrelationId, IDeviceInfo} from '../common/types';
+import {CallId, CorrelationId, IDeviceInfo, MobiusServers} from '../common/types';
 
 export enum METRIC_TYPE {
   OPERATIONAL = 'operational',
@@ -20,6 +20,14 @@ export enum METRIC_EVENT {
   VOICEMAIL_ERROR = 'web-calling-sdk-voicemail-error',
   UPLOAD_LOGS_SUCCESS = 'web-calling-sdk-upload-logs-success',
   UPLOAD_LOGS_FAILED = 'web-calling-sdk-upload-logs-failed',
+  MOBIUS_CLUSTER_ATTEMPT = 'web-calling-sdk-mobius-cluster-attempt',
+  REGION_INFO = 'web-calling-sdk-region-info',
+  MOBIUS_SERVERS = 'web-calling-sdk-mobius-servers',
+}
+
+export enum MOBIUS_SERVER_ACTION {
+  GET_CLIENT_REGION_INFO = 'get-client-region-info',
+  GET_MOBIUS_SERVERS = 'get-mobius-servers',
 }
 
 export enum REG_ACTION {
@@ -107,5 +115,28 @@ export interface IMetricManager {
     stack?: string,
     callId?: string,
     broadworksCorrelationInfo?: string
+  ) => void;
+
+  submitRegionInfoMetric: (
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    clientRegion: string,
+    countryCode: string,
+    trackingId?: string
+  ) => void;
+
+  submitMobiusServersMetric: (
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    mobiusServers: MobiusServers
+  ) => void;
+
+  submitMobiusClusterAttemptMetric: (
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    mobiusHost: string
   ) => void;
 }

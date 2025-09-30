@@ -304,6 +304,9 @@ export class UcmBackendConnector implements IUcmBackendConnector {
         mercuryHostname: mercuryApi,
       },
     });
+
+    log.log(`Response code: ${response.statusCode}`, loggerContext);
+
     const contentInfo = response?.body as UcmVMContentResponse;
     const respHeaders = response.headers;
     const statusCode = response.statusCode;
