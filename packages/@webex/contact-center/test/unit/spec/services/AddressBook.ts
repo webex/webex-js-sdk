@@ -118,8 +118,25 @@ describe('AddressBook', () => {
         },
         ['behavioral', 'operational']
       );
-      expect(LoggerProxy.info).toHaveBeenCalled();
-      expect(LoggerProxy.log).toHaveBeenCalled();
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching address book entries', {
+        module: 'AddressBook',
+        method: 'getEntries',
+        data: expect.objectContaining({
+          orgId: 'test-org-id',
+          bookId: 'test-address-book-id',
+          page: 0,  
+          pageSize: 100,
+          isSearchRequest: false,
+        }),
+      });
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Making API request to fetch address book entries', {
+        module: 'AddressBook',
+        method: 'getEntries',
+        data: {
+          resource: '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=0&pageSize=100',
+          service: 'wcc-api-gateway',
+        },
+      });
     });
 
     it('should fetch entries with custom parameters', async () => {
@@ -163,6 +180,12 @@ describe('AddressBook', () => {
 
       await expect(addressBookAPI.getEntries()).rejects.toThrow('Internal Server Error');
 
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        service: 'wcc-api-gateway',
+        resource: '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=0&pageSize=100',
+        method: HTTP_METHODS.GET,
+      });
+
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_FAILED,
         expect.objectContaining({
@@ -175,10 +198,20 @@ describe('AddressBook', () => {
         }),
         ['behavioral', 'operational']
       );
-      expect(LoggerProxy.error).toHaveBeenCalled();
+      expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to fetch address book entries', {
+        module: 'AddressBook',
+        method: 'getEntries',
+        data: expect.objectContaining({
+          orgId: 'test-org-id',
+          bookId: 'test-address-book-id',
+          error: 'Internal Server Error',
+          isSearchRequest: false,
+          page: 0,
+          pageSize: 100,
+        }),
+        error: expect.any(Error),
+      }); 
     });
-
-    
 
     it('should not track metrics for subsequent pages in simple pagination', async () => {
       const mockResponsePage2: IHttpResponse = {
@@ -286,7 +319,14 @@ describe('AddressBook', () => {
         resource: '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=1&pageSize=100',
         method: HTTP_METHODS.GET,
       });
-      expect(LoggerProxy.log).toHaveBeenCalled();
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Making API request to fetch address book entries', {
+        module: 'AddressBook',
+        method: 'getEntries',
+        data: {
+          resource: '/organization/test-org-id/v2/address-book/test-address-book-id/entry?page=1&pageSize=100',
+          service: 'wcc-api-gateway',
+        },
+      });
     });
   });
 });

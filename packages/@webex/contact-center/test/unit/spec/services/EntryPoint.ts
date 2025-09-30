@@ -167,6 +167,12 @@ describe('EntryPoint', () => {
 
       await expect(entryPointAPI.getEntryPoints()).rejects.toThrow('Internal Server Error');
 
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        service: 'wcc-api-gateway',
+        resource: '/organization/test-org-id/v2/entry-point?page=0&pageSize=100&sortOrder=asc',
+        method: HTTP_METHODS.GET,
+      });
+
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_FAILED,
         {
@@ -244,7 +250,10 @@ describe('EntryPoint', () => {
         resource: '/organization/test-org-id/v2/entry-point?page=1&pageSize=100&sortOrder=asc',
         method: HTTP_METHODS.GET,
       });
-      expect(LoggerProxy.log).toHaveBeenCalled();
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        `Making API request to fetch entry points - resource: /organization/test-org-id/v2/entry-point?page=1&pageSize=100&sortOrder=asc, service: wcc-api-gateway`,
+        {module: 'EntryPoint', method: 'getEntryPoints'}
+      );
     });
   });
 });

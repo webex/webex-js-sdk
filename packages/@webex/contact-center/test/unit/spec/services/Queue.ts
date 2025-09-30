@@ -220,6 +220,12 @@ describe('Queue', () => {
 
       await expect(queueAPI.getQueues()).rejects.toThrow('Internal Server Error');
 
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        service: 'wcc-api-gateway',
+        resource: '/organization/test-org-id/v2/contact-service-queue?page=0&pageSize=100',
+        method: HTTP_METHODS.GET,
+      });
+
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
         METRIC_EVENT_NAMES.QUEUE_FETCH_FAILED,
         {
@@ -231,7 +237,18 @@ describe('Queue', () => {
         },
         ['behavioral', 'operational']
       );
-      expect(LoggerProxy.error).toHaveBeenCalled();
+      expect(LoggerProxy.error).toHaveBeenCalledWith('Failed to fetch contact service queues', {
+        module: 'Queue',
+        method: 'getQueues',
+        data: expect.objectContaining({
+          orgId: 'test-org-id',
+          error: 'Internal Server Error',
+          isSearchRequest: false,
+          page: 0,
+          pageSize: 100,
+        }),
+        error: expect.any(Error),
+      });
     });
 
 
@@ -293,7 +310,14 @@ describe('Queue', () => {
         resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=100',
         method: HTTP_METHODS.GET,
       });
-      expect(LoggerProxy.log).toHaveBeenCalled();
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Making API request to fetch contact service queues', {
+        module: 'Queue',
+        method: 'getQueues',
+        data: expect.objectContaining({
+          resource: '/organization/test-org-id/v2/contact-service-queue?page=1&pageSize=100',
+          service: 'wcc-api-gateway',
+        }),
+      });
     });
   });
 });
