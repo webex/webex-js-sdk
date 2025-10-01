@@ -270,4 +270,20 @@ export const endPointMap = {
    */
   addressBookEntries: (orgId: string, addressBookId: string, queryParams: string) =>
     `/organization/${orgId}/v2/address-book/${addressBookId}/entry?${queryParams}`,
+
+  /**
+   * Gets the endpoint for outdial ANI entries with custom query parameters.
+   * @param orgId - Organization ID.
+   * @param outdialANI - Outdial ANI ID.
+   * @param queryParams - Query parameters string.
+   * @returns The endpoint URL string.
+   * @public
+   * @example
+   * const url = endPointMap.outdialAniEntries('org123', 'ani456', 'page=0&pageSize=10');
+   * @ignore
+   */
+  outdialAniEntries: (orgId: string, outdialANI: string, queryParams: string) =>
+    `organization/${orgId}/v2/outdial-ani/${outdialANI}/entry${
+      queryParams ? `?${queryParams}` : ''
+    }`,
 };
