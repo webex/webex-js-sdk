@@ -10,7 +10,7 @@ import {
   RecommendedOpusBitrates,
   NamedMediaGroup,
 } from '@webex/internal-media-core';
-import {cloneDeepWith, debounce, isEmpty} from 'lodash';
+import {cloneDeepWith, debounce, isEmpty, max, throttle} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
@@ -63,6 +63,7 @@ const CODEC_DEFAULTS = {
 };
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
+const THROTTLED_SEND_REQUESTS_TIME = 2000; // used for sendRequests() calls triggered by Homer updates
 
 type DegradationPreferences = {
   maxMacroblocksLimit: number;
@@ -93,6 +94,7 @@ export class MediaRequestManager {
   private sourceUpdateListener: () => void;
 
   private debouncedSourceUpdateListener: () => void;
+  private throttledSendRequests: () => void;
 
   private previousStreamRequests: Array<StreamRequest> = [];
 
@@ -113,6 +115,10 @@ export class MediaRequestManager {
     this.debouncedSourceUpdateListener = debounce(
       this.sourceUpdateListener,
       DEBOUNCED_SOURCE_UPDATE_TIME
+    );
+    this.throttledSendRequests = throttle(
+      this.sendRequests.bind(this),
+      THROTTLED_SEND_REQUESTS_TIME
     );
   }
 
@@ -398,7 +404,7 @@ export class MediaRequestManager {
     mediaRequest.handleMaxFs = eventHandler;
 
     mediaRequest.receiveSlots.forEach((rs) => {
-      rs.on(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
+      rs.on(ReceiveSlotEvents.SourceUpdate, this.throttledSendRequests);
       rs.on(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
     });
 
@@ -413,7 +419,7 @@ export class MediaRequestManager {
     const mediaRequest = this.clientRequests[requestId];
 
     mediaRequest?.receiveSlots.forEach((rs) => {
-      rs.off(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
+      rs.off(ReceiveSlotEvents.SourceUpdate, this.throttledSendRequests);
       rs.off(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
     });
 
@@ -438,6 +444,6 @@ export class MediaRequestManager {
     this.numTotalSources = numTotalSources;
     this.numLiveSources = numLiveSources;
 
-    this.sendRequests();
+    this.throttledSendRequests();
   }
 }

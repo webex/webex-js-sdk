@@ -1118,13 +1118,157 @@ describe('MediaRequestManager', () => {
     });
   });
 
-  describe('trimming of requested receive slots', () => {
+  describe('throttling of calls to sendMediaRequests() caused by notifications from Homer', () => {
+    let clock;
+    const sourceUpdateHandlers = [];
+
     beforeEach(() => {
+      clock = sinon.useFakeTimers();
       mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, {
         degradationPreferences,
         kind: 'video',
         trimRequestsToNumOfSources: true,
       });
+
+      sourceUpdateHandlers.length = 0;
+
+      fakeReceiveSlots.forEach((slot) => {
+        slot.on.callsFake((eventName, handler) => {
+          if (eventName === 'sourceUpdate') {
+            sourceUpdateHandlers.push({handler, slot});
+          }
+        });
+      });
+
+      // add some requests and commit them
+      addActiveSpeakerRequest(
+        255,
+        [
+          fakeReceiveSlots[0],
+          fakeReceiveSlots[1],
+          fakeReceiveSlots[2],
+          fakeReceiveSlots[3],
+          fakeReceiveSlots[4],
+          fakeReceiveSlots[4],
+        ],
+        MAX_FS_1080p,
+        false
+      );
+
+      mediaRequestManager.setNumCurrentSources(5, 5);
+      mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 8192});
+      mediaRequestManager.commit();
+
+      // advance time to reach a stable state after any initial throttling
+      clock.tick(9999);
+      sendMediaRequestsCallback.resetHistory();
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it('throttles calls to sendMediaRequests() when multiple source updates happen', () => {
+      // simulate multiple source update changes
+      sourceUpdateHandlers.forEach(({handler, slot}) => {
+        slot.sourceState = `avatar`;
+        handler();
+      });
+
+      // The throttled sendMediaRequests should execute immediately on first call, then throttle subsequent calls
+      clock.tick(1);
+      assert.calledOnce(sendMediaRequestsCallback);
+
+      // after 1s simulate more updates -> they should not trigger any more calls to sendRequests()
+      clock.tick(1000);
+      sourceUpdateHandlers.forEach(({handler, slot}) => {
+        slot.sourceState = `live`;
+        handler();
+      });
+      clock.tick(1);
+      // still only 1 call due to throttling
+      assert.calledOnce(sendMediaRequestsCallback);
+
+      // now advance time by another 1s (past the throttle period) -> this should trigger another call to sendRequests()
+      clock.tick(1000);
+      assert.calledTwice(sendMediaRequestsCallback);
+
+      // and no more calls after that
+      clock.tick(9999);
+      assert.calledTwice(sendMediaRequestsCallback);
+    });
+
+    it('throttles calls to sendMediaRequests() when setNumCurrentSources() is called', () => {
+      // change number of available streams
+      mediaRequestManager.setNumCurrentSources(4, 4);
+
+      // The throttled function should execute immediately on first call, then throttle subsequent calls
+      clock.tick(1);
+      assert.calledOnce(sendMediaRequestsCallback);
+
+      // after 1s simulate more updates -> they should not trigger any more calls to sendRequests()
+      clock.tick(1000);
+      mediaRequestManager.setNumCurrentSources(3, 3);
+      clock.tick(1);
+      // still only 1 call due to throttling
+      assert.calledOnce(sendMediaRequestsCallback);
+
+      // now advance time by another 1s (past the throttle period) -> this should trigger another call to sendRequests()
+      clock.tick(1000);
+      assert.calledTwice(sendMediaRequestsCallback);
+
+      // and no more calls after that
+      clock.tick(9999);
+      assert.calledTwice(sendMediaRequestsCallback);
+    });
+
+    it('throttles calls to sendMediaRequests() when setNumCurrentSources() is called AND source updates happen', () => {
+      // change number of available streams and simulate source updates
+      mediaRequestManager.setNumCurrentSources(4, 4);
+      sourceUpdateHandlers.forEach(({handler, slot}) => {
+        slot.sourceState = `avatar`;
+        handler();
+      });
+
+      // The throttled function should execute immediately on first call, then throttle subsequent calls
+      clock.tick(1);
+      assert.calledOnce(sendMediaRequestsCallback);
+
+      // after 1s simulate more updates -> they should not trigger any more calls to sendRequests()
+      clock.tick(1000);
+      mediaRequestManager.setNumCurrentSources(3, 3);
+      sourceUpdateHandlers.forEach(({handler, slot}) => {
+        slot.sourceState = `live`;
+        handler();
+      });
+      clock.tick(1);
+      // still only 1 call due to throttling
+      assert.calledOnce(sendMediaRequestsCallback);
+
+      // now advance time by another 1s (past the throttle period) -> this should trigger another call to sendRequests()
+      clock.tick(1000);
+      assert.calledTwice(sendMediaRequestsCallback);
+
+      // and no more calls after that
+      clock.tick(9999);
+      assert.calledTwice(sendMediaRequestsCallback);
+    });
+  });
+
+  describe('trimming of requested receive slots', () => {
+    let clock;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, {
+        degradationPreferences,
+        kind: 'video',
+        trimRequestsToNumOfSources: true,
+      });
+    });
+
+    afterEach(() => {
+      clock.restore();
     });
 
     const limitNumAvailableStreams = (preferLiveVideo, limit) => {
@@ -1133,6 +1277,8 @@ describe('MediaRequestManager', () => {
       } else {
         mediaRequestManager.setNumCurrentSources(limit, 1);
       }
+      // Advance time to trigger the throttled sendRequests
+      clock.tick(2000);
     };
 
     [true, false].forEach((preferLiveVideo) =>
