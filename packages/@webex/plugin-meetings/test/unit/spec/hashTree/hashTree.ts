@@ -432,7 +432,7 @@ describe('HashTree', () => {
     });
   });
 
-  describe.only('computeLeafHash', () => {
+  describe('computeLeafHash', () => {
     it('should compute the correct hash when the hash starts with a zero', () => {
       const item: LeafDataItem = {type: 'self', id: 74, version: 1}; // Chosen to produce a hash starting with zero
       const hashTree = new HashTree([], 2);
