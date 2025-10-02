@@ -8,9 +8,6 @@
     "url": "https://github.com/webex/webex-js-sdk.git",
     "directory": "packages/@webex/test-helper-test-users"
   },
-  "optionalDependencies": {
-    "@ciscospark/test-users-legacy": "^1.0.2"
-  },
   "engines": {
     "node": ">=18"
   },
