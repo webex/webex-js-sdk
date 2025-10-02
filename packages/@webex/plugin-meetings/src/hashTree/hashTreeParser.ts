@@ -146,14 +146,14 @@ class HashTreeParser {
   ): Promise<{updateType: LocusInfoUpdateType; updatedObjects?: HashTreeObject[]}> {
     if (this.visibleDataSets.includes(dataSet.name)) {
       LoggerProxy.logger.info(
-        `HashTreeParser#initializeNewVisibleDataSet --> ${this.debugId} Data set "${dataSet.name}" already exists, skipping add`
+        `HashTreeParser#initializeNewVisibleDataSet --> ${this.debugId} Data set "${dataSet.name}" already exists, skipping init`
       );
 
       return Promise.resolve({updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects: []});
     }
 
     LoggerProxy.logger.info(
-      `HashTreeParser#addVisibleDataSet --> ${this.debugId} Adding visible data set "${dataSet.name}"`
+      `HashTreeParser#initializeNewVisibleDataSet --> ${this.debugId} Adding visible data set "${dataSet.name}"`
     );
 
     this.visibleDataSets.push(dataSet.name);
@@ -274,15 +274,6 @@ class HashTreeParser {
           updatedObjects.push(...(data.updatedObjects || []));
         }
       }
-    }
-
-    // in theory a visible data set change could happen while we've been doing all above processing, so need to check for this now as well
-    const {changeDetected, removedDataSets, addedDataSets} =
-      this.checkForVisibleDataSetChanges(updatedObjects);
-
-    if (changeDetected) {
-      // the following line might throw MeetingEndedError - that's fine, it will be caught higher up and the meeting will be destroyed
-      this.processVisibleDataSetChanges(message, removedDataSets, addedDataSets, updatedObjects);
     }
 
     this.callLocusInfoUpdateCallback({
@@ -471,6 +462,7 @@ class HashTreeParser {
 
     // visibleDataSets can only be changed by self object updates
     updatedObjects.forEach((object) => {
+      // todo: in the future visibleDataSets will be in "Metadata" object, not in "self"
       if (isSelf(object) && object.data?.visibleDataSets) {
         const newVisibleDataSets = object.data.visibleDataSets;
 
@@ -512,20 +504,25 @@ class HashTreeParser {
 
   /**
    * Adds entries to the passed in updateObjects array
-   * for the changes that result from adding and removing visible data sets.
+   * for the changes that result from removing visible data sets and creates hash
+   * trees for the new visible data sets, but without populating the hash trees.
    *
-   * @param {HashTreeMessage} message - The hash tree message that triggered the visible data set changes.
+   * This function is synchronous. If we are missing information about some new
+   * visible data sets and they require async initialization, the names of these data sets
+   * are returned in an array.
+   *
    * @param {string[]} removedDataSets - The list of removed data sets.
    * @param {string[]} addedDataSets - The list of added data sets.
    * @param {HashTreeObject[]} updatedObjects - The list of updated hash tree objects to which changes will be added.
-   * @returns {Promise<void>}
+   * @returns {string[]} names of data sets that couldn't be initialized synchronously
    */
   private processVisibleDataSetChanges(
-    message: HashTreeMessage,
     removedDataSets: string[],
     addedDataSets: string[],
     updatedObjects: HashTreeObject[]
-  ) {
+  ): string[] {
+    const dataSetsRequiringInitialization = [];
+
     // if a visible data set was removed, we need to tell our client that all objects from it are removed
     const removedObjects: HashTreeObject[] = [];
 
@@ -549,13 +546,42 @@ class HashTreeParser {
     this.visibleDataSets = this.visibleDataSets.filter((vds) => !removedDataSets.includes(vds));
     updatedObjects.push(...removedObjects);
 
-    // if any visible data sets were added, we need to initialize them
-    // it is an async operation, but we don't need to wait for it to complete
-    // and we need to finish processing the current message synchronously to avoid
-    // the next message jumping in front of it, so we ignore the returned promise here
-    this.initializeNewVisibleDataSets(message, addedDataSets);
+    // now setup the new visible data sets
+    for (const ds of addedDataSets) {
+      const dataSetInfo = this.dataSets[ds];
 
-    return undefined;
+      if (dataSetInfo) {
+        if (this.visibleDataSets.includes(dataSetInfo.name)) {
+          LoggerProxy.logger.info(
+            `HashTreeParser#processVisibleDataSetChanges --> ${this.debugId} Data set "${ds}" is already visible, skipping`
+          );
+
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        LoggerProxy.logger.info(
+          `HashTreeParser#processVisibleDataSetChanges --> ${this.debugId} Adding visible data set "${ds}"`
+        );
+
+        this.visibleDataSets.push(ds);
+
+        const hashTree = new HashTree([], dataSetInfo.leafCount);
+
+        this.dataSets[dataSetInfo.name] = {
+          ...dataSetInfo,
+          hashTree,
+        };
+      } else {
+        LoggerProxy.logger.info(
+          `HashTreeParser#processVisibleDataSetChanges --> ${this.debugId} visible data set "${ds}" added but no info about it in our dataSets structures`
+        );
+        // todo: add a metric here
+        dataSetsRequiringInitialization.push(ds);
+      }
+    }
+
+    return dataSetsRequiringInitialization;
   }
 
   /**
@@ -570,35 +596,27 @@ class HashTreeParser {
     message: HashTreeMessage,
     addedDataSets: string[]
   ): Promise<void> {
+    const allDataSets = await this.getAllDataSetsMetadata(message.dataSetsUrl);
+
     for (const ds of addedDataSets) {
-      let dataSetInfo = this.dataSets[ds];
+      const dataSetInfo = allDataSets.find((d) => d.name === ds);
+
+      LoggerProxy.logger.info(
+        `HashTreeParser#initializeNewVisibleDataSets --> ${this.debugId} initializing data set "${ds}"`
+      );
 
       if (!dataSetInfo) {
-        LoggerProxy.logger.info(
-          `HashTreeParser#handleHashTreeMessage --> ${this.debugId} visible data set "${ds}" added but no info about it in our dataSets structures`
+        LoggerProxy.logger.warn(
+          `HashTreeParser#handleHashTreeMessage --> ${this.debugId} missing info about data set "${ds}" in Locus response from dataSetsUrl`
         );
-        // todo: add a metric here
-        console.warn(`marcin: !!!!!! no dataSetInfo for newly visible set ${ds}`);
+      } else {
+        // we're awaiting in a loop, because in practice there will be only one new data set at a time,
+        // so no point in trying to parallelize this
         // eslint-disable-next-line no-await-in-loop
-        const allDataSets = await this.getAllDataSetsMetadata(message.dataSetsUrl);
+        const updates = await this.initializeNewVisibleDataSet(dataSetInfo);
 
-        const matchingDataSet = allDataSets.find((d) => d.name === ds);
-
-        if (matchingDataSet) {
-          dataSetInfo = matchingDataSet;
-        } else {
-          LoggerProxy.logger.warn(
-            `HashTreeParser#handleHashTreeMessage --> ${this.debugId} cannot find info about newly added visible data set "${ds}" in Locus`
-          );
-        }
+        this.callLocusInfoUpdateCallback(updates);
       }
-
-      // we're awaiting in a loop, because in practice there will be only one new data set at a time,
-      // so no point in trying to parallelize this
-      // eslint-disable-next-line no-await-in-loop
-      const updates = await this.initializeNewVisibleDataSet(dataSetInfo);
-
-      this.callLocusInfoUpdateCallback(updates);
     }
   }
 
@@ -615,15 +633,19 @@ class HashTreeParser {
   ): Promise<{updateType: LocusInfoUpdateType; updatedObjects?: HashTreeObject[]}> {
     const {dataSets, dataSetsUrl} = message;
 
-    this.dataSetsUrl = dataSetsUrl;
-
     LoggerProxy.logger.info(
       `HashTreeParser#parseMessage --> ${this.debugId} received message ${debugText || ''}:`,
       message
     );
     if (message.locusStateElements?.length === 0) {
       console.log('marcin: !!!!!!!!!! got empty locusStateElements !!!!!!!!!!!!!!!!');
+      // todo: send a metric
     }
+
+    // first, update our metadata about the datasets with info from the message
+    this.dataSetsUrl = dataSetsUrl;
+    dataSets.forEach((dataSet) => this.updateDataSetInfo(dataSet));
+
     if (this.isEndMessage(message)) {
       LoggerProxy.logger.info(
         `HashTreeParser#parseMessage --> ${this.debugId} received END message`
@@ -632,9 +654,51 @@ class HashTreeParser {
 
       return {updateType: LocusInfoUpdateType.MEETING_ENDED};
     }
+
     let isRosterDropped = false;
     const updatedObjects: HashTreeObject[] = [];
 
+    // when we detect new visible datasets, it may be that the metadata about them is not
+    // available in the message, they will require separate async initialization
+    let dataSetsRequiringInitialization = [];
+
+    // first find out if there are any visible data set changes - they're signalled in SELF object updates
+    const selfUpdates = (message.locusStateElements || []).filter((object) =>
+      // todo: once Locus supports it, we will filter for "Metadata" type here instead of "self"
+      isSelf(object)
+    );
+
+    if (selfUpdates.length > 0) {
+      const updatedSelfObjects = [];
+
+      selfUpdates.forEach((object) => {
+        // todo: once Locus supports it, we will use the "view" field here instead of dataSetNames
+        for (const dataSetName of object.htMeta.dataSetNames) {
+          const hashTree = this.dataSets[dataSetName]?.hashTree;
+
+          if (hashTree && object.data) {
+            if (hashTree.putItem(object.htMeta.elementId)) {
+              updatedSelfObjects.push(object);
+            }
+          }
+        }
+      });
+
+      const {changeDetected, removedDataSets, addedDataSets} =
+        this.checkForVisibleDataSetChanges(updatedSelfObjects);
+
+      if (changeDetected) {
+        dataSetsRequiringInitialization = this.processVisibleDataSetChanges(
+          removedDataSets,
+          addedDataSets,
+          updatedObjects
+        );
+      }
+    }
+
+    // by this point we now have this.dataSets setup for data sets from this message
+    // and hash trees created for the new visible data sets,
+    // so we can now process all the updates from the message
     dataSets.forEach((dataSet) => {
       if (this.dataSets[dataSet.name]) {
         const {hashTree} = this.dataSets[dataSet.name];
@@ -658,22 +722,17 @@ class HashTreeParser {
                 if (isSelf(object) && !object.data) {
                   isRosterDropped = true;
                 }
-                // update the locus with the new object
+                // add to updatedObjects so that our locus DTO will get updated with the new object
                 updatedObjects.push(object);
               }
             }
           );
         } else {
-          // todo: this happens when Locus sends a message with data for new visible dataset together with the visible data set change
-          // we'll need to change this code and add a new hash tree for that dataset before processing the rest of objects
-          // we'll do this once Locus starts sending visible data sets as separate type "Metadata" - https://sqbu-github.cisco.com/gist/dangard2/d943bce073a381b1bc77ae0c93989c26
           LoggerProxy.logger.info(
             `Locus-info:index#parseMessage --> ${this.debugId} unexpected (not visible) dataSet ${dataSet.name} received in hash tree message`
           );
         }
       }
-
-      this.updateDataSetInfo(dataSet);
 
       if (!isRosterDropped) {
         this.runSyncAlgorithm(dataSet);
@@ -690,20 +749,18 @@ class HashTreeParser {
       return {updateType: LocusInfoUpdateType.MEETING_ENDED};
     }
 
-    if (updatedObjects.length > 0) {
-      const {changeDetected, removedDataSets, addedDataSets} =
-        this.checkForVisibleDataSetChanges(updatedObjects);
-
-      if (changeDetected) {
-        this.processVisibleDataSetChanges(message, removedDataSets, addedDataSets, updatedObjects);
-      }
-
-      // tell the client about all the changes
-      return {updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects};
+    if (dataSetsRequiringInitialization.length > 0) {
+      // there are some data sets that we need to initialize asynchronously
+      queueMicrotask(() => {
+        this.initializeNewVisibleDataSets(message, dataSetsRequiringInitialization);
+      });
     }
-    LoggerProxy.logger.info(
-      `HashTreeParser#parseMessage --> ${this.debugId} No objects updated as a result of received message`
-    );
+
+    if (updatedObjects.length === 0) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#parseMessage --> ${this.debugId} No objects updated as a result of received message`
+      );
+    }
 
     return {updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects};
   }
