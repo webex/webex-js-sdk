@@ -27,7 +27,7 @@ import {
   CONTEXT_RESOURCE_TYPES,
   RESPONSE_NAMES,
 } from './constants';
-import {decryptCitedAnswer, decryptMessage, decryptToolUse} from './utils';
+import {decryptCitedAnswer, decryptMessage, decryptToolUse, decryptWorkspace} from './utils';
 
 const AIAssistant = WebexPlugin.extend({
   namespace: 'AIAssistant',
@@ -175,6 +175,10 @@ const AIAssistant = WebexPlugin.extend({
       }
       case RESPONSE_NAMES.TOOL_USE: {
         await decryptToolUse(responseContent, this.webex);
+        break;
+      }
+      case RESPONSE_NAMES.WORKSPACE: {
+        await decryptWorkspace(responseContent, this.webex);
         break;
       }
       default:
