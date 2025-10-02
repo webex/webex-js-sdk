@@ -446,15 +446,13 @@ export default class Meetings extends WebexPlugin {
       ) ||
       this.meetingCollection.getByKey(
         MEETING_KEY.SIP_URI,
-        data.locus.self &&
-          data.locus.self.callbackInfo &&
-          data.locus.self.callbackInfo.callbackAddress
+        data.locus?.self?.callbackInfo?.callbackAddress
       ) ||
-      (data.locus.info?.isUnifiedSpaceMeeting
+      (data.locus?.info?.isUnifiedSpaceMeeting
         ? undefined
         : this.meetingCollection.getByKey(
             MEETING_KEY.CONVERSATION_URL,
-            data.locus.conversationUrl
+            data.locus?.conversationUrl
           )) ||
       this.meetingCollection.getByKey(MEETING_KEY.MEETINGNUMBER, data.locus?.info?.webExMeetingId)
     );
