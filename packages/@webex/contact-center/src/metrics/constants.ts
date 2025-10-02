@@ -122,6 +122,18 @@ export const METRIC_EVENT_NAMES = {
 
   AGENT_DEVICE_TYPE_UPDATE_SUCCESS: 'Agent Device Type Update Success',
   AGENT_DEVICE_TYPE_UPDATE_FAILED: 'Agent Device Type Update Failed',
+
+  // EntryPoint API Events
+  ENTRYPOINT_FETCH_SUCCESS: 'Entrypoint Fetch Success',
+  ENTRYPOINT_FETCH_FAILED: 'Entrypoint Fetch Failed',
+
+  // AddressBook API Events
+  ADDRESSBOOK_FETCH_SUCCESS: 'AddressBook Fetch Success',
+  ADDRESSBOOK_FETCH_FAILED: 'AddressBook Fetch Failed',
+
+  // Queue API Events
+  QUEUE_FETCH_SUCCESS: 'Queue Fetch Success',
+  QUEUE_FETCH_FAILED: 'Queue Fetch Failed',
 } as const;
 
 /**

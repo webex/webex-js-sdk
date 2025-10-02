@@ -74,8 +74,8 @@
         </fieldset>
       </div>
 
-       <!-- contact-center / web socket connection setup -->
-       <div>
+      <!-- contact-center / web socket connection setup -->
+      <div>
         <form id="webexcc-registration">
           <fieldset>
             <legend>Registration</legend>
@@ -85,16 +85,18 @@
             <div class="u-mv">
               <button id="webexcc-register" type="button" onclick="register()" disabled=""
                 class="btn-code">webex.cc.register()</button>
-              <button id="webexcc-deregister" type="button" class="btn-code" disabled style="color: white;">webex.cc.unregister()</button>
+              <button id="webexcc-deregister" type="button" class="btn-code" disabled
+                style="color: white;">webex.cc.unregister()</button>
               <p id="ws-connection-status" class="status-par">Not Subscribed</p>
             </div>
           </fieldset>
         </form>
-        
+
         <!-- Upload logs section -->
         <fieldset style="margin-bottom: 20px;">
           <legend>Troubleshooting</legend>
-          <p>If you face any issues, please click <button id="upload-logs" type="button" onclick="uploadLogs()" class="btn-code">Upload Logs</button></p>
+          <p>If you face any issues, please click <button id="upload-logs" type="button" onclick="uploadLogs()"
+              class="btn-code">Upload Logs</button></p>
           <p id="upload-logs-result" class="status-par"></p>
         </fieldset>
       </div>
@@ -102,159 +104,170 @@
   </section>
   </div>
 
-    <div class="box">
-      <section class="section-box">
-        <h2 class="collapsible">
-          Agent Station Login/Logout
-          <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
-        </h2>
+  <div class="box">
+    <section class="section-box">
+      <h2 class="collapsible">
+        Agent Station Login/Logout
+        <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
+      </h2>
 
-        <div class="section-content">
-          <fieldset>
-            <legend>Agent</legend>
-            <p id="agent-login-generic-error" style="color: red; margin-top: 5px; display: none;"></p>
-            <p id="agentMultiLoginAlert"></p>
-            <p class="note">
-              NOTE: Teams are fetched automatically for the Agent Login.
-            </p>
-            <div class="screenshare-section">
-              <div style="display: flex; gap: 1rem;">
-                <fieldset style="flex: 0.69;">
-                  <legend>Select Team</legend>
-                  <select id="teamsDropdown" class="form-control w-auto my-3">Teams</select>
-                </fieldset>
-                <fieldset>
-                  <legend>Agent Login</legend>
-                  <select name="AgentLogin" id="AgentLogin" class="AgentLogin" onchange="handleAgentLogin(event)">
-                    <option value="" selected hidden>Choose Agent Login ...</option>
+      <div class="section-content">
+        <fieldset>
+          <legend>Agent</legend>
+          <p id="agent-login-generic-error" style="color: red; margin-top: 5px; display: none;"></p>
+          <p id="agentMultiLoginAlert"></p>
+          <p class="note">
+            NOTE: Teams are fetched automatically for the Agent Login.
+          </p>
+          <div class="screenshare-section">
+            <div style="display: flex; gap: 1rem;">
+              <fieldset style="flex: 0.69;">
+                <legend>Select Team</legend>
+                <select id="teamsDropdown" class="form-control w-auto my-3">Teams</select>
+              </fieldset>
+              <fieldset>
+                <legend>Agent Login</legend>
+                <select name="AgentLogin" id="AgentLogin" class="AgentLogin" onchange="handleAgentLogin(event)">
+                  <option value="" selected hidden>Choose Agent Login ...</option>
+                </select>
+                <input id="dialNumber" name="dialNumber" placeholder="Dial Number" value="" type="text">
+                <p id="agent-login-input-error" style="color: red; margin-top: 5px; display: none;"></p>
+
+                <button id="loginAgent" disabled class="btn btn-primary my-3" onclick="doAgentLogin()">Login</button>
+                <button id="logoutAgent" class="btn btn-primary my-3 ml-2 hidden"
+                  onclick="logoutAgent()">Logout</button>
+                <button id="updateAgentProfile" class="btn btn-primary my-3 ml-2 hidden"
+                  onclick="showupdateAgentProfileUI()">Update Profile</button>
+
+                <div id="updateAgentProfileFields" class="hidden" style="margin-top:1rem;">
+                  <select id="updateTeamDropdown" class="form-control w-auto my-2">
+                    <option value="" selected hidden>Choose Team …</option>
                   </select>
-                  <input id="dialNumber" name="dialNumber" placeholder="Dial Number" value="" type="text">
-                  <p id="agent-login-input-error" style="color: red; margin-top: 5px; display: none;"></p>
-
-                  <button id="loginAgent" disabled class="btn btn-primary my-3" onclick="doAgentLogin()">Login</button>
-                  <button id="logoutAgent" class="btn btn-primary my-3 ml-2 hidden" onclick="logoutAgent()">Logout</button>
-                  <button id="updateAgentProfile" class="btn btn-primary my-3 ml-2 hidden" onclick="showupdateAgentProfileUI()">Update Profile</button>
-
-                  <div id="updateAgentProfileFields" class="hidden" style="margin-top:1rem;">
-                    <select id="updateTeamDropdown" class="form-control w-auto my-2">
-                      <option value="" selected hidden>Choose Team …</option>
-                    </select>
-                    <select id="updateLoginOption" class="form-control w-auto">
-                      <option value="" selected hidden>Choose Login Option …</option>
-                    </select>
-                    <input id="updateDialNumber" placeholder="Dial Number" value="" type="text" class="form-control w-auto my-2" />
-                    <button id="applyupdateAgentProfile" disabled class="btn btn-secondary" onclick="applyupdateAgentProfile()">Save</button>
-                  </div>
-                </fieldset>
-                <fieldset style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
-                  <legend>Agent status</legend>
-                  <select name= "idleCodesDropdown" id="idleCodesDropdown" class="form-control w-auto my-3" onchange="handleAgentStatus(event)">
+                  <select id="updateLoginOption" class="form-control w-auto">
+                    <option value="" selected hidden>Choose Login Option …</option>
+                  </select>
+                  <input id="updateDialNumber" placeholder="Dial Number" value="" type="text"
+                    class="form-control w-auto my-2" />
+                  <button id="applyupdateAgentProfile" disabled class="btn btn-secondary"
+                    onclick="applyupdateAgentProfile()">Save</button>
+                </div>
+              </fieldset>
+              <fieldset style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
+                <legend>Agent status</legend>
+                <select name="idleCodesDropdown" id="idleCodesDropdown" class="form-control w-auto my-3"
+                  onchange="handleAgentStatus(event)">
                   <option value="" selected hidden>Select Idle Codes</option>
-                  </select>
-                  <button id="setAgentStatus" disabled class="btn btn-primary my-3 ml-2" onclick="setAgentStatus()">Set Agent
-                    Status</button>
-                  <div class="timer-container my-3">
+                </select>
+                <button id="setAgentStatus" disabled class="btn btn-primary my-3 ml-2" onclick="setAgentStatus()">Set
+                  Agent
+                  Status</button>
+                <div class="timer-container my-3">
                   <span id="timerDisplay">00:00:00</span>
-                  </div>
-                </fieldset>
-              </div>
-              <fieldset id="buddyAgentsBox">
-                <legend>Buddy Agents</legend>
-                <button id="fetchBuddyAgents" class="btn btn-primary my-3" onclick="renderBuddyAgents()">Get Buddy Agents</button>
-                <select id="buddyAgentsDropdown" class="form-control w-auto my-3"></select>
+                </div>
               </fieldset>
             </div>
-          </fieldset>
-        </div>
-         <!-- calling / incoming -->
-         <div id="incomingsection">
-          <fieldset>
-            <legend>Incoming Task</legend>
-            <div class="u-mv">
-              <pre id="incoming-task"> No Incoming Tasks</pre>
-              <button onclick="answer()" disabled="" id="answer" class="btn--green">Answer</button>
-              <button onclick="decline()" disabled="" id="decline" class="btn--red">Decline</button>
-            </div>
-          </fieldset>
-          <fieldset>
-            <legend>Remote Audio</legend>
-            <audio id="remote-audio" autoplay></audio>
-          </fieldset>
-        </div>
-          <!-- Agent Call Controls -->
-          <div id="callcontrolsection">
-            <fieldset>
-              <legend>Task Controls</legend>
-              <div class="u-mv">
-                <button onclick="holdResumeCall()" id="hold-resume" class="btn--yellow" disabled>Hold</button>
-                <button onclick="muteUnmute()" id="mute-unmute" class="btn--yellow" disabled>Mute</button>
-                <button onclick="showInitiateConsultDialog()" id="consult" class="btn--blue" disabled>Consult</button>
-                <button onclick="toggleTransferOptions()" id="transfer" class="btn--blue" disabled>Transfer</button>
-                <button onclick="endConsult()" id="end-consult" class="btn--red" style="display: none;">End Consult</button>
-                <button onclick="initiateConsultTransfer()" id="consult-transfer" style="display: none;">Consult Transfer</button>
-                <button onclick="endCall()" id="end" class="btn--red" disabled>End</button>
-                <dialog id="initiate-consult-dialog">
-                  <header>Consult</header>
-                  <fieldset id="consult-options">
-                    <legend>Consult Options</legend>
-                    <div id="initiate-consult-controls">
-                      <select id="consult-destination-type" onchange="onConsultTypeSelectionChanged()">
-                        <option value="queue">Queue</option>
-                        <option value="agent">Agent</option>
-                        <option value="dialNumber" selected>Dial Number</option>
-                        <option value="entryPoint">Entry Point</option>
-                      </select>
-                      <div id="consult-destination-holder">
-                        <input id="consult-destination" placeholder="Enter Destination" value="" type="text" />
-                      </div>
-                      <button id="initate-consult" onclick="initiateConsult()" class="btn--green">Initiate Consult</button>
-                      <button onclick="closeConsultDialog()" id="close-consult-dialog" class="btn--red">Cancel</button>
-                    </div>
-                  </fieldset>
-                </dialog>
-                <fieldset id="transfer-options" style="display: none;">
-                  <legend>Transfer Options</legend>
-                  <select id="transfer-destination-type" onchange="onTransferTypeSelectionChanged()">
+            <fieldset id="buddyAgentsBox">
+              <legend>Buddy Agents</legend>
+              <button id="fetchBuddyAgents" class="btn btn-primary my-3" onclick="renderBuddyAgents()">Get Buddy
+                Agents</button>
+              <select id="buddyAgentsDropdown" class="form-control w-auto my-3"></select>
+            </fieldset>
+          </div>
+        </fieldset>
+      </div>
+      <!-- calling / incoming -->
+      <div id="incomingsection">
+        <fieldset>
+          <legend>Incoming Task</legend>
+          <div class="u-mv">
+            <pre id="incoming-task"> No Incoming Tasks</pre>
+            <button onclick="answer()" disabled="" id="answer" class="btn--green">Answer</button>
+            <button onclick="decline()" disabled="" id="decline" class="btn--red">Decline</button>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Remote Audio</legend>
+          <audio id="remote-audio" autoplay></audio>
+        </fieldset>
+      </div>
+      <!-- Agent Call Controls -->
+      <div id="callcontrolsection">
+        <fieldset>
+          <legend>Task Controls</legend>
+          <div class="u-mv">
+            <button onclick="holdResumeCall()" id="hold-resume" class="btn--yellow" disabled>Hold</button>
+            <button onclick="muteUnmute()" id="mute-unmute" class="btn--yellow" disabled>Mute</button>
+            <button onclick="showInitiateConsultDialog()" id="consult" class="btn--blue" disabled>Consult</button>
+            <button onclick="toggleTransferOptions()" id="transfer" class="btn--blue" disabled>Transfer</button>
+            <button onclick="endConsult()" id="end-consult" class="btn--red" style="display: none;">End Consult</button>
+            <button onclick="initiateConsultTransfer()" id="consult-transfer" style="display: none;">Consult
+              Transfer</button>
+            <button onclick="endCall()" id="end" class="btn--red" disabled>End</button>
+            <dialog id="initiate-consult-dialog">
+              <header>Consult</header>
+              <fieldset id="consult-options">
+                <legend>Consult Options</legend>
+                <div id="initiate-consult-controls">
+                  <select id="consult-destination-type" onchange="onConsultTypeSelectionChanged()">
                     <option value="queue">Queue</option>
                     <option value="agent">Agent</option>
                     <option value="dialNumber" selected>Dial Number</option>
+                    <option value="entryPoint">Entry Point</option>
                   </select>
-                  <div id="transfer-destination-holder">
-                    <input id="transfer-destination" placeholder="Enter destination" value="" type="text" />
+                  <div id="consult-destination-holder">
+                    <input id="consult-destination" placeholder="Enter Destination" value="" type="text" />
                   </div>
-                  <button id="initiate-transfer" onclick="initiateTransfer()" class="btn--green">Initiate Transfer</button>
-                </fieldset>
-                <fieldset>
-                  <legend>Task Wrapup</legend>
-                  <button onclick="wrapupCall()" id="wrapup" class="btn--green" disabled>Wrapup</button>
-                  <span id="autoWrapupTimer" style="margin-left: 10px; display: none;"><span>Auto wrapping task in </span><span class="timer-value">00:00</span></span>
-                  <select id="wrapupCodesDropdown" disabled>
-                    <option value="" selected hidden>Select Wrapup Code</option>
-                  </select>
-                </fieldset>
-                <fieldset>
-                  <legend>Recording Controls</legend>
-                  <div class="u-mv">
-                    <button onclick="togglePauseResumeRecording()" id="pause-resume-recording" class="btn--blue" disabled>Pause Recording</button>
-                    <label for="auto-resume-checkbox" style="margin-left: 10px;">
-                      <input type="checkbox" id="auto-resume-checkbox" disabled> Auto Resume
-                    </label>
-                  </div>
-                </fieldset>
-                <fieldset>
-                  <legend>TaskList</legend>
-                  <div id="taskList"></div>
-                </fieldset>
-                <fieldset>
-                  <legend>Digital Channels</legend>
-                    <div id="engageWidget"> </div>
-                </fieldset>
-                
+                  <button id="initate-consult" onclick="initiateConsult()" class="btn--green">Initiate Consult</button>
+                  <button onclick="closeConsultDialog()" id="close-consult-dialog" class="btn--red">Cancel</button>
+                </div>
+              </fieldset>
+            </dialog>
+            <fieldset id="transfer-options" style="display: none;">
+              <legend>Transfer Options</legend>
+              <select id="transfer-destination-type" onchange="onTransferTypeSelectionChanged()">
+                <option value="queue">Queue</option>
+                <option value="agent">Agent</option>
+                <option value="entryPoint">Entry Point</option>
+                <option value="dialNumber" selected>Dial Number</option>
+              </select>
+              <div id="transfer-destination-holder">
+                <input id="transfer-destination" placeholder="Enter destination" value="" type="text" />
+              </div>
+              <button id="initiate-transfer" onclick="initiateTransfer()" class="btn--green">Initiate Transfer</button>
+            </fieldset>
+            <fieldset>
+              <legend>Task Wrapup</legend>
+              <button onclick="wrapupCall()" id="wrapup" class="btn--green" disabled>Wrapup</button>
+              <span id="autoWrapupTimer" style="margin-left: 10px; display: none;"><span>Auto wrapping task in
+                </span><span class="timer-value">00:00</span></span>
+              <select id="wrapupCodesDropdown" disabled>
+                <option value="" selected hidden>Select Wrapup Code</option>
+              </select>
+            </fieldset>
+            <fieldset>
+              <legend>Recording Controls</legend>
+              <div class="u-mv">
+                <button onclick="togglePauseResumeRecording()" id="pause-resume-recording" class="btn--blue"
+                  disabled>Pause Recording</button>
+                <label for="auto-resume-checkbox" style="margin-left: 10px;">
+                  <input type="checkbox" id="auto-resume-checkbox" disabled> Auto Resume
+                </label>
               </div>
             </fieldset>
+            <fieldset>
+              <legend>TaskList</legend>
+              <div id="taskList"></div>
+            </fieldset>
+            <fieldset>
+              <legend>Digital Channels</legend>
+              <div id="engageWidget"> </div>
+            </fieldset>
+
           </div>
-          <div id="outBoundCallDialer">
-          <fieldset>
+        </fieldset>
+      </div>
+      <div id="outBoundCallDialer">
+        <fieldset>
           <legend>Outdial Call</legend>
           <div class="keypad">
             <input id="outBoundDialNumber" placeholder="Enter number to dial">
@@ -275,9 +288,9 @@
             <button class="call-btn" onclick="startOutdial()"><i class="fa fa-phone"></i></button>
           </div>
         </fieldset>
-        </div>
-      </section>
-    </div>
+      </div>
+    </section>
+  </div>
   </div>
 
   <!-- Popup for setting agent state -->
@@ -302,21 +315,21 @@
       justify-content: center;
       align-items: center;
     }
-  
+
     .modal-content {
       background-color: white;
       padding: 20px;
       border-radius: 5px;
       text-align: center;
     }
-  
+
     .hidden {
       display: none;
     }
   </style>
-      <script>
-        let AGENTX_SERVICE = {}; // this is needed to avoid errors in engage widgets
-      </script>
+  <script>
+    let AGENTX_SERVICE = {}; // this is needed to avoid errors in engage widgets
+  </script>
 
   <script src="../contact-center.min.js"></script>
   <script id="imi-controller-bundle" dc="produs1" src="https://wc.imiengage.io/engage.js" defer></script>

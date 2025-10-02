@@ -20,7 +20,6 @@ import {
   AuxCode,
   MultimediaProfileResponse,
   SiteInfo,
-  ContactServiceQueue,
 } from './types';
 import WebexRequest from '../core/WebexRequest';
 import {WCC_API_GATEWAY} from '../constants';
@@ -686,58 +685,5 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Fetches the list of queues for the given orgId.
-   * @ignore
-   * @param {string} orgId - organization ID for which the queues are to be fetched.
-   * @param {number} page - the page number to fetch.
-   * @param {number} pageSize - the number of queues to fetch per page.
-   * @param {string} search - optional search string
-   * @param {string} filter - optional filter string
-   * @returns Promise<ContactServiceQueue[]> - A promise that resolves to the list of contact service queues.
-   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
-   * @private
-   */
-  public async getQueues(
-    orgId: string,
-    page: number,
-    pageSize: number,
-    search?: string,
-    filter?: string
-  ): Promise<ContactServiceQueue[]> {
-    LoggerProxy.info('Fetching queue list', {
-      module: CONFIG_FILE_NAME,
-      method: METHODS.GET_QUEUES,
-    });
-
-    try {
-      let queryParams = `page=${page}&pageSize=${pageSize}&desktopProfileFilter=true`;
-      if (search) queryParams += `&search=${search}`;
-      if (filter) queryParams += `&filter=${filter}`;
-
-      const resource = endPointMap.queueList(orgId, queryParams);
-      const response = await this.webexReq.request({
-        service: WCC_API_GATEWAY,
-        resource,
-        method: HTTP_METHODS.GET,
-      });
-
-      if (response.statusCode !== 200) {
-        throw new Error(`API call failed with ${response.statusCode}`);
-      }
-
-      LoggerProxy.log('getQueues API success.', {
-        module: CONFIG_FILE_NAME,
-        method: METHODS.GET_QUEUES,
-      });
-
-      return response.body?.data;
-    } catch (error) {
-      LoggerProxy.error(`getQueues API call failed with ${error}`, {
-        module: CONFIG_FILE_NAME,
-        method: METHODS.GET_QUEUES,
-      });
-      throw error;
-    }
-  }
+  // getQueues removed - use Queue instead
 }
