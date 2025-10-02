@@ -9,7 +9,7 @@ import retry from '@webex/test-helper-retry';
 import testUsers from '@webex/test-helper-test-users';
 // FIXME
 // eslint-disable-next-line import/no-unresolved
-import {generateRandomString} from '@ciscospark/test-users-legacy';
+import {generateRandomString} from '@webex/test-helper-test-users';
 import WebexCore from '@webex/webex-core';
 import '@webex/internal-plugin-locus';
 

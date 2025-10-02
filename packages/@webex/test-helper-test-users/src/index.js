@@ -119,6 +119,23 @@ function _remove(users) {
   );
 }
 
+/**
+ * Generates a random string
+ * @name generateRandomString
+ * @param  {Integer} length
+ * @returns {String} A random string of specified length
+ */
+function _generateRandomString(length) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+  let text = '';
+  for (let i = 0; i < length; i += 1) {
+    text += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return text;
+}
+
 module.exports = {
   create: (options) => {
     assert(process.env.WEBEX_CLIENT_ID, 'WEBEX_CLIENT_ID must be defined');
@@ -127,4 +144,5 @@ module.exports = {
     return _create(options);
   },
   remove: _remove,
+  generateRandomString: _generateRandomString,
 };
