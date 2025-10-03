@@ -320,9 +320,18 @@ describe('plugin-meetings', () => {
           EVENT_TRIGGERS.MEMBERS_CLEAR,
           {}
         );
+        sinon.restore();
       });
     });
     describe('#locusParticipantsUpdate', () => {
+      beforeEach(() => {
+        sinon.stub(Trigger, 'trigger');
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
       it('should send member update event with session info', () => {
         const members = createMembers({url: url1});
         const fakePayload = {
@@ -343,9 +352,41 @@ describe('plugin-meetings', () => {
           },
           EVENT_TRIGGERS.MEMBERS_UPDATE,
           {
-            delta: {added: [], updated: []},
+            delta: {added: [], updated: [], removedIds: []},
             full: {},
             isReplace: true,
+          }
+        );
+      });
+
+      it('should handle participants being removed', () => {
+        const members = createMembers({url: url1});
+
+        // setup the collection with a fake member
+        members.membersCollection.setAll(fakeMembersCollection);
+        assert.equal(Object.keys(members.membersCollection.getAll()).length, 1);
+
+        // remove the member
+        members.locusParticipantsUpdate({
+          participants: [],
+          removedParticipantIds: ['test1'],
+        });
+
+        assert.equal(Object.keys(members.membersCollection.getAll()).length, 0);
+
+        // check that the event was emitted
+        assert.calledWith(
+          Trigger.trigger,
+          members,
+          {
+            file: 'members',
+            function: 'locusParticipantsUpdate',
+          },
+          EVENT_TRIGGERS.MEMBERS_UPDATE,
+          {
+            delta: {added: [], updated: [], removedIds: ['test1']},
+            full: {},
+            isReplace: false,
           }
         );
       });
