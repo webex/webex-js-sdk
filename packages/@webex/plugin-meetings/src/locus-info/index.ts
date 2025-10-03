@@ -40,57 +40,13 @@ import HashTreeParser, {
   LocusInfoUpdateType,
 } from '../hashTree/hashTreeParser';
 import {ObjectType} from '../hashTree/types';
+import {LocusDTO} from './types';
 
 export type LocusLLMEvent = {
   data: {
     eventType: typeof LOCUSEVENT.HASH_TREE_DATA_UPDATED;
     stateElementsMessage: HashTreeMessage;
   };
-};
-
-export type LocusDTO = {
-  controls?: any;
-  fullState?: {
-    active: boolean;
-    count: number;
-    lastActive: string;
-    locked: boolean;
-    sessionId: string;
-    seessionIds: string[];
-    startTime: number;
-    state: string;
-    type: string;
-  };
-  host?: {
-    id: string;
-    incomingCallProtocols: any[];
-    isExternal: boolean;
-    name: string;
-    orgId: string;
-  };
-  htMeta?: HtMeta;
-  info?: any;
-  jsSdkMeta?: {
-    removedParticipantIds: string[]; // list of ids of participants that are removed in the last update
-  };
-  links?: any;
-  mediaShares?: any[];
-  meetings?: any[];
-  participants: any[];
-  replaces?: any[];
-  self?: any;
-  sequence?: {
-    dirtyParticipants: number;
-    entries: number[];
-    rangeEnd: number;
-    rangeStart: number;
-    sequenceHash: number;
-    sessionToken: string;
-    since: string;
-    totalParticipants: number;
-  };
-  syncUrl?: string;
-  url?: string;
 };
 
 const LocusDtoTopLevelKeys = [
@@ -440,17 +396,21 @@ export default class LocusInfo extends EventsScope {
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  initialSetup(
+  async initialSetup(
     data:
       | {
           trigger: 'join-response';
-          locus: object;
+          locus: LocusDTO;
           dataSets?: DataSet[];
         }
       | {
           trigger: 'locus-message';
-          locus?: object;
+          locus?: LocusDTO;
           hashTreeMessage: HashTreeMessage;
+        }
+      | {
+          trigger: 'get-loci-response';
+          locus?: LocusDTO;
         }
   ) {
     // locus: object, trigger: LocusInfoSetupTrigger, dataSets: DataSet[] = []) {
@@ -502,6 +462,33 @@ export default class LocusInfo extends EventsScope {
         this.updateLocusCache(data.locus);
         this.onFullLocus(data.locus, undefined, data.dataSets);
         break;
+      case 'get-loci-response':
+        if (data.locus?.links?.resources?.dataSets?.url) {
+          if (this.webex.config.meetings.experimental.locusHashTrees) {
+            LoggerProxy.logger.info(
+              'Locus-info:index#initialSetup --> creating HashTreeParser from get-loci-response'
+            );
+            // first create the HashTreeParser, but don't initialize it with any data yet
+            // pass just a fake locus that contains only the visibleDataSets
+            this.hashTreeParser = this.createHashTreeParser({
+              initialLocus: {
+                locus: {self: {visibleDataSets: data.locus?.self?.visibleDataSets}},
+                dataSets: [], // empty, because we don't have them yet
+              },
+            });
+
+            // now initialize all the data
+            await this.hashTreeParser.initializeFromGetLociResponse(data.locus);
+          } else {
+            LoggerProxy.logger.error(
+              `Locus-info:index#initialSetup --> trying to initialize from GET /loci response containing hash trees, but we don't have locusHashTrees enabled in config`
+            );
+          }
+        } else {
+          // "classic" Locus case, no hash trees involved
+          this.updateLocusCache(data.locus);
+          this.onFullLocus(data.locus, undefined);
+        }
     }
     // Change it to true after it receives it first locus object
     this.emitChange = true;

@@ -4,6 +4,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {Enum, HTTP_VERBS} from '../constants';
 import {DataSetNames, EMPTY_HASH} from './constants';
 import {ObjectType} from './types';
+import {LocusDTO} from '../locus-info/types';
 
 export interface DataSet {
   url: string;
@@ -233,15 +234,50 @@ class HashTreeParser {
   async initializeFromMessage(message: HashTreeMessage) {
     const dataSets = await this.getAllDataSetsMetadata(message.dataSetsUrl);
 
+    console.log('marcin: initializeFromMessage: ', message, dataSets);
+    await this.initializeDataSets(dataSets, 'initialization from message');
+  }
+
+  /**
+   * Initializes the hash tree parser from GET /loci API response by fetching all data sets metadata
+   * first and then doing an initialization sync on each data set
+   *
+   * This function requires that this.visibleDataSets have been already populated correctly by the constructor.
+   *
+   * @param {LocusDTO} locus - locus object received from GET /loci
+   * @returns {Promise}
+   */
+  async initializeFromGetLociResponse(locus: LocusDTO) {
+    if (!locus?.links?.resources?.dataSets?.url) {
+      LoggerProxy.logger.warn(
+        `HashTreeParser#initializeFromGetLociResponse --> ${this.debugId} missing dataSets url in GET Loci response, cannot initialize hash trees`
+      );
+
+      return;
+    }
+
+    const dataSets = await this.getAllDataSetsMetadata(locus.links.resources.dataSets.url);
+
+    console.log('marcin: initializeFromGetLociResponse: ', locus, dataSets);
+    await this.initializeDataSets(dataSets, 'initialization from GET /loci response');
+  }
+
+  /**
+   * Initializes data sets by doing an initialization sync on each visible data set that doesn't have a hash tree yet.
+   *
+   * @param {DataSet[]} dataSets Array of DataSet objects to initialize
+   * @param {string} debugText Text to include in logs for debugging purposes
+   * @returns {Promise}
+   */
+  async initializeDataSets(dataSets: Array<DataSet>, debugText: string) {
     const updatedObjects: HashTreeObject[] = [];
 
-    console.log('marcin: initializeFromMessage: ', message, dataSets);
     for (const dataSet of dataSets) {
       const {name, leafCount} = dataSet;
 
       if (!this.dataSets[name]) {
         LoggerProxy.logger.info(
-          `HashTreeParser#initializeFromMessage --> ${this.debugId} initializing dataset "${name}"`
+          `HashTreeParser#initializeDataSets --> ${this.debugId} initializing dataset "${name}" (${debugText})`
         );
 
         this.dataSets[name] = {
@@ -251,19 +287,16 @@ class HashTreeParser {
 
       if (this.visibleDataSets.includes(name) && !this.dataSets[name].hashTree) {
         LoggerProxy.logger.info(
-          `HashTreeParser#initializeFromMessage --> ${this.debugId} creating hash tree for visible dataset "${name}"`
+          `HashTreeParser#initializeDataSets --> ${this.debugId} creating hash tree for visible dataset "${name}" (${debugText})`
         );
         this.dataSets[name].hashTree = new HashTree([], leafCount);
 
         // eslint-disable-next-line no-await-in-loop
-        const data = await this.sendInitializationSyncRequestToLocus(
-          name,
-          'initialization from message'
-        );
+        const data = await this.sendInitializationSyncRequestToLocus(name, debugText);
 
         if (data.updateType === LocusInfoUpdateType.MEETING_ENDED) {
           LoggerProxy.logger.warn(
-            `HashTreeParser#initializeFromMessage --> ${this.debugId} meeting ended while initializing new visible data set "${name}"`
+            `HashTreeParser#initializeDataSets --> ${this.debugId} meeting ended while initializing new visible data set "${name}"`
           );
 
           // throw an error, it will be caught higher up and the meeting will be destroyed
@@ -416,6 +449,9 @@ class HashTreeParser {
         );
       }
     });
+
+    // todo: once Locus design on how visible data sets will be communicated in subsequent API responses is confirmed,
+    // we'll need to check here if visible data sets have changed and update this.visibleDataSets, remove/create hash trees etc
   }
 
   /**
@@ -469,13 +505,15 @@ class HashTreeParser {
         removedDataSets = this.visibleDataSets.filter((ds) => !newVisibleDataSets.includes(ds));
         addedDataSets = newVisibleDataSets.filter((ds) => !this.visibleDataSets.includes(ds));
 
-        LoggerProxy.logger.info(
-          `HashTreeParser#checkForVisibleDataSetChanges --> ${
-            this.debugId
-          } visible data sets change: removed: ${removedDataSets.join(
-            ', '
-          )}, added: ${addedDataSets.join(', ')}`
-        );
+        if (removedDataSets.length > 0 || addedDataSets.length > 0) {
+          LoggerProxy.logger.info(
+            `HashTreeParser#checkForVisibleDataSetChanges --> ${
+              this.debugId
+            } visible data sets change: removed: ${removedDataSets.join(
+              ', '
+            )}, added: ${addedDataSets.join(', ')}`
+          );
+        }
       }
     });
 

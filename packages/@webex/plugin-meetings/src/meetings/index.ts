@@ -558,13 +558,16 @@ export default class Meetings extends WebexPlugin {
       }
 
       this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
-        .then((newMeeting) => {
+        .then(async (newMeeting) => {
           meeting = newMeeting;
 
           try {
             // It's a new meeting so initialize the locus data
-            meeting.locusInfo.initialSetup({
-              trigger: 'locus-message',
+            await meeting.locusInfo.initialSetup({
+              trigger:
+                data.eventType === 'fakeEventFromSyncMeetings'
+                  ? 'get-loci-response'
+                  : 'locus-message',
               locus: data.locus,
               hashTreeMessage: data.stateElementsMessage,
             });
