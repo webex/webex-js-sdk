@@ -460,32 +460,38 @@ export default class LocusInfo extends EventsScope {
     switch (data.trigger) {
       case 'locus-message':
         if (data.hashTreeMessage) {
-          // we need the SELF object to be in the received message, because it contains visibleDataSets
-          // and these are needed to initialize all the hash trees
-          const selfObject = data.hashTreeMessage.locusStateElements?.find((el) => isSelf(el));
+          if (this.webex.config.meetings.experimental.locusHashTrees) {
+            // we need the SELF object to be in the received message, because it contains visibleDataSets
+            // and these are needed to initialize all the hash trees
+            const selfObject = data.hashTreeMessage.locusStateElements?.find((el) => isSelf(el));
 
-          if (!selfObject?.data?.visibleDataSets) {
-            LoggerProxy.logger.warn(
-              `Locus-info:index#initialSetup --> cannot initialize HashTreeParser, SELF object with visibleDataSets is missing in the message`
+            if (!selfObject?.data?.visibleDataSets) {
+              LoggerProxy.logger.warn(
+                `Locus-info:index#initialSetup --> cannot initialize HashTreeParser, SELF object with visibleDataSets is missing in the message`
+              );
+
+              throw new Error('SELF object with visibleDataSets is missing in the message');
+            }
+
+            LoggerProxy.logger.info(
+              'Locus-info:index#initialSetup --> creating HashTreeParser from message'
             );
+            // first create the HashTreeParser, but don't initialize it with any data yet
+            // pass just a fake locus that contains only the visibleDataSets
+            this.hashTreeParser = this.createHashTreeParser({
+              initialLocus: {
+                locus: {self: {visibleDataSets: selfObject.data.visibleDataSets}},
+                dataSets: [], // empty, because they will be populated in initializeFromMessage() call  // dataSets: data.hashTreeMessage.dataSets,
+              },
+            });
 
-            throw new Error('SELF object with visibleDataSets is missing in the message');
+            // now handle the message - that should populate all the visible datasets
+            this.hashTreeParser.initializeFromMessage(data.hashTreeMessage);
+          } else {
+            LoggerProxy.logger.error(
+              `Locus-info:index#initialSetup --> trying to initialize from a hash tree message, but we don't have locusHashTrees enabled in config`
+            );
           }
-
-          LoggerProxy.logger.info(
-            'Locus-info:index#initialSetup --> creating HashTreeParser from message'
-          );
-          // first create the HashTreeParser, but don't initialize it with any data yet
-          // pass just a fake locus that contains only the visibleDataSets
-          this.hashTreeParser = this.createHashTreeParser({
-            initialLocus: {
-              locus: {self: {visibleDataSets: selfObject.data.visibleDataSets}},
-              dataSets: [], // empty, because they will be populated in initializeFromMessage() call  // dataSets: data.hashTreeMessage.dataSets,
-            },
-          });
-
-          // now handle the message - that should populate all the visible datasets
-          this.hashTreeParser.initializeFromMessage(data.hashTreeMessage);
         } else {
           // "classic" Locus case, no hash trees involved
           this.updateLocusCache(data.locus);
@@ -508,7 +514,32 @@ export default class LocusInfo extends EventsScope {
    * @returns {void}
    */
   handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
-    this.handleLocusDelta(responseBody.locus, meeting);
+    console.log('marcin: locus response from API call:', responseBody);
+    if (responseBody.dataSets) {
+      if (!this.webex.config.meetings.experimental.locusHashTrees) {
+        LoggerProxy.logger.error(
+          `Locus-info:index#handleLocusAPIResponse --> received response with hash tree info from Locus API, but we don't have locusHashTrees enabled in config`
+        );
+
+        return;
+      }
+      if (!this.hashTreeParser) {
+        LoggerProxy.logger.warn(
+          `Locus-info:index#handleLocusAPIResponse --> received response with hash tree info from Locus API, but we don't have the hashTreeParser created`
+        );
+
+        return;
+      }
+      // Locus is using the new hash tree mechanism
+      // so update our data in the hash tree parser
+      this.hashTreeParser.handleLocusUpdate(responseBody);
+
+      // but the Locus object we receive in this case looks same like classic delta, so we can use existing delta method to process it
+      this.onDeltaLocus(responseBody.locus);
+    } else {
+      // classic Locus delta
+      this.handleLocusDelta(responseBody.locus, meeting);
+    }
   }
 
   /**
@@ -630,34 +661,6 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * Handles HTTP response from Locus API call.
-   * @param {Meeting} meeting meeting object
-   * @param {LocusApiResponseBody} responseBody body of the http response from Locus API call
-   * @returns {void}
-   */
-  handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
-    console.log('marcin: locus response from API call:', responseBody);
-    if (responseBody.dataSets) {
-      if (!this.hashTreeParser) {
-        LoggerProxy.logger.warn(
-          `Locus-info:index#handleLocusAPIResponse --> received response with hash tree info from Locus API, but we don't have the hashTreeParser created`
-        );
-
-        return;
-      }
-      // Locus is using the new hash tree mechanism
-      // so update our data in the hash tree parser
-      this.hashTreeParser.handleLocusUpdate(responseBody);
-
-      // but the Locus object we receive in this case looks same like classic delta, so we can use existing delta method to process it
-      this.onDeltaLocus(responseBody.locus);
-    } else {
-      // classic Locus delta
-      this.handleLocusDelta(responseBody.locus, meeting);
-    }
-  }
-
-  /**
    * Handles a hash tree message received from Locus.
    *
    * @param {Meeting} meeting - The meeting object
@@ -665,6 +668,13 @@ export default class LocusInfo extends EventsScope {
    * @returns {void}
    */
   private handleHashTreeMessage(meeting: any, message: HashTreeMessage) {
+    if (!this.webex.config.meetings.experimental.locusHashTrees) {
+      LoggerProxy.logger.error(
+        `Locus-info:index#handleHashTreeMessage --> received hash tree message, but we don't have the locusHashTrees enabled in config`
+      );
+
+      return;
+    }
     if (!this.hashTreeParser) {
       LoggerProxy.logger.warn(
         `Locus-info:index#handleHashTreeMessage --> received hash tree message, but we don't have the hashTreeParser`
@@ -834,6 +844,13 @@ export default class LocusInfo extends EventsScope {
     }
 
     if (dataSets) {
+      if (!this.webex.config.meetings.experimental.locusHashTrees) {
+        LoggerProxy.logger.error(
+          `Locus-info:index#onFullLocus --> received full locus with hash tree info, but we don't have locusHashTrees enabled in config`
+        );
+
+        return;
+      }
       console.log('marcin: onFullLocus, got dataSets:', dataSets, ' and locus:', locus);
       // this is the new hashmap Locus DTO format (only applicable to webinars for now)
       if (!this.hashTreeParser) {
