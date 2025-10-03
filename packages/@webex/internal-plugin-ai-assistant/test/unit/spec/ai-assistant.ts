@@ -16,7 +16,7 @@ import {
   AI_ASSISTANT_ERROR_CODES,
   AI_ASSISTANT_ERRORS,
 } from '@webex/internal-plugin-ai-assistant/src/constants';
-import {jsonResponse, messageResponse} from '../data/messages';
+import {jsonResponse, messageResponse, workspaceResponse} from '../data/messages';
 
 const waitForAsync = () =>
   new Promise<void>((resolve) =>
@@ -558,6 +558,53 @@ describe('plugin-ai-assistant', () => {
         expect(triggerSpy.getCall(1).args[0]).to.deep.equal('aiassistant:stream:test-request-id');
         expect(triggerSpy.getCall(1).args[1]).to.deep.equal(expectedResult);
       });
+
+      it('handles a workspace response', async () => {
+        const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
+        webex.internal.encryption.decryptText.callsFake(async (keyUrl, value) => {
+          return `decrypted-with-${keyUrl}-${value}`;
+        });
+
+        await webex.internal.aiAssistant._request({
+          resource: 'test-resource',
+          params: {param1: 'value1'},
+        });
+
+        // first event is a workspace chunk with an encrypted value
+        // Update the clientRequestId to match the test setup
+        const firstEvent = cloneDeep(workspaceResponse[0]);
+        firstEvent.clientRequestId = 'test-request-id';
+        
+        await webex.internal.aiAssistant._handleEvent(firstEvent);
+
+        expect(triggerSpy.getCall(0).args[0]).to.equal(
+          `aiassistant:result:test-request-id`
+        );
+
+        await waitForAsync();
+
+        let expectedResult = set(
+          cloneDeep(firstEvent),
+          'response.content.value.value',
+          'decrypted-with-workspace_0_encryption_key_url-workspace_0_encrypted_value'
+        );
+
+        expect(triggerSpy.getCall(0).args[1]).to.deep.equal(expectedResult);
+
+        // second event is another workspace chunk with an encrypted value
+        const secondEvent = cloneDeep(workspaceResponse[1]);
+        secondEvent.clientRequestId = 'test-request-id';
+        
+        await webex.internal.aiAssistant._handleEvent(secondEvent);
+
+        expectedResult = set(
+          cloneDeep(secondEvent),
+          'response.content.value.value',
+          'decrypted-with-workspace_1_encryption_key_url-workspace_1_encrypted_value'
+        );
+
+        expect(triggerSpy.getCall(2).args[1]).to.deep.equal(expectedResult);
+      });      
 
       it('decrypts and emits data when receiving event data', async () => {
         const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
