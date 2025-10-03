@@ -548,7 +548,7 @@ export default class LocusInfo extends EventsScope {
    * @param {any} locus
    * @returns {void}
    */
-  updateHashTreeObjectInLocus(object: HashTreeObject, locus: LocusDTO): LocusDTO {
+  updateLocusFromHashTreeObject(object: HashTreeObject, locus: LocusDTO): LocusDTO {
     const type = object.htMeta.elementId.type.toLowerCase();
 
     switch (type) {
@@ -557,7 +557,7 @@ export default class LocusInfo extends EventsScope {
           // not doing anything here, as we need Locus to always be there (at least some fields)
           // and that's already taken care of in updateFromHashTree()
           LoggerProxy.logger.info(
-            `Locus-info:index#updateHashTreeObjectInLocus --> LOCUS object removed`
+            `Locus-info:index#updateLocusFromHashTreeObject --> LOCUS object removed`
           );
 
           return locus;
@@ -574,14 +574,14 @@ export default class LocusInfo extends EventsScope {
         locus = {...locus, ...locusObjectFromData};
         locus.htMeta = object.htMeta;
         LoggerProxy.logger.info(
-          `Locus-info:index#updateHashTreeObjectInLocus --> LOCUS object updated`
+          `Locus-info:index#updateLocusFromHashTreeObject --> LOCUS object updated`
         );
         break;
       }
       case ObjectType.mediaShare:
         if (object.data) {
           LoggerProxy.logger.info(
-            `Locus-info:index#updateHashTreeObjectInLocus --> mediaShare id=${
+            `Locus-info:index#updateLocusFromHashTreeObject --> mediaShare id=${
               object.htMeta.elementId.id
             } name='${object.data.name}' updated ${
               object.data.name === 'content'
@@ -601,7 +601,7 @@ export default class LocusInfo extends EventsScope {
           }
         } else {
           LoggerProxy.logger.info(
-            `Locus-info:index#updateHashTreeObjectInLocus --> mediaShare id=${object.htMeta.elementId.id} removed`
+            `Locus-info:index#updateLocusFromHashTreeObject --> mediaShare id=${object.htMeta.elementId.id} removed`
           );
           locus.mediaShares = locus.mediaShares?.filter(
             (ms) => ms.htMeta.elementId.id !== object.htMeta.elementId.id
@@ -610,7 +610,7 @@ export default class LocusInfo extends EventsScope {
         break;
       case ObjectType.participant:
         LoggerProxy.logger.info(
-          `Locus-info:index#updateHashTreeObjectInLocus --> participant id=${
+          `Locus-info:index#updateLocusFromHashTreeObject --> participant id=${
             object.htMeta.elementId.id
           } ${object.data ? 'updated' : 'removed'}`
         );
@@ -640,19 +640,19 @@ export default class LocusInfo extends EventsScope {
         if (!object.data) {
           // self without data is handled inside HashTreeParser and results in LocusInfoUpdateType.MEETING_ENDED, so we should never get here
           LoggerProxy.logger.warn(
-            `Locus-info:index#updateHashTreeObjectInLocus --> received SELF object without data, this is not expected!`
+            `Locus-info:index#updateLocusFromHashTreeObject --> received SELF object without data, this is not expected!`
           );
 
           return locus;
         }
         LoggerProxy.logger.info(
-          `Locus-info:index#updateHashTreeObjectInLocus --> SELF object updated`
+          `Locus-info:index#updateLocusFromHashTreeObject --> SELF object updated`
         );
         locus.self = object.data;
         break;
       default:
         LoggerProxy.logger.warn(
-          `Locus-info:index#updateHashTreeObjectInLocus --> received unsupported object type ${type}`
+          `Locus-info:index#updateLocusFromHashTreeObject --> received unsupported object type ${type}`
         );
         break;
     }
@@ -715,9 +715,9 @@ export default class LocusInfo extends EventsScope {
           LocusObjectStateAfterUpdates.unchanged;
         data.updatedObjects.forEach((object) => {
           if (object.htMeta.elementId.type.toLowerCase() === ObjectType.locus) {
-            if (locusObjectStateAfterUpdates !== LocusObjectStateAfterUpdates.unchanged) {
-              // this code doesn't supported it right now, especially the cases for
-              // "updated" followed by "removed", or multiple "updated" would need more handling
+            if (locusObjectStateAfterUpdates === LocusObjectStateAfterUpdates.updated) {
+              // this code doesn't supported it right now,
+              // cases for "updated" followed by "removed", or multiple "updated" would need more handling
               LoggerProxy.logger.warn(
                 `Locus-info:index#updateFromHashTree --> received multiple LOCUS objects in one update, this is unexpected!`
               );
@@ -747,9 +747,18 @@ export default class LocusInfo extends EventsScope {
           });
         }
 
+        LoggerProxy.logger.info(
+          `Locus-info:index#updateFromHashTree --> LOCUS object is ${locusObjectStateAfterUpdates}, all updates: ${JSON.stringify(
+            data.updatedObjects.map((o) => ({
+              type: o.htMeta.elementId.type,
+              id: o.htMeta.elementId.id,
+              hasData: o.data !== undefined,
+            }))
+          )}`
+        );
         // now apply all the updates from the hash tree onto the locus
         data.updatedObjects.forEach((object) => {
-          locus = this.updateHashTreeObjectInLocus(object, locus);
+          locus = this.updateLocusFromHashTreeObject(object, locus);
         });
 
         // update our locus info with the new locus

@@ -684,6 +684,8 @@ class HashTreeParser {
         }
       });
 
+      updatedObjects.push(...updatedSelfObjects);
+
       const {changeDetected, removedDataSets, addedDataSets} =
         this.checkForVisibleDataSetChanges(updatedSelfObjects);
 
