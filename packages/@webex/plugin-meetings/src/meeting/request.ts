@@ -985,4 +985,27 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       body: {videoLayout},
     });
   }
+
+  /**
+   * Sends a request to notify the host of a meeting.
+   * @param {string} siteFullUrl - The site URL.
+   * @param {string} locusId - The locus ID.
+   * @param {string} meetingUuid - The meeting UUID.
+   * @param {Array<string>} displayName - The display names to notify the host about.
+   * @returns {Promise}
+   */
+  notifyHost(siteFullUrl: string, locusId: string, meetingUuid: string, displayName: string[]) {
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri: `https://${siteFullUrl}/wbxappapi/v1/meetings/${meetingUuid}/notifyhost`,
+      body: {
+        displayName,
+        size: displayName?.length,
+      },
+      headers: {
+        locusId,
+      },
+    });
+  }
 }
