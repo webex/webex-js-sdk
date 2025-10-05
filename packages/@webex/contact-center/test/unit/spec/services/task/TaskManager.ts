@@ -1446,7 +1446,7 @@ describe('TaskManager', () => {
       webSocketManagerMock.emit('message', JSON.stringify(payload));
 
       expect(task.data.isConferencing).toBe(false);
-      expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
+      expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
     });
 
     it('should handle PARTICIPANT_LEFT_CONFERENCE_FAILED event', () => {
