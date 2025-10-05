@@ -1684,6 +1684,9 @@ export default class Task extends EventEmitter implements ITask {
     }
   }
 
+  // TODO: Uncomment this method in future PR for Multi-Party Conference support (>3 participants)
+  // Conference transfer will be supported when implementing enhanced multi-party conference functionality
+  /*
   /**
    * Transfers the current conference to another agent
    *
@@ -1704,7 +1707,7 @@ export default class Task extends EventEmitter implements ITask {
    * }
    * ```
    */
-  public async transferConference(): Promise<TaskResponse> {
+  /* public async transferConference(): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Transferring conference`, {
         module: TASK_FILE,
@@ -1768,5 +1771,5 @@ export default class Task extends EventEmitter implements ITask {
 
       throw err;
     }
-  }
+  } */
 }

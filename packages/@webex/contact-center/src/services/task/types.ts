@@ -423,13 +423,25 @@ export enum TASK_EVENTS {
    * Triggered when a participant joins the conference
    * @example
    * ```typescript
-   * task.on(TASK_EVENTS.TASK_CONFERENCE_PARTICIPANT_JOINED, (task: ITask) => {
+   * task.on(TASK_EVENTS.TASK_PARTICIPANT_JOINED, (task: ITask) => {
    *   console.log('Participant joined conference:', task.data.interactionId);
    *   // Handle participant joining
    * });
    * ```
    */
-  TASK_CONFERENCE_PARTICIPANT_JOINED = 'task:conferenceParticipantJoined',
+  TASK_PARTICIPANT_JOINED = 'task:participantJoined',
+
+  /**
+   * Triggered when a participant leaves the conference
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_PARTICIPANT_LEFT, (task: ITask) => {
+   *   console.log('Participant left conference:', task.data.interactionId);
+   *   // Handle participant leaving
+   * });
+   * ```
+   */
+  TASK_PARTICIPANT_LEFT = 'task:participantLeft',
 
   /**
    * Triggered when conference transfer is successful
@@ -471,13 +483,13 @@ export enum TASK_EVENTS {
    * Triggered when participant exit from conference fails
    * @example
    * ```typescript
-   * task.on(TASK_EVENTS.TASK_CONFERENCE_PARTICIPANT_LEFT_FAILED, (task: ITask) => {
+   * task.on(TASK_EVENTS.TASK_PARTICIPANT_LEFT_FAILED, (task: ITask) => {
    *   console.log('Participant failed to leave conference:', task.data.interactionId);
    *   // Handle failed participant exit
    * });
    * ```
    */
-  TASK_CONFERENCE_PARTICIPANT_LEFT_FAILED = 'task:conferenceParticipantLeftFailed',
+  TASK_PARTICIPANT_LEFT_FAILED = 'task:participantLeftFailed',
 }
 
 /**

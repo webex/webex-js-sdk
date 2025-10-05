@@ -1707,6 +1707,9 @@ describe('Task', () => {
       });
     });
 
+    // TODO: Uncomment this test section in future PR for Multi-Party Conference support (>3 participants)
+    // Conference transfer tests will be uncommented when implementing enhanced multi-party conference functionality
+    /*
     describe('transferConference', () => {
       it('should successfully transfer conference', async () => {
         const mockResponse = {
@@ -1753,5 +1756,6 @@ describe('Task', () => {
         });
       });
     });
+    */
   });
 });

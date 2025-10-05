@@ -363,17 +363,17 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
             // Participant joined conference - update task state with participant information and emit event
             task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_PARTICIPANT_JOINED, task);
+            task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
             break;
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
             // Conference ended - update task state and emit event
             task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
+            task.emit(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
             break;
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED:
             // Conference exit failed - update task state and emit failure event
             task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_PARTICIPANT_LEFT_FAILED, task);
+            task.emit(TASK_EVENTS.TASK_PARTICIPANT_LEFT_FAILED, task);
             break;
           case CC_EVENTS.AGENT_CONSULT_CONFERENCE_END_FAILED:
             // Conference end failed - update task state with error details and emit failure event
