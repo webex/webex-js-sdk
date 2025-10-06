@@ -257,12 +257,34 @@ function toggleTransferOptions() {
 
 async function getQueueListForTelephonyChannel() {
   try {
-    let queueList = await webex.cc.getQueues();
+    // Need to access via data as that is the list of queues
+    const queueResponse = await webex.cc.getQueues();
+    let queueList = queueResponse.data;
     queueList = queueList.filter(queue => queue.channelType === 'TELEPHONY');
   
     return queueList;
   } catch (error) {
     console.log('Failed to fetch queue list', error);
+  }
+}
+
+async function getEntryPoints() {
+  try {
+    const entryPoints = await webex.cc.getEntryPoints();
+    return entryPoints.data || [];
+  } catch (error) {
+    console.log('Failed to fetch entry points', error);
+    return [];
+  }
+}
+
+async function getDialNumberEntries() {
+  try {
+    const addressBookEntries = await webex.cc.addressBook.getEntries();
+    return addressBookEntries.data || [];
+  } catch (error) {
+    console.log('Failed to fetch address book entries', error);
+    return [];
   }
 }
 
@@ -289,6 +311,9 @@ async function onConsultTypeSelectionChanged(){
     consultDestinationHolderElm.appendChild(refreshButton);
   } else if (destinationTypeDropdown.value === 'queue') {
     async function refreshQueueListForConsult() {
+      consultDestinationInput = document.createElement('select');
+      consultDestinationInput.id = 'consultDestination';
+
       const queueList = await getQueueListForTelephonyChannel();
   
       if(queueList.length > 0) {
@@ -316,17 +341,95 @@ async function onConsultTypeSelectionChanged(){
     refreshButton.innerHTML = 'Refresh queue list <i class="fa fa-refresh"></i>';
     refreshButton.onclick = refreshQueueListForConsult;
     consultDestinationHolderElm.appendChild(refreshButton);
+  } else if (destinationTypeDropdown.value === 'dialNumber') {
+    async function refreshAddressBookForConsult() {
+      const dialNumberEntries = await getDialNumberEntries();
+
+      if (dialNumberEntries.length > 0) {
+        consultDestinationInput = document.createElement('select');
+        consultDestinationInput.id = 'consultDestination';
+        consultDestinationInput.innerHTML = '';
+        dialNumberEntries.forEach((entry) => {
+          const option = document.createElement('option');
+          option.value = entry.number;
+          option.text = `${entry.name} (${entry.number})`;
+          consultDestinationInput.appendChild(option);
+        });
+        const customOpt = document.createElement('option');
+        customOpt.value = '__CUSTOM__';
+        customOpt.text = 'Custom number…';
+        consultDestinationInput.appendChild(customOpt);
+
+        consultDestinationInput.onchange = () => {
+          if (consultDestinationInput.value === '__CUSTOM__') {
+            // Swap to input for free typing
+            const replacement = document.createElement('input');
+            replacement.type = 'text';
+            replacement.id = 'consultDestination';
+            replacement.placeholder = 'Enter Destination';
+            consultDestinationHolderElm.replaceChild(replacement, consultDestinationInput);
+            consultDestinationInput = replacement;
+          }
+        };
+      } else {
+        consultDestinationInput = document.createElement('input');
+        consultDestinationInput.type = 'text';
+        consultDestinationInput.id = 'consultDestination';
+        consultDestinationInput.placeholder = 'Enter Destination';
+      }
+    }
+
+    await refreshAddressBookForConsult();
+
+    // Add a refresh button to refresh the address book list
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-address-book-list';
+    refreshButton.innerHTML = 'Refresh address book <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshAddressBookForConsult;
+    consultDestinationHolderElm.appendChild(refreshButton);
+  } else if (destinationTypeDropdown.value === 'entryPoint') {
+    async function refreshEntryPointsForConsult() {
+      const entryPoints = await getEntryPoints();
+
+      consultDestinationInput = document.createElement('input');
+      consultDestinationInput.type = 'text';
+      consultDestinationInput.id = 'consultDestination';
+      consultDestinationInput.placeholder = 'Enter Entry Point ID';
+
+      const dataListId = 'consult-entrypoint-datalist';
+      let dataList = consultDestinationHolderElm.querySelector(`#${dataListId}`);
+      if (!dataList) {
+        dataList = document.createElement('datalist');
+        dataList.id = dataListId;
+        consultDestinationHolderElm.appendChild(dataList);
+      }
+      dataList.innerHTML = '';
+      entryPoints.forEach((ep) => {
+        const option = document.createElement('option');
+        option.value = ep.id;
+        option.label = ep.name;
+        dataList.appendChild(option);
+      });
+      consultDestinationInput.setAttribute('list', dataListId);
+    }
+
+    await refreshEntryPointsForConsult();
+
+    // Add a refresh button to refresh the entry points list
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-entry-points-list';
+    refreshButton.innerHTML = 'Refresh entry points <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshEntryPointsForConsult;
+    consultDestinationHolderElm.appendChild(refreshButton);
   } else {
     // Make consultDestinationInput into a text input
     consultDestinationInput = document.createElement('input');
     consultDestinationInput.id = 'consultDestination';
     consultDestinationInput.placeholder = 'Enter Destination';
 
-    // Remove the refresh button if it exists
-    const refreshButton = document.getElementById('refresh-buddy-agents-for-consult');
-    if(refreshButton) {
-      refreshButton.remove();
-    }
+    // Remove any existing refresh buttons
+    const existingRefreshButtons = consultDestinationHolderElm.querySelectorAll('button[id^="refresh-"]');
+    existingRefreshButtons.forEach(button => button.remove());
   }
 
   consultDestinationHolderElm.appendChild(consultDestinationInput);
@@ -342,27 +445,141 @@ async function onTransferTypeSelectionChanged() {
     transferDestinationInput = document.createElement('select');
     transferDestinationInput.id = 'transfer-destination';
 
-    const agentNodeList = await fetchBuddyAgentsNodeList();
-    agentNodeList.forEach(n => { transferDestinationInput.appendChild(n) });
-  } else if (document.querySelector('#transfer-destination-type').value === 'queue') {
-    const queueList = await getQueueListForTelephonyChannel();
-    if (queueList.length > 0) {
-      // Make transferDestinationInput into a dropdown
-      transferDestinationInput = document.createElement('select');
-      transferDestinationInput.id = 'transfer-destination';
-
-      queueList.forEach((queue) => {
-        const option = document.createElement('option');
-        option.text = queue.name;
-        option.value = queue.id;
-        transferDestinationInput.appendChild(option);
-      });
+    async function refreshBuddyAgentsForTransfer() {
+      transferDestinationInput.innerHTML = '';
+      const agentNodeList = await fetchBuddyAgentsNodeList();
+      agentNodeList.forEach(n => { transferDestinationInput.appendChild(n) });
     }
+
+    await refreshBuddyAgentsForTransfer();
+
+    // Add a refresh button to refresh the buddy agents list for transfer
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-buddy-agents-for-transfer';
+    refreshButton.innerHTML = 'Refresh agent list <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshBuddyAgentsForTransfer;
+    transferDestinationHolderElm.appendChild(refreshButton);
+  } else if (document.querySelector('#transfer-destination-type').value === 'queue') {
+    async function refreshQueueListForTransfer() {
+      const queueList = await getQueueListForTelephonyChannel();
+      if (queueList.length > 0) {
+        // Make transferDestinationInput into a dropdown
+        transferDestinationInput = document.createElement('select');
+        transferDestinationInput.id = 'transfer-destination';
+
+        queueList.forEach((queue) => {
+          const option = document.createElement('option');
+          option.text = queue.name;
+          option.value = queue.id;
+          transferDestinationInput.appendChild(option);
+        });
+      } else {
+        transferDestinationInput = document.createElement('select');
+        transferDestinationInput.id = 'transfer-destination';
+        transferDestinationInput.disabled = true;
+        const option = document.createElement('option');
+        option.text = 'No queues available';
+        transferDestinationInput.appendChild(option);
+      }
+    }
+
+    await refreshQueueListForTransfer();
+
+    // Add a refresh button to refresh the queue list for transfer
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-queue-list-for-transfer';
+    refreshButton.innerHTML = 'Refresh queue list <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshQueueListForTransfer;
+    transferDestinationHolderElm.appendChild(refreshButton);
+  } else if (document.querySelector('#transfer-destination-type').value === 'dialNumber') {
+    // Free-type with datalist for address book numbers OR select when entries exist
+    async function refreshAddressBookForTransfer() {
+      const dialNumberEntries = await getDialNumberEntries();
+
+      if (dialNumberEntries.length > 0) {
+        transferDestinationInput = document.createElement('select');
+        transferDestinationInput.id = 'transfer-destination';
+        transferDestinationInput.innerHTML = '';
+        dialNumberEntries.forEach((entry) => {
+          const option = document.createElement('option');
+          option.value = entry.number;
+          option.text = `${entry.name} (${entry.number})`;
+          transferDestinationInput.appendChild(option);
+        });
+        const customOpt = document.createElement('option');
+        customOpt.value = '__CUSTOM__';
+        customOpt.text = 'Custom number…';
+        transferDestinationInput.appendChild(customOpt);
+
+        transferDestinationInput.onchange = () => {
+          if (transferDestinationInput.value === '__CUSTOM__') {
+            const replacement = document.createElement('input');
+            replacement.type = 'text';
+            replacement.id = 'transfer-destination';
+            replacement.placeholder = 'Enter destination';
+            transferDestinationHolderElm.replaceChild(replacement, transferDestinationInput);
+            transferDestinationInput = replacement;
+          }
+        };
+      } else {
+        transferDestinationInput = document.createElement('input');
+        transferDestinationInput.type = 'text';
+        transferDestinationInput.id = 'transfer-destination';
+        transferDestinationInput.placeholder = 'Enter destination';
+      }
+    }
+
+    await refreshAddressBookForTransfer();
+
+    // Add a refresh button to refresh the address book list for transfer
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-address-book-for-transfer';
+    refreshButton.innerHTML = 'Refresh address book <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshAddressBookForTransfer;
+    transferDestinationHolderElm.appendChild(refreshButton);
+  } else if (document.querySelector('#transfer-destination-type').value === 'entryPoint') {
+    async function refreshEntryPointsForTransfer() {
+      const entryPoints = await getEntryPoints();
+
+      transferDestinationInput = document.createElement('input');
+      transferDestinationInput.type = 'text';
+      transferDestinationInput.id = 'transfer-destination';
+      transferDestinationInput.placeholder = 'Enter Entry Point ID';
+
+      const dataListId = 'transfer-entrypoint-datalist';
+      let dataList = transferDestinationHolderElm.querySelector(`#${dataListId}`);
+      if (!dataList) {
+        dataList = document.createElement('datalist');
+        dataList.id = dataListId;
+        transferDestinationHolderElm.appendChild(dataList);
+      }
+      dataList.innerHTML = '';
+      entryPoints.forEach((ep) => {
+        const option = document.createElement('option');
+        option.value = ep.id;
+        option.label = ep.name;
+        dataList.appendChild(option);
+      });
+      transferDestinationInput.setAttribute('list', dataListId);
+    }
+
+    await refreshEntryPointsForTransfer();
+
+    // Add a refresh button to refresh the entry points list for transfer
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-entry-points-for-transfer';
+    refreshButton.innerHTML = 'Refresh entry points <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshEntryPointsForTransfer;
+    transferDestinationHolderElm.appendChild(refreshButton);
   } else {
     // Make transferDestinationInput into a text input
     transferDestinationInput = document.createElement('input');
     transferDestinationInput.id = 'transfer-destination';
     transferDestinationInput.placeholder = 'Enter Destination';
+
+    // Remove any existing refresh buttons
+    const existingRefreshButtons = transferDestinationHolderElm.querySelectorAll('button[id^="refresh-"]');
+    existingRefreshButtons.forEach(button => button.remove());
   }
 
   transferDestinationHolderElm.appendChild(transferDestinationInput);
@@ -371,7 +588,8 @@ async function onTransferTypeSelectionChanged() {
 // Function to initiate consult
 async function initiateConsult() {
   const destinationType = destinationTypeDropdown.value;
-  const consultDestination = consultDestinationInput.value;
+  const consultDestinationEl = consultDestinationHolderElm.querySelector('input, select');
+  const consultDestination = consultDestinationEl && consultDestinationEl.value ? consultDestinationEl.value.trim() : '';
 
   if (!consultDestination) {
     alert('Please enter a destination');
@@ -1142,9 +1360,9 @@ function doAgentLogin() {
     updateAgentProfileElm.classList.remove('hidden');
     // Read auxCode and lastStateChangeTimestamp from login response
     const DEFAULT_CODE = '0'; // Default code when no aux code is present
-    const auxCodeId = response.data.auxCodeId?.trim() !== '' ? response.data.auxCodeId : DEFAULT_CODE;
-    const lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
-    const lastIdleCodeChangeTimestamp = response.data.lastIdleCodeChangeTimestamp;
+    const auxCodeId = response.auxCodeId?.trim() !== '' ? response.auxCodeId : DEFAULT_CODE;
+    const lastStateChangeTimestamp = response.lastStateChangeTimestamp;
+    const lastIdleCodeChangeTimestamp = response.lastIdleCodeChangeTimestamp;
     const index = [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
     idleCodesDropdown.selectedIndex = index !== -1 ? index : 0;
     startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp);

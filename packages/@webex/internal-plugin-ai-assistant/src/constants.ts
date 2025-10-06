@@ -42,4 +42,5 @@ export enum RESPONSE_NAMES {
   CITED_ANSWER = 'cited_answer',
   MESSAGE = 'message',
   TOOL_RESULT = 'tool_result',
+  WORKSPACE = 'workspace',
 }
