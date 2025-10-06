@@ -539,7 +539,7 @@ export class Registration implements IRegistration {
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
-        log.log('Mercury connection is up again, re-registering with Webex Calling if needed', {
+        log.log('Network is up again, re-registering with Webex Calling if needed', {
           file: REGISTRATION_FILE,
           method: this.handleConnectionRestoration.name,
         });

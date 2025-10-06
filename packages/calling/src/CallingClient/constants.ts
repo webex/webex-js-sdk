@@ -212,6 +212,7 @@ export const METHODS = {
   SET_MOBIUS_SERVERS: 'setMobiusServers',
   HANDLE_CONNECTION_RESTORATION: 'handleConnectionRestoration',
   RECONNECT_ON_FAILURE: 'reconnectOnFailure',
+  DETECT_MERCURY_FLAP: 'detectMercuryFlap',
   DETECT_NETWORK_CHANGE: 'detectNetworkChange',
   GET_CLIENT_REGION_INFO: 'getClientRegionInfo',
   GET_MOBIUS_SERVERS: 'getMobiusServers',

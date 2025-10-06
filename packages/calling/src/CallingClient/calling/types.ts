@@ -7,6 +7,7 @@ import {
   CallId,
   CorrelationId,
   DisplayInformation,
+  WebexRequestPayload,
 } from '../../common/types';
 import {Eventing} from '../../Events/impl';
 import {CallerIdInfo, CallEvent, CallEventTypes, RoapEvent, RoapMessage} from '../../Events/types';
@@ -400,6 +401,11 @@ export interface ICall extends Eventing<CallEventTypes> {
    *
    */
   getCallRtpStats(): Promise<CallRtpStats>;
+
+  /**
+   * Sends the call keepalive to Mobius to check the call status
+   */
+  postStatus(): Promise<WebexRequestPayload>;
 }
 
 export type DeleteRecordCallBack = (callId: CallId) => void;

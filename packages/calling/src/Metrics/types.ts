@@ -12,6 +12,7 @@ export enum METRIC_EVENT {
   BNR_DISABLED = 'web-calling-sdk-bnr-disabled',
   CALL = 'web-calling-sdk-callcontrol',
   CALL_ERROR = 'web-calling-sdk-callcontrol-error',
+  CONNECTION_ERROR = 'web-calling-sdk-connection',
   MEDIA = 'web-calling-sdk-media',
   MEDIA_ERROR = 'web-calling-sdk-media-error',
   REGISTRATION = 'web-calling-sdk-registration',
@@ -26,6 +27,8 @@ export enum REG_ACTION {
   REGISTER = 'register',
   DEREGISTER = 'deregister',
   KEEPALIVE_FAILURE = 'keepaliveFailure',
+  NETWORK_FLAP = 'networkFlap',
+  MERCURY_FLAP = 'mercuryFlap',
 }
 
 export enum TRANSFER_ACTION {
@@ -82,6 +85,13 @@ export interface IMetricManager {
     localSdp?: string,
     remoteSdp?: string,
     callError?: CallError
+  ) => void;
+  submitGenericMetrics: (
+    name: METRIC_EVENT,
+    action: string,
+    type: METRIC_TYPE,
+    downTimestamp: string,
+    upTimestamp: string
   ) => void;
   submitVoicemailMetric: (
     name: METRIC_EVENT,

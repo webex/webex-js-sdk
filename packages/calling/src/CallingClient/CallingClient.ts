@@ -47,13 +47,13 @@ import {
   IP_ENDPOINT,
   SPARK_USER_AGENT,
   URL_ENDPOINT,
-  NETWORK_FLAP_TIMEOUT,
   API_V1,
   MOBIUS_US_PROD,
   MOBIUS_EU_PROD,
   MOBIUS_US_INT,
   MOBIUS_EU_INT,
   METHODS,
+  NETWORK_FLAP_TIMEOUT,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -95,6 +95,16 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   public mediaEngine: typeof Media;
 
   private lineDict: Record<string, ILine> = {};
+
+  private networkDown = false;
+
+  private networkDownTimestamp = '';
+
+  private networkUpTimestamp = '';
+
+  private mercuryDownTimestamp = '';
+
+  private mercuryUpTimestamp = '';
 
   /**
    * @ignore
@@ -163,8 +173,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.registerCallsClearedListener();
   }
 
-  // async calls required to run after constructor
-
   /**
    * Initializes the `CallingClient` by performing the following steps:
    *
@@ -182,45 +190,189 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     await this.createLine();
 
     /* Better to run the timer once rather than after every registration */
-    this.detectNetworkChange();
+    this.setupNetworkEventListeners();
+    this.detectMercuryFlap();
+  }
+
+  /**
+   * Ping a reliable external endpoint with a short timeout to infer connectivity.
+   */
+  private async checkNetworkReachability(): Promise<boolean> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      // Using a common connectivity check endpoint that returns 204 with minimal payload.
+      // no-cors mode yields an opaque response but a successful fetch implies reachability.
+      await fetch('https://www.google.com/generate_204', {
+        method: 'GET',
+        cache: 'no-cache',
+        mode: 'no-cors',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      return true;
+    } catch (error) {
+      log.warn(`Network connectivity probe failed: ${error}`, {
+        file: CALLING_CLIENT_FILE,
+        method: 'pingExternal',
+      });
+
+      return false;
+    }
+  }
+
+  private handleNetworkOffline = async () => {
+    this.networkDownTimestamp = new Date(Date.now()).toISOString();
+    console.log('pkesari_network offline detected');
+    this.networkDown = !(await this.checkNetworkReachability());
+    console.log('pkesari_Network Down: ', this.networkDown);
+    log.warn(`Network has flapped, wait for the network to be back up`, {
+      file: CALLING_CLIENT_FILE,
+      method: 'handleNetworkFlap',
+    });
+
+    if (this.networkDown) {
+      const line = Object.values(this.lineDict)[0];
+      line.registration.clearKeepaliveTimer();
+    }
+  };
+
+  private handleNetworkOnline = async () => {
+    this.networkUpTimestamp = new Date(Date.now()).toISOString();
+    console.log('pkesari_network online');
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: 'handleNetworkOnline',
+    });
+
+    const networkInterval = setInterval(async () => {
+      console.log(
+        'pkesari_network down statistics, setting interval to wait for mercury to be up',
+        this.networkDown,
+        this.networkDownTimestamp,
+        this.networkUpTimestamp
+      );
+      if (this.networkDown && this.webex.internal.mercury.connected) {
+        console.log('pkesari_mercury back up after network flap, checking for active calls');
+        if (!Object.keys(this.callManager.getActiveCalls()).length) {
+          console.log('pkesari_no active calls, check reg status');
+          const line = Object.values(this.lineDict)[0];
+
+          if (line.getStatus() !== RegistrationStatus.IDLE) {
+            console.log('pkesari_reg status not idle, handle connection restoration');
+            this.networkDown = await line.registration.handleConnectionRestoration(
+              this.networkDown
+            );
+          } else {
+            this.networkDown = false;
+          }
+          clearInterval(networkInterval);
+        } else {
+          const calls = Object.keys(this.callManager.getActiveCalls());
+          for (const call of calls) {
+            const callObj = this.callManager.getActiveCalls()[call];
+            if (callObj.isConnected()) {
+              callObj
+                .postStatus()
+                .then(() => {
+                  log.info(`Call is active`, {
+                    file: CALLING_CLIENT_FILE,
+                    method: 'handleNetworkOnline',
+                  });
+                  /*
+                   * Media Renegotiation Possibility if call keepalive succeeds,
+                   * for cases like WebRTC disconnect and media inactivity.
+                   */
+                })
+                .catch((err) => {
+                  log.warn(`Call Keepalive failed: ${err}`, {
+                    file: CALLING_CLIENT_FILE,
+                    method: 'handleNetworkOnline',
+                  });
+
+                  console.log('Call keepalive failed, clear the stale call', err);
+                  callObj.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
+                });
+            }
+          }
+        }
+        // await uploadLogs();
+        // this.metricManager.submitGenericMetrics(
+        //   METRIC_EVENT.CONNECTION_ERROR,
+        //   REG_ACTION.NETWORK_FLAP,
+        //   METRIC_TYPE.BEHAVIORAL,
+        //   this.networkDownTimestamp,
+        //   this.networkUpTimestamp
+        // );
+      }
+    }, NETWORK_FLAP_TIMEOUT);
+  };
+
+  private setupNetworkEventListeners(): void {
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener('online', this.handleNetworkOnline);
+
+      window.addEventListener('offline', this.handleNetworkOffline);
+    }
   }
 
   /**
    * Register callbacks for network changes.
    */
-  private async detectNetworkChange() {
+  private async detectMercuryFlap() {
+    let mercuryFlapDetected = false;
     log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
-      method: METHODS.DETECT_NETWORK_CHANGE,
+      method: METHODS.DETECT_MERCURY_FLAP,
     });
-    let retry = false;
-
-    // this is a temporary logic to get registration obj
-    // it will change once we have proper lineId and multiple lines as well
-    const line = Object.values(this.lineDict)[0];
 
     setInterval(async () => {
-      if (
-        !this.webex.internal.mercury.connected &&
-        !retry &&
-        !Object.keys(this.callManager.getActiveCalls()).length
-      ) {
-        log.warn(`Network has flapped, waiting for mercury connection to be up`, {
+      if (!this.webex.internal.mercury.connected && !mercuryFlapDetected && !this.networkDown) {
+        this.mercuryDownTimestamp = new Date(Date.now()).toISOString();
+        log.warn(`Mercury down, waiting for connection to be up`, {
           file: CALLING_CLIENT_FILE,
-          method: METHODS.DETECT_NETWORK_CHANGE,
+          method: METHODS.DETECT_MERCURY_FLAP,
         });
+        mercuryFlapDetected = true;
+      } else if (mercuryFlapDetected && this.webex.internal.mercury.connected) {
+        this.mercuryUpTimestamp = new Date(Date.now()).toISOString();
+        console.log(
+          'pkesari mercury down and up timestamp',
+          this.mercuryDownTimestamp,
+          this.mercuryUpTimestamp
+        );
+        if (Object.keys(this.callManager.getActiveCalls()).length > 0) {
+          const calls = Object.keys(this.callManager.getActiveCalls());
+          for (const call of calls) {
+            const callObj = this.callManager.getActiveCalls()[call];
+            if (callObj.isConnected()) {
+              // eslint-disable-next-line no-await-in-loop
+              callObj
+                .postStatus()
+                .then(() => {
+                  console.log('Call is still active, do nothing');
+                })
+                .catch((err) => {
+                  console.log('Call keepalive failed, clear the stale call', err);
+                  callObj.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
+                });
+            }
 
-        line.registration.clearKeepaliveTimer();
-
-        retry = true;
-      }
-
-      if (retry && this.webex.internal.mercury.connected) {
-        if (line.getStatus() !== RegistrationStatus.IDLE) {
-          retry = await line.registration.handleConnectionRestoration(retry);
-        } else {
-          retry = false;
+            // Handle call keepalive failure grecfully here
+          }
         }
+        mercuryFlapDetected = false;
+        await uploadLogs();
+        this.metricManager.submitGenericMetrics(
+          METRIC_EVENT.CONNECTION_ERROR,
+          REG_ACTION.MERCURY_FLAP,
+          METRIC_TYPE.BEHAVIORAL,
+          this.mercuryDownTimestamp,
+          this.mercuryUpTimestamp
+        );
       }
     }, NETWORK_FLAP_TIMEOUT);
   }

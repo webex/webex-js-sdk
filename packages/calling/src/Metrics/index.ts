@@ -28,6 +28,34 @@ class MetricManager implements IMetricManager {
     this.serviceIndicator = indicator;
   }
 
+  public submitGenericMetrics(
+    name: METRIC_EVENT,
+    action: string,
+    type: METRIC_TYPE,
+    downTimestamp: string,
+    upTimestamp: string
+  ) {
+    const metricData = {
+      tags: {
+        action,
+        wdm_deviceId: this.deviceInfo?.device?.clientDeviceUri,
+        service_indicator: this.serviceIndicator,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        downTimestamp,
+        upTimestamp,
+      },
+      type,
+    };
+
+    if (metricData) {
+      this.webex.internal.metrics.submitClientMetrics(name, metricData);
+    }
+  }
+
   public submitUploadLogsMetric(
     name: METRIC_EVENT,
     action: string,

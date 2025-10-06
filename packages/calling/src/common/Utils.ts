@@ -492,6 +492,7 @@ export async function handleRegistrationErrors(
       emitterCb(lineError, finalError);
     }
   }
+  await uploadLogs();
 
   return finalError;
 }
