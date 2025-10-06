@@ -351,6 +351,7 @@ export class ContactsClient implements IContacts {
       });
 
       log.log(`Response code: ${response.statusCode}`, loggerContext);
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
 
       const responseBody = response.body as ContactList;
 
@@ -631,6 +632,7 @@ export class ContactsClient implements IContacts {
       });
 
       log.log(`Response code: ${response.statusCode}`, loggerContext);
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
 
       const group = response.body as ContactGroup;
 
@@ -677,6 +679,8 @@ export class ContactsClient implements IContacts {
         uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}/${groupId}`,
         method: HTTP_METHODS.DELETE,
       });
+
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
 
       const contactResponse: ContactResponse = {
         statusCode: Number(response[STATUS_CODE]),
@@ -780,6 +784,7 @@ export class ContactsClient implements IContacts {
       });
 
       log.log(`Response code: ${response.statusCode}`, loggerContext);
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
 
       const newContact = response.body as Contact;
 

@@ -135,6 +135,9 @@ export class UcmBackendConnector implements IUcmBackendConnector {
           orgId: this.orgId,
         },
       });
+
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
+
       const msgInfo = response.body as UcmVMResponse;
       const messageinfoArray: MessageInfo[] = [];
       const ucmVmMsgInfo = msgInfo.Message as unknown as UcmVmMessageInfo[];
@@ -306,6 +309,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
     });
 
     log.log(`Response code: ${response.statusCode}`, loggerContext);
+    log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
 
     const contentInfo = response?.body as UcmVMContentResponse;
     const respHeaders = response.headers;
@@ -355,6 +359,8 @@ export class UcmBackendConnector implements IUcmBackendConnector {
         },
       });
 
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
+
       const responseDetails: VoicemailResponseEvent = {
         statusCode: Number(response.statusCode),
         data: {},
@@ -401,6 +407,8 @@ export class UcmBackendConnector implements IUcmBackendConnector {
         },
       });
 
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
+
       const responseDetails: VoicemailResponseEvent = {
         statusCode: Number(response.statusCode),
         data: {},
@@ -445,6 +453,8 @@ export class UcmBackendConnector implements IUcmBackendConnector {
           orgId: this.orgId,
         },
       });
+
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
 
       const responseDetails: VoicemailResponseEvent = {
         statusCode: Number(response.statusCode),

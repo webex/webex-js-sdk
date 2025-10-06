@@ -271,6 +271,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           service: ALLOWED_SERVICES.MOBIUS,
         });
 
+        log.log(`Response trackingId: ${temp?.headers?.trackingid}`, {
+          file: CALLING_CLIENT_FILE,
+          method: METHODS.GET_CLIENT_REGION_INFO,
+        });
+
         const myIP = (temp.body as IpInfo).ipv4;
 
         // eslint-disable-next-line no-await-in-loop
@@ -281,6 +286,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           headers: {
             [SPARK_USER_AGENT]: null,
           },
+        });
+
+        log.log(`Response trackingId: ${response?.headers?.trackingid}`, {
+          file: CALLING_CLIENT_FILE,
+          method: METHODS.GET_CLIENT_REGION_INFO,
         });
 
         // Metrics for trying clusters in loop
@@ -394,7 +404,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       // Metrics for region info
       this.metricManager.submitRegionInfoMetric(
-        METRIC_EVENT.MOBIUS_SERVERS,
+        METRIC_EVENT.REGION_INFO,
         MOBIUS_SERVER_ACTION.GET_CLIENT_REGION_INFO,
         METRIC_TYPE.BEHAVIORAL,
         clientRegion,
@@ -421,6 +431,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
             [SPARK_USER_AGENT]: CALLING_USER_AGENT,
           },
           service: ALLOWED_SERVICES.MOBIUS,
+        });
+
+        log.log(`Response trackingId: ${response?.headers?.trackingid}`, {
+          file: CALLING_CLIENT_FILE,
+          method: GET_MOBIUS_SERVERS_UTIL,
         });
 
         log.log('Mobius Server found for the region', {

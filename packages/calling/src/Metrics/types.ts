@@ -16,6 +16,7 @@ export enum METRIC_EVENT {
   MEDIA_ERROR = 'web-calling-sdk-media-error',
   REGISTRATION = 'web-calling-sdk-registration',
   REGISTRATION_ERROR = 'web-calling-sdk-registration-error',
+  KEEPALIVE_ERROR = 'web-calling-sdk-keepalive-error',
   VOICEMAIL = 'web-calling-sdk-voicemail',
   VOICEMAIL_ERROR = 'web-calling-sdk-voicemail-error',
   UPLOAD_LOGS_SUCCESS = 'web-calling-sdk-upload-logs-success',

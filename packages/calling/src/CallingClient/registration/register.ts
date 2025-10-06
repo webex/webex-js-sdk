@@ -698,7 +698,7 @@ export class Registration implements IRegistration {
         this.setActiveMobiusUrl(url);
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
         log.log(
-          `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId}`,
+          `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId} responseTrackingId: ${resp.headers?.trackingid}`,
           {
             file: REGISTRATION_FILE,
             method: METHODS.REGISTER,
@@ -824,7 +824,7 @@ export class Registration implements IRegistration {
                   }
 
                   this.metricManager.submitRegistrationMetric(
-                    METRIC_EVENT.REGISTRATION,
+                    METRIC_EVENT.KEEPALIVE_ERROR,
                     REG_ACTION.KEEPALIVE_FAILURE,
                     METRIC_TYPE.BEHAVIORAL,
                     KEEPALIVE_UTIL,
