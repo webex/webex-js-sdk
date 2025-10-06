@@ -302,6 +302,44 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     verb: 'fail',
   },
 
+  // Conference Tasks
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_start',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_start',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_END_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_end',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_END_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_end',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_transfer',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_transfer',
+    verb: 'fail',
+  },
+
   // upload logs
   [METRIC_EVENT_NAMES.UPLOAD_LOGS_SUCCESS]: {
     product,
