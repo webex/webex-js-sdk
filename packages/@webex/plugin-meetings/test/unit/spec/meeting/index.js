@@ -56,6 +56,7 @@ import * as MeetingRequestImport from '@webex/plugin-meetings/src/meeting/reques
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
+import MembersUtil from '@webex/plugin-meetings/src/members/util';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import Media from '@webex/plugin-meetings/src/media/index';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
@@ -244,6 +245,7 @@ describe('plugin-meetings', () => {
     });
 
     webex.internal.newMetrics.callDiagnosticMetrics.clearErrorCache = sinon.stub();
+    webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId = sinon.stub();
     webex.internal.support.submitLogs = sinon.stub().returns(Promise.resolve());
     webex.internal.services = {get: sinon.stub().returns('locus-url')};
     webex.credentials.getOrgId = sinon.stub().returns('fake-org-id');
@@ -368,6 +370,35 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.simultaneousInterpretation, SimultaneousInterpretation);
           assert.instanceOf(meeting.webinar, Webinar);
         });
+
+        it('should call the callback with the meeting that has id already set', () => {
+          let meetingIdFromCallback;
+          // check that the meeting id is already set correctly at the time when the callback is called
+          const meetingCreationCallback = sinon.stub().callsFake((meeting) => {
+            meetingIdFromCallback = meeting.id;
+          });
+
+          meeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+            },
+            {
+              parent: webex,
+            },
+            meetingCreationCallback
+          );
+          assert.exists(meeting.id);
+          assert.calledOnceWithExactly(meetingCreationCallback, meeting);
+          assert.equal(meeting.id, meetingIdFromCallback);
+        });
+
         it('creates MediaRequestManager instances', () => {
           assert.instanceOf(meeting.mediaRequestManagers.audio, MediaRequestManager);
           assert.instanceOf(meeting.mediaRequestManagers.video, MediaRequestManager);
@@ -452,6 +483,18 @@ describe('plugin-meetings', () => {
             joinTrigger: 'fake-join-trigger',
             loginType: 'fake-login-type',
           });
+        });
+
+        it('pstnCorrelationId getter/setter should work correctly', () => {
+          const testPstnCorrelationId = uuid.v4();
+
+          meeting.pstnCorrelationId = testPstnCorrelationId;
+          assert.equal(meeting.pstnCorrelationId, testPstnCorrelationId);
+          assert.equal(meeting.callStateForMetrics.pstnCorrelationId, testPstnCorrelationId);
+
+          meeting.pstnCorrelationId = undefined;
+          assert.equal(meeting.pstnCorrelationId, undefined);
+          assert.equal(meeting.callStateForMetrics.pstnCorrelationId, undefined);
         });
 
         describe('creates ReceiveSlot manager instance', () => {
@@ -581,7 +624,6 @@ describe('plugin-meetings', () => {
           assert.isFalse(meeting.isLocusCall());
         });
       });
-
       describe('#invite', () => {
         it('should have #invite', () => {
           assert.exists(meeting.invite);
@@ -592,8 +634,6 @@ describe('plugin-meetings', () => {
         it('should proxy members #addMember and return a promise', async () => {
           const invite = meeting.invite(uuid1, false);
 
-          assert.exists(invite.then);
-          await invite;
           assert.calledOnce(meeting.members.addMember);
           assert.calledWith(meeting.members.addMember, uuid1, false);
         });
@@ -1219,14 +1259,13 @@ describe('plugin-meetings', () => {
               allowMediaInLobby: true,
             },
           });
-        
+
           assert.calledWithMatch(
             meeting.addMediaInternal,
             sinon.match.any,
             sinon.match.any,
             sinon.match.any,
-            sinon.match.has('videoEnabled', false)
-                        .and(sinon.match.has('allowMediaInLobby', true))
+            sinon.match.has('videoEnabled', false).and(sinon.match.has('allowMediaInLobby', true))
           );
         });
 
@@ -1235,23 +1274,21 @@ describe('plugin-meetings', () => {
             joinOptions,
             mediaOptions: {
               audioEnabled: false,
-              sendAudio: true, 
-              receiveAudio: false, 
+              sendAudio: true,
+              receiveAudio: false,
               allowMediaInLobby: true,
             },
           });
-        
+
           assert.calledWithMatch(
             meeting.addMediaInternal,
             sinon.match.any,
             sinon.match.any,
             sinon.match.any,
-            sinon.match.has('audioEnabled', false)
-                        .and(sinon.match.has('allowMediaInLobby', true))
+            sinon.match.has('audioEnabled', false).and(sinon.match.has('allowMediaInLobby', true))
           );
-        });        
+        });
 
-        
         it('should use provided send/receive values when videoEnabled/audioEnabled are true or not set', async () => {
           await meeting.joinWithMedia({
             joinOptions,
@@ -1263,7 +1300,7 @@ describe('plugin-meetings', () => {
               allowMediaInLobby: true,
             },
           });
-        
+
           assert.calledWith(
             meeting.addMediaInternal,
             sinon.match.any,
@@ -1301,12 +1338,11 @@ describe('plugin-meetings', () => {
           sinon.restore();
         });
         it('should call voicea.onSpokenLanguageUpdate when joined', async () => {
-
           meeting.joinedWith = {state: 'JOINED'};
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
             LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
-            {spokenLanguage: 'fr'},
+            {spokenLanguage: 'fr'}
           );
           assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'fr', meeting.id);
           assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'fr');
@@ -1319,12 +1355,11 @@ describe('plugin-meetings', () => {
         });
 
         it('should also call voicea.onSpokenLanguageUpdate when not joined', async () => {
-
           meeting.joinedWith = {state: 'NOT_JOINED'};
           await meeting.locusInfo.emitScoped(
             {function: 'test', file: 'test'},
             LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
-            {spokenLanguage: 'de'},
+            {spokenLanguage: 'de'}
           );
           assert.calledWith(webex.internal.voicea.onSpokenLanguageUpdate, 'de');
           assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, 'de');
@@ -1954,21 +1989,25 @@ describe('plugin-meetings', () => {
             });
           });
 
-          it('should post error event if failed', async () => {
+          it('should handle join failure', async () => {
             MeetingUtil.isPinOrGuest = sinon.stub().returns(false);
+            webex.internal.newMetrics.submitClientEvent = sinon.stub();
+
             await meeting.join().catch(() => {
-              assert.deepEqual(
-                webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].name,
-                'client.locus.join.response'
-              );
-              assert.match(
-                webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].options.rawError,
+              assert.calledOnce(MeetingUtil.joinMeeting);
+
+              // Assert that client.locus.join.response error event is not sent from this function, it is now emitted from MeetingUtil.joinMeeting
+              assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+              assert.calledWithMatch(
+                webex.internal.newMetrics.submitClientEvent,
                 {
-                  code: 2,
-                  error: null,
-                  joinOptions: {},
-                  sdkMessage:
-                    'There was an issue joining the meeting, meeting could be in a bad state.',
+                  name: 'client.call.initiated',
+                  payload: {
+                    trigger: 'user-interaction',
+                    isRoapCallEnabled: true,
+                    pstnAudioType: undefined
+                  },
+                  options: {meetingId: meeting.id},
                 }
               );
             });
@@ -2169,16 +2208,15 @@ describe('plugin-meetings', () => {
           };
           meeting.mediaProperties.setMediaDirection = sinon.stub().returns(true);
           meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
-          meeting.mediaProperties.getCurrentConnectionInfo = sinon
-            .stub()
-            .resolves({
-              connectionType: 'udp',
-              selectedCandidatePairChanges: 2,
-              numTransports: 1,
-              ipVersion: 'IPv6',
-            });
+          meeting.mediaProperties.getCurrentConnectionInfo = sinon.stub().resolves({
+            connectionType: 'udp',
+            selectedCandidatePairChanges: 2,
+            numTransports: 1,
+            ipVersion: 'IPv6',
+          });
           meeting.audio = muteStateStub;
           meeting.video = muteStateStub;
+          sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.ipv4_and_ipv6);
           sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
           sinon.stub(meeting, 'setupMediaConnectionListeners');
           sinon.stub(meeting, 'setMercuryListener');
@@ -2300,6 +2338,7 @@ describe('plugin-meetings', () => {
               selected_subnet: null,
               numTransports: 1,
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
         });
@@ -2347,6 +2386,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             })
           );
 
@@ -2415,6 +2455,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             }
           );
         });
@@ -2475,6 +2516,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             })
           );
 
@@ -2535,6 +2577,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             })
           );
 
@@ -3059,6 +3102,7 @@ describe('plugin-meetings', () => {
               subnet_reachable: null,
               selected_cluster: null,
               selected_subnet: null,
+              ipver: 1,
             },
           ]);
 
@@ -3260,6 +3304,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               selectedCandidatePairChanges: 2,
               ipVersion: 'IPv6',
+              ipver: 1,
               numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: true,
@@ -3401,11 +3446,12 @@ describe('plugin-meetings', () => {
           meeting.mediaConnections = [
             {
               mediaAgentCluster: 'some.cluster',
-            }
-          ]
+            },
+          ];
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
           meeting.iceCandidateErrors.set('701_turn_host_lookup_received_error', 1);
+          MeetingUtil.getIpVersion.returns(IP_VERSION.only_ipv6);
 
           await meeting.addMedia({
             mediaSettings: {},
@@ -3421,6 +3467,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               selectedCandidatePairChanges: 2,
               ipVersion: 'IPv6',
+              ipver: 6,
               numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: false,
@@ -3499,6 +3546,7 @@ describe('plugin-meetings', () => {
               selected_cluster: null,
               selected_subnet: null,
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
 
@@ -3563,6 +3611,7 @@ describe('plugin-meetings', () => {
               selected_cluster: null,
               selected_subnet: null,
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
 
@@ -3583,12 +3632,12 @@ describe('plugin-meetings', () => {
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(false),
           };
-          meeting.mediaServerIp =  '1.2.3.4';
+          meeting.mediaServerIp = '1.2.3.4';
           meeting.mediaConnections = [
             {
               mediaAgentCluster: 'some.cluster',
-            }
-          ]
+            },
+          ];
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -3609,6 +3658,7 @@ describe('plugin-meetings', () => {
             locus_id: meeting.locusUrl.split('/').pop(),
             connectionType: 'udp',
             ipVersion: 'IPv6',
+            ipver: 1,
             selectedCandidatePairChanges: 2,
             numTransports: 1,
             isMultistream: false,
@@ -3638,12 +3688,12 @@ describe('plugin-meetings', () => {
             stopReachability: sinon.stub(),
             isSubnetReachable: sinon.stub().returns(true),
           };
-          meeting.mediaServerIp =  '1.2.3.4';
+          meeting.mediaServerIp = '1.2.3.4';
           meeting.mediaConnections = [
             {
               mediaAgentCluster: 'some.cluster',
-            }
-          ]
+            },
+          ];
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -3689,6 +3739,7 @@ describe('plugin-meetings', () => {
               selected_cluster: 'some.cluster',
               selected_subnet: '1.X.X.X',
               iceCandidatesCount: 0,
+              ipver: 1,
             }
           );
 
@@ -3994,13 +4045,14 @@ describe('plugin-meetings', () => {
             });
           });
 
-          it('counts the number of members that are in the meeting for MEDIA_QUALITY event', async () => {
+          it('counts the number of members that are in the meeting or lobby for MEDIA_QUALITY event', async () => {
             let fakeMembersCollection = {
               members: {
-                member1: {isInMeeting: true},
-                member2: {isInMeeting: true},
-                member3: {isInMeeting: false},
-              },
+                member1: {isInMeeting: true, isInLobby: false},
+                member2: {isInMeeting: false, isInLobby: true},
+                member3: {isInMeeting: false, isInLobby: false},
+                member4: {isInMeeting: true, isInLobby: false},
+              }
             };
             sinon.stub(meeting, 'getMembers').returns({membersCollection: fakeMembersCollection});
             const fakeData = {intervalMetadata: {}};
@@ -4018,11 +4070,12 @@ describe('plugin-meetings', () => {
               },
               payload: {
                 intervals: [
-                  sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 2)),
+                  sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 3)),
                 ],
               },
             });
-            fakeMembersCollection.members.member2.isInMeeting = false;
+            // Move member2 from lobby to neither in meeting nor lobby
+            fakeMembersCollection.members.member2.isInLobby = false;
 
             statsAnalyzerStub.emit(
               {file: 'test', function: 'test'},
@@ -4037,7 +4090,7 @@ describe('plugin-meetings', () => {
               },
               payload: {
                 intervals: [
-                  sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 1)),
+                  sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 2)),
                 ],
               },
             });
@@ -4355,9 +4408,7 @@ describe('plugin-meetings', () => {
             const error = new Error();
             meeting.meetingRequest.setBrb = sinon.stub().rejects(error);
 
-            await expect(
-              meeting.beRightBack(true)
-            ).to.be.rejectedWith(error);
+            await expect(meeting.beRightBack(true)).to.be.rejectedWith(error);
 
             assert.isFalse(meeting.brbState.state.syncToServerInProgress);
           });
@@ -6507,12 +6558,17 @@ describe('plugin-meetings', () => {
           const DIAL_IN_URL = meeting.dialInUrl;
 
           assert.calledWith(meeting.meetingRequest.dialIn, {
-            correlationId: meeting.correlationId,
+            correlationId: meeting.pstnCorrelationId,
             dialInUrl: DIAL_IN_URL,
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
           });
           assert.notCalled(meeting.meetingRequest.dialOut);
+
+          // Verify pstnCorrelationId was set
+          assert.exists(meeting.pstnCorrelationId);
+          assert.notEqual(meeting.pstnCorrelationId, meeting.correlationId);
+          const firstPstnCorrelationId = meeting.pstnCorrelationId
 
           meeting.meetingRequest.dialIn.resetHistory();
 
@@ -6520,12 +6576,18 @@ describe('plugin-meetings', () => {
           await meeting.usePhoneAudio();
 
           assert.calledWith(meeting.meetingRequest.dialIn, {
-            correlationId: meeting.correlationId,
+            correlationId: meeting.pstnCorrelationId,
             dialInUrl: DIAL_IN_URL,
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
           });
           assert.notCalled(meeting.meetingRequest.dialOut);
+          // A new PSTN correlationId should be generated for the second attempt
+          assert.notEqual(
+            meeting.pstnCorrelationId,
+            firstPstnCorrelationId,
+            'pstnCorrelationId should be regenerated on each dial-in attempt'
+          );
         });
 
         it('given a phone number, triggers dial-out, delegating request to meetingRequest correctly', async () => {
@@ -6535,13 +6597,18 @@ describe('plugin-meetings', () => {
           const DIAL_OUT_URL = meeting.dialOutUrl;
 
           assert.calledWith(meeting.meetingRequest.dialOut, {
-            correlationId: meeting.correlationId,
+            correlationId: meeting.pstnCorrelationId,
             dialOutUrl: DIAL_OUT_URL,
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
             phoneNumber,
           });
           assert.notCalled(meeting.meetingRequest.dialIn);
+
+          // Verify pstnCorrelationId was set
+          assert.exists(meeting.pstnCorrelationId);
+          assert.notEqual(meeting.pstnCorrelationId, meeting.correlationId);
+          const firstPstnCorrelationId = meeting.pstnCorrelationId;
 
           meeting.meetingRequest.dialOut.resetHistory();
 
@@ -6549,43 +6616,115 @@ describe('plugin-meetings', () => {
           await meeting.usePhoneAudio(phoneNumber);
 
           assert.calledWith(meeting.meetingRequest.dialOut, {
-            correlationId: meeting.correlationId,
+            correlationId: meeting.pstnCorrelationId,
             dialOutUrl: DIAL_OUT_URL,
             locusUrl: meeting.locusUrl,
             clientUrl: meeting.deviceUrl,
             phoneNumber,
           });
           assert.notCalled(meeting.meetingRequest.dialIn);
+          // A new PSTN correlationId should be generated for the second attempt
+          assert.notEqual(
+            meeting.pstnCorrelationId,
+            firstPstnCorrelationId,
+            'pstnCorrelationId should be regenerated on each dial-out attempt'
+          );
         });
 
-        it('rejects if the request failed (dial in)', () => {
-          const error = 'something bad happened';
+        it('rejects if the request failed (dial in)', async () => {
+          const error = {error: {message: 'dial in failed'}, stack: 'error stack'};
 
           meeting.meetingRequest.dialIn = sinon.stub().returns(Promise.reject(error));
 
-          return meeting
-            .usePhoneAudio()
-            .then(() => Promise.reject(new Error('Promise resolved when it should have rejected')))
-            .catch((e) => {
-              assert.equal(e, error);
+          try {
+            await meeting.usePhoneAudio();
+            throw new Error('Promise resolved when it should have rejected');
+          } catch (e) {
+            assert.equal(e, error);
 
-              return Promise.resolve();
+            // Verify behavioral metric was sent with dial_in_correlation_id
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_DIAL_IN_FAILURE, {
+              correlation_id: meeting.correlationId,
+              dial_in_url: meeting.dialInUrl,
+              dial_in_correlation_id: sinon.match.string,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              client_url: meeting.deviceUrl,
+              reason: error.error.message,
+              stack: error.stack,
             });
+
+            // Verify pstnCorrelationId was cleared after error
+            assert.equal(meeting.pstnCorrelationId, undefined);
+          }
         });
 
         it('rejects if the request failed (dial out)', async () => {
-          const error = 'something bad happened';
+          const error = {error: {message: 'dial out failed'}, stack: 'error stack'};
 
           meeting.meetingRequest.dialOut = sinon.stub().returns(Promise.reject(error));
 
-          return meeting
-            .usePhoneAudio('+441234567890')
-            .then(() => Promise.reject(new Error('Promise resolved when it should have rejected')))
-            .catch((e) => {
-              assert.equal(e, error);
+          try {
+            await meeting.usePhoneAudio('+441234567890');
+            throw new Error('Promise resolved when it should have rejected');
+          } catch (e) {
+            assert.equal(e, error);
 
-              return Promise.resolve();
+            // Verify behavioral metric was sent with dial_out_correlation_id
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_DIAL_OUT_FAILURE, {
+              correlation_id: meeting.correlationId,
+              dial_out_url: meeting.dialOutUrl,
+              dial_out_correlation_id: sinon.match.string,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              client_url: meeting.deviceUrl,
+              reason: error.error.message,
+              stack: error.stack,
             });
+
+            // Verify pstnCorrelationId was cleared after error
+            assert.equal(meeting.pstnCorrelationId, undefined);
+          }
+        });
+      });
+
+      describe('#disconnectPhoneAudio', () => {
+        beforeEach(() => {
+          // Mock the MeetingUtil.disconnectPhoneAudio method
+          sinon.stub(MeetingUtil, 'disconnectPhoneAudio').resolves();
+          meeting.dialInUrl = 'dialin:///test-dial-in-url';
+          meeting.dialOutUrl = 'dialout:///test-dial-out-url';
+          meeting.dialInDeviceStatus = 'JOINED';
+          meeting.dialOutDeviceStatus = 'JOINED';
+        });
+
+        afterEach(() => {
+          MeetingUtil.disconnectPhoneAudio.restore();
+        });
+
+        it('should disconnect phone audio and clear pstnCorrelationId', async () => {
+          meeting.pstnCorrelationId = 'test-pstn-correlation-id';
+
+          await meeting.disconnectPhoneAudio();
+
+          // Verify that pstnCorrelationId is cleared
+          assert.equal(meeting.pstnCorrelationId, undefined);
+
+          // Verify that MeetingUtil.disconnectPhoneAudio was called for both dial-in and dial-out
+          assert.calledTwice(MeetingUtil.disconnectPhoneAudio);
+          assert.calledWith(MeetingUtil.disconnectPhoneAudio, meeting, meeting.dialInUrl);
+          assert.calledWith(MeetingUtil.disconnectPhoneAudio, meeting, meeting.dialOutUrl);
+        });
+
+        it('should handle case when no PSTN connection is active', async () => {
+          meeting.dialInDeviceStatus = 'IDLE';
+          meeting.dialOutDeviceStatus = 'IDLE';
+          meeting.pstnCorrelationId = 'test-pstn-correlation-id';
+
+          await meeting.disconnectPhoneAudio();
+
+          // Verify that pstnCorrelationId is still cleared even when no phone connection is active
+          assert.equal(meeting.pstnCorrelationId, undefined);
+           // And verify no disconnect was attempted
+          assert.notCalled(MeetingUtil.disconnectPhoneAudio);
         });
       });
 
@@ -7339,6 +7478,8 @@ describe('plugin-meetings', () => {
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
@@ -7385,6 +7526,8 @@ describe('plugin-meetings', () => {
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
@@ -7440,6 +7583,8 @@ describe('plugin-meetings', () => {
               permissionToken: FAKE_PERMISSION_TOKEN,
             },
             {meetingId: meeting.id, sendCAevents: true},
+            null,
+            null,
             null
           );
           assert.deepEqual(meeting.meetingInfo, {
@@ -8102,6 +8247,7 @@ describe('plugin-meetings', () => {
 
           meeting.requestScreenShareFloor = sinon.stub().resolves({});
           meeting.releaseScreenShareFloor = sinon.stub().resolves({});
+          webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
           meeting.mediaProperties.mediaDirection = {
             sendAudio: 'fake value', // using non-boolean here so that we can check that these values are untouched in tests
             sendVideo: 'fake value',
@@ -8183,6 +8329,12 @@ describe('plugin-meetings', () => {
               payload: {mediaType: 'share', shareInstanceId: meeting.localShareInstanceId},
               options: {meetingId: meeting.id},
             });
+
+            // ensure the share start timestamp is saved
+            assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+              key: 'internal.client.share.initiated',
+            });
+
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
 
             assert.equal(meeting.shareCAEventSentStatus.transmitStart, false);
@@ -8199,6 +8351,11 @@ describe('plugin-meetings', () => {
               name: 'client.share.initiated',
               payload: {mediaType: 'share', shareInstanceId: meeting.localShareInstanceId},
               options: {meetingId: meeting.id},
+            });
+
+            // ensure the share start timestamp is saved
+            assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+              key: 'internal.client.share.initiated',
             });
 
             assert.calledWith(
@@ -8869,11 +9026,16 @@ describe('plugin-meetings', () => {
             meeting.hasMediaConnectionConnectedAtLeastOnce = false;
             meeting.setupMediaConnectionListeners();
 
+            sinon.stub(MeetingUtil, 'getCaEventLabelsForIpVersion').returns(['fake labels']);
+
             simulateConnectionStateChange(ConnectionState.Connecting);
 
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.ice.start',
+              payload: {
+                labels: ['fake labels'],
+              },
               options: {
                 meetingId: meeting.id,
               },
@@ -10474,6 +10636,8 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties = {mediaDirection: {sendShare: true}};
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
           (meeting.deviceUrl = 'deviceUrl.com'), (meeting.localShareInstanceId = '1234-5678');
+          webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
+          webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration = sinon.stub().returns(1000);
         });
         it('should call changeMeetingFloor()', async () => {
           meeting.screenShareFloorState = 'GRANTED';
@@ -10491,6 +10655,22 @@ describe('plugin-meetings', () => {
           assert.exists(share.then);
           await share;
           assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+
+          // ensure the share stop timestamp is saved
+          assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+            key: 'internal.client.share.stopped',
+          });
+
+          // ensure the CA share stopped metric is submitted with duration
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.share.stopped',
+            payload: {
+              mediaType: 'share',
+              shareInstanceId: meeting.localShareInstanceId,
+              shareDuration: 1000,
+            },
+            options: {meetingId: meeting.id},
+          });
         });
         it('should not call changeMeetingFloor() if someone else already has the floor', async () => {
           // change selfId so that it doesn't match the beneficiary id from meeting.locusInfo.mediaShares
@@ -12063,6 +12243,7 @@ describe('plugin-meetings', () => {
             meeting.locusInfo.self = {url: url1};
             meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
             meeting.deviceUrl = 'deviceUrl.com';
+            webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
           });
           it('should have #startWhiteboardShare', () => {
             assert.exists(meeting.startWhiteboardShare);
@@ -12090,6 +12271,11 @@ describe('plugin-meetings', () => {
               payload: {mediaType: 'whiteboard'},
               options: {meetingId: meeting.id},
             });
+
+            // ensure the share start timestamp is saved
+            assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+              key: 'internal.client.share.initiated',
+            });
           });
         });
         describe('#stopWhiteboardShare', () => {
@@ -12101,6 +12287,9 @@ describe('plugin-meetings', () => {
             meeting.locusInfo.self = {url: url1};
             meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
             meeting.deviceUrl = 'deviceUrl.com';
+            webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
+            webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration = sinon.stub().returns(1000);
+            webex.internal.newMetrics.submitClientEvent = sinon.stub();
           });
           it('should stop the whiteboard share', async () => {
             const whiteboardShare = meeting.stopWhiteboardShare();
@@ -12115,6 +12304,21 @@ describe('plugin-meetings', () => {
               uri: url1,
             });
             assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+
+            // ensure the share stop timestamp is saved
+            assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+              key: 'internal.client.share.stopped',
+            });
+
+            // ensure the CA share stopped metric is submitted with duration
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.stopped',
+              payload: {
+                mediaType: 'whiteboard',
+                shareDuration: 1000,
+              },
+              options: {meetingId: meeting.id},
+            });
           });
         });
       });
@@ -12187,6 +12391,9 @@ describe('plugin-meetings', () => {
             meeting.selfId = '9528d952-e4de-46cf-8157-fd4823b98377';
             meeting.deviceUrl = 'my-web-url';
             meeting.locusInfo.info = {isWebinar: false};
+            webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
+            webex.internal.newMetrics.callDiagnosticLatencies.getShareDuration = sinon.stub().returns(1500);
+            webex.internal.newMetrics.submitClientEvent = sinon.stub();
           });
 
           const USER_IDS = {
@@ -12413,7 +12620,7 @@ describe('plugin-meetings', () => {
                 activeSharingId.whiteboard = beneficiaryId;
 
                 eventTrigger.share.push(
-                  meeting.webinar.selfIsAttendee
+                  meeting.webinar.selfIsAttendee || meeting.guest
                     ? {
                         eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                         functionName: 'remoteShare',
@@ -12432,7 +12639,8 @@ describe('plugin-meetings', () => {
                       }
                 );
 
-                shareStatus = meeting.webinar.selfIsAttendee
+                shareStatus =
+                  meeting.webinar.selfIsAttendee || meeting.guest
                   ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
                   : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
               }
@@ -12647,6 +12855,36 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
               assert.equal(meeting.shareCAEventSentStatus.receiveStart, false);
               assert.equal(meeting.shareCAEventSentStatus.receiveStop, false);
+            });
+          });
+
+          describe('Whiteboard Share - User is guest', () => {
+            it('User receives a remote share instead of whiteboard share', () => {
+              // Set the guest flag
+              meeting.guest = true;
+
+              // Step 1: Start sharing whiteboard A
+              const data1 = generateData(
+                blankPayload, // Initial payload
+                true, // isGranting: Granting share
+                false, // isContent: Whiteboard (not content)
+                USER_IDS.REMOTE_A, // Beneficiary ID: Remote user A
+                RESOURCE_URLS.WHITEBOARD_A // Resource URL: Whiteboard A
+              );
+
+              // Step 2: Stop sharing whiteboard A
+              const data2 = generateData(
+                data1.payload, // Updated payload from Step 1
+                false, // isGranting: Stopping share
+                false, // isContent: Whiteboard
+                USER_IDS.REMOTE_A // Beneficiary ID: Remote user A
+              );
+
+              // Validate the payload changes and status updates
+              payloadTestHelper([data1]);
+
+              // Specific assertions for guest
+              assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
             });
           });
 
@@ -13301,7 +13539,54 @@ describe('plugin-meetings', () => {
               payloadTestHelper([data1, data2, data3]);
             });
           });
-        });
+
+          it('should send share stopped metric when whiteboard sharing stops', () => {
+            // Start whiteboard sharing (this won't trigger metrics)
+            const data1 = generateData(
+              blankPayload,
+              true, // isGranting: true
+              false, // isContent: false (whiteboard)
+              USER_IDS.ME,
+              RESOURCE_URLS.WHITEBOARD_A
+            );
+
+            // Stop whiteboard sharing (this should trigger metrics)
+            const data2 = generateData(
+              data1.payload,
+              false, // isGranting: false (stopping share)
+              false, // isContent: false (whiteboard)
+              USER_IDS.ME
+            );
+
+            // Trigger the events
+            meeting.locusInfo.emit(
+              {function: 'test', file: 'test'},
+              EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+              data1.payload
+            );
+
+            meeting.locusInfo.emit(
+              {function: 'test', file: 'test'},
+              EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+              data2.payload
+            );
+
+            // Verify metrics were called when whiteboard sharing stopped
+            assert.calledWith(webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp, {
+              key: 'internal.client.share.stopped',
+            });
+
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.stopped',
+              payload: {
+                mediaType: 'whiteboard',
+                shareDuration: 1500, // mocked return value
+              },
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
 
         describe('handleShareVideoStreamMuteStateChange', () => {
           it('should emit MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE event with correct fields', () => {
@@ -13327,6 +13612,7 @@ describe('plugin-meetings', () => {
             );
           });
         });
+      });
       });
 
       describe('#startKeepAlive', () => {
@@ -14092,6 +14378,471 @@ describe('plugin-meetings', () => {
       assert.equal(result.isRegistrationIdValid, false);
       assert.deepEqual(result.requiredCaptcha, FAKE_CAPTCHA);
       assert.equal(result.failureReason, MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA);
+    });
+  });
+
+  describe('#setStage', () => {
+    const check = async (options, expectedVideoLayout) => {
+      const locusUrl = `https://locus-test.wbx2.com/locus/api/v1/loci/${uuidv4()}`;
+      meeting.locusUrl = locusUrl;
+
+      const setStagePromise = meeting.setStage(options);
+
+      assert.exists(setStagePromise.then);
+      await setStagePromise;
+
+      assert.calledOnceWithExactly(
+        meeting.meetingRequest.synchronizeStage,
+        locusUrl,
+        expectedVideoLayout
+      );
+    };
+
+    beforeEach(() => {
+      meeting.meetingRequest.synchronizeStage = sinon.stub().returns(Promise.resolve());
+    });
+
+    it('sends the expected request when no options are provided', async () => {
+      await check(undefined, {
+        overrideDefault: true,
+        lockAttendeeViewOnStageOnly: false,
+        stageParameters: {
+          activeSpeakerProportion: 0.5,
+          showActiveSpeaker: {show: false, order: 0},
+          stageManagerType: 0,
+        },
+      });
+    });
+
+    it('sends the expected request when empty options are provided', async () => {
+      await check(
+        {},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 0,
+          },
+        }
+      );
+    });
+
+    [0.25, 0.5, 0.75].forEach((activeSpeakerProportion) => {
+      it(`sends the expected request when only the active speaker proportion option is provided as ${activeSpeakerProportion}`, async () => {
+        await check(
+          {activeSpeakerProportion},
+          {
+            overrideDefault: true,
+            lockAttendeeViewOnStageOnly: false,
+            stageParameters: {
+              activeSpeakerProportion,
+              showActiveSpeaker: {show: false, order: 0},
+              stageManagerType: 0,
+            },
+          }
+        );
+      });
+    });
+
+    it('sends the expected request when only the custom background option is provided', async () => {
+      const customBackground = {
+        url: `https://test.wbx2.com/background/${uuidv4()}.jpg`,
+      };
+
+      await check(
+        {customBackground},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 2,
+          },
+          customLayouts: {background: customBackground},
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom logo option is provided', async () => {
+      const customLogo = {
+        url: `https://test.wbx2.com/logo/${uuidv4()}.png`,
+        position: 'LowerRight',
+      };
+
+      await check(
+        {customLogo},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 1,
+          },
+          customLayouts: {logo: customLogo},
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom name label option is provided', async () => {
+      const customNameLabel = {
+        accentColor: '#0A7806',
+        background: {color: 'rgba(255, 255, 255, 1)'},
+        border: {color: 'rgba(255, 255, 255, 1)'},
+        content: {
+          displayName: {color: 'rgba(0, 0, 0, 0.95)'},
+          subtitle: {color: 'rgba(0, 0, 0, 0.6)'},
+        },
+        decoration: {color: 'rgba(10, 120, 6, 1)'},
+        fadeOut: {delay: 15},
+        type: 'Primary',
+      };
+
+      await check(
+        {customNameLabel},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 4,
+          },
+          nameLabelStyle: customNameLabel,
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom background and logo options are provided', async () => {
+      const customBackground = {
+        url: `https://test.wbx2.com/background/${uuidv4()}.jpg`,
+      };
+      const customLogo = {
+        url: `https://test.wbx2.com/logo/${uuidv4()}.png`,
+        position: 'UpperRight',
+      };
+
+      await check(
+        {customBackground, customLogo},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 3,
+          },
+          customLayouts: {background: customBackground, logo: customLogo},
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom background and name label options are provided', async () => {
+      const customBackground = {
+        url: `https://test.wbx2.com/background/${uuidv4()}.jpg`,
+      };
+      const customNameLabel = {
+        accentColor: '#00A3FF',
+        background: {color: 'rgba(0, 163, 255, 1)'},
+        border: {color: 'rgba(0, 163, 255, 1)'},
+        content: {
+          displayName: {color: 'rgba(255, 255, 255, 0.95)'},
+          subtitle: {color: 'rgba(255, 255, 255, 0.7)'},
+        },
+        decoration: {color: 'rgba(255, 255, 255, 0.95)'},
+        fadeOut: {delay: 15},
+        type: 'PrimaryInverted',
+      };
+
+      await check(
+        {customBackground, customNameLabel},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 6,
+          },
+          customLayouts: {background: customBackground},
+          nameLabelStyle: customNameLabel,
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom logo and name label options are provided', async () => {
+      const customLogo = {
+        url: `https://test.wbx2.com/logo/${uuidv4()}.png`,
+        position: 'UpperLeft',
+      };
+      const customNameLabel = {
+        accentColor: '#942B2B',
+        background: {color: 'rgba(255, 255, 255, 1)'},
+        border: {color: 'rgba(148, 43, 43, 1)'},
+        content: {
+          displayName: {color: 'rgba(0, 0, 0, 0.95)'},
+          subtitle: {color: 'rgba(0, 0, 0, 0.6)'},
+        },
+        decoration: {color: 'rgba(0, 0, 0, 0)'},
+        fadeOut: {delay: 15},
+        type: 'Secondary',
+      };
+
+      await check(
+        {customLogo, customNameLabel},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 5,
+          },
+          customLayouts: {logo: customLogo},
+          nameLabelStyle: customNameLabel,
+        }
+      );
+    });
+
+    it('sends the expected request when only the custom background, logo, name label options are provided', async () => {
+      const customBackground = {
+        url: `https://test.wbx2.com/background/${uuidv4()}.jpg`,
+      };
+      const customLogo = {
+        url: `https://test.wbx2.com/logo/${uuidv4()}.png`,
+        position: 'LowerLeft',
+      };
+      const customNameLabel = {
+        accentColor: '#EBD960',
+        background: {color: 'rgba(235, 217, 96, 0.55)'},
+        border: {color: 'rgba(235, 217, 96, 0.55)'},
+        content: {
+          displayName: {color: 'rgba(255, 255, 255, 0.95)'},
+          subtitle: {color: 'rgba(255, 255, 255, 0.7)'},
+        },
+        decoration: {color: 'rgba(0, 0, 0, 0)'},
+        fadeOut: {delay: 15},
+        type: 'SecondaryInverted',
+      };
+
+      await check(
+        {customBackground, customLogo, customNameLabel},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 7,
+          },
+          customLayouts: {background: customBackground, logo: customLogo},
+          nameLabelStyle: customNameLabel,
+        }
+      );
+    });
+
+    it('sends the expected request when only the important participants option is provided as empty', async () => {
+      await check(
+        {importantParticipants: []},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 0,
+          },
+        }
+      );
+    });
+
+    it('sends the expected request when only the important participants option is provided as populated', async () => {
+      const importantParticipants = [
+        {mainCsi: 11111111, participantId: uuidv4()},
+        {mainCsi: 22222222, participantId: uuidv4()},
+        {mainCsi: 33333333, participantId: uuidv4()},
+        {mainCsi: 44444444, participantId: uuidv4()},
+        {mainCsi: 55555555, participantId: uuidv4()},
+        {mainCsi: 66666666, participantId: uuidv4()},
+        {mainCsi: 77777777, participantId: uuidv4()},
+        {mainCsi: 88888888, participantId: uuidv4()},
+      ];
+
+      await check(
+        {importantParticipants},
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: false,
+          stageParameters: {
+            activeSpeakerProportion: 0.5,
+            importantParticipants: [
+              {...importantParticipants[0], order: 1},
+              {...importantParticipants[1], order: 2},
+              {...importantParticipants[2], order: 3},
+              {...importantParticipants[3], order: 4},
+              {...importantParticipants[4], order: 5},
+              {...importantParticipants[5], order: 6},
+              {...importantParticipants[6], order: 7},
+              {...importantParticipants[7], order: 8},
+            ],
+            showActiveSpeaker: {show: false, order: 0},
+            stageManagerType: 0,
+          },
+        }
+      );
+    });
+
+    [false, true].forEach((lockAttendeeViewOnStage) => {
+      it(`sends the expected request when only the lock attendee view on stage option is provided as ${lockAttendeeViewOnStage}`, async () => {
+        await check(
+          {lockAttendeeViewOnStage},
+          {
+            overrideDefault: true,
+            lockAttendeeViewOnStageOnly: lockAttendeeViewOnStage,
+            stageParameters: {
+              activeSpeakerProportion: 0.5,
+              showActiveSpeaker: {show: false, order: 0},
+              stageManagerType: 0,
+            },
+          }
+        );
+      });
+    });
+
+    [false, true].forEach((showActiveSpeaker) => {
+      it(`sends the expected request when only the show active speaker option is provided as ${showActiveSpeaker}`, async () => {
+        await check(
+          {showActiveSpeaker},
+          {
+            overrideDefault: true,
+            lockAttendeeViewOnStageOnly: false,
+            stageParameters: {
+              activeSpeakerProportion: 0.5,
+              showActiveSpeaker: {show: showActiveSpeaker, order: 0},
+              stageManagerType: 0,
+            },
+          }
+        );
+      });
+    });
+
+    it('sends the expected request when all options are provided', async () => {
+      const activeSpeakerProportion = 0.6;
+      const customBackground = {
+        url: `https://test.wbx2.com/background/${uuidv4()}.jpg`,
+      };
+      const customLogo = {
+        url: `https://test.wbx2.com/logo/${uuidv4()}.png`,
+        position: 'UpperMiddle',
+      };
+      const customNameLabel = {
+        accentColor: '#0A7806',
+        background: {color: 'rgba(255, 255, 255, 1)'},
+        border: {color: 'rgba(255, 255, 255, 1)'},
+        content: {
+          displayName: {color: 'rgba(0, 0, 0, 0.95)'},
+          subtitle: {color: 'rgba(0, 0, 0, 0.6)'},
+        },
+        decoration: {color: 'rgba(10, 120, 6, 1)'},
+        fadeOut: {delay: 15},
+        type: 'Primary',
+      };
+      const importantParticipants = [
+        {mainCsi: 11111111, participantId: uuidv4()},
+        {mainCsi: 22222222, participantId: uuidv4()},
+        {mainCsi: 33333333, participantId: uuidv4()},
+        {mainCsi: 44444444, participantId: uuidv4()},
+        {mainCsi: 55555555, participantId: uuidv4()},
+        {mainCsi: 66666666, participantId: uuidv4()},
+        {mainCsi: 77777777, participantId: uuidv4()},
+        {mainCsi: 88888888, participantId: uuidv4()},
+      ];
+      const lockAttendeeViewOnStage = true;
+      const showActiveSpeaker = true;
+
+      await check(
+        {
+          activeSpeakerProportion,
+          customBackground,
+          customLogo,
+          customNameLabel,
+          importantParticipants,
+          lockAttendeeViewOnStage,
+          showActiveSpeaker,
+        },
+        {
+          overrideDefault: true,
+          lockAttendeeViewOnStageOnly: lockAttendeeViewOnStage,
+          stageParameters: {
+            activeSpeakerProportion,
+            importantParticipants: [
+              {...importantParticipants[0], order: 1},
+              {...importantParticipants[1], order: 2},
+              {...importantParticipants[2], order: 3},
+              {...importantParticipants[3], order: 4},
+              {...importantParticipants[4], order: 5},
+              {...importantParticipants[5], order: 6},
+              {...importantParticipants[6], order: 7},
+              {...importantParticipants[7], order: 8},
+            ],
+            showActiveSpeaker: {show: showActiveSpeaker, order: 0},
+            stageManagerType: 7,
+          },
+          customLayouts: {background: customBackground, logo: customLogo},
+          nameLabelStyle: customNameLabel,
+        }
+      );
+    });
+  });
+
+  describe('#unsetStage', () => {
+    beforeEach(() => {
+      meeting.meetingRequest.synchronizeStage = sinon.stub().returns(Promise.resolve());
+    });
+
+    it('sends the expected request', async () => {
+      const locusUrl = `https://locus-test.wbx2.com/locus/api/v1/loci/${uuidv4()}`;
+      meeting.locusUrl = locusUrl;
+
+      const unsetStagePromise = meeting.unsetStage();
+
+      assert.exists(unsetStagePromise.then);
+      await unsetStagePromise;
+
+      assert.calledOnceWithExactly(
+        meeting.meetingRequest.synchronizeStage,
+        locusUrl,
+        {overrideDefault: false}
+      );
+    });
+  });
+
+  describe('#notifyHost', () => {
+    beforeEach(() => {
+      meeting.meetingRequest.notifyHost = sinon.stub().returns(Promise.resolve());
+    });
+
+    it('sends the expected request', async () => {
+      meeting.meetingInfo.siteFullUrl = `convergedats.webex.com`;
+      const meetingUuid = 'meeting-uuid';
+      const displayName = ['Test', 'User'];
+      meeting.locusId = 'locusId';
+
+      const notifyHostPromise = meeting.notifyHost(meetingUuid, displayName);
+
+      assert.exists(notifyHostPromise.then);
+      await notifyHostPromise;
+
+      assert.calledOnceWithExactly(
+        meeting.meetingRequest.notifyHost,
+        meeting.meetingInfo.siteFullUrl,
+        meeting.locusId,
+        meetingUuid,
+        displayName,
+      );
     });
   });
 });

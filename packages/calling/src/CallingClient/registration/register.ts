@@ -2,6 +2,7 @@ import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
+import webWorkerStr from './webWorkerStr';
 
 import {
   IMetricManager,
@@ -25,6 +26,7 @@ import {
   ServiceData,
   ServiceIndicator,
   WebexRequestPayload,
+  WorkerMessageType,
 } from '../../common/types';
 import {ISDKConnector, WebexSDK} from '../../SDKConnector/types';
 import {
@@ -46,13 +48,13 @@ import {
   DEFAULT_REHOMING_INTERVAL_MIN,
   DEFAULT_REHOMING_INTERVAL_MAX,
   DEFAULT_KEEPALIVE_INTERVAL,
-  REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
   FAILOVER_UTIL,
   REGISTER_UTIL,
   RETRY_TIMER_UPPER_LIMIT,
   KEEPALIVE_UTIL,
   REGISTRATION_UTIL,
   METHODS,
+  URL_ENDPOINT,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -74,9 +76,7 @@ export class Registration implements IRegistration {
   private failbackTimer?: NodeJS.Timer;
   private activeMobiusUrl!: string;
 
-  private keepaliveTimer: NodeJS.Timer | undefined;
   private rehomingIntervalMin: number;
-
   private rehomingIntervalMax: number;
   private mutex: Mutex;
   private metricManager: IMetricManager;
@@ -92,6 +92,7 @@ export class Registration implements IRegistration {
   private failoverImmediately = false;
   private retryAfter: number | undefined;
   private scheduled429Retry = false;
+  private webWorker: Worker | undefined;
 
   /**
    */
@@ -144,22 +145,6 @@ export class Registration implements IRegistration {
     log.log(METHOD_START_MESSAGE, {method: METHODS.SET_MOBIUS_SERVERS, file: REGISTRATION_FILE});
     this.primaryMobiusUris = primaryMobiusUris;
     this.backupMobiusUris = backupMobiusUris;
-  }
-
-  /**
-   *  Implementation of sending keepalive.
-   *
-   */
-  private async postKeepAlive(url: string) {
-    return <WebexRequestPayload>this.webex.request({
-      uri: `${url}/status`,
-      method: HTTP_METHODS.POST,
-      headers: {
-        [CISCO_DEVICE_URL]: this.webex.internal.device.url,
-        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-      },
-      service: ALLOWED_SERVICES.MOBIUS,
-    });
   }
 
   /**
@@ -290,9 +275,7 @@ export class Registration implements IRegistration {
 
     let interval = this.getRegRetryInterval(attempt);
 
-    const TIMER_THRESHOLD = this.isCCFlow
-      ? REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC
-      : REG_TRY_BACKUP_TIMER_VAL_IN_SEC;
+    const TIMER_THRESHOLD = REG_TRY_BACKUP_TIMER_VAL_IN_SEC;
 
     if (timeElapsed + interval > TIMER_THRESHOLD) {
       const excessVal = timeElapsed + interval - TIMER_THRESHOLD;
@@ -368,6 +351,43 @@ export class Registration implements IRegistration {
     }
   }
 
+  private async isPrimaryActive() {
+    let status;
+    for (const mobiusUrl of this.primaryMobiusUris) {
+      try {
+        const baseUri = mobiusUrl.replace(URL_ENDPOINT, '/');
+        // eslint-disable-next-line no-await-in-loop
+        const response = await this.webex.request({
+          uri: `${baseUri}ping`,
+          method: HTTP_METHODS.GET,
+          headers: {
+            [CISCO_DEVICE_URL]: this.webex.internal.device.url,
+            [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+          },
+          service: ALLOWED_SERVICES.MOBIUS,
+        });
+
+        const {statusCode} = response as WebexRequestPayload;
+        if (statusCode === 200) {
+          log.info(`Ping successful for primary Mobius: ${mobiusUrl}`, {
+            file: REGISTRATION_FILE,
+            method: FAILBACK_UTIL,
+          });
+          status = 'up';
+          break;
+        }
+      } catch (error) {
+        log.warn(`Ping failed for primary Mobius: ${mobiusUrl} with error: ${error}`, {
+          file: REGISTRATION_FILE,
+          method: FAILBACK_UTIL,
+        });
+        status = 'down';
+      }
+    }
+
+    return status === 'up';
+  }
+
   /**
    * Returns true if device is registered with a backup mobius.
    */
@@ -426,7 +446,8 @@ export class Registration implements IRegistration {
   private async executeFailback() {
     await this.mutex.runExclusive(async () => {
       if (this.isFailbackRequired()) {
-        if (Object.keys(this.callManager.getActiveCalls()).length === 0) {
+        const primaryServerStatus = await this.isPrimaryActive();
+        if (Object.keys(this.callManager.getActiveCalls()).length === 0 && primaryServerStatus) {
           log.info(`Attempting failback to primary.`, {
             file: REGISTRATION_FILE,
             method: this.executeFailback.name,
@@ -453,10 +474,13 @@ export class Registration implements IRegistration {
             this.initiateFailback();
           }
         } else {
-          log.info('Active calls present, deferring failback to next cycle.', {
-            file: REGISTRATION_FILE,
-            method: this.executeFailback.name,
-          });
+          log.info(
+            'Active calls present or primary Mobius is down, deferring failback to next cycle.',
+            {
+              file: REGISTRATION_FILE,
+              method: this.executeFailback.name,
+            }
+          );
           this.failbackTimer = undefined;
           this.initiateFailback();
         }
@@ -541,7 +565,7 @@ export class Registration implements IRegistration {
       if (retry) {
         log.log('Network is up again, re-registering with Webex Calling if needed', {
           file: REGISTRATION_FILE,
-          method: this.handleConnectionRestoration.name,
+          method: METHODS.HANDLE_CONNECTION_RESTORATION,
         });
         this.clearKeepaliveTimer();
         if (this.isDeviceRegistered()) {
@@ -562,11 +586,11 @@ export class Registration implements IRegistration {
            * it back to primary.
            */
           const abort = await this.restorePreviousRegistration(
-            this.handleConnectionRestoration.name
+            METHODS.HANDLE_CONNECTION_RESTORATION
           );
 
           if (!abort && !this.isDeviceRegistered()) {
-            await this.restartRegistration(this.handleConnectionRestoration.name);
+            await this.restartRegistration(METHODS.HANDLE_CONNECTION_RESTORATION);
           }
         }
         retry = false;
@@ -669,6 +693,7 @@ export class Registration implements IRegistration {
         const resp = await this.postRegistration(url);
         this.deviceInfo = resp.body as IDeviceInfo;
         this.registrationStatus = RegistrationStatus.ACTIVE;
+        this.setActiveMobiusUrl(url);
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
         log.log(
           `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId}`,
@@ -677,7 +702,6 @@ export class Registration implements IRegistration {
             method: METHODS.REGISTER,
           }
         );
-        this.setActiveMobiusUrl(url);
         this.setIntervalValues(this.deviceInfo);
         this.metricManager.setDeviceInfo(this.deviceInfo);
         this.metricManager.submitRegistrationMetric(
@@ -747,81 +771,96 @@ export class Registration implements IRegistration {
    * This method sets up a timer to periodically send keep-alive requests to maintain a connection.
    * It handles retries, error handling, and re-registration attempts based on the response, ensuring continuous connectivity with the server.
    */
-  private startKeepaliveTimer(url: string, interval: number, serverType: SERVER_TYPE) {
-    let keepAliveRetryCount = 0;
+  private async startKeepaliveTimer(url: string, interval: number, serverType: SERVER_TYPE) {
     this.clearKeepaliveTimer();
     const RETRY_COUNT_THRESHOLD = this.isCCFlow ? 4 : 5;
 
-    this.keepaliveTimer = setInterval(async () => {
-      const logContext = {
-        file: REGISTRATION_FILE,
-        method: KEEPALIVE_UTIL,
-      };
-      await this.mutex.runExclusive(async () => {
-        if (this.isDeviceRegistered() && keepAliveRetryCount < RETRY_COUNT_THRESHOLD) {
-          try {
-            const res = await this.postKeepAlive(url);
-            log.log(`Sent Keepalive, status: ${res.statusCode}`, logContext);
-            if (keepAliveRetryCount > 0) {
+    await this.mutex.runExclusive(async () => {
+      if (this.isDeviceRegistered()) {
+        const accessToken = await this.webex.credentials.getUserToken();
+
+        if (!this.webWorker) {
+          const blob = new Blob([webWorkerStr], {type: 'application/javascript'});
+          const blobUrl = URL.createObjectURL(blob);
+          this.webWorker = new Worker(blobUrl);
+          URL.revokeObjectURL(blobUrl);
+
+          this.webWorker.postMessage({
+            type: WorkerMessageType.START_KEEPALIVE,
+            accessToken: String(accessToken),
+            deviceUrl: String(this.webex.internal.device.url),
+            interval,
+            retryCountThreshold: RETRY_COUNT_THRESHOLD,
+            url,
+          });
+
+          this.webWorker.onmessage = async (event: MessageEvent) => {
+            const logContext = {
+              file: REGISTRATION_FILE,
+              method: this.startKeepaliveTimer.name,
+            };
+            if (event.data.type === WorkerMessageType.KEEPALIVE_SUCCESS) {
+              log.info(`Sent Keepalive, status: ${event.data.statusCode}`, logContext);
               this.lineEmitter(LINE_EVENTS.RECONNECTED);
             }
-            keepAliveRetryCount = 0;
-          } catch (err: unknown) {
-            keepAliveRetryCount += 1;
-            const error = <WebexRequestPayload>err;
 
-            log.warn(
-              `Keep-alive missed ${keepAliveRetryCount} times. Status -> ${error.statusCode} `,
-              logContext
-            );
+            if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
+              const error = <WebexRequestPayload>event.data.err;
+              log.warn(
+                `Keep-alive missed ${event.data.keepAliveRetryCount} times. Status -> ${error.statusCode} `,
+                logContext
+              );
 
-            const abort = await handleRegistrationErrors(
-              error,
-              (clientError, finalError) => {
-                if (finalError) {
-                  this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+              const abort = await handleRegistrationErrors(
+                error,
+                (clientError, finalError) => {
+                  if (finalError) {
+                    this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+                  }
+
+                  this.metricManager.submitRegistrationMetric(
+                    METRIC_EVENT.REGISTRATION,
+                    REG_ACTION.KEEPALIVE_FAILURE,
+                    METRIC_TYPE.BEHAVIORAL,
+                    KEEPALIVE_UTIL,
+                    serverType,
+                    error.headers?.trackingid ?? '',
+                    event.data.keepAliveRetryCount,
+                    clientError
+                  );
+                },
+                {method: KEEPALIVE_UTIL, file: REGISTRATION_FILE}
+              );
+
+              if (abort || event.data.keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
+                this.failoverImmediately = this.isCCFlow;
+                this.setStatus(RegistrationStatus.INACTIVE);
+                this.clearKeepaliveTimer();
+                this.clearFailbackTimer();
+                this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+
+                if (!abort) {
+                  /* In case of non-final error, re-attempt registration */
+                  await this.reconnectOnFailure(KEEPALIVE_UTIL);
                 }
-                this.metricManager.submitRegistrationMetric(
-                  METRIC_EVENT.REGISTRATION,
-                  REG_ACTION.KEEPALIVE_FAILURE,
-                  METRIC_TYPE.BEHAVIORAL,
-                  KEEPALIVE_UTIL,
-                  serverType,
-                  error.headers?.trackingid ?? '',
-                  keepAliveRetryCount,
-                  clientError
-                );
-              },
-              {method: KEEPALIVE_UTIL, file: REGISTRATION_FILE}
-            );
-
-            if (abort || keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
-              this.failoverImmediately = this.isCCFlow;
-              this.setStatus(RegistrationStatus.INACTIVE);
-              this.clearKeepaliveTimer();
-              this.clearFailbackTimer();
-              this.lineEmitter(LINE_EVENTS.UNREGISTERED);
-
-              if (!abort) {
-                /* In case of non-final error, re-attempt registration */
-                await this.reconnectOnFailure(KEEPALIVE_UTIL);
+              } else {
+                this.lineEmitter(LINE_EVENTS.RECONNECTING);
               }
-            } else {
-              this.lineEmitter(LINE_EVENTS.RECONNECTING);
             }
-          }
+          };
         }
-      });
-    }, interval * 1000);
+      }
+    });
   }
 
   /**
    * Clears the keepalive timer if running.
    */
   public clearKeepaliveTimer() {
-    if (this.keepaliveTimer) {
-      clearInterval(this.keepaliveTimer);
-      this.keepaliveTimer = undefined;
+    if (this.webWorker) {
+      this.webWorker.postMessage({type: WorkerMessageType.CLEAR_KEEPALIVE});
+      this.webWorker.terminate();
+      this.webWorker = undefined;
     }
   }
 

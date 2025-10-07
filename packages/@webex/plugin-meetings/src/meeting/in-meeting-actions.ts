@@ -38,6 +38,10 @@ interface IInMeetingActions {
   isClosedCaptionActive?: boolean;
   canStartManualCaption?: boolean;
   canStopManualCaption?: boolean;
+  isLocalRecordingStarted?: boolean;
+  isLocalRecordingStopped?: boolean;
+  isLocalRecordingPaused?: boolean;
+
   isManualCaptionActive?: boolean;
   isSaveTranscriptsEnabled?: boolean;
   isWebexAssistantActive?: boolean;
@@ -172,6 +176,12 @@ export default class InMeetingActions implements IInMeetingActions {
   canStartManualCaption = null;
 
   canStopManualCaption = null;
+
+  isLocalRecordingStopped = null;
+
+  isLocalRecordingStarted = null;
+
+  isLocalRecordingPaused = null;
 
   isManualCaptionActive = null;
 
@@ -347,6 +357,9 @@ export default class InMeetingActions implements IInMeetingActions {
     canStopTranscribing: this.canStopTranscribing,
     isClosedCaptionActive: this.isClosedCaptionActive,
     canStartManualCaption: this.canStartManualCaption,
+    isLocalRecordingStarted: this.isLocalRecordingStarted,
+    isLocalRecordingStopped: this.isLocalRecordingStopped,
+    isLocalRecordingPaused: this.isLocalRecordingPaused,
     canStopManualCaption: this.canStopManualCaption,
     isManualCaptionActive: this.isManualCaptionActive,
     isSaveTranscriptsEnabled: this.isSaveTranscriptsEnabled,

@@ -23,7 +23,7 @@ describe('webex-core', () => {
     let catalog;
 
     beforeEach(() => {
-      webex = new MockWebex({
+      webex = MockWebex({
         children: {
           services: ServicesV2,
           newMetrics: NewMetrics,

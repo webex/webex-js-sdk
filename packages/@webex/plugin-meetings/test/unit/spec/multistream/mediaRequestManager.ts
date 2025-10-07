@@ -3,7 +3,7 @@ import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaR
 import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
-import {getMaxFs} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import {getMaxFs, MAX_FS_VALUES} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import { expect } from 'chai';
@@ -36,12 +36,15 @@ describe('MediaRequestManager', () => {
   const CROSS_POLICY_DUPLICATION = true;
   const MAX_FPS = 3000;
   const MAX_FS_360p = 920;
+  const MAX_FS_540p = 2040;
   const MAX_FS_720p = 3600;
   const MAX_FS_1080p = 8192;
   const MAX_MBPS_360p = 27600;
+  const MAX_MBPS_540p = 61200;
   const MAX_MBPS_720p = 108000;
   const MAX_MBPS_1080p = 245760;
   const MAX_PAYLOADBITSPS_360p = 640000;
+  const MAX_PAYLOADBITSPS_540p = 880000;
   const MAX_PAYLOADBITSPS_720p = 2500000;
   const MAX_PAYLOADBITSPS_1080p = 4000000;
 
@@ -82,7 +85,14 @@ describe('MediaRequestManager', () => {
   });
 
   // helper function for adding an active speaker request
-  const addActiveSpeakerRequest = (priority, receiveSlots, maxFs, commit = false, preferLiveVideo = true, namedMediaGroups = undefined) =>
+  const addActiveSpeakerRequest = (
+    priority,
+    receiveSlots,
+    maxFs,
+    commit = false,
+    preferLiveVideo = true,
+    namedMediaGroups = undefined
+  ) =>
     mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -216,6 +226,9 @@ describe('MediaRequestManager', () => {
       },
       false
     );
+
+
+
     mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -892,15 +905,15 @@ describe('MediaRequestManager', () => {
     // request 10 "large" 1080p streams
     addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 10), getMaxFs('large'), true);
 
-    // check that resulting requests are 10 "small" 360p streams
+    // check that resulting requests are 10 540p streams
     checkMediaRequestsSent([
       {
         policy: 'active-speaker',
         priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 10),
-        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
-        maxFs: getMaxFs('small'),
-        maxMbps: MAX_MBPS_360p,
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_540p,
+        maxFs:  MAX_FS_VALUES['540p'],
+        maxMbps: MAX_MBPS_540p,
       },
     ]);
   });

@@ -3,12 +3,14 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import Meetings from '@webex/plugin-meetings';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
-import {LOCAL_SHARE_ERRORS} from '@webex/plugin-meetings/src/constants';
+import {LOCAL_SHARE_ERRORS, PASSWORD_STATUS} from '@webex/plugin-meetings/src/constants';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import {SELF_POLICY, IP_VERSION} from '@webex/plugin-meetings/src/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
 import * as BrowserDetectionModule from '@webex/plugin-meetings/src/common/browser-detection';
+import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
+import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
 
 describe('plugin-meetings', () => {
   let webex;
@@ -57,6 +59,10 @@ describe('plugin-meetings', () => {
       meeting.getWebexObject = sinon.stub().returns(webex);
       meeting.simultaneousInterpretation = {cleanUp: sinon.stub()};
       meeting.trigger = sinon.stub();
+      meeting.webex = webex;
+      meeting.webex.internal.newMetrics.callDiagnosticMetrics =
+      meeting.webex.internal.newMetrics.callDiagnosticMetrics || {};
+      meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId = sinon.stub();
     });
 
     afterEach(() => {
@@ -81,6 +87,10 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
+        assert.calledOnceWithExactly(
+          meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
+          meeting.correlationId
+        );
       });
 
       it('do clean up on meeting object with LLM disabled', async () => {
@@ -98,6 +108,10 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
+        assert.calledOnceWithExactly(
+          meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
+          meeting.correlationId
+        );
       });
 
       it('do clean up on meeting object with no config', async () => {
@@ -114,6 +128,10 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
+        assert.calledOnceWithExactly(
+          meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
+          meeting.correlationId
+        );
       });
     });
 
@@ -210,11 +228,11 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('updateLocusWithDelta', () => {
-      it('should call handleLocusDelta with the new delta locus', () => {
+    describe('updateLocusFromApiResponse', () => {
+      it('should call handleLocusAPIResponse with the response body', () => {
         const meeting = {
           locusInfo: {
-            handleLocusDelta: sinon.stub(),
+            handleLocusAPIResponse: sinon.stub(),
           },
         };
 
@@ -224,16 +242,16 @@ describe('plugin-meetings', () => {
           },
         };
 
-        const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
+        const response = MeetingUtil.updateLocusFromApiResponse(meeting, originalResponse);
 
         assert.deepEqual(response, originalResponse);
-        assert.calledOnceWithExactly(meeting.locusInfo.handleLocusDelta, 'locus', meeting);
+        assert.calledOnceWithExactly(meeting.locusInfo.handleLocusAPIResponse, meeting, originalResponse.body);
       });
 
       it('should handle locus being missing from the response', () => {
         const meeting = {
           locusInfo: {
-            handleLocusDelta: sinon.stub(),
+            handleLocusAPIResponse: sinon.stub(),
           },
         };
 
@@ -241,10 +259,10 @@ describe('plugin-meetings', () => {
           body: {},
         };
 
-        const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
+        const response = MeetingUtil.updateLocusFromApiResponse(meeting, originalResponse);
 
         assert.deepEqual(response, originalResponse);
-        assert.notCalled(meeting.locusInfo.handleLocusDelta);
+        assert.notCalled(meeting.locusInfo.handleLocusAPIResponse);
       });
 
       it('should work with an undefined meeting', () => {
@@ -254,14 +272,14 @@ describe('plugin-meetings', () => {
           },
         };
 
-        const response = MeetingUtil.updateLocusWithDelta(undefined, originalResponse);
+        const response = MeetingUtil.updateLocusFromApiResponse(undefined, originalResponse);
         assert.deepEqual(response, originalResponse);
       });
     });
 
     describe('generateLocusDeltaRequest', () => {
       it('generates the correct wrapper function', async () => {
-        const updateLocusWithDeltaSpy = sinon.spy(MeetingUtil, 'updateLocusWithDelta');
+        const updateLocusFromApiResponseSpy = sinon.spy(MeetingUtil, 'updateLocusFromApiResponse');
         const addSequenceSpy = sinon.spy(MeetingUtil, 'addSequence');
 
         const meeting = {
@@ -278,16 +296,16 @@ describe('plugin-meetings', () => {
         let result = await locusDeltaRequest(options);
 
         assert.equal(result, 'result');
-        assert.calledOnceWithExactly(updateLocusWithDeltaSpy, meeting, 'result');
+        assert.calledOnceWithExactly(updateLocusFromApiResponseSpy, meeting, 'result');
         assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
 
-        updateLocusWithDeltaSpy.resetHistory();
+        updateLocusFromApiResponseSpy.resetHistory();
         addSequenceSpy.resetHistory();
 
         // body missing from options
         result = await locusDeltaRequest({});
         assert.equal(result, 'result');
-        assert.calledOnceWithExactly(updateLocusWithDeltaSpy, meeting, 'result');
+        assert.calledOnceWithExactly(updateLocusFromApiResponseSpy, meeting, 'result');
         assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
 
         // meeting disappears so the WeakRef returns undefined
@@ -341,7 +359,11 @@ describe('plugin-meetings', () => {
     });
 
     describe('remoteUpdateAudioVideo', () => {
-      it('#Should call meetingRequest.locusMediaRequest with correct parameters', async () => {
+      it('#Should call meetingRequest.locusMediaRequest with correct parameters and return the full response', async () => {
+        const fakeResponse = {
+          body: { locus: { url: 'locusUrl'}},
+          headers: { },
+        };
         const meeting = {
           id: 'meeting-id',
           mediaId: '12345',
@@ -350,13 +372,14 @@ describe('plugin-meetings', () => {
             sequence: {},
           },
           locusMediaRequest: {
-            send: sinon.stub().resolves({body: {}, headers: {}}),
+            send: sinon.stub().resolves(fakeResponse),
           },
           getWebexObject: sinon.stub().returns(webex),
         };
 
-        await MeetingUtil.remoteUpdateAudioVideo(meeting, true, false);
+        const result = await MeetingUtil.remoteUpdateAudioVideo(meeting, true, false);
 
+        assert.deepEqual(result, fakeResponse);
         assert.calledOnceWithExactly(meeting.locusMediaRequest.send, {
           mediaId: '12345',
           muteOptions: {
@@ -622,6 +645,28 @@ describe('plugin-meetings', () => {
 
         assert.equal(parameter.locusClusterUrl, 'locusClusterUrl');
       });
+
+      it('should post client event with error when join fails', async () => {
+        const joinError = new Error('Join failed');
+        meeting.meetingRequest.joinMeeting.rejects(joinError);
+        meeting.meetingInfo = { meetingLookupUrl: 'test-lookup-url' };
+
+        try {
+          await MeetingUtil.joinMeeting(meeting, {});
+          assert.fail('Expected joinMeeting to throw an error');
+        } catch (error) {
+          assert.equal(error, joinError);
+          
+          // Verify error client event was submitted
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.locus.join.response',
+            payload: {
+              identifiers: { meetingLookupUrl: 'test-lookup-url' },
+            },
+            options: { meetingId: meeting.id, rawError: joinError },
+          });
+        }
+      });
     });
 
     describe('joinMeetingOptions', () => {
@@ -659,6 +704,82 @@ describe('plugin-meetings', () => {
           });
         } finally {
           joinMeetingSpy.restore();
+        }
+      });
+
+      it('should submit client event and reject with PasswordError when password is required', async () => {
+        const meeting = {
+          id: 'meeting-id',
+          passwordStatus: PASSWORD_STATUS.REQUIRED,
+          resourceId: null,
+          requiredCaptcha: null,
+          getWebexObject: sinon.stub().returns(webex),
+        };
+
+        try {
+          await MeetingUtil.joinMeetingOptions(meeting, {});
+          assert.fail('Expected joinMeetingOptions to throw PasswordError');
+        } catch (error) {
+          assert.instanceOf(error, PasswordError);
+          
+          // Verify client event was submitted with error details
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.meetinginfo.response',
+            options: {
+              meetingId: meeting.id,
+            },
+            payload: {
+              errors: [
+                {
+                  fatal: false,
+                  category: 'expected',
+                  name: 'other',
+                  shownToUser: false,
+                  errorCode: error.code,
+                  errorDescription: error.name,
+                  rawErrorMessage: error.sdkMessage,
+                },
+              ],
+            },
+          });
+        }
+      });
+
+      it('should submit client event and reject with CaptchaError when captcha is required', async () => {
+        const meeting = {
+          id: 'meeting-id',
+          passwordStatus: null,
+          resourceId: null,
+          requiredCaptcha: {captchaId: 'test-captcha'},
+          getWebexObject: sinon.stub().returns(webex),
+        };
+
+        try {
+          await MeetingUtil.joinMeetingOptions(meeting, {});
+          assert.fail('Expected joinMeetingOptions to throw CaptchaError');
+        } catch (error) {
+          assert.instanceOf(error, CaptchaError);
+          
+          // Verify client event was submitted with error details
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.meetinginfo.response',
+            options: {
+              meetingId: meeting.id,
+            },
+            payload: {
+              errors: [
+                {
+                  fatal: false,
+                  category: 'expected',
+                  name: 'other',
+                  shownToUser: false,
+                  errorCode: error.code,
+                  errorDescription: error.name,
+                  rawErrorMessage: error.sdkMessage,
+                },
+              ],
+            },
+          });
         }
       });
     });
@@ -850,6 +971,11 @@ describe('plugin-meetings', () => {
       {functionName: 'isClosedCaptionActive', displayHint: 'CAPTION_STATUS_ACTIVE'},
       {functionName: 'canStartManualCaption', displayHint: 'MANUAL_CAPTION_START'},
       {functionName: 'canStopManualCaption', displayHint: 'MANUAL_CAPTION_STOP'},
+
+      {functionName: 'isLocalRecordingStarted',displayHint:'LOCAL_RECORDING_STATUS_STARTED'},
+      {functionName: 'isLocalRecordingStopped', displayHint: 'LOCAL_RECORDING_STATUS_STOPPED'},
+      {functionName: 'isLocalRecordingPaused', displayHint: 'LOCAL_RECORDING_STATUS_PAUSED'},
+
       {functionName: 'isManualCaptionActive', displayHint: 'MANUAL_CAPTION_STATUS_ACTIVE'},
       {functionName: 'isWebexAssistantActive', displayHint: 'WEBEX_ASSISTANT_STATUS_ACTIVE'},
       {functionName: 'canViewCaptionPanel', displayHint: 'ENABLE_CAPTION_PANEL'},
@@ -1185,6 +1311,27 @@ describe('plugin-meetings', () => {
           isBrowserStub.callsFake((name) => name === 'firefox');
 
           assert.equal(MeetingUtil.getIpVersion(webex), undefined);
+        });
+      });
+    });
+
+    describe('getCaEventLabelsForIpVersion', () => {
+      [
+        {ipver: IP_VERSION.unknown, expectedLabels: undefined},
+        {ipver: IP_VERSION.only_ipv4, expectedLabels: ['hasIpv4_true']},
+        {ipver: IP_VERSION.only_ipv6, expectedLabels: ['hasIpv6_true']},
+        {
+          ipver: IP_VERSION.ipv4_and_ipv6,
+          expectedLabels: ['hasIpv4_true', 'hasIpv6_true'],
+        },
+      ].forEach(({ipver, expectedLabels}) => {
+        it(`returns expected labels when ipver=${ipver}`, () => {
+          sinon.stub(MeetingUtil, 'getIpVersion').returns(ipver);
+
+          const result = MeetingUtil.getCaEventLabelsForIpVersion(webex);
+
+          assert.calledOnceWithExactly(MeetingUtil.getIpVersion, webex);
+          assert.deepEqual(result, expectedLabels);
         });
       });
     });

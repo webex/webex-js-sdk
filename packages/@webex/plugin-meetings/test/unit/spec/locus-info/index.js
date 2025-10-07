@@ -305,7 +305,7 @@ describe('plugin-meetings', () => {
           {state: newControls.rdcControl}
         );
       });
-      
+
       it('should trigger the CONTROLS_POLLING_QA_CHANGED event when necessary', () => {
         locusInfo.controls = {};
         locusInfo.emitScoped = sinon.stub();
@@ -772,7 +772,7 @@ describe('plugin-meetings', () => {
           },
         };
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateParticipants({});
+        locusInfo.updateParticipants({}, []);
 
         // if this assertion fails, double-check the attributes used in
         // the updateParticipants function in locus-info/index.js
@@ -790,6 +790,7 @@ describe('plugin-meetings', () => {
             selfId: '2',
             hostId: '3',
             isReplace: undefined,
+            removedParticipantIds: [],
           }
         );
         // note: in a real use case, recordingId, selfId, and hostId would all be the same
@@ -814,7 +815,7 @@ describe('plugin-meetings', () => {
         };
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateParticipants({}, true);
+        locusInfo.updateParticipants({}, [], true);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -830,43 +831,11 @@ describe('plugin-meetings', () => {
             selfId: '2',
             hostId: '3',
             isReplace: true,
+            removedParticipantIds: [],
           }
         );
       });
 
-      it('should update the deltaParticipants object', () => {
-        const prev = locusInfo.deltaParticipants;
-
-        locusInfo.updateParticipantDeltas(newParticipants);
-
-        assert.notEqual(locusInfo.deltaParticipants, prev);
-      });
-
-      it('should update the delta property on all changed states', () => {
-        locusInfo.updateParticipantDeltas(newParticipants);
-
-        const [exampleParticipant] = locusInfo.deltaParticipants;
-
-        assert.isTrue(exampleParticipant.delta.audioStatus);
-        assert.isTrue(exampleParticipant.delta.videoSlidesStatus);
-        assert.isTrue(exampleParticipant.delta.videoStatus);
-      });
-
-      it('should include the person details of the changed participant', () => {
-        locusInfo.updateParticipantDeltas(newParticipants);
-
-        const [exampleParticipant] = locusInfo.deltaParticipants;
-
-        assert.equal(exampleParticipant.person, newParticipants[0].person);
-      });
-
-      it('should clear deltaParticipants when no changes occured', () => {
-        locusInfo.participants = [...newParticipants];
-
-        locusInfo.updateParticipantDeltas(locusInfo.participants);
-
-        assert.isTrue(locusInfo.deltaParticipants.length === 0);
-      });
 
       it('should call with participant display name', () => {
         const failureParticipant = [
@@ -880,7 +849,7 @@ describe('plugin-meetings', () => {
         ];
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateParticipants(failureParticipant);
+        locusInfo.updateParticipants(failureParticipant, []);
         assert.calledWith(
           locusInfo.emitScoped,
           {
@@ -1674,6 +1643,28 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should trigger MEETING_INFO_UPDATED even if the roles array is empty', () => {
+        const initialInfo = cloneDeep(meetingInfo);
+
+        const updateSelf = cloneDeep(self);
+        updateSelf.controls.role.roles = [];
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateMeetingInfo(initialInfo, updateSelf);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateMeetingInfo',
+          },
+          LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
+          {
+            isInitializing: !self,
+          }
+          );
+        });
+
       const checkMeetingInfoUpdatedCalled = (expected, payload) => {
         const expectedArgs = [
           locusInfo.emitScoped,
@@ -2049,6 +2040,18 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#handleLocusAPIResponse', () => {
+      it('calls handleLocusDelta', () => {
+        const fakeLocus = {eventType: LOCUSEVENT.DIFFERENCE};
+
+        sinon.stub(locusInfo, 'handleLocusDelta');
+
+        locusInfo.handleLocusAPIResponse(mockMeeting, {locus: fakeLocus});
+
+        assert.calledWith(locusInfo.handleLocusDelta, fakeLocus, mockMeeting);
+      });
+    });
+
     describe('#LocusDeltaEvents', () => {
       const fakeMeeting = 'fakeMeeting';
       let sandbox = null;
@@ -2061,7 +2064,7 @@ describe('plugin-meetings', () => {
 
         fakeLocus = {
           meeting: true,
-          participants: true,
+          participants: [],
           url: 'newLocusUrl',
           syncUrl: 'newSyncUrl',
         };
@@ -2106,6 +2109,38 @@ describe('plugin-meetings', () => {
         locusInfo.handleLocusDelta(fakeLocus, fakeMeeting);
 
         assert.isFunction(locusParser.onDeltaAction);
+      });
+
+      it("#updateLocusInfo invokes updateLocusUrl before updateMeetingInfo", () => {
+        const callOrder = [];
+        sinon.stub(locusInfo, "updateControls");
+        sinon.stub(locusInfo, "updateConversationUrl");
+        sinon.stub(locusInfo, "updateCreated");
+        sinon.stub(locusInfo, "updateFullState");
+        sinon.stub(locusInfo, "updateHostInfo");
+        sinon.stub(locusInfo, "updateMeetingInfo").callsFake(() => {
+          callOrder.push("updateMeetingInfo");
+        });
+        sinon.stub(locusInfo, "updateMediaShares");
+        sinon.stub(locusInfo, "updateParticipantsUrl");
+        sinon.stub(locusInfo, "updateReplace");
+        sinon.stub(locusInfo, "updateSelf");
+        sinon.stub(locusInfo, "updateLocusUrl").callsFake(() => {
+          callOrder.push("updateLocusUrl");
+        });
+        sinon.stub(locusInfo, "updateAclUrl");
+        sinon.stub(locusInfo, "updateBasequence");
+        sinon.stub(locusInfo, "updateSequence");
+        sinon.stub(locusInfo, "updateMemberShip");
+        sinon.stub(locusInfo, "updateIdentifiers");
+        sinon.stub(locusInfo, "updateEmbeddedApps");
+        sinon.stub(locusInfo, "updateResources");
+        sinon.stub(locusInfo, "compareAndUpdate");
+
+        locusInfo.updateLocusInfo(locus);
+
+        // Ensure updateLocusUrl is called before updateMeetingInfo if both are called
+        assert.deepEqual(callOrder, ['updateLocusUrl', 'updateMeetingInfo']);
       });
 
       it('#updateLocusInfo ignores breakout LEFT message', () => {
@@ -2159,10 +2194,11 @@ describe('plugin-meetings', () => {
         assert.notCalled(locusInfo.compareAndUpdate);
       });
 
+
+
       it('onFullLocus() updates the working-copy of locus parser', () => {
         const eventType = 'fakeEvent';
 
-        sandbox.stub(locusInfo, 'updateParticipantDeltas');
         sandbox.stub(locusInfo, 'updateLocusInfo');
         sandbox.stub(locusInfo, 'updateParticipants');
         sandbox.stub(locusInfo, 'isMeetingActive');
@@ -2182,7 +2218,6 @@ describe('plugin-meetings', () => {
         const oldWorkingCopy = locusParser.workingCopy;
 
         const spies = [
-          sandbox.stub(locusInfo, 'updateParticipantDeltas'),
           sandbox.stub(locusInfo, 'updateLocusInfo'),
           sandbox.stub(locusInfo, 'updateParticipants'),
           sandbox.stub(locusInfo, 'isMeetingActive'),
@@ -2257,7 +2292,7 @@ describe('plugin-meetings', () => {
 
       it('applyLocusDeltaData gets delta locus on DESYNC action if we have a syncUrl', () => {
         const {DESYNC} = LocusDeltaParser.loci;
-        const fakeDeltaLocus = {id: 'fake delta locus'};
+        const fakeDeltaLocus = {baseSequence: {}, id: 'fake delta locus'};
         const meeting = {
           meetingRequest: {
             getLocusDTO: sandbox.stub().resolves({body: fakeDeltaLocus}),
@@ -2348,23 +2383,23 @@ describe('plugin-meetings', () => {
 
       it('applyLocusDeltaData handles LOCUS_URL_CHANGED action correctly', () => {
         const {LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
-        const fakeDeltaLocus = {id: 'fake delta locus'};
+        const fakeFullLocus = {
+          url: 'new full loci url',
+        };
         const meeting = {
           meetingRequest: {
-            getLocusDTO: sandbox.stub().resolves({body: fakeDeltaLocus}),
+            getLocusDTO: sandbox.stub().resolves({body: fakeFullLocus}),
           },
           locusInfo: {
             handleLocusDelta: sandbox.stub(),
           },
-          locusUrl: 'current locus url',
+          locusUrl: 'current BO session locus url',
         };
 
-        locusInfo.locusParser.workingCopy = {
-          syncUrl: 'current sync url',
-        };
+        locusInfo.locusParser.workingCopy = null;
 
         locusInfo.applyLocusDeltaData(LOCUS_URL_CHANGED, fakeLocus, meeting);
-        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'current sync url'});
+        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: fakeLocus.url});
       });
 
       describe('edge cases for sync failing', () => {
@@ -2392,25 +2427,22 @@ describe('plugin-meetings', () => {
           };
         });
 
-        it('applyLocusDeltaData gets full locus on DESYNC action if we do not have a syncUrl and destroys the meeting if that fails', () => {
+        it('applyLocusDeltaData gets full locus on DESYNC action if we do not have a syncUrl and destroys the meeting if that fails', async () => {
           meeting.meetingRequest.getLocusDTO.rejects(new Error('fake error'));
 
           locusInfo.locusParser.workingCopy = {}; // no syncUrl
 
-          // Since we have a promise inside a function we want to test that's not returned,
-          // we will wait and stub it's last function to resolve this waiting promise.
-          return new Promise((resolve) => {
-            webex.meetings.destroy.callsFake(() => resolve());
-            locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
-          }).then(() => {
-            assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'fullSyncUrl'});
+          locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
 
-            assert.notCalled(meeting.locusInfo.handleLocusDelta);
-            assert.notCalled(meeting.locusInfo.onFullLocus);
-            assert.notCalled(locusInfo.locusParser.resume);
+          await testUtils.flushPromises();
 
-            assert.calledOnceWithExactly(webex.meetings.destroy, meeting, 'LOCUS_DTO_SYNC_FAILED');
-          });
+          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'fullSyncUrl'});
+
+          assert.notCalled(meeting.locusInfo.handleLocusDelta);
+          assert.notCalled(meeting.locusInfo.onFullLocus);
+          assert.notCalled(locusInfo.locusParser.resume);
+
+          assert.calledOnceWithExactly(webex.meetings.destroy, meeting, 'LOCUS_DTO_SYNC_FAILED');
         });
 
         it('applyLocusDeltaData first tries a delta sync on DESYNC action and if that fails, does a full locus sync', () => {
@@ -2447,44 +2479,67 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('applyLocusDeltaData destroys the meeting if both delta sync and full sync fail', () => {
+        it('applyLocusDeltaData first tries a delta sync on DESYNC action and if that fails with 403, it does not do a full locus sync', async () => {
+          const fake403Error = new Error('fake error');
+          fake403Error.statusCode = 403;
+
+          meeting.meetingRequest.getLocusDTO.onCall(0).rejects(fake403Error);
+
+          locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
+
+          await testUtils.flushPromises();
+
+          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'deltaSyncUrl'});
+
+          assert.calledWith(sendBehavioralMetricStub, 'js_sdk_locus_delta_sync_failed', {
+            correlationId: meeting.correlationId,
+            url: 'deltaSyncUrl',
+            reason: 'fake error',
+            errorName: 'Error',
+            stack: sinon.match.any,
+            code: sinon.match.any,
+          });
+
+          assert.notCalled(meeting.locusInfo.handleLocusDelta);
+          assert.notCalled(meeting.locusInfo.onFullLocus);
+          assert.notCalled(locusInfo.locusParser.resume);
+        });
+
+        it('applyLocusDeltaData destroys the meeting if both delta sync and full sync fail', async () => {
           meeting.meetingRequest.getLocusDTO.rejects(new Error('fake error'));
 
-          // Since we have a promise inside a function we want to test that's not returned,
-          // we will wait and stub it's last function to resolve this waiting promise.
-          return new Promise((resolve) => {
-            webex.meetings.destroy.callsFake(() => resolve());
-            locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
-          }).then(() => {
-            assert.calledTwice(meeting.meetingRequest.getLocusDTO);
+          locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
 
-            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[0].args, [
-              {url: 'deltaSyncUrl'},
-            ]);
-            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[1].args, [
-              {url: 'fullSyncUrl'},
-            ]);
+          await testUtils.flushPromises();
 
-            assert.calledWith(sendBehavioralMetricStub, 'js_sdk_locus_delta_sync_failed', {
-              correlationId: meeting.correlationId,
-              url: 'deltaSyncUrl',
-              reason: 'fake error',
-              errorName: 'Error',
-              stack: sinon.match.any,
-              code: sinon.match.any,
-            });
+          assert.calledTwice(meeting.meetingRequest.getLocusDTO);
 
-            assert.notCalled(meeting.locusInfo.handleLocusDelta);
-            assert.notCalled(meeting.locusInfo.onFullLocus);
-            assert.notCalled(locusInfo.locusParser.resume);
+          assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[0].args, [
+            {url: 'deltaSyncUrl'},
+          ]);
+          assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[1].args, [
+            {url: 'fullSyncUrl'},
+          ]);
 
-            assert.calledOnceWithExactly(webex.meetings.destroy, meeting, 'LOCUS_DTO_SYNC_FAILED');
+          assert.calledWith(sendBehavioralMetricStub, 'js_sdk_locus_delta_sync_failed', {
+            correlationId: meeting.correlationId,
+            url: 'deltaSyncUrl',
+            reason: 'fake error',
+            errorName: 'Error',
+            stack: sinon.match.any,
+            code: sinon.match.any,
           });
+
+          assert.notCalled(meeting.locusInfo.handleLocusDelta);
+          assert.notCalled(meeting.locusInfo.onFullLocus);
+          assert.notCalled(locusInfo.locusParser.resume);
+
+          assert.calledOnceWithExactly(webex.meetings.destroy, meeting, 'LOCUS_DTO_SYNC_FAILED');
         });
       });
 
       it('onDeltaLocus handle delta data', () => {
-        fakeLocus.participants = {};
+        fakeLocus.participants = [];
         const fakeBreakout = {
           sessionId: 'sessionId',
           groupId: 'groupId',
@@ -2501,17 +2556,15 @@ describe('plugin-meetings', () => {
         };
         locusInfo.updateParticipants = sinon.stub();
         locusInfo.onDeltaLocus(fakeLocus);
-        assert.calledWith(locusInfo.updateParticipants, {}, false);
+        assert.calledWith(locusInfo.updateParticipants, [], undefined, false);
 
         fakeLocus.controls.breakout.sessionId = 'sessionId2';
         locusInfo.onDeltaLocus(fakeLocus);
-        assert.calledWith(locusInfo.updateParticipants, {}, true);
+        assert.calledWith(locusInfo.updateParticipants, [], undefined, true);
       });
 
       it('onDeltaLocus merges delta participants with existing participants', () => {
-        const FAKE_DELTA_PARTICIPANTS = [
-          {id: '1111'}, {id: '2222'}
-        ]
+        const FAKE_DELTA_PARTICIPANTS = [{id: '1111'}, {id: '2222'}];
         fakeLocus.participants = FAKE_DELTA_PARTICIPANTS;
 
         sinon.spy(locusInfo, 'mergeParticipants');
@@ -2519,8 +2572,86 @@ describe('plugin-meetings', () => {
         const existingParticipants = locusInfo.participants;
 
         locusInfo.onDeltaLocus(fakeLocus);
-        assert.calledOnceWithExactly(locusInfo.mergeParticipants, existingParticipants, FAKE_DELTA_PARTICIPANTS);
-        assert.calledWith(locusInfo.updateParticipants, FAKE_DELTA_PARTICIPANTS, false);
+        assert.calledOnceWithExactly(
+          locusInfo.mergeParticipants,
+          existingParticipants,
+          FAKE_DELTA_PARTICIPANTS
+        );
+        assert.calledWith(locusInfo.updateParticipants, FAKE_DELTA_PARTICIPANTS, undefined, false);
+      });
+
+      [true, false].forEach((isDelta) =>
+        it(`applyLocusDeltaData - handles empty ${
+          isDelta ? 'delta' : 'full'
+        } DTO in response`, async () => {
+          const {DESYNC} = LocusDeltaParser.loci;
+          const fakeFullLocusDto = {};
+          const meeting = {
+            meetingRequest: {
+              getLocusDTO: sandbox.stub().resolves({body: fakeFullLocusDto}),
+            },
+            locusInfo: {
+              onFullLocus: sandbox.stub(),
+              handleLocusDelta: sandbox.stub(),
+            },
+            locusUrl: 'fake locus FULL url',
+          };
+
+          sinon.stub(locusInfo.locusParser, 'resume').resolves();
+
+          if (isDelta) {
+            locusInfo.locusParser.workingCopy = {syncUrl: 'fake locus DELTA url'};
+          } else {
+            locusInfo.locusParser.workingCopy = {}; // no syncUrl (to trigger FULL DTO request)
+          }
+
+          await locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
+
+          await testUtils.flushPromises();
+
+          if (isDelta) {
+            assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {
+              url: 'fake locus DELTA url',
+            });
+          } else {
+            assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {
+              url: 'fake locus FULL url',
+            });
+          }
+          assert.notCalled(meeting.locusInfo.handleLocusDelta);
+          assert.notCalled(meeting.locusInfo.onFullLocus);
+          assert.calledOnce(locusInfo.locusParser.resume);
+        })
+      );
+
+      it(`applyLocusDeltaData - handles the case when we get FULL DTO when we asked for DELTA DTO`, async () => {
+        const {DESYNC} = LocusDeltaParser.loci;
+        const fakeFullLocusDto = {someStuff: 'data'}; // non-empty DTO, without baseSequence
+        const meeting = {
+          meetingRequest: {
+            getLocusDTO: sandbox.stub().resolves({body: fakeFullLocusDto}),
+          },
+          locusInfo: {
+            onFullLocus: sandbox.stub(),
+            handleLocusDelta: sandbox.stub(),
+          },
+          locusUrl: 'fake locus FULL url',
+        };
+
+        sinon.stub(locusInfo.locusParser, 'resume').resolves();
+
+        locusInfo.locusParser.workingCopy = {syncUrl: 'fake locus DELTA url'};
+
+        await locusInfo.applyLocusDeltaData(DESYNC, fakeLocus, meeting);
+
+        await testUtils.flushPromises();
+
+        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {
+          url: 'fake locus DELTA url',
+        });
+        assert.notCalled(meeting.locusInfo.handleLocusDelta);
+        assert.calledOnceWithExactly(meeting.locusInfo.onFullLocus, fakeFullLocusDto);
+        assert.calledOnce(locusInfo.locusParser.resume);
       });
     });
 
@@ -2934,10 +3065,9 @@ describe('plugin-meetings', () => {
       beforeEach(() => {
         clock = sinon.useFakeTimers();
 
-        sinon.stub(locusInfo, 'updateParticipantDeltas');
         sinon.stub(locusInfo, 'updateParticipants');
-        sinon.stub(locusInfo, 'isMeetingActive'),
-          sinon.stub(locusInfo, 'handleOneOnOneEvent'),
+        sinon.stub(locusInfo, 'isMeetingActive');
+          sinon.stub(locusInfo, 'handleOneOnOneEvent');
           (updateLocusInfoStub = sinon.stub(locusInfo, 'updateLocusInfo'));
         syncRequestStub = sinon.stub().resolves({body: {}});
 
@@ -2958,6 +3088,7 @@ describe('plugin-meetings', () => {
               id: 'test person id',
             },
           },
+          participants: [],
         });
 
         updateLocusInfoStub.resetHistory();

@@ -512,9 +512,23 @@ export async function handleCallingClientErrors(
   const clientError = createClientError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
-  const finalError = false;
+  let finalError = false;
   log.warn(`Status code: -> ${errorCode}`, loggerContext);
   switch (errorCode) {
+    case ERROR_CODE.UNAUTHORIZED: {
+      finalError = true;
+      log.warn(`401 Unauthorized`, loggerContext);
+      updateErrorContext(
+        loggerContext,
+        ERROR_TYPE.TOKEN_ERROR,
+        'User is unauthorized due to an expired token.',
+        clientError
+      );
+
+      emitterCb(clientError, finalError);
+      break;
+    }
+
     case ERROR_CODE.INTERNAL_SERVER_ERROR: {
       log.warn(`500 Internal Server Error`, loggerContext);
       updateErrorContext(
@@ -1620,7 +1634,10 @@ export async function uploadLogs(
       METRIC_TYPE.BEHAVIORAL,
       response?.trackingid,
       feedbackId,
-      metaData?.correlationId
+      metaData?.correlationId,
+      undefined,
+      metaData?.callId,
+      metaData?.broadworksCorrelationInfo
     );
 
     return {
@@ -1628,6 +1645,9 @@ export async function uploadLogs(
       ...(response.url ? {url: response.url} : {}),
       ...(response.userId ? {userId: response.userId} : {}),
       ...(response.correlationId ? {correlationId: response.correlationId} : {}),
+      ...(metaData?.broadworksCorrelationInfo
+        ? {broadworksCorrelationInfo: metaData?.broadworksCorrelationInfo}
+        : {}),
       feedbackId,
     };
   } catch (error) {
@@ -1641,9 +1661,12 @@ export async function uploadLogs(
       METRIC_EVENT.UPLOAD_LOGS_FAILED,
       UPLOAD_LOGS_ACTION,
       METRIC_TYPE.BEHAVIORAL,
+      undefined,
       feedbackId,
       metaData?.correlationId,
-      errorLog.message
+      errorLog.message,
+      metaData?.callId,
+      metaData?.broadworksCorrelationInfo
     );
 
     if (throwError) {

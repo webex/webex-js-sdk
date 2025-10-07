@@ -44,6 +44,8 @@ describe('Line Tests', () => {
   };
 
   const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
+  // Simulate node fetch by adding the mock webex.request
+  global.fetch = webex.request;
 
   jest.clearAllMocks();
 
@@ -108,17 +110,13 @@ describe('Line Tests', () => {
       expect(line.getActiveMobiusUrl()).toEqual(primaryUrl);
       expect(line.getLoggingLevel()).toEqual(LOGGER.INFO);
       expect(line.getDeviceId()).toEqual(mockRegistrationBody.device.deviceId);
+      expect(line.callManager.lineDict[mockRegistrationBody.device.deviceId]).toEqual(line);
 
       webex.request.mockClear();
 
       jest.advanceTimersByTime(30 * 1000);
       await Promise.resolve();
 
-      expect(webex.request).toBeCalledOnceWith({
-        ...getMockRequestTemplate(),
-        uri: `${mockRegistrationBody.device.uri}/status`,
-        method: 'POST',
-      });
       jest.useRealTimers();
     });
 
@@ -170,11 +168,6 @@ describe('Line Tests', () => {
       jest.advanceTimersByTime(30 * 1000);
       await Promise.resolve();
 
-      expect(webex.request).toBeCalledOnceWith({
-        ...getMockRequestTemplate(),
-        uri: `${mockRegistrationBody.device.uri}/status`,
-        method: 'POST',
-      });
       jest.useRealTimers();
     });
 

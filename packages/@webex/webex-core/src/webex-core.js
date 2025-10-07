@@ -26,12 +26,13 @@ import RequestTimingInterceptor from './interceptors/request-timing';
 import ResponseLoggerInterceptor from './interceptors/response-logger';
 import WebexHttpError from './lib/webex-http-error';
 import UserAgentInterceptor from './interceptors/user-agent';
+import ProxyInterceptor from './interceptors/proxy';
 import WebexTrackingIdInterceptor from './interceptors/webex-tracking-id';
 import WebexUserAgentInterceptor from './interceptors/webex-user-agent';
 import RateLimitInterceptor from './interceptors/rate-limit';
 import EmbargoInterceptor from './interceptors/embargo';
 import DefaultOptionsInterceptor from './interceptors/default-options';
-import HostMapInterceptor from './lib/services/interceptors/hostmap';
+import HostMapInterceptor from './lib/interceptors/hostmap';
 import config from './config';
 import {makeWebexStore} from './lib/storage';
 import mixinWebexCorePlugins from './lib/webex-core-plugin-mixin';
@@ -58,6 +59,7 @@ const interceptors = {
   RequestTimingInterceptor: RequestTimingInterceptor.create,
   ServiceInterceptor: undefined,
   UserAgentInterceptor: UserAgentInterceptor.create,
+  ProxyInterceptor: ProxyInterceptor.create,
   WebexUserAgentInterceptor: WebexUserAgentInterceptor.create,
   AuthInterceptor: AuthInterceptor.create,
   KmsDryErrorInterceptor: undefined,
@@ -578,8 +580,14 @@ const WebexCore = AmpState.extend({
     return Promise.resolve();
   },
 
-  async upload(options) {
-    if (!options.file) {
+  /**
+   * Uploads a file provided in `file` property
+   *
+   * @param {Object} options
+   * @returns {Promise}
+   */
+  upload(options) {
+    if (!options || !options.file) {
       return Promise.reject(new Error('`options.file` is required'));
     }
 

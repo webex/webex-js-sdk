@@ -450,7 +450,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         const vm = vmResponse.data.callSetting as VoicemailSetting;
 
         /** CFA is enabled to voicemail */
-        if (vm.enabled && vm.sendAllCalls.enabled) {
+        if (vm.enabled && vm.sendAllCalls?.enabled) {
           const response = {
             ...cfResponse,
             data: {

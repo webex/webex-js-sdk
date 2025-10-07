@@ -1,7 +1,7 @@
 {
   "name": "@webex/plugin-meetings",
   "description": "",
-  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
+  "license": "Cisco's General Terms (https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html)",
   "contributors": [
     "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
     "Arun Ganeshan <arungane@cisco.com>",
@@ -43,7 +43,6 @@
     "@webex/eslint-config-legacy": "workspace:*",
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
-    "@webex/plugin-meetings": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
     "@webex/test-helper-chai": "workspace:*",
     "@webex/test-helper-mocha": "workspace:*",
@@ -62,8 +61,8 @@
   },
   "dependencies": {
     "@webex/common": "workspace:*",
-    "@webex/event-dictionary-ts": "^1.0.1819",
-    "@webex/internal-media-core": "2.18.3",
+    "@webex/event-dictionary-ts": "^1.0.1930",
+    "@webex/internal-media-core": "2.18.5",
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",

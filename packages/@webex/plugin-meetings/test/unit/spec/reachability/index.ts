@@ -3,15 +3,14 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import EventEmitter from 'events';
 import testUtils from '../../../utils/testUtils';
-import Reachability, {
-  ReachabilityResultsForBackend,
-} from '@webex/plugin-meetings/src/reachability/';
+import Reachability from '@webex/plugin-meetings/src/reachability/';
 import {ClusterNode} from '../../../../src/reachability/request';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import * as ClusterReachabilityModule from '@webex/plugin-meetings/src/reachability/clusterReachability';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 
 import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
+import { ReachabilityResultsForBackend } from '@webex/plugin-meetings/src/reachability/reachability.types';
 
 describe('isAnyPublicClusterReachable', () => {
   let webex;
@@ -833,6 +832,162 @@ describe('gatherReachability', () => {
         public_xtls_min: 200,
         public_xtls_max: 240,
         public_xtls_average: 220,
+      },
+    },
+    // ========================================================================
+    {
+      title: '2 clusters: one with multiple urls, reachability should resolve after the first result for each protocol is ready',
+      waitShortTimeout: false,
+      waitLongTimeout: false,
+      mockClusters: {
+        cluster1: {
+          udp: ['udp-url1-1', 'udp-url1-2'],
+          tcp: ['tcp-url1-1', 'tcp-url1-2'],
+          xtls: ['xtls-url1-1', 'xtls-url1-2'],
+          isVideoMesh: false,
+        },
+        cluster2: {
+          udp: ['udp-url2'],
+          tcp: ['tcp-url2'],
+          xtls: ['xtls-url2'],
+          isVideoMesh: false,
+        },
+      },
+      mockResultReadyEvents: [
+        // results are only for the first url for each protocol not the 2nd one
+        {
+          clusterId: 'cluster1',
+          protocol: 'udp',
+          result: {
+            result: 'reachable',
+            clientMediaIPs: ['1.2.3.4'],
+            latencyInMilliseconds: 10,
+          },
+        },
+        {
+          clusterId: 'cluster1',
+          protocol: 'tcp',
+          result: {
+            result: 'reachable',
+            latencyInMilliseconds: 100,
+          },
+        },
+        {
+          clusterId: 'cluster1',
+          protocol: 'xtls',
+          result: {
+            result: 'reachable',
+            latencyInMilliseconds: 200,
+          },
+        },
+        {
+          clusterId: 'cluster2',
+          protocol: 'udp',
+          result: {
+            result: 'reachable',
+            clientMediaIPs: ['1.2.3.4'],
+            latencyInMilliseconds: 20,
+          },
+        },
+        {
+          clusterId: 'cluster2',
+          protocol: 'tcp',
+          result: {
+            result: 'reachable',
+            latencyInMilliseconds: 110,
+          },
+        },
+        {
+          clusterId: 'cluster2',
+          protocol: 'xtls',
+          result: {
+            result: 'reachable',
+            latencyInMilliseconds: 220,
+          },
+        },
+      ],
+      expectedResults: {
+        cluster1: {
+          udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 10},
+          tcp: {result: 'reachable', latencyInMilliseconds: 100},
+          xtls: {result: 'reachable', latencyInMilliseconds: 200},
+          isVideoMesh: false,
+        },
+        cluster2: {
+          udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 20},
+          tcp: {result: 'reachable', latencyInMilliseconds: 110},
+          xtls: {result: 'reachable', latencyInMilliseconds: 220},
+          isVideoMesh: false,
+        },
+      },
+      expectedMetrics: {
+        vmn_udp_min: -1,
+        vmn_udp_max: -1,
+        vmn_udp_average: -1,
+        public_udp_min: 10,
+        public_udp_max: 20,
+        public_udp_average: 15,
+        public_tcp_min: 100,
+        public_tcp_max: 110,
+        public_tcp_average: 105,
+        public_xtls_min: 200,
+        public_xtls_max: 220,
+        public_xtls_average: 210,
+      },
+    },
+    // ========================================================================
+    {
+      title: '1 cluster with zero urls for TCP, reachability should resolve after the first result for each protocol is ready without waiting for TCP',
+      waitShortTimeout: false,
+      waitLongTimeout: false,
+      mockClusters: {
+        cluster1: {
+          udp: ['udp-url1'],
+          tcp: [],
+          xtls: ['xtls-url1'],
+          isVideoMesh: false,
+        },
+      },
+      mockResultReadyEvents: [
+        {
+          clusterId: 'cluster1',
+          protocol: 'udp',
+          result: {
+            result: 'reachable',
+            clientMediaIPs: ['1.2.3.4'],
+            latencyInMilliseconds: 10,
+          },
+        },
+        {
+          clusterId: 'cluster1',
+          protocol: 'xtls',
+          result: {
+            result: 'reachable',
+            latencyInMilliseconds: 200,
+          },
+        },
+      ],
+      expectedResults: {
+        cluster1: {
+          udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 10},
+          tcp: {result: 'untested'},
+          xtls: {result: 'reachable', latencyInMilliseconds: 200},
+          isVideoMesh: false,
+        },
+      },
+      expectedMetrics: {
+        vmn_udp_min: -1,
+        vmn_udp_max: -1,
+        vmn_udp_average: -1,
+        public_udp_min: 10,
+        public_udp_max: 10,
+        public_udp_average: 10,
+        public_tcp_min: -1,
+        public_tcp_max: -1,
+        public_tcp_average: -1,
+        public_xtls_min: 200,
+        public_xtls_max: 200,
+        public_xtls_average: 200,
       },
     },
     // ========================================================================

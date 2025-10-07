@@ -56,6 +56,7 @@ export enum CONN_ACTION {
 
 export interface IMetricManager {
   setDeviceInfo: (deviceInfo: IDeviceInfo) => void;
+
   submitRegistrationMetric: (
     name: METRIC_EVENT,
     metricAction: REG_ACTION,
@@ -66,12 +67,14 @@ export interface IMetricManager {
     keepaliveCount?: number,
     error?: LineError | CallingClientError
   ) => void;
+
   submitBNRMetric: (
     name: METRIC_EVENT,
     type: METRIC_TYPE,
     callId: CallId,
     correlationId: CorrelationId
   ) => void;
+
   submitCallMetric: (
     name: METRIC_EVENT,
     metricAction: string,
@@ -80,6 +83,7 @@ export interface IMetricManager {
     correlationId: CorrelationId,
     callError?: CallError
   ) => void;
+
   submitMediaMetric: (
     name: METRIC_EVENT,
     metricAction: string,
@@ -90,6 +94,7 @@ export interface IMetricManager {
     remoteSdp?: string,
     callError?: CallError
   ) => void;
+
   submitConnectionMetrics: (
     name: METRIC_EVENT,
     metricAction: CONN_ACTION,
@@ -97,6 +102,7 @@ export interface IMetricManager {
     downTimestamp: string,
     upTimestamp: string
   ) => void;
+
   submitVoicemailMetric: (
     name: METRIC_EVENT,
     metricAction: string,
@@ -105,6 +111,7 @@ export interface IMetricManager {
     voicemailError?: string,
     statusCode?: number
   ) => void;
+
   submitUploadLogsMetric: (
     name: METRIC_EVENT,
     metricAction: string,
@@ -113,6 +120,7 @@ export interface IMetricManager {
     feedbackId?: string,
     correlationId?: string,
     stack?: string,
-    callId?: string
+    callId?: string,
+    broadworksCorrelationInfo?: string
   ) => void;
 }
