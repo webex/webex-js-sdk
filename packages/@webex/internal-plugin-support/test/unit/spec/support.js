@@ -136,6 +136,14 @@ describe('plugin-support', () => {
       assert.equal(found?.value, correlationId);
     });
 
+    it('sends broadworksCorrelationInfo if specified in metadata', () => {
+      const broadworksCorrelationInfo = 'broadworksCorrelationInfo';
+      const result = webex.internal.support._constructFileMetadata({broadworksCorrelationInfo});
+      const found = result.find((attr) => attr.key === 'broadworksCorrelationInfo');
+
+      assert.equal(found?.value, broadworksCorrelationInfo);
+    });
+
     it('sends meetingId if specified in metadata', () => {
       const meetingId = 'meetingId';
       const result = webex.internal.support._constructFileMetadata({meetingId});

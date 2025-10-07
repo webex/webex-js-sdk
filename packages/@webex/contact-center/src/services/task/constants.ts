@@ -17,6 +17,9 @@ export const PAUSE = '/record/pause';
 export const RESUME = '/record/resume';
 export const WRAPUP = '/wrapup';
 export const END = '/end';
+export const CONSULT_CONFERENCE = '/consult/conference';
+export const CONFERENCE_EXIT = '/conference/exit';
+export const CONFERENCE_TRANSFER = '/conference/transfer';
 export const TASK_MANAGER_FILE = 'taskManager';
 export const TASK_FILE = 'task';
 
@@ -36,6 +39,9 @@ export const METHODS = {
   END_CONSULT: 'endConsult',
   TRANSFER: 'transfer',
   CONSULT_TRANSFER: 'consultTransfer',
+  CONSULT_CONFERENCE: 'consultConference',
+  EXIT_CONFERENCE: 'exitConference',
+  TRANSFER_CONFERENCE: 'transferConference',
   UPDATE_TASK_DATA: 'updateTaskData',
   RECONCILE_DATA: 'reconcileData',
 

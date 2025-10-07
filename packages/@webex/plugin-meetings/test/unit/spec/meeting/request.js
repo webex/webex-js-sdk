@@ -897,4 +897,25 @@ describe('plugin-meetings', () => {
       });
     });
   });
+
+  describe('#notifyHost', () => {
+    it('check locus status', async () => {
+      const siteFullUrl = 'ats062222cvg.webex.com';
+      const locusId = 'locusId';
+      const meetingUuid = 'meetingUuid';
+      const displayName = ['user1', 'user2'];
+      await meetingsRequest.notifyHost(siteFullUrl, locusId, meetingUuid, displayName);
+      assert.deepEqual(meetingsRequest.request.getCall(0).args[0], {
+        method: 'POST',
+        uri: `https://${siteFullUrl}/wbxappapi/v1/meetings/${meetingUuid}/notifyhost`,
+        body: {
+          displayName,
+          size: displayName?.length,
+        },
+        headers: {
+          locusId,
+        }
+      });
+    });
+  });
 });
