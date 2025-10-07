@@ -370,6 +370,126 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_OFFER_CONTACT = 'task:offerContact',
+
+  /**
+   * Triggered when a conference is being established
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_ESTABLISHING, (task: ITask) => {
+   *   console.log('Conference establishing:', task.data.interactionId);
+   *   // Handle conference setup in progress
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_ESTABLISHING = 'task:conferenceEstablishing',
+
+  /**
+   * Triggered when a conference is started successfully
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_STARTED, (task: ITask) => {
+   *   console.log('Conference started:', task.data.interactionId);
+   *   // Handle conference start
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_STARTED = 'task:conferenceStarted',
+
+  /**
+   * Triggered when a conference fails to start
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_FAILED, (task: ITask) => {
+   *   console.log('Conference failed:', task.data.interactionId);
+   *   // Handle conference failure
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_FAILED = 'task:conferenceFailed',
+
+  /**
+   * Triggered when a conference is ended successfully
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_ENDED, (task: ITask) => {
+   *   console.log('Conference ended:', task.data.interactionId);
+   *   // Handle conference end
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_ENDED = 'task:conferenceEnded',
+
+  /**
+   * Triggered when a participant joins the conference
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_PARTICIPANT_JOINED, (task: ITask) => {
+   *   console.log('Participant joined conference:', task.data.interactionId);
+   *   // Handle participant joining
+   * });
+   * ```
+   */
+  TASK_PARTICIPANT_JOINED = 'task:participantJoined',
+
+  /**
+   * Triggered when a participant leaves the conference
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_PARTICIPANT_LEFT, (task: ITask) => {
+   *   console.log('Participant left conference:', task.data.interactionId);
+   *   // Handle participant leaving
+   * });
+   * ```
+   */
+  TASK_PARTICIPANT_LEFT = 'task:participantLeft',
+
+  /**
+   * Triggered when conference transfer is successful
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_TRANSFERRED, (task: ITask) => {
+   *   console.log('Conference transferred:', task.data.interactionId);
+   *   // Handle successful conference transfer
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_TRANSFERRED = 'task:conferenceTransferred',
+
+  /**
+   * Triggered when conference transfer fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED, (task: ITask) => {
+   *   console.log('Conference transfer failed:', task.data.interactionId);
+   *   // Handle failed conference transfer
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_TRANSFER_FAILED = 'task:conferenceTransferFailed',
+
+  /**
+   * Triggered when ending a conference fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_END_FAILED, (task: ITask) => {
+   *   console.log('Conference end failed:', task.data.interactionId);
+   *   // Handle failed conference end
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_END_FAILED = 'task:conferenceEndFailed',
+
+  /**
+   * Triggered when participant exit from conference fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_PARTICIPANT_LEFT_FAILED, (task: ITask) => {
+   *   console.log('Participant failed to leave conference:', task.data.interactionId);
+   *   // Handle failed participant exit
+   * });
+   * ```
+   */
+  TASK_PARTICIPANT_LEFT_FAILED = 'task:participantLeftFailed',
 }
 
 /**
@@ -881,6 +1001,19 @@ export type ConsultConferenceData = {
   to: string | undefined;
   /** Type of destination (e.g., 'agent', 'queue') */
   destinationType: string;
+};
+
+/**
+ * Legacy consultation conference data type matching Agent Desktop
+ * @public
+ */
+export type consultConferencePayloadData = {
+  /** Identifier of the agent initiating consult/conference */
+  agentId: string;
+  /** Type of destination (e.g., 'agent', 'queue') */
+  destinationType: string;
+  /** Identifier of the destination agent */
+  destAgentId: string;
 };
 
 /**
