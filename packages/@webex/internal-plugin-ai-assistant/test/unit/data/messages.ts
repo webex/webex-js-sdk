@@ -271,3 +271,389 @@ export const jsonResponse = [
     },
   },
 ];
+
+export const workspaceResponse = [
+  {
+    eventType: 'assistant-api.response',
+    sequence: 0,
+    finished: false,
+    clientRequestId: 'e884e177-562a-4938-9c6f-e631eb2d7e4e',
+    responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+    responseType: 'response',
+    response: {
+      sessionId: '221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      sessionUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      messageId: '221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      messageUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      responseUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      content: {
+        name: 'workspace',
+        type: 'json',
+        encryptionKeyUrl: 'workspace_0_encryption_key_url',
+        value: {
+          value:
+            'workspace_0_encrypted_value',
+          type: 'markdown',
+        },
+      },
+      createdAt: '2025-10-01T16:03:14.618039425Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+  {
+    eventType: 'assistant-api.response',
+    sequence: 1,
+    finished: false,
+    clientRequestId: 'e884e177-562a-4938-9c6f-e631eb2d7e4e',
+    responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+    responseType: 'response',
+    response: {
+      sessionId: '221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      sessionUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      messageId: '221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      messageUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      responseUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      content: {
+        name: 'workspace',
+        type: 'json',
+        encryptionKeyUrl: 'workspace_1_encryption_key_url',
+        value: {
+          value:
+            'workspace_1_encrypted_value',
+          type: 'markdown',
+        },
+      },
+      createdAt: '2025-10-01T16:03:14.632634365Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+  {
+    eventType: 'assistant-api.response',
+    sequence: 2,
+    finished: false,
+    clientRequestId: 'e884e177-562a-4938-9c6f-e631eb2d7e4e',
+    responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+    responseType: 'response',
+    response: {
+      sessionId: '221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      sessionUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      messageId: '221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      messageUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      responseUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      content: {
+        name: 'workspace',
+        type: 'json',
+        encryptionKeyUrl: 'workspace_2_encryption_key_url',
+        value: {
+          value:
+            'workspace_2_encrypted_value',
+          type: 'markdown',
+        },
+      },
+      createdAt: '2025-10-01T16:03:14.638066338Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+  {
+    eventType: 'assistant-api.response',
+    sequence: 3,
+    finished: false,
+    clientRequestId: 'e884e177-562a-4938-9c6f-e631eb2d7e4e',
+    responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+    responseType: 'response',
+    response: {
+      sessionId: '221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      sessionUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      messageId: '221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      messageUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      responseUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      content: {
+        name: 'workspace',
+        type: 'json',
+        encryptionKeyUrl: 'workspace_3_encryption_key_url',
+        value: {
+          value:
+            'workspace_3_encrypted_value',
+          type: 'markdown',
+        },
+      },
+      createdAt: '2025-10-01T16:03:14.642730033Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+  {
+    eventType: 'assistant-api.response',
+    sequence: 4,
+    finished: false,
+    clientRequestId: 'e884e177-562a-4938-9c6f-e631eb2d7e4e',
+    responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+    responseType: 'response',
+    response: {
+      sessionId: '221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      sessionUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      messageId: '221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      messageUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      responseUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      content: {
+        name: 'workspace',
+        type: 'json',
+        encryptionKeyUrl: 'workspace_4_encryption_key_url',
+        value: {
+          value:
+            'workspace_4_encrypted_value',
+          type: 'markdown',
+        },
+      },
+      createdAt: '2025-10-01T16:03:14.646888868Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+  {
+    eventType: 'assistant-api.response',
+    sequence: 5,
+    finished: false,
+    clientRequestId: 'e884e177-562a-4938-9c6f-e631eb2d7e4e',
+    responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+    responseType: 'response',
+    response: {
+      sessionId: '221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      sessionUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      messageId: '221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      messageUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      responseUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      content: {
+        name: 'workspace',
+        type: 'json',
+        encryptionKeyUrl: 'workspace_5_encryption_key_url',
+        value: {
+          value:
+            'workspace_5_encrypted_value',
+          type: 'markdown',
+        },
+      },
+      createdAt: '2025-10-01T16:03:14.835012270Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+  {
+    eventType: 'assistant-api.response',
+    sequence: 6,
+    finished: false,
+    clientRequestId: 'e884e177-562a-4938-9c6f-e631eb2d7e4e',
+    responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+    responseType: 'response',
+    response: {
+      sessionId: '221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      sessionUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      messageId: '221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      messageUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      responseUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      content: {
+        name: 'workspace',
+        type: 'json',
+        encryptionKeyUrl: 'workspace_6_encryption_key_url',
+        value: {
+          value:
+            'workspace_6_encrypted_value',
+          type: 'markdown',
+        },
+      },
+      createdAt: '2025-10-01T16:03:14.841182063Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+  {
+    eventType: 'assistant-api.response',
+    sequence: 8,
+    finished: false,
+    clientRequestId: 'e884e177-562a-4938-9c6f-e631eb2d7e4e',
+    responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+    responseType: 'response',
+    response: {
+      sessionId: '221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      sessionUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      messageId: '221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      messageUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      responseUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      content: {
+        name: 'workspace',
+        type: 'json',
+        encryptionKeyUrl: 'workspace_7_encryption_key_url',
+        value: {
+          value:
+            'workspace_7_encrypted_value',
+          type: 'markdown',
+        },
+      },
+      createdAt: '2025-10-01T16:03:14.850312819Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+  {
+    eventType: 'assistant-api.response',
+    sequence: 7,
+    finished: false,
+    clientRequestId: 'e884e177-562a-4938-9c6f-e631eb2d7e4e',
+    responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+    responseType: 'response',
+    response: {
+      sessionId: '221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      sessionUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      messageId: '221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      messageUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      responseUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      content: {
+        name: 'workspace',
+        type: 'json',
+        encryptionKeyUrl: 'workspace_8_encryption_key_url',
+        value: {
+          value:
+            'workspace_8_encrypted_value',
+          type: 'markdown',
+        },
+      },
+      createdAt: '2025-10-01T16:03:14.845884433Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+  {
+    eventType: 'assistant-api.response',
+    sequence: 9,
+    finished: false,
+    clientRequestId: 'e884e177-562a-4938-9c6f-e631eb2d7e4e',
+    responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+    responseType: 'response',
+    response: {
+      sessionId: '221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      sessionUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      messageId: '221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      messageUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      responseUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      content: {
+        name: 'workspace',
+        type: 'json',
+        encryptionKeyUrl: 'workspace_9_encryption_key_url',
+        value: {
+          value:
+            'workspace_9_encrypted_value',
+          type: 'markdown',
+        },
+      },
+      createdAt: '2025-10-01T16:03:14.855166806Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+  {
+    eventType: 'assistant-api.response',
+    sequence: 10,
+    finished: true,
+    clientRequestId: 'e884e177-562a-4938-9c6f-e631eb2d7e4e',
+    responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+    responseType: 'response',
+    response: {
+      sessionId: '221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      sessionUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97',
+      messageId: '221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      messageUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/221f60b0-9ee0-11f0-afd6-4fccce6dcc97',
+      responseId: '2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      responseUrl:
+        'https://assistant-api-intb2.ciscospark.com:443/assistant-api/api/v1/sessions/221b4200-9ee0-11f0-afd6-4fccce6dcc97/messages/2220e750-9ee0-11f0-afd6-4fccce6dcc97',
+      content: {
+        name: 'workspace',
+        type: 'json',
+        encryptionKeyUrl: 'workspace_10_encryption_key_url',
+        value: {
+          value: 'workspace_10_encrypted_value',
+          type: 'markdown',
+          workspace: {
+            name: 'New Workspace',
+            spaceUrl: 'https://example.com/workspaces/project-a',
+            participants: [
+              {
+                displayName: 'Person 1',
+                email: 'email1@example.com',
+                userId: '9f25cab0-1234-11f0-92dd-d5fbeb2f299a',
+              },
+              {
+                displayName: 'Person 2',
+                email: 'email2@example.com',
+                userId: 'a1345f10-1234-11f0-92dd-d5fbeb2f299a',
+              },
+              {
+                displayName: 'Person 3',
+                email: 'email3@example.com',
+                userId: 'b2487c40-1234-11f0-92dd-d5fbeb2f299a',
+              },
+            ],
+          },
+        },
+      },
+      createdAt: '2025-10-01T16:03:14.914682155Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+];

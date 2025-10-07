@@ -110,6 +110,7 @@ describe('Line Tests', () => {
       expect(line.getActiveMobiusUrl()).toEqual(primaryUrl);
       expect(line.getLoggingLevel()).toEqual(LOGGER.INFO);
       expect(line.getDeviceId()).toEqual(mockRegistrationBody.device.deviceId);
+      expect(line.callManager.lineDict[mockRegistrationBody.device.deviceId]).toEqual(line);
 
       webex.request.mockClear();
 

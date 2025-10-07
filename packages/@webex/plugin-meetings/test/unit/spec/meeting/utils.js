@@ -228,11 +228,11 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('updateLocusWithDelta', () => {
-      it('should call handleLocusDelta with the new delta locus', () => {
+    describe('updateLocusFromApiResponse', () => {
+      it('should call handleLocusAPIResponse with the response body', () => {
         const meeting = {
           locusInfo: {
-            handleLocusDelta: sinon.stub(),
+            handleLocusAPIResponse: sinon.stub(),
           },
         };
 
@@ -242,16 +242,16 @@ describe('plugin-meetings', () => {
           },
         };
 
-        const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
+        const response = MeetingUtil.updateLocusFromApiResponse(meeting, originalResponse);
 
         assert.deepEqual(response, originalResponse);
-        assert.calledOnceWithExactly(meeting.locusInfo.handleLocusDelta, 'locus', meeting);
+        assert.calledOnceWithExactly(meeting.locusInfo.handleLocusAPIResponse, meeting, originalResponse.body);
       });
 
       it('should handle locus being missing from the response', () => {
         const meeting = {
           locusInfo: {
-            handleLocusDelta: sinon.stub(),
+            handleLocusAPIResponse: sinon.stub(),
           },
         };
 
@@ -259,10 +259,10 @@ describe('plugin-meetings', () => {
           body: {},
         };
 
-        const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
+        const response = MeetingUtil.updateLocusFromApiResponse(meeting, originalResponse);
 
         assert.deepEqual(response, originalResponse);
-        assert.notCalled(meeting.locusInfo.handleLocusDelta);
+        assert.notCalled(meeting.locusInfo.handleLocusAPIResponse);
       });
 
       it('should work with an undefined meeting', () => {
@@ -272,14 +272,14 @@ describe('plugin-meetings', () => {
           },
         };
 
-        const response = MeetingUtil.updateLocusWithDelta(undefined, originalResponse);
+        const response = MeetingUtil.updateLocusFromApiResponse(undefined, originalResponse);
         assert.deepEqual(response, originalResponse);
       });
     });
 
     describe('generateLocusDeltaRequest', () => {
       it('generates the correct wrapper function', async () => {
-        const updateLocusWithDeltaSpy = sinon.spy(MeetingUtil, 'updateLocusWithDelta');
+        const updateLocusFromApiResponseSpy = sinon.spy(MeetingUtil, 'updateLocusFromApiResponse');
         const addSequenceSpy = sinon.spy(MeetingUtil, 'addSequence');
 
         const meeting = {
@@ -296,16 +296,16 @@ describe('plugin-meetings', () => {
         let result = await locusDeltaRequest(options);
 
         assert.equal(result, 'result');
-        assert.calledOnceWithExactly(updateLocusWithDeltaSpy, meeting, 'result');
+        assert.calledOnceWithExactly(updateLocusFromApiResponseSpy, meeting, 'result');
         assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
 
-        updateLocusWithDeltaSpy.resetHistory();
+        updateLocusFromApiResponseSpy.resetHistory();
         addSequenceSpy.resetHistory();
 
         // body missing from options
         result = await locusDeltaRequest({});
         assert.equal(result, 'result');
-        assert.calledOnceWithExactly(updateLocusWithDeltaSpy, meeting, 'result');
+        assert.calledOnceWithExactly(updateLocusFromApiResponseSpy, meeting, 'result');
         assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
 
         // meeting disappears so the WeakRef returns undefined
@@ -359,7 +359,11 @@ describe('plugin-meetings', () => {
     });
 
     describe('remoteUpdateAudioVideo', () => {
-      it('#Should call meetingRequest.locusMediaRequest with correct parameters', async () => {
+      it('#Should call meetingRequest.locusMediaRequest with correct parameters and return the full response', async () => {
+        const fakeResponse = {
+          body: { locus: { url: 'locusUrl'}},
+          headers: { },
+        };
         const meeting = {
           id: 'meeting-id',
           mediaId: '12345',
@@ -368,13 +372,14 @@ describe('plugin-meetings', () => {
             sequence: {},
           },
           locusMediaRequest: {
-            send: sinon.stub().resolves({body: {}, headers: {}}),
+            send: sinon.stub().resolves(fakeResponse),
           },
           getWebexObject: sinon.stub().returns(webex),
         };
 
-        await MeetingUtil.remoteUpdateAudioVideo(meeting, true, false);
+        const result = await MeetingUtil.remoteUpdateAudioVideo(meeting, true, false);
 
+        assert.deepEqual(result, fakeResponse);
         assert.calledOnceWithExactly(meeting.locusMediaRequest.send, {
           mediaId: '12345',
           muteOptions: {
