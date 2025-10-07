@@ -12,6 +12,7 @@ import LoggerProxy from '../../logger-proxy';
 import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
+import {TaskUtils} from './TaskUtils';
 
 /** @internal */
 export default class TaskManager extends EventEmitter {
@@ -128,8 +129,7 @@ export default class TaskManager extends EventEmitter {
                 {
                   ...payload.data,
                   wrapUpRequired:
-                    payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp ||
-                    false,
+                    payload.data.interaction?.participants?.[this.agentId]?.isWrapUp || false,
                 },
                 this.wrapupData,
                 this.agentId
@@ -358,16 +358,43 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED:
             // Conference ended - update task state and emit event
             task = this.updateTaskData(task, payload.data);
+            if (
+              !task ||
+              TaskUtils.isPrimary(task, this.agentId) ||
+              TaskUtils.isParticipantInMainInteraction(task, this.agentId)
+            ) {
+              LoggerProxy.log('Primary or main interaction participant leaving conference');
+            } else {
+              this.removeTaskFromCollection(task);
+            }
             task.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
             break;
           case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
             // Participant joined conference - update task state with participant information and emit event
             task = this.updateTaskData(task, payload.data);
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferenceInProgress: TaskUtils.getIsConferenceInProgress(task),
+            });
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
             break;
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
             // Conference ended - update task state and emit event
             task = this.updateTaskData(task, payload.data);
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferenceInProgress: TaskUtils.getIsConferenceInProgress(task),
+            });
+            if (TaskUtils.checkParticipantNotInInteraction(task, this.agentId)) {
+              if (
+                TaskUtils.isParticipantInMainInteraction(task, this.agentId) ||
+                TaskUtils.isPrimary(task, this.agentId)
+              ) {
+                LoggerProxy.log('Primary or main interaction participant leaving conference');
+              } else {
+                this.removeTaskFromCollection(task);
+              }
+            }
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
             break;
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED:

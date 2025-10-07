@@ -733,6 +733,8 @@ export type TaskData = {
   isConsulted?: boolean;
   /** Indicates if the task is in conference state */
   isConferencing: boolean;
+  /** Indicates if a conference is currently in progress (2+ active agents) */
+  isConferenceInProgress?: boolean;
   /** Identifier of agent who last updated the task */
   updatedBy?: string;
   /** Type of destination for transfer/consult */
