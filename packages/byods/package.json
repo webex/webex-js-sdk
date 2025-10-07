@@ -15,6 +15,7 @@
   },
   "scripts": {
     "build:docs": "typedoc --out ../../docs/byods",
+    "build:docs:json": "typedoc --json ../../docs/byods.json",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts && yarn build",
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
     "deploy:npm": "yarn npm publish",

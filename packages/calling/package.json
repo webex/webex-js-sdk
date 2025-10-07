@@ -32,6 +32,7 @@
     "fix:lint": "eslint 'src/**/*.ts' --fix",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "build:docs": "typedoc --out ../../docs/calling",
+    "build:docs:json": "typedoc --json ../../docs/calling.json",
     "docs": "typedoc --emit none",
     "deploy:npm": "yarn npm publish"
   },

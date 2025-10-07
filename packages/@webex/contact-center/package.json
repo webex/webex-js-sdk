@@ -36,6 +36,7 @@
     "build": " yarn workspace @webex/calling run build:src && yarn run -T tsc --declaration true --declarationDir ./dist/types",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
     "build:docs": "typedoc --out ../../../docs/wxcc",
+    "build:docs:json": "typedoc --json ../../../docs/contact-center.json",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "prebuild": "rimraf dist",
     "test": "yarn test:style && yarn test:unit",

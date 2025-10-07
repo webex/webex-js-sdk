@@ -27,6 +27,7 @@
   "scripts": {
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
     "build:docs": "typedoc --out ../../../docs/plugin-encryption",
+    "build:docs:json": "typedoc --json ../../../docs/plugin-encryption.json",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
     "deploy:npm": "yarn npm publish",
     "test:browser": "webex-legacy-tools test --integration --runner karma",
