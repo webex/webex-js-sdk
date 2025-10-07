@@ -10,8 +10,9 @@ import {RemoteMedia, RemoteVideoResolution} from './remoteMedia';
 import {ReceiveSlot, CSI} from './receiveSlot';
 import {ReceiveSlotManager} from './receiveSlotManager';
 import {RemoteMediaGroup} from './remoteMediaGroup';
-import {MediaRequestManager} from './mediaRequestManager';
+import {CodecInfo, MediaRequestManager} from './mediaRequestManager';
 import {NAMED_MEDIA_GROUP_TYPE_AUDIO} from '../constants';
+import MeetingsUtil from '../meetings/util';
 
 export type PaneSize = RemoteVideoResolution;
 export type LayoutId = string;
@@ -214,6 +215,8 @@ export class RemoteMediaManager extends EventsScope {
 
   private receiveSlotManager: ReceiveSlotManager;
 
+  private preferredCodec: CodecInfo['codec'] = 'h264';
+
   private mediaRequestManagers: {
     audio: MediaRequestManager;
     video: MediaRequestManager;
@@ -369,6 +372,21 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
+   * Updates the preferred codec
+   */
+  private async updatePreferredCodec() {
+    const isAV1CodecAvailable = await MeetingsUtil.isAV1CodecAvailable();
+    switch (true) {
+      case isAV1CodecAvailable:
+        this.preferredCodec = 'av1';
+        break;
+      default:
+        this.preferredCodec = 'h264';
+        break;
+    }
+  }
+
+  /**
    * Starts the RemoteMediaManager.
    *
    * @returns {Promise}
@@ -378,6 +396,10 @@ export class RemoteMediaManager extends EventsScope {
       throw new Error('start() failure: already started');
     }
     this.started = true;
+
+    // TODO: Look for better place to check for preferred codec
+    // TODO: Check if this is slowing down the start of the meeting, if not, it's good place
+    await this.updatePreferredCodec();
 
     await this.createAudioMedia();
 
@@ -921,6 +943,7 @@ export class RemoteMediaManager extends EventsScope {
           {
             preferLiveVideo: this.config.video.preferLiveVideo,
             resolution: paneGroupInCurrentLayout.size,
+            preferredCodec: this.preferredCodec,
           }
         );
 
@@ -942,6 +965,7 @@ export class RemoteMediaManager extends EventsScope {
       if (paneInCurrentLayout) {
         const remoteMedia = new RemoteMedia(slot, this.mediaRequestManagers.video, {
           resolution: paneInCurrentLayout.size,
+          preferredCodec: this.preferredCodec,
         });
 
         if (paneInCurrentLayout.csi) {
@@ -985,7 +1009,10 @@ export class RemoteMediaManager extends EventsScope {
         [this.slots.screenShare.video],
         255,
         false,
-        {resolution: this.currentLayout.screenShareVideo.size}
+        {
+          resolution: this.currentLayout.screenShareVideo.size,
+          preferredCodec: this.preferredCodec,
+        }
       );
     }
 
@@ -1125,6 +1152,7 @@ export class RemoteMediaManager extends EventsScope {
 
     const remoteMedia = new RemoteMedia(receiveSlot, this.mediaRequestManagers.video, {
       resolution: newPane.size,
+      preferredCodec: this.preferredCodec,
     });
 
     if (newPane.csi) {

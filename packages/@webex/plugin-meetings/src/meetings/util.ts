@@ -1,5 +1,6 @@
 /* globals window */
 
+import {Media} from '@webex/internal-media-core';
 import {
   _CREATED_,
   _INCOMING_,
@@ -157,24 +158,18 @@ MeetingsUtil.parseDefaultSiteFromMeetingPreferences = (userPreferences) => {
  * @private
  * @returns {Promise<boolean>}
  */
-MeetingsUtil.hasH264Codec = async () => {
-  let hasCodec = false;
+MeetingsUtil.isH264CodecAvailable = async () => {
+  return Media.isH264CodecAvailable();
+};
 
-  try {
-    const pc = new window.RTCPeerConnection();
-    const offer = await pc.createOffer({offerToReceiveVideo: true});
-
-    if (offer.sdp.match(/^a=rtpmap:\d+\s+H264\/\d+/m)) {
-      hasCodec = true;
-    }
-    pc.close();
-  } catch (error) {
-    LoggerProxy.logger.warn(
-      'Meetings:util#hasH264Codec --> Error creating peerConnection for H.264 test.'
-    );
-  }
-
-  return hasCodec;
+/**
+ * Will check to see if the AV1 media codec is supported.
+ * @async
+ * @private
+ * @returns {Promise<boolean>}
+ */
+MeetingsUtil.isAV1CodecAvailable = async () => {
+  return Media.isAV1CodecAvailable();
 };
 
 /**
@@ -192,7 +187,6 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
   firstChecked: number;
   disableNotifications: boolean;
 }) {
-  const {hasH264Codec} = MeetingsUtil;
   const {firstChecked, disableNotifications} = options || {};
   const delay = 5e3; // ms
   const maxDuration = 3e5; // ms
@@ -201,13 +195,13 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
 
   // Disable notifications and start H.264 download only
   if (disableNotifications) {
-    hasH264Codec();
+    MeetingsUtil.isH264CodecAvailable();
 
     return;
   }
 
   // Codec loaded trigger event notification
-  if (await hasH264Codec()) {
+  if (await MeetingsUtil.isH264CodecAvailable()) {
     Trigger.trigger(
       this,
       {

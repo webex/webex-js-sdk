@@ -3,8 +3,9 @@ import {MediaType, StreamState} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
-import {MediaRequestId, MediaRequestManager} from './mediaRequestManager';
+import {CodecInfo, MediaRequest, MediaRequestId, MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
+import {MAX_FS_VALUES} from './constants';
 
 export const RemoteMediaEvents = {
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
@@ -18,15 +19,6 @@ export type RemoteVideoResolution =
   | 'medium' // 720p or less
   | 'large' // 1080p or less
   | 'best'; // highest possible resolution
-
-export const MAX_FS_VALUES = {
-  '90p': 60,
-  '180p': 240,
-  '360p': 920,
-  '540p': 2040,
-  '720p': 3600,
-  '1080p': 8192,
-};
 
 /**
  * Converts pane size into h264 maxFs
@@ -67,6 +59,7 @@ export function getMaxFs(paneSize: RemoteVideoResolution): number {
 
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
+  preferredCodec?: CodecInfo['codec'];
 };
 
 export type RemoteMediaId = string;
@@ -173,6 +166,32 @@ export class RemoteMedia extends EventsScope {
   }
 
   /**
+   * Returns the codec info for the media request
+   *
+   * @returns {MediaRequest['codecInfo'] | undefined} The codec info, or undefined if no constraints
+   */
+  private getCodecInfo(): MediaRequest['codecInfo'] | undefined {
+    const maxFs = this.getEffectiveMaxFs();
+    if (!maxFs) {
+      return undefined;
+    }
+
+    switch (this.options?.preferredCodec) {
+      case 'av1':
+        return {
+          codec: 'av1',
+          maxPicSize: maxFs,
+        };
+      case 'h264':
+      default:
+        return {
+          codec: 'h264',
+          maxFs,
+        };
+    }
+  }
+
+  /**
    * Invalidates the remote media by clearing the reference to a receive slot and
    * cancelling the media request.
    * After this call the remote media is unusable.
@@ -212,8 +231,7 @@ export class RemoteMedia extends EventsScope {
       throw new Error('sendMediaRequest() called on an invalidated RemoteMedia instance');
     }
 
-    // Use maxFrameSize from setSizeHint if available, otherwise fallback to options.resolution
-    const maxFs = this.getEffectiveMaxFs();
+    const codecInfo = this.getCodecInfo();
 
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
@@ -222,10 +240,7 @@ export class RemoteMedia extends EventsScope {
           csi,
         },
         receiveSlots: [this.receiveSlot],
-        codecInfo: maxFs && {
-          codec: 'h264',
-          maxFs,
-        },
+        codecInfo,
       },
       commit
     );

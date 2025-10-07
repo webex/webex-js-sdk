@@ -6,13 +6,14 @@ import {NamedMediaGroup} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {getMaxFs, RemoteMedia, RemoteVideoResolution} from './remoteMedia';
-import {MediaRequestId, MediaRequestManager} from './mediaRequestManager';
+import {CodecInfo, MediaRequestId, MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot} from './receiveSlot';
 
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
   preferLiveVideo?: boolean; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
   namedMediaGroup?: NamedMediaGroup; // applies only to named media groups for audio
+  preferredCodec?: CodecInfo['codec'];
 };
 
 export class RemoteMediaGroup {
@@ -43,6 +44,7 @@ export class RemoteMediaGroup {
       (slot) =>
         new RemoteMedia(slot, this.mediaRequestManager, {
           resolution: this.options.resolution,
+          preferredCodec: this.options.preferredCodec,
         })
     );
     this.pinnedRemoteMedia = [];
@@ -212,11 +214,36 @@ export class RemoteMediaGroup {
     }
   }
 
+  /**
+   * Returns the codec info for the media request
+   *
+   * @returns {MediaRequest['codecInfo'] | undefined} The codec info, or undefined if no constraints
+   */
+  private getCodecInfo(): MediaRequest['codecInfo'] | undefined {
+    const maxFs = this.getEffectiveMaxFs();
+    if (!maxFs) {
+      return undefined;
+    }
+
+    switch (this.options?.preferredCodec) {
+      case 'av1':
+        return {
+          codec: 'av1',
+          maxPicSize: maxFs,
+        };
+      case 'h264':
+      default:
+        return {
+          codec: 'h264',
+          maxFs,
+        };
+    }
+  }
+
   private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 
-    // Calculate the effective maxFs based on all unpinned RemoteMedia instances
-    const effectiveMaxFs = this.getEffectiveMaxFsForActiveSpeaker();
+    const codecInfo = this.getCodecInfo();
 
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
@@ -233,10 +260,7 @@ export class RemoteMediaGroup {
         receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
           remoteMedia.getUnderlyingReceiveSlot()
         ) as ReceiveSlot[],
-        codecInfo: effectiveMaxFs && {
-          codec: 'h264',
-          maxFs: effectiveMaxFs,
-        },
+        codecInfo,
       },
       commit
     );
