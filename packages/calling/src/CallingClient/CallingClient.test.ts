@@ -555,6 +555,262 @@ describe('CallingClient Tests', () => {
     });
   });
 
+  describe('Connectivity and Mercury event handlers', () => {
+    let callingClient: ICallingClient;
+    let line;
+    let reg;
+    let windowEventSpy: jest.SpyInstance;
+    let deRegSpy;
+    let restoreSpy;
+    let restartRegisterSpy;
+    let registerSpy;
+    let metricSpy;
+
+    beforeEach(async () => {
+      jest.useFakeTimers();
+      webex.request
+        .mockResolvedValueOnce(ipPayload)
+        .mockResolvedValueOnce(regionPayload)
+        .mockResolvedValueOnce(discoveryPayload)
+        .mockResolvedValueOnce(registrationPayload);
+
+      windowEventSpy = jest.spyOn(window, 'addEventListener');
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+      line = Object.values(callingClient.lineDict)[0] as ILine;
+      reg = line.registration;
+      await line.register();
+
+      deRegSpy = jest.spyOn(reg, 'deregister');
+      restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
+      restartRegisterSpy = jest.spyOn(reg, 'restartRegistration');
+      registerSpy = jest.spyOn(reg, 'attemptRegistrationWithServers');
+      metricSpy = jest.spyOn(callingClient['metricManager'], 'submitConnectionMetrics');
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.clearAllMocks();
+      callingClient.removeAllListeners();
+      callingClient['callManager'].callCollection = {};
+      callManager.removeAllListeners();
+      callingClient = undefined;
+      jest.useRealTimers();
+    });
+
+    it('window offline handler sets networkDown and clears keepalive when network is unreachable', async () => {
+      const g = global;
+      g.fetch = jest.fn().mockRejectedValueOnce(new Error('network fail'));
+
+      const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+
+      const offlineCb = windowEventSpy.mock.calls[1][1];
+      await offlineCb();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Network connectivity probe failed'),
+        {
+          file: CALLING_CLIENT_FILE,
+          method: 'pingExternal',
+        }
+      );
+      expect(callingClient['networkDown']).toBe(true);
+      expect(clearKeepaliveSpy).toHaveBeenCalled();
+    });
+
+    it('window offline handler does not clear keepalive when network is reachable', async () => {
+      const g = global;
+      g.fetch = jest.fn().mockResolvedValueOnce({});
+
+      const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+
+      const offlineCb = windowEventSpy.mock.calls[1][1];
+      await offlineCb();
+
+      expect(g.fetch).toHaveBeenCalledWith(
+        'https://www.google.com/generate_204',
+        expect.any(Object)
+      );
+      expect(callingClient['networkDown']).toBe(false);
+      expect(clearKeepaliveSpy).not.toHaveBeenCalled();
+    });
+
+    it('window online handler sets networkUpTimestamp and logs', async () => {
+      const onlineCb = windowEventSpy.mock.calls[0][1];
+      await onlineCb();
+
+      expect(callingClient['networkUpTimestamp']).toEqual(expect.any(String));
+      expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
+        file: CALLING_CLIENT_FILE,
+        method: 'handleNetworkOnline',
+      });
+    });
+
+    it('mercury offline submits metrics and sets timestamp', async () => {
+      const mercuryOfflineCb = webex.internal.mercury.on.mock.calls[1][1];
+      await mercuryOfflineCb();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Mercury down, waiting for connection to be up'),
+        {
+          file: CALLING_CLIENT_FILE,
+          method: 'handleMercuryOffline',
+        }
+      );
+      expect(callingClient['mercuryDownTimestamp']).toEqual(expect.any(String));
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT.CONNECTION_ERROR,
+        CONN_ACTION.MERCURY_DOWN,
+        METRIC_TYPE.BEHAVIORAL,
+        expect.any(String),
+        ''
+      );
+    });
+
+    it('handles reconnection with no active calls after network flap, once mercury comes back up', async () => {
+      const handleConnectionRestoreSpy = jest.spyOn(reg, 'handleConnectionRestoration');
+
+      callingClient['networkDown'] = true;
+      callingClient['networkDownTimestamp'] = '2023-01-01T00:00:00.000Z';
+      callingClient['networkUpTimestamp'] = '2023-01-01T00:01:00.000Z';
+
+      const mercuryOnlineCb = webex.internal.mercury.on.mock.calls[2][1];
+      await mercuryOnlineCb();
+
+      // Run the interval once
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 100);
+
+      await flushPromises();
+
+      expect(handleConnectionRestoreSpy).toHaveBeenCalledWith(true);
+      expect(logSpy).toHaveBeenCalledWith(
+        'Network is up again, re-registering with Webex Calling if needed',
+        {
+          file: REGISTRATION_FILE,
+          method: 'handleConnectionRestoration',
+        }
+      );
+      expect(deRegSpy).toHaveBeenCalledWith();
+      expect(restoreSpy).toHaveBeenCalledWith('handleConnectionRestoration');
+      expect(restartRegisterSpy).toHaveBeenCalledWith('handleConnectionRestoration');
+      expect(registerSpy).toHaveBeenCalledWith('handleConnectionRestoration', [
+        reg.getActiveMobiusUrl(),
+      ]);
+      expect(registerSpy).toHaveBeenCalledWith('handleConnectionRestoration', [primaryUrl]);
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT.CONNECTION_ERROR,
+        CONN_ACTION.NETWORK_FLAP,
+        METRIC_TYPE.BEHAVIORAL,
+        '2023-01-01T00:00:00.000Z',
+        '2023-01-01T00:01:00.000Z'
+      );
+    });
+
+    it('no reconnection for idle registration with no active calls after network flap, once mercury comes back up', async () => {
+      const handleConnectionRestoreSpy = jest.spyOn(reg, 'handleConnectionRestoration');
+
+      callingClient['networkDown'] = true;
+      callingClient['networkDownTimestamp'] = '2023-01-01T00:00:00.000Z';
+      callingClient['networkUpTimestamp'] = '2023-01-01T00:01:00.000Z';
+      reg.setStatus(RegistrationStatus.IDLE);
+
+      const mercuryOnlineCb = webex.internal.mercury.on.mock.calls[2][1];
+      await mercuryOnlineCb();
+
+      // Run the interval once
+      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 100);
+
+      await flushPromises();
+
+      expect(handleConnectionRestoreSpy).not.toHaveBeenCalledWith(true);
+      expect(logSpy).not.toHaveBeenCalledWith(
+        'Network is up again, re-registering with Webex Calling if needed',
+        {
+          file: REGISTRATION_FILE,
+          method: 'handleConnectionRestoration',
+        }
+      );
+      expect(deRegSpy).not.toHaveBeenCalledWith();
+      expect(restoreSpy).not.toHaveBeenCalledWith('handleConnectionRestoration');
+      expect(restartRegisterSpy).not.toHaveBeenCalledWith('handleConnectionRestoration');
+      expect(registerSpy).not.toHaveBeenCalledWith('handleConnectionRestoration', [
+        reg.getActiveMobiusUrl(),
+      ]);
+      expect(registerSpy).not.toHaveBeenCalledWith('handleConnectionRestoration', [primaryUrl]);
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT.CONNECTION_ERROR,
+        CONN_ACTION.NETWORK_FLAP,
+        METRIC_TYPE.BEHAVIORAL,
+        '2023-01-01T00:00:00.000Z',
+        '2023-01-01T00:01:00.000Z'
+      );
+    });
+
+    it('handle calls status check once mercury comes back up after a network flap', async () => {
+      callingClient['networkDown'] = true;
+      const call = callingClient['callManager'].createCall();
+      const callKeepaliveSpy = jest
+        .spyOn(call, 'postStatus')
+        .mockRejectedValueOnce(new Error('keepalive fail'));
+      const deleteSpy = jest.spyOn(call, 'delete');
+      expect(Object.keys(callingClient['callManager'].getActiveCalls()).length).toBe(1);
+
+      const mercuryOnlineCb = webex.internal.mercury.on.mock.calls[2][1];
+      await mercuryOnlineCb();
+
+      expect(callKeepaliveSpy).toHaveBeenCalled();
+
+      await flushPromises();
+
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Call Keepalive failed'), {
+        file: CALLING_CLIENT_FILE,
+        method: 'handleNetworkOnline',
+      });
+      expect(call['callStateMachine'].state.value).toBe('S_CALL_CLEARED');
+      expect(deleteSpy).toHaveBeenCalled();
+
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT.CONNECTION_ERROR,
+        CONN_ACTION.NETWORK_FLAP,
+        METRIC_TYPE.BEHAVIORAL,
+        expect.any(String),
+        expect.any(String)
+      );
+    });
+
+    it('handle calls status check once mercury comes back up with stable network', async () => {
+      const call = callingClient['callManager'].createCall();
+      const callKeepaliveSpy = jest
+        .spyOn(call, 'postStatus')
+        .mockRejectedValueOnce(new Error('keepalive fail'));
+      const deleteSpy = jest.spyOn(call, 'delete');
+      expect(Object.keys(callingClient['callManager'].getActiveCalls()).length).toBe(1);
+
+      const mercuryOnlineCb = webex.internal.mercury.on.mock.calls[2][1];
+      await mercuryOnlineCb();
+
+      expect(callKeepaliveSpy).toHaveBeenCalled();
+
+      await flushPromises();
+
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Call Keepalive failed'), {
+        file: CALLING_CLIENT_FILE,
+        method: 'handleNetworkOnline',
+      });
+      expect(call['callStateMachine'].state.value).toBe('S_CALL_CLEARED');
+      expect(deleteSpy).toHaveBeenCalled();
+
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
+      expect(metricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT.CONNECTION_ERROR,
+        CONN_ACTION.MERCURY_UP,
+        METRIC_TYPE.BEHAVIORAL,
+        expect.any(String),
+        expect.any(String)
+      );
+    });
+  });
+
   // Calling related test cases
   describe('Calling tests', () => {
     const mutex = new Mutex();
@@ -688,262 +944,6 @@ describe('CallingClient Tests', () => {
       const callSessionCallback = mockOn.mock.calls[0][1];
 
       callSessionCallback(MOCK_MULTIPLE_SESSIONS_EVENT);
-    });
-  });
-
-  describe('Connectivity and Mercury event handlers', () => {
-    let callingClient: ICallingClient;
-    let line;
-    let reg;
-    let windowEventSpy: jest.SpyInstance;
-    let deRegSpy;
-    let restoreSpy;
-    let restartRegisterSpy;
-    let registerSpy;
-    let metricSpy;
-
-    beforeEach(async () => {
-      jest.useFakeTimers();
-      webex.request
-        .mockResolvedValueOnce(ipPayload)
-        .mockResolvedValueOnce(regionPayload)
-        .mockResolvedValueOnce(discoveryPayload)
-        .mockResolvedValueOnce(registrationPayload);
-
-      windowEventSpy = jest.spyOn(window, 'addEventListener');
-      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-      line = Object.values(callingClient.lineDict)[0] as ILine;
-      reg = line.registration;
-      await line.register();
-
-      deRegSpy = jest.spyOn(reg, 'deregister');
-      restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
-      restartRegisterSpy = jest.spyOn(reg, 'restartRegistration');
-      registerSpy = jest.spyOn(reg, 'attemptRegistrationWithServers');
-      metricSpy = jest.spyOn(callingClient['metricManager'], 'submitConnectionMetrics');
-    });
-
-    afterEach(() => {
-      jest.clearAllTimers();
-      jest.clearAllMocks();
-      callingClient.removeAllListeners();
-      callManager.removeAllListeners();
-      callingClient = undefined;
-      jest.useRealTimers();
-    });
-
-    it('window offline handler sets networkDown and clears keepalive when network is unreachable', async () => {
-      const g = global;
-      g.fetch = jest.fn().mockRejectedValueOnce(new Error('network fail'));
-
-      const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
-
-      const offlineCb = windowEventSpy.mock.calls[1][1];
-      await offlineCb();
-
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Network connectivity probe failed'),
-        {
-          file: CALLING_CLIENT_FILE,
-          method: 'pingExternal',
-        }
-      );
-      expect(callingClient['networkDown']).toBe(true);
-      expect(clearKeepaliveSpy).toHaveBeenCalled();
-    });
-
-    it('window offline handler does not clear keepalive when network is reachable', async () => {
-      const g = global;
-      g.fetch = jest.fn().mockResolvedValueOnce({});
-
-      const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
-
-      const offlineCb = windowEventSpy.mock.calls[1][1];
-      await offlineCb();
-
-      expect(g.fetch).toHaveBeenCalledWith(
-        'https://www.google.com/generate_204',
-        expect.any(Object)
-      );
-      expect(callingClient['networkDown']).toBe(false);
-      expect(clearKeepaliveSpy).not.toHaveBeenCalled();
-    });
-
-    it('window online handler sets networkUpTimestamp and logs', async () => {
-      const onlineCb = windowEventSpy.mock.calls[0][1];
-      await onlineCb();
-
-      expect(callingClient['networkUpTimestamp']).toEqual(expect.any(String));
-      expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
-        file: CALLING_CLIENT_FILE,
-        method: 'handleNetworkOnline',
-      });
-    });
-
-    it('mercury offline submits metrics and sets timestamp', async () => {
-      const mercuryOfflineCb = webex.internal.mercury.on.mock.calls[1][1];
-      await mercuryOfflineCb();
-
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Mercury down, waiting for connection to be up'),
-        {
-          file: CALLING_CLIENT_FILE,
-          method: 'handleMercuryOffline',
-        }
-      );
-      expect(callingClient['mercuryDownTimestamp']).toEqual(expect.any(String));
-      expect(metricSpy).toHaveBeenCalledWith(
-        METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.MERCURY_DOWN,
-        METRIC_TYPE.BEHAVIORAL,
-        expect.any(String),
-        ''
-      );
-    });
-
-    it('handles reconnection with no active calls after network flap, once mercury comes back up', async () => {
-      const handleConnectionRestoreSpy = jest.spyOn(reg, 'handleConnectionRestoration');
-
-      callingClient['networkDown'] = true;
-      callingClient['networkDownTimestamp'] = '2023-01-01T00:00:00.000Z';
-      callingClient['networkUpTimestamp'] = '2023-01-01T00:01:00.000Z';
-
-      const mercuryOnlineCb = webex.internal.mercury.on.mock.calls[2][1];
-      await mercuryOnlineCb();
-
-      // Run the interval once
-      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 100);
-
-      await flushPromises();
-
-      expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
-      expect(handleConnectionRestoreSpy).toHaveBeenCalledWith(true);
-      expect(logSpy).toHaveBeenCalledWith(
-        'Network is up again, re-registering with Webex Calling if needed',
-        {
-          file: REGISTRATION_FILE,
-          method: 'handleConnectionRestoration',
-        }
-      );
-      expect(deRegSpy).toHaveBeenCalledWith();
-      expect(restoreSpy).toHaveBeenCalledWith('handleConnectionRestoration');
-      expect(restartRegisterSpy).toHaveBeenCalledWith('handleConnectionRestoration');
-      expect(registerSpy).toHaveBeenCalledWith('handleConnectionRestoration', [
-        reg.getActiveMobiusUrl(),
-      ]);
-      expect(registerSpy).toHaveBeenCalledWith('handleConnectionRestoration', [primaryUrl]);
-      expect(metricSpy).toHaveBeenCalledWith(
-        METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.NETWORK_FLAP,
-        METRIC_TYPE.BEHAVIORAL,
-        '2023-01-01T00:00:00.000Z',
-        '2023-01-01T00:01:00.000Z'
-      );
-    });
-
-    it('no reconnection for idle registration with no active calls after network flap, once mercury comes back up', async () => {
-      const handleConnectionRestoreSpy = jest.spyOn(reg, 'handleConnectionRestoration');
-
-      callingClient['networkDown'] = true;
-      callingClient['networkDownTimestamp'] = '2023-01-01T00:00:00.000Z';
-      callingClient['networkUpTimestamp'] = '2023-01-01T00:01:00.000Z';
-      reg.setStatus(RegistrationStatus.IDLE);
-
-      const mercuryOnlineCb = webex.internal.mercury.on.mock.calls[2][1];
-      await mercuryOnlineCb();
-
-      // Run the interval once
-      jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 100);
-
-      await flushPromises();
-
-      expect(handleConnectionRestoreSpy).not.toHaveBeenCalledWith(true);
-      expect(logSpy).not.toHaveBeenCalledWith(
-        'Network is up again, re-registering with Webex Calling if needed',
-        {
-          file: REGISTRATION_FILE,
-          method: 'handleConnectionRestoration',
-        }
-      );
-      expect(deRegSpy).not.toHaveBeenCalledWith();
-      expect(restoreSpy).not.toHaveBeenCalledWith('handleConnectionRestoration');
-      expect(restartRegisterSpy).not.toHaveBeenCalledWith('handleConnectionRestoration');
-      expect(registerSpy).not.toHaveBeenCalledWith('handleConnectionRestoration', [
-        reg.getActiveMobiusUrl(),
-      ]);
-      expect(registerSpy).not.toHaveBeenCalledWith('handleConnectionRestoration', [primaryUrl]);
-      expect(metricSpy).toHaveBeenCalledWith(
-        METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.NETWORK_FLAP,
-        METRIC_TYPE.BEHAVIORAL,
-        '2023-01-01T00:00:00.000Z',
-        '2023-01-01T00:01:00.000Z'
-      );
-    });
-
-    it('handle calls status check once mercury comes back up after a network flap', async () => {
-      callingClient['networkDown'] = true;
-      const call = reg.callManager.createCall();
-      const callKeepaliveSpy = jest
-        .spyOn(call, 'postStatus')
-        .mockRejectedValueOnce(new Error('keepalive fail'));
-      const deleteSpy = jest.spyOn(call, 'delete');
-      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
-
-      const mercuryOnlineCb = webex.internal.mercury.on.mock.calls[2][1];
-      await mercuryOnlineCb();
-
-      expect(callKeepaliveSpy).toHaveBeenCalled();
-
-      await flushPromises();
-
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Call Keepalive failed'), {
-        file: CALLING_CLIENT_FILE,
-        method: 'handleNetworkOnline',
-      });
-      expect(call['callStateMachine'].state.value).toBe('S_CALL_CLEARED');
-      expect(deleteSpy).toHaveBeenCalled();
-
-      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
-      expect(metricSpy).toHaveBeenCalledWith(
-        METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.NETWORK_FLAP,
-        METRIC_TYPE.BEHAVIORAL,
-        expect.any(String),
-        expect.any(String)
-      );
-    });
-
-    it('handle calls status check once mercury comes back up with stable network', async () => {
-      const call = reg.callManager.createCall();
-      const callKeepaliveSpy = jest
-        .spyOn(call, 'postStatus')
-        .mockRejectedValueOnce(new Error('keepalive fail'));
-      const deleteSpy = jest.spyOn(call, 'delete');
-      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
-
-      const mercuryOnlineCb = webex.internal.mercury.on.mock.calls[2][1];
-      await mercuryOnlineCb();
-
-      expect(callKeepaliveSpy).toHaveBeenCalled();
-
-      await flushPromises();
-
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Call Keepalive failed'), {
-        file: CALLING_CLIENT_FILE,
-        method: 'handleNetworkOnline',
-      });
-      expect(call['callStateMachine'].state.value).toBe('S_CALL_CLEARED');
-      expect(deleteSpy).toHaveBeenCalled();
-
-      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
-      expect(metricSpy).toHaveBeenCalledWith(
-        METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.MERCURY_UP,
-        METRIC_TYPE.BEHAVIORAL,
-        expect.any(String),
-        expect.any(String)
-      );
     });
   });
 });
