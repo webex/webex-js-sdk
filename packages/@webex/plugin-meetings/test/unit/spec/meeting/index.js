@@ -9026,11 +9026,16 @@ describe('plugin-meetings', () => {
             meeting.hasMediaConnectionConnectedAtLeastOnce = false;
             meeting.setupMediaConnectionListeners();
 
+            sinon.stub(MeetingUtil, 'getCaEventLabelsForIpVersion').returns(['fake labels']);
+
             simulateConnectionStateChange(ConnectionState.Connecting);
 
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.ice.start',
+              payload: {
+                labels: ['fake labels'],
+              },
               options: {
                 meetingId: meeting.id,
               },
@@ -14811,6 +14816,32 @@ describe('plugin-meetings', () => {
         meeting.meetingRequest.synchronizeStage,
         locusUrl,
         {overrideDefault: false}
+      );
+    });
+  });
+
+  describe('#notifyHost', () => {
+    beforeEach(() => {
+      meeting.meetingRequest.notifyHost = sinon.stub().returns(Promise.resolve());
+    });
+
+    it('sends the expected request', async () => {
+      meeting.meetingInfo.siteFullUrl = `convergedats.webex.com`;
+      const meetingUuid = 'meeting-uuid';
+      const displayName = ['Test', 'User'];
+      meeting.locusId = 'locusId';
+
+      const notifyHostPromise = meeting.notifyHost(meetingUuid, displayName);
+
+      assert.exists(notifyHostPromise.then);
+      await notifyHostPromise;
+
+      assert.calledOnceWithExactly(
+        meeting.meetingRequest.notifyHost,
+        meeting.meetingInfo.siteFullUrl,
+        meeting.locusId,
+        meetingUuid,
+        displayName,
       );
     });
   });
