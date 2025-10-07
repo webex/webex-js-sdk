@@ -27,8 +27,6 @@ export enum REG_ACTION {
   REGISTER = 'register',
   DEREGISTER = 'deregister',
   KEEPALIVE_FAILURE = 'keepaliveFailure',
-  NETWORK_FLAP = 'networkFlap',
-  MERCURY_FLAP = 'mercuryFlap',
 }
 
 export enum TRANSFER_ACTION {
@@ -49,6 +47,12 @@ export enum VOICEMAIL_ACTION {
 export type SERVER_TYPE = 'PRIMARY' | 'BACKUP' | 'UNKNOWN';
 
 export const UPLOAD_LOGS_ACTION = 'upload_logs';
+
+export enum CONN_ACTION {
+  NETWORK_FLAP = 'network_flap',
+  MERCURY_DOWN = 'mercury_down',
+  MERCURY_UP = 'mercury_up',
+}
 
 export interface IMetricManager {
   setDeviceInfo: (deviceInfo: IDeviceInfo) => void;
@@ -86,9 +90,9 @@ export interface IMetricManager {
     remoteSdp?: string,
     callError?: CallError
   ) => void;
-  submitGenericMetrics: (
+  submitConnectionMetrics: (
     name: METRIC_EVENT,
-    action: string,
+    metricAction: CONN_ACTION,
     type: METRIC_TYPE,
     downTimestamp: string,
     upTimestamp: string

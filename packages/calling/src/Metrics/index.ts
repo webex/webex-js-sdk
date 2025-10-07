@@ -2,7 +2,14 @@ import {CallError, CallingClientError} from '../Errors';
 import {METRIC_FILE, VERSION} from '../CallingClient/constants';
 import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../common/types';
 import {WebexSDK} from '../SDKConnector/types';
-import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT, SERVER_TYPE} from './types';
+import {
+  REG_ACTION,
+  IMetricManager,
+  METRIC_TYPE,
+  METRIC_EVENT,
+  SERVER_TYPE,
+  CONN_ACTION,
+} from './types';
 import {LineError} from '../Errors/catalog/LineError';
 import log from '../Logger';
 
@@ -28,16 +35,16 @@ class MetricManager implements IMetricManager {
     this.serviceIndicator = indicator;
   }
 
-  public submitGenericMetrics(
+  public submitConnectionMetrics(
     name: METRIC_EVENT,
-    action: string,
+    metricAction: CONN_ACTION,
     type: METRIC_TYPE,
     downTimestamp: string,
     upTimestamp: string
   ) {
     const metricData = {
       tags: {
-        action,
+        metricAction,
         wdm_deviceId: this.deviceInfo?.device?.clientDeviceUri,
         service_indicator: this.serviceIndicator,
       },

@@ -57,7 +57,7 @@ import {
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
-import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from '../Metrics/types';
+import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager, CONN_ACTION} from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
 
 /**
@@ -189,9 +189,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     await this.getMobiusServers();
     await this.createLine();
 
-    /* Better to run the timer once rather than after every registration */
     this.setupNetworkEventListeners();
-    this.detectMercuryFlap();
   }
 
   /**
@@ -224,14 +222,41 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
   }
 
+  private async isCallActive() {
+    const calls = Object.keys(this.callManager.getActiveCalls());
+    for (const call of calls) {
+      const callObj = this.callManager.getActiveCalls()[call];
+      if (callObj.isConnected()) {
+        callObj
+          .postStatus()
+          .then(() => {
+            log.info(`Call is active`, {
+              file: CALLING_CLIENT_FILE,
+              method: METHODS.NETWORK_ONLINE,
+            });
+            /*
+             * Media Renegotiation Possibility if call keepalive succeeds,
+             * for cases like WebRTC disconnect and media inactivity.
+             */
+          })
+          .catch((err) => {
+            log.warn(`Call Keepalive failed: ${err}`, {
+              file: CALLING_CLIENT_FILE,
+              method: METHODS.NETWORK_ONLINE,
+            });
+
+            callObj.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
+          });
+      }
+    }
+  }
+
   private handleNetworkOffline = async () => {
     this.networkDownTimestamp = new Date(Date.now()).toISOString();
-    console.log('pkesari_network offline detected');
     this.networkDown = !(await this.checkNetworkReachability());
-    console.log('pkesari_Network Down: ', this.networkDown);
-    log.warn(`Network has flapped, wait for the network to be back up`, {
+    log.warn(`Network has flapped, wait for it to come back up`, {
       file: CALLING_CLIENT_FILE,
-      method: 'handleNetworkFlap',
+      method: METHODS.NETWORK_OFFLINE,
     });
 
     if (this.networkDown) {
@@ -241,74 +266,73 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   };
 
   private handleNetworkOnline = async () => {
-    this.networkUpTimestamp = new Date(Date.now()).toISOString();
-    console.log('pkesari_network online');
     log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
-      method: 'handleNetworkOnline',
+      method: METHODS.NETWORK_ONLINE,
     });
+    this.networkUpTimestamp = new Date(Date.now()).toISOString();
+  };
 
-    const networkInterval = setInterval(async () => {
-      console.log(
-        'pkesari_network down statistics, setting interval to wait for mercury to be up',
-        this.networkDown,
-        this.networkDownTimestamp,
-        this.networkUpTimestamp
-      );
-      if (this.networkDown && this.webex.internal.mercury.connected) {
-        console.log('pkesari_mercury back up after network flap, checking for active calls');
+  private handleMercuryOffline = async () => {
+    log.warn(`Mercury down, waiting for connection to be up`, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.MERCURY_OFFLINE,
+    });
+    this.mercuryDownTimestamp = new Date(Date.now()).toISOString();
+    this.metricManager.submitConnectionMetrics(
+      METRIC_EVENT.CONNECTION_ERROR,
+      CONN_ACTION.MERCURY_DOWN,
+      METRIC_TYPE.BEHAVIORAL,
+      this.mercuryDownTimestamp,
+      this.mercuryUpTimestamp
+    );
+  };
+
+  private handleMercuryOnline = async () => {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.MERCURY_ONLINE,
+    });
+    this.mercuryUpTimestamp = new Date(Date.now()).toISOString();
+    if (this.networkDown) {
+      const callCheckInterval = setInterval(async () => {
         if (!Object.keys(this.callManager.getActiveCalls()).length) {
-          console.log('pkesari_no active calls, check reg status');
+          clearInterval(callCheckInterval);
           const line = Object.values(this.lineDict)[0];
 
           if (line.getStatus() !== RegistrationStatus.IDLE) {
-            console.log('pkesari_reg status not idle, handle connection restoration');
             this.networkDown = await line.registration.handleConnectionRestoration(
               this.networkDown
             );
           } else {
             this.networkDown = false;
           }
-          clearInterval(networkInterval);
-        } else {
-          const calls = Object.keys(this.callManager.getActiveCalls());
-          for (const call of calls) {
-            const callObj = this.callManager.getActiveCalls()[call];
-            if (callObj.isConnected()) {
-              callObj
-                .postStatus()
-                .then(() => {
-                  log.info(`Call is active`, {
-                    file: CALLING_CLIENT_FILE,
-                    method: 'handleNetworkOnline',
-                  });
-                  /*
-                   * Media Renegotiation Possibility if call keepalive succeeds,
-                   * for cases like WebRTC disconnect and media inactivity.
-                   */
-                })
-                .catch((err) => {
-                  log.warn(`Call Keepalive failed: ${err}`, {
-                    file: CALLING_CLIENT_FILE,
-                    method: 'handleNetworkOnline',
-                  });
-
-                  console.log('Call keepalive failed, clear the stale call', err);
-                  callObj.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
-                });
-            }
-          }
         }
-        // await uploadLogs();
-        // this.metricManager.submitGenericMetrics(
-        //   METRIC_EVENT.CONNECTION_ERROR,
-        //   REG_ACTION.NETWORK_FLAP,
-        //   METRIC_TYPE.BEHAVIORAL,
-        //   this.networkDownTimestamp,
-        //   this.networkUpTimestamp
-        // );
+      }, NETWORK_FLAP_TIMEOUT);
+
+      if (Object.keys(this.callManager.getActiveCalls()).length) {
+        await this.isCallActive();
       }
-    }, NETWORK_FLAP_TIMEOUT);
+
+      this.metricManager.submitConnectionMetrics(
+        METRIC_EVENT.CONNECTION_ERROR,
+        CONN_ACTION.NETWORK_FLAP,
+        METRIC_TYPE.BEHAVIORAL,
+        this.networkDownTimestamp,
+        this.networkUpTimestamp
+      );
+    } else {
+      if (Object.keys(this.callManager.getActiveCalls()).length) {
+        await this.isCallActive();
+      }
+      this.metricManager.submitConnectionMetrics(
+        METRIC_EVENT.CONNECTION_ERROR,
+        CONN_ACTION.MERCURY_UP,
+        METRIC_TYPE.BEHAVIORAL,
+        this.mercuryDownTimestamp,
+        this.mercuryUpTimestamp
+      );
+    }
   };
 
   private setupNetworkEventListeners(): void {
@@ -317,64 +341,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       window.addEventListener('offline', this.handleNetworkOffline);
     }
-  }
 
-  /**
-   * Register callbacks for network changes.
-   */
-  private async detectMercuryFlap() {
-    let mercuryFlapDetected = false;
-    log.info(METHOD_START_MESSAGE, {
-      file: CALLING_CLIENT_FILE,
-      method: METHODS.DETECT_MERCURY_FLAP,
+    this.webex.internal.mercury.on('offline', () => {
+      this.handleMercuryOffline();
     });
 
-    setInterval(async () => {
-      if (!this.webex.internal.mercury.connected && !mercuryFlapDetected && !this.networkDown) {
-        this.mercuryDownTimestamp = new Date(Date.now()).toISOString();
-        log.warn(`Mercury down, waiting for connection to be up`, {
-          file: CALLING_CLIENT_FILE,
-          method: METHODS.DETECT_MERCURY_FLAP,
-        });
-        mercuryFlapDetected = true;
-      } else if (mercuryFlapDetected && this.webex.internal.mercury.connected) {
-        this.mercuryUpTimestamp = new Date(Date.now()).toISOString();
-        console.log(
-          'pkesari mercury down and up timestamp',
-          this.mercuryDownTimestamp,
-          this.mercuryUpTimestamp
-        );
-        if (Object.keys(this.callManager.getActiveCalls()).length > 0) {
-          const calls = Object.keys(this.callManager.getActiveCalls());
-          for (const call of calls) {
-            const callObj = this.callManager.getActiveCalls()[call];
-            if (callObj.isConnected()) {
-              // eslint-disable-next-line no-await-in-loop
-              callObj
-                .postStatus()
-                .then(() => {
-                  console.log('Call is still active, do nothing');
-                })
-                .catch((err) => {
-                  console.log('Call keepalive failed, clear the stale call', err);
-                  callObj.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
-                });
-            }
-
-            // Handle call keepalive failure grecfully here
-          }
-        }
-        mercuryFlapDetected = false;
-        await uploadLogs();
-        this.metricManager.submitGenericMetrics(
-          METRIC_EVENT.CONNECTION_ERROR,
-          REG_ACTION.MERCURY_FLAP,
-          METRIC_TYPE.BEHAVIORAL,
-          this.mercuryDownTimestamp,
-          this.mercuryUpTimestamp
-        );
-      }
-    }, NETWORK_FLAP_TIMEOUT);
+    this.webex.internal.mercury.on('online', () => {
+      this.handleMercuryOnline();
+    });
   }
 
   /**
