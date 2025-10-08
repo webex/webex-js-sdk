@@ -74,6 +74,8 @@ describe('WebSocketManager', () => {
 
     mockWebex = {
       request: jest.fn(),
+      once: jest.fn(),
+      ready: false,
     } as unknown as WebexSDK;
 
     mockWorker = {
@@ -231,6 +233,43 @@ describe('WebSocketManager', () => {
     expect(LoggerProxy.error).toHaveBeenCalledWith(
       '[WebSocketStatus] | event=socketConnectionFailed | WebSocket connection failed [object Event]',
       { module: WEB_SOCKET_MANAGER_FILE, method: 'connect' }
+    );
+  });
+
+  it('should track metrics on WebSocket error event', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    // Mock MetricsManager
+    const mockMetricsManager = {
+      trackEvent: jest.fn(),
+    };
+    
+    const MetricsManagerModule = require('../../../../../../src/metrics/MetricsManager');
+    jest.spyOn(MetricsManagerModule.default, 'getInstance').mockReturnValue(mockMetricsManager);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    const errorEvent = new Event('error');
+    Object.defineProperty(errorEvent, 'type', { value: 'error', writable: false });
+    
+    MockWebSocket.inst.onerror(errorEvent);
+
+    // Verify metrics tracking was called
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+      'Websocket Connection Error',
+      {
+        error: '[object Event]',
+        errorType: 'error',
+        connectionUrl: 'wss://fake-url',
+        onlineStatus: true,
+      },
+      ['operational']
     );
   });
 

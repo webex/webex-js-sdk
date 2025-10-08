@@ -212,10 +212,33 @@ export default class Task extends EventEmitter implements ITask {
           method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
           interactionId: this.data.interactionId,
         });
-        await this.wrapup({
-          wrapUpReason: defaultWrapupReason.name,
-          auxCodeId: defaultWrapupReason.id,
-        });
+        try {
+          await this.wrapup({
+            wrapUpReason: defaultWrapupReason.name,
+            auxCodeId: defaultWrapupReason.id,
+          });
+        } catch (error) {
+          // Track auto-wrapup failure metrics
+          this.metricsManager.trackEvent(
+            METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
+            {
+              taskId: this.data?.interactionId,
+              wrapUpCode: defaultWrapupReason.id,
+              wrapUpReason: defaultWrapupReason.name,
+              isAutoWrapup: true,
+              error: error.toString(),
+              errorMessage: error?.message || 'Auto-wrapup failed',
+            },
+            ['operational', 'behavioral', 'business']
+          );
+
+          LoggerProxy.error(`Auto-wrapup failed: ${error}`, {
+            module: TASK_FILE,
+            method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+            interactionId: this.data?.interactionId,
+            error,
+          });
+        }
       });
     }
   }
@@ -394,7 +417,7 @@ export default class Task extends EventEmitter implements ITask {
           taskId: this.data.interactionId,
           error: error.toString(),
           ...taskErrorProps,
-          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details as Failure),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error?.details as Failure),
         },
         ['operational', 'behavioral', 'business']
       );
@@ -438,6 +461,20 @@ export default class Task extends EventEmitter implements ITask {
       return Promise.resolve();
     } catch (error) {
       const err = generateTaskErrorObject(error, METHODS.TOGGLE_MUTE, TASK_FILE);
+
+      // Track mute toggle failure metrics
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED, // Reuse existing metric or add new one
+        {
+          taskId: this.data?.interactionId,
+          operation: 'toggleMute',
+          error: error.toString(),
+          trackingId: err.data?.trackingId,
+          errorMessage: err.data?.message,
+        },
+        ['operational']
+      );
+
       throw err;
     }
   }
@@ -496,10 +533,10 @@ export default class Task extends EventEmitter implements ITask {
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
         {
-          taskId: this.data.interactionId,
+          taskId: this.data?.interactionId,
           error: error.toString(),
           ...taskErrorProps,
-          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error?.details || {}),
         },
         ['operational', 'behavioral']
       );

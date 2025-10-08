@@ -1381,6 +1381,51 @@ describe('Task', () => {
       interactionId: task.data.interactionId,
     });
   });
+
+  it('should track metrics on toggleMute error with safe error property access', async () => {
+    const error = {
+      details: {
+        trackingId: '1234',
+        data: {
+          reason: 'Mute Failed',
+        },
+      },
+    };
+
+    jest.spyOn(webCallingService, 'muteUnmuteCall').mockImplementation(() => {
+      throw error;
+    });
+
+    await expect(task.toggleMute()).rejects.toThrow();
+    
+    // Verify metrics tracking was called with safe error property access
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+      METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        error: error.toString(),
+        errorMessage: 'Mute Failed',
+        trackingId: '1234',
+        operation: 'toggleMute',
+      },
+      ['operational']
+    );
+  });
+
+  it('should handle toggleMute error when error object is missing properties', async () => {
+    const incompleteError = {
+      message: 'Mute operation failed'
+    };
+
+    jest.spyOn(webCallingService, 'muteUnmuteCall').mockImplementation(() => {
+      throw incompleteError;
+    });
+
+    await expect(task.toggleMute()).rejects.toThrow();
+    
+    // Should still track metrics even with incomplete error object
+    expect(mockMetricsManager.trackEvent).toHaveBeenCalled();
+  });
   
   describe('AutoWrapup initialization tests', () => {    
     beforeEach(() => {

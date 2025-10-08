@@ -84,6 +84,7 @@ export const METRIC_EVENT_NAMES = {
   FETCH_BUDDY_AGENTS_FAILED: 'Fetch Buddy Agents Failed',
   WEBSOCKET_REGISTER_SUCCESS: 'Websocket Register Success',
   WEBSOCKET_REGISTER_FAILED: 'Websocket Register Failed',
+  WEBSOCKET_CONNECTION_ERROR: 'Websocket Connection Error',
   AGENT_RONA: 'Agent RONA',
   AGENT_CONTACT_ASSIGN_FAILED: 'Agent Contact Assign Failed',
   AGENT_INVITE_FAILED: 'Agent Invite Failed',

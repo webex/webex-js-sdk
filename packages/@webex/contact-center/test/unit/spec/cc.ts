@@ -426,6 +426,7 @@ describe('webex.cc', () => {
         {
           module: CC_FILE,
           method: 'connectWebsocket',
+          error: mockError,
         }
       );
       expect(connectWebsocketSpy).toHaveBeenCalled();

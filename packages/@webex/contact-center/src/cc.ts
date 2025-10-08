@@ -704,12 +704,38 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
                   module: CC_FILE,
                   method: METHODS.CONNECT_WEBSOCKET,
                 });
+
+                // Track successful Mercury connection
+                this.metricsManager.trackEvent(
+                  METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
+                  {
+                    connectionType: 'mercury',
+                    agentId: this.agentConfig?.agentId,
+                  },
+                  ['operational']
+                );
               })
               .catch((error) => {
                 LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
                   module: CC_FILE,
                   method: METHODS.CONNECT_WEBSOCKET,
+                  error,
                 });
+
+                // Track Mercury connection failure
+                this.metricsManager.trackEvent(
+                  METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
+                  {
+                    connectionType: 'mercury',
+                    error: error?.toString() || 'Mercury connection failed',
+                    errorMessage: error?.message || 'Unknown error',
+                    agentId: this.agentConfig?.agentId,
+                  },
+                  ['operational']
+                );
+
+                // Note: Not throwing here as Mercury connection failure shouldn't block
+                // the overall registration, but it will prevent WebRTC calling
               });
           }
           if (this.$config && this.$config.allowAutomatedRelogin) {

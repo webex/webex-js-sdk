@@ -7,6 +7,8 @@ import LoggerProxy from '../../../logger-proxy';
 import workerScript from './keepalive.worker';
 import {KEEPALIVE_WORKER_INTERVAL, CLOSE_SOCKET_TIMEOUT, METHODS} from '../constants';
 import {WEB_SOCKET_MANAGER_FILE} from '../../../constants';
+import MetricsManager from '../../../metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 
 /**
  * WebSocketManager handles the WebSocket connection for Contact Center operations.
@@ -137,6 +139,19 @@ export class WebSocketManager extends EventEmitter {
           `[WebSocketStatus] | event=socketConnectionFailed | WebSocket connection failed ${event}`,
           {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.CONNECT}
         );
+
+        // Track WebSocket connection error in metrics
+        MetricsManager.getInstance({webex: this.webex}).trackEvent(
+          METRIC_EVENT_NAMES.WEBSOCKET_CONNECTION_ERROR,
+          {
+            error: event?.toString() || 'WebSocket connection error',
+            errorType: event?.type || 'unknown',
+            connectionUrl: this.url || 'unknown',
+            onlineStatus: navigator.onLine,
+          },
+          ['operational']
+        );
+
         reject();
       };
 
