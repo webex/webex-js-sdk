@@ -39,7 +39,10 @@ function waitForIceComplete(pc: RTCPeerConnection, timeoutMs: number) {
 }
 
 export default async function windowsChromiumIceWarmup({
-  iceServers = [{urls: 'stun:stun.l.google.com:19302'}],
+  iceServers = [
+    {urls: 'stun:stun01a-us.bcld.webex.com:5004'},
+    {urls: 'stun:stun02a-us.bcld.webex.com:5004'},
+  ],
   timeoutMs = 1000,
 }) {
   const pc1 = new RTCPeerConnection({iceServers, iceCandidatePoolSize: 1});
