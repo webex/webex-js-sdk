@@ -347,6 +347,7 @@ export const EVENT_TRIGGERS = {
   MEETING_SELF_LEFT: 'meeting:self:left',
   NETWORK_QUALITY: 'network:quality',
   MEDIA_NEGOTIATED: 'media:negotiated',
+  MEDIA_INBOUND_AUDIO_ISSUE_DETECTED: 'media:inboundAudio:issueDetected',
   // the following events apply only to multistream media connections
   ACTIVE_SPEAKER_CHANGED: 'media:activeSpeakerChanged',
   REMOTE_VIDEO_SOURCE_COUNT_CHANGED: 'media:remoteVideoSourceCountChanged',
