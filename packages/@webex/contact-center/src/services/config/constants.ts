@@ -67,7 +67,6 @@ export const METHODS = {
   GET_TENANT_DATA: 'getTenantData',
   GET_URL_MAPPING: 'getURLMapping',
   GET_DIAL_PLAN_DATA: 'getDialPlanData',
-  GET_QUEUES: 'getQueues',
 
   // Util methods
   PARSE_AGENT_CONFIGS: 'parseAgentConfigs',
@@ -245,5 +244,30 @@ export const endPointMap = {
    * @ignore
    */
   queueList: (orgId: string, queryParams: string) =>
-    `organization/${orgId}/v2/contact-service-queue?${queryParams}`,
+    `/organization/${orgId}/v2/contact-service-queue?${queryParams}`,
+  /**
+   * Gets the endpoint for entry points list with custom query parameters.
+   * @param orgId - Organization ID.
+   * @param queryParams - Query parameters string.
+   * @returns The endpoint URL string.
+   * @public
+   * @example
+   * const url = endPointMap.entryPointList('org123', 'page=0&pageSize=10');
+   * @ignore
+   */
+  entryPointList: (orgId: string, queryParams: string) =>
+    `/organization/${orgId}/v2/entry-point?${queryParams}`,
+  /**
+   * Gets the endpoint for address book entries with custom query parameters.
+   * @param orgId - Organization ID.
+   * @param addressBookId - Address book ID.
+   * @param queryParams - Query parameters string.
+   * @returns The endpoint URL string.
+   * @public
+   * @example
+   * const url = endPointMap.addressBookEntries('org123', 'book456', 'page=0&pageSize=10');
+   * @ignore
+   */
+  addressBookEntries: (orgId: string, addressBookId: string, queryParams: string) =>
+    `/organization/${orgId}/v2/address-book/${addressBookId}/entry?${queryParams}`,
 };
