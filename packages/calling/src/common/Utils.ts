@@ -88,6 +88,7 @@ import {
   TRANSPORT,
   TYPE,
   URL_ENDPOINT,
+  UTILS_FILE,
 } from '../CallingClient/constants';
 import {
   DeleteCallHistoryRecordsResponse,
@@ -133,11 +134,9 @@ import {ContactResponse} from '../Contacts/types';
 import {LineErrorEmitterCallback} from '../CallingClient/line/types';
 import {LineError, createLineError} from '../Errors/catalog/LineError';
 
-const FILE_NAME = 'src/common/Utils.ts';
-
 export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl: string) {
   const logContext = {
-    file: FILE_NAME,
+    file: UTILS_FILE,
     method: 'filterMobiusUris',
   };
 
@@ -892,7 +891,7 @@ export async function serviceErrorCodeHandler(
 export function parseMediaQualityStatistics(stats: RTCStatsReport): CallRtpStats {
   if (!stats || navigator.userAgent.indexOf('Firefox') !== -1) {
     log.info('RTCStatsReport is null, adding dummy stats', {
-      file: FILE_NAME,
+      file: UTILS_FILE,
       method: 'parseMediaQualityStatistics',
     });
 
@@ -1078,12 +1077,12 @@ export function parseMediaQualityStatistics(stats: RTCStatsReport): CallRtpStats
     byeStats[RTP_RX_STAT] = rxStat;
     byeStats[RTP_TX_STAT] = txStat;
 
-    log.log(JSON.stringify(byeStats), {file: FILE_NAME, method: 'parseMediaQualityStatistics'});
+    log.log(JSON.stringify(byeStats), {file: UTILS_FILE, method: 'parseMediaQualityStatistics'});
 
     return byeStats as CallRtpStats;
   } catch (err: unknown) {
     log.warn(`Caught error while parsing RTP stats, ${err}`, {
-      file: FILE_NAME,
+      file: UTILS_FILE,
       method: 'parseMediaQualityStatistics',
     });
 
@@ -1156,7 +1155,7 @@ export async function getXsiActionEndpoint(
         });
 
         log.log(`Response code: ${userIdResponse.statusCode}`, {
-          file: FILE_NAME,
+          file: UTILS_FILE,
           method: 'getXsiActionEndpoint',
         });
 
@@ -1174,7 +1173,7 @@ export async function getXsiActionEndpoint(
         });
 
         log.log(`Response code: ${bwTokenResponse.statusCode}`, {
-          file: FILE_NAME,
+          file: UTILS_FILE,
           method: 'getXsiActionEndpoint',
         });
 
@@ -1262,7 +1261,7 @@ export function getSortedVoicemailList(
  */
 export async function scimQuery(filter: string) {
   log.info(`Starting resolution for filter:- ${filter}`, {
-    file: FILE_NAME,
+    file: UTILS_FILE,
     method: 'scimQuery',
   });
   const sdkConnector = SDKConnector;
@@ -1284,7 +1283,7 @@ export async function scimQuery(filter: string) {
   })));
 
   log.log(`Response code: ${response.statusCode}`, {
-    file: FILE_NAME,
+    file: UTILS_FILE,
     method: 'scimQuery',
   });
 
@@ -1306,14 +1305,14 @@ export async function resolveCallerIdDisplay(filter: string) {
     resolution = response.body as SCIMListResponse;
 
     log.info(`Number of records found for this user :- ${resolution.totalResults}`, {
-      file: FILE_NAME,
+      file: UTILS_FILE,
       method: 'resolveCallerIdDisplay',
     });
   } catch (err) {
     const res = err as WebexRequestPayload;
 
     log.warn(`Error response: - ${res.statusCode}`, {
-      file: FILE_NAME,
+      file: UTILS_FILE,
       method: 'resolveCallerIdDisplay',
     });
   }
@@ -1336,7 +1335,7 @@ export async function resolveCallerIdDisplay(filter: string) {
     } else if (scimResource.phoneNumbers && scimResource.phoneNumbers.length > 0) {
       /* When no primary number exists OR PA-ID/From failed to populate, we take the first number */
       log.info('Failure to resolve caller information. Setting number as caller ID', {
-        file: FILE_NAME,
+        file: UTILS_FILE,
         method: 'resolveCallerIdDisplay',
       });
       displayResult.num = scimResource.phoneNumbers[0].value;
@@ -1373,7 +1372,7 @@ export async function resolveCallerIdByName(name: string) {
 
   await searchDirectory(name).then((results) => {
     log.info(`DS Result: ${results}`, {
-      file: FILE_NAME,
+      file: UTILS_FILE,
       method: 'resolveCallerIdByName',
     });
     if (results && results.items && results.items.length > 0) {
@@ -1398,7 +1397,7 @@ export async function resolveCallerIdByName(name: string) {
       log.info(
         `Extracted details:- name: ${displayResult.name} , number: ${displayResult.num}, photo: ${displayResult.avatarSrc}, id: ${displayResult.id}`,
         {
-          file: FILE_NAME,
+          file: UTILS_FILE,
           method: 'resolveCallerIdByName',
         }
       );
@@ -1567,7 +1566,7 @@ export function modifySdpForIPv4(sdp: string): string {
 
     if (hasIPv6CLine) {
       log.info('Modifying SDP for IPv4 compatibility', {
-        file: FILE_NAME,
+        file: UTILS_FILE,
         method: 'modifySdpForIPv4',
       });
 
@@ -1615,7 +1614,7 @@ export function modifySdpForIPv4(sdp: string): string {
     return sdp;
   } catch (error) {
     log.warn(`Error modifying SDP for IPv4 compatibility: ${error}`, {
-      file: FILE_NAME,
+      file: UTILS_FILE,
       method: 'modifySdpForIPv4',
     });
 
@@ -1643,7 +1642,7 @@ export async function uploadLogs(
       {type: 'diff'} // this is to take the diff logs from previous upload
     );
     log.info(`Logs uploaded successfully with feedbackId: ${feedbackId}`, {
-      file: FILE_NAME,
+      file: UTILS_FILE,
       method: 'uploadLogs',
     });
 
@@ -1672,7 +1671,7 @@ export async function uploadLogs(
   } catch (error) {
     const errorLog = new Error(`Failed to upload Logs ${error}`) as ExtendedError;
     log.error(errorLog, {
-      file: FILE_NAME,
+      file: UTILS_FILE,
       method: 'uploadLogs',
     });
 

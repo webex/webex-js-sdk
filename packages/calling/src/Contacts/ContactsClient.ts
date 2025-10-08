@@ -350,8 +350,10 @@ export class ContactsClient implements IContacts {
         method: HTTP_METHODS.GET,
       });
 
-      log.log(`Response code: ${response.statusCode}`, loggerContext);
-      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
+      log.log(
+        `Response code: ${response.statusCode} and Response trackingId: ${response?.headers?.trackingid}`,
+        loggerContext
+      );
 
       const responseBody = response.body as ContactList;
 

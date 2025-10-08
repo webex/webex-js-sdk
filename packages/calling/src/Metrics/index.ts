@@ -103,6 +103,7 @@ class MetricManager implements IMetricManager {
     name: METRIC_EVENT,
     metricAction: string,
     type: METRIC_TYPE,
+    mobiusHost: string,
     clientRegion: string,
     countryCode: string,
     trackingId?: string
@@ -117,6 +118,7 @@ class MetricManager implements IMetricManager {
         device_url: this.deviceInfo?.device?.clientDeviceUri,
         mobius_url: this.deviceInfo?.device?.uri,
         calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        mobius_host: mobiusHost,
         client_region: clientRegion,
         country_code: countryCode,
         tracking_id: trackingId,
@@ -137,7 +139,8 @@ class MetricManager implements IMetricManager {
     name: METRIC_EVENT,
     metricAction: string,
     type: METRIC_TYPE,
-    mobiusServers: MobiusServers
+    mobiusServers: MobiusServers,
+    trackingId?: string
   ) {
     const data = {
       tags: {
@@ -153,36 +156,7 @@ class MetricManager implements IMetricManager {
         primary_mobius_servers_uris: mobiusServers.primary.uris.join(','),
         backup_mobius_servers_region: mobiusServers.backup.region,
         backup_mobius_servers_uris: mobiusServers.backup.uris.join(','),
-      },
-      type,
-    };
-
-    this.webex.internal.metrics.submitClientMetrics(name, data);
-  }
-
-  /**
-   * @param name - Name of the metric being submitted.
-   * @param metricAction - Type of action sent in the metric.
-   * @param type - Type of metric.
-   * @param mobiusHost - Moius host name string.
-   */
-  public submitMobiusClusterAttemptMetric(
-    name: METRIC_EVENT,
-    metricAction: string,
-    type: METRIC_TYPE,
-    mobiusHost: string
-  ) {
-    const data = {
-      tags: {
-        action: metricAction,
-        device_id: this.deviceInfo?.device?.deviceId,
-        service_indicator: this.serviceIndicator,
-      },
-      fields: {
-        device_url: this.deviceInfo?.device?.clientDeviceUri,
-        mobius_url: this.deviceInfo?.device?.uri,
-        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-        mobius_host: mobiusHost,
+        tracking_id: trackingId,
       },
       type,
     };

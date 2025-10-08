@@ -890,8 +890,6 @@ export class Registration implements IRegistration {
         file: REGISTRATION_FILE,
         method: METHODS.DEREGISTER,
       });
-
-      await uploadLogs();
     }
 
     this.clearKeepaliveTimer();

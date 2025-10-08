@@ -293,14 +293,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           method: METHODS.GET_CLIENT_REGION_INFO,
         });
 
-        // Metrics for trying clusters in loop
-        this.metricManager.submitMobiusClusterAttemptMetric(
-          METRIC_EVENT.MOBIUS_CLUSTER_ATTEMPT,
-          MOBIUS_SERVER_ACTION.GET_CLIENT_REGION_INFO,
-          METRIC_TYPE.BEHAVIORAL,
-          this.mobiusHost
-        );
-
         const clientRegionInfo = response.body as ClientRegionInfo;
 
         regionInfo.clientRegion = clientRegionInfo?.clientRegion
@@ -310,11 +302,22 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         regionInfo.countryCode = clientRegionInfo?.countryCode ? clientRegionInfo.countryCode : '';
 
         log.log(
-          `Successfully fetched Client region info: ${regionInfo.clientRegion} and countryCode: ${regionInfo.countryCode}`,
+          `Successfully fetched Client region info: ${regionInfo.clientRegion}, countryCode: ${regionInfo.countryCode}, and response trackingid: ${response?.headers?.trackingid}`,
           {
             file: CALLING_CLIENT_FILE,
             method: METHODS.GET_CLIENT_REGION_INFO,
           }
+        );
+
+        // Metrics for region info - trying clusters in loop
+        this.metricManager.submitRegionInfoMetric(
+          METRIC_EVENT.REGION_INFO,
+          MOBIUS_SERVER_ACTION.GET_CLIENT_REGION_INFO,
+          METRIC_TYPE.BEHAVIORAL,
+          this.mobiusHost,
+          clientRegionInfo.clientRegion,
+          clientRegionInfo.countryCode,
+          response?.headers?.trackingid ?? ''
         );
 
         break;
@@ -401,15 +404,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       clientRegion = regionInfo.clientRegion;
       countryCode = regionInfo.countryCode;
-
-      // Metrics for region info
-      this.metricManager.submitRegionInfoMetric(
-        METRIC_EVENT.REGION_INFO,
-        MOBIUS_SERVER_ACTION.GET_CLIENT_REGION_INFO,
-        METRIC_TYPE.BEHAVIORAL,
-        clientRegion,
-        countryCode
-      );
     }
 
     if (clientRegion && countryCode) {
@@ -433,15 +427,13 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           service: ALLOWED_SERVICES.MOBIUS,
         });
 
-        log.log(`Response trackingId: ${response?.headers?.trackingid}`, {
-          file: CALLING_CLIENT_FILE,
-          method: GET_MOBIUS_SERVERS_UTIL,
-        });
-
-        log.log('Mobius Server found for the region', {
-          file: CALLING_CLIENT_FILE,
-          method: GET_MOBIUS_SERVERS_UTIL,
-        });
+        log.log(
+          `Mobius Server found for the region. Response trackingId: ${response?.headers?.trackingid}`,
+          {
+            file: CALLING_CLIENT_FILE,
+            method: GET_MOBIUS_SERVERS_UTIL,
+          }
+        );
 
         const mobiusServers = response.body as MobiusServers;
 
@@ -450,7 +442,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           METRIC_EVENT.MOBIUS_SERVERS,
           MOBIUS_SERVER_ACTION.GET_MOBIUS_SERVERS,
           METRIC_TYPE.BEHAVIORAL,
-          mobiusServers
+          mobiusServers,
+          response?.headers?.trackingid ?? ''
         );
 
         /* update arrays of Mobius Uris. */

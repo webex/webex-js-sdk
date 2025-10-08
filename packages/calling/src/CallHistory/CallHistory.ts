@@ -385,6 +385,12 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       };
     }
 
+    // Convert endTime to milliseconds for each sessionId
+    const santizedSessionIds: SanitizedEndTimeAndSessionId[] = deleteSessionIds.map((session) => ({
+      ...session,
+      endTime: new Date(session.endTime).getTime(),
+    }));
+
     const deleteRequestBody = {
       deleteSessionIds: santizedSessionIds,
     };

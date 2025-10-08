@@ -21,7 +21,6 @@ export enum METRIC_EVENT {
   VOICEMAIL_ERROR = 'web-calling-sdk-voicemail-error',
   UPLOAD_LOGS_SUCCESS = 'web-calling-sdk-upload-logs-success',
   UPLOAD_LOGS_FAILED = 'web-calling-sdk-upload-logs-failed',
-  MOBIUS_CLUSTER_ATTEMPT = 'web-calling-sdk-mobius-cluster-attempt',
   REGION_INFO = 'web-calling-sdk-region-info',
   MOBIUS_SERVERS = 'web-calling-sdk-mobius-servers',
 }
@@ -122,22 +121,17 @@ export interface IMetricManager {
     name: METRIC_EVENT,
     metricAction: string,
     type: METRIC_TYPE,
+    mobiusHost: string,
     clientRegion: string,
     countryCode: string,
-    trackingId?: string
+    trackingId: string
   ) => void;
 
   submitMobiusServersMetric: (
     name: METRIC_EVENT,
     metricAction: string,
     type: METRIC_TYPE,
-    mobiusServers: MobiusServers
-  ) => void;
-
-  submitMobiusClusterAttemptMetric: (
-    name: METRIC_EVENT,
-    metricAction: string,
-    type: METRIC_TYPE,
-    mobiusHost: string
+    mobiusServers: MobiusServers,
+    trackingId: string
   ) => void;
 }

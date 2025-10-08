@@ -1,4 +1,3 @@
-export const CONTACTS_FILE = 'Contacts';
 export const CONTACTS_CLIENT = 'ContactsClient';
 export const CONTACT_FILTER = 'contacts';
 export const GROUP_FILTER = 'groups';
