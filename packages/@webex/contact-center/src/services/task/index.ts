@@ -281,9 +281,10 @@ export default class Task extends EventEmitter implements ITask {
    * @private
    */
   private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
+    const keysToNotDelete = ['isConsulted', 'wrapUpRequired', 'isConferenceInProgress']; // keys to retain even if not in newData
     // Remove keys from oldData that are not in newData
     Object.keys(oldData).forEach((key) => {
-      if (!(key in newData)) {
+      if (!(key in newData) && !keysToNotDelete.includes(key)) {
         delete oldData[key];
       }
     });
