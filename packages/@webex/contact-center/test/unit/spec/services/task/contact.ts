@@ -197,7 +197,37 @@ describe("Routing contacts", () => {
     const req = contact.wrapup({
       interactionId: "interactionId",
       data: { wrapUpReason: "testWrapUpReason", auxCodeId: "auxCodeID1234", isAutoWrapup: "on" }
-    } as any);
+  } as any);
+  expect(req).toBeDefined();
+});
+
+  it("consultConference", () => {
+    fakeAqm.pendingRequests = {};
+    const consultData = {
+      agentId: "current-agent-id",
+      to: "destination-agent-id",
+      destinationType: "agent"
+    };
+    const req = contact.consultConference({
+      interactionId: "test-interaction-123",
+      data: consultData
+    });
+    expect(req).toBeDefined();
+  });
+
+  it("exitConference", () => {
+    fakeAqm.pendingRequests = {};
+    const req = contact.exitConference({
+      interactionId: "test-interaction-456"
+    });
+    expect(req).toBeDefined();
+  });
+
+  it("conferenceTransfer", () => {
+    fakeAqm.pendingRequests = {};
+    const req = contact.conferenceTransfer({
+      interactionId: "test-interaction-transfer-123"
+    });
     expect(req).toBeDefined();
   });
 });
