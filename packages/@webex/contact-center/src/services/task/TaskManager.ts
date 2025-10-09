@@ -372,7 +372,7 @@ export default class TaskManager extends EventEmitter {
             } else {
               this.removeTaskFromCollection(task);
             }
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
+            task?.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
             break;
           case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
             // Participant joined conference - update task state with participant information and emit event

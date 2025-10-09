@@ -45,6 +45,22 @@ const updateDialNumberElm  = document.querySelector('#updateDialNumber');
 const updateTeamDropdownElm = document.querySelector('#updateTeamDropdown');
 const incomingCallListener = document.querySelector('#incomingsection');
 const incomingDetailsElm = document.querySelector('#incoming-task');
+const participantListElm = document.createElement('div');
+participantListElm.id = 'participant-list';
+participantListElm.style.cssText = 'margin-top:10px;padding:8px;border:1px solid #ccc;background:#f9f9f9;display:none;';
+incomingDetailsElm.parentNode.appendChild(participantListElm);
+
+// MPC: Add "Allow participants to interact" checkbox for testing
+const allowInteractElm = document.createElement('div');
+allowInteractElm.style.cssText = 'margin-top:10px;padding:8px;border:1px solid #ddd;background:#f0f8ff;display:none;';
+allowInteractElm.innerHTML = `
+  <label>
+    <input type="checkbox" id="allow-participants-interact" checked>
+    🔄 Allow participants to continue interacting with each other
+  </label>
+  <br/><small style="color:#666;">📝 MPC Testing: Simulates the consultation interaction behavior</small>
+`;
+incomingDetailsElm.parentNode.appendChild(allowInteractElm);
 const answerElm = document.querySelector('#answer');
 const declineElm = document.querySelector('#decline');
 const callControlListener = document.querySelector('#callcontrolsection');
@@ -238,25 +254,36 @@ function closeConsultDialog() {
 
 function showConsultButton() {
   consultTabBtn.style.display = 'inline-block';
-  updateConferenceButtonState();
+  
+  // Check if we're in conference mode to adjust button text
+  const isInConference = currentTask ? getIsConferenceInProgress(currentTask) : false;
+  
+  if (isInConference) {
+    consultTabBtn.textContent = 'Consult'; // Conference mode: adding more agents
+    consultTabBtn.title = 'Consult with another agent to add them to the conference';
+  } else {
+    consultTabBtn.textContent = 'Consult'; // Normal mode
+    consultTabBtn.title = 'Start consultation with another agent';
+  }
+  
+  updateConferenceButtonState(currentTask);
 }
 
 function hideConsultButton() {
   consultTabBtn.style.display = 'none';
-  updateConferenceButtonState();
+  updateConferenceButtonState(currentTask);
 }
 
 function showEndConsultButton() {
   endConsultBtn.style.display = 'inline-block';
-  updateConferenceButtonState();
+  updateConferenceButtonState(currentTask);
 }
 
 function hideEndConsultButton() {
   endConsultBtn.style.display = 'none';
-  // Reset conference state and clear consultation data when ending consult
-  isConferenceActive = false;
+  // Clear consultation data when ending consult
   consultationData = null;
-  updateConferenceButtonState();
+  updateConferenceButtonState(currentTask);
 }
 
 function toggleTransferOptions() {
@@ -598,6 +625,8 @@ async function onTransferTypeSelectionChanged() {
 
 // Function to initiate consult
 async function initiateConsult() {
+  const currentAgentId = webex?.cc?.taskManager?.getAgentId() || agentId;
+
   const destinationType = destinationTypeDropdown.value;
   const consultDestinationEl = consultDestinationHolderElm.querySelector('input, select');
   const consultDestination = consultDestinationEl && consultDestinationEl.value ? consultDestinationEl.value.trim() : '';
@@ -608,6 +637,12 @@ async function initiateConsult() {
   }
 
   closeConsultDialog();
+  
+  // MPC: Show "Allow participants to interact" checkbox for second+ consultations
+  const isInConference = currentTask ? getIsConferenceInProgress(currentTask) : false;
+  if (isInConference) {
+    allowInteractElm.style.display = 'block';
+  }
 
   const consultPayload = {
     to: consultDestination,
@@ -615,22 +650,26 @@ async function initiateConsult() {
   };
 
   if (destinationType === 'queue') {
-    // Store consultation data for queue consult
+    // Store consultation data for queue consult (reuse currentAgentId)
     consultationData = {
       to: consultDestination,
       destinationType: destinationType,
-      agentId: agentId // Include current agent ID
+      consultingAgentId: currentAgentId, // Current agent ID (the one initiating the consult) from SDK
+      consultedAgentId: consultDestination, // The queue being consulted
+      isConsultedAgent: false // This agent is the consulting one, not the consulted one
     };
     hasConferenceEnded = false; // Reset for new consultation
     handleQueueConsult(consultPayload);
     return;
   }
 
-  // Store consultation data for agent consult
+  // Store consultation data for the agent who initiated the consult (reuse currentAgentId)
   consultationData = {
     to: consultDestination,
     destinationType: destinationType,
-    agentId: agentId // Include current agent ID
+    consultingAgentId: currentAgentId, // Current agent ID (the one initiating the consult) from SDK
+    consultedAgentId: consultDestination, // The agent being consulted
+    isConsultedAgent: false // This agent is the consulting one, not the consulted one
   };
   hasConferenceEnded = false; // Reset for new consultation
 
@@ -639,6 +678,12 @@ async function initiateConsult() {
     console.log('Consult initiated successfully');
     // Disable the blind transfer button after initiating consult, only enable it once consult is confirmed
     updateConsultUI();
+    
+    // Update conference button state after consult initiation
+    setTimeout(() => {
+      updateConferenceButtonState(currentTask);
+    }, 100);
+    
   } catch (error) {
     console.error('Failed to initiate consult', error);
     alert('Failed to initiate consult');
@@ -669,7 +714,14 @@ async function handleQueueConsult(consultPayload) {
 function updateConsultUI() {
   disableCallControlPostConsult();
   disableTransferControls();
-  hideConsultButton();
+  
+  // MPC: Don't hide consult button if we're in conference mode (agents can add more participants)
+  const isInConference = currentTask ? getIsConferenceInProgress(currentTask) : false;
+  
+  if (!isInConference) {
+    hideConsultButton();
+  }
+  
   showEndConsultButton();
 }
 
@@ -750,7 +802,161 @@ async function endConsult() {
   }
 }
 
-// Function to toggle conference (start/end conference)
+// conference detection - use pre-calculated value from TaskManager
+function getIsConferenceInProgress(task) {
+  if (!task || !task.data) {
+    return false;
+  }
+  
+  // Use the pre-calculated value from TaskManager if available
+  if (typeof task.data.isConferenceInProgress === 'boolean') {
+    return task.data.isConferenceInProgress;
+  }
+  
+  // Fallback to manual calculation if the property is not available
+  if (!task.data.interaction) {
+    return false;
+  }
+  
+  const { interaction, mediaResourceId } = task.data;
+  const { media, participants } = interaction;
+  
+  // Get participants in the main call
+  const mediaMainCall = media && media[mediaResourceId];
+  if (!mediaMainCall || !mediaMainCall.participants) {
+    return false;
+  }
+  
+  const participantsInMainCall = new Set(mediaMainCall.participants);
+  const agentParticipants = new Set();
+  
+  // Count active agent participants (exclude customers, supervisors, and agents who have left)
+  participantsInMainCall.forEach((participantId) => {
+    const participant = participants[participantId];
+    if (participant && 
+        participant.pType !== 'Customer' && 
+        participant.pType !== 'Supervisor' &&
+        participant.pType !== 'VVA' && // Virtual Voice Assistant
+        !participant.hasLeft &&
+        participant.hasJoined !== false) {
+      agentParticipants.add(participantId);
+    }
+  });
+  
+  // Conference exists when ≥2 agents are active in main call
+  const isConference = agentParticipants.size >= 2;
+  
+  return isConference;
+}
+
+// consultation state detection
+function getIsConsultationInProgress(task) {
+  if (!task || !task.data) {
+    return false;
+  }
+  
+  const { consultMediaResourceId, destAgentId, destinationType } = task.data;
+  return !!(consultMediaResourceId && destAgentId && destinationType);
+}
+
+// Enhanced detection: Is there an ACTIVE consultation (vs residual consultation data)
+function getIsActiveConsultationInProgress(task) {
+  if (!task || !task.data) {
+    return false;
+  }
+  
+  const { interaction } = task.data;
+  const taskState = interaction?.state;
+  
+  // Check if consultation fields are present
+  const hasConsultFields = getIsConsultationInProgress(task);
+  
+  // For conference detection: if we're in conference AND have consult fields,
+  // we need to determine if this is "adding new agent" vs "existing conference"
+  const isInConference = getIsConferenceInProgress(task);
+  
+  // Check if task state indicates active consultation states
+  const activeConsultStates = ['consulting', 'consult', 'consultRequested', 'consultCreated', 'consultAccepted'];
+  const isActiveConsultState = activeConsultStates.includes(taskState?.toLowerCase());
+  
+  // ENHANCED: Add fallback detection methods for more reliable active consultation detection
+  let isActiveConsultation = false;
+  
+  // CRITICAL: Only the agent who initiated the consultation should be "actively consulting"
+  const currentAgentId = webex?.cc?.taskManager?.getAgentId() || agentId;
+  const isConsultingAgent = consultationData && 
+    !consultationData.isConsultedAgent && // SAFEGUARD: Never consider consulted agents as consulting
+    (consultationData.consultingAgentId === currentAgentId || // This agent initiated the consult
+     (consultationData.agentId === currentAgentId && !consultationData.isConsultedAgent) || // Legacy support
+     (!consultationData.consultingAgentId && hasConsultFields)); // Fallback only if no consulted agent marker
+  
+  if (isActiveConsultState && hasConsultFields && isConsultingAgent) {
+    // Method 1: Task state + consultation fields + this agent is consulting
+    isActiveConsultation = true;
+  } else if (hasConsultFields && !isInConference && isConsultingAgent) {
+    // Method 2: Has consult fields but not in conference yet + this agent is consulting
+    isActiveConsultation = true;
+  } else if (hasConsultFields && isInConference && isConsultingAgent && endConsultBtn.style.display !== 'none') {
+    // Method 3 (FIXED): In conference with consult fields + this agent is consulting + END CONSULT BUTTON VISIBLE
+    // This ensures we only detect active consultation if there's actually an ongoing consult (button visible)
+    isActiveConsultation = true;
+  } else if (hasConsultFields && isInConference && endConsultBtn.style.display !== 'none' && isConsultingAgent) {
+    // Method 4: End consult button visible + this agent is consulting (redundant with Method 3 now, but kept for clarity)
+    isActiveConsultation = true;
+  }
+  
+  return isActiveConsultation;
+}
+
+// MPC: Update participant list display
+function updateParticipantList(task) {
+  if (!task || !task.data || !task.data.interaction) {
+    participantListElm.style.display = 'none';
+    return;
+  }
+  
+  const { participants } = task.data.interaction;
+  const isInConference = getIsConferenceInProgress(task);
+  const isActivelyConsulting = getIsActiveConsultationInProgress(task);
+  
+  // Check if "allow participants to interact" is enabled
+  const allowInteractCheckbox = document.getElementById('allow-participants-interact');
+  const allowParticipantsToInteract = allowInteractCheckbox?.checked || false;
+  
+  // Show participant list when:
+  // 1. In conference with multiple participants
+  // 2. During consultation with "allow participants to interact" enabled
+  const shouldShowParticipants = isInConference || (isActivelyConsulting && allowParticipantsToInteract);
+  
+  if (shouldShowParticipants) {
+    let participantHtml = '<strong>📋 Active Participants:</strong><br/>';
+    
+    if (isActivelyConsulting && !isInConference && allowParticipantsToInteract) {
+      participantHtml += '<small style="color:#0066cc;">🔄 Participants can continue talking during consult</small><br/>';
+    }
+    
+    Object.entries(participants).forEach(([participantId, participant]) => {
+      const role = participant.pType || 'Unknown';
+      const name = participant.name || participantId.substring(0, 8);
+      const status = participant.hasLeft ? '❌' : participant.hasJoined !== false ? '✅' : '⏳';
+      
+      // Show hold status for participants when "allow interact" is disabled during consult
+      let holdStatus = '';
+      if (isActivelyConsulting && !allowParticipantsToInteract && role === 'Customer') {
+        holdStatus = ' (🔇 On Hold)';
+      }
+      
+      participantHtml += `${status} ${role}: ${name}${holdStatus}<br/>`;
+    });
+    
+    participantListElm.innerHTML = participantHtml;
+    participantListElm.style.display = 'block';
+  } else {
+    participantListElm.style.display = 'none';
+  }
+}
+
+// Function to handle conference actions
 async function toggleConference() {
   if (!currentTask) {
     alert('No active task');
@@ -758,61 +964,97 @@ async function toggleConference() {
   }
 
   try {
-    if (isConferenceActive) {
-      // End conference
-      console.log('Ending conference...');
-      await currentTask.exitConference();
-      console.log('Conference ended successfully');
-    } else {
-      // Start conference
-      if (!consultationData) {
-        alert('No consultation data available. Please initiate a consult first.');
+    const isInConference = getIsConferenceInProgress(currentTask);
+    const isConsulting = getIsConsultationInProgress(currentTask);
+    
+    console.log('Conference action:', {
+      isInConference,
+      isConsulting,
+      hasConsultationData: consultationData !== null,
+      participants: Object.keys(currentTask.data?.interaction?.participants || {}),
+      buttonText: conferenceToggleBtn.textContent
+    });
+
+    if (conferenceToggleBtn.textContent === 'Start Conference') {
+      // Handle Ctrl+Click or Shift+Click for Exit Conference when in conference + consulting
+      if (event && (event.ctrlKey || event.shiftKey) && isInConference) {
+        if (confirm('Exit the conference? (Ctrl/Shift+Click detected)')) {
+          console.log('Exiting conference via Ctrl/Shift+Click...');
+          await currentTask.exitConference();
+          console.log('Conference exited successfully');
+          return;
+        }
+      }
+      
+      // Normal Start Conference behavior
+      if (!isConsulting && !consultationData) {
+        alert('No consultation in progress. Please initiate a consult first.');
         return;
       }
 
-      console.log('Starting conference with consultation data from task');
-      
-      // Optimistic UI update - set conference active immediately
-      isConferenceActive = true;
-      updateConferenceButtonState();
+      if (isInConference && isConsulting) {
+        console.log('Adding consulted agent to existing conference...');
+      } else {
+        console.log('Starting new conference with consulted agent...');
+      }
       
       await currentTask.consultConference();
-      console.log('Conference started successfully');
+      console.log('Conference operation completed successfully');
+      
+    } else if (conferenceToggleBtn.textContent === 'Exit Conference') {
+      // Exit conference when no active consultation
+      console.log('Exiting conference (no active consultation)...');
+      await currentTask.exitConference();
+      console.log('Conference exited successfully');
     }
+    
+    // The event listeners will handle UI updates with fresh task data
   } catch (error) {
-    const action = isConferenceActive ? 'end' : 'start';
-    console.error(`Failed to ${action} conference:`, error);
-    alert(`Failed to ${action} conference. ${error.message || 'Please try again.'}`);
+    console.error(`Failed to perform conference action:`, error);
+    alert(`Failed to perform conference action. ${error.message || 'Please try again.'}`);
+    
+    // Refresh UI state in case of error
+    updateConferenceButtonState(currentTask);
   }
 }
 
-// Update conference button visibility and text based on consult and conference state
-function updateConferenceButtonState() {
-  if (!conferenceToggleBtn) return;
+// Update conference button visibility and text
+function updateConferenceButtonState(task) {
+  // Use passed task parameter instead of global currentTask for consistency
+  const taskToUse = task || currentTask;
+  if (!conferenceToggleBtn || !taskToUse) return;
 
-  // Show conference button only if there's an active consult and we have consultation data
-  const hasConsult = endConsultBtn.style.display !== 'none';
-  const hasConsultationData = consultationData !== null;
+  const hasConsultFields = getIsConsultationInProgress(taskToUse);
+  const isActivelyConsulting = getIsActiveConsultationInProgress(taskToUse);
+  const isInConference = getIsConferenceInProgress(taskToUse);
   
-  if (hasConsult && hasConsultationData) {
-    if (isConferenceActive) {
-      // Show "End Conference" button when conference is active
-      conferenceToggleBtn.style.display = 'inline-block';
-      conferenceToggleBtn.textContent = 'End Conference';
-      conferenceToggleBtn.className = 'btn--red';
-      conferenceToggleBtn.title = 'Exit the conference call';
-    } else if (hasConferenceEnded) {
-      // Hide button after conference has ended
+  // MPC Logic: Simplified conference button management
+  if (isActivelyConsulting) {
+    if (hasConferenceEnded) {
+      // Hide button after conference has ended in this consultation session
       conferenceToggleBtn.style.display = 'none';
     } else {
-      // Show "Start Conference" button when consultation is active but no conference yet
+      // Show "Start Conference" button for ACTIVE consultation
       conferenceToggleBtn.style.display = 'inline-block';
       conferenceToggleBtn.textContent = 'Start Conference';
       conferenceToggleBtn.className = 'btn--green';
-      conferenceToggleBtn.title = `Start conference with ${consultationData.destinationType}: ${consultationData.to}`;
+      
+      if (isInConference) {
+        conferenceToggleBtn.title = 'Add the consulted agent to the existing conference';
+      } else {
+        conferenceToggleBtn.title = 'Start conference with consulted agent';
+      }
     }
+  } else if (isInConference) {
+    // MPC: In conference - show EXIT CONFERENCE (not "End Conference")
+    conferenceToggleBtn.style.display = 'inline-block';
+    conferenceToggleBtn.textContent = 'Exit Conference';
+    conferenceToggleBtn.className = 'btn--red';
+    conferenceToggleBtn.title = 'Exit from conference (other agents continue, you enter wrap-up)';
   } else {
+    // No active consultation and not in conference - hide button completely
     conferenceToggleBtn.style.display = 'none';
+    conferenceToggleBtn.textContent = ''; // Clear button text
   }
 }
 
@@ -988,9 +1230,8 @@ function registerTaskListeners(task) {
       currentConsultQueueId = null;
       // Clear consultation data and reset conference state when consult ends
       consultationData = null;
-      isConferenceActive = false;
       hasConferenceEnded = false; // Reset for next consultation
-      updateConferenceButtonState();
+      updateConferenceButtonState(task); // Will detect conference state and show "Exit Conference" if still in conference
       if(task.data.isConsulted) {
         updateButtonsPostEndCall();
         incomingDetailsElm.innerText = '';
@@ -1009,40 +1250,21 @@ function registerTaskListeners(task) {
     updateTaskList(); // Update the task list UI to have latest tasks
   });
 
-  // Conference event listeners
-  task.on('task:conferenceStarted', (task) => {
-    updateTaskList();
-    showConsultButton();
-    console.info('Conference started event received:', {
-      currentTaskId: currentTask?.data?.interactionId,
-      eventTaskId: task.data?.interactionId,
-      hasConsultationData: consultationData !== null
-    });
+  // Conference event listeners - Simplified approach
+  task.on('task:participantJoined', (task) => {
+    console.info('🚀 Conference started event - updating task list');
     
-    // Check if we have an active consultation (more reliable than interactionId matching)
-    if (consultationData !== null) {
-      console.info('Conference started successfully - updating UI');
-      isConferenceActive = true;
-      updateConferenceButtonState();
-    }
+    // CRITICAL FIX: Hide end consult button when conference starts
+    // When conference starts, the consultation is effectively ended
+    hideEndConsultButton();
+    
+    updateTaskList(); // This will refresh currentTask and call updateCallControlUI with latest data
   });
 
-  task.on('task:conferenceEnded', (task) => {
-    updateTaskList();
-    showConsultButton();
-    console.info('Conference ended event received:', {
-      currentTaskId: currentTask?.data?.interactionId,
-      eventTaskId: task.data?.interactionId,
-      hasConsultationData: consultationData !== null
-    });
-    
-    // Check if we have an active consultation (more reliable than interactionId matching)
-    if (consultationData !== null && isConferenceActive) {
-      console.info('Conference ended successfully - updating UI');
-      isConferenceActive = false;
-      hasConferenceEnded = true; // Mark that conference has been ended
-      updateConferenceButtonState();
-    }
+  task.on('task:participantLeft', (task) => {
+    console.info('🔚 Conference ended event - updating task list');
+    hasConferenceEnded = true; // Mark that conference has ended in this session
+    updateTaskList(); // This will refresh currentTask and call updateCallControlUI with latest data
   });
 }
 
@@ -1098,10 +1320,33 @@ function updateCallControlUI(task) {
     const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
     holdResumeElm.disabled = isTerminated;
     holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
-    transferElm.disabled = false;
+    
+    // MPC: Hide transfer button in conference mode (Exit Conference replaces transfer)
+    const isInConference = getIsConferenceInProgress(task);
+    if (isInConference) {
+      transferElm.disabled = true;
+      transferElm.style.display = 'none';
+    } else {
+      transferElm.disabled = false;
+      transferElm.style.display = 'inline-block';
+    }
+    
     muteElm.disabled = false;
     endElm.disabled = !hasParticipants;
-    consultTabBtn.disabled = false;
+    
+    // MPC: Disable consult button during active consultation (only one consult at a time)
+    const isActivelyConsulting = getIsActiveConsultationInProgress(task);
+    if (isActivelyConsulting && !isInConference) {
+      // During active consult (not in conference), disable consult button for all agents
+      consultTabBtn.disabled = true;
+    } else if (isInConference) {
+      // In conference, enable consult button for adding more agents (unless there's an active consult)
+      const hasAnyActiveConsult = isActivelyConsulting; // TODO: Could check globally if needed
+      consultTabBtn.disabled = hasAnyActiveConsult;
+    } else {
+      consultTabBtn.disabled = false;
+    }
+    
     pauseResumeRecordingElm.disabled = false;
     pauseResumeRecordingElm.innerText = 'Pause Recording';
     if (callProcessingDetails) {
@@ -1119,22 +1364,73 @@ function updateCallControlUI(task) {
       destinationTypeDropdown.value = destinationType;
       consultDestinationInput.value = destination.dn; 
 
-      consultTabBtn.style.display = 'none';
-      endConsultBtn.style.display = 'inline-block';
-      consultTransferBtn.style.display = 'inline-block';
+      // Check if we're in conference mode - if so, keep consult button for adding more agents
+      const isInConferenceMode = getIsConferenceInProgress(task);
+      const isActivelyConsulting = getIsActiveConsultationInProgress(task);
       
-      // Set consultationData for Agent 2 (consulted agent) so they can see conference button
-      if (!consultationData) {
+      // CRITICAL FIX: If in conference mode without active consultation, hide consult UI elements
+      if (isInConferenceMode && !isActivelyConsulting) {
+        // We're in conference but no active consultation - hide consult UI elements
+        endConsultBtn.style.display = 'none';
+        consultTransferBtn.style.display = 'none';
+      } else if (isActivelyConsulting && !isInConferenceMode) {
+        // Hide consult button only during ACTIVE consultation (not conference with residual fields)
+        consultTabBtn.style.display = 'none';
+        endConsultBtn.style.display = 'inline-block';
+        consultTransferBtn.style.display = 'inline-block';
+      } else if (isInConferenceMode && isActivelyConsulting) {
+        // In conference with active consultation - show all consult UI
+        showConsultButton();
+        endConsultBtn.style.display = 'inline-block';
+        consultTransferBtn.style.display = 'inline-block';
+      } else if (isInConferenceMode) {
+        // In conference mode - show consult button to add more agents
+        showConsultButton();
+      }
+      
+      // Set consultationData for consulted agent (Agent 2) but mark them as NOT the consulting agent
+      // CRITICAL: Only set consulted agent data if this agent IS the destAgentId (the one being consulted)
+      const currentAgentIdForConsultCheck = webex?.cc?.taskManager?.getAgentId() || agentId;
+      if (!consultationData && destAgentId === currentAgentIdForConsultCheck) {
+        // For the consulted agent, we need to figure out who initiated the consult
+        // The destAgentId in the task data is the consulted agent (current agent)  
+        // We need to find the consulting agent from the participants or use a different approach
+        
+        
+        // Look for the consulting agent in participants (agent who is not customer/supervisor/current agent)
+        const consultedAgentId = currentAgentIdForConsultCheck; // This agent (Agent 2) is the consulted one
+        let consultingAgentId = null;
+        if (participants) {
+          for (const [participantId, participant] of Object.entries(participants)) {
+            if (participant.pType === 'Agent' && participantId !== consultedAgentId && !participant.hasLeft) {
+              consultingAgentId = participantId;
+              break; // Take the first eligible agent (in practice, should be the consulting agent)
+            }
+          }
+        }
+        
         consultationData = {
           to: destAgentId,
           destinationType: destinationType,
-          agentId: agentId // Current agent ID (Agent 2)
+          consultingAgentId: consultingAgentId, // The agent who INITIATED the consult (found from participants)
+          consultedAgentId: consultedAgentId, // Current agent ID (Agent 2 - the one being consulted) from SDK
+          isConsultedAgent: true // Mark this agent as the consulted one, not the consulting one
         };
         hasConferenceEnded = false; // Reset for new consultation
-        console.log('Set consultationData for consulted agent:', consultationData);
-        updateConferenceButtonState(); // Update conference button visibility
       }
     }
+    
+    // Final check: Always show consult button when in conference mode (for adding more agents)
+    const isFinalConferenceCheck = getIsConferenceInProgress(task);
+    if (isFinalConferenceCheck) {
+      showConsultButton(); // This will show consult button for adding more agents to conference
+    }
+    
+    // MPC: Update participant list display
+    updateParticipantList(task);
+    
+    // This should be called after all consultation data is set
+    updateConferenceButtonState(task);
   }
 }
 
@@ -2114,3 +2410,4 @@ updateLoginOptionElm.addEventListener('change', updateApplyButtonState);
 updateDialNumberElm.addEventListener('input', updateApplyButtonState);
 
 updateApplyButtonState();
+
