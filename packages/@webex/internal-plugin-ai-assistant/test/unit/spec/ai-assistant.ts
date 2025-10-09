@@ -779,5 +779,324 @@ describe('plugin-ai-assistant', () => {
         });
       });
     });
+
+    describe('#makeAiAssistantRequest', () => {
+      beforeEach(() => {
+        webex.request = sinon.stub().resolves({
+          body: {
+            id: 'test-message-id',
+            url: 'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/test-session-id/messages/test-message-id',
+            sessionId: 'test-session-id',
+            sessionUrl: 'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/test-session-id',
+            creatorId: 'test-creator-id',
+            createdAt: '2025-08-05T02:11:12.361Z',
+          },
+        });
+
+        // Mock encryption functions
+        webex.internal.encryption = {
+          encryptText: sinon.stub().callsFake(async (keyUrl, text) => {
+            return `encrypted-${text}`;
+          }),
+        };
+      });
+
+      it('makes a request with action content type without encryption', async () => {
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [
+            {
+              id: 'meeting-123',
+              type: 'meeting',
+              url: 'company.webex.com',
+            },
+          ],
+          contentType: 'action' as const,
+          contentValue: 'summarize_for_me',
+          locale: 'en_US',
+          assistant: 'meeting-assistant',
+          requestId: 'custom-request-id',
+        };
+
+        const result = await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        // Verify the request was made correctly
+        expect(webex.request.calledOnce).to.be.true;
+        const requestArgs = webex.request.getCall(0).args[0];
+        
+        expect(requestArgs.service).to.equal('assistant-api');
+        expect(requestArgs.resource).to.equal('sessions/test-session-id/messages');
+        expect(requestArgs.method).to.equal('POST');
+        expect(requestArgs.contentType).to.equal('application/json');
+        expect(requestArgs.body).to.deep.equal({
+          clientRequestId: 'custom-request-id',
+          async: 'chunked',
+          locale: 'en_US',
+          content: {
+            context: {
+              resources: [
+                {
+                  id: 'meeting-123',
+                  type: 'meeting',
+                  url: 'company.webex.com',
+                },
+              ],
+            },
+            encryptionKeyUrl: 'test-key-url',
+            type: 'action',
+            value: 'summarize_for_me',
+          },
+          assistant: 'meeting-assistant',
+        });
+
+        // Verify encryption was not called for action content
+        expect(webex.internal.encryption.encryptText.notCalled).to.be.true;
+
+        // Verify return value
+        expect(result).to.deep.equal({
+          id: 'test-message-id',
+          url: 'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/test-session-id/messages/test-message-id',
+          sessionId: 'test-session-id',
+          sessionUrl: 'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/test-session-id',
+          creatorId: 'test-creator-id',
+          createdAt: '2025-08-05T02:11:12.361Z',
+          requestId: 'custom-request-id',
+          streamEventName: 'aiassistant:stream:custom-request-id',
+        });
+      });
+
+      it('makes a request with message content type and encrypts the content', async () => {
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [
+            {
+              id: 'meeting-123',
+              type: 'meeting',
+              url: 'company.webex.com',
+            },
+          ],
+          contentType: 'message' as const,
+          contentValue: 'What were the action items?',
+        };
+
+        const result = await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        // Verify encryption was called for message content
+        expect(webex.internal.encryption.encryptText.calledOnce).to.be.true;
+        expect(webex.internal.encryption.encryptText.getCall(0).args).to.deep.equal([
+          'test-key-url',
+          'What were the action items?',
+        ]);
+
+        // Verify the request was made with encrypted content
+        const requestArgs = webex.request.getCall(0).args[0];
+        expect(requestArgs.body.content.value).to.equal('encrypted-What were the action items?');
+        expect(requestArgs.body.content.type).to.equal('message');
+      });
+
+      it('uses default locale when not provided', async () => {
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'test_action',
+        };
+
+        await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        const requestArgs = webex.request.getCall(0).args[0];
+        expect(requestArgs.body.locale).to.equal('en_US');
+      });
+
+      it('uses sessions/messages endpoint when no sessionId provided', async () => {
+        const options = {
+          sessionId: '',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'test_action',
+        };
+
+        await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        const requestArgs = webex.request.getCall(0).args[0];
+        expect(requestArgs.resource).to.equal('sessions/messages');
+      });
+
+      it('includes parameters when provided for action content type', async () => {
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'summarize_for_me',
+          parameters: {
+            lastMinutes: 30,
+          },
+        };
+
+        await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        const requestArgs = webex.request.getCall(0).args[0];
+        expect(requestArgs.body.content.parameters).to.deep.equal({
+          lastMinutes: 30,
+        });
+      });
+
+      it('generates UUID when requestId is not provided', async () => {
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'test_action',
+        };
+
+        const result = await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        // Should use the UUID stub
+        expect(result.requestId).to.equal('test-request-id');
+        expect(result.streamEventName).to.equal('aiassistant:stream:test-request-id');
+        
+        const requestArgs = webex.request.getCall(0).args[0];
+        expect(requestArgs.body.clientRequestId).to.equal('test-request-id');
+      });
+
+      it('does not include assistant in request when not provided', async () => {
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'test_action',
+        };
+
+        await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        const requestArgs = webex.request.getCall(0).args[0];
+        expect(requestArgs.body.assistant).to.be.undefined;
+      });
+
+      it('handles request rejection', async () => {
+        webex.request.rejects(new Error('Network error'));
+
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'test_action',
+        };
+
+        await expect(
+          webex.internal.aiAssistant.makeAiAssistantRequest(options)
+        ).to.be.rejectedWith('Network error');
+      });
+
+      it('starts timer when making a request', async () => {
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'test_action',
+        };
+
+        await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        // Verify timer.start() was called
+        expect(timerSpy.calledOnce).to.be.true;
+      });
+
+      it('handles timeout when no streaming response comes back', async () => {
+        const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
+        
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'test_action',
+        };
+
+        await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        // Advance the clock past the timeout
+        await clock.tickAsync(30001); // Default timeout + 1ms
+
+        await waitForAsync();
+
+        // Should trigger timeout event on the stream
+        expect(triggerSpy.calledWith('aiassistant:stream:test-request-id')).to.be.true;
+        const timeoutCall = triggerSpy.getCalls().find(call => 
+          call.args[0] === 'aiassistant:stream:test-request-id' &&
+          call.args[1].errorMessage === AI_ASSISTANT_ERRORS.AI_ASSISTANT_TIMEOUT
+        );
+        expect(timeoutCall).to.exist;
+        expect(timeoutCall.args[1]).to.deep.include({
+          requestId: 'test-request-id',
+          finished: true,
+          errorMessage: AI_ASSISTANT_ERRORS.AI_ASSISTANT_TIMEOUT,
+          errorCode: AI_ASSISTANT_ERROR_CODES.AI_ASSISTANT_TIMEOUT,
+        });
+      });
+
+      it('resets timer when streaming responses are received', async () => {
+        const timerResetSpy = sinon.spy(Timer.prototype, 'reset');
+        const timerCancelSpy = sinon.spy(Timer.prototype, 'cancel');
+        
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'test_action',
+        };
+
+        await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        // Simulate receiving a streaming response (not finished)
+        await webex.internal.aiAssistant._handleEvent({
+          clientRequestId: 'test-request-id',
+          finished: false,
+          response: {
+            sessionId: 'test-session-id',
+            messageId: 'test-message-id',
+            content: {
+              name: 'message',
+              type: 'message',
+              value: 'test-response',
+            },
+          },
+        });
+
+        // Timer should be reset for intermediate responses
+        expect(timerResetSpy.calledOnce).to.be.true;
+
+        // Simulate receiving a final response (finished)
+        await webex.internal.aiAssistant._handleEvent({
+          clientRequestId: 'test-request-id',
+          finished: true,
+          response: {
+            sessionId: 'test-session-id',
+            messageId: 'test-message-id',
+            content: {
+              name: 'message',
+              type: 'message',
+              value: 'final-response',
+            },
+          },
+        });
+
+        // Timer should be cancelled for the final response
+        expect(timerCancelSpy.calledOnce).to.be.true;
+
+        timerResetSpy.restore();
+        timerCancelSpy.restore();
+      });
+    });
   });
 });

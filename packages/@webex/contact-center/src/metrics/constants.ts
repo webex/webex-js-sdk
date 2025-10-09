@@ -51,6 +51,13 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @property {string} TASK_ACCEPT_CONSULT_SUCCESS - Event name for successful consult acceptance.
  * @property {string} TASK_ACCEPT_CONSULT_FAILED - Event name for failed consult acceptance.
  *
+ * @property {string} TASK_CONFERENCE_START_SUCCESS - Event name for successful conference start.
+ * @property {string} TASK_CONFERENCE_START_FAILED - Event name for failed conference start.
+ * @property {string} TASK_CONFERENCE_END_SUCCESS - Event name for successful conference end.
+ * @property {string} TASK_CONFERENCE_END_FAILED - Event name for failed conference end.
+ * @property {string} TASK_CONFERENCE_TRANSFER_SUCCESS - Event name for successful conference transfer.
+ * @property {string} TASK_CONFERENCE_TRANSFER_FAILED - Event name for failed conference transfer.
+ *
  * @property {string} TASK_OUTDIAL_SUCCESS - Event name for successful outdial task.
  * @property {string} TASK_OUTDIAL_FAILED - Event name for failed outdial task.
  *
@@ -108,6 +115,14 @@ export const METRIC_EVENT_NAMES = {
   TASK_PAUSE_RECORDING_FAILED: 'Task Pause Recording Failed',
   TASK_ACCEPT_CONSULT_SUCCESS: 'Task Accept Consult Success',
   TASK_ACCEPT_CONSULT_FAILED: 'Task Accept Consult Failed',
+
+  // Conference Tasks
+  TASK_CONFERENCE_START_SUCCESS: 'Task Conference Start Success',
+  TASK_CONFERENCE_START_FAILED: 'Task Conference Start Failed',
+  TASK_CONFERENCE_END_SUCCESS: 'Task Conference End Success',
+  TASK_CONFERENCE_END_FAILED: 'Task Conference End Failed',
+  TASK_CONFERENCE_TRANSFER_SUCCESS: 'Task Conference Transfer Success',
+  TASK_CONFERENCE_TRANSFER_FAILED: 'Task Conference Transfer Failed',
 
   TASK_OUTDIAL_SUCCESS: 'Task Outdial Success',
   TASK_OUTDIAL_FAILED: 'Task Outdial Failed',

@@ -149,6 +149,7 @@ export const METHODS = {
   HANDLE_OUTGOING_ROAP_ANSWER: 'handleOutgoingRoapAnswer',
   HANDLE_INCOMING_ROAP_OFFER: 'handleIncomingRoapOffer',
   HANDLE_INCOMING_ROAP_ANSWER: 'handleIncomingRoapAnswer',
+  INIT: 'init',
   FORCE_SEND_STATS_REPORT: 'forceSendStatsReport',
   UPDATE_ACTIVE_MOBIUS: 'updateActiveMobius',
   DEQUEUE_WS_EVENTS: 'dequeueWsEvents',
