@@ -1,4 +1,7 @@
-import {TaskUtils} from '../../../../../src/services/task/TaskUtils';
+import { checkParticipantNotInInteraction,
+  getIsConferenceInProgress,
+  isParticipantInMainInteraction,
+  isPrimary,} from '../../../../../src/services/task/TaskUtils';
 import {ITask} from '../../../../../src/services/task/types';
 
 describe('TaskUtils', () => {
@@ -32,61 +35,61 @@ describe('TaskUtils', () => {
 
   describe('isPrimary', () => {
     it('should return true when agent is the owner', () => {
-      expect(TaskUtils.isPrimary(mockTask, mockAgentId)).toBe(true);
+      expect(isPrimary(mockTask, mockAgentId)).toBe(true);
     });
 
     it('should return false when agent is not the owner', () => {
-      expect(TaskUtils.isPrimary(mockTask, mockOtherAgentId)).toBe(false);
+      expect(isPrimary(mockTask, mockOtherAgentId)).toBe(false);
     });
 
     it('should fallback to data.agentId when owner is not set', () => {
       mockTask.data.interaction.owner = undefined;
-      expect(TaskUtils.isPrimary(mockTask, mockAgentId)).toBe(true);
-      expect(TaskUtils.isPrimary(mockTask, mockOtherAgentId)).toBe(false);
+      expect(isPrimary(mockTask, mockAgentId)).toBe(true);
+      expect(isPrimary(mockTask, mockOtherAgentId)).toBe(false);
     });
 
     it('should handle null task', () => {
-      expect(TaskUtils.isPrimary(null as any, mockAgentId)).toBe(false);
+      expect(isPrimary(null as any, mockAgentId)).toBe(false);
     });
   });
 
   describe('isParticipantInMainInteraction', () => {
     it('should return true when agent is in mainCall media', () => {
-      expect(TaskUtils.isParticipantInMainInteraction(mockTask, mockAgentId)).toBe(true);
+      expect(isParticipantInMainInteraction(mockTask, mockAgentId)).toBe(true);
     });
 
     it('should return false when agent is not in mainCall media', () => {
       mockTask.data.interaction.media['media-1'].participants = [mockOtherAgentId];
-      expect(TaskUtils.isParticipantInMainInteraction(mockTask, mockAgentId)).toBe(false);
+      expect(isParticipantInMainInteraction(mockTask, mockAgentId)).toBe(false);
     });
 
     it('should return false when no mainCall media exists', () => {
       mockTask.data.interaction.media['media-1'].mType = 'consult';
-      expect(TaskUtils.isParticipantInMainInteraction(mockTask, mockAgentId)).toBe(false);
+      expect(isParticipantInMainInteraction(mockTask, mockAgentId)).toBe(false);
     });
 
     it('should handle null task', () => {
-      expect(TaskUtils.isParticipantInMainInteraction(null as any, mockAgentId)).toBe(false);
+      expect(isParticipantInMainInteraction(null as any, mockAgentId)).toBe(false);
     });
   });
 
   describe('checkParticipantNotInInteraction', () => {
     it('should return false when agent is active participant', () => {
-      expect(TaskUtils.checkParticipantNotInInteraction(mockTask, mockAgentId)).toBe(false);
+      expect(checkParticipantNotInInteraction(mockTask, mockAgentId)).toBe(false);
     });
 
     it('should return true when agent is not in participants', () => {
       delete mockTask.data.interaction.participants[mockAgentId];
-      expect(TaskUtils.checkParticipantNotInInteraction(mockTask, mockAgentId)).toBe(true);
+      expect(checkParticipantNotInInteraction(mockTask, mockAgentId)).toBe(true);
     });
 
     it('should return true when agent has left', () => {
       mockTask.data.interaction.participants[mockAgentId].hasLeft = true;
-      expect(TaskUtils.checkParticipantNotInInteraction(mockTask, mockAgentId)).toBe(true);
+      expect(checkParticipantNotInInteraction(mockTask, mockAgentId)).toBe(true);
     });
 
     it('should handle null task', () => {
-      expect(TaskUtils.checkParticipantNotInInteraction(null as any, mockAgentId)).toBe(true);
+      expect(checkParticipantNotInInteraction(null as any, mockAgentId)).toBe(true);
     });
   });
 
@@ -107,38 +110,38 @@ describe('TaskUtils', () => {
     });
 
     it('should return true when there are 2 or more active agents', () => {
-      expect(TaskUtils.getIsConferenceInProgress(mockTask)).toBe(true);
+      expect(getIsConferenceInProgress(mockTask)).toBe(true);
     });
 
     it('should return false when there is only 1 active agent', () => {
       mockTask.data.interaction.participants[mockOtherAgentId].hasLeft = true;
-      expect(TaskUtils.getIsConferenceInProgress(mockTask)).toBe(false);
+      expect(getIsConferenceInProgress(mockTask)).toBe(false);
     });
 
     it('should exclude customers from agent count', () => {
       // Remove one agent, should still be false with only 1 agent + customer
       delete mockTask.data.interaction.participants[mockOtherAgentId];
       mockTask.data.interaction.media[mockTask.data.interactionId].participants = [mockAgentId, 'customer-123'];
-      expect(TaskUtils.getIsConferenceInProgress(mockTask)).toBe(false);
+      expect(getIsConferenceInProgress(mockTask)).toBe(false);
     });
 
     it('should exclude supervisors from agent count', () => {
       mockTask.data.interaction.participants[mockOtherAgentId].pType = 'Supervisor';
-      expect(TaskUtils.getIsConferenceInProgress(mockTask)).toBe(false);
+      expect(getIsConferenceInProgress(mockTask)).toBe(false);
     });
 
     it('should exclude VVA from agent count', () => {
       mockTask.data.interaction.participants[mockOtherAgentId].pType = 'VVA';
-      expect(TaskUtils.getIsConferenceInProgress(mockTask)).toBe(false);
+      expect(getIsConferenceInProgress(mockTask)).toBe(false);
     });
 
     it('should return false when no main call media exists', () => {
       mockTask.data.interaction.media = {};
-      expect(TaskUtils.getIsConferenceInProgress(mockTask)).toBe(false);
+      expect(getIsConferenceInProgress(mockTask)).toBe(false);
     });
 
     it('should handle null task', () => {
-      expect(TaskUtils.getIsConferenceInProgress(null as any)).toBe(false);
+      expect(getIsConferenceInProgress(null as any)).toBe(false);
     });
   });
 });

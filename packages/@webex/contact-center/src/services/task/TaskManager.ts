@@ -12,7 +12,12 @@ import LoggerProxy from '../../logger-proxy';
 import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
-import {TaskUtils} from './TaskUtils';
+import {
+  checkParticipantNotInInteraction,
+  getIsConferenceInProgress,
+  isParticipantInMainInteraction,
+  isPrimary,
+} from './TaskUtils';
 
 /** @internal */
 export default class TaskManager extends EventEmitter {
@@ -360,8 +365,8 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             if (
               !task ||
-              TaskUtils.isPrimary(task, this.agentId) ||
-              TaskUtils.isParticipantInMainInteraction(task, this.agentId)
+              isPrimary(task, this.agentId) ||
+              isParticipantInMainInteraction(task, this.agentId)
             ) {
               LoggerProxy.log('Primary or main interaction participant leaving conference');
             } else {
@@ -374,20 +379,21 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             task = this.updateTaskData(task, {
               ...payload.data,
-              isConferenceInProgress: TaskUtils.getIsConferenceInProgress(task),
+              isConferenceInProgress: getIsConferenceInProgress(task),
             });
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
             break;
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
             // Conference ended - update task state and emit event
+            task = this.updateTaskData(task, payload.data);
             task = this.updateTaskData(task, {
               ...payload.data,
-              isConferenceInProgress: TaskUtils.getIsConferenceInProgress(task),
+              isConferenceInProgress: getIsConferenceInProgress(task),
             });
-            if (TaskUtils.checkParticipantNotInInteraction(task, this.agentId)) {
+            if (checkParticipantNotInInteraction(task, this.agentId)) {
               if (
-                TaskUtils.isParticipantInMainInteraction(task, this.agentId) ||
-                TaskUtils.isPrimary(task, this.agentId)
+                isParticipantInMainInteraction(task, this.agentId) ||
+                isPrimary(task, this.agentId)
               ) {
                 LoggerProxy.log('Primary or main interaction participant leaving conference');
               } else {
