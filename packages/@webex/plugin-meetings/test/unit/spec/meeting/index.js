@@ -4172,6 +4172,8 @@ describe('plugin-meetings', () => {
               removeAllListeners: sinon.stub(),
             };
 
+            sinon.stub(meeting.mediaProperties, 'sendMediaIssueMetric');
+
             // mock the StatsMonitor constructor
             sinon.stub(InternalMediaCoreModule, 'StatsMonitor').returns(statsMonitorStub);
 
@@ -4224,9 +4226,10 @@ describe('plugin-meetings', () => {
                 EVENT_TRIGGERS.MEDIA_INBOUND_AUDIO_ISSUE_DETECTED,
                 fakeEventData
               );
+              assert.notCalled(meeting.mediaProperties.sendMediaIssueMetric);
             });
 
-            it('should trigger event when there are multiple members and at least one is unmuted', () => {
+            it('should trigger event and metric when there are multiple members and at least one is unmuted', () => {
               const fakeEventData = {issueSubType: 'DECODE_RESULTS_IN_ZERO_AUDIO_LEVEL'};
 
               // Setup mixed members - some muted, one unmuted
@@ -4263,6 +4266,13 @@ describe('plugin-meetings', () => {
                 sinon.match.object,
                 EVENT_TRIGGERS.MEDIA_INBOUND_AUDIO_ISSUE_DETECTED,
                 fakeEventData
+              );
+
+              assert.calledOnceWithExactly(
+                meeting.mediaProperties.sendMediaIssueMetric,
+                'inbound_audio',
+                fakeEventData.issueSubType,
+                meeting.correlationId
               );
             });
           });
