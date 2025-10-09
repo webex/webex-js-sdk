@@ -1139,8 +1139,8 @@ describe('webex-core', () => {
       });
 
       it('resolves to a limited u2c hostmap when params specified', () => {
-        assert.typeOf(limitedRemoteHM, 'array');
-        assert.isAbove(limitedRemoteHM.length, 0);
+        assert.typeOf(limitedRemoteHM.services, 'array');
+        assert.isAbove(limitedRemoteHM.services.length, 0);
       });
 
       it('rejects if the params provided are invalid', () =>
