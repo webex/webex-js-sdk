@@ -78,6 +78,15 @@ const Mercury = WebexPlugin.extend({
         this.webex.internal.services.switchActiveClusterIds(envelope.data?.activeClusters);
       }
     });
+    this.on('event:u2c.cache-invalidation', (envelope) => {
+      if (
+        typeof this.webex.internal.services?.invalidateCache === 'function' &&
+        envelope &&
+        envelope.data
+      ) {
+        this.webex.internal.services.invalidateCache(envelope.data?.timestamp);
+      }
+    });
   },
 
   /**

@@ -513,6 +513,58 @@ describe('webex-core', () => {
         assert.equal(firstPriorityUrl, lastPriorityUrl);
       });
     });
+    describe('#refreshServices()', () => {
+      it('should reject if a OrgId cannot be retrieved', () => {
+        webex.credentials.getOrgId = sinon.stub().throws();
+
+        return assert.isRejected(services.refreshServices());
+      });
+
+      it('should call services#collectPreauthCatalog with the OrgId and forceRefresh is true', () => {
+        services.collectPreauthCatalog = sinon.stub().resolves();
+
+        return services.refreshServices().then(() =>
+          assert.calledWith(
+            services.collectPreauthCatalog,
+            sinon.match({
+              orgId: webex.credentials.getOrgId(),
+            }),
+            sinon.match(true)
+          )
+        );
+      });
+
+      it('should not call services#updateServices() when not authed', () => {
+        services.updateServices = sinon.stub().resolves();
+
+        // Since credentials uses AmpState, we have to set the derived
+        // properties of the dependent properties to undefined.
+        webex.credentials.supertoken.access_token = undefined;
+        webex.credentials.supertoken.refresh_token = undefined;
+
+        webex.credentials.getOrgId = sinon.stub().returns(webexUser.orgId);
+
+        return (
+          services
+            .refreshServices()
+            // services#updateServices() gets called once by the limited catalog
+            // retrieval and should not be called again when not authorized.
+            .then(() => assert.calledOnce(services.updateServices))
+        );
+      });
+
+      it('should call services#updateServices() when authed', () => {
+        services.updateServices = sinon.stub().resolves();
+
+        return (
+          services
+            .refreshServices()
+            // services#updateServices() gets called once by the limited catalog
+            // retrieval and should get called again when authorized.
+            .then(() => assert.calledTwice(services.updateServices) && assert.calledWith(services.updateServices, sinon.match({forceRefresh: true})))
+        );
+      });
+    });
     describe('#switchActiveClusterIds', () => {
       let requestStub;
 

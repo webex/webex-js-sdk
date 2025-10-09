@@ -76,6 +76,7 @@ describe('plugin-mercury', () => {
         convertUrlToPriorityHostUrl: sinon.stub().returns(Promise.resolve('ws://example-2.com')),
         markFailedUrl: sinon.stub().returns(Promise.resolve()),
         switchActiveClusterIds: sinon.stub(),
+        invalidateCache: sinon.stub(),
       };
       webex.internal.metrics.submitClientMetrics = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
@@ -170,6 +171,11 @@ describe('plugin-mercury', () => {
             },
           },
         };
+        const u2cInvalidateEventEnvelope = {
+          data: {
+            timestamp: "1759289614",
+          },
+        };
 
         assert.isFalse(mercury.connected, 'Mercury is not connected');
         assert.isTrue(mercury.connecting, 'Mercury is connecting');
@@ -189,11 +195,16 @@ describe('plugin-mercury', () => {
             webex.internal.services.switchActiveClusterIds,
             activeClusterEventEnvelope.data.activeClusters
           );
+          mercury._emit('event:u2c.cache-invalidation', u2cInvalidateEventEnvelope);
+          assert.calledOnceWithExactly(
+            webex.internal.services.invalidateCache,
+            u2cInvalidateEventEnvelope.timestamp
+          );
           sinon.restore();
         });
       });
 
-      it('connects to Mercury but does not call updateFeature or switchActiveClusterIds', () => {
+      it('connects to Mercury but does not call updateFeature or switchActiveClusterIds or invalidateCache', () => {
         webex.internal.feature.updateFeature = sinon.stub();
         const promise = mercury.connect();
         const envelope = {};
@@ -203,6 +214,8 @@ describe('plugin-mercury', () => {
           assert.notCalled(webex.internal.feature.updateFeature);
           mercury._emit('event:ActiveClusterStatusEvent', envelope);
           assert.notCalled(webex.internal.services.switchActiveClusterIds);
+          mercury._emit('event:u2c.cache-invalidation', envelope);
+          assert.notCalled(webex.internal.services.invalidateCache);
           sinon.restore();
         });
       });

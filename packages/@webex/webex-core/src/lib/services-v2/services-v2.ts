@@ -1,6 +1,6 @@
 import sha256 from 'crypto-js/sha256';
 
-import {union, unionBy} from 'lodash';
+import {toNumber, union, unionBy} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from '../metrics';
@@ -160,7 +160,7 @@ const Services = WebexPlugin.extend({
         break;
     }
     // confirm catalog update for group is not in progress.
-    if (catalog.status[serviceGroup].collecting) {
+    if (catalog.status?.[serviceGroup]?.collecting) {
       return this.waitForCatalog(serviceGroup);
     }
 
@@ -195,7 +195,11 @@ const Services = WebexPlugin.extend({
       forceRefresh,
     })
       .then((serviceHostMap: ServiceHostmap) => {
-        catalog.updateServiceGroups(serviceGroup, serviceHostMap);
+        catalog.updateServiceGroups(
+          serviceGroup,
+          serviceHostMap?.services,
+          serviceHostMap.timestamp
+        );
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
       })
@@ -345,6 +349,33 @@ const Services = WebexPlugin.extend({
     );
   },
   /**
+   * refresh services via request again.
+   * @returns {Promsie<void>}
+   * */
+  refreshServices(): Promise<void> {
+    this.logger.info('services: refresh services');
+    const {credentials} = this.webex;
+
+    return (
+      Promise.resolve()
+        // Get the user's OrgId.
+        .then(() => credentials.getOrgId())
+        // Begin collecting the preauth/limited catalog.
+        .then((orgId) => this.collectPreauthCatalog({orgId}, true))
+        .then(() => {
+          // Validate if the token is authorized.
+          if (credentials.canAuthorize) {
+            // Attempt to collect the postauth catalog.
+            return this.updateServices({forceRefresh: true});
+          }
+
+          // Return a resolved promise for consistent return value.
+          return Promise.resolve();
+        })
+    );
+  },
+
+  /**
    * Update cluster id via mercury service update. If the cluster id does not exist,
    * fetch new catalog.
    *
@@ -370,7 +401,7 @@ const Services = WebexPlugin.extend({
       );
 
       // fetch the catalog
-      return this.updateServices({forceRefresh: true});
+      return this.refreshServices();
     }
     // update the active services
     this._updateActiveServices(newActiveClusters);
@@ -379,6 +410,24 @@ const Services = WebexPlugin.extend({
     return Promise.resolve();
   },
 
+  /**
+   * Invalidate cache via mercury notification. If the timestamp is new,
+   * fetch new catalog.
+   *
+   * @param {string} timestamp - The invalidation notify timestamp.
+   * @returns {Promsie<void>}
+   * */
+  invalidateCache(timestamp: string): Promise<void> {
+    this.logger.info('services: invalidate cache, timestamp:', timestamp);
+    const lastTime = toNumber(this._getCatalog()?.timestamp) || 0;
+    const invalidateTime = toNumber(timestamp) || 0;
+    if (invalidateTime > lastTime) {
+      this.logger.info('services: invalidateCache, refresh services');
+      this.refreshServices();
+    }
+
+    return Promise.resolve();
+  },
   /**
    * Get user meeting preferences (preferred webex site).
    *
@@ -495,7 +544,11 @@ const Services = WebexPlugin.extend({
 
     const serviceHostMap = this._formatReceivedHostmap(hostMap);
 
-    return catalog.updateServiceGroups(serviceGroup, serviceHostMap);
+    return catalog.updateServiceGroups(
+      serviceGroup,
+      serviceHostMap?.services,
+      serviceHostMap?.timestamp
+    );
   },
 
   /**
@@ -731,8 +784,14 @@ const Services = WebexPlugin.extend({
    * catalog endpoint.
    * @returns {Array<Service>}
    */
-  _formatReceivedHostmap({services, activeServices}) {
-    const formattedHostmap = services.map((service) => this._formatHostMapEntry(service));
+  _formatReceivedHostmap({services, activeServices, timestamp, orgId, format}) {
+    const formattedHostmap: ServiceHostmap = {
+      activeServices,
+      services: services.map((service) => this._formatHostMapEntry(service)),
+      timestamp,
+      orgId,
+      format,
+    };
     this._updateActiveServices(activeServices);
     this._updateServices(services);
 
