@@ -380,7 +380,6 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
             // Conference ended - update task state and emit event
-            task = this.updateTaskData(task, payload.data);
             task = this.updateTaskData(task, {
               ...payload.data,
               isConferenceInProgress: TaskUtils.getIsConferenceInProgress(task),
