@@ -462,19 +462,6 @@ export default class Task extends EventEmitter implements ITask {
     } catch (error) {
       const err = generateTaskErrorObject(error, METHODS.TOGGLE_MUTE, TASK_FILE);
 
-      // Track mute toggle failure metrics
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED, // Reuse existing metric or add new one
-        {
-          taskId: this.data?.interactionId,
-          operation: 'toggleMute',
-          error: error.toString(),
-          trackingId: err.data?.trackingId,
-          errorMessage: err.data?.message,
-        },
-        ['operational']
-      );
-
       throw err;
     }
   }
