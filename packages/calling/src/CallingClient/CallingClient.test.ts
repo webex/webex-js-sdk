@@ -343,7 +343,10 @@ describe('CallingClient Tests', () => {
 
       expect(warnSpy).toBeCalledWith(
         `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
-        ''
+        expect.objectContaining({
+          file: CALLING_CLIENT_FILE,
+          method: 'getMobiusServers',
+        })
       );
     });
 
@@ -373,7 +376,10 @@ describe('CallingClient Tests', () => {
 
       expect(warnSpy).toBeCalledWith(
         `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
-        ''
+        expect.objectContaining({
+          file: CALLING_CLIENT_FILE,
+          method: 'getMobiusServers',
+        })
       );
     });
 
@@ -416,7 +422,10 @@ describe('CallingClient Tests', () => {
 
       expect(warnSpy).toBeCalledWith(
         `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
-        ''
+        expect.objectContaining({
+          file: CALLING_CLIENT_FILE,
+          method: 'getMobiusServers',
+        })
       );
     });
 
@@ -456,7 +465,10 @@ describe('CallingClient Tests', () => {
 
       expect(warnSpy).toBeCalledWith(
         `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
-        ''
+        expect.objectContaining({
+          file: CALLING_CLIENT_FILE,
+          method: 'getMobiusServers',
+        })
       );
     });
 

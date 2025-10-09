@@ -1154,10 +1154,13 @@ export async function getXsiActionEndpoint(
           method: HTTP_METHODS.GET,
         });
 
-        log.log(`Response code: ${userIdResponse.statusCode}`, {
-          file: UTILS_FILE,
-          method: 'getXsiActionEndpoint',
-        });
+        log.log(
+          `Response code: ${userIdResponse.statusCode}, Response trackingid: ${userIdResponse?.headers?.trackingid}`,
+          {
+            file: UTILS_FILE,
+            method: 'getXsiActionEndpoint',
+          }
+        );
 
         const response = userIdResponse.body as WebexRequestPayload;
 
@@ -1172,10 +1175,13 @@ export async function getXsiActionEndpoint(
           method: HTTP_METHODS.GET,
         });
 
-        log.log(`Response code: ${bwTokenResponse.statusCode}`, {
-          file: UTILS_FILE,
-          method: 'getXsiActionEndpoint',
-        });
+        log.log(
+          `Response code: ${bwTokenResponse.statusCode}, Response trackingid: ${bwTokenResponse?.headers?.trackingid}`,
+          {
+            file: UTILS_FILE,
+            method: 'getXsiActionEndpoint',
+          }
+        );
 
         const response = bwTokenResponse.body as WebexRequestPayload;
 
@@ -1282,10 +1288,13 @@ export async function scimQuery(filter: string) {
     },
   })));
 
-  log.log(`Response code: ${response.statusCode}`, {
-    file: UTILS_FILE,
-    method: 'scimQuery',
-  });
+  log.log(
+    `Response code: ${response.statusCode}, Response trackingid: ${response?.headers?.trackingid}`,
+    {
+      file: UTILS_FILE,
+      method: 'scimQuery',
+    }
+  );
 
   return response;
 }

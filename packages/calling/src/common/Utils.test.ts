@@ -1138,7 +1138,7 @@ describe('resolveContact tests', () => {
 
     expect(displayInfo?.name).toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith('Error response: - 500', {
-      file: 'utils',
+      file: UTILS_FILE,
       method: 'resolveCallerIdDisplay',
     });
 

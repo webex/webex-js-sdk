@@ -1018,7 +1018,7 @@ describe('ContactClient Tests', () => {
     expect(webex.request).toBeCalledTimes(2);
     expect(warnSpy).toBeCalledTimes(1);
     expect(warnSpy).toBeCalledWith('Error processing contact chunk 0-50', {
-      file: 'Contacts',
+      file: CONTACTS_CLIENT,
       method: METHODS.GET_CONTACTS,
     });
     expect(infoSpy).toBeCalledWith(METHOD_START_MESSAGE, {
