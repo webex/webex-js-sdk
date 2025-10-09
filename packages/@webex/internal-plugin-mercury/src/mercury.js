@@ -133,10 +133,21 @@ const Mercury = WebexPlugin.extend({
 
   // @oneFlight
   connect(webSocketUrl, sessionId = this.defaultSessionId) {
+    if (!this._connectPromises) this._connectPromises = new Map();
+
+    // First check if there's already a connection promise for this session
+    if (this._connectPromises.has(sessionId)) {
+      this.logger.info(
+        `${this.namespace}: connection ${sessionId} already in progress, returning existing promise`
+      );
+
+      return this._connectPromises.get(sessionId);
+    }
+
     const sessionSocket = this.sockets.get(sessionId);
     if (sessionSocket?.connected || sessionSocket?.connecting) {
       this.logger.info(
-        `${this.namespace}: connection ${sessionId} already connecting or connected, will not connect again`
+        `${this.namespace}: connection ${sessionId} already connected, will not connect again`
       );
 
       return Promise.resolve();
@@ -150,13 +161,21 @@ const Mercury = WebexPlugin.extend({
       new Error('debug_mercury_logging').stack
     );
 
-    return Promise.resolve(
+    const connectPromise = Promise.resolve(
       this.webex.internal.device.registered || this.webex.internal.device.register()
-    ).then(() => {
-      this.logger.info(`${this.namespace}: connecting ${sessionId}`);
+    )
+      .then(() => {
+        this.logger.info(`${this.namespace}: connecting ${sessionId}`);
 
-      return this._connectWithBackoff(webSocketUrl, sessionId);
-    });
+        return this._connectWithBackoff(webSocketUrl, sessionId);
+      })
+      .finally(() => {
+        this._connectPromises.delete(sessionId);
+      });
+
+    this._connectPromises.set(sessionId, connectPromise);
+
+    return connectPromise;
   },
 
   logout() {
@@ -182,6 +201,11 @@ const Mercury = WebexPlugin.extend({
         this.logger.info(`${this.namespace}: aborting connection ${sessionId}`);
         backoffCall.abort();
         this.backoffCalls.delete(sessionId);
+      }
+
+      // Clean up any pending connection promises
+      if (this._connectPromises) {
+        this._connectPromises.delete(sessionId);
       }
 
       const sessionSocket = this.sockets.get(sessionId);
@@ -217,6 +241,10 @@ const Mercury = WebexPlugin.extend({
       this.connected = false;
       this.sockets.clear();
       this.backoffCalls.clear();
+      // Clear connection promises to prevent stale promises
+      if (this._connectPromises) {
+        this._connectPromises.clear();
+      }
     });
   },
 
@@ -494,6 +522,9 @@ const Mercury = WebexPlugin.extend({
         call.failAfter(this.config.maxRetries);
       }
 
+      // Store the call BEFORE setting up event handlers to prevent race conditions
+      this.backoffCalls.set(sessionId, call);
+
       call.on('abort', () => {
         this.logger.info(`${this.namespace}: connection aborted for ${sessionId}`);
         reject(new Error(`Mercury Connection Aborted for ${sessionId}`));
@@ -520,21 +551,28 @@ const Mercury = WebexPlugin.extend({
       });
 
       call.start();
-
-      this.backoffCalls.set(sessionId, call);
     });
   },
 
   _emit(...args) {
     try {
-      this.trigger(...args);
+      // Validate args before processing
+      if (args && args.length > 0) {
+        this.trigger(...args);
+      }
     } catch (error) {
-      this.logger.error(
-        `${this.namespace}: error occurred in event handler:`,
-        error,
-        ' with args: ',
-        args
-      );
+      // Safely handle errors without causing additional issues during cleanup
+      try {
+        this.logger.error(
+          `${this.namespace}: error occurred in event handler:`,
+          error,
+          ' with args: ',
+          args
+        );
+      } catch (logError) {
+        // If even logging fails, just ignore to prevent cascading errors during cleanup
+        console.error('Mercury _emit error handling failed:', logError);
+      }
     }
   },
 

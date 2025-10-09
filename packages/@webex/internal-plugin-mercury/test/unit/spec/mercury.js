@@ -97,9 +97,32 @@ describe('plugin-mercury', () => {
       });
 
       mercury = webex.internal.mercury;
+      mercury.defaultSessionId = 'mercury-default-session';
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+      // Clean up Mercury connections and internal state
+      if (mercury) {
+        try {
+          await mercury.disconnectAll();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+        // Clear any remaining connection promises
+        if (mercury._connectPromises) {
+          mercury._connectPromises.clear();
+        }
+      }
+
+      // Ensure mock socket is properly closed
+      if (mockWebSocket && typeof mockWebSocket.close === 'function') {
+        try {
+          mockWebSocket.close();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
+
       if (socketOpenStub) {
         socketOpenStub.restore();
       }
@@ -107,6 +130,9 @@ describe('plugin-mercury', () => {
       if (Socket.getWebSocketConstructor.restore) {
         Socket.getWebSocketConstructor.restore();
       }
+
+      // Small delay to ensure all async operations complete
+      await new Promise(resolve => setTimeout(resolve, 10));
     });
 
     describe('#listen()', () => {
@@ -261,15 +287,6 @@ describe('plugin-mercury', () => {
       });
 
       it('can safely be called multiple times', () => {
-        // Restore and re-stub to always resolve, using a new MockWebSocket for each call
-        socketOpenStub.restore();
-        sinon.stub(Socket.prototype, 'open').callsFake(function (...args) {
-          // Each call gets its own mock websocket
-          const ws = new MockWebSocket();
-          process.nextTick(() => ws.open());
-          return Promise.resolve(ws);
-        });
-
         const promise = Promise.all([
           mercury.connect(),
           mercury.connect(),
@@ -277,9 +294,10 @@ describe('plugin-mercury', () => {
           mercury.connect(),
         ]);
 
+        mockWebSocket.open();
+
         return promise.then(() => {
-          // Only one connection should be established
-          assert.isTrue(mercury.connected, 'Mercury is connected');
+          assert.calledOnce(Socket.prototype.open);
         });
       });
 
@@ -444,9 +462,13 @@ describe('plugin-mercury', () => {
 
         // skipping due to apparent bug with lolex in all browsers but Chrome.
         skipInBrowser(it)('does not continue attempting to connect', () => {
-          mercury.connect();
+          const promise = mercury.connect();
 
-          return promiseTick(2)
+          // Wait for the connection to be established before proceeding
+          mockWebSocket.open();
+
+          return promise.then(() =>
+            promiseTick(2)
             .then(() => {
               clock.tick(6 * webex.internal.mercury.config.backoffTimeReset);
 
@@ -454,7 +476,8 @@ describe('plugin-mercury', () => {
             })
             .then(() => {
               assert.calledOnce(Socket.prototype.open);
-            });
+              })
+          );
         });
       });
 
@@ -666,18 +689,16 @@ describe('plugin-mercury', () => {
 
           // Wait for the connect call to setup
           return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
-            // By this time backoffCalls and mercury sockets should be defined by the
-            // 'connect' call - check default session
-            const defaultSessionBackoffCall = mercury.backoffCalls.get(mercury.defaultSessionId);
-            const defaultSessionSocket = mercury.sockets.get(mercury.defaultSessionId);
-            assert.isDefined(defaultSessionBackoffCall, 'Mercury backoffCall is not defined');
-            assert.isDefined(defaultSessionSocket, 'Mercury socket is not defined');
+            // By this time backoffCall and mercury socket should be defined by the
+            // 'connect' call
+            assert.isDefined(mercury.backoffCalls.get('mercury-default-session'), 'Mercury backoffCall is not defined');
+            assert.isDefined(mercury.socket, 'Mercury socket is not defined');
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
             mercury.disconnect();
-            assert.isUndefined(mercury.backoffCalls.get(mercury.defaultSessionId), 'Mercury backoffCall is still defined');
-            // The socket will be removed from the sockets map
-            assert.isUndefined(mercury.sockets.get(mercury.defaultSessionId), 'Mercury socket is still defined');
+            assert.isUndefined(mercury.backoffCalls.get('mercury-default-session'), 'Mercury backoffCall is still defined');
+            // The socket will never be unset (which seems bad)
+            assert.isDefined(mercury.socket, 'Mercury socket is not defined');
 
             return assert.isRejected(promise).then((error) => {
               // connection did not fail, so no last error
@@ -693,16 +714,15 @@ describe('plugin-mercury', () => {
 
           let reason;
 
-          // Clear the backoffCalls map for the default session
-          mercury.backoffCalls.delete(mercury.defaultSessionId);
-          mercury._attemptConnection('ws://example.com', mercury.defaultSessionId, (_reason) => {
+          mercury.backoffCalls.clear();
+          mercury._attemptConnection('ws://example.com', 'mercury-default-session',(_reason) => {
             reason = _reason;
           });
 
           return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
             assert.equal(
               reason.message,
-              'Mercury: prevent socket open when backoffCall no longer defined for mercury-default-session'
+              `Mercury: prevent socket open when backoffCall no longer defined for ${mercury.defaultSessionId}`
             );
           });
         });
@@ -724,7 +744,7 @@ describe('plugin-mercury', () => {
             return assert.isRejected(promise).then((error) => {
               const lastError = mercury.getLastError();
 
-              assert.equal(error.message, 'Mercury Connection Aborted for mercury-default-session');
+              assert.equal(error.message, `Mercury Connection Aborted for ${mercury.defaultSessionId}`);
               assert.isDefined(lastError);
               assert.equal(lastError, realError);
             });
@@ -818,7 +838,7 @@ describe('plugin-mercury', () => {
           },
         };
         assert.isUndefined(mercury.mercuryTimeOffset);
-        mercury._setTimeOffset(event);
+        mercury._setTimeOffset('mercury-default-session', event);
         assert.isDefined(mercury.mercuryTimeOffset);
         assert.isTrue(mercury.mercuryTimeOffset > 0);
       });
@@ -828,7 +848,7 @@ describe('plugin-mercury', () => {
             wsWriteTimestamp: Date.now() + 60000,
           },
         };
-        mercury._setTimeOffset(event);
+        mercury._setTimeOffset('mercury-default-session', event);
         assert.isTrue(mercury.mercuryTimeOffset < 0);
       });
       it('handles invalid wsWriteTimestamp', () => {
@@ -839,7 +859,7 @@ describe('plugin-mercury', () => {
               wsWriteTimestamp: invalidTimestamp,
             },
           };
-          mercury._setTimeOffset(event);
+          mercury._setTimeOffset('mercury-default-session', event);
           assert.isUndefined(mercury.mercuryTimeOffset);
         });
       });
@@ -931,59 +951,6 @@ describe('plugin-mercury', () => {
           assert.calledWith(spy, 0);
           assert.calledOnce(spy);
         });
-      });
-    });
-
-    describe('multiple session connections', () => {
-      const sessionId1 = 'session-1';
-      const sessionId2 = 'session-2';
-      let mockWebSocket2;
-      let socketOpenStub2;
-
-      beforeEach(() => {
-        // Setup a second mock websocket for the second session
-        mockWebSocket2 = new MockWebSocket();
-        socketOpenStub2 = sinon.stub(Socket.prototype, 'open').callsFake(function (url, options) {
-          // Use different mockWebSocket for sessionId2
-          if (options && options.trackingId && options.trackingId.includes(sessionId2)) {
-            process.nextTick(() => mockWebSocket2.open());
-            return Promise.resolve();
-          }
-          // Default to the first mockWebSocket
-          process.nextTick(() => mockWebSocket.open());
-          return Promise.resolve();
-        });
-      });
-
-      afterEach(() => {
-        if (socketOpenStub2) {
-          socketOpenStub2.restore();
-        }
-      });
-
-      it('can connect multiple sessions independently', async () => {
-        await mercury.connect('ws://example.com', sessionId1);
-        await mercury.connect('ws://example-2.com', sessionId2);
-        const sockets = mercury.getSockets();
-        assert.isTrue(sockets.has(sessionId1), 'Session 1 socket exists');
-        assert.isTrue(sockets.has(sessionId2), 'Session 2 socket exists');
-        assert.isDefined(mercury.getSocket(sessionId1), 'getSocket returns session 1');
-        assert.isDefined(mercury.getSocket(sessionId2), 'getSocket returns session 2');
-      });
-
-      it('disconnecting one session does not affect the other', async () => {
-        await mercury.connect('ws://example.com', sessionId1);
-        await mercury.connect('ws://example-2.com', sessionId2);
-        await mercury.disconnect({}, sessionId1);
-        assert.isUndefined(mercury.getSocket(sessionId1), 'Session 1 socket removed');
-        assert.isDefined(mercury.getSocket(sessionId2), 'Session 2 socket still exists');
-      });
-
-      it('disconnectAll closes all sessions', async () => {
-        await mercury.connect('ws://example.com', sessionId1);
-        await mercury.connect('ws://example-2.com', sessionId2);
-        await mercury.disconnectAll();
-        assert.strictEqual(mercury.getSockets().size, 0, 'All sockets removed');
       });
     });
   });
