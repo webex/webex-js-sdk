@@ -253,6 +253,14 @@ describe('WebSocketManager', () => {
     const MetricsManagerModule = require('../../../../../../src/metrics/MetricsManager');
     jest.spyOn(MetricsManagerModule.default, 'getInstance').mockReturnValue(mockMetricsManager);
 
+    // Mock navigator.onLine to be true for this test
+    Object.defineProperty(global, 'navigator', {
+      value: {
+        onLine: true,
+      },
+      configurable: true,
+    });
+
     await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
 
     const errorEvent = new Event('error');
