@@ -7364,7 +7364,8 @@ export default class Meeting extends StatelessWebexPlugin {
         NetworkQualityEventNames.NETWORK_QUALITY,
         this.sendNetworkQualityEvent.bind(this)
       );
-      this.statsMonitor.on(StatsMonitorEventNames.INBOUND_AUDIO_ISSUE_DETECTED, (data) => {
+
+      this.statsMonitor.on(StatsMonitorEventNames.INBOUND_AUDIO_ISSUE, (data) => {
         // Before forwarding any inbound audio issues to the app, make sure that we have at least one other
         // participant in the meeting with unmuted audio.
         // We don't check this.mediaProperties.mediaDirection here, because that's already handled in statsAnalyzer,

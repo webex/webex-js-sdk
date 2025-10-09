@@ -4185,7 +4185,7 @@ describe('plugin-meetings', () => {
             sinon.restore();
           });
 
-          describe('INBOUND_AUDIO_ISSUE_DETECTED event', () => {
+          describe('INBOUND_AUDIO_ISSUE event', () => {
             it('should not trigger event when no unmuted members exist', () => {
               const fakeEventData = {issueSubType: 'DECODE_RESULTS_IN_ZERO_AUDIO_LEVEL'};
 
@@ -4215,7 +4215,7 @@ describe('plugin-meetings', () => {
               TriggerProxy.trigger.resetHistory();
 
               // Emit the event from statsMonitor
-              listeners[StatsMonitorEventNames.INBOUND_AUDIO_ISSUE_DETECTED](fakeEventData);
+              listeners[StatsMonitorEventNames.INBOUND_AUDIO_ISSUE](fakeEventData);
 
               assert.neverCalledWith(
                 TriggerProxy.trigger,
@@ -4255,7 +4255,7 @@ describe('plugin-meetings', () => {
               TriggerProxy.trigger.resetHistory();
 
               // Emit the event from statsMonitor
-              listeners[StatsMonitorEventNames.INBOUND_AUDIO_ISSUE_DETECTED](fakeEventData);
+              listeners[StatsMonitorEventNames.INBOUND_AUDIO_ISSUE](fakeEventData);
 
               assert.calledWith(
                 TriggerProxy.trigger,
