@@ -198,7 +198,7 @@ const Services = WebexPlugin.extend({
         catalog.updateServiceGroups(
           serviceGroup,
           serviceHostMap?.services,
-          serviceHostMap.timestamp
+          serviceHostMap?.timestamp
         );
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
