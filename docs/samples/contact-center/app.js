@@ -1341,12 +1341,8 @@ function register() {
           }
         });
         entryPointId = agentProfile.outDialEp;
-        updateTaskList();
-    }).catch((error) => {
-        console.error('Event subscription failed', error);
-    })
-
-    webex.cc.on('task:incoming', (task) => {
+         webex.cc.on('task:incoming', (task) => {
+      console.log('Incoming task received: ', task);
       taskEvents.detail.task = task;
       incomingCallListener.dispatchEvent(taskEvents);
     });
@@ -1412,6 +1408,10 @@ function register() {
       idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
       startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
     });
+        updateTaskList();
+    }).catch((error) => {
+        console.error('Event subscription failed', error);
+    })
 }
 
 // New function to handle unregistration
