@@ -922,5 +922,209 @@ describe('plugin-mercury', () => {
         });
       });
     });
+
+    describe('shutdown protocol', () => {
+      describe('#_handleImminentShutdown()', () => {
+        beforeEach(() => {
+          mercury.connected = true;
+          mercury.socket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          sinon.stub(mercury, '_prepareUrl').returns(Promise.resolve('ws://new-socket.com'));
+          sinon.stub(mercury, '_emit');
+        });
+
+        afterEach(() => {
+          mercury._prepareUrl.restore();
+          mercury._emit.restore();
+        });
+
+        it('should be idempotent - no-op if already in progress', () => {
+          mercury._shutdownSwitchoverInProgress = true;
+
+          mercury._handleImminentShutdown();
+
+          assert.notCalled(mercury._prepareUrl);
+        });
+
+        it('should set switchover flags when called', () => {
+          mercury._handleImminentShutdown();
+
+          assert.isTrue(mercury._shutdownSwitchoverInProgress);
+          assert.isDefined(mercury._shutdownSwitchoverId);
+        });
+
+        it('should call _prepareUrl and getUserToken', () => {
+          mercury._handleImminentShutdown();
+
+          assert.calledOnce(mercury._prepareUrl);
+          assert.calledOnce(webex.credentials.getUserToken);
+        });
+
+        it('should handle exceptions during switchover', () => {
+          mercury._prepareUrl.restore();
+          sinon.stub(mercury, '_prepareUrl').throws(new Error('Prepare URL failed'));
+
+          mercury._handleImminentShutdown();
+
+          assert.isFalse(mercury._shutdownSwitchoverInProgress);
+        });
+      });
+
+      describe('#_onmessage() with shutdown message', () => {
+        beforeEach(() => {
+          sinon.stub(mercury, '_handleImminentShutdown');
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_setTimeOffset');
+        });
+
+        afterEach(() => {
+          mercury._handleImminentShutdown.restore();
+          mercury._emit.restore();
+          mercury._setTimeOffset.restore();
+        });
+
+        it('should trigger _handleImminentShutdown on shutdown message', () => {
+          const shutdownEvent = {
+            data: {
+              type: 'shutdown',
+            },
+          };
+
+          const result = mercury._onmessage(shutdownEvent);
+
+          assert.calledOnce(mercury._handleImminentShutdown);
+          assert.calledWith(mercury._emit, 'event:mercury_shutdown_imminent', shutdownEvent.data);
+          assert.instanceOf(result, Promise);
+        });
+
+        it('should handle shutdown message without additional data gracefully', () => {
+          const shutdownEvent = {
+            data: {
+              type: 'shutdown',
+            },
+          };
+
+          mercury._onmessage(shutdownEvent);
+
+          assert.calledOnce(mercury._handleImminentShutdown);
+        });
+
+        it('should not trigger shutdown handling for non-shutdown messages', () => {
+          const regularEvent = {
+            data: {
+              type: 'regular',
+              data: {
+                eventType: 'conversation.activity',
+              },
+            },
+          };
+
+          mercury._onmessage(regularEvent);
+
+          assert.notCalled(mercury._handleImminentShutdown);
+        });
+
+        it('should ignore observer errors when emitting shutdown event', () => {
+          const shutdownEvent = {
+            data: {
+              type: 'shutdown',
+            },
+          };
+
+          mercury._emit.throws(new Error('Observer error'));
+
+          assert.doesNotThrow(() => {
+            mercury._onmessage(shutdownEvent);
+          });
+
+          assert.calledOnce(mercury._handleImminentShutdown);
+        });
+      });
+
+      describe('#_onclose() with code 4001 (shutdown replacement)', () => {
+        let mockSocket, anotherSocket;
+
+        beforeEach(() => {
+          mockSocket = {
+            url: 'ws://active-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          anotherSocket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          mercury.socket = mockSocket;
+          mercury.connected = true;
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_reconnect');
+          sinon.stub(mercury, 'unset');
+        });
+
+        afterEach(() => {
+          mercury._emit.restore();
+          mercury._reconnect.restore();
+          mercury.unset.restore();
+        });
+
+        it('should handle active socket close with 4001 - reconnect as fallback', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          mercury._onclose(closeEvent, mockSocket);
+
+          assert.calledWith(mercury._emit, 'offline.transient', closeEvent);
+          assert.calledWith(mercury._reconnect, 'ws://active-socket.com');
+          assert.isFalse(mercury.connected);
+        });
+
+        it('should handle non-active socket close with 4001 - no reconnect needed', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          mercury._onclose(closeEvent, anotherSocket);
+
+          assert.calledWith(mercury._emit, 'offline.replaced', closeEvent);
+          assert.notCalled(mercury._reconnect);
+          assert.isTrue(mercury.connected); // Should remain connected
+          assert.notCalled(mercury.unset);
+        });
+
+        it('should distinguish between active and non-active socket closes', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          // Test non-active socket
+          mercury._onclose(closeEvent, anotherSocket);
+          assert.calledWith(mercury._emit, 'offline.replaced', closeEvent);
+
+          // Reset the spy call history
+          mercury._emit.resetHistory();
+
+          // Test active socket
+          mercury._onclose(closeEvent, mockSocket);
+          assert.calledWith(mercury._emit, 'offline.transient', closeEvent);
+        });
+
+        it('should handle missing sourceSocket parameter (defaults to active)', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          mercury._onclose(closeEvent); // No sourceSocket parameter
+
+          assert.calledWith(mercury._emit, 'offline.transient', closeEvent);
+          assert.calledWith(mercury._reconnect, 'ws://active-socket.com');
+        });
+      });
+    });
   });
 });
