@@ -1560,9 +1560,11 @@ function handleEffectsButton(btn, type, effect) {
 
 async function stopStartVideo() {
   if(stopVideoButton.innerText === 'Stop Video') {
-    console.log('MeetingControls#stopVideo()');
+    const meeting = getCurrentMeeting();
+    
     try {
       if (localMedia.cameraStream) {
+        await meeting.unpublishStreams([localMedia.cameraStream]);
         localMedia.cameraStream.stop();
       }
 
