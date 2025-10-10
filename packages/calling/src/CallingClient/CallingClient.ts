@@ -191,10 +191,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   public async init() {
     try {
       await windowsChromiumIceWarmup({
-        iceServers: [
-          {urls: 'stun:stun01a-us.bcld.webex.com:5004'},
-          {urls: 'stun:stun02a-us.bcld.webex.com:5004'},
-        ],
+        iceServers: [],
         timeoutMs: 1000,
       });
       log.info(`ICE warmup completed`, '' as LogContext);
