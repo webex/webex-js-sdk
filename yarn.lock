@@ -8776,10 +8776,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/json-multistream@npm:^2.3.1":
-  version: 2.4.1
-  resolution: "@webex/json-multistream@npm:2.4.1"
-  checksum: ceef39ddb4ccf47d8eaedcd1d9cf4282b1e565f04599bdcfa16cafe2649677c0244845e246d8c1686ace5477ad196f73fb85173830866d77f6cb5f9113f818aa
+"@webex/json-multistream@npm:2.3.1":
+  version: 2.3.1
+  resolution: "@webex/json-multistream@npm:2.3.1"
+  checksum: 1acc5087db00a6e43f24e21fada37b7024e1158a31b92d4aa2c7e518b7a35dda22cf8155a7c4313b190e1ccf305bd2a8757a581fe52f60fddd4b7e3a75f82cd8
   languageName: node
   linkType: hard
 
