@@ -276,7 +276,7 @@ describe('webex-core', () => {
         serviceHostmap = serviceHostmapV2;
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        services.refreshServices = sinon.stub().returns(Promise.resolve());
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
         services.webex.credentials = {
           getOrgId: sinon.stub().returns('')
         };
@@ -292,7 +292,7 @@ describe('webex-core', () => {
           conversation: 'urn:TEAM:me-central-1_d:conversation',
         });
 
-        assert.notCalled(services.refreshServices);
+        assert.notCalled(services.initServiceCatalogs);
 
         assert.calledWith(services._updateActiveServices, {
           conversation: 'urn:TEAM:me-central-1_d:conversation',
@@ -310,7 +310,7 @@ describe('webex-core', () => {
           conversation: 'urn:TEAM:me-central-1_asdf:conversation',
         });
 
-        assert.calledOnce(services.refreshServices);
+        assert.calledOnce(services.initServiceCatalogs);
       });
     });
 
@@ -561,7 +561,7 @@ describe('webex-core', () => {
 
     describe('#invalidateCache', () => {
       beforeEach( () => {
-        services.refreshServices = sinon.stub().returns(Promise.resolve());
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
         services.webex.credentials = {
           getOrgId: sinon.stub().returns('')
         };
@@ -577,7 +577,7 @@ describe('webex-core', () => {
         assert.calledWith(services.logger.info, 'services: invalidate cache, timestamp:', timestamp);
       });
 
-      it('should call refreshServices when invalidate timestamp is newer than catalog timestamp', async () => {
+      it('should call initServiceCatalogs when invalidate timestamp is newer than catalog timestamp', async () => {
         const newTimestamp = '1234567890';
         const oldTimestamp = '1234567880';
         services.logger.info = sinon.stub();
@@ -585,26 +585,26 @@ describe('webex-core', () => {
 
         await services.invalidateCache(newTimestamp);
 
-        assert.calledOnce(services.refreshServices);
+        assert.calledOnce(services.initServiceCatalogs);
         assert.calledWith(services.logger.info, 'services: invalidateCache, refresh services');
       });
 
-      it('should not call refreshServices when invalidate timestamp is older than catalog timestamp', async () => {
+      it('should not call initServiceCatalogs when invalidate timestamp is older than catalog timestamp', async () => {
         const oldTimestamp = '1234567880';
         const newTimestamp = '1234567890';
         services._getCatalog = sinon.stub().returns({timestamp: newTimestamp});
         await services.invalidateCache(oldTimestamp);
 
-        assert.notCalled(services.refreshServices);
+        assert.notCalled(services.initServiceCatalogs);
       });
 
-      it('should not call refreshServices when invalidate timestamp equals catalog timestamp', async () => {
+      it('should not call initServiceCatalogs when invalidate timestamp equals catalog timestamp', async () => {
         const timestamp = '1234567890';
         services._getCatalog = sinon.stub().returns({timestamp: timestamp});
 
         await services.invalidateCache(timestamp);
 
-        assert.notCalled(services.refreshServices);
+        assert.notCalled(services.initServiceCatalogs);
       });
 
       it('should handle numeric timestamp strings correctly', async () => {
@@ -614,7 +614,7 @@ describe('webex-core', () => {
 
         await services.invalidateCache(newTimestamp);
 
-        assert.calledOnce(services.refreshServices);
+        assert.calledOnce(services.initServiceCatalogs);
       });
 
       it('should handle undefined catalog gracefully', async () => {
@@ -623,7 +623,7 @@ describe('webex-core', () => {
 
         await services.invalidateCache(timestamp);
 
-        assert.calledOnce(services.refreshServices);
+        assert.calledOnce(services.initServiceCatalogs);
       });
 
       it('should handle catalog without timestamp gracefully', async () => {
@@ -632,7 +632,7 @@ describe('webex-core', () => {
 
         await services.invalidateCache(timestamp);
 
-        assert.calledOnce(services.refreshServices);
+        assert.calledOnce(services.initServiceCatalogs);
       });
 
       it('should handle null catalog timestamp gracefully', async () => {
@@ -641,7 +641,7 @@ describe('webex-core', () => {
 
         await services.invalidateCache(timestamp);
 
-        assert.calledOnce(services.refreshServices);
+        assert.calledOnce(services.initServiceCatalogs);
       });
 
       it('should handle undefined timestamp parameter gracefully', async () => {
@@ -649,7 +649,7 @@ describe('webex-core', () => {
 
         await services.invalidateCache(undefined);
 
-        assert.notCalled(services.refreshServices);
+        assert.notCalled(services.initServiceCatalogs);
       });
 
       it('should handle null timestamp parameter gracefully', async () => {
@@ -657,7 +657,7 @@ describe('webex-core', () => {
 
         await services.invalidateCache(null);
 
-        assert.notCalled(services.refreshServices);
+        assert.notCalled(services.initServiceCatalogs);
       });
 
       it('should handle empty string timestamp parameter gracefully', async () => {
@@ -665,7 +665,7 @@ describe('webex-core', () => {
 
         await services.invalidateCache('');
 
-        assert.notCalled(services.refreshServices);
+        assert.notCalled(services.initServiceCatalogs);
       });
 
       it('should handle non-numeric timestamp strings gracefully', async () => {
@@ -674,7 +674,7 @@ describe('webex-core', () => {
 
         await services.invalidateCache(invalidTimestamp);
 
-        assert.notCalled(services.refreshServices);
+        assert.notCalled(services.initServiceCatalogs);
       });
 
       it('should handle non-numeric catalog timestamp gracefully', async () => {
@@ -683,7 +683,7 @@ describe('webex-core', () => {
 
         await services.invalidateCache(timestamp);
 
-        assert.calledOnce(services.refreshServices);
+        assert.calledOnce(services.initServiceCatalogs);
       });
 
       it('should return a resolved Promise', async () => {

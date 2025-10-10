@@ -349,33 +349,6 @@ const Services = WebexPlugin.extend({
     );
   },
   /**
-   * refresh services via request again.
-   * @returns {Promsie<void>}
-   * */
-  refreshServices(): Promise<void> {
-    this.logger.info('services: refresh services');
-    const {credentials} = this.webex;
-
-    return (
-      Promise.resolve()
-        // Get the user's OrgId.
-        .then(() => credentials.getOrgId())
-        // Begin collecting the preauth/limited catalog.
-        .then((orgId) => this.collectPreauthCatalog({orgId}, true))
-        .then(() => {
-          // Validate if the token is authorized.
-          if (credentials.canAuthorize) {
-            // Attempt to collect the postauth catalog.
-            return this.updateServices({forceRefresh: true});
-          }
-
-          // Return a resolved promise for consistent return value.
-          return Promise.resolve();
-        })
-    );
-  },
-
-  /**
    * Update cluster id via mercury service update. If the cluster id does not exist,
    * fetch new catalog.
    *
@@ -386,13 +359,10 @@ const Services = WebexPlugin.extend({
     this.logger.info('services: switching active cluster ids');
 
     const newActiveClusterIds = Object.values(newActiveClusters);
-    let missingClusterIds = false;
 
-    newActiveClusterIds.forEach((clusterId) => {
+    const missingClusterIds = newActiveClusterIds.some((clusterId) => {
       // if the clusterId does not exist in the catalog, fetch the catalog
-      if (!this._services.find((service) => service.id === clusterId)) {
-        missingClusterIds = true;
-      }
+      return !this._services.find((service) => service.id === clusterId);
     });
 
     if (missingClusterIds) {
@@ -401,7 +371,7 @@ const Services = WebexPlugin.extend({
       );
 
       // fetch the catalog
-      return this.refreshServices();
+      return this.initServiceCatalogs(true);
     }
     // update the active services
     this._updateActiveServices(newActiveClusters);
@@ -423,7 +393,7 @@ const Services = WebexPlugin.extend({
     const invalidateTime = toNumber(timestamp) || 0;
     if (invalidateTime > lastTime) {
       this.logger.info('services: invalidateCache, refresh services');
-      this.refreshServices();
+      this.initServiceCatalogs(true);
     }
 
     return Promise.resolve();
@@ -1019,10 +989,10 @@ const Services = WebexPlugin.extend({
 
   /**
    * Make the initial requests to collect the root catalogs.
-   *
+   * @param {boolean} refresh - Is need force update
    * @returns {Promise<void, Error>} - Errors if the token is unavailable.
    */
-  initServiceCatalogs(): Promise<void> {
+  initServiceCatalogs(refresh = false): Promise<void> {
     this.logger.info('services: initializing initial service catalogs');
 
     // Destructure the credentials plugin.
@@ -1035,12 +1005,12 @@ const Services = WebexPlugin.extend({
         // Get the user's OrgId.
         .then(() => credentials.getOrgId())
         // Begin collecting the preauth/limited catalog.
-        .then((orgId) => this.collectPreauthCatalog({orgId}))
+        .then((orgId) => this.collectPreauthCatalog({orgId}, refresh))
         .then(() => {
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
             // Attempt to collect the postauth catalog.
-            return this.updateServices().catch(() => {
+            return this.updateServices({forceRefresh: refresh}).catch(() => {
               this.initFailed = true;
               this.logger.warn('services: cannot retrieve postauth catalog');
             });
