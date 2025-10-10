@@ -6,6 +6,8 @@ import * as tsSdpModule from '@webex/ts-sdp';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import {Defer} from '@webex/common';
 import MediaConnectionAwaiter from '../../../../src/media/MediaConnectionAwaiter';
+import Metrics from '../../../../src/metrics';
+import BEHAVIORAL_METRICS from '../../../../src/metrics/constants';
 
 describe('MediaProperties', () => {
   let mediaProperties;
@@ -387,6 +389,141 @@ describe('MediaProperties', () => {
         const {connectionType} = await mediaProperties.getCurrentConnectionInfo();
         assert.equal(connectionType, 'TURN-TLS');
       });
+    });
+  });
+
+  // issue types and subtypes used in these tests are just examples
+  // they don't reflect real issue types/subtypes used in production
+  describe('sendMediaIssueMetric', () => {
+    let sendBehavioralMetricStub;
+    let clock;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+      sendBehavioralMetricStub = sinon.stub(Metrics, 'sendBehavioralMetric');
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it('should send a behavioral metric with correct parameters', () => {
+      const issueType = 'audio';
+      const issueSubType = 'packet-loss';
+      const correlationId = 'test-correlation-id-123';
+
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
+
+      assert.calledOnce(sendBehavioralMetricStub);
+      assert.calledWith(sendBehavioralMetricStub, BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED, {
+        correlationId,
+        'audio_packet-loss': 1,
+      });
+    });
+
+    it('should increment count while being throttled and reset it once metric goes out', () => {
+      const issueType = 'video';
+      const issueSubType = 'freeze';
+      const correlationId = 'test-correlation-id';
+
+      // Call multiple times with same issue type/subtype
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
+
+      // First call should go through immediately, subsequent calls are throttled
+      assert.calledOnce(sendBehavioralMetricStub);
+      assert.calledWith(sendBehavioralMetricStub, BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED, {
+        correlationId,
+        video_freeze: 1, // Only the first call goes through due to throttling
+      });
+      sendBehavioralMetricStub.resetHistory();
+
+      assert.equal(mediaProperties.mediaIssueCounters['video_freeze'], 2); // counter should be reset after the first metric goes out, hence only 2 not 3 here
+
+      clock.tick(5 * 60 * 1000); // Advance time by 5 minutes to expire throttle
+
+      assert.calledOnceWithExactly(
+        sendBehavioralMetricStub,
+        BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED,
+        {
+          correlationId,
+          video_freeze: 2,
+        }
+      );
+    });
+
+    it('should track different issue types separately in counters', () => {
+      const correlationId = 'test-correlation-id';
+
+      // Send different issue types
+      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', correlationId);
+      mediaProperties.sendMediaIssueMetric('video', 'freeze', correlationId);
+      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', correlationId);
+      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', correlationId);
+      mediaProperties.sendMediaIssueMetric('audio', 'packet-loss', correlationId);
+      mediaProperties.sendMediaIssueMetric('video', 'freeze', correlationId);
+
+      // First call should go through immediately, subsequent calls are throttled
+      assert.calledOnceWithExactly(
+        sendBehavioralMetricStub,
+        BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED,
+        {
+          correlationId,
+          'audio_packet-loss': 1,
+        }
+      );
+
+      // But the counters should be tracked separately
+      assert.equal(mediaProperties.mediaIssueCounters['audio_packet-loss'], 3);
+      assert.equal(mediaProperties.mediaIssueCounters['video_freeze'], 2);
+
+      sendBehavioralMetricStub.resetHistory();
+
+      clock.tick(5 * 60 * 1000); // Advance time by 5 minutes to expire throttle
+
+      assert.calledOnceWithExactly(
+        sendBehavioralMetricStub,
+        BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED,
+        {
+          correlationId,
+          video_freeze: 2,
+          'audio_packet-loss': 3,
+        }
+      );
+    });
+
+    it('should flush throttled metrics when unsetPeerConnection is called', () => {
+      const issueType = 'share';
+      const issueSubType = 'connection-lost';
+      const correlationId = 'test-correlation-id';
+
+      // Send metrics multiple times
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
+      mediaProperties.sendMediaIssueMetric(issueType, issueSubType, correlationId);
+
+      // First call should go through immediately
+      assert.calledOnceWithExactly(
+        sendBehavioralMetricStub,
+        BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED,
+        {
+          correlationId,
+          'share_connection-lost': 1,
+        }
+      );
+      sendBehavioralMetricStub.resetHistory();
+
+      // Call unsetPeerConnection which should flush throttled metrics
+      mediaProperties.unsetPeerConnection();
+
+      assert.calledOnceWithExactly(
+        sendBehavioralMetricStub,
+        BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED,
+        {
+          correlationId,
+          'share_connection-lost': 1,
+        }
+      );
     });
   });
 });
