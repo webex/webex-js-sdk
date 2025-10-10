@@ -411,8 +411,8 @@ const Services = WebexPlugin.extend({
   },
 
   /**
-   * Invalidate cache via mercury notification. If the timestamp is new,
-   * fetch new catalog.
+   * Invalidate cache via mercury notification. If the timestamp is newer than current,
+   * refetch catalog services.
    *
    * @param {string} timestamp - The timestamp of invalidation notification.
    * @returns {Promsie<void>}
