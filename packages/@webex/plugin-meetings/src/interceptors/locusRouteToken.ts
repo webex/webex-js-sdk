@@ -20,9 +20,12 @@ export default class LocusRouteTokenInterceptor extends Interceptor {
     return new LocusRouteTokenInterceptor({webex: this});
   }
 
-  getActiveMeetingId() {
-    // @ts-ignore
-    return this.webex.meetings.meetingCollection.getActiveWebrtcMeeting()?.id;
+  getLocusIdByRequestUrl(url: string) {
+    if (url) {
+      return url.match(/\/loci\/([a-f0-9-]{36})/i)?.[1];
+    }
+
+    return undefined;
   }
 
   /**
@@ -31,12 +34,12 @@ export default class LocusRouteTokenInterceptor extends Interceptor {
    * @returns {Promise<HttpResponse>}
    */
   onResponse(options, response) {
-    const meetingId = this.getActiveMeetingId();
-    if (meetingId) {
+    const locusId = this.getLocusIdByRequestUrl(options.uri);
+    if (locusId) {
       const hasRouteToken = has(response.headers, X_CISCO_PART_ROUTE_TOKEN);
       const token = response.headers[X_CISCO_PART_ROUTE_TOKEN];
       if (hasRouteToken) {
-        this.updateToken(meetingId, token);
+        this.updateToken(locusId, token);
       }
     }
 
@@ -48,9 +51,9 @@ export default class LocusRouteTokenInterceptor extends Interceptor {
    * @returns {Promise<Object>} options
    */
   onRequest(options) {
-    const meetingId = this.getActiveMeetingId();
-    if (meetingId) {
-      const token = this.getToken(meetingId);
+    const locusId = this.getLocusIdByRequestUrl(options.uri);
+    if (locusId) {
+      const token = this.getToken(locusId);
       if (token) {
         options.headers[X_CISCO_PART_ROUTE_TOKEN] = token;
       }
@@ -61,20 +64,20 @@ export default class LocusRouteTokenInterceptor extends Interceptor {
 
   /**
    * Update the meeting route token
-   * @param {string} meetingId
+   * @param {string} locusId
    * @param {string} token
    * @returns {void}
    */
-  updateToken(meetingId, token) {
-    ROUTE_TOKEN[meetingId] = token;
+  updateToken(locusId, token) {
+    ROUTE_TOKEN[locusId] = token;
   }
 
   /**
    * Get the meeting route token
-   * @param {string} meetingId
+   * @param {string} locusId
    * @returns {string|undefined}
    */
-  getToken(meetingId) {
-    return ROUTE_TOKEN[meetingId];
+  getToken(locusId) {
+    return ROUTE_TOKEN[locusId];
   }
 }
