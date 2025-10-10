@@ -3188,6 +3188,14 @@ export default class Meeting extends StatelessWebexPlugin {
               this.shareCAEventSentStatus.receiveStart = false;
               this.shareCAEventSentStatus.receiveStop = false;
 
+              let finalBeneficiaryId = contentShare.beneficiaryId;
+              // In case of attendee in webinar, the whiteboard is shared by other participants
+              if (this.locusInfo?.info?.isWebinar && this.webinar?.selfIsAttendee) {
+                if (!finalBeneficiaryId && whiteboardShare.beneficiaryId) {
+                  finalBeneficiaryId = whiteboardShare.beneficiaryId;
+                }
+              }
+
               Trigger.trigger(
                 this,
                 {
@@ -3196,7 +3204,7 @@ export default class Meeting extends StatelessWebexPlugin {
                 },
                 EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                 {
-                  memberId: contentShare.beneficiaryId,
+                  memberId: finalBeneficiaryId,
                   url: contentShare.url,
                   shareInstanceId: this.remoteShareInstanceId,
                   annotationInfo: contentShare.annotation,
@@ -9922,5 +9930,21 @@ export default class Meeting extends StatelessWebexPlugin {
     const videoLayout: UnsetStageVideoLayout = {overrideDefault: false};
 
     return this.meetingRequest.synchronizeStage(this.locusUrl, videoLayout);
+  }
+
+  /**
+   * Notifies the host with the given meeting UUID and display names.
+   *
+   * @param {string} meetingUuid - The UUID of the meeting.
+   * @param {string[]} displayName - An array of display names to notify the host with.
+   * @returns {Promise<any>} The result of the notifyHost request.
+   */
+  notifyHost(meetingUuid: string, displayName: string[]) {
+    return this.meetingRequest.notifyHost(
+      this.meetingInfo.siteFullUrl,
+      this.locusId,
+      meetingUuid,
+      displayName
+    );
   }
 }

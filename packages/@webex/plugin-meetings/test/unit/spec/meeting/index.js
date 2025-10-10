@@ -12629,7 +12629,7 @@ describe('plugin-meetings', () => {
                         eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                         functionName: 'remoteShare',
                         eventPayload: {
-                          memberId: null,
+                          memberId: meeting.webinar.selfIsAttendee ? beneficiaryId : null,
                           url,
                           shareInstanceId,
                           annotationInfo: undefined,
@@ -12684,7 +12684,7 @@ describe('plugin-meetings', () => {
                           eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                           functionName: 'remoteShare',
                           eventPayload: {
-                            memberId: null,
+                            memberId: beneficiaryId,
                             url,
                             shareInstanceId,
                             annotationInfo: undefined,
@@ -14820,6 +14820,32 @@ describe('plugin-meetings', () => {
         meeting.meetingRequest.synchronizeStage,
         locusUrl,
         {overrideDefault: false}
+      );
+    });
+  });
+
+  describe('#notifyHost', () => {
+    beforeEach(() => {
+      meeting.meetingRequest.notifyHost = sinon.stub().returns(Promise.resolve());
+    });
+
+    it('sends the expected request', async () => {
+      meeting.meetingInfo.siteFullUrl = `convergedats.webex.com`;
+      const meetingUuid = 'meeting-uuid';
+      const displayName = ['Test', 'User'];
+      meeting.locusId = 'locusId';
+
+      const notifyHostPromise = meeting.notifyHost(meetingUuid, displayName);
+
+      assert.exists(notifyHostPromise.then);
+      await notifyHostPromise;
+
+      assert.calledOnceWithExactly(
+        meeting.meetingRequest.notifyHost,
+        meeting.meetingInfo.siteFullUrl,
+        meeting.locusId,
+        meetingUuid,
+        displayName,
       );
     });
   });
