@@ -1562,6 +1562,7 @@ async function stopStartVideo() {
   if(stopVideoButton.innerText === 'Stop Video') {
     const meeting = getCurrentMeeting();
     
+    console.log('MeetingControls#stopVideo()');
     try {
       if (localMedia.cameraStream) {
         await meeting.unpublishStreams([localMedia.cameraStream]);
