@@ -374,21 +374,30 @@ export default class TaskManager extends EventEmitter {
             }
             task?.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
             break;
-          case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
+          case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE: {
             // Participant joined conference - update task state with participant information and emit event
-            task = this.updateTaskData(task, payload.data);
+            // Pre-calculate isConferenceInProgress with updated data to avoid double update
+            const simulatedTaskForJoin = {
+              ...task,
+              data: {...task.data, ...payload.data},
+            };
             task = this.updateTaskData(task, {
               ...payload.data,
-              isConferenceInProgress: getIsConferenceInProgress(task),
+              isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForJoin),
             });
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
             break;
-          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
+          }
+          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE: {
             // Conference ended - update task state and emit event
-            task = this.updateTaskData(task, payload.data);
+            // Pre-calculate isConferenceInProgress with updated data to avoid double update
+            const simulatedTaskForLeft = {
+              ...task,
+              data: {...task.data, ...payload.data},
+            };
             task = this.updateTaskData(task, {
               ...payload.data,
-              isConferenceInProgress: getIsConferenceInProgress(task),
+              isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForLeft),
             });
             if (checkParticipantNotInInteraction(task, this.agentId)) {
               if (
@@ -402,6 +411,7 @@ export default class TaskManager extends EventEmitter {
             }
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
             break;
+          }
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED:
             // Conference exit failed - update task state and emit failure event
             task = this.updateTaskData(task, payload.data);

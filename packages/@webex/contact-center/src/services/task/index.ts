@@ -10,7 +10,7 @@ import {
 import {Failure} from '../core/GlobalTypes';
 import {LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
-import {METHODS} from './constants';
+import {METHODS, KEYS_TO_NOT_DELETE} from './constants';
 import routingContact from './contact';
 import LoggerProxy from '../../logger-proxy';
 import {
@@ -281,10 +281,9 @@ export default class Task extends EventEmitter implements ITask {
    * @private
    */
   private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
-    const keysToNotDelete = ['isConsulted', 'wrapUpRequired', 'isConferenceInProgress']; // keys to retain even if not in newData
     // Remove keys from oldData that are not in newData
     Object.keys(oldData).forEach((key) => {
-      if (!(key in newData) && !keysToNotDelete.includes(key)) {
+      if (!(key in newData) && !KEYS_TO_NOT_DELETE.includes(key as string)) {
         delete oldData[key];
       }
     });
