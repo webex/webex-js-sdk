@@ -1218,7 +1218,7 @@ function updateCallControlUI(task) {
     }
 
   const consultStatus = getConsultStatus(task, agentId);
-  console.log(`ravi event {task.data.type} ${consultStatus}`);
+  console.log(`event {task.data.type} ${consultStatus}`);
     updateConferenceButtonState(task, consultStatus == 'beingConsultedAccepted' || consultStatus == 'consultAccepted');
     if (consultStatus === 'beingConsulted') {
       // Dont handle anything
