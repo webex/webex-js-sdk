@@ -1148,38 +1148,46 @@ function getConsultStatus(task) {
     return 'connected';
   } else if (state === 'conference') {
     return 'conference';
+  } else if (state === 'consultCompleted') {
+    return  taskState;
   }
 }
 
 function updateCallControlUI(task) {
   const { data } = task;
   const { interaction, mediaResourceId } = data;
-  const {
-    isTerminated,
-    media,
-    participants,
-    callProcessingDetails
-  } = interaction;
-  
+  const { isTerminated, media, participants, callProcessingDetails } = interaction;
+
   autoWrapupTimerElm.style.display = 'none';
-  
   if (task.data.wrapUpRequired) {
+    participantListElm.style.display = 'none';
     updateButtonsPostEndCall();
     if (task.autoWrapup && task.autoWrapup.isRunning()) {
       startAutoWrapupTimer(task);
     }
     return;
   }
+
   wrapupElm.disabled = true;
   wrapupCodesDropdownElm.disabled = true;
   const hasParticipants = Object.keys(participants).length > 1;
-
-  const isNew = isIncomingTask(task, agentId);  
+  const isNew = isIncomingTask(task, agentId);
   const digitalChannels = ['chat', 'email', 'social'];
+
+  // Helper to set multiple controls at once
+  function setControls(configs) {
+    for (const [elm, [hide, disable]] of Object.entries(configs)) {
+      makeDisabledAndHide(eval(elm), hide, disable);
+    }
+  }
 
   if (isNew) {
     disableAllCallControls();
-  } else if (digitalChannels.includes(task.data.interaction.mediaType)) {
+    enableAnswerDeclineButtons(currentTask);
+    return;
+  }
+
+  if (digitalChannels.includes(task.data.interaction.mediaType)) {
     holdResumeElm.disabled = true;
     muteElm.disabled = true;
     pauseResumeRecordingElm.disabled = true;
@@ -1188,12 +1196,15 @@ function updateCallControlUI(task) {
     transferElm.disabled = false;
     endElm.disabled = !hasParticipants;
     pauseResumeRecordingElm.disabled = true;
-  } else if (task?.data?.interaction?.mediaType === 'telephony') {
+    return;
+  }
+
+  if (task?.data?.interaction?.mediaType === 'telephony') {
     // hold/resume call
     const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
     holdResumeElm.disabled = isTerminated;
     holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
-    
+
     // MPC: Hide transfer button in conference mode (Exit Conference replaces transfer)
     const isInConference = getIsConferenceInProgress(task);
     if (isInConference) {
@@ -1203,83 +1214,88 @@ function updateCallControlUI(task) {
       transferElm.disabled = false;
       transferElm.style.display = 'inline-block';
     }
-    
+
     muteElm.disabled = false;
     endElm.disabled = !hasParticipants;
 
     pauseResumeRecordingElm.disabled = false;
     pauseResumeRecordingElm.innerText = 'Pause Recording';
     if (callProcessingDetails) {
-      const { pauseResumeEnabled, isPaused } = callProcessingDetails;
-
-      // pause/resume recording
-      // pauseResumeRecordingElm.disabled = !pauseResumeEnabled; // TODO: recheck after rajesh PR(https://github.com/webex/widgets/pull/427/files) and why it is undefined
+      const { isPaused } = callProcessingDetails;
       pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
     }
 
-  const consultStatus = getConsultStatus(task, agentId);
-  console.log(`event {task.data.type} ${consultStatus}`);
-    updateConferenceButtonState(task, consultStatus == 'beingConsultedAccepted' || consultStatus == 'consultAccepted');
-    if (consultStatus === 'beingConsulted') {
-      // Dont handle anything
-    } else if (consultStatus === 'beingConsultedAccepted') {
-      // If this agent is being consulted and has accepted, enable end call only
-      makeDisabledAndHide(holdResumeElm, true, false);
-      makeDisabledAndHide(muteElm, false, false);
-      makeDisabledAndHide(pauseResumeRecordingElm, false, true);
-      makeDisabledAndHide(consultTabBtn, true, true);
-      makeDisabledAndHide(declineElm, true, true);
-      makeDisabledAndHide(transferElm, true, true);
-      makeDisabledAndHide(endElm, true, true);
-      makeDisabledAndHide(endConsultBtn, false, false);
-      makeDisabledAndHide(consultTransferBtn, true, true);
-      makeDisabledAndHide(conferenceToggleBtn, true, true); // Show conference button
-    } else if (consultStatus === 'consultInitiated') {
-      // If this agent initiated the consult, disable call controls except end call and consult controls
-      makeDisabledAndHide(holdResumeElm, true, false);
-      makeDisabledAndHide(muteElm, true, false);
-      makeDisabledAndHide(pauseResumeRecordingElm, true, false);
-      makeDisabledAndHide(consultTabBtn, true, false);
-      makeDisabledAndHide(declineElm, true, false);
-      makeDisabledAndHide(transferElm, true, false);
-      makeDisabledAndHide(endElm, false, true);
-      makeDisabledAndHide(endConsultBtn, false, false);
-      makeDisabledAndHide(consultTransferBtn, true, true);
-      makeDisabledAndHide(conferenceToggleBtn, true, true); // Show conference button
-    } else if (consultStatus === 'consultAccepted') {
-      makeDisabledAndHide(holdResumeElm, true, false);
-      // If this agent initiated the consult and it has been accepted, disable call controls except end call and consult controls
-      makeDisabledAndHide(muteElm, false, false);
-      makeDisabledAndHide(pauseResumeRecordingElm, false, true);
-      makeDisabledAndHide(consultTabBtn, true, false);
-      makeDisabledAndHide(declineElm, true, false);
-      makeDisabledAndHide(transferElm, true, false);
-      makeDisabledAndHide(endElm, true, false);
-      makeDisabledAndHide(endConsultBtn, false, false);
-      makeDisabledAndHide(consultTransferBtn, false, false);
-      makeDisabledAndHide(conferenceToggleBtn, false, false); // Show conference button
-    } else if (consultStatus === 'conference') {
-      makeDisabledAndHide(consultTabBtn, false, false);
-      makeDisabledAndHide(transferElm, true, false);
-      makeDisabledAndHide(endConsultBtn, true, true);
-      makeDisabledAndHide(muteElm, false, false);
-      makeDisabledAndHide(pauseResumeRecordingElm, false, false);
-      makeDisabledAndHide(holdResumeElm, false, false);
-      makeDisabledAndHide(declineElm, true, true);
-      makeDisabledAndHide(endElm, false, false);
-      makeDisabledAndHide(consultTransferBtn, true, true);
-      makeDisabledAndHide(conferenceToggleBtn, false, false); // Show exit conference button
-    } else if (consultStatus === 'connected') {
-      makeDisabledAndHide(consultTabBtn, false, false);
-      makeDisabledAndHide(transferElm, false, false);
-      makeDisabledAndHide(endConsultBtn, true, true);
-      makeDisabledAndHide(muteElm, false, false);
-      makeDisabledAndHide(pauseResumeRecordingElm, false, false);
-      makeDisabledAndHide(holdResumeElm, false, false);
-      makeDisabledAndHide(declineElm, true, true);
-      makeDisabledAndHide(endElm, false, false);
-      makeDisabledAndHide(consultTransferBtn, true, true);
-      makeDisabledAndHide(conferenceToggleBtn, true, true); // Show conference button
+    const consultStatus = getConsultStatus(task, agentId);
+    console.log(`event {task.data.type} ${consultStatus}`);
+    updateConferenceButtonState(task, consultStatus === 'beingConsultedAccepted' || consultStatus === 'consultAccepted');
+
+    // Map consultStatus to control configs
+    const controlMap = {
+      beingConsulted: () => {}, // No changes
+      beingConsultedAccepted: () => setControls({
+        'holdResumeElm': [true, false],
+        'muteElm': [false, false],
+        'pauseResumeRecordingElm': [false, true],
+        'consultTabBtn': [true, true],
+        'declineElm': [true, true],
+        'transferElm': [true, true],
+        'endElm': [true, true],
+        'endConsultBtn': [false, false],
+        'consultTransferBtn': [true, true],
+        'conferenceToggleBtn': [true, true],
+      }),
+      consultInitiated: () => setControls({
+        'holdResumeElm': [true, false],
+        'muteElm': [true, false],
+        'pauseResumeRecordingElm': [true, false],
+        'consultTabBtn': [true, false],
+        'declineElm': [true, false],
+        'transferElm': [true, false],
+        'endElm': [false, true],
+        'endConsultBtn': [false, false],
+        'consultTransferBtn': [true, true],
+        'conferenceToggleBtn': [true, true],
+      }),
+      consultAccepted: () => setControls({
+        'holdResumeElm': [true, false],
+        'muteElm': [false, false],
+        'pauseResumeRecordingElm': [false, true],
+        'consultTabBtn': [true, false],
+        'declineElm': [true, false],
+        'transferElm': [true, false],
+        'endElm': [true, false],
+        'endConsultBtn': [false, false],
+        'consultTransferBtn': [false, false],
+        'conferenceToggleBtn': [false, false],
+      }),
+      conference: () => setControls({
+        'consultTabBtn': [false, false],
+        'transferElm': [true, false],
+        'endConsultBtn': [true, true],
+        'muteElm': [false, false],
+        'pauseResumeRecordingElm': [false, false],
+        'holdResumeElm': [false, false],
+        'declineElm': [true, true],
+        'endElm': [false, false],
+        'consultTransferBtn': [true, true],
+        'conferenceToggleBtn': [false, false],
+      }),
+      connected: () => setControls({
+        'consultTabBtn': [false, false],
+        'transferElm': [false, false],
+        'endConsultBtn': [true, true],
+        'muteElm': [false, false],
+        'pauseResumeRecordingElm': [false, false],
+        'holdResumeElm': [false, false],
+        'declineElm': [true, true],
+        'endElm': [false, false],
+        'consultTransferBtn': [true, true],
+        'conferenceToggleBtn': [true, true],
+      })
+    };
+
+    if (consultStatus && controlMap[consultStatus]) {
+      controlMap[consultStatus]();
     }
 
     // MPC: Update participant list display
@@ -1496,7 +1512,6 @@ function register() {
           updateTaskList();
           taskId = task.data.interactionId;
           registerTaskListeners(currentTask);
-          enableAnswerDeclineButtons(currentTask);
         });
 
     webex.cc.on('task:hydrate', (currentTask) => {
@@ -2048,6 +2063,7 @@ function renderTaskList(taskList) {
     taskListContainer.innerHTML = '<p>No tasks available</p>';
     engageElm.innerHTML = ``;
     currentTask = undefined;
+    participantListElm.style.display = 'none';
     return;
   }
   
