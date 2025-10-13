@@ -33,6 +33,10 @@ describe('LocusRouteTokenInterceptor', () => {
     assert.isUndefined(interceptor.getLocusIdByRequestUrl(url));
   });
 
+  it('getLocusIdByRequestUrl should return undefined when url is undefined', () => {
+    assert.isUndefined(interceptor.getLocusIdByRequestUrl(undefined));
+  });
+
   it('onResponse should store route token when header exists', async () => {
     const response = {
       headers: {
