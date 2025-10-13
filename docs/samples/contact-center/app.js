@@ -11,10 +11,6 @@ let taskControl;
 let currentTask;
 let taskId;
 let wrapupCodes = []; // Add this to store wrapup codes
-let isConsultOptionsShown = false;
-let isTransferOptionsShown = false; // Add this variable to track the state of transfer options
-let isConferenceActive = false; // Track conference state
-let hasConferenceEnded = false; // Track if conference was ended in this consultation session
 let consultationData = null; // Track who we consulted with for conference
 let entryPointId = '';
 let stateTimer;
@@ -263,14 +259,6 @@ function showInitiateConsultDialog() {
 
 function closeConsultDialog() {
   initiateConsultDialog.close();
-}
-
-
-function toggleTransferOptions() {
-  // toggle display of transfer options
-  isTransferOptionsShown = !isTransferOptionsShown;
-  const transferOptionsElm = document.querySelector('#transfer-options');
-  transferOptionsElm.style.display = isTransferOptionsShown ? 'block' : 'none';
 }
 
 async function getQueueListForTelephonyChannel() {
@@ -638,7 +626,6 @@ async function initiateConsult() {
       consultedAgentId: consultDestination, // The queue being consulted
       isConsultedAgent: false // This agent is the consulting one, not the consulted one
     };
-    hasConferenceEnded = false; // Reset for new consultation
     handleQueueConsult(consultPayload);
     return;
   }
@@ -651,7 +638,6 @@ async function initiateConsult() {
     consultedAgentId: consultDestination, // The agent being consulted
     isConsultedAgent: false // This agent is the consulting one, not the consulted one
   };
-  hasConferenceEnded = false; // Reset for new consultation
 
   try {
     await currentTask.consult(consultPayload);
@@ -699,8 +685,6 @@ async function initiateTransfer() {
   try {
     await currentTask.transfer(transferPayload);
     console.log('Transfer initiated successfully');
-    disableTransferControls();
-    toggleTransferOptions(); // Hide the transfer options
   } catch (error) {
     console.error('Failed to initiate transfer', error);
     alert('Failed to initiate transfer');
@@ -1044,7 +1028,6 @@ function registerTaskListeners(task) {
 
   task.on('task:participantLeft', (task) => {
     console.info('🔚 Conference ended event - updating task list');
-    hasConferenceEnded = true; // Mark that conference has ended in this session
     updateTaskList(); // This will refresh currentTask and call updateCallControlUI with latest data
   });
 }
