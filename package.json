@@ -77,6 +77,9 @@
     "ws:tools": "yarn workspaces foreach --parallel --recursive --topological-dev --verbose --from '@webex/*-tools' run build:src",
     "package-tools": "webex-package-tools"
   },
+  "resolutions": {
+    "@webex/json-multistream": "2.3.1"
+  },
   "devDependencies": {
     "@babel/cli": "^7.17.10",
     "@babel/core": "^7.17.10",
