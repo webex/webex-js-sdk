@@ -538,10 +538,17 @@ const Mercury = WebexPlugin.extend({
     /* eslint complexity: [0] */
 
     try {
-      const isActiveSocket = !sourceSocket || (this.socket && sourceSocket === this.socket);
+      const isActiveSocket = sourceSocket === this.socket;
       const reason = event.reason && event.reason.toLowerCase();
-      const socketUrl =
-        (isActiveSocket && this.socket && this.socket.url) || (sourceSocket && sourceSocket.url);
+
+      let socketUrl;
+      if (isActiveSocket && this.socket) {
+        // Active socket closed - get URL from current socket reference
+        socketUrl = this.socket.url;
+      } else {
+        // Old socket closed - get URL from the closed socket
+        socketUrl = sourceSocket.url;
+      }
 
       if (isActiveSocket) {
         // Only tear down state if the currently active socket closed
@@ -576,16 +583,18 @@ const Mercury = WebexPlugin.extend({
         case 4001:
           // replaced during shutdown
           if (isActiveSocket) {
-            this.logger.info(
-              `${this.namespace}: active socket closed during shutdown; reconnecting as fallback`
+            // Server closed active socket with 4001, meaning it expected this connection
+            // to be replaced, but the switchover in _handleImminentShutdown failed.
+            // This is a permanent failure - do not reconnect.
+            this.logger.warn(
+              `${this.namespace}: active socket closed with 4001; shutdown switchover failed`
             );
-            this._emit('offline.transient', event);
-            this._reconnect(socketUrl);
+            this._emit('offline.permanent', event);
           } else {
+            // Expected: old socket closed after successful switchover
             this.logger.info(
               `${this.namespace}: old socket closed with 4001 (replaced during shutdown); no reconnect needed`
             );
-            // Optionally let observers know a shutdown replacement completed
             this._emit('offline.replaced', event);
           }
           break;
