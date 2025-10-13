@@ -71,6 +71,19 @@ const Mercury = WebexPlugin.extend({
   },
 
   /**
+   * Attach event listeners to a socket.
+   * @param {Socket} socket - The socket to attach listeners to
+   * @returns {void}
+   */
+  _attachSocketEventListeners(socket) {
+    socket.on('close', (event) => this._onclose(event, socket));
+    socket.on('message', (...args) => this._onmessage(...args));
+    socket.on('pong', (...args) => this._setTimeOffset(...args));
+    socket.on('sequence-mismatch', (...args) => this._emit('sequence-mismatch', ...args));
+    socket.on('ping-pong-latency', (...args) => this._emit('ping-pong-latency', ...args));
+  },
+
+  /**
    * Handle imminent shutdown by establishing a new connection while keeping
    * the current one alive (make-before-break).
    * Idempotent: will no-op if already in progress.
@@ -89,19 +102,15 @@ const Mercury = WebexPlugin.extend({
         `${this.namespace}: [shutdown] switchover start, id=${this._shutdownSwitchoverId}`
       );
 
-      const pendingSocket = new Socket();
-      let attemptWSUrl;
+      const newSocket = new Socket();
+      let newWSUrl;
 
       // Wire listeners prior to open
-      pendingSocket.on('close', (event) => this._onclose(event, pendingSocket));
-      pendingSocket.on('message', (...args) => this._onmessage(...args));
-      pendingSocket.on('pong', (...args) => this._setTimeOffset(...args));
-      pendingSocket.on('sequence-mismatch', (...args) => this._emit('sequence-mismatch', ...args));
-      pendingSocket.on('ping-pong-latency', (...args) => this._emit('ping-pong-latency', ...args));
+      this._attachSocketEventListeners(newSocket);
 
       Promise.all([this._prepareUrl(), this.webex.credentials.getUserToken()])
         .then(([webSocketUrl, token]) => {
-          attemptWSUrl = webSocketUrl;
+          newWSUrl = webSocketUrl;
 
           let options = {
             forceCloseDelay: this.config.forceCloseDelay,
@@ -114,35 +123,28 @@ const Mercury = WebexPlugin.extend({
 
           if (this.webex.config.defaultMercuryOptions) {
             this.logger.info(`${this.namespace}: setting custom options for switchover`);
-            options = {...options, ...this.webex.config.defaultMercuryOptions};
+            options = {...this.webex.config.defaultMercuryOptions, ...options};
           }
 
           this.logger.info(`${this.namespace}: [shutdown] switchover url: ${webSocketUrl}`);
 
-          return pendingSocket.open(webSocketUrl, options);
+          return newSocket.open(webSocketUrl, options);
         })
         .then(() => {
-          this.logger.info(
-            `${this.namespace}: [shutdown] switchover connected, url: ${attemptWSUrl}`
-          );
+          this.logger.info(`${this.namespace}: [shutdown] switchover connected, url: ${newWSUrl}`);
 
           const oldSocket = this.socket;
           // Atomically switch active socket reference without closing the old one.
-          this.socket = pendingSocket;
+          this.socket = newSocket;
           this.connected = true; // remain connected throughout
           this._shutdownSwitchoverInProgress = false;
 
-          // Optional: emit an event for observers
-          try {
-            this._emit('event:mercury_shutdown_switchover_complete', {url: attemptWSUrl});
-          } catch (e) {
-            // ignore observer errors
-          }
+          this._emit('event:mercury_shutdown_switchover_complete', {url: newWSUrl});
 
           // Do not force-close oldSocket; server will close it with 4001.
           if (oldSocket) {
             this.logger.info(
-              `${this.namespace}: [shutdown] old socket retained; awaiting 4001 close`
+              `${this.namespace}: [shutdown] old socket retained; server will close with 4001 (replaced during shutdown)`
             );
           }
         })
@@ -152,10 +154,12 @@ const Mercury = WebexPlugin.extend({
             reason
           );
           this._shutdownSwitchoverInProgress = false;
+          this._emit('event:mercury_shutdown_switchover_failed', {reason, url: newWSUrl});
         });
     } catch (e) {
       this.logger.error(`${this.namespace}: [shutdown] error during switchover`, e);
       this._shutdownSwitchoverInProgress = false;
+      this._emit('event:mercury_shutdown_switchover_failed', {reason: e});
     }
   },
 
@@ -298,13 +302,9 @@ const Mercury = WebexPlugin.extend({
 
   _attemptConnection(socketUrl, callback) {
     const socket = new Socket();
-    let attemptWSUrl;
+    let newWSUrl;
 
-    socket.on('close', (event) => this._onclose(event, socket));
-    socket.on('message', (...args) => this._onmessage(...args));
-    socket.on('pong', (...args) => this._setTimeOffset(...args));
-    socket.on('sequence-mismatch', (...args) => this._emit('sequence-mismatch', ...args));
-    socket.on('ping-pong-latency', (...args) => this._emit('ping-pong-latency', ...args));
+    this._attachSocketEventListeners(socket);
 
     Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()])
       .then(([webSocketUrl, token]) => {
@@ -316,7 +316,7 @@ const Mercury = WebexPlugin.extend({
           return Promise.reject(new Error(msg));
         }
 
-        attemptWSUrl = webSocketUrl;
+        newWSUrl = webSocketUrl;
 
         let options = {
           forceCloseDelay: this.config.forceCloseDelay,
@@ -343,7 +343,7 @@ const Mercury = WebexPlugin.extend({
       })
       .then(() => {
         this.logger.info(
-          `${this.namespace}: connected to mercury, success, action: connected, url: ${attemptWSUrl}`
+          `${this.namespace}: connected to mercury, success, action: connected, url: ${newWSUrl}`
         );
         callback();
 
@@ -407,10 +407,10 @@ const Mercury = WebexPlugin.extend({
             .then((haMessagingEnabled) => {
               if (haMessagingEnabled) {
                 this.logger.info(
-                  `${this.namespace}: received a generic connection error, will try to connect to another datacenter. failed, action: 'failed', url: ${attemptWSUrl} error: ${reason.message}`
+                  `${this.namespace}: received a generic connection error, will try to connect to another datacenter. failed, action: 'failed', url: ${newWSUrl} error: ${reason.message}`
                 );
 
-                return this.webex.internal.services.markFailedUrl(attemptWSUrl);
+                return this.webex.internal.services.markFailedUrl(newWSUrl);
               }
 
               return null;
@@ -643,12 +643,8 @@ const Mercury = WebexPlugin.extend({
     // Handle shutdown message shape: { type: 'shutdown' }
     if (envelope && envelope.type === 'shutdown') {
       this.logger.info(`${this.namespace}: [shutdown] imminent shutdown message received`);
-      // Optional event for observers/tests
-      try {
-        this._emit('event:mercury_shutdown_imminent', envelope);
-      } catch (e) {
-        // ignore observer errors
-      }
+      this._emit('event:mercury_shutdown_imminent', envelope);
+
       this._handleImminentShutdown();
 
       return Promise.resolve();
