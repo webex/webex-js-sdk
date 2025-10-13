@@ -613,7 +613,7 @@ describe('CallingClient Tests', () => {
           method: 'pingExternal',
         }
       );
-      expect(callingClient['networkDown']).toBe(true);
+      expect(callingClient['isNetworkDown']).toBe(true);
       expect(clearKeepaliveSpy).toHaveBeenCalled();
     });
 
@@ -630,7 +630,7 @@ describe('CallingClient Tests', () => {
         'https://www.google.com/generate_204',
         expect.any(Object)
       );
-      expect(callingClient['networkDown']).toBe(false);
+      expect(callingClient['isNetworkDown']).toBe(false);
       expect(clearKeepaliveSpy).not.toHaveBeenCalled();
     });
 
@@ -669,7 +669,7 @@ describe('CallingClient Tests', () => {
     it('handles reconnection with no active calls after network flap, once mercury comes back up', async () => {
       const handleConnectionRestoreSpy = jest.spyOn(reg, 'handleConnectionRestoration');
 
-      callingClient['networkDown'] = true;
+      callingClient['isNetworkDown'] = true;
       callingClient['networkDownTimestamp'] = '2023-01-01T00:00:00.000Z';
       callingClient['networkUpTimestamp'] = '2023-01-01T00:01:00.000Z';
 
@@ -708,7 +708,7 @@ describe('CallingClient Tests', () => {
     it('no reconnection for idle registration with no active calls after network flap, once mercury comes back up', async () => {
       const handleConnectionRestoreSpy = jest.spyOn(reg, 'handleConnectionRestoration');
 
-      callingClient['networkDown'] = true;
+      callingClient['isNetworkDown'] = true;
       callingClient['networkDownTimestamp'] = '2023-01-01T00:00:00.000Z';
       callingClient['networkUpTimestamp'] = '2023-01-01T00:01:00.000Z';
       reg.setStatus(RegistrationStatus.IDLE);
@@ -746,7 +746,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('handle calls status check once mercury comes back up after a network flap', async () => {
-      callingClient['networkDown'] = true;
+      callingClient['isNetworkDown'] = true;
       const call = callingClient['callManager'].createCall();
       const callKeepaliveSpy = jest
         .spyOn(call, 'postStatus')
@@ -763,7 +763,7 @@ describe('CallingClient Tests', () => {
 
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Call Keepalive failed'), {
         file: CALLING_CLIENT_FILE,
-        method: 'handleNetworkOnline',
+        method: 'isCallActive',
       });
       expect(call['callStateMachine'].state.value).toBe('S_CALL_CLEARED');
       expect(deleteSpy).toHaveBeenCalled();
@@ -795,7 +795,7 @@ describe('CallingClient Tests', () => {
 
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Call Keepalive failed'), {
         file: CALLING_CLIENT_FILE,
-        method: 'handleNetworkOnline',
+        method: 'isCallActive',
       });
       expect(call['callStateMachine'].state.value).toBe('S_CALL_CLEARED');
       expect(deleteSpy).toHaveBeenCalled();

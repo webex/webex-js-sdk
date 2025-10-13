@@ -102,7 +102,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   private lineDict: Record<string, ILine> = {};
 
-  private networkDown = false;
+  private isNetworkDown = false;
 
   private networkDownTimestamp = '';
 
@@ -239,26 +239,24 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   private async isCallActive() {
+    const loggerContext = {
+      file: CALLING_CLIENT_FILE,
+      method: 'isCallActive',
+    };
     const calls = Object.keys(this.callManager.getActiveCalls());
     for (const call of calls) {
       const callObj = this.callManager.getActiveCalls()[call];
       callObj
         .postStatus()
         .then(() => {
-          log.info(`Call is active`, {
-            file: CALLING_CLIENT_FILE,
-            method: METHODS.NETWORK_ONLINE,
-          });
+          log.info(`Call is active`, loggerContext);
           /*
            * Media Renegotiation Possibility if call keepalive succeeds,
            * for cases like WebRTC disconnect and media inactivity.
            */
         })
         .catch((err) => {
-          log.warn(`Call Keepalive failed: ${err}`, {
-            file: CALLING_CLIENT_FILE,
-            method: METHODS.NETWORK_ONLINE,
-          });
+          log.warn(`Call Keepalive failed: ${err}`, loggerContext);
 
           callObj.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
         });
@@ -266,34 +264,34 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   private handleNetworkOffline = async () => {
-    this.networkDownTimestamp = new Date(Date.now()).toISOString();
-    this.networkDown = !(await this.checkNetworkReachability());
-    log.warn(`Network has flapped, wait for it to come back up`, {
+    this.networkDownTimestamp = new Date().toISOString();
+    this.isNetworkDown = !(await this.checkNetworkReachability());
+    log.warn(`Network has gone down, wait for it to come back up`, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.NETWORK_OFFLINE,
     });
 
-    if (this.networkDown) {
+    if (this.isNetworkDown) {
       const line = Object.values(this.lineDict)[0];
       line.registration.clearKeepaliveTimer();
     }
   };
 
   // Wondering if we should keep this for timestamp recording purpose
-  private handleNetworkOnline = async () => {
+  private handleNetworkOnline = () => {
     log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.NETWORK_ONLINE,
     });
-    this.networkUpTimestamp = new Date(Date.now()).toISOString();
+    this.networkUpTimestamp = new Date().toISOString();
   };
 
-  private handleMercuryOffline = async () => {
+  private handleMercuryOffline = () => {
     log.warn(`Mercury down, waiting for connection to be up`, {
       file: CALLING_CLIENT_FILE,
       method: METHODS.MERCURY_OFFLINE,
     });
-    this.mercuryDownTimestamp = new Date(Date.now()).toISOString();
+    this.mercuryDownTimestamp = new Date().toISOString();
     this.metricManager.submitConnectionMetrics(
       METRIC_EVENT.CONNECTION_ERROR,
       CONNECTION_ACTION.MERCURY_DOWN,
@@ -308,19 +306,19 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       file: CALLING_CLIENT_FILE,
       method: METHODS.MERCURY_ONLINE,
     });
-    this.mercuryUpTimestamp = new Date(Date.now()).toISOString();
-    if (this.networkDown) {
+    this.mercuryUpTimestamp = new Date().toISOString();
+    if (this.isNetworkDown) {
       const callCheckInterval = setInterval(async () => {
         if (!Object.keys(this.callManager.getActiveCalls()).length) {
           clearInterval(callCheckInterval);
           const line = Object.values(this.lineDict)[0];
 
           if (line.getStatus() !== RegistrationStatus.IDLE) {
-            this.networkDown = await line.registration.handleConnectionRestoration(
-              this.networkDown
+            this.isNetworkDown = await line.registration.handleConnectionRestoration(
+              this.isNetworkDown
             );
           } else {
-            this.networkDown = false;
+            this.isNetworkDown = false;
           }
         }
       }, NETWORK_FLAP_TIMEOUT);
