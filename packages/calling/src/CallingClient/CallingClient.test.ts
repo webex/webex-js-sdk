@@ -48,7 +48,7 @@ import {URL} from './registration/registerFixtures';
 import {ICall} from './calling/types';
 import {ServiceHost} from '../SDKConnector/types';
 import {METHOD_START_MESSAGE} from '../common/constants';
-import {METRIC_EVENT, CONN_ACTION, METRIC_TYPE} from '../Metrics/types';
+import {METRIC_EVENT, CONNECTION_ACTION, METRIC_TYPE} from '../Metrics/types';
 
 global.crypto = {
   randomUUID: () => '12345678-1234-5678-1234-567812345678',
@@ -659,7 +659,7 @@ describe('CallingClient Tests', () => {
       expect(callingClient['mercuryDownTimestamp']).toEqual(expect.any(String));
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.MERCURY_DOWN,
+        CONNECTION_ACTION.MERCURY_DOWN,
         METRIC_TYPE.BEHAVIORAL,
         expect.any(String),
         ''
@@ -698,7 +698,7 @@ describe('CallingClient Tests', () => {
       expect(registerSpy).toHaveBeenCalledWith('handleConnectionRestoration', [primaryUrl]);
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.NETWORK_FLAP,
+        CONNECTION_ACTION.NETWORK_FLAP,
         METRIC_TYPE.BEHAVIORAL,
         '2023-01-01T00:00:00.000Z',
         '2023-01-01T00:01:00.000Z'
@@ -738,7 +738,7 @@ describe('CallingClient Tests', () => {
       expect(registerSpy).not.toHaveBeenCalledWith('handleConnectionRestoration', [primaryUrl]);
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.NETWORK_FLAP,
+        CONNECTION_ACTION.NETWORK_FLAP,
         METRIC_TYPE.BEHAVIORAL,
         '2023-01-01T00:00:00.000Z',
         '2023-01-01T00:01:00.000Z'
@@ -771,7 +771,7 @@ describe('CallingClient Tests', () => {
       expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.NETWORK_FLAP,
+        CONNECTION_ACTION.NETWORK_FLAP,
         METRIC_TYPE.BEHAVIORAL,
         expect.any(String),
         expect.any(String)
@@ -803,7 +803,7 @@ describe('CallingClient Tests', () => {
       expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.MERCURY_UP,
+        CONNECTION_ACTION.MERCURY_UP,
         METRIC_TYPE.BEHAVIORAL,
         expect.any(String),
         expect.any(String)

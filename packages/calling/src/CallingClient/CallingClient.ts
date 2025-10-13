@@ -57,7 +57,13 @@ import {
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
-import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager, CONN_ACTION} from '../Metrics/types';
+import {
+  METRIC_EVENT,
+  REG_ACTION,
+  METRIC_TYPE,
+  IMetricManager,
+  CONNECTION_ACTION,
+} from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
 
 /**
@@ -290,7 +296,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.mercuryDownTimestamp = new Date(Date.now()).toISOString();
     this.metricManager.submitConnectionMetrics(
       METRIC_EVENT.CONNECTION_ERROR,
-      CONN_ACTION.MERCURY_DOWN,
+      CONNECTION_ACTION.MERCURY_DOWN,
       METRIC_TYPE.BEHAVIORAL,
       this.mercuryDownTimestamp,
       this.mercuryUpTimestamp
@@ -325,7 +331,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       this.metricManager.submitConnectionMetrics(
         METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.NETWORK_FLAP,
+        CONNECTION_ACTION.NETWORK_FLAP,
         METRIC_TYPE.BEHAVIORAL,
         this.networkDownTimestamp,
         this.networkUpTimestamp
@@ -336,7 +342,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       }
       this.metricManager.submitConnectionMetrics(
         METRIC_EVENT.CONNECTION_ERROR,
-        CONN_ACTION.MERCURY_UP,
+        CONNECTION_ACTION.MERCURY_UP,
         METRIC_TYPE.BEHAVIORAL,
         this.mercuryDownTimestamp,
         this.mercuryUpTimestamp

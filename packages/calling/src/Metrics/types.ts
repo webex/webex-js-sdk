@@ -48,7 +48,7 @@ export type SERVER_TYPE = 'PRIMARY' | 'BACKUP' | 'UNKNOWN';
 
 export const UPLOAD_LOGS_ACTION = 'upload_logs';
 
-export enum CONN_ACTION {
+export enum CONNECTION_ACTION {
   NETWORK_FLAP = 'network_flap',
   MERCURY_DOWN = 'mercury_down',
   MERCURY_UP = 'mercury_up',
@@ -97,7 +97,7 @@ export interface IMetricManager {
 
   submitConnectionMetrics: (
     name: METRIC_EVENT,
-    metricAction: CONN_ACTION,
+    metricAction: CONNECTION_ACTION,
     type: METRIC_TYPE,
     downTimestamp: string,
     upTimestamp: string

@@ -8,7 +8,7 @@ import {
   METRIC_TYPE,
   METRIC_EVENT,
   SERVER_TYPE,
-  CONN_ACTION,
+  CONNECTION_ACTION,
 } from './types';
 import {LineError} from '../Errors/catalog/LineError';
 import log from '../Logger';
@@ -37,7 +37,7 @@ class MetricManager implements IMetricManager {
 
   public submitConnectionMetrics(
     name: METRIC_EVENT,
-    metricAction: CONN_ACTION,
+    metricAction: CONNECTION_ACTION,
     type: METRIC_TYPE,
     downTimestamp: string,
     upTimestamp: string
@@ -45,7 +45,7 @@ class MetricManager implements IMetricManager {
     const metricData = {
       tags: {
         metricAction,
-        wdm_deviceId: this.deviceInfo?.device?.clientDeviceUri,
+        device_id: this.deviceInfo?.device?.deviceId,
         service_indicator: this.serviceIndicator,
       },
       fields: {
