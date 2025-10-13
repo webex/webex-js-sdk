@@ -19,7 +19,7 @@ export const messageHandler = (event: MessageEvent) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Keepalive failed with status: ${response.status}`);
+      throw response;
     }
 
     return response;
@@ -46,11 +46,18 @@ export const messageHandler = (event: MessageEvent) => {
             } as KeepaliveStatusMessage);
           }
           keepAliveRetryCount = 0;
-        } catch (err: unknown) {
+        } catch (err: any) {
           keepAliveRetryCount += 1;
+          const errorBody = await err.json();
+          const error = {
+            body: errorBody,
+            statusCode: err.status,
+            statusText: err.statusText,
+            type: err.type,
+          };
           postMessage({
             type: WorkerMessageType.KEEPALIVE_FAILURE,
-            err,
+            err: error,
             keepAliveRetryCount,
           } as KeepaliveStatusMessage);
         }

@@ -46,7 +46,7 @@ const messageHandler = (event) => {
     });
 
     if (!response.ok) {
-      throw new Error(\`Keepalive failed with status: \${response.status}\`);
+      throw response;
     }
 
     return response;
@@ -65,6 +65,7 @@ const messageHandler = (event) => {
       if (keepAliveRetryCount < retryCountThreshold) {
         try {
           const res = await postKeepAlive(accessToken, deviceUrl, url);
+          console.log('pkesari_res: ', res);
           const statusCode = res.status;
           if (keepAliveRetryCount > 0) {
             self.postMessage({
@@ -74,10 +75,17 @@ const messageHandler = (event) => {
           }
           keepAliveRetryCount = 0;
         } catch (err) {
-          keepAliveRetryCount += 1;
+          const errorBody = await err.json();
+          const error = {
+            body: errorBody,
+            statusCode: err.status,
+            statusText: err.statusText,
+            type: err.type,
+          };
+          keepAliveRetryCount += 1
           self.postMessage({
             type: WorkerMessageType.KEEPALIVE_FAILURE,
-            err,
+            err: error,
             keepAliveRetryCount,
           });
         }
