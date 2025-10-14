@@ -638,6 +638,9 @@ const MeetingUtil = {
   isManualCaptionActive: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STATUS_ACTIVE),
 
+  isSpokenLanguageAutoDetectionEnabled: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.SPOKEN_LANGUAGE_AUTO_DETECTION_ENABLED),
+
   isWebexAssistantActive: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.WEBEX_ASSISTANT_STATUS_ACTIVE),
 
