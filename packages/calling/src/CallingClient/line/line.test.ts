@@ -23,6 +23,8 @@ import {REGISTRATION_FILE} from '../constants';
 import {LOGGER} from '../../Logger/types';
 import * as regUtils from '../registration/register';
 
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
+
 describe('Line Tests', () => {
   const mutex = new Mutex();
   const webex = getTestUtilsWebex();

@@ -271,6 +271,12 @@
         <fieldset>
           <legend>Outdial Call</legend>
           <div class="keypad">
+            <div style="margin-bottom: 10px;">
+              <label for="outdialAniSelect">Caller ID (ANI):</label>
+              <select id="outdialAniSelect" style="width: 100%; margin-bottom: 10px;">
+                <option value="">Select Outdial Ani...</option>
+              </select>
+            </div>
             <input id="outBoundDialNumber" placeholder="Enter number to dial">
             <div class="keys">
               <div class="key" onclick="pressKey('1')">1</div>

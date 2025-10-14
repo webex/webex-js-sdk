@@ -9,7 +9,7 @@
     "directory": "packages/@webex/test-helper-server"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "dependencies": {
     "@webex/test-helper-appid": "workspace:*",
