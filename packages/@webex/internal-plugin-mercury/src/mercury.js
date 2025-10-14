@@ -156,6 +156,7 @@ const Mercury = WebexPlugin.extend({
     this.connecting = true;
 
     this.logger.info(`${this.namespace}: starting connection attempt for ${sessionId}`);
+
     this.logger.info(
       `${this.namespace}: debug_mercury_logging stack: `,
       new Error('debug_mercury_logging').stack
