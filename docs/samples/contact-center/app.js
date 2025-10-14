@@ -1,5 +1,5 @@
 // Globals
-let webex;
+let webex = undefined;
 let sdk;
 let agentDeviceType;
 let deviceId;
@@ -1888,6 +1888,13 @@ if (window.location.hash) {
   if (accessToken) {
     sessionStorage.setItem('access-token', accessToken);
     sessionStorage.setItem('date', new Date().getTime() + parseInt(expiresIn, 10));
+    tokenElm.disabled = true;
+    saveElm.disabled = true;
+    authStatusElm.innerText = 'Saved access token!';
+    registerStatus.innerHTML = 'Not Subscribed';
+    registerBtn.disabled = false;
+    // Dynamically add the IMI Engage controller bundle script
+    initializeEngageWidget();
     tokenElm.value = accessToken;
   }
 }
