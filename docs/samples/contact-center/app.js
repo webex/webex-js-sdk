@@ -1160,6 +1160,7 @@ function updateCallControlUI(task) {
   const hasParticipants = Object.keys(participants).length > 1;
   const isNew = isIncomingTask(task, agentId);
   const digitalChannels = ['chat', 'email', 'social'];
+  const isBrowser = agentDeviceType === 'BROWSER';
 
   // Helper to set multiple controls at once
   function setControls(configs) {
@@ -1221,7 +1222,7 @@ function updateCallControlUI(task) {
       beingConsulted: () => {}, // No changes
       beingConsultedAccepted: () => setControls({
         'holdResumeElm': [true, false],
-        'muteElm': [false, false],
+        'muteElm': [false || !isBrowser, false],
         'pauseResumeRecordingElm': [false, true],
         'consultTabBtn': [true, true],
         'declineElm': [true, true],
@@ -1233,7 +1234,7 @@ function updateCallControlUI(task) {
       }),
       consultInitiated: () => setControls({
         'holdResumeElm': [true, false],
-        'muteElm': [true, false],
+        'muteElm': [true || !isBrowser, false],
         'pauseResumeRecordingElm': [true, false],
         'consultTabBtn': [true, false],
         'declineElm': [true, false],
@@ -1245,7 +1246,7 @@ function updateCallControlUI(task) {
       }),
       consultAccepted: () => setControls({
         'holdResumeElm': [true, false],
-        'muteElm': [false, false],
+        'muteElm': [false || !isBrowser, false],
         'pauseResumeRecordingElm': [false, true],
         'consultTabBtn': [true, false],
         'declineElm': [true, false],
@@ -1259,7 +1260,7 @@ function updateCallControlUI(task) {
         'consultTabBtn': [false, false],
         'transferElm': [true, false],
         'endConsultBtn': [true, true],
-        'muteElm': [false, false],
+        'muteElm': [false || !isBrowser, false],
         'pauseResumeRecordingElm': [false, false],
         'holdResumeElm': [false, false],
         'declineElm': [true, true],
@@ -1271,7 +1272,7 @@ function updateCallControlUI(task) {
         'consultTabBtn': [false, false],
         'transferElm': [false, false],
         'endConsultBtn': [true, true],
-        'muteElm': [false, false],
+        'muteElm': [false || !isBrowser, false],
         'pauseResumeRecordingElm': [false, false],
         'holdResumeElm': [false, false],
         'declineElm': [true, true],
