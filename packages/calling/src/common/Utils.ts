@@ -2,6 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
+import {v4 as uuid} from 'uuid';
 import {METRIC_EVENT, METRIC_TYPE, UPLOAD_LOGS_ACTION} from '../Metrics/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 import {getMetricManager} from '../Metrics';
@@ -1615,7 +1616,8 @@ export async function uploadLogs(
   throwError = false
 ): Promise<UploadLogsResponse | undefined> {
   const webex = SDKConnector.getWebex();
-  const feedbackId = crypto.randomUUID();
+  // const feedbackId = crypto.randomUUID();
+  const feedbackId = uuid();
   try {
     const response = await webex.internal.support.submitLogs(
       {...metaData, feedbackId},

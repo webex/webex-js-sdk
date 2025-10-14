@@ -10,7 +10,7 @@
     "directory": "packages/@webex/internal-plugin-conversation"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browserify": {
     "transform": [

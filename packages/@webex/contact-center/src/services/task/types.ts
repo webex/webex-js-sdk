@@ -1064,6 +1064,8 @@ export type DialerPayload = {
   mediaType: 'telephony' | 'chat' | 'social' | 'email';
   /** The outbound type for the task */
   outboundType: 'OUTDIAL' | 'CALLBACK' | 'EXECUTE_FLOW';
+  /** The Outdial ANI number that will be used while making a call to the customer.  */
+  origin: string;
 };
 
 /**
