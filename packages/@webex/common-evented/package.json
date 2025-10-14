@@ -10,7 +10,7 @@
     "directory": "packages/@webex/common-evented"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browserify": {
     "transform": [

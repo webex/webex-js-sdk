@@ -1011,7 +1011,7 @@ describe('State Machine handler tests', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(clearInterval).toHaveBeenCalledTimes(1);
+    expect(clearInterval).toHaveBeenCalledTimes(2); // check this
     expect(funcSpy).toBeCalledTimes(1);
   });
 

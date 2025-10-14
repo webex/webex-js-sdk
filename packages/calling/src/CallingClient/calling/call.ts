@@ -147,7 +147,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private callerId: ICallerId;
 
-  private sessionTimer?: NodeJS.Timer;
+  private sessionTimer?: NodeJS.Timeout;
 
   /* Used to wait for final responses for supplementary services */
   private supplementaryServicesTimer?: NodeJS.Timeout;

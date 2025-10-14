@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import {v4 as uuid} from 'uuid';
 import {CallingPartyInfo, MessageInfo} from '../Voicemail/types';
 import {Call} from '../CallingClient/calling';
 import {CallError, CallingClientError} from '../Errors';
@@ -60,13 +61,12 @@ import {
 import {CALL_EVENT_KEYS} from '../Events/types';
 import SDKConnector from '../SDKConnector';
 
-// Mock crypto for Node.js test environment
-Object.defineProperty(global, 'crypto', {
-  value: {
-    randomUUID: jest.fn(() => 'mocked-uuid-12345'),
-  },
-  writable: true,
-});
+// Mock uuid
+jest.mock('uuid', () => ({
+  v4: jest.fn(),
+}));
+
+const mockUuid = uuid as jest.MockedFunction<typeof uuid>;
 
 const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
@@ -1520,11 +1520,11 @@ describe('Infer id from  UUID Tests', () => {
   /* Tests conversion of UUID to hydra Id */
 
   it('verify encoding of userId to personId', () => {
-    const uuid = '14533573-f6aa-429d-b4fe-58aa04a2b631';
-    const hydraId: string = inferIdFromUuid(uuid, DecodeType.PEOPLE);
+    const uuidVal = '14533573-f6aa-429d-b4fe-58aa04a2b631';
+    const hydraId: string = inferIdFromUuid(uuidVal, DecodeType.PEOPLE);
     const uuidAgain = Buffer.from(hydraId, 'base64').toString('binary');
 
-    expect(`${INFER_ID_CONSTANT}/${DecodeType.PEOPLE}/${uuid}`).toStrictEqual(uuidAgain);
+    expect(`${INFER_ID_CONSTANT}/${DecodeType.PEOPLE}/${uuidVal}`).toStrictEqual(uuidAgain);
   });
 
   it('verify encoding of orgId', () => {
@@ -1736,16 +1736,11 @@ describe('modifySdpForIPv4', () => {
 });
 
 describe('uploadLogs', () => {
-  let originalCrypto;
   let submitLogsMock;
 
   beforeEach(() => {
-    // Save original crypto and mock it
-    originalCrypto = global.crypto;
-    global.crypto = {
-      randomUUID: jest.fn().mockReturnValue('mocked-uuid-12345'),
-    } as unknown as Crypto;
-
+    // Mock uuid to return a consistent value
+    mockUuid.mockReturnValue('mocked-uuid-12345');
     // Mock the metrics manager submit function directly
     mockSubmitRegistrationMetric.mockClear();
 
@@ -1757,8 +1752,6 @@ describe('uploadLogs', () => {
   });
 
   afterEach(() => {
-    // Restore original crypto
-    global.crypto = originalCrypto;
     jest.clearAllMocks();
   });
 
