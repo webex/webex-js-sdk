@@ -330,7 +330,7 @@ const WebexCore = AmpState.extend({
    * @returns {WebexCore}
    */
   initialize(attrs = {}) {
-    console.log('multiple LLM special build for test');
+    console.log('multiple LLM special build for test111');
     this.config = merge({}, config, attrs.config);
 
     // There's some unfortunateness with the way {@link AmpersandState#children}
