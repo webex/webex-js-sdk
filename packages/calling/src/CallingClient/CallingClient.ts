@@ -199,15 +199,24 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     if (typeof window !== 'undefined' && window?.navigator?.userAgent) {
       const ua = window.navigator.userAgent;
       if (ua.toLowerCase().includes('windows')) {
-        log.info('Starting ICE warmup for Windows Chromium based browser', '' as LogContext);
+        log.info('Starting ICE warmup for Windows Chromium based browser', {
+          file: CALLING_CLIENT_FILE,
+          method: 'init',
+        });
         try {
           await windowsChromiumIceWarmup({
             iceServers: [],
             timeoutMs: 1000,
           });
-          log.info(`ICE warmup completed`, '' as LogContext);
+          log.info(`ICE warmup completed`, {
+            file: CALLING_CLIENT_FILE,
+            method: 'init',
+          });
         } catch (err) {
-          log.warn(`ICE warmup failed: ${err}`, '' as LogContext);
+          log.warn(`ICE warmup failed: ${err}`, {
+            file: CALLING_CLIENT_FILE,
+            method: 'init',
+          });
         }
       }
     }
