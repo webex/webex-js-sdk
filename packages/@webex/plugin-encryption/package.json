@@ -44,6 +44,7 @@
     "@webex/webex-core": "workspace:*"
   },
   "devDependencies": {
+    "@babel/core": "^7.22.11",
     "@babel/preset-typescript": "7.22.11",
     "@types/jsdom": "^21",
     "@webex/babel-config-legacy": "workspace:*",

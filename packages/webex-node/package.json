@@ -17,7 +17,7 @@
         "directory": "packages/webex-node"
     },
     "engines": {
-        "node": ">=16"
+        "node": ">=18"
     },
     "scripts": {
         "build": "yarn build:src",
@@ -28,6 +28,7 @@
         "deploy:npm": "yarn npm publish"
     },
     "devDependencies": {
+        "@babel/core": "^7.22.11",
         "@webex/babel-config-legacy": "workspace:*",
         "@webex/eslint-config-legacy": "workspace:*",
         "@webex/jest-config-legacy": "workspace:*",
@@ -38,6 +39,7 @@
         "@webex/test-helper-mock-webex": "workspace:*",
         "@webex/test-helper-test-users": "workspace:*",
         "eslint": "^8.24.0",
+        "prettier": "^2.7.1",
         "sinon": "^9.2.4"
     },
     "dependencies": {
