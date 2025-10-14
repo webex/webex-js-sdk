@@ -11,7 +11,7 @@ import {
   uploadLogs,
   validateServiceData,
 } from '../common/Utils';
-import {LOGGER, LogContext} from '../Logger/types';
+import {LOGGER} from '../Logger/types';
 import SDKConnector from '../SDKConnector';
 import {ClientRegionInfo, ISDKConnector, ServiceHost, WebexSDK} from '../SDKConnector/types';
 import {Eventing} from '../Events/impl';
@@ -63,6 +63,7 @@ import {
   METRIC_TYPE,
   IMetricManager,
   CONNECTION_ACTION,
+  MOBIUS_SERVER_ACTION,
 } from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
@@ -203,17 +204,30 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * @ignore
    */
   public async init() {
-    try {
-      await windowsChromiumIceWarmup({
-        iceServers: [
-          {urls: 'stun:stun01a-us.bcld.webex.com:5004'},
-          {urls: 'stun:stun02a-us.bcld.webex.com:5004'},
-        ],
-        timeoutMs: 1000,
-      });
-      log.info(`ICE warmup completed`, '' as LogContext);
-    } catch (err) {
-      log.warn(`ICE warmup failed: ${err}`, '' as LogContext);
+    // Only for Windows Chromium based browsers we need to do the ICE warmup
+    if (typeof window !== 'undefined' && window?.navigator?.userAgent) {
+      const ua = window.navigator.userAgent;
+      if (ua.toLowerCase().includes('windows')) {
+        log.info('Starting ICE warmup for Windows Chromium based browser', {
+          file: CALLING_CLIENT_FILE,
+          method: 'init',
+        });
+        try {
+          await windowsChromiumIceWarmup({
+            iceServers: [],
+            timeoutMs: 1000,
+          });
+          log.info(`ICE warmup completed`, {
+            file: CALLING_CLIENT_FILE,
+            method: 'init',
+          });
+        } catch (err) {
+          log.warn(`ICE warmup failed: ${err}`, {
+            file: CALLING_CLIENT_FILE,
+            method: 'init',
+          });
+        }
+      }
     }
 
     await this.getMobiusServers();
@@ -407,6 +421,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           service: ALLOWED_SERVICES.MOBIUS,
         });
 
+        log.log(`Response trackingId: ${temp?.headers?.trackingid}`, {
+          file: CALLING_CLIENT_FILE,
+          method: METHODS.GET_CLIENT_REGION_INFO,
+        });
+
         const myIP = (temp.body as IpInfo).ipv4;
 
         // eslint-disable-next-line no-await-in-loop
@@ -419,6 +438,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           },
         });
 
+        log.log(`Response trackingId: ${response?.headers?.trackingid}`, {
+          file: CALLING_CLIENT_FILE,
+          method: METHODS.GET_CLIENT_REGION_INFO,
+        });
+
         const clientRegionInfo = response.body as ClientRegionInfo;
 
         regionInfo.clientRegion = clientRegionInfo?.clientRegion
@@ -426,6 +450,26 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           : '';
 
         regionInfo.countryCode = clientRegionInfo?.countryCode ? clientRegionInfo.countryCode : '';
+
+        log.log(
+          `Successfully fetched Client region info: ${regionInfo.clientRegion}, countryCode: ${regionInfo.countryCode}, and response trackingid: ${response?.headers?.trackingid}`,
+          {
+            file: CALLING_CLIENT_FILE,
+            method: METHODS.GET_CLIENT_REGION_INFO,
+          }
+        );
+
+        // Metrics for region info - trying clusters in loop
+        this.metricManager.submitRegionInfoMetric(
+          METRIC_EVENT.MOBIUS_DISCOVERY,
+          MOBIUS_SERVER_ACTION.REGION_INFO,
+          METRIC_TYPE.BEHAVIORAL,
+          this.mobiusHost,
+          clientRegionInfo.clientRegion,
+          clientRegionInfo.countryCode,
+          response?.headers?.trackingid ?? ''
+        );
+
         break;
       } catch (err: unknown) {
         const extendedError = new Error(
@@ -459,6 +503,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         regionInfo.countryCode = '';
 
         if (abort) {
+          // eslint-disable-next-line no-await-in-loop
+          await uploadLogs();
+
           return regionInfo;
         }
       }
@@ -512,12 +559,15 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     if (clientRegion && countryCode) {
       log.log(
         `Found Region: ${clientRegion} and country: ${countryCode}, going to fetch Mobius server`,
-        '' as LogContext
+        {
+          file: CALLING_CLIENT_FILE,
+          method: GET_MOBIUS_SERVERS_UTIL,
+        }
       );
 
       try {
         // eslint-disable-next-line no-await-in-loop
-        const temp = <WebexRequestPayload>await this.webex.request({
+        const response = <WebexRequestPayload>await this.webex.request({
           uri: `${this.mobiusHost}${URL_ENDPOINT}?regionCode=${clientRegion}&countryCode=${countryCode}`,
           method: HTTP_METHODS.GET,
           headers: {
@@ -527,16 +577,36 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           service: ALLOWED_SERVICES.MOBIUS,
         });
 
-        log.log('Mobius Server found for the region', '' as LogContext);
-        const mobiusServers = temp.body as MobiusServers;
+        log.log(
+          `Mobius Server found for the region. Response trackingId: ${response?.headers?.trackingid}`,
+          {
+            file: CALLING_CLIENT_FILE,
+            method: GET_MOBIUS_SERVERS_UTIL,
+          }
+        );
+
+        const mobiusServers = response.body as MobiusServers;
+
+        // Metrics for mobius servers
+        this.metricManager.submitMobiusServersMetric(
+          METRIC_EVENT.MOBIUS_DISCOVERY,
+          MOBIUS_SERVER_ACTION.MOBIUS_SERVERS,
+          METRIC_TYPE.BEHAVIORAL,
+          mobiusServers,
+          response?.headers?.trackingid ?? ''
+        );
 
         /* update arrays of Mobius Uris. */
         const mobiusUris = filterMobiusUris(mobiusServers, this.mobiusHost);
         this.primaryMobiusUris = mobiusUris.primary;
         this.backupMobiusUris = mobiusUris.backup;
-        log.info(
+
+        log.log(
           `Final list of Mobius Servers, primary: ${mobiusUris.primary} and backup: ${mobiusUris.backup}`,
-          '' as LogContext
+          {
+            file: CALLING_CLIENT_FILE,
+            method: GET_MOBIUS_SERVERS_UTIL,
+          }
         );
       } catch (err: unknown) {
         const extendedError = new Error(`Failed to get Mobius servers: ${err}`) as ExtendedError;
@@ -545,7 +615,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           file: CALLING_CLIENT_FILE,
         });
 
-        handleCallingClientErrors(
+        const abort = await handleCallingClientErrors(
           err as WebexRequestPayload,
           (clientError) => {
             this.metricManager.submitRegistrationMetric(
@@ -563,6 +633,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
         );
 
+        if (abort) {
+          // Upload logs on final error
+          await uploadLogs();
+        }
+
         useDefault = true;
       }
     } else {
@@ -577,7 +652,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     if (useDefault) {
       log.warn(
         `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
-        '' as LogContext
+        {
+          file: CALLING_CLIENT_FILE,
+          method: GET_MOBIUS_SERVERS_UTIL,
+        }
       );
       this.mobiusHost = `https://${this.mobiusClusters[0].host}${API_V1}`;
       this.primaryMobiusUris = [`${this.mobiusHost}${URL_ENDPOINT}`];

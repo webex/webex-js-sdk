@@ -201,6 +201,8 @@ export class UcmBackendConnector implements IUcmBackendConnector {
           method: HTTP_METHODS.GET,
         });
 
+        log.log(`Response code: ${resp.statusCode}`, loggerContext);
+
         const {callForwarding} = resp.body as CallForwardingSettingsUCM;
         const cfa = callForwarding.always.find(
           (item) => item.dn.endsWith(directoryNumber) || item.e164Number.endsWith(directoryNumber)
