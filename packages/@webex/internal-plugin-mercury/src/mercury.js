@@ -545,7 +545,7 @@ const Mercury = WebexPlugin.extend({
       if (isActiveSocket && this.socket) {
         // Active socket closed - get URL from current socket reference
         socketUrl = this.socket.url;
-      } else {
+      } else if (sourceSocket) {
         // Old socket closed - get URL from the closed socket
         socketUrl = sourceSocket.url;
       }

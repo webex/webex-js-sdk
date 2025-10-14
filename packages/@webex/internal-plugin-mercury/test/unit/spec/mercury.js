@@ -1068,7 +1068,7 @@ describe('plugin-mercury', () => {
           mercury.unset.restore();
         });
 
-        it('should handle active socket close with 4001 - reconnect as fallback', () => {
+        it('should handle active socket close with 4001 - permanent failure', () => {
           const closeEvent = {
             code: 4001,
             reason: 'replaced during shutdown',
@@ -1076,8 +1076,8 @@ describe('plugin-mercury', () => {
 
           mercury._onclose(closeEvent, mockSocket);
 
-          assert.calledWith(mercury._emit, 'offline.transient', closeEvent);
-          assert.calledWith(mercury._reconnect, 'ws://active-socket.com');
+          assert.calledWith(mercury._emit, 'offline.permanent', closeEvent);
+          assert.notCalled(mercury._reconnect); // No reconnect for 4001 on active socket
           assert.isFalse(mercury.connected);
         });
 
@@ -1110,10 +1110,10 @@ describe('plugin-mercury', () => {
 
           // Test active socket
           mercury._onclose(closeEvent, mockSocket);
-          assert.calledWith(mercury._emit, 'offline.transient', closeEvent);
+          assert.calledWith(mercury._emit, 'offline.permanent', closeEvent);
         });
 
-        it('should handle missing sourceSocket parameter (defaults to active)', () => {
+        it('should handle missing sourceSocket parameter (treats as non-active)', () => {
           const closeEvent = {
             code: 4001,
             reason: 'replaced during shutdown',
@@ -1121,8 +1121,9 @@ describe('plugin-mercury', () => {
 
           mercury._onclose(closeEvent); // No sourceSocket parameter
 
-          assert.calledWith(mercury._emit, 'offline.transient', closeEvent);
-          assert.calledWith(mercury._reconnect, 'ws://active-socket.com');
+          // With simplified logic, undefined !== this.socket, so isActiveSocket = false
+          assert.calledWith(mercury._emit, 'offline.replaced', closeEvent);
+          assert.notCalled(mercury._reconnect);
         });
       });
     });
