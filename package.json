@@ -20,8 +20,8 @@
   "license": "Cisco's General Terms (https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html)",
   "author": "devsupport@webex.com",
   "engines": {
-    "node": "16.x",
-    "npm": ">=6.x"
+    "node": "18.x",
+    "npm": ">=10.5"
   },
   "main": "src/index.js",
   "repository": {
@@ -77,9 +77,12 @@
     "ws:tools": "yarn workspaces foreach --parallel --recursive --topological-dev --verbose --from '@webex/*-tools' run build:src",
     "package-tools": "webex-package-tools"
   },
+  "resolutions": {
+    "@webex/json-multistream": "2.3.1"
+  },
   "devDependencies": {
     "@babel/cli": "^7.17.10",
-    "@babel/core": "^7.17.10",
+    "@babel/core": "^7.27.1",
     "@babel/eslint-parser": "^7.17.0",
     "@babel/generator": "^7.24.7",
     "@babel/node": "^7.14.9",
