@@ -2,9 +2,9 @@
 import {v4 as uuid} from 'uuid';
 import {HTTP_METHODS, KeepaliveStatusMessage, WorkerMessageType} from '../../common/types';
 
-let keepaliveTimer: NodeJS.Timer | undefined;
+let keepaliveTimer: NodeJS.Timeout | undefined;
 
-export const messageHandler = (event: MessageEvent) => {
+const messageHandler = (event: MessageEvent) => {
   const {type} = event.data;
 
   const postKeepAlive = async (accessToken: string, deviceUrl: string, url: string) => {
@@ -68,3 +68,4 @@ export const messageHandler = (event: MessageEvent) => {
 
 // eslint-disable-next-line no-restricted-globals
 self.addEventListener('message', messageHandler);
+export default messageHandler;

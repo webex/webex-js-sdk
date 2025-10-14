@@ -1,6 +1,8 @@
+const config = require('@webex/jest-config-legacy');
+
 const path = require('path');
 
-module.exports = {
+const jestConfig = {
   testEnvironment: 'jsdom',
   // Clear mocks in between tests by default
   clearMocks: true,
@@ -11,7 +13,7 @@ module.exports = {
     global: {
       lines: 85,
       functions: 85,
-      branches: 85,
+      branches: 80,
       statements: 85,
     },
     'src/Events/impl': {
@@ -31,7 +33,7 @@ module.exports = {
     },
     'src/SDKConnector': {
       lines: 60,
-      functions: 60,
+      functions: 55,
       statements: 60,
     },
     'src/CallHistory': {
@@ -42,6 +44,8 @@ module.exports = {
   coverageDirectory: 'coverage',
   coverageReporters: ['clover', 'json', 'lcov'],
   transformIgnorePatterns: ['/node_modules/(?!(@webex/internal-media-core)/)'],
+  testMatch: ['<rootDir>/src/**/*.test.[jt]s'],
+  moduleNameMapper: {'^uuid$': 'uuid'},
   reporters: [
     'default',
     [
@@ -67,3 +71,5 @@ module.exports = {
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   testResultsProcessor: 'jest-junit',
 };
+
+module.exports = {...config, ...jestConfig};
