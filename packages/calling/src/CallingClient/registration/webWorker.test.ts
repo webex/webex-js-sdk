@@ -1,6 +1,7 @@
 import {v4 as uuid} from 'uuid';
 import messageHandler from './webWorker';
 import {WorkerMessageType} from '../../common/types';
+import {mockPostResponse} from './registerFixtures';
 
 (global as any).self = global;
 
@@ -95,12 +96,13 @@ describe('webWorker', () => {
   });
 
   it('should post KEEPALIVE_FAILURE when fetch fails', async () => {
-    const mockError = new Error('Network error');
-    (global.fetch as jest.Mock).mockRejectedValue({
+    const mockError = {
       ok: false,
-      err: mockError,
-      status: 401,
-    });
+      body: mockPostResponse,
+      headers: {},
+      statusCode: 401,
+    };
+    (global.fetch as jest.Mock).mockRejectedValue(mockError);
 
     messageHandler({
       data: {
@@ -120,7 +122,6 @@ describe('webWorker', () => {
       err: {
         ok: false,
         err: mockError,
-        status: 401,
       },
       keepAliveRetryCount: 1,
     });
@@ -128,8 +129,13 @@ describe('webWorker', () => {
 
   it('should post KEEPALIVE_SUCCESS after a failure when fetch succeeds', async () => {
     // Set fetch so that first tick rejects (failure) and second tick resolves (success)
+    const mockError = {
+      body: {message: 'Server Error'},
+      statusCode: 500,
+    };
+
     (global.fetch as jest.Mock)
-      .mockRejectedValueOnce(new Error('first failure'))
+      .mockRejectedValueOnce(mockError)
       .mockResolvedValueOnce({ok: true, status: 200});
 
     messageHandler({

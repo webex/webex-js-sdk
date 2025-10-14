@@ -2,7 +2,7 @@
 import {v4 as uuid} from 'uuid';
 import {HTTP_METHODS, KeepaliveStatusMessage, WorkerMessageType} from '../../common/types';
 
-let keepaliveTimer: NodeJS.Timer | undefined;
+let keepaliveTimer: NodeJS.Timeout | undefined;
 let trackingId: string;
 
 const messageHandler = (event: MessageEvent) => {

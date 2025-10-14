@@ -258,7 +258,7 @@ export class Registration implements IRegistration {
           method: REG_429_RETRY_UTIL,
         });
 
-        // Resume the original keepalive
+        // Resume the keepalive after waiting for the retry after period
         await this.startKeepaliveTimer(
           this.deviceInfo.device?.uri as string,
           this.deviceInfo.keepaliveInterval as number,
