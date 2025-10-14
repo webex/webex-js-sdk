@@ -189,17 +189,21 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * @ignore
    */
   public async init() {
-    try {
-      await windowsChromiumIceWarmup({
-        iceServers: [
-          {urls: 'stun:stun01a-us.bcld.webex.com:5004'},
-          {urls: 'stun:stun02a-us.bcld.webex.com:5004'},
-        ],
-        timeoutMs: 1000,
-      });
-      log.info(`ICE warmup completed`, '' as LogContext);
-    } catch (err) {
-      log.warn(`ICE warmup failed: ${err}`, '' as LogContext);
+    // Only for Windows Chromium based browsers we need to do the ICE warmup
+    if (typeof window !== 'undefined' && window?.navigator?.userAgent) {
+      const ua = window.navigator.userAgent;
+      if (ua.toLowerCase().includes('windows')) {
+        log.info('Starting ICE warmup for Windows Chromium based browser', '' as LogContext);
+        try {
+          await windowsChromiumIceWarmup({
+            iceServers: [],
+            timeoutMs: 1000,
+          });
+          log.info(`ICE warmup completed`, '' as LogContext);
+        } catch (err) {
+          log.warn(`ICE warmup failed: ${err}`, '' as LogContext);
+        }
+      }
     }
 
     await this.getMobiusServers();
