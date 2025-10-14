@@ -290,22 +290,16 @@ export default class Socket extends EventEmitter {
   onmessage(event) {
     try {
       const data = JSON.parse(event.data);
+      const sequenceNumber = parseInt(data.sequenceNumber, 10);
 
-      // Gracefully handle frames that omit sequenceNumber (e.g., shutdown frames)
-      if (
-        typeof data.sequenceNumber === 'number' ||
-        (typeof data.sequenceNumber === 'string' && data.sequenceNumber.trim() !== '')
-      ) {
-        const sequenceNumber = parseInt(data.sequenceNumber, 10);
-        this.logger.debug(`socket,${this._domain}: sequence number: `, sequenceNumber);
-        if (this.expectedSequenceNumber && sequenceNumber !== this.expectedSequenceNumber) {
-          this.logger.debug(
-            `socket,${this._domain}: sequence number mismatch indicates lost mercury message. expected: ${this.expectedSequenceNumber}, actual: ${sequenceNumber}`
-          );
-          this.emit('sequence-mismatch', sequenceNumber, this.expectedSequenceNumber);
-        }
-        this.expectedSequenceNumber = sequenceNumber + 1;
+      this.logger.debug(`socket,${this._domain}: sequence number: `, sequenceNumber);
+      if (this.expectedSequenceNumber && sequenceNumber !== this.expectedSequenceNumber) {
+        this.logger.debug(
+          `socket,${this._domain}: sequence number mismatch indicates lost mercury message. expected: ${this.expectedSequenceNumber}, actual: ${sequenceNumber}`
+        );
+        this.emit('sequence-mismatch', sequenceNumber, this.expectedSequenceNumber);
       }
+      this.expectedSequenceNumber = sequenceNumber + 1;
 
       // Yes, it's a little weird looking; we want to emit message events that
       // look like normal socket message events, but event.data cannot be
