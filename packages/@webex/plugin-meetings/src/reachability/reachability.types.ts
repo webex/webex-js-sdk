@@ -1,12 +1,5 @@
 import {IP_VERSION} from '../constants';
 
-// result for a specific transport protocol (like udp or tcp)
-export type TransportResult = {
-  result: 'reachable' | 'unreachable' | 'untested';
-  latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
-  clientMediaIPs?: string[];
-  details: SubnetDetails[];
-};
 // Common type to represent the result for each subnet IP address
 type CommonSubnetProperties = {
   port: number; // Port used for the test
@@ -23,6 +16,14 @@ export type SubnetDetails = CommonSubnetProperties & {
 // This is the type that matches what backend expects us to send to them
 export type SubnetDetailsForBackend = CommonSubnetProperties & {
   serverIps: string;
+};
+
+// result for a specific transport protocol (like udp or tcp)
+export type TransportResult = {
+  result: 'reachable' | 'unreachable' | 'untested';
+  latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
+  clientMediaIPs?: string[];
+  details: SubnetDetails[];
 };
 
 export enum NatType {

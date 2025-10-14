@@ -3,7 +3,7 @@
  */
 
 /* eslint-disable class-methods-use-this */
-import {isEqual, mapValues, mean, cloneDeep, uniqBy} from 'lodash';
+import {isEqual, mapValues, mean, cloneDeep} from 'lodash';
 
 import {Defer} from '@webex/common';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -25,9 +25,7 @@ import {
   GetClustersTrigger,
   NatType,
   ClusterUrls,
-  ClusterBackendResult,
 } from './reachability.types';
-
 import {
   ClientMediaIpsUpdatedEventData,
   ClusterReachability,
@@ -152,42 +150,27 @@ export default class Reachability extends EventsScope {
     LoggerProxy.logger.info(
       `Reachability:index#isSubnetReachable --> Looking for subnet: ${selectedSubnetFirstOctet}.X.X.X`
     );
-    if (!this.clusterReachability || Object.keys(this.clusterReachability).length === 0) {
-      LoggerProxy.logger.info(
-        'Reachability:index#isSubnetReachable --> No cluster reachability data available'
-      );
-
-      return false;
-    }
 
     const matchingReachedClusters = Object.values(this.clusterReachability).reduce(
       (acc, cluster) => {
-        const result = cluster.getResult?.() || {};
-        const reachedSubnetsArray =
-          PROTOCOLS_LIST.flatMap((protocol) =>
-            (result[protocol]?.details || []).filter((d) => d['answered-tx'] > 0)
-          ) || [];
+        // Use for...of loop directly on the Set instead of Array.from
+        let logMessage = `Reachability:index#isSubnetReachable --> Cluster ${cluster.name} reached [`;
+        const subnets = [];
 
-        if (reachedSubnetsArray.length === 0) {
-          return acc;
-        }
-
-        const uniqueReachedSubnetsArray = uniqBy(reachedSubnetsArray, (subnet) => subnet.serverIp);
-        const uniqueIps = uniqueReachedSubnetsArray.map((s) => s.serverIp);
-        LoggerProxy.logger.info(
-          `Reachability:index#isSubnetReachable --> Cluster ${
-            cluster.name
-          } reached [${uniqueIps.join(',')}]`
-        );
-        for (const subnet of uniqueReachedSubnetsArray) {
-          const ip = subnet.serverIp || '';
-          const reachedSubnetFirstOctet = ip.split('.')[0];
+        for (const subnet of cluster.reachedSubnets) {
+          const reachedSubnetFirstOctet = subnet.split('.')[0];
 
           if (selectedSubnetFirstOctet === reachedSubnetFirstOctet) {
             acc.add(cluster.name);
-            break;
           }
+
+          subnets.push(subnet);
         }
+
+        logMessage += subnets.join(',');
+        logMessage += `]`;
+
+        LoggerProxy.logger.info(logMessage);
 
         return acc;
       },
@@ -199,6 +182,20 @@ export default class Reachability extends EventsScope {
     );
 
     return matchingReachedClusters.size > 0;
+  }
+
+  /**
+   * Cleans up transport result by removing empty details arrays
+   * @param {TransportResult} transportResult
+   * @returns {TransportResult} cleaned result
+   */
+  private cleanTransportResult(transportResult: TransportResult): TransportResult {
+    const cleaned = {...transportResult};
+    if (cleaned.details && cleaned.details.length === 0) {
+      delete cleaned.details;
+    }
+
+    return cleaned;
   }
 
   /**
@@ -445,12 +442,14 @@ export default class Reachability extends EventsScope {
           output.latencyInMilliseconds = value.toString();
           output.minLatency = Number(value);
           break;
-        // Transforming serverIp to serverIPs
         case 'details':
-          output.details = transportResult[key].map(({serverIp, ...rest}) => ({
-            ...rest,
-            serverIps: serverIp,
-          }));
+          // Only include details if they exist and are not empty
+          if (transportResult[key] && transportResult[key].length > 0) {
+            output.details = transportResult[key].map(({serverIp, ...rest}) => ({
+              ...rest,
+              serverIps: serverIp,
+            }));
+          }
           break;
         default:
           output[key] = value;
@@ -477,22 +476,17 @@ export default class Reachability extends EventsScope {
 
       const allClusterResults: ReachabilityResults = JSON.parse(resultsJson);
 
-      results = mapValues(allClusterResults, (clusterResult) => {
-        const transformed: ClusterBackendResult = {
-          udp: {},
-          tcp: {},
-          xtls: {},
-          isVideoMesh: false,
-        };
-        for (const protocol of PROTOCOLS_LIST) {
-          transformed[protocol] = this.mapTransportResultToBackendDataFormat(
-            clusterResult[protocol] || {result: 'untested', details: []}
-          );
-        }
-        transformed.isVideoMesh = clusterResult.isVideoMesh;
-
-        return transformed;
-      });
+      results = mapValues(allClusterResults, (clusterResult) => ({
+        udp: this.mapTransportResultToBackendDataFormat(
+          clusterResult.udp || {result: 'untested', details: []}
+        ),
+        tcp: this.mapTransportResultToBackendDataFormat(
+          clusterResult.tcp || {result: 'untested', details: []}
+        ),
+        xtls: this.mapTransportResultToBackendDataFormat(
+          clusterResult.xtls || {result: 'untested', details: []}
+        ),
+      }));
     } catch (e) {
       // empty storage, that's ok
       LoggerProxy.logger.warn(
@@ -850,11 +844,24 @@ export default class Reachability extends EventsScope {
    * @returns {Promise<void>}
    */
   private async storeResults(results: ReachabilityResults) {
+    // Clean up empty details arrays before storing
+    const cleanedResults = Object.fromEntries(
+      Object.entries(results).map(([clusterName, clusterResult]) => [
+        clusterName,
+        {
+          ...clusterResult,
+          udp: this.cleanTransportResult(clusterResult.udp),
+          tcp: this.cleanTransportResult(clusterResult.tcp),
+          xtls: this.cleanTransportResult(clusterResult.xtls),
+        },
+      ])
+    );
+
     // @ts-ignore
     await this.webex.boundedStorage.put(
       this.namespace,
       REACHABILITY.localStorageResult,
-      JSON.stringify(results)
+      JSON.stringify(cleanedResults)
     );
   }
 
@@ -923,9 +930,6 @@ export default class Reachability extends EventsScope {
 
     this.resetResultCounters();
 
-    // @ts-ignore
-    const perUrlUdpMode = !!this.webex.config.meetings.reachabilityEnablePerUrlForUdp;
-
     // sanitize the urls in the clusterList
     Object.keys(clusterList).forEach((key) => {
       const cluster = clusterList[key];
@@ -956,78 +960,119 @@ export default class Reachability extends EventsScope {
         isVideoMesh: cluster.isVideoMesh,
       };
 
-      if (cluster.udp.length) {
-        this.expectedResultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'].udp += 1;
-      }
+      // update expected results counters to include this cluster
+      this.expectedResultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'].udp +=
+        cluster.udp.length > 0 ? 1 : 0;
       if (!cluster.isVideoMesh) {
-        if (cluster.tcp.length) this.expectedResultsCount.public.tcp += 1;
-        if (cluster.xtls.length) this.expectedResultsCount.public.xtls += 1;
+        this.expectedResultsCount.public.tcp += cluster.tcp.length > 0 ? 1 : 0;
+        this.expectedResultsCount.public.xtls += cluster.xtls.length > 0 ? 1 : 0;
       }
     });
 
+    const isFirstResult = {
+      udp: true,
+      tcp: true,
+      xtls: true,
+    };
+
+    // save the initialized results (in case we don't get any "resultReady" events at all)
     await this.storeResults(results);
+
+    if (!clusterList || !Object.keys(clusterList).length) {
+      // nothing to do, finish immediately
+      this.resolveReachabilityPromise(false);
+
+      this.emit(
+        {
+          file: 'reachability',
+          function: 'performReachabilityChecks',
+        },
+        'reachability:done',
+        {}
+      );
+
+      return;
+    }
+
     this.startTimers();
 
+    // now start the reachability on all the clusters
     Object.keys(clusterList).forEach((key) => {
       const cluster = clusterList[key];
 
-      const clusterChecker = new ClusterReachability(key, cluster);
-      if (perUrlUdpMode) {
-        clusterChecker.enablePerUrlMode(['udp']);
-      }
-      this.clusterReachability[key] = clusterChecker;
+      // @ts-ignore
+      const reachabilityEnablePerUrlForUdp =
+        this.webex?.config?.meetings?.reachabilityEnablePerUrlForUdp === true;
 
-      clusterChecker.on(Events.resultReady, (data: ResultEventData) => {
-        results[key][data.protocol] = {
-          result: data.result,
-          details: data.details,
-          latencyInMilliseconds: data.latencyInMilliseconds,
-          clientMediaIPs: data.clientMediaIPs,
-        } as any;
+      this.clusterReachability[key] = new ClusterReachability(
+        key,
+        cluster,
+        reachabilityEnablePerUrlForUdp
+      );
+      this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
+        const {protocol, result, clientMediaIPs, latencyInMilliseconds, details} = data;
 
-        if (cluster.isVideoMesh) {
-          if (data.protocol === 'udp') this.resultsCount.videoMesh.udp += 1;
-        } else {
-          this.resultsCount.public[data.protocol] += 1;
-        }
-
-        this.storeResults(results).catch(() => {});
-
-        if (this.areAllResultsReady()) {
-          this.resolveReachabilityPromise();
+        if (isFirstResult[protocol]) {
           this.emit(
-            {file: 'reachability', function: 'performReachabilityChecks'},
+            {
+              file: 'reachability',
+              function: 'resultReady event handler',
+            },
+            'reachability:firstResultAvailable',
+            {
+              protocol,
+            }
+          );
+          isFirstResult[protocol] = false;
+        }
+        this.resultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'][protocol] += 1;
+
+        const areAllResultsReady = this.areAllResultsReady();
+
+        results[key][protocol].result = result;
+        results[key][protocol].clientMediaIPs = clientMediaIPs;
+        results[key][protocol].latencyInMilliseconds = latencyInMilliseconds;
+        results[key][protocol].details = details;
+
+        await this.storeResults(results);
+
+        if (areAllResultsReady) {
+          this.clearTimer('overallTimer');
+          this.emit(
+            {
+              file: 'reachability',
+              function: 'performReachabilityChecks',
+            },
             'reachability:done',
             {}
           );
+          this.sendMetric();
+
+          LoggerProxy.logger.log(
+            `Reachability:index#gatherReachability --> Reachability checks fully completed`
+          );
+          this.resolveReachabilityPromise();
         }
       });
 
-      clusterChecker.on(Events.resultDetailsUpdated, (data: ResultEventData) => {
-        const existing = results[key][data.protocol];
-        if (existing) {
-          existing.details = data.details;
-          existing.latencyInMilliseconds =
-            existing.latencyInMilliseconds || data.latencyInMilliseconds;
-        }
-        this.storeResults(results).catch(() => {});
-      });
+      // clientMediaIps can be updated independently from the results, so we need to listen for them too
+      this.clusterReachability[key].on(
+        Events.clientMediaIpsUpdated,
+        async (data: ClientMediaIpsUpdatedEventData) => {
+          results[key][data.protocol].clientMediaIPs = data.clientMediaIPs;
 
-      clusterChecker.on(Events.clientMediaIpsUpdated, (data: ClientMediaIpsUpdatedEventData) => {
-        const existing = results[key][data.protocol];
-        if (existing) {
-          (existing as any).clientMediaIPs = data.clientMediaIPs;
-          this.storeResults(results).catch(() => {});
+          await this.storeResults(results);
         }
-      });
+      );
 
-      clusterChecker.on(Events.natTypeUpdated, (data: NatTypeUpdatedEventData) => {
-        if (this.natType === NatType.Unknown && data.natType) {
+      this.clusterReachability[key].on(
+        Events.natTypeUpdated,
+        async (data: NatTypeUpdatedEventData) => {
           this.natType = data.natType;
         }
-      });
+      );
 
-      clusterChecker.start();
+      this.clusterReachability[key].start(); // not awaiting on purpose
     });
   }
 

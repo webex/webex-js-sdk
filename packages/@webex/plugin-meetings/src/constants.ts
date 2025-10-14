@@ -1374,8 +1374,9 @@ export const INITIAL_REGISTRATION_STATUS = {
 };
 
 // Regular expression to match STUN and TURN server URLs
-export const STUN_GENERIC_URL_REGEX = /^stun:([^:;]+):(\d+)(?:;.*)?$/i;
-export const TURN_GENERIC_URL_REGEX = /^(turns?|stun):([^:;]+):(\d+)(?:;.*)?$/i;
+// STUN/TURN URL regex patterns for reachability testing
+export const STUN_GENERIC_URL_REGEX = /^(stun|turn|turns):([^:?]+)(?::(\d+))?(?:\?.*)?$/;
+export const TURN_GENERIC_URL_REGEX = /^(turn|turns):([^:]+)(?::(\d+))?(?:\?(.*))?$/;
 
 export const PROTOCOLS_LIST: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
 
