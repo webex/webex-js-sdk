@@ -1,0 +1,50 @@
+name: Notify Webex Space on Release
+
+on:
+  release:
+    types: [published, created, edited]  # adjust as needed
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Webex message payload
+        id: msg
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          NAME="${{ github.event.release.name }}"
+          URL="${{ github.event.release.html_url }}"
+          BODY=$(printf "%s" "${{ github.event.release.body }}")
+          REPO="${{ github.repository }}"
+          ACTOR="${{ github.actor }}"
+          # Trim body to avoid giant posts; keep markdown
+          TRIMMED_BODY=$(printf "%s" "$BODY" | head -c 6000)
+          # Fallback title
+          if [ -z "$NAME" ]; then NAME="$TAG"; fi
+
+          # Use Markdown for a nice card-like message
+          read -r -d '' MARKDOWN <<'EOF' || true
+**New Release:** `${TAG}` in **${REPO}**
+**Title:** ${NAME}
+**By:** ${ACTOR}
+
+**Notes:**
+${TRIMMED_BODY}
+
+🔗 [View release on GitHub](${URL})
+EOF
+
+          # Save to output for next step
+          MARKDOWN_ESCAPED=$(printf '%s' "$MARKDOWN" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+          echo "markdown=$MARKDOWN_ESCAPED" >> "$GITHUB_OUTPUT"
+
+      - name: Post to Webex
+        env:
+          WEBEX_BOT_TOKEN: ${{ secrets.WEBEX_RELEASES_BOT_TOKEN }}
+          WEBEX_ROOM_ID: ${{ secrets.WEBEX_RELEASES_ROOM_ID }}
+          MARKDOWN: ${{ steps.msg.outputs.markdown }}
+        run: |
+          curl -sS -X POST "https://webexapis.com/v1/messages" \
+            -H "Authorization: Bearer ${WEBEX_BOT_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg roomId "$WEBEX_ROOM_ID" --arg markdown "$MARKDOWN" '{roomId:$roomId, markdown:$markdown}')"
