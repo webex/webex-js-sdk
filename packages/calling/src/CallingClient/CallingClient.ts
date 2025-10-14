@@ -65,6 +65,7 @@ import {
   CONNECTION_ACTION,
 } from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
+import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
 
 /**
  * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.
@@ -202,6 +203,19 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * @ignore
    */
   public async init() {
+    try {
+      await windowsChromiumIceWarmup({
+        iceServers: [
+          {urls: 'stun:stun01a-us.bcld.webex.com:5004'},
+          {urls: 'stun:stun02a-us.bcld.webex.com:5004'},
+        ],
+        timeoutMs: 1000,
+      });
+      log.info(`ICE warmup completed`, '' as LogContext);
+    } catch (err) {
+      log.warn(`ICE warmup failed: ${err}`, '' as LogContext);
+    }
+
     await this.getMobiusServers();
     await this.createLine();
 
@@ -238,15 +252,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
   }
 
-  private async isCallActive() {
+  private async checkCallStatus() {
     const loggerContext = {
       file: CALLING_CLIENT_FILE,
-      method: 'isCallActive',
+      method: 'checkCallStatus',
     };
-    const calls = Object.keys(this.callManager.getActiveCalls());
+    const calls = Object.values(this.callManager.getActiveCalls());
     for (const call of calls) {
-      const callObj = this.callManager.getActiveCalls()[call];
-      callObj
+      call
         .postStatus()
         .then(() => {
           log.info(`Call is active`, loggerContext);
@@ -258,7 +271,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         .catch((err) => {
           log.warn(`Call Keepalive failed: ${err}`, loggerContext);
 
-          callObj.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
+          call.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
         });
     }
   }
@@ -324,7 +337,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       }, NETWORK_FLAP_TIMEOUT);
 
       if (Object.keys(this.callManager.getActiveCalls()).length) {
-        await this.isCallActive();
+        await this.checkCallStatus();
       }
 
       this.metricManager.submitConnectionMetrics(
@@ -336,7 +349,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       );
     } else {
       if (Object.keys(this.callManager.getActiveCalls()).length) {
-        await this.isCallActive();
+        await this.checkCallStatus();
       }
       this.metricManager.submitConnectionMetrics(
         METRIC_EVENT.CONNECTION_ERROR,
