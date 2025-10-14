@@ -571,7 +571,7 @@ const Mercury = WebexPlugin.extend({
         );
       } catch (logError) {
         // If even logging fails, just ignore to prevent cascading errors during cleanup
-        console.error('Mercury _emit error handling failed:', logError);
+        this.logger.error('Mercury _emit error handling failed:', logError);
       }
     }
   },
