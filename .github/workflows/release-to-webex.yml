@@ -8,8 +8,8 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Build Webex message payload
-        id: msg
+      - name: Build Webex Adaptive Card payload
+        id: card
         run: |
           TAG="${{ github.event.release.tag_name }}"
           NAME="${{ github.event.release.name }}"
@@ -17,34 +17,127 @@ jobs:
           BODY=$(printf "%s" "${{ github.event.release.body }}")
           REPO="${{ github.repository }}"
           ACTOR="${{ github.actor }}"
-          # Trim body to avoid giant posts; keep markdown
           TRIMMED_BODY=$(printf "%s" "$BODY" | head -c 6000)
-          # Fallback title
           if [ -z "$NAME" ]; then NAME="$TAG"; fi
 
-          # Use Markdown for a nice card-like message
-          read -r -d '' MARKDOWN <<'EOF' || true
-**New Release:** `${TAG}` in **${REPO}**
-**Title:** ${NAME}
-**By:** ${ACTOR}
+          # Build Adaptive Card JSON
+          CARD=$(jq -n \
+            --arg tag "$TAG" \
+            --arg name "$NAME" \
+            --arg url "$URL" \
+            --arg body "$TRIMMED_BODY" \
+            --arg repo "$REPO" \
+            --arg actor "$ACTOR" \
+            '{
+              "contentType": "application/vnd.microsoft.card.adaptive",
+              "content": {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "type": "AdaptiveCard",
+                "version": "1.3",
+                "body": [
+                  {
+                    "type": "Container",
+                    "items": [
+                      {
+                        "type": "TextBlock",
+                        "text": "🚀 New Release",
+                        "weight": "Bolder",
+                        "size": "Large",
+                        "color": "Accent",
+                        "spacing": "None"
+                      },
+                      {
+                        "type": "TextBlock",
+                        "text": "`\($tag)` in **\($repo)**",
+                        "wrap": true,
+                        "spacing": "Small"
+                      }
+                    ],
+                    "style": "emphasis",
+                    "bleed": true
+                  },
+                  {
+                    "type": "ColumnSet",
+                    "columns": [
+                      {
+                        "type": "Column",
+                        "width": "stretch",
+                        "items": [
+                          {
+                            "type": "TextBlock",
+                            "text": "📝 **Title:**",
+                            "weight": "Bolder",
+                            "spacing": "Small"
+                          },
+                          {
+                            "type": "TextBlock",
+                            "text": "\($name)",
+                            "wrap": true
+                          }
+                        ]
+                      },
+                      {
+                        "type": "Column",
+                        "width": "auto",
+                        "items": [
+                          {
+                            "type": "TextBlock",
+                            "text": "👤 **By:**",
+                            "weight": "Bolder",
+                            "spacing": "Small"
+                          },
+                          {
+                            "type": "TextBlock",
+                            "text": "\($actor)",
+                            "wrap": true
+                          }
+                        ]
+                      }
+                    ],
+                    "spacing": "Medium"
+                  },
+                  {
+                    "type": "TextBlock",
+                    "text": "🗒️ **Notes:**",
+                    "weight": "Bolder",
+                    "spacing": "Medium"
+                  },
+                  {
+                    "type": "TextBlock",
+                    "text": $body,
+                    "wrap": true,
+                    "spacing": "Small"
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "Action.OpenUrl",
+                    "title": "🔗 View release on GitHub",
+                    "url": $url
+                  }
+                ]
+              }
+            }'
+          )
 
-**Notes:**
-${TRIMMED_BODY}
+          # Build fallback markdown message
+          FALLBACK="**New Release:** \`$TAG\` in **$REPO**\n**Title:** $NAME\n**By:** $ACTOR\n\n**Notes:**\n$TRIMMED_BODY\n\n🔗 [View release on GitHub]($URL)"
 
-🔗 [View release on GitHub](${URL})
-EOF
+          echo "card=$CARD" >> "$GITHUB_OUTPUT"
+          echo "fallback=$(printf '%s' "$FALLBACK")" >> "$GITHUB_OUTPUT"
 
-          # Save to output for next step
-          MARKDOWN_ESCAPED=$(printf '%s' "$MARKDOWN" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
-          echo "markdown=$MARKDOWN_ESCAPED" >> "$GITHUB_OUTPUT"
-
-      - name: Post to Webex
+      - name: Post Adaptive Card to Webex
         env:
           WEBEX_BOT_TOKEN: ${{ secrets.WEBEX_RELEASES_BOT_TOKEN }}
           WEBEX_ROOM_ID: ${{ secrets.WEBEX_RELEASES_ROOM_ID }}
-          MARKDOWN: ${{ steps.msg.outputs.markdown }}
+          CARD: ${{ steps.card.outputs.card }}
+          FALLBACK: ${{ steps.card.outputs.fallback }}
         run: |
           curl -sS -X POST "https://webexapis.com/v1/messages" \
             -H "Authorization: Bearer ${WEBEX_BOT_TOKEN}" \
             -H "Content-Type: application/json" \
-            -d "$(jq -n --arg roomId "$WEBEX_ROOM_ID" --arg markdown "$MARKDOWN" '{roomId:$roomId, markdown:$markdown}')"
+            -d "$(jq -n \
+              --arg roomId "$WEBEX_ROOM_ID" \
+              --arg markdown "$FALLBACK" \
+              --argjson attachment "$CARD" \
+              '{roomId:$roomId, markdown:$markdown, attachments:[ $attachment ]}')"
