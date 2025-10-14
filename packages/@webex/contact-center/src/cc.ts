@@ -38,14 +38,20 @@ import {
   MERCURY_DISCONNECTED_SUCCESS,
   METHODS,
 } from './constants';
+import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
 import {getErrorDetails, isValidDialNumber} from './services/core/Utils';
-import {Profile, WelcomeEvent, CC_EVENTS} from './services/config/types';
-import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
+import {
+  Profile,
+  WelcomeEvent,
+  CC_EVENTS,
+  OutdialAniEntriesResponse,
+  OutdialAniParams,
+} from './services/config/types';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
@@ -1330,6 +1336,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Makes an outbound call to a specified phone number.
    *
    * @param {string} destination - The phone number to dial (e.g., '+1234567890').
+   * @param {string} origin - The contact center number that will be used while making a call to the customer.
    * Should include country code and be in E.164 format.
    * @returns {Promise<TaskResponse>} Resolves with the task response containing:
    *   - interactionId: Unique identifier for the outbound call
@@ -1365,7 +1372,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    *
    *   // Start the outbound call
    *   const destination = '+1234567890';
-   *   const task = await cc.startOutdial(destination);
+   *   const task = await cc.startOutdial(destination, origin);
    *
    *   // Listen for all relevant task events
    *   task.on('task:ringing', () => {
@@ -1433,7 +1440,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * }
    * ```
    */
-  public async startOutdial(destination: string): Promise<TaskResponse> {
+  public async startOutdial(destination: string, origin: string): Promise<TaskResponse> {
     LoggerProxy.info('Starting outbound dial', {
       module: CC_FILE,
       method: METHODS.START_OUTDIAL,
@@ -1447,6 +1454,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Construct the outdial payload.
       const outDialPayload: DialerPayload = {
         destination,
+        origin,
         entryPointId: this.agentConfig.outDialEp,
         direction: OUTDIAL_DIRECTION,
         attributes: ATTRIBUTES,
@@ -1461,6 +1469,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
           destination,
+          origin,
           mediaType: OUTDIAL_MEDIA_TYPE,
         },
         ['behavioral', 'business', 'operational']
@@ -1481,11 +1490,130 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
           destination,
+          origin,
           mediaType: OUTDIAL_MEDIA_TYPE,
         },
         ['behavioral', 'business', 'operational']
       );
       const {error: detailedError} = getErrorDetails(error, METHODS.START_OUTDIAL, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Fetches outdial ANI (Automatic Number Identification) entries for an outdial ANI ID.
+   *
+   * This method retrieves the list of phone numbers that can be used as caller ID when making
+   * outbound calls. The ANI data is associated with an outdial ANI ID and can be filtered
+   * and paginated as needed.
+   *
+   * @param {string} outdialANI - The outdial ANI ID to fetch ANI data for
+   * @param {number} [page] - Optional page number for pagination (0-based)
+   * @param {number} [pageSize] - Optional number of items per page
+   * @param {string} [search] - Optional search term to filter results by name or number
+   * @param {string} [filter] - Optional filter string
+   * @param {string} [attributes] - Optional attributes to include in response
+   * @returns {Promise<OutdialAniEntriesResponse>} Promise resolving to outdial ANI response containing:
+   *   - data: Array of ANI entries with number and name
+   *   - meta: Pagination metadata
+   * @throws {Error} If the operation fails or agent is not registered
+   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   *
+   * // Get agent profile to obtain outdial ANI ID
+   * const agentProfile = cc.agentConfig;
+   * const outdialANI = agentProfile.outdialANIId;
+   *
+   * // Basic usage - get all ANI data for an outdial ANI ID
+   * const aniData = await cc.getOutdialAniEntries({ outdialANI });
+   *
+   * // With pagination and search
+   * const paginatedAni = await cc.getOutdialAniEntries({
+   *   outdialANI,
+   *   page: 0,
+   *   pageSize: 50,
+   *   search: '555' // search for numbers containing '555'
+   * });
+   *
+   * // Process the results
+   * paginatedAni.forEach(ani => {
+   *   console.log(`ANI: ${ani.number} - ${ani.name}`);
+   * });
+   * ```
+   */
+  public async getOutdialAniEntries(params: OutdialAniParams): Promise<OutdialAniEntriesResponse> {
+    const {outdialANI, page, pageSize, search, filter, attributes} = params;
+
+    LoggerProxy.info('Fetching outdial ANI entries', {
+      module: CC_FILE,
+      method: METHODS.GET_OUTDIAL_ANI_ENTRIES,
+    });
+
+    const orgId = this.$webex.credentials.getOrgId();
+
+    if (!orgId) {
+      LoggerProxy.error('Org ID not found.', {
+        module: CC_FILE,
+        method: METHODS.GET_OUTDIAL_ANI_ENTRIES,
+      });
+
+      throw new Error('Org ID not found.');
+    }
+
+    try {
+      const result = await this.services.config.getOutdialAniEntries(orgId, {
+        outdialANI,
+        page,
+        pageSize,
+        search,
+        filter,
+        attributes,
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_SUCCESS,
+        {
+          outdialANI,
+          resultCount: result?.length || 0,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log(`Successfully retrieved outdial ANI entries for ANI ID ${outdialANI}`, {
+        module: CC_FILE,
+        method: METHODS.GET_OUTDIAL_ANI_ENTRIES,
+      });
+
+      return result;
+    } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          outdialANI,
+          error,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.error(
+        `Failed to fetch outdial ANI entries for ANI ID ${outdialANI} due to: ${error}`,
+        {
+          module: CC_FILE,
+          method: METHODS.GET_OUTDIAL_ANI_ENTRIES,
+          trackingId: failure.trackingId,
+        }
+      );
+
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.GET_OUTDIAL_ANI_ENTRIES,
+        CC_FILE
+      );
       throw detailedError;
     }
   }
