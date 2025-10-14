@@ -10,7 +10,7 @@
     "directory": "packages/@webex/media-helpers"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "scripts": {
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist",
@@ -33,6 +33,7 @@
     ]
   },
   "devDependencies": {
+    "@babel/core": "^7.22.11",
     "@babel/preset-typescript": "7.22.11",
     "@webex/babel-config-legacy": "workspace:*",
     "@webex/eslint-config-legacy": "workspace:*",
@@ -42,6 +43,7 @@
     "@webex/test-helper-mock-webex": "workspace:*",
     "eslint": "^8.24.0",
     "jsdom-global": "3.0.2",
+    "prettier": "^2.7.1",
     "sinon": "^9.2.4"
   }
 }

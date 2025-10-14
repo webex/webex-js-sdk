@@ -9,7 +9,7 @@
     "directory": "packages/@webex/test-helper-retry"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "dependencies": {
     "es6-promise": "^4.2.8"

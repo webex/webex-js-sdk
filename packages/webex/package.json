@@ -26,7 +26,7 @@
     "directory": "packages/webex"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browser": {
     "./dist/config-storage.js": "./dist/config-storage.shim.js",
@@ -49,6 +49,7 @@
     "deploy:npm": "yarn npm publish"
   },
   "devDependencies": {
+    "@babel/core": "^7.22.11",
     "@webex/babel-config-legacy": "workspace:*",
     "@webex/eslint-config-legacy": "workspace:*",
     "@webex/jest-config-legacy": "workspace:*",
@@ -60,7 +61,9 @@
     "@webex/test-helper-mock-webex": "workspace:*",
     "@webex/test-helper-test-users": "workspace:*",
     "eslint": "^8.24.0",
-    "sinon": "^9.2.4"
+    "prettier": "^2.7.1",
+    "sinon": "^9.2.4",
+    "webex": "workspace:*"
   },
   "dependencies": {
     "@babel/polyfill": "^7.12.1",
