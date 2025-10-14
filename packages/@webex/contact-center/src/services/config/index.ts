@@ -9,9 +9,9 @@ import {
   DesktopProfileResponse,
   ListAuxCodesResponse,
   AgentResponse,
+  TenantData,
   OrgInfo,
   OrgSettings,
-  TenantData,
   URLMapping,
   TeamList,
   DialPlanEntity,
@@ -20,10 +20,12 @@ import {
   AuxCode,
   MultimediaProfileResponse,
   SiteInfo,
+  OutdialAniEntriesResponse,
+  OutdialAniParams,
 } from './types';
 import WebexRequest from '../core/WebexRequest';
 import {WCC_API_GATEWAY} from '../constants';
-import {CONFIG_FILE_NAME} from '../../constants';
+import {CONFIG_FILE_NAME, METHODS as MAIN_METHODS} from '../../constants';
 import {parseAgentConfigs} from './Util';
 import {
   DEFAULT_AUXCODE_ATTRIBUTES,
@@ -686,4 +688,56 @@ export default class AgentConfigService {
   }
 
   // getQueues removed - use Queue instead
+
+  /**
+   * Fetches outdial ANI (Automatic Number Identification) entries for the given orgId and outdial ANI ID.
+   * @ignore
+   * @param {string} orgId - organization ID for which the outdial ANI entries are to be fetched.
+   * @param {OutdialAniParams} params - parameters object containing outdialANI and optional pagination/filtering options
+   * @returns {Promise<OutdialAniEntriesResponse>} - A promise that resolves to the outdial ANI entries response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
+   */
+  public async getOutdialAniEntries(
+    orgId: string,
+    params: OutdialAniParams
+  ): Promise<OutdialAniEntriesResponse> {
+    const {outdialANI, page, pageSize, search, filter, attributes} = params;
+
+    LoggerProxy.info('Fetching outdial ANI entries', {
+      module: CONFIG_FILE_NAME,
+      method: MAIN_METHODS.GET_OUTDIAL_ANI_ENTRIES,
+    });
+
+    try {
+      const queryParams = [];
+      if (page !== undefined) queryParams.push(`page=${page}`);
+      if (pageSize !== undefined) queryParams.push(`pageSize=${pageSize}`);
+      if (search) queryParams.push(`search=${search}`);
+      if (filter) queryParams.push(`filter=${filter}`);
+      if (attributes) queryParams.push(`attributes=${attributes}`);
+
+      const queryString = queryParams.length > 0 ? queryParams.join('&') : '';
+      const resource = endPointMap.outdialAniEntries(orgId, outdialANI, queryString);
+
+      const response = await this.webexReq.request({
+        service: WCC_API_GATEWAY,
+        resource,
+        method: HTTP_METHODS.GET,
+      });
+
+      LoggerProxy.log('getOutdialAniEntries API success.', {
+        module: CONFIG_FILE_NAME,
+        method: MAIN_METHODS.GET_OUTDIAL_ANI_ENTRIES,
+      });
+
+      return response.body?.data;
+    } catch (error) {
+      LoggerProxy.error(`getOutdialAniEntries API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: MAIN_METHODS.GET_OUTDIAL_ANI_ENTRIES,
+      });
+      throw error;
+    }
+  }
 }

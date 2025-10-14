@@ -19,6 +19,7 @@ let consultationData = null; // Track who we consulted with for conference
 let entryPointId = '';
 let stateTimer;
 let currentConsultQueueId;
+let outdialANIId; // Store outdial ANI ID from agent profile
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -83,6 +84,7 @@ const agentLoginInputError = document.getElementById('agent-login-input-error');
 const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProfile');
 const autoWrapupTimerElm = document.getElementById('autoWrapupTimer');
 const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
+const outdialAniSelectElm = document.querySelector('#outdialAniSelect');
 deregisterBtn.style.backgroundColor = 'red';
 
 // Store and Grab `access-token` from sessionStorage
@@ -750,94 +752,84 @@ async function endConsult() {
   }
 }
 
-// Function to toggle conference (start/end conference)
-async function toggleConference() {
-  if (!currentTask) {
-    alert('No active task');
-    return;
-  }
+// Function to load outdial ANI entries
+async function loadOutdialAniEntries(outdialANIId) {
 
   try {
-    if (isConferenceActive) {
-      // End conference
-      console.log('Ending conference...');
-      await currentTask.exitConference();
-      console.log('Conference ended successfully');
-    } else {
-      // Start conference
-      if (!consultationData) {
-        alert('No consultation data available. Please initiate a consult first.');
-        return;
-      }
+    console.log('Using outdial ANI ID:', outdialANIId);
+    // Call the getOutdialAniEntries method from the SDK
+    const aniResponse = await webex.cc.getOutdialAniEntries({
+      outdialANI: outdialANIId
+    });
+    console.log('The request to get outdial ANI entries was successful, the response is:', aniResponse)
 
-      console.log('Starting conference with consultation data from task');
-      
-      // Optimistic UI update - set conference active immediately
-      isConferenceActive = true;
-      updateConferenceButtonState();
-      
-      await currentTask.consultConference();
-      console.log('Conference started successfully');
+    // Clear existing options except the first one
+    outdialAniSelectElm.innerHTML = '<option value="">Select Outdial Ani...</option>';
+
+    // Get the ANI list from the response - it's directly an array
+    const aniList = aniResponse || [];
+    if (aniList.length === 0) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.text = 'No ANI numbers available';
+      option.disabled = true;
+      outdialAniSelectElm.add(option);
+      console.log('No outdial ANI entries found');
+      return;
     }
+
+    // Map and populate the select with ANI options
+    aniList.forEach((ani) => {
+      const option = document.createElement('option');
+      option.value = ani.number;  // Use number as value
+      option.text = ani.name;     // Use name as display text
+      outdialAniSelectElm.add(option);
+    });
+
+    console.log(`Loaded ${aniList.length} outdial ANI entries`);
+
   } catch (error) {
-    const action = isConferenceActive ? 'end' : 'start';
-    console.error(`Failed to ${action} conference:`, error);
-    alert(`Failed to ${action} conference. ${error.message || 'Please try again.'}`);
+    console.error('Failed to load outdial ANI entries:', error);
+    alert('Failed to load outdial ANI entries', error)
+    // Add error option to select
+    outdialAniSelectElm.innerHTML = '<option value="">Select Caller ID...</option>';
+    const errorOption = document.createElement('option');
+    errorOption.value = '';
+    errorOption.text = 'Error loading ANI numbers';
+    errorOption.disabled = true;
+    outdialAniSelectElm.add(errorOption);
   }
 }
-
-// Update conference button visibility and text based on consult and conference state
-function updateConferenceButtonState() {
-  if (!conferenceToggleBtn) return;
-
-  // Show conference button only if there's an active consult and we have consultation data
-  const hasConsult = endConsultBtn.style.display !== 'none';
-  const hasConsultationData = consultationData !== null;
-  
-  if (hasConsult && hasConsultationData) {
-    if (isConferenceActive) {
-      // Show "End Conference" button when conference is active
-      conferenceToggleBtn.style.display = 'inline-block';
-      conferenceToggleBtn.textContent = 'End Conference';
-      conferenceToggleBtn.className = 'btn--red';
-      conferenceToggleBtn.title = 'Exit the conference call';
-    } else if (hasConferenceEnded) {
-      // Hide button after conference has ended
-      conferenceToggleBtn.style.display = 'none';
-    } else {
-      // Show "Start Conference" button when consultation is active but no conference yet
-      conferenceToggleBtn.style.display = 'inline-block';
-      conferenceToggleBtn.textContent = 'Start Conference';
-      conferenceToggleBtn.className = 'btn--green';
-      conferenceToggleBtn.title = `Start conference with ${consultationData.destinationType}: ${consultationData.to}`;
-    }
-  } else {
-    conferenceToggleBtn.style.display = 'none';
-  }
-}
-
 // Function to start an outdial call.
 async function startOutdial() {
 
   const destination = document.getElementById('outBoundDialNumber').value;
+  const selectedAni = outdialAniSelectElm.value;
 
   if (!destination || !destination.trim()) {
       alert('Destination number is required');
       return;
   }
 
-  if (!entryPointId) {
-      alert('Entry point ID is not configured');
+  if (!entryPointId || !entryPointId.trim()) {
+      alert('Entry Point ID is required for outdial');
       return;
   }
 
   try {
     console.log('Making an outdial call');
-    await webex.cc.startOutdial(destination);
-    console.log('Outdial call initiated successfully');
+    console.log('Destination:', destination);
+    console.log('Selected ANI:', selectedAni || 'None selected');
+    
+    // Use selected ANI as the origin parameter
+    if (selectedAni) {
+      await webex.cc.startOutdial(destination, selectedAni);
+      console.log('Outdial call initiated successfully with ANI:', selectedAni);
+    } 
+    
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
-    alert('Failed to initiate outdial call');
+    alert('Failed to initiate outdial call: ' + (error.message || error));
   }
 }
 
@@ -1290,6 +1282,11 @@ function register() {
         agentName = agentProfile.agentName;
         wrapupCodes = agentProfile.wrapupCodes;
         populateWrapupCodesDropdown();
+        outdialANIId = agentProfile.outdialANIId;
+        loadOutdialAniEntries(agentProfile.outdialANIId).catch(error => {
+            console.warn('Failed to load ANI entries during registration:', error);
+        })
+
         listTeams.forEach((team) => {
             const option = document.createElement('option');
             option.value = team.id;
@@ -1406,7 +1403,6 @@ function register() {
         dialNumber.disabled = false;
         dialNumber.value = data.dn || '';
       }
-
       const auxId  = data.auxCodeId?.trim() || '0';
       const idx    = [...idleCodesDropdown.options].findIndex(o => o.value === auxId);
       idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
@@ -1561,6 +1557,10 @@ function logoutAgent() {
       logoutAgentElm.classList.add('hidden');
       agentLogin.selectedIndex = 0;
       timerElm.innerHTML = '00:00:00';
+      
+      // Clear outdial ANI select
+      outdialAniSelectElm.innerHTML = '<option value="">Select Caller ID...</option>';
+      
       updateUnregisterButtonState();
     }, 1000);
     

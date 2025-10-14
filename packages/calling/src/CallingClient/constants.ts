@@ -61,7 +61,7 @@ export const WEB_AGENT = '(web)';
 export const WEBEX = 'webex';
 export const WEBEX_WEB_CLIENT = 'webex-web-client';
 export const CALLER_ID_FILE = 'CallerId';
-export const UTILS_FILE = 'utils';
+export const UTILS_FILE = 'src/common/Utils.ts';
 export const CALLING_CLIENT_FILE = 'CallingClient';
 export const LINE_FILE = 'line';
 export const CALL_FILE = 'call';
@@ -149,6 +149,7 @@ export const METHODS = {
   HANDLE_OUTGOING_ROAP_ANSWER: 'handleOutgoingRoapAnswer',
   HANDLE_INCOMING_ROAP_OFFER: 'handleIncomingRoapOffer',
   HANDLE_INCOMING_ROAP_ANSWER: 'handleIncomingRoapAnswer',
+  INIT: 'init',
   FORCE_SEND_STATS_REPORT: 'forceSendStatsReport',
   UPDATE_ACTIVE_MOBIUS: 'updateActiveMobius',
   DEQUEUE_WS_EVENTS: 'dequeueWsEvents',
@@ -200,6 +201,7 @@ export const METHODS = {
   GET_CALL_RTP_STATS: 'getCallRtpStats',
   REGISTER: 'register',
   DEREGISTER: 'deregister',
+  DELETE_REGISTRATION: 'deleteRegistration',
   NORMALIZE_LINE: 'normalizeLine',
   LINE_EMITTER: 'lineEmitter',
   GET_LOGGING_LEVEL: 'getLoggingLevel',
