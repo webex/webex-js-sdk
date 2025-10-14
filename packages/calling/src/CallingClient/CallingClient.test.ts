@@ -50,6 +50,7 @@ import {URL} from './registration/registerFixtures';
 import {ICall} from './calling/types';
 import {ServiceHost} from '../SDKConnector/types';
 import {METHOD_START_MESSAGE} from '../common/constants';
+import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
 
 global.crypto = {
   randomUUID: () => '12345678-1234-5678-1234-567812345678',
@@ -904,6 +905,69 @@ describe('CallingClient Tests', () => {
       const callSessionCallback = mockOn.mock.calls[0][1];
 
       callSessionCallback(MOCK_MULTIPLE_SESSIONS_EVENT);
+    });
+  });
+
+  describe('windowsChromiumIceWarmup', () => {
+    let origRTCPeerConnection: any;
+
+    beforeAll(() => {
+      origRTCPeerConnection = global.RTCPeerConnection;
+      // Minimal mock for RTCPeerConnection
+      global.RTCPeerConnection = class {
+        static instances: any[] = [];
+        iceGatheringState = 'complete';
+        localDescription = null;
+        remoteDescription = null;
+        onicecandidate: ((e: any) => void) | null = null;
+        constructor() {
+          (this.constructor as any).instances.push(this);
+        }
+
+        createDataChannel() {
+          return {};
+        }
+
+        addTransceiver() {
+          return {};
+        }
+
+        createOffer() {
+          return Promise.resolve({sdp: 'offer', type: 'offer'});
+        }
+
+        setLocalDescription(desc: any) {
+          this.localDescription = desc;
+
+          return Promise.resolve();
+        }
+
+        setRemoteDescription(desc: any) {
+          this.remoteDescription = desc;
+
+          return Promise.resolve();
+        }
+
+        createAnswer() {
+          return Promise.resolve({sdp: 'answer', type: 'answer'});
+        }
+
+        addIceCandidate() {
+          return Promise.resolve();
+        }
+
+        close() {}
+        addEventListener() {}
+        removeEventListener() {}
+      };
+    });
+
+    afterAll(() => {
+      global.RTCPeerConnection = origRTCPeerConnection;
+    });
+
+    it('should complete without throwing', async () => {
+      await expect(windowsChromiumIceWarmup({})).resolves.not.toThrow();
     });
   });
 });

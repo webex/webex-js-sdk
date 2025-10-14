@@ -59,6 +59,7 @@ import Line from './line';
 import {ILine} from './line/types';
 import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
+import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
 
 /**
  * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.
@@ -188,6 +189,23 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * @ignore
    */
   public async init() {
+    // Only for Windows Chromium based browsers we need to do the ICE warmup
+    if (typeof window !== 'undefined' && window?.navigator?.userAgent) {
+      const ua = window.navigator.userAgent;
+      if (ua.toLowerCase().includes('windows')) {
+        log.info('Starting ICE warmup for Windows Chromium based browser', '' as LogContext);
+        try {
+          await windowsChromiumIceWarmup({
+            iceServers: [],
+            timeoutMs: 1000,
+          });
+          log.info(`ICE warmup completed`, '' as LogContext);
+        } catch (err) {
+          log.warn(`ICE warmup failed: ${err}`, '' as LogContext);
+        }
+      }
+    }
+
     await this.getMobiusServers();
     await this.createLine();
 
