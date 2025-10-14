@@ -4,6 +4,7 @@ import {getTestUtilsWebex} from '../../../common/testUtil';
 import {createCallerId} from '.';
 import log from '../../../Logger';
 import {ICallerId} from './types';
+import {UTILS_FILE} from '../../constants';
 
 const waitForMsecs = (msec: number) =>
   new Promise((resolve) => {
@@ -245,7 +246,7 @@ describe('CallerId tests', () => {
     await waitForMsecs(50);
 
     expect(warnSpy).toHaveBeenCalledWith('Error response: - 404', {
-      file: 'utils',
+      file: UTILS_FILE,
       method: 'resolveCallerIdDisplay',
     });
 
