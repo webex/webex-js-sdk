@@ -742,16 +742,6 @@ async function endConsult() {
   }
 }
 
-// consultation state detection
-function getIsConsultationInProgress(task) {
-  if (!task || !task.data) {
-    return false;
-  }
-  
-  const { consultMediaResourceId, destAgentId, destinationType } = task.data;
-  return !!(consultMediaResourceId && destAgentId && destinationType);
-}
-
 // MPC: Update participant list display
 function updateParticipantList(task) {
   if (!task || !task.data || !task.data.interaction) {
