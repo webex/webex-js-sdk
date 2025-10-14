@@ -3,18 +3,20 @@ import {v4 as uuid} from 'uuid';
 import {HTTP_METHODS, KeepaliveStatusMessage, WorkerMessageType} from '../../common/types';
 
 let keepaliveTimer: NodeJS.Timer | undefined;
+let trackingId: string;
 
 export const messageHandler = (event: MessageEvent) => {
   const {type} = event.data;
 
   const postKeepAlive = async (accessToken: string, deviceUrl: string, url: string) => {
+    trackingId = `web_worker_${uuid()}`;
     const response = await fetch(`${url}/status`, {
       method: HTTP_METHODS.POST,
       headers: {
         'cisco-device-url': deviceUrl,
         'spark-user-agent': 'webex-calling/beta',
         Authorization: `${accessToken}`,
-        trackingId: `web_worker_${uuid()}`,
+        trackingId,
       },
     });
 
@@ -53,6 +55,7 @@ export const messageHandler = (event: MessageEvent) => {
             body: errorBody,
             statusCode: err.status,
             statusText: err.statusText,
+            trackingId,
             type: err.type,
           };
           postMessage({
