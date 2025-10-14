@@ -609,8 +609,7 @@ async function initiateConsult() {
   closeConsultDialog();
   
   // MPC: Show "Allow participants to interact" checkbox for second+ consultations
-  const isInConference = currentTask ? getIsConferenceInProgress(currentTask) : false;
-  if (isInConference) {
+  if (currentTask.data.isConferenceInProgress) {
     allowInteractElm.style.display = 'block';
   }
 
@@ -741,53 +740,6 @@ async function endConsult() {
     console.error('Failed to end consult', error);
     alert('Failed to end consult');
   }
-}
-
-// conference detection - use pre-calculated value from TaskManager
-function getIsConferenceInProgress(task) {
-  if (!task || !task.data) {
-    return false;
-  }
-  
-  // Use the pre-calculated value from TaskManager if available
-  if (typeof task.data.isConferenceInProgress === 'boolean') {
-    return task.data.isConferenceInProgress;
-  }
-  
-  // Fallback to manual calculation if the property is not available
-  if (!task.data.interaction) {
-    return false;
-  }
-  
-  const { interaction, mediaResourceId } = task.data;
-  const { media, participants } = interaction;
-  
-  // Get participants in the main call
-  const mediaMainCall = media && media[mediaResourceId];
-  if (!mediaMainCall || !mediaMainCall.participants) {
-    return false;
-  }
-  
-  const participantsInMainCall = new Set(mediaMainCall.participants);
-  const agentParticipants = new Set();
-  
-  // Count active agent participants (exclude customers, supervisors, and agents who have left)
-  participantsInMainCall.forEach((participantId) => {
-    const participant = participants[participantId];
-    if (participant && 
-        participant.pType !== 'Customer' && 
-        participant.pType !== 'Supervisor' &&
-        participant.pType !== 'VVA' && // Virtual Voice Assistant
-        !participant.hasLeft &&
-        participant.hasJoined !== false) {
-      agentParticipants.add(participantId);
-    }
-  });
-  
-  // Conference exists when ≥2 agents are active in main call
-  const isConference = agentParticipants.size >= 2;
-  
-  return isConference;
 }
 
 // consultation state detection
@@ -1252,8 +1204,7 @@ function updateCallControlUI(task) {
     holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
 
     // MPC: Hide transfer button in conference mode (Exit Conference replaces transfer)
-    const isInConference = getIsConferenceInProgress(task);
-    if (isInConference) {
+    if (task.data.isConferenceInProgress) {
       transferElm.disabled = true;
       transferElm.style.display = 'none';
     } else {
