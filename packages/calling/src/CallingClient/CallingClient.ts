@@ -311,8 +311,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
         // Metrics for region info - trying clusters in loop
         this.metricManager.submitRegionInfoMetric(
-          METRIC_EVENT.REGION_INFO,
-          MOBIUS_SERVER_ACTION.GET_CLIENT_REGION_INFO,
+          METRIC_EVENT.MOBIUS_DISCOVERY,
+          MOBIUS_SERVER_ACTION.REGION_INFO,
           METRIC_TYPE.BEHAVIORAL,
           this.mobiusHost,
           clientRegionInfo.clientRegion,
@@ -439,8 +439,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
         // Metrics for mobius servers
         this.metricManager.submitMobiusServersMetric(
-          METRIC_EVENT.MOBIUS_SERVERS,
-          MOBIUS_SERVER_ACTION.GET_MOBIUS_SERVERS,
+          METRIC_EVENT.MOBIUS_DISCOVERY,
+          MOBIUS_SERVER_ACTION.MOBIUS_SERVERS,
           METRIC_TYPE.BEHAVIORAL,
           mobiusServers,
           response?.headers?.trackingid ?? ''

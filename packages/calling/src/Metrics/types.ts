@@ -21,13 +21,12 @@ export enum METRIC_EVENT {
   VOICEMAIL_ERROR = 'web-calling-sdk-voicemail-error',
   UPLOAD_LOGS_SUCCESS = 'web-calling-sdk-upload-logs-success',
   UPLOAD_LOGS_FAILED = 'web-calling-sdk-upload-logs-failed',
-  REGION_INFO = 'web-calling-sdk-region-info',
-  MOBIUS_SERVERS = 'web-calling-sdk-mobius-servers',
+  MOBIUS_DISCOVERY = 'web-calling-sdk-mobius-discovery',
 }
 
 export enum MOBIUS_SERVER_ACTION {
-  GET_CLIENT_REGION_INFO = 'get-client-region-info',
-  GET_MOBIUS_SERVERS = 'get-mobius-servers',
+  REGION_INFO = 'region-info',
+  MOBIUS_SERVERS = 'mobius-servers',
 }
 
 export enum REG_ACTION {
