@@ -10550,10 +10550,12 @@ describe('plugin-meetings', () => {
       describe('#setUpLocusUrlListener', () => {
         it('listens to the locus url update event', (done) => {
           const newLocusUrl = 'newLocusUrl/12345';
+          const payload = {url: newLocusUrl}
 
           meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
           meeting.recordingController = {setLocusUrl: sinon.stub().returns(undefined)};
-          meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined)};
+          meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined),
+            setMainLocusUrl: sinon.stub().returns(undefined)};
 
           meeting.breakouts.locusUrlUpdate = sinon.stub();
           meeting.annotation.locusUrlUpdate = sinon.stub();
@@ -10563,7 +10565,7 @@ describe('plugin-meetings', () => {
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
             'LOCUS_INFO_UPDATE_URL',
-            newLocusUrl
+            payload
           );
           assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
           assert.calledOnceWithExactly(meeting.breakouts.locusUrlUpdate, newLocusUrl);
@@ -10571,6 +10573,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
           assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
+          assert.notCalled(meeting.controlsOptionsManager.setMainLocusUrl);
           assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.webinar.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
@@ -10587,6 +10590,24 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
             {locusUrl: 'newLocusUrl/12345'}
           );
+
+          done();
+        });
+        it('update mainLocusUrl for controlsOptionManager if payload.isMainLocus as true', (done) => {
+          const newLocusUrl = 'newLocusUrl/12345';
+          const payload = {url: newLocusUrl, isMainLocus: true}
+
+          meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined),
+            setMainLocusUrl: sinon.stub().returns(undefined)};
+
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'LOCUS_INFO_UPDATE_URL',
+            payload
+          );
+
+          assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
+          assert.calledWith(meeting.controlsOptionsManager.setMainLocusUrl, newLocusUrl);
 
           done();
         });
