@@ -169,18 +169,7 @@ const Mercury = WebexPlugin.extend({
     }
 
     return this.webex.internal.feature
-      .getFeature('developer', 'web-high-availability')
-      .then((haMessagingEnabled) => {
-        if (haMessagingEnabled) {
-          return this.webex.internal.services.convertUrlToPriorityHostUrl(webSocketUrl);
-        }
-
-        return webSocketUrl;
-      })
-      .then((wsUrl) => {
-        webSocketUrl = wsUrl;
-      })
-      .then(() => this.webex.internal.feature.getFeature('developer', 'web-shared-mercury'))
+      .getFeature('developer', 'web-shared-mercury')
       .then((webSharedMercury) => {
         webSocketUrl = url.parse(webSocketUrl, true);
         Object.assign(webSocketUrl.query, {
