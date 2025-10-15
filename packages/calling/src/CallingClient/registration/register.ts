@@ -166,8 +166,10 @@ export class Registration implements IRegistration {
     } catch (error) {
       log.warn(`Delete failed with Mobius ${error}`, {
         file: REGISTRATION_FILE,
-        method: METHODS.DEREGISTER,
+        method: METHODS.DELETE_REGISTRATION,
       });
+
+      await uploadLogs();
     }
 
     this.setStatus(RegistrationStatus.INACTIVE);
@@ -563,9 +565,9 @@ export class Registration implements IRegistration {
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
-        log.log('Mercury connection is up again, re-registering with Webex Calling if needed', {
+        log.log('Network is up again, re-registering with Webex Calling if needed', {
           file: REGISTRATION_FILE,
-          method: this.handleConnectionRestoration.name,
+          method: METHODS.HANDLE_CONNECTION_RESTORATION,
         });
         this.clearKeepaliveTimer();
         if (this.isDeviceRegistered()) {
@@ -586,11 +588,11 @@ export class Registration implements IRegistration {
            * it back to primary.
            */
           const abort = await this.restorePreviousRegistration(
-            this.handleConnectionRestoration.name
+            METHODS.HANDLE_CONNECTION_RESTORATION
           );
 
           if (!abort && !this.isDeviceRegistered()) {
-            await this.restartRegistration(this.handleConnectionRestoration.name);
+            await this.restartRegistration(METHODS.HANDLE_CONNECTION_RESTORATION);
           }
         }
         retry = false;
@@ -696,7 +698,7 @@ export class Registration implements IRegistration {
         this.setActiveMobiusUrl(url);
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
         log.log(
-          `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId}`,
+          `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId} responseTrackingId: ${resp.headers?.trackingid}`,
           {
             file: REGISTRATION_FILE,
             method: METHODS.REGISTER,
@@ -759,6 +761,9 @@ export class Registration implements IRegistration {
         }
         if (abort) {
           this.setStatus(RegistrationStatus.INACTIVE);
+          // eslint-disable-next-line no-await-in-loop
+          await uploadLogs();
+
           break;
         }
       }
@@ -819,7 +824,7 @@ export class Registration implements IRegistration {
                   }
 
                   this.metricManager.submitRegistrationMetric(
-                    METRIC_EVENT.REGISTRATION,
+                    METRIC_EVENT.KEEPALIVE_ERROR,
                     REG_ACTION.KEEPALIVE_FAILURE,
                     METRIC_TYPE.BEHAVIORAL,
                     KEEPALIVE_UTIL,
@@ -838,6 +843,7 @@ export class Registration implements IRegistration {
                 this.clearKeepaliveTimer();
                 this.clearFailbackTimer();
                 this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+                await uploadLogs();
 
                 if (!abort) {
                   /* In case of non-final error, re-attempt registration */

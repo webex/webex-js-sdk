@@ -188,10 +188,10 @@ describe('Registration Tests', () => {
 
     // Check that log.log was called for successful registration
     expect(logSpy).toBeCalledWith(
-      `Registration successful for deviceId: ${mockPostResponse.device.deviceId} userId: ${mockPostResponse.userId}`,
+      `Registration successful for deviceId: ${mockPostResponse.device.deviceId} userId: ${mockPostResponse.userId} responseTrackingId: webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15`,
       expect.objectContaining({
         file: REGISTRATION_FILE,
-        method: expect.any(String),
+        method: 'register',
       })
     );
     expect(metricSpy).toBeCalledWith(
