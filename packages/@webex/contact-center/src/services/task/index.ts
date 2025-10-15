@@ -5,6 +5,7 @@ import {
   generateTaskErrorObject,
   deriveConsultTransferDestinationType,
   getDestinationAgentId,
+  buildConsultConferenceParamData,
 } from '../core/Utils';
 import {Failure} from '../core/GlobalTypes';
 import {LoginOption} from '../../types';
@@ -138,6 +139,7 @@ export default class Task extends EventEmitter implements ITask {
   public webCallMap: Record<TaskId, CallId>;
   private wrapupData: WrapupData;
   public autoWrapup?: AutoWrapup;
+  private agentId: string;
 
   /**
    * Creates a new Task instance which provides the following features:
@@ -150,7 +152,8 @@ export default class Task extends EventEmitter implements ITask {
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    wrapupData: WrapupData
+    wrapupData: WrapupData,
+    agentId: string
   ) {
     super();
     this.contact = contact;
@@ -161,6 +164,7 @@ export default class Task extends EventEmitter implements ITask {
     this.metricsManager = MetricsManager.getInstance();
     this.registerWebCallListeners();
     this.setupAutoWrapupTimer();
+    this.agentId = agentId;
   }
 
   /**
@@ -1488,4 +1492,284 @@ export default class Task extends EventEmitter implements ITask {
       throw err;
     }
   }
+
+  /**
+   * Starts a consultation conference by merging the consultation call with the main call
+   *
+   * Creates a three-way conference between the agent, customer, and consulted party
+   * Extracts required consultation data from the current task data
+   * On success, emits a `task:conferenceStarted` event
+   *
+   * @returns Promise<TaskResponse> - Response from the consultation conference API
+   * @throws Error if the operation fails or if consultation data is invalid
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   await task.consultConference();
+   *   console.log('Conference started successfully');
+   * } catch (error) {
+   *   console.error('Failed to start conference:', error);
+   * }
+   * ```
+   */
+  public async consultConference(): Promise<TaskResponse> {
+    // Extract consultation conference data from task data (used in both try and catch)
+    const consultationData = {
+      agentId: this.agentId,
+      destAgentId: this.data.destAgentId,
+      destinationType: this.data.destinationType || 'agent',
+    };
+
+    try {
+      LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
+        module: TASK_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      const paramsDataForConferenceV2 = buildConsultConferenceParamData(
+        consultationData,
+        this.data.interactionId
+      );
+
+      const response = await this.contact.consultConference({
+        interactionId: paramsDataForConferenceV2.interactionId,
+        data: paramsDataForConferenceV2.data,
+      });
+
+      // Track success metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          destination: paramsDataForConferenceV2.data.to,
+          destinationType: paramsDataForConferenceV2.data.destinationType,
+          agentId: paramsDataForConferenceV2.data.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Consult conference started successfully`, {
+        module: TASK_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      const err = generateTaskErrorObject(error, METHODS.CONSULT_CONFERENCE, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
+
+      // Track failure metrics (following consultTransfer pattern)
+      // Build conference data for error tracking using extracted data
+      const failedParamsData = buildConsultConferenceParamData(
+        consultationData,
+        this.data.interactionId
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED,
+        {
+          taskId: this.data.interactionId,
+          destination: failedParamsData.data.to,
+          destinationType: failedParamsData.data.destinationType,
+          agentId: failedParamsData.data.agentId,
+          error: error.toString(),
+          ...taskErrorProps,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to start consult conference`, {
+        module: TASK_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw err;
+    }
+  }
+
+  /**
+   * Exits the current conference by removing the agent from the conference call
+   *
+   * Exits the agent from the conference, leaving the customer and consulted party connected
+   * On success, emits a `task:conferenceEnded` event
+   *
+   * @returns Promise<TaskResponse> - Response from the conference exit API
+   * @throws Error if the operation fails or if no active conference exists
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   await task.exitConference();
+   *   console.log('Successfully exited conference');
+   * } catch (error) {
+   *   console.error('Failed to exit conference:', error);
+   * }
+   * ```
+   */
+  public async exitConference(): Promise<TaskResponse> {
+    try {
+      LoggerProxy.info(`Exiting consult conference`, {
+        module: TASK_FILE,
+        method: METHODS.EXIT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      // Validate that interaction ID exists
+      if (!this.data.interactionId) {
+        throw new Error('Invalid interaction ID');
+      }
+
+      const response = await this.contact.exitConference({
+        interactionId: this.data.interactionId,
+      });
+
+      // Track success metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_END_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Consult conference exited successfully`, {
+        module: TASK_FILE,
+        method: METHODS.EXIT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      const err = generateTaskErrorObject(error, METHODS.EXIT_CONFERENCE, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
+
+      // Track failure metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_END_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...taskErrorProps,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to exit consult conference`, {
+        module: TASK_FILE,
+        method: METHODS.EXIT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw err;
+    }
+  }
+
+  // TODO: Uncomment this method in future PR for Multi-Party Conference support (>3 participants)
+  // Conference transfer will be supported when implementing enhanced multi-party conference functionality
+  /*
+  /**
+   * Transfers the current conference to another agent
+   *
+   * Moves the entire conference (including all participants) to a new agent,
+   * while the current agent exits and goes to wrapup
+   * On success, the current agent receives `task:conferenceEnded` event
+   *
+   * @returns Promise<TaskResponse> - Response from the conference transfer API
+   * @throws Error if the operation fails or if no active conference exists
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   await task.transferConference();
+   *   console.log('Conference transferred successfully');
+   * } catch (error) {
+   *   console.error('Failed to transfer conference:', error);
+   * }
+   * ```
+   */
+  /* public async transferConference(): Promise<TaskResponse> {
+    try {
+      LoggerProxy.info(`Transferring conference`, {
+        module: TASK_FILE,
+        method: METHODS.TRANSFER_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      // Validate that interaction ID exists
+      if (!this.data.interactionId) {
+        throw new Error('Invalid interaction ID');
+      }
+
+      const response = await this.contact.conferenceTransfer({
+        interactionId: this.data.interactionId,
+      });
+
+      // Track success metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Conference transferred successfully`, {
+        module: TASK_FILE,
+        method: METHODS.TRANSFER_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      const err = generateTaskErrorObject(error, METHODS.TRANSFER_CONFERENCE, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
+
+      // Track failure metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...taskErrorProps,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to transfer conference`, {
+        module: TASK_FILE,
+        method: METHODS.TRANSFER_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw err;
+    }
+  } */
 }

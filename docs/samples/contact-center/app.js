@@ -13,9 +13,13 @@ let taskId;
 let wrapupCodes = []; // Add this to store wrapup codes
 let isConsultOptionsShown = false;
 let isTransferOptionsShown = false; // Add this variable to track the state of transfer options
+let isConferenceActive = false; // Track conference state
+let hasConferenceEnded = false; // Track if conference was ended in this consultation session
+let consultationData = null; // Track who we consulted with for conference
 let entryPointId = '';
 let stateTimer;
 let currentConsultQueueId;
+let outdialANIId; // Store outdial ANI ID from agent profile
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -69,6 +73,7 @@ const initiateConsultDialog = document.querySelector('#initiate-consult-dialog')
 const agentMultiLoginAlert = document.querySelector('#agentMultiLoginAlert');
 const consultTransferBtn = document.querySelector('#consult-transfer');
 const transferElm = document.getElementById('transfer');
+const conferenceToggleBtn = document.querySelector('#conference-toggle');
 const timerElm = document.querySelector('#timerDisplay');
 const engageElm = document.querySelector('#engageWidget');
 let isBundleLoaded = false; // this is just to check before loading/using engage widgets
@@ -79,6 +84,7 @@ const agentLoginInputError = document.getElementById('agent-login-input-error');
 const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProfile');
 const autoWrapupTimerElm = document.getElementById('autoWrapupTimer');
 const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
+const outdialAniSelectElm = document.querySelector('#outdialAniSelect');
 deregisterBtn.style.backgroundColor = 'red';
 
 // Store and Grab `access-token` from sessionStorage
@@ -234,18 +240,25 @@ function closeConsultDialog() {
 
 function showConsultButton() {
   consultTabBtn.style.display = 'inline-block';
+  updateConferenceButtonState();
 }
 
 function hideConsultButton() {
   consultTabBtn.style.display = 'none';
+  updateConferenceButtonState();
 }
 
 function showEndConsultButton() {
   endConsultBtn.style.display = 'inline-block';
+  updateConferenceButtonState();
 }
 
 function hideEndConsultButton() {
   endConsultBtn.style.display = 'none';
+  // Reset conference state and clear consultation data when ending consult
+  isConferenceActive = false;
+  consultationData = null;
+  updateConferenceButtonState();
 }
 
 function toggleTransferOptions() {
@@ -257,12 +270,34 @@ function toggleTransferOptions() {
 
 async function getQueueListForTelephonyChannel() {
   try {
-    let queueList = await webex.cc.getQueues();
+    // Need to access via data as that is the list of queues
+    const queueResponse = await webex.cc.getQueues();
+    let queueList = queueResponse.data;
     queueList = queueList.filter(queue => queue.channelType === 'TELEPHONY');
   
     return queueList;
   } catch (error) {
     console.log('Failed to fetch queue list', error);
+  }
+}
+
+async function getEntryPoints() {
+  try {
+    const entryPoints = await webex.cc.getEntryPoints();
+    return entryPoints.data || [];
+  } catch (error) {
+    console.log('Failed to fetch entry points', error);
+    return [];
+  }
+}
+
+async function getDialNumberEntries() {
+  try {
+    const addressBookEntries = await webex.cc.addressBook.getEntries();
+    return addressBookEntries.data || [];
+  } catch (error) {
+    console.log('Failed to fetch address book entries', error);
+    return [];
   }
 }
 
@@ -289,6 +324,9 @@ async function onConsultTypeSelectionChanged(){
     consultDestinationHolderElm.appendChild(refreshButton);
   } else if (destinationTypeDropdown.value === 'queue') {
     async function refreshQueueListForConsult() {
+      consultDestinationInput = document.createElement('select');
+      consultDestinationInput.id = 'consultDestination';
+
       const queueList = await getQueueListForTelephonyChannel();
   
       if(queueList.length > 0) {
@@ -316,17 +354,95 @@ async function onConsultTypeSelectionChanged(){
     refreshButton.innerHTML = 'Refresh queue list <i class="fa fa-refresh"></i>';
     refreshButton.onclick = refreshQueueListForConsult;
     consultDestinationHolderElm.appendChild(refreshButton);
+  } else if (destinationTypeDropdown.value === 'dialNumber') {
+    async function refreshAddressBookForConsult() {
+      const dialNumberEntries = await getDialNumberEntries();
+
+      if (dialNumberEntries.length > 0) {
+        consultDestinationInput = document.createElement('select');
+        consultDestinationInput.id = 'consultDestination';
+        consultDestinationInput.innerHTML = '';
+        dialNumberEntries.forEach((entry) => {
+          const option = document.createElement('option');
+          option.value = entry.number;
+          option.text = `${entry.name} (${entry.number})`;
+          consultDestinationInput.appendChild(option);
+        });
+        const customOpt = document.createElement('option');
+        customOpt.value = '__CUSTOM__';
+        customOpt.text = 'Custom number…';
+        consultDestinationInput.appendChild(customOpt);
+
+        consultDestinationInput.onchange = () => {
+          if (consultDestinationInput.value === '__CUSTOM__') {
+            // Swap to input for free typing
+            const replacement = document.createElement('input');
+            replacement.type = 'text';
+            replacement.id = 'consultDestination';
+            replacement.placeholder = 'Enter Destination';
+            consultDestinationHolderElm.replaceChild(replacement, consultDestinationInput);
+            consultDestinationInput = replacement;
+          }
+        };
+      } else {
+        consultDestinationInput = document.createElement('input');
+        consultDestinationInput.type = 'text';
+        consultDestinationInput.id = 'consultDestination';
+        consultDestinationInput.placeholder = 'Enter Destination';
+      }
+    }
+
+    await refreshAddressBookForConsult();
+
+    // Add a refresh button to refresh the address book list
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-address-book-list';
+    refreshButton.innerHTML = 'Refresh address book <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshAddressBookForConsult;
+    consultDestinationHolderElm.appendChild(refreshButton);
+  } else if (destinationTypeDropdown.value === 'entryPoint') {
+    async function refreshEntryPointsForConsult() {
+      const entryPoints = await getEntryPoints();
+
+      consultDestinationInput = document.createElement('input');
+      consultDestinationInput.type = 'text';
+      consultDestinationInput.id = 'consultDestination';
+      consultDestinationInput.placeholder = 'Enter Entry Point ID';
+
+      const dataListId = 'consult-entrypoint-datalist';
+      let dataList = consultDestinationHolderElm.querySelector(`#${dataListId}`);
+      if (!dataList) {
+        dataList = document.createElement('datalist');
+        dataList.id = dataListId;
+        consultDestinationHolderElm.appendChild(dataList);
+      }
+      dataList.innerHTML = '';
+      entryPoints.forEach((ep) => {
+        const option = document.createElement('option');
+        option.value = ep.id;
+        option.label = ep.name;
+        dataList.appendChild(option);
+      });
+      consultDestinationInput.setAttribute('list', dataListId);
+    }
+
+    await refreshEntryPointsForConsult();
+
+    // Add a refresh button to refresh the entry points list
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-entry-points-list';
+    refreshButton.innerHTML = 'Refresh entry points <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshEntryPointsForConsult;
+    consultDestinationHolderElm.appendChild(refreshButton);
   } else {
     // Make consultDestinationInput into a text input
     consultDestinationInput = document.createElement('input');
     consultDestinationInput.id = 'consultDestination';
     consultDestinationInput.placeholder = 'Enter Destination';
 
-    // Remove the refresh button if it exists
-    const refreshButton = document.getElementById('refresh-buddy-agents-for-consult');
-    if(refreshButton) {
-      refreshButton.remove();
-    }
+    // Remove any existing refresh buttons
+    const existingRefreshButtons = consultDestinationHolderElm.querySelectorAll('button[id^="refresh-"]');
+    existingRefreshButtons.forEach(button => button.remove());
   }
 
   consultDestinationHolderElm.appendChild(consultDestinationInput);
@@ -342,27 +458,141 @@ async function onTransferTypeSelectionChanged() {
     transferDestinationInput = document.createElement('select');
     transferDestinationInput.id = 'transfer-destination';
 
-    const agentNodeList = await fetchBuddyAgentsNodeList();
-    agentNodeList.forEach(n => { transferDestinationInput.appendChild(n) });
-  } else if (document.querySelector('#transfer-destination-type').value === 'queue') {
-    const queueList = await getQueueListForTelephonyChannel();
-    if (queueList.length > 0) {
-      // Make transferDestinationInput into a dropdown
-      transferDestinationInput = document.createElement('select');
-      transferDestinationInput.id = 'transfer-destination';
-
-      queueList.forEach((queue) => {
-        const option = document.createElement('option');
-        option.text = queue.name;
-        option.value = queue.id;
-        transferDestinationInput.appendChild(option);
-      });
+    async function refreshBuddyAgentsForTransfer() {
+      transferDestinationInput.innerHTML = '';
+      const agentNodeList = await fetchBuddyAgentsNodeList();
+      agentNodeList.forEach(n => { transferDestinationInput.appendChild(n) });
     }
+
+    await refreshBuddyAgentsForTransfer();
+
+    // Add a refresh button to refresh the buddy agents list for transfer
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-buddy-agents-for-transfer';
+    refreshButton.innerHTML = 'Refresh agent list <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshBuddyAgentsForTransfer;
+    transferDestinationHolderElm.appendChild(refreshButton);
+  } else if (document.querySelector('#transfer-destination-type').value === 'queue') {
+    async function refreshQueueListForTransfer() {
+      const queueList = await getQueueListForTelephonyChannel();
+      if (queueList.length > 0) {
+        // Make transferDestinationInput into a dropdown
+        transferDestinationInput = document.createElement('select');
+        transferDestinationInput.id = 'transfer-destination';
+
+        queueList.forEach((queue) => {
+          const option = document.createElement('option');
+          option.text = queue.name;
+          option.value = queue.id;
+          transferDestinationInput.appendChild(option);
+        });
+      } else {
+        transferDestinationInput = document.createElement('select');
+        transferDestinationInput.id = 'transfer-destination';
+        transferDestinationInput.disabled = true;
+        const option = document.createElement('option');
+        option.text = 'No queues available';
+        transferDestinationInput.appendChild(option);
+      }
+    }
+
+    await refreshQueueListForTransfer();
+
+    // Add a refresh button to refresh the queue list for transfer
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-queue-list-for-transfer';
+    refreshButton.innerHTML = 'Refresh queue list <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshQueueListForTransfer;
+    transferDestinationHolderElm.appendChild(refreshButton);
+  } else if (document.querySelector('#transfer-destination-type').value === 'dialNumber') {
+    // Free-type with datalist for address book numbers OR select when entries exist
+    async function refreshAddressBookForTransfer() {
+      const dialNumberEntries = await getDialNumberEntries();
+
+      if (dialNumberEntries.length > 0) {
+        transferDestinationInput = document.createElement('select');
+        transferDestinationInput.id = 'transfer-destination';
+        transferDestinationInput.innerHTML = '';
+        dialNumberEntries.forEach((entry) => {
+          const option = document.createElement('option');
+          option.value = entry.number;
+          option.text = `${entry.name} (${entry.number})`;
+          transferDestinationInput.appendChild(option);
+        });
+        const customOpt = document.createElement('option');
+        customOpt.value = '__CUSTOM__';
+        customOpt.text = 'Custom number…';
+        transferDestinationInput.appendChild(customOpt);
+
+        transferDestinationInput.onchange = () => {
+          if (transferDestinationInput.value === '__CUSTOM__') {
+            const replacement = document.createElement('input');
+            replacement.type = 'text';
+            replacement.id = 'transfer-destination';
+            replacement.placeholder = 'Enter destination';
+            transferDestinationHolderElm.replaceChild(replacement, transferDestinationInput);
+            transferDestinationInput = replacement;
+          }
+        };
+      } else {
+        transferDestinationInput = document.createElement('input');
+        transferDestinationInput.type = 'text';
+        transferDestinationInput.id = 'transfer-destination';
+        transferDestinationInput.placeholder = 'Enter destination';
+      }
+    }
+
+    await refreshAddressBookForTransfer();
+
+    // Add a refresh button to refresh the address book list for transfer
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-address-book-for-transfer';
+    refreshButton.innerHTML = 'Refresh address book <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshAddressBookForTransfer;
+    transferDestinationHolderElm.appendChild(refreshButton);
+  } else if (document.querySelector('#transfer-destination-type').value === 'entryPoint') {
+    async function refreshEntryPointsForTransfer() {
+      const entryPoints = await getEntryPoints();
+
+      transferDestinationInput = document.createElement('input');
+      transferDestinationInput.type = 'text';
+      transferDestinationInput.id = 'transfer-destination';
+      transferDestinationInput.placeholder = 'Enter Entry Point ID';
+
+      const dataListId = 'transfer-entrypoint-datalist';
+      let dataList = transferDestinationHolderElm.querySelector(`#${dataListId}`);
+      if (!dataList) {
+        dataList = document.createElement('datalist');
+        dataList.id = dataListId;
+        transferDestinationHolderElm.appendChild(dataList);
+      }
+      dataList.innerHTML = '';
+      entryPoints.forEach((ep) => {
+        const option = document.createElement('option');
+        option.value = ep.id;
+        option.label = ep.name;
+        dataList.appendChild(option);
+      });
+      transferDestinationInput.setAttribute('list', dataListId);
+    }
+
+    await refreshEntryPointsForTransfer();
+
+    // Add a refresh button to refresh the entry points list for transfer
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-entry-points-for-transfer';
+    refreshButton.innerHTML = 'Refresh entry points <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshEntryPointsForTransfer;
+    transferDestinationHolderElm.appendChild(refreshButton);
   } else {
     // Make transferDestinationInput into a text input
     transferDestinationInput = document.createElement('input');
     transferDestinationInput.id = 'transfer-destination';
     transferDestinationInput.placeholder = 'Enter Destination';
+
+    // Remove any existing refresh buttons
+    const existingRefreshButtons = transferDestinationHolderElm.querySelectorAll('button[id^="refresh-"]');
+    existingRefreshButtons.forEach(button => button.remove());
   }
 
   transferDestinationHolderElm.appendChild(transferDestinationInput);
@@ -371,7 +601,8 @@ async function onTransferTypeSelectionChanged() {
 // Function to initiate consult
 async function initiateConsult() {
   const destinationType = destinationTypeDropdown.value;
-  const consultDestination = consultDestinationInput.value;
+  const consultDestinationEl = consultDestinationHolderElm.querySelector('input, select');
+  const consultDestination = consultDestinationEl && consultDestinationEl.value ? consultDestinationEl.value.trim() : '';
 
   if (!consultDestination) {
     alert('Please enter a destination');
@@ -386,9 +617,24 @@ async function initiateConsult() {
   };
 
   if (destinationType === 'queue') {
+    // Store consultation data for queue consult
+    consultationData = {
+      to: consultDestination,
+      destinationType: destinationType,
+      agentId: agentId // Include current agent ID
+    };
+    hasConferenceEnded = false; // Reset for new consultation
     handleQueueConsult(consultPayload);
     return;
   }
+
+  // Store consultation data for agent consult
+  consultationData = {
+    to: consultDestination,
+    destinationType: destinationType,
+    agentId: agentId // Include current agent ID
+  };
+  hasConferenceEnded = false; // Reset for new consultation
 
   try {
     await currentTask.consult(consultPayload);
@@ -506,28 +752,84 @@ async function endConsult() {
   }
 }
 
+// Function to load outdial ANI entries
+async function loadOutdialAniEntries(outdialANIId) {
+
+  try {
+    console.log('Using outdial ANI ID:', outdialANIId);
+    // Call the getOutdialAniEntries method from the SDK
+    const aniResponse = await webex.cc.getOutdialAniEntries({
+      outdialANI: outdialANIId
+    });
+    console.log('The request to get outdial ANI entries was successful, the response is:', aniResponse)
+
+    // Clear existing options except the first one
+    outdialAniSelectElm.innerHTML = '<option value="">Select Outdial Ani...</option>';
+
+    // Get the ANI list from the response - it's directly an array
+    const aniList = aniResponse || [];
+    if (aniList.length === 0) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.text = 'No ANI numbers available';
+      option.disabled = true;
+      outdialAniSelectElm.add(option);
+      console.log('No outdial ANI entries found');
+      return;
+    }
+
+    // Map and populate the select with ANI options
+    aniList.forEach((ani) => {
+      const option = document.createElement('option');
+      option.value = ani.number;  // Use number as value
+      option.text = ani.name;     // Use name as display text
+      outdialAniSelectElm.add(option);
+    });
+
+    console.log(`Loaded ${aniList.length} outdial ANI entries`);
+
+  } catch (error) {
+    console.error('Failed to load outdial ANI entries:', error);
+    alert('Failed to load outdial ANI entries', error)
+    // Add error option to select
+    outdialAniSelectElm.innerHTML = '<option value="">Select Caller ID...</option>';
+    const errorOption = document.createElement('option');
+    errorOption.value = '';
+    errorOption.text = 'Error loading ANI numbers';
+    errorOption.disabled = true;
+    outdialAniSelectElm.add(errorOption);
+  }
+}
 // Function to start an outdial call.
 async function startOutdial() {
 
   const destination = document.getElementById('outBoundDialNumber').value;
+  const selectedAni = outdialAniSelectElm.value;
 
   if (!destination || !destination.trim()) {
       alert('Destination number is required');
       return;
   }
 
-  if (!entryPointId) {
-      alert('Entry point ID is not configured');
+  if (!entryPointId || !entryPointId.trim()) {
+      alert('Entry Point ID is required for outdial');
       return;
   }
 
   try {
     console.log('Making an outdial call');
-    await webex.cc.startOutdial(destination);
-    console.log('Outdial call initiated successfully');
+    console.log('Destination:', destination);
+    console.log('Selected ANI:', selectedAni || 'None selected');
+    
+    // Use selected ANI as the origin parameter
+    if (selectedAni) {
+      await webex.cc.startOutdial(destination, selectedAni);
+      console.log('Outdial call initiated successfully with ANI:', selectedAni);
+    } 
+    
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
-    alert('Failed to initiate outdial call');
+    alert('Failed to initiate outdial call: ' + (error.message || error));
   }
 }
 
@@ -676,6 +978,11 @@ function registerTaskListeners(task) {
       answerElm.disabled = true;
       declineElm.disabled = true;
       currentConsultQueueId = null;
+      // Clear consultation data and reset conference state when consult ends
+      consultationData = null;
+      isConferenceActive = false;
+      hasConferenceEnded = false; // Reset for next consultation
+      updateConferenceButtonState();
       if(task.data.isConsulted) {
         updateButtonsPostEndCall();
         incomingDetailsElm.innerText = '';
@@ -692,6 +999,42 @@ function registerTaskListeners(task) {
   task.on('task:wrappedup', task => {
     currentTask = undefined;
     updateTaskList(); // Update the task list UI to have latest tasks
+  });
+
+  // Conference event listeners
+  task.on('task:conferenceStarted', (task) => {
+    updateTaskList();
+    showConsultButton();
+    console.info('Conference started event received:', {
+      currentTaskId: currentTask?.data?.interactionId,
+      eventTaskId: task.data?.interactionId,
+      hasConsultationData: consultationData !== null
+    });
+    
+    // Check if we have an active consultation (more reliable than interactionId matching)
+    if (consultationData !== null) {
+      console.info('Conference started successfully - updating UI');
+      isConferenceActive = true;
+      updateConferenceButtonState();
+    }
+  });
+
+  task.on('task:conferenceEnded', (task) => {
+    updateTaskList();
+    showConsultButton();
+    console.info('Conference ended event received:', {
+      currentTaskId: currentTask?.data?.interactionId,
+      eventTaskId: task.data?.interactionId,
+      hasConsultationData: consultationData !== null
+    });
+    
+    // Check if we have an active consultation (more reliable than interactionId matching)
+    if (consultationData !== null && isConferenceActive) {
+      console.info('Conference ended successfully - updating UI');
+      isConferenceActive = false;
+      hasConferenceEnded = true; // Mark that conference has been ended
+      updateConferenceButtonState();
+    }
   });
 }
 
@@ -771,6 +1114,18 @@ function updateCallControlUI(task) {
       consultTabBtn.style.display = 'none';
       endConsultBtn.style.display = 'inline-block';
       consultTransferBtn.style.display = 'inline-block';
+      
+      // Set consultationData for Agent 2 (consulted agent) so they can see conference button
+      if (!consultationData) {
+        consultationData = {
+          to: destAgentId,
+          destinationType: destinationType,
+          agentId: agentId // Current agent ID (Agent 2)
+        };
+        hasConferenceEnded = false; // Reset for new consultation
+        console.log('Set consultationData for consulted agent:', consultationData);
+        updateConferenceButtonState(); // Update conference button visibility
+      }
     }
   }
 }
@@ -927,6 +1282,11 @@ function register() {
         agentName = agentProfile.agentName;
         wrapupCodes = agentProfile.wrapupCodes;
         populateWrapupCodesDropdown();
+        outdialANIId = agentProfile.outdialANIId;
+        loadOutdialAniEntries(agentProfile.outdialANIId).catch(error => {
+            console.warn('Failed to load ANI entries during registration:', error);
+        })
+
         listTeams.forEach((team) => {
             const option = document.createElement('option');
             option.value = team.id;
@@ -1043,7 +1403,6 @@ function register() {
         dialNumber.disabled = false;
         dialNumber.value = data.dn || '';
       }
-
       const auxId  = data.auxCodeId?.trim() || '0';
       const idx    = [...idleCodesDropdown.options].findIndex(o => o.value === auxId);
       idleCodesDropdown.selectedIndex = idx >= 0 ? idx : 0;
@@ -1142,9 +1501,9 @@ function doAgentLogin() {
     updateAgentProfileElm.classList.remove('hidden');
     // Read auxCode and lastStateChangeTimestamp from login response
     const DEFAULT_CODE = '0'; // Default code when no aux code is present
-    const auxCodeId = response.data.auxCodeId?.trim() !== '' ? response.data.auxCodeId : DEFAULT_CODE;
-    const lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
-    const lastIdleCodeChangeTimestamp = response.data.lastIdleCodeChangeTimestamp;
+    const auxCodeId = response.auxCodeId?.trim() !== '' ? response.auxCodeId : DEFAULT_CODE;
+    const lastStateChangeTimestamp = response.lastStateChangeTimestamp;
+    const lastIdleCodeChangeTimestamp = response.lastIdleCodeChangeTimestamp;
     const index = [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
     idleCodesDropdown.selectedIndex = index !== -1 ? index : 0;
     startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp);
@@ -1198,6 +1557,10 @@ function logoutAgent() {
       logoutAgentElm.classList.add('hidden');
       agentLogin.selectedIndex = 0;
       timerElm.innerHTML = '00:00:00';
+      
+      // Clear outdial ANI select
+      outdialAniSelectElm.innerHTML = '<option value="">Select Caller ID...</option>';
+      
       updateUnregisterButtonState();
     }, 1000);
     
