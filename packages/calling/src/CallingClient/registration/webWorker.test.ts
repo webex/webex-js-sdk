@@ -41,7 +41,10 @@ describe('webWorker', () => {
   });
 
   it('should start keepalive lifecycle correctly', async () => {
-    const fakeSuccessResponse = {ok: true, status: 200};
+    const fakeSuccessResponse = {
+      ok: true,
+      status: 200,
+    };
     (global.fetch as jest.Mock).mockResolvedValue(fakeSuccessResponse);
 
     messageHandler({
@@ -70,7 +73,11 @@ describe('webWorker', () => {
     });
     expect(postMessageSpy).not.toHaveBeenCalled();
 
-    const fakeFailureRespponse = {ok: false, status: 401};
+    const fakeFailureRespponse = {
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve(mockPostResponse),
+    };
     (global.fetch as jest.Mock).mockResolvedValue(fakeFailureRespponse);
 
     messageHandler({
@@ -89,20 +96,25 @@ describe('webWorker', () => {
 
     expect((global.fetch as jest.Mock).mock.calls.length).toBe(2);
     expect(postMessageSpy).toHaveBeenCalledWith({
-      err: new Error(`Keepalive failed with status: 401`),
+      err: {
+        body: mockPostResponse,
+        statusCode: 401,
+        statusText: undefined,
+        trackingId: 'web_worker_mock-uuid',
+        type: undefined,
+      },
       keepAliveRetryCount: 1,
       type: 'KEEPALIVE_FAILURE',
     });
   });
 
   it('should post KEEPALIVE_FAILURE when fetch fails', async () => {
-    const mockError = {
-      ok: false,
-      body: mockPostResponse,
-      headers: {},
-      statusCode: 401,
-    };
-    (global.fetch as jest.Mock).mockRejectedValue(mockError);
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false, // Indicate a non-OK response
+      status: 401, // Mock the status code
+      statusText: 'Not Found', // Mock status text
+      json: () => Promise.resolve(mockPostResponse),
+    });
 
     messageHandler({
       data: {
@@ -120,8 +132,11 @@ describe('webWorker', () => {
     expect(postMessageSpy).toHaveBeenCalledWith({
       type: WorkerMessageType.KEEPALIVE_FAILURE,
       err: {
-        ok: false,
-        err: mockError,
+        body: mockPostResponse,
+        statusCode: 401,
+        statusText: 'Not Found',
+        trackingId: 'web_worker_mock-uuid',
+        type: undefined,
       },
       keepAliveRetryCount: 1,
     });
@@ -130,12 +145,14 @@ describe('webWorker', () => {
   it('should post KEEPALIVE_SUCCESS after a failure when fetch succeeds', async () => {
     // Set fetch so that first tick rejects (failure) and second tick resolves (success)
     const mockError = {
-      body: {message: 'Server Error'},
-      statusCode: 500,
+      ok: false, // Indicate a non-OK response
+      status: 401, // Mock the status code
+      statusText: 'Not Found', // Mock status text
+      json: () => Promise.resolve(mockPostResponse),
     };
 
     (global.fetch as jest.Mock)
-      .mockRejectedValueOnce(mockError)
+      .mockResolvedValueOnce(mockError)
       .mockResolvedValueOnce({ok: true, status: 200});
 
     messageHandler({
