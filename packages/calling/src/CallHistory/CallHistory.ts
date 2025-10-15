@@ -148,6 +148,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         service: ALLOWED_SERVICES.JANUS,
       });
 
+      log.log(`Response trackingId: ${janusResponse?.headers?.trackingid}`, this.loggerContext);
+
       this.userSessions = janusResponse.body as UserSession[];
       if (sortByParam === SORT_BY.START_TIME) {
         if (sortParam === SORT.DESC) {
@@ -267,6 +269,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         throw new Error(`${response.status}`);
       }
 
+      log.log(`Response trackingId: ${response.headers?.get('trackingid')}`, loggerContext);
+
       const data: UpdateMissedCallsResponse = await response.json();
       log.log(`Missed calls are successfully read by the user`, loggerContext);
       const responseDetails: UpdateMissedCallsResponse = {
@@ -315,6 +319,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         uri: `${linesURIForUCM}`,
         method: HTTP_METHODS.GET,
       });
+
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
 
       const ucmLineDetails: UCMLinesResponse = {
         statusCode: Number(response.statusCode),
@@ -384,6 +390,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       ...session,
       endTime: new Date(session.endTime).getTime(),
     }));
+
     const deleteRequestBody = {
       deleteSessionIds: santizedSessionIds,
     };
@@ -402,6 +409,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       if (!response.ok) {
         throw new Error(`${response.status}`);
       }
+
+      log.log(`Response trackingId: ${response.headers?.get('trackingid')}`, loggerContext);
 
       const data: DeleteCallHistoryRecordsResponse = await response.json();
       log.log(
