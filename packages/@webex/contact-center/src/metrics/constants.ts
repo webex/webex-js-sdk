@@ -37,7 +37,6 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @property {string} TASK_HOLD_FAILED - Event name for failed task hold.
  * @property {string} TASK_RESUME_SUCCESS - Event name for successful task resume.
  * @property {string} TASK_RESUME_FAILED - Event name for failed task resume.
- *
  * @property {string} TASK_CONSULT_START_SUCCESS - Event name for successful consult start.
  * @property {string} TASK_CONSULT_START_FAILED - Event name for failed consult start.
  * @property {string} TASK_CONSULT_END_SUCCESS - Event name for successful consult end.
@@ -68,6 +67,9 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  *
  * @property {string} AGENT_DEVICE_TYPE_UPDATE_SUCCESS - Event name for successful agent device type update.
  * @property {string} AGENT_DEVICE_TYPE_UPDATE_FAILED - Event name for failed agent device type update.
+ *
+ * @property {string} OUTDIAL_ANI_EP_FETCH_SUCCESS - Event name for successful outdial ANI entries fetch.
+ * @property {string} OUTDIAL_ANI_EP_FETCH_FAILED - Event name for failed outdial ANI entries fetch.
  *
  * @readonly
  */
@@ -149,6 +151,10 @@ export const METRIC_EVENT_NAMES = {
   // Queue API Events
   QUEUE_FETCH_SUCCESS: 'Queue Fetch Success',
   QUEUE_FETCH_FAILED: 'Queue Fetch Failed',
+
+  // Outdial ANI Entries API Events
+  OUTDIAL_ANI_EP_FETCH_SUCCESS: 'Outdial ANI Entries Fetch Success',
+  OUTDIAL_ANI_EP_FETCH_FAILED: 'Outdial ANI Entries Fetch Failed',
 } as const;
 
 /**

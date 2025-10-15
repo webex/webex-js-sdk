@@ -1072,3 +1072,47 @@ export type CallDistributionGroup = {
   /** Distribution time duration in seconds */
   duration: number;
 };
+
+/**
+ * Represents a single outdial ANI (Automatic Number Identification) entry
+ * @public
+ */
+export type OutdialAniEntry = {
+  /** Unique identifier for the ANI entry */
+  id: string;
+  /** Display name for the ANI entry */
+  name: string;
+  /** Phone number associated with this ANI entry */
+  number: string;
+  /** Related links for this ANI entry */
+  links: string[];
+  /** Timestamp when this entry was created (Unix timestamp in milliseconds) */
+  createdTime: number;
+  /** Timestamp when this entry was last updated (Unix timestamp in milliseconds) */
+  lastUpdatedTime: number;
+};
+
+/**
+ * Response structure for outdial ANI entries API call
+ * @public
+ */
+export type OutdialAniEntriesResponse = OutdialAniEntry[];
+
+/**
+ * Parameters for fetching outdial ANI entries
+ * @public
+ */
+export type OutdialAniParams = {
+  /** Outdial ANI ID from agent profile */
+  outdialANI: string;
+  /** Page number for pagination (optional) */
+  page?: number;
+  /** Number of entries per page (optional) */
+  pageSize?: number;
+  /** Search string to filter entries (optional) */
+  search?: string;
+  /** Filter expression for advanced filtering (optional) */
+  filter?: string;
+  /** Comma-separated list of attributes to include in response (optional) */
+  attributes?: string;
+};
