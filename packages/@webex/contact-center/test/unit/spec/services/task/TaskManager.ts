@@ -1353,6 +1353,143 @@ describe('TaskManager', () => {
         expect(spy).toHaveBeenCalledWith(taskEvent, task);
       });
     });
+  });
+
+  describe('Conference event handling', () => {
+    let task;
+    
+    beforeEach(() => {
+      task = {
+        data: { interactionId: taskId },
+        emit: jest.fn(),
+        updateTaskData: jest.fn().mockImplementation((updatedData) => {
+          // Mock the updateTaskData method to actually update task.data
+          task.data = { ...task.data, ...updatedData };
+          return task;
+        }),
+      };
+      taskManager.taskCollection[taskId] = task;
+    });
+
+    it('should handle AGENT_CONSULT_CONFERENCED event', () => {
+      const payload = {
+        data: {
+          type: CC_EVENTS.AGENT_CONSULT_CONFERENCED,
+          interactionId: taskId,
+          isConferencing: true,
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.data.isConferencing).toBe(true);
+      expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONFERENCE_STARTED, task);
+    });
+
+    it('should handle AGENT_CONSULT_CONFERENCING event', () => {
+      const payload = {
+        data: {
+          type: CC_EVENTS.AGENT_CONSULT_CONFERENCING,
+          interactionId: taskId,
+          isConferencing: true,
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.data.isConferencing).toBe(true);
+      // No task event emission for conferencing - only for conferenced (completed)
+      expect(task.emit).not.toHaveBeenCalledWith(TASK_EVENTS.TASK_CONFERENCE_STARTED, task);
+    });
+
+    it('should handle AGENT_CONSULT_CONFERENCE_FAILED event', () => {
+      const payload = {
+        data: {
+          type: CC_EVENTS.AGENT_CONSULT_CONFERENCE_FAILED,
+          interactionId: taskId,
+          reason: 'Network error',
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.data.reason).toBe('Network error');
+      // No event emission expected for failure - handled by contact method promise rejection
+    });
+
+    it('should handle PARTICIPANT_JOINED_CONFERENCE event', () => {
+      const payload = {
+        data: {
+          type: CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE,
+          interactionId: taskId,
+          participantId: 'new-participant-123',
+          participantType: 'agent',
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.data.participantId).toBe('new-participant-123');
+      expect(task.data.participantType).toBe('agent');
+      // No specific task event emission for participant joined - just data update
+    });
+
+    it('should handle PARTICIPANT_LEFT_CONFERENCE event', () => {
+      const payload = {
+        data: {
+          type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+          interactionId: taskId,
+          isConferencing: false,
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.data.isConferencing).toBe(false);
+      expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
+    });
+
+    it('should handle PARTICIPANT_LEFT_CONFERENCE_FAILED event', () => {
+      const payload = {
+        data: {
+          type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED,
+          interactionId: taskId,
+          reason: 'Exit failed',
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.data.reason).toBe('Exit failed');
+      // No event emission expected for failure - handled by contact method promise rejection
+    });
+
+    it('should only update task for matching interactionId', () => {
+      const otherTaskId = 'other-task-id';
+      const otherTask = {
+        data: { interactionId: otherTaskId },
+        emit: jest.fn(),
+      };
+      taskManager.taskCollection[otherTaskId] = otherTask;
+
+      const payload = {
+        data: {
+          type: CC_EVENTS.AGENT_CONSULT_CONFERENCED,
+          interactionId: taskId,
+          isConferencing: true,
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      // Only the matching task should be updated
+      expect(task.data.isConferencing).toBe(true);
+      expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONFERENCE_STARTED, task);
+      
+      // Other task should not be affected
+      expect(otherTask.data.isConferencing).toBeUndefined();
+      expect(otherTask.emit).not.toHaveBeenCalled();
+    });
   });  
 });
 

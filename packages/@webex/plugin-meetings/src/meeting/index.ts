@@ -28,6 +28,8 @@ import {
   StatsAnalyzerEventNames,
   NetworkQualityEventNames,
   NetworkQualityMonitor,
+  StatsMonitor,
+  StatsMonitorEventNames,
 } from '@webex/internal-media-core';
 
 import {
@@ -269,6 +271,7 @@ export enum ScreenShareFloorStatus {
 type FetchMeetingInfoParams = {
   password?: string;
   registrationId?: string;
+  classificationId?: string;
   captchaCode?: string;
   extraParams?: Record<string, any>;
   sendCAevents?: boolean;
@@ -633,6 +636,7 @@ export default class Meeting extends StatelessWebexPlugin {
   shareStatus: string;
   screenShareFloorState: ScreenShareFloorStatus;
   statsAnalyzer: StatsAnalyzer;
+  statsMonitor: StatsMonitor;
   transcription: Transcription;
   updateMediaConnections: (mediaConnections: any[]) => void;
   userDisplayHints: any;
@@ -1287,6 +1291,13 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.networkQualityMonitor = null;
     /**
+     * @instance
+     * @type {StatsMonitor}
+     * @private
+     * @memberof Meeting
+     */
+    this.statsMonitor = null;
+    /**
      * Indicates network status of the webrtc media connection
      * @instance
      * @type {String}
@@ -1902,6 +1913,7 @@ export default class Meeting extends StatelessWebexPlugin {
     extraParams = {},
     sendCAevents = false,
     registrationId = null,
+    classificationId = null,
   }): Promise<void> {
     try {
       const captchaInfo = captchaCode
@@ -1918,7 +1930,9 @@ export default class Meeting extends StatelessWebexPlugin {
         this.locusId,
         extraParams,
         {meetingId: this.id, sendCAevents},
-        registrationId
+        registrationId,
+        null,
+        classificationId
       );
 
       this.parseMeetingInfo(info?.body, this.destination, info?.errors);
@@ -3184,6 +3198,14 @@ export default class Meeting extends StatelessWebexPlugin {
               this.shareCAEventSentStatus.receiveStart = false;
               this.shareCAEventSentStatus.receiveStop = false;
 
+              let finalBeneficiaryId = contentShare.beneficiaryId;
+              // In case of attendee in webinar, the whiteboard is shared by other participants
+              if (this.locusInfo?.info?.isWebinar && this.webinar?.selfIsAttendee) {
+                if (!finalBeneficiaryId && whiteboardShare.beneficiaryId) {
+                  finalBeneficiaryId = whiteboardShare.beneficiaryId;
+                }
+              }
+
               Trigger.trigger(
                 this,
                 {
@@ -3192,7 +3214,7 @@ export default class Meeting extends StatelessWebexPlugin {
                 },
                 EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                 {
-                  memberId: contentShare.beneficiaryId,
+                  memberId: finalBeneficiaryId,
                   url: contentShare.url,
                   shareInstanceId: this.remoteShareInstanceId,
                   annotationInfo: contentShare.annotation,
@@ -4214,6 +4236,9 @@ export default class Meeting extends StatelessWebexPlugin {
           isLocalRecordingPaused: MeetingUtil.isLocalRecordingPaused(this.userDisplayHints),
           isManualCaptionActive: MeetingUtil.isManualCaptionActive(this.userDisplayHints),
           isSaveTranscriptsEnabled: MeetingUtil.isSaveTranscriptsEnabled(this.userDisplayHints),
+          isSpokenLanguageAutoDetectionEnabled: MeetingUtil.isSpokenLanguageAutoDetectionEnabled(
+            this.userDisplayHints
+          ),
           isWebexAssistantActive: MeetingUtil.isWebexAssistantActive(this.userDisplayHints),
           canViewCaptionPanel: MeetingUtil.canViewCaptionPanel(this.userDisplayHints),
           isRealTimeTranslationEnabled: MeetingUtil.isRealTimeTranslationEnabled(
@@ -6796,6 +6821,10 @@ export default class Meeting extends StatelessWebexPlugin {
             // @ts-ignore
             this.webex.internal.newMetrics.submitClientEvent({
               name: 'client.ice.start',
+              payload: {
+                // @ts-ignore
+                labels: MeetingUtil.getCaEventLabelsForIpVersion(this.webex),
+              },
               options: {
                 meetingId: this.id,
               },
@@ -7327,10 +7356,12 @@ export default class Meeting extends StatelessWebexPlugin {
     if (this.config.stats.enableStatsAnalyzer) {
       // @ts-ignore - config coming from registerPlugin
       this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
+      this.statsMonitor = new StatsMonitor();
       this.statsAnalyzer = new StatsAnalyzer({
         // @ts-ignore - config coming from registerPlugin
         config: this.config.stats,
         networkQualityMonitor: this.networkQualityMonitor,
+        statsMonitor: this.statsMonitor,
         isMultistream: this.isMultistream,
       });
       this.shareCAEventSentStatus = {
@@ -7344,6 +7375,33 @@ export default class Meeting extends StatelessWebexPlugin {
         NetworkQualityEventNames.NETWORK_QUALITY,
         this.sendNetworkQualityEvent.bind(this)
       );
+
+      this.statsMonitor.on(StatsMonitorEventNames.INBOUND_AUDIO_ISSUE, (data) => {
+        // Before forwarding any inbound audio issues to the app, make sure that we have at least one other
+        // participant in the meeting with unmuted audio.
+        // We don't check this.mediaProperties.mediaDirection here, because that's already handled in statsAnalyzer,
+        // so we won't get this event if we are not setup to receive any audio
+        const atLeastOneUnmutedOtherMember = Object.values(
+          this.members.membersCollection.getAll()
+        ).find((member) => {
+          return !member.isSelf && !member.isPairedWithSelf && !member.isAudioMuted;
+        });
+
+        if (atLeastOneUnmutedOtherMember) {
+          this.mediaProperties.sendMediaIssueMetric(
+            'inbound_audio',
+            data.issueSubType,
+            this.correlationId
+          );
+
+          Trigger.trigger(
+            this,
+            {file: 'meeting/index', function: 'createStatsAnalyzer'},
+            EVENT_TRIGGERS.MEDIA_INBOUND_AUDIO_ISSUE_DETECTED,
+            data
+          );
+        }
+      });
     }
   }
 
@@ -7642,6 +7700,10 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     this.statsAnalyzer = null;
+    this.networkQualityMonitor?.removeAllListeners();
+    this.networkQualityMonitor = null;
+    this.statsMonitor?.removeAllListeners();
+    this.statsMonitor = null;
 
     // when media fails, we want to upload a webrtc dump to see whats going on
     // this function is async, but returns once the stats have been gathered
@@ -7665,6 +7727,10 @@ export default class Meeting extends StatelessWebexPlugin {
       await this.statsAnalyzer.stopAnalyzer();
     }
     this.statsAnalyzer = null;
+    this.networkQualityMonitor?.removeAllListeners();
+    this.networkQualityMonitor = null;
+    this.statsMonitor?.removeAllListeners();
+    this.statsMonitor = null;
 
     this.isMultistream = false;
 
@@ -9911,5 +9977,21 @@ export default class Meeting extends StatelessWebexPlugin {
     const videoLayout: UnsetStageVideoLayout = {overrideDefault: false};
 
     return this.meetingRequest.synchronizeStage(this.locusUrl, videoLayout);
+  }
+
+  /**
+   * Notifies the host with the given meeting UUID and display names.
+   *
+   * @param {string} meetingUuid - The UUID of the meeting.
+   * @param {string[]} displayName - An array of display names to notify the host with.
+   * @returns {Promise<any>} The result of the notifyHost request.
+   */
+  notifyHost(meetingUuid: string, displayName: string[]) {
+    return this.meetingRequest.notifyHost(
+      this.meetingInfo.siteFullUrl,
+      this.locusId,
+      meetingUuid,
+      displayName
+    );
   }
 }
