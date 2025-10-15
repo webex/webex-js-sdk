@@ -49,6 +49,14 @@ export default class ControlsOptionsManager {
   private locusUrl: string;
 
   /**
+   * @instance
+   * @type {string}
+   * @private
+   * @memberof ControlsOptionsManager
+   */
+  private mainLocusUrl: string;
+
+  /**
    * @param {MeetingRequest} request
    * @param {Object} options
    * @constructor
@@ -93,6 +101,16 @@ export default class ControlsOptionsManager {
    */
   public setLocusUrl(url: string) {
     this.locusUrl = url;
+  }
+
+  /**
+   * @param {string} url
+   * @returns {void}
+   * @public
+   * @memberof ControlsOptionsManager
+   */
+  public setMainLocusUrl(url: string) {
+    this.mainLocusUrl = url;
   }
 
   /**
@@ -160,11 +178,16 @@ export default class ControlsOptionsManager {
     });
 
     return payloads.reduce((previous, payload) => {
+      const extraBody =
+        this.mainLocusUrl && this.mainLocusUrl !== this.locusUrl
+          ? {authorizingLocusUrl: this.locusUrl}
+          : {};
+
       return previous.then(() =>
         // @ts-ignore
         this.request.request({
-          uri: `${this.locusUrl}/${CONTROLS}`,
-          body: payload,
+          uri: `${this.mainLocusUrl || this.locusUrl}/${CONTROLS}`,
+          body: {...payload, ...extraBody},
           method: HTTP_VERBS.PATCH,
         })
       );
@@ -241,11 +264,15 @@ export default class ControlsOptionsManager {
     if (error) {
       return Promise.reject(error);
     }
+    const extraBody =
+      this.mainLocusUrl && this.mainLocusUrl !== this.locusUrl
+        ? {authorizingLocusUrl: this.locusUrl}
+        : {};
 
     // @ts-ignore
     return this.request.request({
-      uri: `${this.locusUrl}/${CONTROLS}`,
-      body,
+      uri: `${this.mainLocusUrl || this.locusUrl}/${CONTROLS}`,
+      body: {...body, ...extraBody},
       method: HTTP_VERBS.PATCH,
     });
   }
