@@ -47,17 +47,8 @@ participantListElm.id = 'participant-list';
 participantListElm.style.cssText = 'margin-top:10px;padding:8px;border:1px solid #ccc;background:#f9f9f9;display:none;';
 incomingDetailsElm.parentNode.appendChild(participantListElm);
 
-// MPC: Add "Allow participants to interact" checkbox for testing
-const allowInteractElm = document.createElement('div');
-allowInteractElm.style.cssText = 'margin-top:10px;padding:8px;border:1px solid #ddd;background:#f0f8ff;display:none;';
-allowInteractElm.innerHTML = `
-  <label>
-    <input type="checkbox" id="allow-participants-interact" checked>
-    🔄 Allow participants to continue interacting with each other
-  </label>
-  <br/><small style="color:#666;">📝 MPC Testing: Simulates the consultation interaction behavior</small>
-`;
-incomingDetailsElm.parentNode.appendChild(allowInteractElm);
+// MPC: Get reference to the static "Allow participants to interact" element
+const allowInteractElm = document.getElementById('allow-interact');
 const answerElm = document.querySelector('#answer');
 const declineElm = document.querySelector('#decline');
 const callControlListener = document.querySelector('#callcontrolsection');
@@ -611,6 +602,8 @@ async function initiateConsult() {
   // MPC: Show "Allow participants to interact" checkbox for second+ consultations
   if (currentTask.data.isConferenceInProgress) {
     allowInteractElm.style.display = 'block';
+  } else {
+    allowInteractElm.style.display = 'none';
   }
 
   const consultPayload = {
@@ -746,6 +739,7 @@ async function endConsult() {
 function updateParticipantList(task) {
   if (!task || !task.data || !task.data.interaction) {
     participantListElm.style.display = 'none';
+    allowInteractElm.style.display = 'none';
     return;
   }
   
@@ -776,6 +770,7 @@ function updateParticipantList(task) {
     participantListElm.style.display = 'block';
   } else {
     participantListElm.style.display = 'none';
+    allowInteractElm.style.display = 'none';
   }
 }
 
@@ -969,9 +964,7 @@ function registerTaskListeners(task) {
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
-  task.on('task:end', (task) => {
-    updateTaskList(); // Update the task list UI to have latest tasks
-  });
+  task.on('task:end', updateTaskList); // Update the task list UI to have latest tasks
 
   task.on('task:hold', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
@@ -981,44 +974,26 @@ function registerTaskListeners(task) {
   });
 
   // Consult flows
-  task.on('task:consultCreated', (task) => {
-    updateTaskList();
-  });
+  task.on('task:consultCreated', updateTaskList);
 
-  task.on('task:offerConsult', (task) => {
-    updateTaskList();
-  });
+  task.on('task:offerConsult', updateTaskList);
 
-  task.on('task:consultAccepted', (task) => {
-    updateTaskList();
-  });
+  task.on('task:consultAccepted', updateTaskList);
 
-  task.on('task:consulting', (task) => {
-   updateTaskList();
-  });
+  task.on('task:consulting', updateTaskList);
 
-  task.on('task:consultQueueFailed', (task) => {
-    // When trying to consult queue fails
-     updateTaskList();
-  });
+  task.on('task:consultQueueFailed', updateTaskList);  // When trying to consult queue fails
 
-  task.on('task:consultQueueCancelled', (task) => {
-    updateTaskList();
-  });
+  task.on('task:consultQueueCancelled', updateTaskList);
 
-  task.on('task:consultEnd', (task) => {
-   updateTaskList();
-  });
-  
+  task.on('task:consultEnd', updateTaskList);
   task.on('task:rejected', (reason) => {
     updateTaskList();
     console.info('Task is rejected with reason:', reason);
     showAgentStatePopup(reason);
   });
 
-  task.on('task:wrappedup', task => {
-    updateTaskList(); // Update the task list UI to have latest tasks
-  });
+  task.on('task:wrappedup', updateTaskList); // Update the task list UI to have latest tasks
 
   // Conference event listeners - Simplified approach
   task.on('task:participantJoined', (task) => {
@@ -1148,6 +1123,7 @@ function updateCallControlUI(task) {
   autoWrapupTimerElm.style.display = 'none';
   if (task.data.wrapUpRequired) {
     participantListElm.style.display = 'none';
+    allowInteractElm.style.display = 'none';
     updateButtonsPostEndCall();
     if (task.autoWrapup && task.autoWrapup.isRunning()) {
       startAutoWrapupTimer(task);
@@ -1162,10 +1138,27 @@ function updateCallControlUI(task) {
   const digitalChannels = ['chat', 'email', 'social'];
   const isBrowser = agentDeviceType === 'BROWSER';
 
+  // Element lookup map to avoid eval usage
+  const elementMap = {
+    'holdResumeElm': holdResumeElm,
+    'muteElm': muteElm,
+    'pauseResumeRecordingElm': pauseResumeRecordingElm,
+    'consultTabBtn': consultTabBtn,
+    'declineElm': declineElm,
+    'transferElm': transferElm,
+    'endElm': endElm,
+    'endConsultBtn': endConsultBtn,
+    'consultTransferBtn': consultTransferBtn,
+    'conferenceToggleBtn': conferenceToggleBtn
+  };
+
   // Helper to set multiple controls at once
   function setControls(configs) {
-    for (const [elm, [hide, disable]] of Object.entries(configs)) {
-      makeDisabledAndHide(eval(elm), hide, disable);
+    for (const [elmName, config] of Object.entries(configs)) {
+      const element = elementMap[elmName];
+      if (element) {
+        makeDisabledAndHide(element, config.hide, config.disable);
+      }
     }
   }
 
@@ -1220,64 +1213,64 @@ function updateCallControlUI(task) {
     const controlMap = {
       beingConsulted: () => {}, // No changes
       beingConsultedAccepted: () => setControls({
-        'holdResumeElm': [true, false],
-        'muteElm': [false || !isBrowser, false],
-        'pauseResumeRecordingElm': [false, true],
-        'consultTabBtn': [true, true],
-        'declineElm': [true, true],
-        'transferElm': [true, true],
-        'endElm': [true, true],
-        'endConsultBtn': [false, false],
-        'consultTransferBtn': [true, true],
-        'conferenceToggleBtn': [true, true],
+        'holdResumeElm': { hide: true, disable: false },
+        'muteElm': { hide: false || !isBrowser, disable: false },
+        'pauseResumeRecordingElm': { hide: false, disable: true },
+        'consultTabBtn': { hide: true, disable: true },
+        'declineElm': { hide: true, disable: true },
+        'transferElm': { hide: true, disable: true },
+        'endElm': { hide: true, disable: true },
+        'endConsultBtn': { hide: false, disable: false },
+        'consultTransferBtn': { hide: true, disable: true },
+        'conferenceToggleBtn': { hide: true, disable: true },
       }),
       consultInitiated: () => setControls({
-        'holdResumeElm': [true, false],
-        'muteElm': [true || !isBrowser, false],
-        'pauseResumeRecordingElm': [true, false],
-        'consultTabBtn': [true, false],
-        'declineElm': [true, false],
-        'transferElm': [true, false],
-        'endElm': [false, true],
-        'endConsultBtn': [false, false],
-        'consultTransferBtn': [true, true],
-        'conferenceToggleBtn': [true, true],
+        'holdResumeElm': { hide: true, disable: false },
+        'muteElm': { hide: true || !isBrowser, disable: false },
+        'pauseResumeRecordingElm': { hide: true, disable: false },
+        'consultTabBtn': { hide: true, disable: false },
+        'declineElm': { hide: true, disable: false },
+        'transferElm': { hide: true, disable: false },
+        'endElm': { hide: false, disable: true },
+        'endConsultBtn': { hide: false, disable: false },
+        'consultTransferBtn': { hide: true, disable: true },
+        'conferenceToggleBtn': { hide: true, disable: true },
       }),
       consultAccepted: () => setControls({
-        'holdResumeElm': [true, false],
-        'muteElm': [false || !isBrowser, false],
-        'pauseResumeRecordingElm': [false, true],
-        'consultTabBtn': [true, false],
-        'declineElm': [true, false],
-        'transferElm': [true, false],
-        'endElm': [true, false],
-        'endConsultBtn': [false, false],
-        'consultTransferBtn': [false, false],
-        'conferenceToggleBtn': [false, false],
+        'holdResumeElm': { hide: true, disable: false },
+        'muteElm': { hide: false || !isBrowser, disable: false },
+        'pauseResumeRecordingElm': { hide: false, disable: true },
+        'consultTabBtn': { hide: true, disable: false },
+        'declineElm': { hide: true, disable: false },
+        'transferElm': { hide: true, disable: false },
+        'endElm': { hide: true, disable: false },
+        'endConsultBtn': { hide: false, disable: false },
+        'consultTransferBtn': { hide: false, disable: false },
+        'conferenceToggleBtn': { hide: false, disable: false },
       }),
       conference: () => setControls({
-        'consultTabBtn': [false, false],
-        'transferElm': [true, false],
-        'endConsultBtn': [true, true],
-        'muteElm': [false || !isBrowser, false],
-        'pauseResumeRecordingElm': [false, false],
-        'holdResumeElm': [false, false],
-        'declineElm': [true, true],
-        'endElm': [false, false],
-        'consultTransferBtn': [true, true],
-        'conferenceToggleBtn': [false, false],
+        'consultTabBtn': { hide: false, disable: false },
+        'transferElm': { hide: true, disable: false },
+        'endConsultBtn': { hide: true, disable: true },
+        'muteElm': { hide: false || !isBrowser, disable: false },
+        'pauseResumeRecordingElm': { hide: false, disable: false },
+        'holdResumeElm': { hide: false, disable: false },
+        'declineElm': { hide: true, disable: true },
+        'endElm': { hide: false, disable: false },
+        'consultTransferBtn': { hide: true, disable: true },
+        'conferenceToggleBtn': { hide: false, disable: false },
       }),
       connected: () => setControls({
-        'consultTabBtn': [false, false],
-        'transferElm': [false, false],
-        'endConsultBtn': [true, true],
-        'muteElm': [false || !isBrowser, false],
-        'pauseResumeRecordingElm': [false, false],
-        'holdResumeElm': [false, false],
-        'declineElm': [true, true],
-        'endElm': [false, false],
-        'consultTransferBtn': [true, true],
-        'conferenceToggleBtn': [true, true],
+        'consultTabBtn': { hide: false, disable: false },
+        'transferElm': { hide: false, disable: false },
+        'endConsultBtn': { hide: true, disable: true },
+        'muteElm': { hide: false || !isBrowser, disable: false },
+        'pauseResumeRecordingElm': { hide: false, disable: false },
+        'holdResumeElm': { hide: false, disable: false },
+        'declineElm': { hide: true, disable: true },
+        'endElm': { hide: false, disable: false },
+        'consultTransferBtn': { hide: true, disable: true },
+        'conferenceToggleBtn': { hide: true, disable: true },
       })
     };
 
@@ -2066,6 +2059,7 @@ function renderTaskList(taskList) {
     engageElm.innerHTML = ``;
     currentTask = undefined;
     participantListElm.style.display = 'none';
+    // allowInteractElm.style.display = 'none';
     return;
   }
   

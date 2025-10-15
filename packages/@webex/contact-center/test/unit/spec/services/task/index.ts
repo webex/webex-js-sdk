@@ -217,7 +217,7 @@ describe('Task', () => {
   });
 
   describe('updateTaskData cases', () => {
-    it('test updating the task data by overwrite', async () => {
+    it('updates the task data by overwrite', async () => {
       const newData = {
         type: CC_EVENTS.AGENT_CONTACT_ASSIGNED,
         agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
@@ -266,7 +266,7 @@ describe('Task', () => {
       expect(task.data).toEqual(newData);
     });
 
-    it('test updating the task data by merging with key removal', async () => {
+    it('updates the task data by merging with key removal', async () => {
       const newData = {
         // Purposefully omit other keys to test remove and merge behavior
         isConsulting: true, // Add a new custom key to test persistence
@@ -337,7 +337,7 @@ describe('Task', () => {
       expect(task.data).toEqual(expectedData);
     });
 
-    it('test updating the task data by merging and preserving existing keys', async () => {
+    it('updates the task data by merging and preserving existing keys', async () => {
       const newData = {
         ...taskDataMock, // Include all existing keys to test merge without removal
         isConsulting: true, // Add a new custom key
