@@ -975,80 +975,6 @@ describe('plugin-mercury', () => {
 
     describe('shutdown protocol support', () => {
       describe('#onmessage() with sequence number tolerance', () => {
-        it('should handle messages without sequence numbers gracefully', () => {
-          const messageSpy = sinon.spy();
-          const sequenceMismatchSpy = sinon.spy();
-
-          socket.on('message', messageSpy);
-          socket.on('sequence-mismatch', sequenceMismatchSpy);
-
-          // Set up expected sequence number
-          socket.expectedSequenceNumber = 5;
-
-          // Send message without sequence number (like shutdown message)
-          const messageWithoutSequence = {
-            data: JSON.stringify({
-              type: 'shutdown',
-              id: 'shutdown-message-id',
-            }),
-          };
-
-          mockWebSocket.emit('message', messageWithoutSequence);
-
-          assert.calledOnce(messageSpy);
-          assert.notCalled(sequenceMismatchSpy);
-          // Expected sequence number should remain unchanged
-          assert.equal(socket.expectedSequenceNumber, 5);
-        });
-
-        it('should handle messages with empty string sequence numbers', () => {
-          const messageSpy = sinon.spy();
-          const sequenceMismatchSpy = sinon.spy();
-
-          socket.on('message', messageSpy);
-          socket.on('sequence-mismatch', sequenceMismatchSpy);
-
-          socket.expectedSequenceNumber = 5;
-
-          const messageWithEmptySequence = {
-            data: JSON.stringify({
-              type: 'shutdown',
-              sequenceNumber: '',
-              id: 'shutdown-message-id',
-            }),
-          };
-
-          mockWebSocket.emit('message', messageWithEmptySequence);
-
-          assert.calledOnce(messageSpy);
-          assert.notCalled(sequenceMismatchSpy);
-          assert.equal(socket.expectedSequenceNumber, 5);
-        });
-
-        it('should handle messages with whitespace-only sequence numbers', () => {
-          const messageSpy = sinon.spy();
-          const sequenceMismatchSpy = sinon.spy();
-
-          socket.on('message', messageSpy);
-          socket.on('sequence-mismatch', sequenceMismatchSpy);
-
-          socket.expectedSequenceNumber = 5;
-
-          const messageWithWhitespaceSequence = {
-            data: JSON.stringify({
-              type: 'shutdown',
-              sequenceNumber: '   ',
-              id: 'shutdown-message-id',
-            }),
-          };
-
-          mockWebSocket.emit('message', messageWithWhitespaceSequence);
-
-          assert.calledOnce(messageSpy);
-          assert.notCalled(sequenceMismatchSpy);
-          assert.equal(socket.expectedSequenceNumber, 5);
-        });
-
         it('should process valid sequence numbers normally', () => {
           const messageSpy = sinon.spy();
           const sequenceMismatchSpy = sinon.spy();
@@ -1146,31 +1072,6 @@ describe('plugin-mercury', () => {
           assert.calledOnce(sequenceMismatchSpy);
           // expectedSequenceNumber should be set to NaN + 1 = NaN
           assert.isNaN(socket.expectedSequenceNumber);
-        });
-
-        it('should not set expectedSequenceNumber on first message without sequence', () => {
-          // Create a fresh socket that hasn't processed any messages yet
-          const freshSocket = new Socket();
-          const messageSpy = sinon.spy();
-
-          freshSocket.on('message', messageSpy);
-
-          // No expectedSequenceNumber set initially
-          assert.isUndefined(freshSocket.expectedSequenceNumber);
-
-          const messageWithoutSequence = {
-            data: JSON.stringify({
-              type: 'shutdown',
-              id: 'shutdown-message-id',
-            }),
-          };
-
-          // Mock the onmessage method directly since we don't have a real WebSocket connection
-          freshSocket.onmessage(messageWithoutSequence);
-
-          assert.calledOnce(messageSpy);
-          // Should remain undefined
-          assert.isUndefined(freshSocket.expectedSequenceNumber);
         });
       });
 

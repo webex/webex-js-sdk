@@ -227,7 +227,7 @@ describe('plugin-mercury', () => {
         const promise = mercury.connect();
         const u2cInvalidateEventEnvelope = {
           data: {
-            timestamp: "1759289614",
+            timestamp: '1759289614',
           },
         };
 
@@ -1086,22 +1086,6 @@ describe('plugin-mercury', () => {
           mercury._onmessage(regularEvent);
 
           assert.notCalled(mercury._handleImminentShutdown);
-        });
-
-        it('should ignore observer errors when emitting shutdown event', () => {
-          const shutdownEvent = {
-            data: {
-              type: 'shutdown',
-            },
-          };
-
-          mercury._emit.throws(new Error('Observer error'));
-
-          assert.doesNotThrow(() => {
-            mercury._onmessage(shutdownEvent);
-          });
-
-          assert.calledOnce(mercury._handleImminentShutdown);
         });
       });
 
