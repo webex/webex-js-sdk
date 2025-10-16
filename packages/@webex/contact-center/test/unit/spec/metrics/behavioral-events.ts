@@ -110,6 +110,48 @@ describe('metrics/behavioral-events', () => {
         verb: 'fail',
       });
 
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_start',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_start',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_END_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_end',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_END_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_end',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_transfer',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_transfer',
+        verb: 'fail',
+      });
+
       expect(getEventTaxonomy('' as METRIC_EVENT_NAMES)).toEqual(undefined);
     });
   });

@@ -38,19 +38,20 @@ import {
   MERCURY_DISCONNECTED_SUCCESS,
   METHODS,
 } from './constants';
+import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
 import {getErrorDetails, isValidDialNumber} from './services/core/Utils';
-import {Profile, WelcomeEvent, CC_EVENTS, ContactServiceQueue} from './services/config/types';
 import {
-  AGENT_STATE_AVAILABLE,
-  AGENT_STATE_AVAILABLE_ID,
-  DEFAULT_PAGE,
-  DEFAULT_PAGE_SIZE,
-} from './services/config/constants';
+  Profile,
+  WelcomeEvent,
+  CC_EVENTS,
+  OutdialAniEntriesResponse,
+  OutdialAniParams,
+} from './services/config/types';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
@@ -58,6 +59,15 @@ import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/t
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
+import EntryPoint from './services/EntryPoint';
+import AddressBook from './services/AddressBook';
+import Queue from './services/Queue';
+import type {
+  EntryPointListResponse,
+  EntryPointSearchParams,
+  ContactServiceQueuesResponse,
+  ContactServiceQueueSearchParams,
+} from './types';
 
 /**
  * The main Contact Center plugin class that enables integration with Webex Contact Center.
@@ -163,6 +173,7 @@ import {Failure} from './services/core/GlobalTypes';
  *
  * @public
  */
+
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   /**
    * The plugin's unique namespace identifier in the Webex SDK.
@@ -244,6 +255,71 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private metricsManager: MetricsManager;
 
   /**
+   * API instance for managing Webex Contact Center entry points
+   * Provides functionality to fetch entry points with caching support
+   * @type {EntryPoint}
+   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   *
+   * // Access EntryPointRecord
+   * const response = await cc.entryPoint.getEntryPoints({
+   *   page: 0,
+   *   pageSize: 50
+   * });
+   * ```
+   */
+  private entryPoint: EntryPoint;
+
+  /**
+   * API instance for managing Webex Contact Center address book contacts
+   * Provides functionality to fetch address book entries with caching support
+   * @type {AddressBook}
+   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   *
+   * // Access AddressBook API
+   * const response = await cc.addressBook.getEntries({
+   *   page: 0,
+   *   pageSize: 25
+   * });
+   * ```
+   */
+  public addressBook: AddressBook;
+
+  /**
+   * API instance for managing Webex Contact Center queues
+   * Provides functionality to fetch queues with caching support
+   * @type {Queue}
+   * @public
+   * @example
+   * ```typescript
+   * const cc = webex.cc;
+   * await cc.register();
+   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
+   *
+   * // Access Queue API
+   * const response = await cc.queue.getQueues({
+   *   page: 0,
+   *   pageSize: 50
+   * });
+   *
+   * // Filter queues by specific criteria
+   * const filteredQueues = await cc.queue.getQueues({
+   *   filter: 'id=="queue-id-123"'
+   * });
+   * ```
+   */
+  private queue: Queue;
+
+  /**
    * Logger utility for Contact Center plugin
    * Provides consistent logging across the plugin
    * @type {LoggerProxy}
@@ -289,6 +365,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       );
       this.incomingTaskListener();
 
+      // Initialize API instances
+      // will have future function for indivdual fetch etc so better be in an object
+      this.entryPoint = new EntryPoint(this.$webex);
+      this.addressBook = new AddressBook(this.$webex, () => this.agentConfig?.addressBookId);
+      this.queue = new Queue(this.$webex);
+
+      // Initialize logger
       LoggerProxy.initialize(this.$webex.logger);
     });
   }
@@ -614,6 +697,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           });
           // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
           this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
+          this.taskManager.setAgentId(this.agentConfig.agentId);
 
           if (
             this.agentConfig.webRtcEnabled &&
@@ -984,6 +1068,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       method: METHODS.HANDLE_WEBSOCKET_MESSAGE,
     });
 
+    // Emit metrics for all websocket events except keepalive and welcome
+    const topLevelType = eventData.type;
+    const nestedType = eventData?.data?.type;
+    if (topLevelType !== CC_EVENTS.WELCOME && eventData.keepalive !== 'true') {
+      const metricsPayload: Record<string, any> = {
+        ws_event_type: nestedType || topLevelType,
+        top_level_type: topLevelType,
+        has_data: Boolean(eventData.data),
+      };
+      this.metricsManager.trackEvent(METRIC_EVENT_NAMES.WEBSOCKET_EVENT_RECEIVED, metricsPayload, [
+        'operational',
+      ]);
+    }
+
     switch (eventData.type) {
       case CC_EVENTS.AGENT_MULTI_LOGIN:
         // @ts-ignore
@@ -1238,6 +1336,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Makes an outbound call to a specified phone number.
    *
    * @param {string} destination - The phone number to dial (e.g., '+1234567890').
+   * @param {string} origin - The contact center number that will be used while making a call to the customer.
    * Should include country code and be in E.164 format.
    * @returns {Promise<TaskResponse>} Resolves with the task response containing:
    *   - interactionId: Unique identifier for the outbound call
@@ -1273,7 +1372,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    *
    *   // Start the outbound call
    *   const destination = '+1234567890';
-   *   const task = await cc.startOutdial(destination);
+   *   const task = await cc.startOutdial(destination, origin);
    *
    *   // Listen for all relevant task events
    *   task.on('task:ringing', () => {
@@ -1341,7 +1440,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * }
    * ```
    */
-  public async startOutdial(destination: string): Promise<TaskResponse> {
+  public async startOutdial(destination: string, origin: string): Promise<TaskResponse> {
     LoggerProxy.info('Starting outbound dial', {
       module: CC_FILE,
       method: METHODS.START_OUTDIAL,
@@ -1355,6 +1454,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Construct the outdial payload.
       const outDialPayload: DialerPayload = {
         destination,
+        origin,
         entryPointId: this.agentConfig.outDialEp,
         direction: OUTDIAL_DIRECTION,
         attributes: ATTRIBUTES,
@@ -1369,6 +1469,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
           destination,
+          origin,
           mediaType: OUTDIAL_MEDIA_TYPE,
         },
         ['behavioral', 'business', 'operational']
@@ -1389,6 +1490,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
           destination,
+          origin,
           mediaType: OUTDIAL_MEDIA_TYPE,
         },
         ['behavioral', 'business', 'operational']
@@ -1399,55 +1501,55 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * This is used for getting the list of queues to which a task can be consulted or transferred.
-   * @param {string} [search] - Optional search string to filter queues by name
-   * @param {string} [filter] - Optional OData filter expression (e.g., 'teamId eq "team123"')
-   * @param {number} [page=0] - Page number for paginated results, starting at 0
-   * @param {number} [pageSize=100] - Number of queues to return per page
-   * @returns Promise<ContactServiceQueue[]> Resolves with the list of queues
-   * @throws Error If the operation fails
+   * Fetches outdial ANI (Automatic Number Identification) entries for an outdial ANI ID.
+   *
+   * This method retrieves the list of phone numbers that can be used as caller ID when making
+   * outbound calls. The ANI data is associated with an outdial ANI ID and can be filtered
+   * and paginated as needed.
+   *
+   * @param {string} outdialANI - The outdial ANI ID to fetch ANI data for
+   * @param {number} [page] - Optional page number for pagination (0-based)
+   * @param {number} [pageSize] - Optional number of items per page
+   * @param {string} [search] - Optional search term to filter results by name or number
+   * @param {string} [filter] - Optional filter string
+   * @param {string} [attributes] - Optional attributes to include in response
+   * @returns {Promise<OutdialAniEntriesResponse>} Promise resolving to outdial ANI response containing:
+   *   - data: Array of ANI entries with number and name
+   *   - meta: Pagination metadata
+   * @throws {Error} If the operation fails or agent is not registered
    * @public
    * @example
    * ```typescript
    * const cc = webex.cc;
    * await cc.register();
-   * await cc.stationLogin({ teamId: 'team123', loginOption: 'BROWSER' });
    *
-   * // Basic usage - get all queues
-   * const allQueues = await cc.getQueues();
+   * // Get agent profile to obtain outdial ANI ID
+   * const agentProfile = cc.agentConfig;
+   * const outdialANI = agentProfile.outdialANIId;
    *
-   * // Search for specific queues
-   * const salesQueues = await cc.getQueues('sales'); // Search for 'sales' in queue names
+   * // Basic usage - get all ANI data for an outdial ANI ID
+   * const aniData = await cc.getOutdialAniEntries({ outdialANI });
    *
-   * // Use filtering and pagination
-   * const filteredQueues = await cc.getQueues(
-   *   '', // No search term
-   *   'teamId eq "team123"', // Filter by team
-   *   0,  // First page
-   *   50  // 50 items per page
-   * );
+   * // With pagination and search
+   * const paginatedAni = await cc.getOutdialAniEntries({
+   *   outdialANI,
+   *   page: 0,
+   *   pageSize: 50,
+   *   search: '555' // search for numbers containing '555'
+   * });
    *
-   * // Process queue results
-   * queues.forEach(queue => {
-   *   console.log('Queue:', {
-   *     id: queue.queueId,
-   *     name: queue.queueName,
-   *     channelType: queue.channelType,
-   *     isActive: queue.isActive,
-   *     description: queue.description
-   *   });
+   * // Process the results
+   * paginatedAni.forEach(ani => {
+   *   console.log(`ANI: ${ani.number} - ${ani.name}`);
    * });
    * ```
    */
-  public async getQueues(
-    search?: string,
-    filter?: string,
-    page = DEFAULT_PAGE,
-    pageSize = DEFAULT_PAGE_SIZE
-  ): Promise<ContactServiceQueue[]> {
-    LoggerProxy.info('Fetching queues', {
+  public async getOutdialAniEntries(params: OutdialAniParams): Promise<OutdialAniEntriesResponse> {
+    const {outdialANI, page, pageSize, search, filter, attributes} = params;
+
+    LoggerProxy.info('Fetching outdial ANI entries', {
       module: CC_FILE,
-      method: METHODS.GET_QUEUES,
+      method: METHODS.GET_OUTDIAL_ANI_ENTRIES,
     });
 
     const orgId = this.$webex.credentials.getOrgId();
@@ -1455,20 +1557,65 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     if (!orgId) {
       LoggerProxy.error('Org ID not found.', {
         module: CC_FILE,
-        method: METHODS.GET_QUEUES,
+        method: METHODS.GET_OUTDIAL_ANI_ENTRIES,
       });
 
       throw new Error('Org ID not found.');
     }
 
-    const result = await this.services.config.getQueues(orgId, page, pageSize, search, filter);
+    try {
+      const result = await this.services.config.getOutdialAniEntries(orgId, {
+        outdialANI,
+        page,
+        pageSize,
+        search,
+        filter,
+        attributes,
+      });
 
-    LoggerProxy.log(`Successfully retrieved ${result?.length} queues`, {
-      module: CC_FILE,
-      method: METHODS.GET_QUEUES,
-    });
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_SUCCESS,
+        {
+          outdialANI,
+          resultCount: result?.length || 0,
+        },
+        ['behavioral', 'business', 'operational']
+      );
 
-    return result;
+      LoggerProxy.log(`Successfully retrieved outdial ANI entries for ANI ID ${outdialANI}`, {
+        module: CC_FILE,
+        method: METHODS.GET_OUTDIAL_ANI_ENTRIES,
+      });
+
+      return result;
+    } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          outdialANI,
+          error,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.error(
+        `Failed to fetch outdial ANI entries for ANI ID ${outdialANI} due to: ${error}`,
+        {
+          module: CC_FILE,
+          method: METHODS.GET_OUTDIAL_ANI_ENTRIES,
+          trackingId: failure.trackingId,
+        }
+      );
+
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.GET_OUTDIAL_ANI_ENTRIES,
+        CC_FILE
+      );
+      throw detailedError;
+    }
   }
 
   /**
@@ -1614,5 +1761,27 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
       throw error;
     }
+  }
+
+  /**
+   * Returns paginated entry points for the organization.
+   * Thin wrapper around internal EntryPoint instance.
+   * @public
+   */
+  public async getEntryPoints(
+    params: EntryPointSearchParams = {}
+  ): Promise<EntryPointListResponse> {
+    return this.entryPoint.getEntryPoints(params);
+  }
+
+  /**
+   * Returns paginated contact service queues for the organization.
+   * Thin wrapper around internal Queue instance.
+   * @public
+   */
+  public async getQueues(
+    params: ContactServiceQueueSearchParams = {}
+  ): Promise<ContactServiceQueuesResponse> {
+    return this.queue.getQueues(params);
   }
 }

@@ -264,6 +264,41 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build origin correctly and vendorId can be passed in options', () => {
+        sinon.stub(CallDiagnosticUtils, 'anonymizeIPAddress').returns('1.1.1.1');
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {
+            subClientType: 'WEB_APP',
+            clientType: 'TEAMS_CLIENT',
+            clientLaunchMethod: 'url-handler',
+            vendorId: 'GoogleMeet',
+          },
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.1.1.1',
+            localNetworkPrefix: '1.1.1.1',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion() || 'unknown',
+            subClientType: 'WEB_APP',
+            clientLaunchMethod: 'url-handler',
+            vendorId: 'GoogleMeet',
+          },
+          environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
       it('should build origin correctly with browserLaunchMethod', () => {
         sinon.stub(CallDiagnosticUtils, 'anonymizeIPAddress').returns('1.1.1.1');
 

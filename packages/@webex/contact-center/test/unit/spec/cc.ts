@@ -7,6 +7,11 @@ import {
   WebexSDK,
 } from '../../../src/types';
 import ContactCenter from '../../../src/cc';
+import EntryPoint from '../../../src/services/EntryPoint';
+import type {EntryPointListResponse} from '../../../src/types';
+import AddressBook from '../../../src/services/AddressBook';
+import Queue from '../../../src/services/Queue';
+import type {ContactServiceQueuesResponse} from '../../../src/types';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess, AGENT_EVENTS} from '../../../src/services/agent/types';
 import {SetStateResponse} from '../../../src/types';
@@ -134,6 +139,7 @@ describe('webex.cc', () => {
       webSocketManager: mockWebSocketManager,
       task: undefined,
       setWrapupData: jest.fn(),
+      setAgentId: jest.fn(),
       registerIncomingCallEvent: jest.fn(),
       registerTaskListeners: jest.fn(),
       getTask: jest.fn(),
@@ -1310,7 +1316,7 @@ describe('webex.cc', () => {
   });
 
   describe('startOutdial', () => {
-    it('should make outdial call successfully.', async () => {
+    it('should make outdial call successfully without origin.', async () => {
       // Setup outDialEp.
       webex.cc.agentConfig = {
         outDialEp: 'test-entry-point',
@@ -1319,9 +1325,10 @@ describe('webex.cc', () => {
       // destination number required for making outdial call.
       const destination = '1234567890';
 
-      // Construct Payload for startOutdial.
+      // Construct Payload for startOutdial without origin.
       const newPayload = {
         destination,
+        origin: undefined,
         entryPointId: 'test-entry-point',
         direction: OUTDIAL_DIRECTION,
         attributes: ATTRIBUTES,
@@ -1336,6 +1343,49 @@ describe('webex.cc', () => {
         .mockResolvedValue(mockResponse);
 
       const result = await webex.cc.startOutdial(destination);
+
+      // Verify logging calls
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting outbound dial', {
+        module: CC_FILE,
+        method: 'startOutdial',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Outbound dial completed successfully', {
+        module: CC_FILE,
+        method: 'startOutdial',
+      });
+
+      expect(startOutdialMock).toHaveBeenCalledWith({data: newPayload});
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should make outdial call successfully with origin.', async () => {
+      // Setup outDialEp.
+      webex.cc.agentConfig = {
+        outDialEp: 'test-entry-point',
+      };
+
+      // destination number and origin for making outdial call.
+      const destination = '1234567890';
+      const origin = '+19403016307';
+
+      // Construct Payload for startOutdial with origin.
+      const newPayload = {
+        destination,
+        origin,
+        entryPointId: 'test-entry-point',
+        direction: OUTDIAL_DIRECTION,
+        attributes: ATTRIBUTES,
+        mediaType: OUTDIAL_MEDIA_TYPE,
+        outboundType: OUTBOUND_TYPE,
+      } as const;
+
+      const mockResponse = {} as AgentContact;
+
+      const startOutdialMock = jest
+        .spyOn(webex.cc.services.dialer, 'startOutdial')
+        .mockResolvedValue(mockResponse);
+
+      const result = await webex.cc.startOutdial(destination, origin);
 
       // Verify logging calls
       expect(LoggerProxy.info).toHaveBeenCalledWith('Starting outbound dial', {
@@ -1384,88 +1434,6 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: `startOutdial`, trackingId: error.details.trackingId}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'startOutdial', CC_FILE);
-    });
-  });
-
-  describe('getQueues', () => {
-    it('should return queues response when successful', async () => {
-      const mockQueuesResponse = [
-        {
-          queueId: 'queue1',
-          queueName: 'Queue 1',
-        },
-        {
-          queueId: 'queue2',
-          queueName: 'Queue 2',
-        },
-      ];
-
-      webex.cc.services.config.getQueues = jest.fn().mockResolvedValue(mockQueuesResponse);
-
-      const result = await webex.cc.getQueues();
-
-      // Verify logging calls
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
-        module: CC_FILE,
-        method: 'getQueues',
-      });
-      expect(LoggerProxy.log).toHaveBeenCalledWith(
-        `Successfully retrieved ${result.length} queues`,
-        {
-          module: CC_FILE,
-          method: 'getQueues',
-        }
-      );
-
-      expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
-        'mockOrgId',
-        0,
-        100,
-        undefined,
-        undefined
-      );
-      expect(result).toEqual(mockQueuesResponse);
-    });
-
-    it('should throw an error if orgId is not present', async () => {
-      jest.spyOn(webex.credentials, 'getOrgId').mockResolvedValue(undefined);
-      webex.cc.services.config.getQueues = jest.fn();
-
-      try {
-        await webex.cc.getQueues();
-      } catch (error) {
-        expect(error).toEqual(new Error('Org ID not found.'));
-        expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
-          module: CC_FILE,
-          method: 'getQueues',
-        });
-        expect(LoggerProxy.error).toHaveBeenCalledWith('Org ID not found.', {
-          module: CC_FILE,
-          method: 'getQueues',
-        });
-        expect(webex.cc.services.config.getQueues).not.toHaveBeenCalled();
-      }
-    });
-
-    it('should throw an error if config getQueues throws an error', async () => {
-      webex.cc.services.config.getQueues = jest.fn().mockRejectedValue(new Error('Test error.'));
-
-      try {
-        await webex.cc.getQueues();
-      } catch (error) {
-        expect(error).toEqual(new Error('Test error.'));
-        expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
-          module: CC_FILE,
-          method: 'getQueues',
-        });
-        expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
-          'mockOrgId',
-          0,
-          100,
-          undefined,
-          undefined
-        );
-      }
     });
   });
 
@@ -1793,6 +1761,31 @@ describe('webex.cc', () => {
       messageCallback(JSON.stringify(payload));
 
       expect(setLoginOptionSpy).toHaveBeenCalledWith(deviceType);
+    });
+  });
+
+  describe('API property exposure', () => {
+    it('should provide getEntryPoints wrapper that delegates to EntryPoint', async () => {
+      const spy = jest
+        .spyOn(EntryPoint.prototype, 'getEntryPoints')
+        .mockResolvedValue({} as EntryPointListResponse);
+      await webex.cc.getEntryPoints();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('should expose addressBook API', () => {
+      expect(webex.cc.addressBook).toBeDefined();
+      expect(webex.cc.addressBook).toBeInstanceOf(AddressBook);
+    });
+
+    it('should provide getQueues wrapper that delegates to Queue', async () => {
+      const spy = jest
+        .spyOn(Queue.prototype, 'getQueues')
+        .mockResolvedValue({} as ContactServiceQueuesResponse);
+      await webex.cc.getQueues();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
   });
 

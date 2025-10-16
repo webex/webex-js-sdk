@@ -75,6 +75,7 @@ type GetOriginOptions = {
   browserLaunchMethod?: BrowserLaunchMethodType;
   environment?: EnvironmentType;
   newEnvironment?: NewEnvironmentType;
+  vendorId?: string;
 };
 
 type GetIdentifiersOptions = {
@@ -295,6 +296,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       if (options?.browserLaunchMethod) {
         origin.clientInfo.browserLaunchMethod = options.browserLaunchMethod;
+      }
+
+      if (options?.vendorId) {
+        origin.clientInfo.vendorId = options.vendorId;
       }
 
       return origin;
