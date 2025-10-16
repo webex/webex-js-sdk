@@ -86,7 +86,7 @@ describe('plugin-meetings', () => {
         canDoVideo: null,
         canAnnotate: null,
         canUseVoip: null,
-        ShowAutoEndMeetingWarning: null,
+        showAutoEndMeetingWarning: null,
         supportHQV: null,
         supportHDV: null,
         canShareWhiteBoard: null,
