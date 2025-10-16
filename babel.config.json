@@ -1,6 +1,12 @@
 {
   "plugins": [
     [
+      "@babel/plugin-transform-typescript",
+      {
+        "allowDeclareFields": true,
+      },
+    ],
+    [
       "@babel/plugin-transform-runtime",
       {
         "corejs": 2
