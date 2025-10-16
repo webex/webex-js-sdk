@@ -1254,7 +1254,7 @@ function updateCallControlUI(task) {
         'endConsultBtn': { hide: true, disable: true },
         'muteElm': { hide: false || !isBrowser, disable: false },
         'pauseResumeRecordingElm': { hide: false, disable: false },
-        'holdResumeElm': { hide: false, disable: false },
+        'holdResumeElm': { hide: false, disable: true },
         'declineElm': { hide: true, disable: true },
         'endElm': { hide: false, disable: false },
         'consultTransferBtn': { hide: true, disable: true },
