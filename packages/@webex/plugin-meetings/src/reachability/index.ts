@@ -191,11 +191,16 @@ export default class Reachability extends EventsScope {
    * @returns {TransportResult} cleaned result
    */
   private cleanTransportResult(transportResult: TransportResult): TransportResult {
-    const cleaned = { ...transportResult };
+    const cleaned = {...transportResult};
     // Remove details array if it's empty
-    if (cleaned.details !== undefined && Array.isArray(cleaned.details) && cleaned.details.length === 0) {
+    if (
+      cleaned.details !== undefined &&
+      Array.isArray(cleaned.details) &&
+      cleaned.details.length === 0
+    ) {
       delete cleaned.details;
     }
+
     return cleaned;
   }
 
@@ -214,6 +219,14 @@ export default class Reachability extends EventsScope {
     // Fetch clusters and measure latency
     try {
       this.lastTrigger = trigger;
+
+      // Enable per-url UDP reachability if coming from network-checker app
+      // if (this.lastTrigger === 'network-checker') {
+      //   // @ts-ignore
+      //   if (this.webex.config?.meetings) {
+      //     this.webex.config.meetings.reachabilityEnablePerUrlForUdp = true;
+      //   }
+      // }
 
       // kick off ip version detection. We don't await it, as we don't want to waste time
       // and if it fails, that's ok we can still carry on
@@ -422,8 +435,6 @@ export default class Reachability extends EventsScope {
   private mapTransportResultToBackendDataFormat(
     transportResult: TransportResult
   ): TransportResultForBackend {
-    LoggerProxy.logger.log(`[FLOW-5] index.ts#mapTransportResultToBackendDataFormat --> Input details=`, transportResult.details);
-    
     const output: TransportResultForBackend = {};
 
     for (const [key, value] of Object.entries(transportResult)) {
@@ -442,8 +453,12 @@ export default class Reachability extends EventsScope {
           }
           break;
         case 'latencyInMilliseconds':
-          output.latencyInMilliseconds = value.toString();
-          output.minLatency = Number(value);
+          // Only include latency fields if the protocol is actually reachable
+          // Don't include them for unreachable/untested protocols
+          if (transportResult.result === 'reachable' && typeof value === 'number' && value > 0) {
+            output.latencyInMilliseconds = value.toString();
+            output.minLatency = Number(value);
+          }
           break;
         case 'details':
           // Only include details if they exist and are not empty
@@ -458,10 +473,6 @@ export default class Reachability extends EventsScope {
           output[key] = value;
       }
     }
-
-    // Don't add empty details array - tests expect it to be omitted
-
-    LoggerProxy.logger.log(`[FLOW-6] index.ts#mapTransportResultToBackendDataFormat --> Output details=`, output.details);
 
     return output;
   }
@@ -484,8 +495,12 @@ export default class Reachability extends EventsScope {
       const allClusterResults: ReachabilityResults = JSON.parse(resultsJson);
 
       results = mapValues(allClusterResults, (clusterResult) => ({
-        udp: this.mapTransportResultToBackendDataFormat(clusterResult.udp || {result: 'untested', details: []}),
-        tcp: this.mapTransportResultToBackendDataFormat(clusterResult.tcp || {result: 'untested', details: []}),
+        udp: this.mapTransportResultToBackendDataFormat(
+          clusterResult.udp || {result: 'untested', details: []}
+        ),
+        tcp: this.mapTransportResultToBackendDataFormat(
+          clusterResult.tcp || {result: 'untested', details: []}
+        ),
         xtls: this.mapTransportResultToBackendDataFormat(
           clusterResult.xtls || {result: 'untested', details: []}
         ),
@@ -847,10 +862,9 @@ export default class Reachability extends EventsScope {
    * @returns {Promise<void>}
    */
   private async storeResults(results: ReachabilityResults) {
-    // Clean up empty details arrays before storing
+    // Cleaning up empty details arrays before storing - in case if we get sometimes all domain names, so can't prefill domain names
     const cleanedResults = Object.fromEntries(
       Object.entries(results).map(([clusterName, clusterResult]) => {
-
         return [
           clusterName,
           {
@@ -1009,13 +1023,16 @@ export default class Reachability extends EventsScope {
       const cluster = clusterList[key];
 
       // @ts-ignore
-      const reachabilityEnablePerUrlForUdp = this.webex?.config?.meetings?.reachabilityEnablePerUrlForUdp === true;
-      
-      this.clusterReachability[key] = new ClusterReachability(key, cluster, reachabilityEnablePerUrlForUdp);
+      const reachabilityEnablePerUrlForUdp =
+        this.webex?.config?.meetings?.reachabilityEnablePerUrlForUdp === true;
+
+      this.clusterReachability[key] = new ClusterReachability(
+        key,
+        cluster,
+        reachabilityEnablePerUrlForUdp
+      );
       this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
         const {protocol, result, clientMediaIPs, latencyInMilliseconds, details} = data;
-
-        LoggerProxy.logger.log(`[FLOW-1] index.ts#resultReady handler --> Received event. Protocol=${protocol}, cluster=${key}, details count=${details ? details.length : 'undefined'}, details=`, details);
 
         if (isFirstResult[protocol]) {
           this.emit(
@@ -1034,20 +1051,12 @@ export default class Reachability extends EventsScope {
 
         const areAllResultsReady = this.areAllResultsReady();
 
-        LoggerProxy.logger.log(`[FLOW-2] index.ts --> Before assignment. cluster=${key}, protocol=${protocol}, current details=`, results[key][protocol].details);
-
         results[key][protocol].result = result;
         results[key][protocol].clientMediaIPs = clientMediaIPs;
         results[key][protocol].latencyInMilliseconds = latencyInMilliseconds;
-        // Keep details in internal format (SubnetDetails with serverIp)
-        // Conversion to backend format (SubnetDetailsForBackend with serverIps) happens in mapTransportResultToBackendDataFormat
         results[key][protocol].details = details || [];
 
-        LoggerProxy.logger.log(`[FLOW-3] index.ts --> After assignment. cluster=${key}, protocol=${protocol}, new details=`, results[key][protocol].details);
-
         await this.storeResults(results);
-
-        LoggerProxy.logger.log(`[FLOW-4] index.ts --> After storeResults. cluster=${key}, protocol=${protocol}`);
 
         if (areAllResultsReady) {
           this.clearTimer('overallTimer');

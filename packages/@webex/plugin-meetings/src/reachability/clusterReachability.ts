@@ -2,19 +2,15 @@ import {Defer} from '@webex/common';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {ClusterNode} from './request';
-import {convertStunUrlToTurn, convertStunUrlToTurnTls, isIpAddress, parseStunUrl} from './util';
+import {
+  convertStunUrlToTurn,
+  convertStunUrlToTurnTls,
+  isIpAddress,
+  parseIceServerUrl,
+} from './util';
 import EventsScope from '../common/events/events-scope';
 
-import {
-  CONNECTION_STATE,
-  Enum,
-  ICE_CANDIDATE_TYPES,
-  ICE_GATHERING_STATE,
-  PROTOCOLS_LIST,
-  TURN_TLS_PORT,
-  WEBEX_TURN_CREDENTIAL,
-  WEBEX_TURN_USERNAME,
-} from '../constants';
+import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE, PROTOCOLS_LIST} from '../constants';
 import {ClusterReachabilityResult, NatType, SubnetDetails} from './reachability.types';
 
 // data for the Events.resultReady event
@@ -36,7 +32,6 @@ export type NatTypeUpdatedEventData = {
   natType: NatType;
 };
 
-
 export const Events = {
   resultReady: 'resultReady', // emitted when a cluster is reached successfully using specific protocol
   clientMediaIpsUpdated: 'clientMediaIpsUpdated', // emitted when more public IPs are found after resultReady was already sent for a given protocol
@@ -51,7 +46,7 @@ export type Events = Enum<typeof Events>;
 class SubnetReachabilityChecker {
   private pc: RTCPeerConnection;
   private defer: Defer = new Defer();
-  private resolved: boolean = false;
+  private resolved = false;
   private url: string;
   private onResult: (serverIp: string, port: number, latency: number, publicIp: string) => void;
   private getElapsedTime: () => number;
@@ -63,16 +58,16 @@ class SubnetReachabilityChecker {
    * @param {Function} getElapsedTime - Function that returns elapsed time in milliseconds since test started
    */
   constructor(
-    url: string, 
-    onResult: (serverIp: string, port: number, latency: number, publicIp: string) => void, 
+    url: string,
+    onResult: (serverIp: string, port: number, latency: number, publicIp: string) => void,
     getElapsedTime: () => number
   ) {
     this.url = url;
     this.onResult = onResult;
     this.getElapsedTime = getElapsedTime;
-    
+
     this.pc = new RTCPeerConnection({
-      iceServers: [{ username: '', credential: '', urls: [url] }],
+      iceServers: [{username: '', credential: '', urls: [url]}],
       iceCandidatePoolSize: 0,
       iceTransportPolicy: 'all',
     });
@@ -88,7 +83,7 @@ class SubnetReachabilityChecker {
     this.pc.onicecandidate = (e) => {
       if (e.candidate && e.candidate.type === 'srflx') {
         const latency = this.getElapsedTime();
-        const parsed = parseStunUrl(this.url);
+        const parsed = parseIceServerUrl(this.url);
         if (parsed && isIpAddress(parsed.host)) {
           this.onResult(parsed.host, parsed.port, latency, e.candidate.address);
         }
@@ -110,16 +105,16 @@ class SubnetReachabilityChecker {
   async start(): Promise<void> {
     const offer = await this.pc.createOffer({offerToReceiveAudio: true});
     this.pc.setLocalDescription(offer);
-    
+
     // Add timeout to prevent hanging on unreachable subnets
-    const timeoutMs = 3000; // 3 seconds, matching DEFAULT_TIMEOUT from index.ts
+    const timeoutMs = 3000;
     const timeoutPromise = new Promise<void>((resolve) => {
       setTimeout(() => {
         this.close();
         resolve();
       }, timeoutMs);
     });
-    
+
     await Promise.race([this.defer.promise, timeoutPromise]);
   }
 
@@ -147,7 +142,7 @@ export class ClusterReachability extends EventsScope {
   private numUdpUrls: number;
   private numTcpUrls: number;
   private numXTlsUrls: number;
-  private result: ClusterReachabilityResult; // Will include details array
+  private result: ClusterReachabilityResult;
   private pc?: RTCPeerConnection;
   private defer: Defer; // this defer is resolved once reachability checks for this cluster are completed
   private startTimestamp: number;
@@ -158,7 +153,7 @@ export class ClusterReachability extends EventsScope {
   private enablePerUrlUdpTesting: boolean;
   public readonly clusterInfo: ClusterNode;
   private perUrlCheckers: SubnetReachabilityChecker[] = [];
-  private udpStandardModeFirstCandidateProcessed: boolean = false; // Track if first UDP candidate processed in standard mode
+  private udpStandardModeFirstCandidateProcessed = false; // Track if first UDP candidate processed in standard mode
 
   /**
    * Constructor for ClusterReachability
@@ -166,7 +161,7 @@ export class ClusterReachability extends EventsScope {
    * @param {ClusterNode} clusterInfo information about the media cluster
    * @param {boolean} reachabilityEnablePerUrlForUdp flag to enable per-URL testing for UDP
    */
-  constructor(name: string, clusterInfo: ClusterNode, reachabilityEnablePerUrlForUdp: boolean = false) {
+  constructor(name: string, clusterInfo: ClusterNode, reachabilityEnablePerUrlForUdp = false) {
     super();
     this.name = name;
     this.isVideoMesh = clusterInfo.isVideoMesh;
@@ -179,92 +174,42 @@ export class ClusterReachability extends EventsScope {
     this.pc = this.createPeerConnection(clusterInfo);
 
     this.defer = new Defer();
-    this.result = {
-      udp: {
-        result: 'untested',
-        details: [],
-      },
-      tcp: {
-        result: 'untested',
-        details: [],
-      },
-      xtls: {
-        result: 'untested',
-        details: [],
-      },
-    };
-    // Prefill details with IP addresses marked as unreachable
-    this.prefillSubnetDetails();
-  }
 
-  /**
-   * Prefill details arrays with IP addresses from STUN URLs, marked as unreachable
-   * Only process IP addresses, skip domain names
-   * @returns {void}
-   */
-  private prefillSubnetDetails() {
-    PROTOCOLS_LIST.forEach(protocol => {
+    // Initialize result with prefilled details for each protocol
+    // Details are pre-populated with IP addresses from STUN URLs, marked as unreachable
+    const createProtocolResult = (protocol: 'udp' | 'tcp' | 'xtls') => {
       const urls = this.clusterInfo[protocol] || [];
-      
+      const details: SubnetDetails[] = [];
+      const seenIpPorts = new Set<string>();
+
       urls.forEach((url) => {
-        const parsed = parseStunUrl(url);
+        const parsed = parseIceServerUrl(url);
         if (parsed && isIpAddress(parsed.host)) {
-          // Check if we already have this IP:port combination
-          const existingDetail = this.result[protocol].details.find(
-            (d: SubnetDetails) => d.serverIp === parsed.host && d.port === parsed.port
-          );
-          
-          if (!existingDetail) {
-            const detail: SubnetDetails = {
+          const key = `${parsed.host}:${parsed.port}`;
+          if (!seenIpPorts.has(key)) {
+            seenIpPorts.add(key);
+            details.push({
               port: parsed.port,
               'answered-tx': 0,
               'lost-tx': 1,
               latencies: [],
               serverIp: parsed.host,
-            };
-            this.result[protocol].details.push(detail);
+            });
           }
         }
       });
-    });
-  }
 
-  /**
-   * Update prefilled details when connection succeeds
-   * @param {'udp' | 'tcp' | 'xtls'} protocol
-   * @param {string} serverIp
-   * @param {number} port - The port number for the connection
-   * @param {number} latency
-   * @returns {void}
-   */
-  private updateDetails(protocol: 'udp' | 'tcp' | 'xtls', serverIp: string, port: number, latency: number) {
-    const details = this.result[protocol].details;
-    
-    
-    // Find existing detail entry by serverIp and port
-    const existingDetail = details.find((d: SubnetDetails) => d.serverIp === serverIp && d.port === port);
-    
-    if (existingDetail) {
-      // Only update if this is a prefilled unreachable entry (answered-tx === 0)
-      // If already reachable (answered-tx === 1), don't update to preserve first latency
-      if (existingDetail['answered-tx'] === 0) {
-        existingDetail['answered-tx'] = 1;
-        existingDetail['lost-tx'] = 0;
-        existingDetail.latencies = [latency];
-      } else {
-        LoggerProxy.logger.log(`clusterReachability.ts#updateDetails --> Skipped update for ${serverIp}:${port} (already reachable)`);
-      }
-    } else {
-      // Add new entry for domains that resolved to IPs
-      const newDetail: SubnetDetails = {
-        port,
-        'answered-tx': 1,
-        'lost-tx': 0,
-        latencies: [latency],
-        serverIp: serverIp,
+      return {
+        result: 'untested' as const,
+        details,
       };
-      details.push(newDetail);
-    }
+    };
+
+    this.result = {
+      udp: createProtocolResult('udp'),
+      tcp: createProtocolResult('tcp'),
+      xtls: createProtocolResult('xtls'),
+    };
   }
 
   /**
@@ -273,6 +218,75 @@ export class ClusterReachability extends EventsScope {
    */
   private getElapsedTime() {
     return Math.round(performance.now() - this.startTimestamp);
+  }
+
+  /**
+   * Helper method to emit resultReady event with consistent structure
+   * @param {string} protocol - The protocol being tested ('udp', 'tcp', or 'xtls')
+   * @param {string} functionName - The name of the calling function for logging
+   * @returns {void}
+   */
+  private emitResultReadyEvent(protocol: 'udp' | 'tcp' | 'xtls', functionName: string): void {
+    const result = this.result[protocol];
+
+    if (result.result === 'unreachable' && result.details.length > 0) {
+      const eventData: ResultEventData = {
+        protocol,
+        result: 'unreachable',
+        latencyInMilliseconds: 0,
+        details: result.details,
+      };
+
+      this.emit(
+        {
+          file: 'clusterReachability',
+          function: functionName,
+        },
+        Events.resultReady,
+        eventData
+      );
+    } else if (result.result === 'reachable' && result.details.length > 0) {
+      const eventData: ResultEventData = {
+        protocol,
+        result: 'reachable',
+        latencyInMilliseconds: result.latencyInMilliseconds || 0,
+        clientMediaIPs: result.clientMediaIPs,
+        details: result.details,
+      };
+
+      this.emit(
+        {
+          file: 'clusterReachability',
+          function: functionName,
+        },
+        Events.resultReady,
+        eventData
+      );
+    }
+  }
+
+  /**
+   * Extract server IP and port from ICE candidate URL
+   * @param {RTCIceCandidate} candidate - The ICE candidate
+   * @returns {{serverIp: (string|null), port: (number|null)}} Extracted server info
+   */
+  private extractServerInfoFromCandidate(candidate: RTCIceCandidate): {
+    serverIp: string | null;
+    port: number | null;
+  } {
+    let serverIp = null;
+    let port = null;
+
+    if ('url' in candidate) {
+      const candidateUrl = (candidate as any).url;
+      const parsed = parseIceServerUrl(candidateUrl);
+      if (parsed?.host && parsed?.port) {
+        serverIp = parsed.host;
+        port = parsed.port;
+      }
+    }
+
+    return {serverIp, port};
   }
 
   /**
@@ -292,16 +306,16 @@ export class ClusterReachability extends EventsScope {
     // We then check for relay candidates to know if TURN-TCP worked (see registerIceCandidateListener()).
     const tcpIceServers = cluster.tcp.map((urlString: string) => {
       return {
-        username: WEBEX_TURN_USERNAME,
-        credential: WEBEX_TURN_CREDENTIAL,
+        username: 'webexturnreachuser',
+        credential: 'webexturnreachpwd',
         urls: [convertStunUrlToTurn(urlString, 'tcp')],
       };
     });
 
     const turnTlsIceServers = cluster.xtls.map((urlString: string) => {
       return {
-        username: WEBEX_TURN_USERNAME,
-        credential: WEBEX_TURN_CREDENTIAL,
+        username: 'webexturnreachuser',
+        credential: 'webexturnreachpwd',
         urls: [convertStunUrlToTurnTls(urlString)],
       };
     });
@@ -373,7 +387,7 @@ export class ClusterReachability extends EventsScope {
     const {CLOSED} = CONNECTION_STATE;
 
     // Clean up per-URL checkers
-    this.perUrlCheckers.forEach(checker => checker.close());
+    this.perUrlCheckers.forEach((checker) => checker.close());
     this.perUrlCheckers = [];
 
     if (this.pc && this.pc.connectionState !== CLOSED) {
@@ -428,30 +442,10 @@ export class ClusterReachability extends EventsScope {
     this.pc.onicegatheringstatechange = () => {
       if (this.pc.iceGatheringState === ICE_GATHERING_STATE.COMPLETE) {
         // Emit results for unreachable protocols with prefilled details
-        PROTOCOLS_LIST.forEach(protocol => {
-          const result = this.result[protocol];
-          // If protocol was never marked as reachable but has prefilled details, emit as unreachable
-          if (result.result === 'unreachable' && result.details.length > 0) {
-            result.result = 'unreachable';
-            
-            const eventData: ResultEventData = {
-              protocol,
-              result: 'unreachable',
-              latencyInMilliseconds: 0,
-              details: result.details,
-            };
-            
-            this.emit(
-              {
-                file: 'clusterReachability',
-                function: 'registerIceGatheringStateChangeListener',
-              },
-              Events.resultReady,
-              eventData
-            );
-          }
+        PROTOCOLS_LIST.forEach((protocol) => {
+          this.emitResultReadyEvent(protocol, 'registerIceGatheringStateChangeListener');
         });
-        
+
         this.closePeerConnection();
         this.finishReachabilityCheck();
       }
@@ -482,12 +476,32 @@ export class ClusterReachability extends EventsScope {
 
     // Update details if we have server info
     if (serverIp && port) {
-      this.updateDetails(protocol, serverIp, port, latency);
+      const {details} = this.result[protocol];
+      const existingDetail = details.find(
+        (d: SubnetDetails) => d.serverIp === serverIp && d.port === port
+      );
+
+      if (existingDetail) {
+        // Only update if this is a prefilled unreachable entry (answered-tx === 0)
+        // If already reachable (answered-tx === 1), don't update to preserve first latency
+        if (existingDetail['answered-tx'] === 0) {
+          existingDetail['answered-tx'] = 1;
+          existingDetail['lost-tx'] = 0;
+          existingDetail.latencies = [latency];
+        }
+      } else {
+        // Add new entry for domains that resolved to IPs
+        details.push({
+          port,
+          'answered-tx': 1,
+          'lost-tx': 0,
+          latencies: [latency],
+          serverIp,
+        });
+      }
     }
 
-    const isFirstSuccess = result.latencyInMilliseconds === undefined;
-
-    if (isFirstSuccess) {
+    if (result.latencyInMilliseconds === undefined) {
       LoggerProxy.logger.log(
         // @ts-ignore
         `Reachability:index#saveResult --> Successfully reached ${this.name} over ${protocol}: ${latency}ms`
@@ -498,26 +512,18 @@ export class ClusterReachability extends EventsScope {
         result.clientMediaIPs = [publicIp];
       }
 
-      // Explicitly pass all properties instead of spreading to ensure details array is included
-      const eventData: ResultEventData = {
-        protocol,
-        result: result.result,
-        latencyInMilliseconds: result.latencyInMilliseconds,
-        clientMediaIPs: result.clientMediaIPs,
-        details: result.details, // Explicitly include details
-      };
-
       this.emit(
         {
           file: 'clusterReachability',
           function: 'saveResult',
         },
         Events.resultReady,
-        eventData
+        {
+          protocol,
+          ...result,
+        }
       );
-      
     } else {
-      // For subsequent candidates, collect public IPs but don't update latency
       this.addPublicIP(protocol, publicIp);
     }
 
@@ -571,99 +577,82 @@ export class ClusterReachability extends EventsScope {
    */
   private registerIceCandidateListener() {
     this.pc.onicecandidate = (e) => {
+      const TURN_TLS_PORT = 443;
+      const CANDIDATE_TYPES = {
+        SERVER_REFLEXIVE: 'srflx',
+        RELAY: 'relay',
+      };
+
       const latencyInMilliseconds = this.getElapsedTime();
 
-      if (e.candidate) {
-        if (e.candidate.type === ICE_CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          // In standard mode (not per-URL), only process the FIRST UDP candidate
-          // All other responding subnets remain as prefilled unreachable entries
-          if (!this.enablePerUrlUdpTesting && this.udpStandardModeFirstCandidateProcessed) {
-            // Still collect public IPs for subsequent candidates
-            this.addPublicIP('udp', e.candidate.address);
-            this.determineNatType(e.candidate);
-            return; // Don't process this candidate for subnet details
-          }
-          
-          let serverIp = null;
-          let port = null;
-          
-          // Try to extract server IP and port from candidate URL
-          if ('url' in e.candidate) {
-            const candidateUrl = (e.candidate as any).url;
-            const parsed = parseStunUrl(candidateUrl);
-            if (parsed.host && parsed.port) {
-              serverIp = parsed.host;
-              port = parsed.port;
-            }
-          }
-          
-          // Fallback: Use first prefilled entry if URL extraction failed
-          // In standard mode (not per-URL), we don't know which server responded,
-          // so we mark the first one as reachable
-          if (!serverIp && this.result.udp.details.length > 0) {
-            const firstDetail = this.result.udp.details[0];
-            serverIp = firstDetail.serverIp;
-            port = firstDetail.port;
-          }
-          
-          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp, port);
-          
-          // Mark that we've processed the first candidate in standard mode
-          if (!this.enablePerUrlUdpTesting) {
-            this.udpStandardModeFirstCandidateProcessed = true;
-          }
+      if (!e.candidate) {
+        return;
+      }
 
+      if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
+        if (!this.enablePerUrlUdpTesting && this.udpStandardModeFirstCandidateProcessed) {
+          this.addPublicIP('udp', e.candidate.address);
           this.determineNatType(e.candidate);
+
+          return;
         }
 
-        if (e.candidate.type === ICE_CANDIDATE_TYPES.RELAY) {
-          const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
-          
-          // For TCP/XTLS relay candidates, we need to determine the server IP and port
-          let serverIp = null;
-          let serverPort = null;
-          
-          // Try to extract from candidate URL first
-          if ('url' in e.candidate) {
-            const candidateUrl = (e.candidate as any).url;
-            const parsed = parseStunUrl(candidateUrl);
-            if (parsed.host && parsed.port && isIpAddress(parsed.host)) {
-              // URL contains an IP address (typical for TCP)
-              serverIp = parsed.host;
-              serverPort = parsed.port;
-            } else if (parsed.host && !isIpAddress(parsed.host)) {
-              // URL contains domain name (typical for XTLS)
-              // Use the relay address from candidate as the actual reached IP
-              serverIp = e.candidate.address;
-              serverPort = e.candidate.port;
-            }
-          }
-          
-          // Fallback: Use relay address if URL extraction failed
-          if (!serverIp) {
-            serverIp = e.candidate.address;
-            serverPort = e.candidate.port;
-          }
-          
-          // For TCP with prefilled IP entries, check if this matches any prefilled entry
-          if (protocol === 'tcp') {
-            const unreachableDetails = this.result[protocol].details.filter(
-              (d: SubnetDetails) => d['answered-tx'] === 0
-            );
-            
-            if (unreachableDetails.length > 0) {
-              // Mark all prefilled TCP entries as reachable (conservative approach)
-              unreachableDetails.forEach((detail: SubnetDetails) => {
-                this.saveResult(protocol, latencyInMilliseconds, null, detail.serverIp, detail.port);
-              });
-            } else {
-              // No prefilled entries, create new one with relay IP
-              this.saveResult(protocol, latencyInMilliseconds, null, serverIp, serverPort);
-            }
+        let {serverIp, port} = this.extractServerInfoFromCandidate(e.candidate);
+
+        // Fallback: Use first prefilled entry if URL extraction failed
+        // In standard mode (not per-URL), we don't know which server responded,
+        // so we mark the first one as reachable
+        if (!serverIp && this.result.udp.details.length > 0) {
+          const firstDetail = this.result.udp.details[0];
+          serverIp = firstDetail.serverIp;
+          port = firstDetail.port;
+        }
+
+        this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp, port);
+
+        // Mark that we've processed the first candidate in standard mode
+        if (!this.enablePerUrlUdpTesting) {
+          this.udpStandardModeFirstCandidateProcessed = true;
+        }
+
+        this.determineNatType(e.candidate);
+      }
+
+      // Handle TCP/XTLS (relay) candidates
+      if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
+        const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
+
+        let {serverIp, port: serverPort} = this.extractServerInfoFromCandidate(e.candidate);
+
+        if (serverIp && !isIpAddress(serverIp)) {
+          serverIp = e.candidate.address;
+          serverPort = e.candidate.port;
+        }
+
+        // Fallback: Use relay address if URL extraction failed
+        if (!serverIp) {
+          serverIp = e.candidate.address;
+          serverPort = e.candidate.port;
+        }
+
+        // For TCP with prefilled IP entries, check if this matches any prefilled entry
+        if (protocol === 'tcp') {
+          const unreachableDetails = this.result[protocol].details.filter(
+            (d: SubnetDetails) => d['answered-tx'] === 0
+          );
+
+          if (unreachableDetails.length > 0) {
+            // Mark all prefilled TCP entries as reachable (conservative approach)
+            unreachableDetails.forEach((detail: SubnetDetails) => {
+              this.saveResult(protocol, latencyInMilliseconds, null, detail.serverIp, detail.port);
+            });
           } else {
-            // For XTLS, always create new entry with the relay IP (since URLs are domain names, no prefilled entries)
+            // No prefilled entries, create new one with relay IP
             this.saveResult(protocol, latencyInMilliseconds, null, serverIp, serverPort);
           }
+        } else {
+          // For XTLS, always create new entry with the relay IP (since URLs are domain names, no prefilled entries)
+          this.saveResult(protocol, latencyInMilliseconds, null, serverIp, serverPort);
         }
       }
     };
@@ -676,13 +665,12 @@ export class ClusterReachability extends EventsScope {
    * @returns {Promise}
    */
   async start(): Promise<ClusterReachabilityResult> {
-    
     if (!this.pc && !this.enablePerUrlUdpTesting) {
       LoggerProxy.logger.warn(
         `Reachability:ClusterReachability#start --> Error: peerConnection is undefined`
       );
 
-      return this.getResult();
+      return this.result;
     }
 
     // Initialize this.result as saying that nothing is reachable.
@@ -694,11 +682,31 @@ export class ClusterReachability extends EventsScope {
     this.startTimestamp = performance.now();
 
     try {
-      // Check for per-URL UDP testing (method handles its own enablement check)
-      await this.checkPerUrlReachability();
+      // Test each UDP URL individually when per-URL testing is enabled
+      if (this.enablePerUrlUdpTesting) {
+        const udpPromises = this.clusterInfo.udp.map((url) => {
+          const checker = new SubnetReachabilityChecker(
+            url,
+            (serverIp, port, latency, publicIp) => {
+              this.saveResult('udp', latency, publicIp, serverIp, port);
+            },
+            () => this.getElapsedTime()
+          );
+
+          this.perUrlCheckers.push(checker);
+
+          return checker.start();
+        });
+
+        await Promise.all(udpPromises);
+
+        // After all per-URL UDP tests complete, emit results with prefilled details
+        // This ensures unreachable subnets are reported even if no ICE candidates were received
+        this.emitResultReadyEvent('udp', 'start');
+      }
+
       // Always test TCP/XTLS normally, and UDP if per-URL is disabled
       if (!this.enablePerUrlUdpTesting || this.numTcpUrls > 0 || this.numXTlsUrls > 0) {
-        
         const offer = await this.pc.createOffer({offerToReceiveAudio: true});
 
         // Set up the state change listeners before triggering the ICE gathering
@@ -714,124 +722,30 @@ export class ClusterReachability extends EventsScope {
       LoggerProxy.logger.warn(`Reachability:ClusterReachability#start --> Error: `, error);
     }
 
-    return this.getResult();
+    return this.result;
   }
 
   /**
-   * Test each subnet URL individually when per-URL for any protocol testing is enabled
-   * Uses SubnetReachabilityChecker for individual protocol's URL checking
-   * Emits resultReady events after all per-URL tests complete
-   * Note: Only UDP supports per-URL mode as of now - TCP/XTLS use standard batch testing
-   * @returns {Promise<void>} Promise that resolves when all per-URL UDP tests complete
-   */
-  private async checkPerUrlReachability() {
-    // Only proceed if UDP per-URL testing is specifically enabled
-    if (!this.enablePerUrlUdpTesting) {
-      return;
-    }
-
-    const udpPromises = this.clusterInfo.udp.map(url => {
-      const checker = new SubnetReachabilityChecker(
-        url,
-        (serverIp, port, latency, publicIp) => {
-          this.saveResult('udp', latency, publicIp, serverIp, port);
-        },
-        () => this.getElapsedTime()
-      );
-      
-      this.perUrlCheckers.push(checker);
-      return checker.start();
-    });
-
-    await Promise.all(udpPromises);
-    
-    // After all per-URL UDP tests complete, emit results with prefilled details
-    // This ensures unreachable subnets are reported even if no ICE candidates were received
-    const udpResult = this.result.udp;
-    if (udpResult.result === 'unreachable' && udpResult.details.length > 0) {
-      // Emit unreachable result with prefilled details
-      
-      const eventData: ResultEventData = {
-        protocol: 'udp',
-        result: 'unreachable',
-        latencyInMilliseconds: 0,
-        details: udpResult.details,
-      };
-      
-      this.emit(
-        {
-          file: 'clusterReachability',
-          function: 'checkPerUrlReachability',
-        },
-        Events.resultReady,
-        eventData
-      );
-    } else if (udpResult.result === 'reachable' && udpResult.details.length > 0) {
-      // Some subnets were reachable - emit the mixed results
-      
-      const eventData: ResultEventData = {
-        protocol: 'udp',
-        result: 'reachable',
-        latencyInMilliseconds: udpResult.latencyInMilliseconds || 0,
-        clientMediaIPs: udpResult.clientMediaIPs,
-        details: udpResult.details,
-      };
-      
-      this.emit(
-        {
-          file: 'clusterReachability',
-          function: 'checkPerUrlReachability',
-        },
-        Events.resultReady,
-        eventData
-      );
-    }
-  }
-
-  /**
-   * Starts the process of gathering ICE candidates for reachability checks
-   * Registers listeners and implements a 5-second timeout to handle hung ICE gathering
-   * Emits unreachable results with prefilled details when timeout is reached
-   * @returns {Promise<void>} Promise that resolves when reachability checks complete or timeout is reached
+   * Starts the process of gathering ICE candidates
+   *
+   * @returns {Promise<void>} A promise that resolves when reachability checks for this cluster are completed or timeout is reached
    */
   private gatherIceCandidates(): Promise<void> {
     this.registerIceGatheringStateChangeListener();
     this.registerIceCandidateListener();
-
     // This block added to avoid timeout issue faced, can remove later
     // Add timeout to prevent indefinite waiting when ICE gathering hangs
     // This commonly happens when UDP is blocked by firewall
-    const GATHERING_TIMEOUT_MS = 5000; // 5 seconds for ICE gathering
-    
     const timeoutPromise = new Promise<void>((resolve) => {
       setTimeout(() => {
-        
         // Emit results for unreachable protocols with prefilled details before timeout
-        PROTOCOLS_LIST.forEach(protocol => {
-          const result = this.result[protocol];
-          if (result.result === 'unreachable' && result.details.length > 0) {
-            
-            const eventData: ResultEventData = {
-              protocol,
-              result: 'unreachable',
-              latencyInMilliseconds: 0,
-              details: result.details,
-            };
-            
-            this.emit(
-              {
-                file: 'clusterReachability',
-                function: 'gatherIceCandidates-timeout',
-              },
-              Events.resultReady,
-              eventData
-            );
-          }
+        PROTOCOLS_LIST.forEach((protocol) => {
+          this.emitResultReadyEvent(protocol, 'gatherIceCandidates-timeout');
         });
-        
+
         this.closePeerConnection();
         resolve();
-      }, GATHERING_TIMEOUT_MS);
+      }, 5000);
     });
 
     return Promise.race([this.defer.promise, timeoutPromise]);
