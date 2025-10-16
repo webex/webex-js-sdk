@@ -1375,6 +1375,25 @@ export const INITIAL_REGISTRATION_STATUS = {
   checkH264Support: false,
 };
 
+// STUN/TURN URL regex patterns for reachability testing
+export const STUN_TURN_URL_REGEX = /^(stun|turn|turns):([^:?]+)(?::(\d+))?(?:\?.*)?$/;
+export const STUN_HOST_PORT_REGEX = /^(?:udp-)?stun:([^:]+):(\d+)$/; // Handles both 'stun:host:port' and 'udp-stun:host:port' formats
+
+export const PROTOCOLS_LIST: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
+
+// Reachability testing constants
+export const TURN_TLS_PORT = 443;
+export const WEBEX_TURN_USERNAME = 'webexturnreachuser';
+export const WEBEX_TURN_CREDENTIAL = 'webexturnreachpwd';
+
+// ICE candidate types
+export const ICE_CANDIDATE_TYPES = {
+  SERVER_REFLEXIVE: 'srflx',
+  RELAY: 'relay',
+} as const;
+
+export const STUN_PREFIX = 'stun:';
+
 export const STAGE_MANAGER_TYPE = {
   LOGO: 0b001,
   BACKGROUND: 0b010,

@@ -10336,6 +10336,7 @@ __metadata:
     dotenv: ^4.0.0
     eslint: ^8.24.0
     global: ^4.4.0
+    ip-address: ^10.0.1
     ip-anonymize: ^0.1.0
     javascript-state-machine: ^3.1.0
     jsdom: 19.0.0
@@ -21811,6 +21812,13 @@ __metadata:
   dependencies:
     loose-envify: ^1.0.0
   checksum: cc3182d793aad82a8d1f0af697b462939cb46066ec48bbf1707c150ad5fad6406137e91a262022c269702e01621f35ef60269f6c0d7fd178487959809acdfb14
+  languageName: node
+  linkType: hard
+
+"ip-address@npm:^10.0.1":
+  version: 10.0.1
+  resolution: "ip-address@npm:10.0.1"
+  checksum: 525d5391cfd31a91f80f5857e98487aeaa8474e860a6725a0b6461ac8e436c7f8c869774dece391c8f8e7486306a34a4d1c094778c4c583a3f1f2cd905e5ed50
   languageName: node
   linkType: hard
 

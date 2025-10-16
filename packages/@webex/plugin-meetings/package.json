@@ -82,6 +82,7 @@
     "btoa": "^1.2.1",
     "dotenv": "^4.0.0",
     "global": "^4.4.0",
+    "ip-address": "^10.0.1",
     "ip-anonymize": "^0.1.0",
     "javascript-state-machine": "^3.1.0",
     "jwt-decode": "3.1.2",

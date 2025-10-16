@@ -427,7 +427,7 @@ class MockClusterReachability extends EventEmitter {
   isVideoMesh: boolean;
   name: string;
 
-  constructor(name: string, clusterInfo: ClusterNode) {
+  constructor(name: string, clusterInfo: ClusterNode, reachabilityEnablePerUrlForUdp: boolean = false) {
     super();
     this.name = name;
     this.isVideoMesh = clusterInfo.isVideoMesh;
@@ -499,8 +499,8 @@ describe('gatherReachability', () => {
 
     clusterReachabilityCtorStub = sinon
       .stub(ClusterReachabilityModule, 'ClusterReachability')
-      .callsFake((id, cluster) => {
-        const mockInstance = new MockClusterReachability(id, cluster);
+      .callsFake((id, cluster, reachabilityEnablePerUrlForUdp) => {
+        const mockInstance = new MockClusterReachability(id, cluster, reachabilityEnablePerUrlForUdp);
 
         mockClusterReachabilityInstances[id] = mockInstance;
         return mockInstance;
@@ -510,6 +510,7 @@ describe('gatherReachability', () => {
       enableTcpReachability: false,
       enableTlsReachability: false,
     };
+    webex.config.meetings.reachabilityEnablePerUrlForUdp = false;
   });
 
   afterEach(() => {
@@ -1257,7 +1258,7 @@ describe('gatherReachability', () => {
 
         // check that ClusterReachability instance was created for each cluster
         Object.entries(mockClusters).forEach(([id, mockCluster]) => {
-          assert.calledWith(clusterReachabilityCtorStub, id, mockCluster);
+          assert.calledWith(clusterReachabilityCtorStub, id, mockCluster, false);
         });
 
         // trigger mock result events from ClusterReachability instances
@@ -1649,14 +1650,14 @@ describe('gatherReachability', () => {
       tcp: ['tcp1.1', 'tcp1.2'],
       xtls: ['xtls1.1', 'xtls1.2'],
       isVideoMesh: false,
-    });
+    }, false);
     // cluster 2 is video mesh, so we should not do TCP or TLS reachability on it
     assert.calledWith(clusterReachabilityCtorStub, 'cluster 2', {
       udp: ['udp2.1', 'udp2.2'],
       tcp: [],
       xtls: [],
       isVideoMesh: true,
-    });
+    }, false);
 
     assert.calledOnce(mockClusterReachabilityInstances['cluster 1'].start);
     assert.calledOnce(mockClusterReachabilityInstances['cluster 2'].start);
@@ -1693,7 +1694,7 @@ describe('gatherReachability', () => {
       udp: ['testUDP1', 'testUDP2'],
       tcp: [], // empty list because TCP is disabled in config
       xtls: ['testXTLS1', 'testXTLS2'],
-    });
+    }, false); // reachabilityEnablePerUrlForUdp flag
   });
 
   it('does not do TLS reachability if it is disabled in config', async () => {
@@ -1728,7 +1729,7 @@ describe('gatherReachability', () => {
       udp: ['testUDP1', 'testUDP2'],
       tcp: ['testTCP1', 'testTCP2'],
       xtls: [], // empty list because TLS is disabled in config
-    });
+    }, false); // reachabilityEnablePerUrlForUdp flag
   });
 
   it('does not do TCP or TLS reachability if it is disabled in config', async () => {
@@ -1763,7 +1764,7 @@ describe('gatherReachability', () => {
       udp: ['testUDP1', 'testUDP2'],
       tcp: [], // empty list because TCP is disabled in config
       xtls: [], // empty list because TLS is disabled in config
-    });
+    }, false); // reachabilityEnablePerUrlForUdp flag
   });
 
   it('retry of getClusters is succesfull', async () => {
@@ -2296,22 +2297,22 @@ describe('getReachabilityResults', () => {
       // expected result (same as above, but with values converted and isVideoMesh and someOtherField stripped out):
       {
         cluster1: {
-          udp: {reachable: 'true', latencyInMilliseconds: '100'},
+          udp: {reachable: 'true', latencyInMilliseconds: '100', minLatency: 100},
           tcp: {reachable: 'false'},
           xtls: {untested: 'true'},
         },
         cluster2: {
-          udp: {reachable: 'true', latencyInMilliseconds: '200'},
+          udp: {reachable: 'true', latencyInMilliseconds: '200', minLatency: 200},
           tcp: {reachable: 'false'},
           xtls: {untested: 'true'},
         },
         cluster3: {
           udp: {reachable: 'false'},
-          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
+          tcp: {reachable: 'true', latencyInMilliseconds: '100', minLatency: 100, clientMediaIPs: ['10.10.10.10']},
           xtls: {untested: 'true'},
         },
         cluster4: {
-          udp: {reachable: 'true', latencyInMilliseconds: '300'},
+          udp: {reachable: 'true', latencyInMilliseconds: '300', minLatency: 300},
           tcp: {untested: 'true'},
           xtls: {untested: 'true'},
         },
@@ -2892,6 +2893,212 @@ describe('sendMetric', () => {
       public_xtls_result: 'fake',
       public_xtls_protocol: 'xtls',
       public_xtls_isVideoMesh: false,
+    });
+  });
+});
+
+describe('getAllClustersInfo', () => {
+  let webex;
+  let reachability: TestReachability;
+
+  beforeEach(() => {
+    webex = {
+      config: {
+        meetings: {
+          enableReachabilityChecks: true,
+        },
+      },
+    };
+    reachability = new TestReachability(webex);
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it('returns empty object when no clusters are available', async () => {
+    reachability.clusterReachability = {};
+
+    const result = await reachability.getAllClustersInfo();
+
+    assert.deepEqual(result, {});
+  });
+
+  it('returns cluster information with STUN prefixes removed from URLs', async () => {
+    const mockCluster1 = {
+      clusterInfo: {
+        udp: ['stun:udp-server1:3478', 'stun:udp-server2:3478'],
+        tcp: ['tcp-server1:443', 'tcp-server2:443'],
+        xtls: ['stun:xtls-server1:5349'],
+        isVideoMesh: false,
+      },
+    };
+    
+    const mockCluster2 = {
+      clusterInfo: {
+        udp: ['stun:vmn-udp-server:3478'],
+        tcp: [],
+        xtls: [],
+        isVideoMesh: true,
+      },
+    };
+
+    reachability.clusterReachability = {
+      cluster1: mockCluster1 as any,
+      cluster2: mockCluster2 as any,
+    };
+
+    const result = await reachability.getAllClustersInfo();
+
+    assert.deepEqual(result, {
+      cluster1: {
+        udp: ['udp-server1:3478', 'udp-server2:3478'],
+        tcp: ['tcp-server1:443', 'tcp-server2:443'],
+        xtls: ['xtls-server1:5349'],
+        isVideoMesh: false,
+      },
+      cluster2: {
+        udp: ['vmn-udp-server:3478'],
+        tcp: [],
+        xtls: [],
+        isVideoMesh: true,
+      },
+    });
+  });
+
+  it('handles URLs without STUN prefix correctly', async () => {
+    const mockCluster = {
+      clusterInfo: {
+        udp: ['udp-server:3478', 'another-server:3479'],
+        tcp: ['tcp-server:443'],
+        xtls: ['xtls-server:5349'],
+        isVideoMesh: false,
+      },
+    };
+
+    reachability.clusterReachability = {
+      testCluster: mockCluster as any,
+    };
+
+    const result = await reachability.getAllClustersInfo();
+
+    assert.deepEqual(result, {
+      testCluster: {
+        udp: ['udp-server:3478', 'another-server:3479'],
+        tcp: ['tcp-server:443'],
+        xtls: ['xtls-server:5349'],
+        isVideoMesh: false,
+      },
+    });
+  });
+
+  it('handles mixed STUN and non-STUN URLs', async () => {
+    const mockCluster = {
+      clusterInfo: {
+        udp: ['stun:stun-server:3478', 'direct-server:3479'],
+        tcp: ['stun:tcp-with-stun:443', 'tcp-no-stun:444'],
+        xtls: ['xtls-direct:5349'],
+        isVideoMesh: false,
+      },
+    };
+
+    reachability.clusterReachability = {
+      mixedCluster: mockCluster as any,
+    };
+
+    const result = await reachability.getAllClustersInfo();
+
+    assert.deepEqual(result, {
+      mixedCluster: {
+        udp: ['stun-server:3478', 'direct-server:3479'],
+        tcp: ['tcp-with-stun:443', 'tcp-no-stun:444'],
+        xtls: ['xtls-direct:5349'],
+        isVideoMesh: false,
+      },
+    });
+  });
+
+  it('preserves empty protocol arrays', async () => {
+    const mockCluster = {
+      clusterInfo: {
+        udp: ['stun:udp-server:3478'],
+        tcp: [],
+        xtls: [],
+        isVideoMesh: true,
+      },
+    };
+
+    reachability.clusterReachability = {
+      vmnCluster: mockCluster as any,
+    };
+
+    const result = await reachability.getAllClustersInfo();
+
+    assert.deepEqual(result, {
+      vmnCluster: {
+        udp: ['udp-server:3478'],
+        tcp: [],
+        xtls: [],
+        isVideoMesh: true,
+      },
+    });
+  });
+
+  it('handles multiple clusters with different configurations', async () => {
+    const mockPublicCluster = {
+      clusterInfo: {
+        udp: ['stun:public-udp1:3478', 'stun:public-udp2:3478'],
+        tcp: ['public-tcp1:443', 'public-tcp2:443'],
+        xtls: ['stun:public-xtls:5349'],
+        isVideoMesh: false,
+      },
+    };
+
+    const mockVmnCluster1 = {
+      clusterInfo: {
+        udp: ['stun:vmn1-udp:3478'],
+        tcp: [],
+        xtls: [],
+        isVideoMesh: true,
+      },
+    };
+
+    const mockVmnCluster2 = {
+      clusterInfo: {
+        udp: ['vmn2-udp:3479'],
+        tcp: [],
+        xtls: [],
+        isVideoMesh: true,
+      },
+    };
+
+    reachability.clusterReachability = {
+      publicCluster: mockPublicCluster as any,
+      vmnCluster1: mockVmnCluster1 as any,
+      vmnCluster2: mockVmnCluster2 as any,
+    };
+
+    const result = await reachability.getAllClustersInfo();
+
+    assert.deepEqual(result, {
+      publicCluster: {
+        udp: ['public-udp1:3478', 'public-udp2:3478'],
+        tcp: ['public-tcp1:443', 'public-tcp2:443'],
+        xtls: ['public-xtls:5349'],
+        isVideoMesh: false,
+      },
+      vmnCluster1: {
+        udp: ['vmn1-udp:3478'],
+        tcp: [],
+        xtls: [],
+        isVideoMesh: true,
+      },
+      vmnCluster2: {
+        udp: ['vmn2-udp:3479'],
+        tcp: [],
+        xtls: [],
+        isVideoMesh: true,
+      },
     });
   });
 });
