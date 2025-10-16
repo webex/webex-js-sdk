@@ -15,6 +15,7 @@ import uuid from 'uuid';
 
 import KMSBatcher, {TIMEOUT_SYMBOL} from './kms-batcher';
 import validateKMS, {KMSError} from './kms-certificate-validation';
+import {KMS_KEY_REDIRECT_ERROR_CODE} from './constants';
 
 const contexts = new WeakMap();
 const kmsDetails = new WeakMap();
@@ -276,10 +277,17 @@ const KMS = WebexPlugin.extend({
    * @param {UUID} options.assignedOrgId the orgId
    * @param {string} options.customerMasterKey the master key
    * @param {string} options.customerMasterKeyBackup the master key backup
+   * @param {string} options.customerMasterKeyRole the optional role associated with customerMasterKey
    * @param {boolean} options.awsKms enable amazon aws keys
    * @returns {Promise.<UploadCmkResponse>} response of upload CMK api
    */
-  uploadCustomerMasterKey({assignedOrgId, customerMasterKey, awsKms = false, customerMasterKeyBackup = undefined}) {
+  uploadCustomerMasterKey({
+    assignedOrgId,
+    customerMasterKey,
+    awsKms = false,
+    customerMasterKeyBackup = undefined,
+    customerMasterKeyRole = undefined,
+  }) {
     this.logger.info('kms: upload customer master key for byok');
 
     return this.request({
@@ -289,6 +297,7 @@ const KMS = WebexPlugin.extend({
       customerMasterKey,
       requestId: uuid.v4(),
       customerMasterKeyBackup: awsKms ? customerMasterKeyBackup : undefined,
+      customerMasterKeyRole: awsKms ? customerMasterKeyRole : undefined,
     }).then((res) => {
       this.logger.info('kms: finish to upload customer master key');
 
@@ -434,6 +443,23 @@ const KMS = WebexPlugin.extend({
       },
       {onBehalfOf}
     ).then((res) => {
+      // Handle redirect for migrated KRO, Key or Auth
+      if (res.errorCode === KMS_KEY_REDIRECT_ERROR_CODE && res.redirectUri) {
+        this.logger.info('kms: handling redirect for migrated resource', res.redirectUri);
+
+        return this.request(
+          {
+            method: 'retrieve',
+            uri: res.redirectUri,
+          },
+          {onBehalfOf}
+        ).then((redirectRes) => {
+          this.logger.info('kms: fetched key from redirect');
+
+          return this.asKey(redirectRes.key);
+        });
+      }
+
       this.logger.info('kms: fetched key');
 
       return this.asKey(res.key);

@@ -59,18 +59,16 @@ const MeetingUtil = {
       );
     }
 
-    return meeting.locusMediaRequest
-      .send({
-        type: 'LocalMute',
-        selfUrl: meeting.selfUrl,
-        mediaId: meeting.mediaId,
-        sequence: meeting.locusInfo.sequence,
-        muteOptions: {
-          audioMuted,
-          videoMuted,
-        },
-      })
-      .then((response) => response?.body?.locus);
+    return meeting.locusMediaRequest.send({
+      type: 'LocalMute',
+      selfUrl: meeting.selfUrl,
+      mediaId: meeting.mediaId,
+      sequence: meeting.locusInfo.sequence,
+      muteOptions: {
+        audioMuted,
+        videoMuted,
+      },
+    });
   },
 
   hasOwner: (info) => info && info.owner,
@@ -113,6 +111,28 @@ const MeetingUtil = {
     }
 
     return IP_VERSION.unknown;
+  },
+
+  /**
+   * Returns CA event labels related to Orpheus ipver parameter that can be sent to CA with any CA event
+   * @param {any} webex instance
+   * @returns {Array<string>|undefined} array of CA event labels or undefined if no labels should be sent
+   */
+  getCaEventLabelsForIpVersion(webex: any): Array<string> | undefined {
+    const ipver = MeetingUtil.getIpVersion(webex);
+
+    switch (ipver) {
+      case IP_VERSION.unknown:
+        return undefined;
+      case IP_VERSION.only_ipv4:
+        return ['hasIpv4_true'];
+      case IP_VERSION.only_ipv6:
+        return ['hasIpv6_true'];
+      case IP_VERSION.ipv4_and_ipv6:
+        return ['hasIpv4_true', 'hasIpv6_true'];
+      default:
+        return undefined;
+    }
   },
 
   joinMeeting: async (meeting, options) => {
@@ -197,6 +217,17 @@ const MeetingUtil = {
         });
 
         return parsed;
+      })
+      .catch((err) => {
+        webex.internal.newMetrics.submitClientEvent({
+          name: 'client.locus.join.response',
+          payload: {
+            identifiers: {meetingLookupUrl: meeting.meetingInfo?.meetingLookupUrl},
+          },
+          options: {meetingId: meeting.id, rawError: err},
+        });
+
+        throw err;
       });
   },
 
@@ -207,6 +238,10 @@ const MeetingUtil = {
     meeting.breakouts.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
     meeting.locusMediaRequest = undefined;
+
+    meeting.webex?.internal?.newMetrics?.callDiagnosticMetrics?.clearEventLimitsForCorrelationId(
+      meeting.correlationId
+    );
 
     // make sure we send last metrics before we close the peerconnection
     const stopStatsAnalyzer = meeting.statsAnalyzer
@@ -328,10 +363,57 @@ const MeetingUtil = {
     meeting.resourceId = meeting.resourceId || options.resourceId;
 
     if (meeting.requiredCaptcha) {
-      return Promise.reject(new CaptchaError());
+      const errorToThrow = new CaptchaError();
+
+      // @ts-ignore
+      webex.internal.newMetrics.submitClientEvent({
+        name: 'client.meetinginfo.response',
+        options: {
+          meetingId: meeting.id,
+        },
+        payload: {
+          errors: [
+            {
+              fatal: false,
+              category: 'expected',
+              name: 'other',
+              shownToUser: false,
+              errorCode: errorToThrow.code,
+              errorDescription: errorToThrow.name,
+              rawErrorMessage: errorToThrow.sdkMessage,
+            },
+          ],
+        },
+      });
+
+      return Promise.reject(errorToThrow);
     }
+
     if (meeting.passwordStatus === PASSWORD_STATUS.REQUIRED) {
-      return Promise.reject(new PasswordError());
+      const errorToThrow = new PasswordError();
+
+      // @ts-ignore
+      webex.internal.newMetrics.submitClientEvent({
+        name: 'client.meetinginfo.response',
+        options: {
+          meetingId: meeting.id,
+        },
+        payload: {
+          errors: [
+            {
+              fatal: false,
+              category: 'expected',
+              name: 'other',
+              shownToUser: false,
+              errorCode: errorToThrow.code,
+              errorDescription: errorToThrow.name,
+              rawErrorMessage: errorToThrow.sdkMessage,
+            },
+          ],
+        },
+      });
+
+      return Promise.reject(errorToThrow);
     }
 
     if (options.pin) {
@@ -542,10 +624,22 @@ const MeetingUtil = {
   canStartManualCaption: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_START),
 
+  isLocalRecordingStarted: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.LOCAL_RECORDING_STATUS_STARTED),
+
+  isLocalRecordingStopped: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.LOCAL_RECORDING_STATUS_STOPPED),
+
+  isLocalRecordingPaused: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.LOCAL_RECORDING_STATUS_PAUSED),
+
   canStopManualCaption: (displayHints) => displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STOP),
 
   isManualCaptionActive: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STATUS_ACTIVE),
+
+  isSpokenLanguageAutoDetectionEnabled: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.SPOKEN_LANGUAGE_AUTO_DETECTION_ENABLED),
 
   isWebexAssistantActive: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.WEBEX_ASSISTANT_STATUS_ACTIVE),
@@ -602,22 +696,20 @@ const MeetingUtil = {
   },
 
   /**
-   * Updates the locus info for the meeting with the delta locus
-   * returned from requests that include the sequence information
+   * Updates the locus info for the meeting with the locus
+   * information returned from API requests made to Locus
    * Returns the original response object
    * @param {Object} meeting The meeting object
    * @param {Object} response The response of the http request
    * @returns {Object}
    */
-  updateLocusWithDelta: (meeting, response) => {
+  updateLocusFromApiResponse: (meeting, response) => {
     if (!meeting) {
       return response;
     }
 
-    const locus = response?.body?.locus;
-
-    if (locus) {
-      meeting.locusInfo.handleLocusDelta(locus, meeting);
+    if (response?.body?.locus) {
+      meeting.locusInfo.handleLocusAPIResponse(meeting, response.body);
     }
 
     return response;
@@ -664,7 +756,7 @@ const MeetingUtil = {
 
       return meeting
         .request(options)
-        .then((response) => MeetingUtil.updateLocusWithDelta(meeting, response));
+        .then((response) => MeetingUtil.updateLocusFromApiResponse(meeting, response));
     };
 
     return locusDeltaRequest;

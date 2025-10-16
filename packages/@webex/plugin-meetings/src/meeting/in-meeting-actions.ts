@@ -38,8 +38,13 @@ interface IInMeetingActions {
   isClosedCaptionActive?: boolean;
   canStartManualCaption?: boolean;
   canStopManualCaption?: boolean;
+  isLocalRecordingStarted?: boolean;
+  isLocalRecordingStopped?: boolean;
+  isLocalRecordingPaused?: boolean;
+
   isManualCaptionActive?: boolean;
   isSaveTranscriptsEnabled?: boolean;
+  isSpokenLanguageAutoDetectionEnabled?: boolean;
   isWebexAssistantActive?: boolean;
   canViewCaptionPanel?: boolean;
   isRealTimeTranslationEnabled?: boolean;
@@ -173,9 +178,17 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canStopManualCaption = null;
 
+  isLocalRecordingStopped = null;
+
+  isLocalRecordingStarted = null;
+
+  isLocalRecordingPaused = null;
+
   isManualCaptionActive = null;
 
   isSaveTranscriptsEnabled = null;
+
+  isSpokenLanguageAutoDetectionEnabled = null;
 
   isWebexAssistantActive = null;
 
@@ -347,9 +360,13 @@ export default class InMeetingActions implements IInMeetingActions {
     canStopTranscribing: this.canStopTranscribing,
     isClosedCaptionActive: this.isClosedCaptionActive,
     canStartManualCaption: this.canStartManualCaption,
+    isLocalRecordingStarted: this.isLocalRecordingStarted,
+    isLocalRecordingStopped: this.isLocalRecordingStopped,
+    isLocalRecordingPaused: this.isLocalRecordingPaused,
     canStopManualCaption: this.canStopManualCaption,
     isManualCaptionActive: this.isManualCaptionActive,
     isSaveTranscriptsEnabled: this.isSaveTranscriptsEnabled,
+    isSpokenLanguageAutoDetectionEnabled: this.isSpokenLanguageAutoDetectionEnabled,
     isWebexAssistantActive: this.isWebexAssistantActive,
     canViewCaptionPanel: this.canViewCaptionPanel,
     isRealTimeTranslationEnabled: this.isRealTimeTranslationEnabled,

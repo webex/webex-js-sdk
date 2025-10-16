@@ -2,6 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
+import {v4 as uuid} from 'uuid';
 import {METRIC_EVENT, METRIC_TYPE, UPLOAD_LOGS_ACTION} from '../Metrics/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 import {getMetricManager} from '../Metrics';
@@ -137,7 +138,7 @@ import {LineError, createLineError} from '../Errors/catalog/LineError';
 export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl: string) {
   const logContext = {
     file: UTILS_FILE,
-    method: filterMobiusUris.name,
+    method: 'filterMobiusUris',
   };
 
   const urisArrayPrimary = [];
@@ -892,7 +893,7 @@ export function parseMediaQualityStatistics(stats: RTCStatsReport): CallRtpStats
   if (!stats || navigator.userAgent.indexOf('Firefox') !== -1) {
     log.info('RTCStatsReport is null, adding dummy stats', {
       file: UTILS_FILE,
-      method: parseMediaQualityStatistics.name,
+      method: 'parseMediaQualityStatistics',
     });
 
     return DUMMY_METRICS as unknown as CallRtpStats;
@@ -1077,13 +1078,13 @@ export function parseMediaQualityStatistics(stats: RTCStatsReport): CallRtpStats
     byeStats[RTP_RX_STAT] = rxStat;
     byeStats[RTP_TX_STAT] = txStat;
 
-    log.log(JSON.stringify(byeStats), {file: UTILS_FILE, method: parseMediaQualityStatistics.name});
+    log.log(JSON.stringify(byeStats), {file: UTILS_FILE, method: 'parseMediaQualityStatistics'});
 
     return byeStats as CallRtpStats;
   } catch (err: unknown) {
     log.warn(`Caught error while parsing RTP stats, ${err}`, {
       file: UTILS_FILE,
-      method: parseMediaQualityStatistics.name,
+      method: 'parseMediaQualityStatistics',
     });
 
     return DUMMY_METRICS as unknown as CallRtpStats;
@@ -1153,6 +1154,15 @@ export async function getXsiActionEndpoint(
           uri: `${webex.internal.services._serviceUrls.hydra}/${XSI_ACTION_ENDPOINT_ORG_URL_PARAM}`,
           method: HTTP_METHODS.GET,
         });
+
+        log.log(
+          `Response code: ${userIdResponse.statusCode}, Response trackingid: ${userIdResponse?.headers?.trackingid}`,
+          {
+            file: UTILS_FILE,
+            method: 'getXsiActionEndpoint',
+          }
+        );
+
         const response = userIdResponse.body as WebexRequestPayload;
 
         const xsiEndpoint = response[ITEMS][0][XSI_ACTION_ENDPOINT];
@@ -1165,6 +1175,15 @@ export async function getXsiActionEndpoint(
           uri: `${webex.internal.services._serviceUrls.wdm}/${DEVICES}`,
           method: HTTP_METHODS.GET,
         });
+
+        log.log(
+          `Response code: ${bwTokenResponse.statusCode}, Response trackingid: ${bwTokenResponse?.headers?.trackingid}`,
+          {
+            file: UTILS_FILE,
+            method: 'getXsiActionEndpoint',
+          }
+        );
+
         const response = bwTokenResponse.body as WebexRequestPayload;
 
         let xsiEndpoint = response[DEVICES][0][SETTINGS][BW_XSI_URL];
@@ -1261,14 +1280,24 @@ export async function scimQuery(filter: string) {
   const scimUrl = `${webexHost}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
   const query = scimUrl + encodeURIComponent(filter);
 
-  return <WebexRequestPayload>(<unknown>webex.request({
+  const response = await (<WebexRequestPayload>(<unknown>webex.request({
     uri: query,
     method: HTTP_METHODS.GET,
     headers: {
       [CISCO_DEVICE_URL]: webex.internal.device.url,
       [SPARK_USER_AGENT]: CALLING_USER_AGENT,
     },
-  }));
+  })));
+
+  log.log(
+    `Response code: ${response.statusCode}, Response trackingid: ${response?.headers?.trackingid}`,
+    {
+      file: UTILS_FILE,
+      method: 'scimQuery',
+    }
+  );
+
+  return response;
 }
 
 /**
@@ -1548,7 +1577,7 @@ export function modifySdpForIPv4(sdp: string): string {
     if (hasIPv6CLine) {
       log.info('Modifying SDP for IPv4 compatibility', {
         file: UTILS_FILE,
-        method: modifySdpForIPv4.name,
+        method: 'modifySdpForIPv4',
       });
 
       // Extract an existing IPv4 candidate's IP, if available
@@ -1596,7 +1625,7 @@ export function modifySdpForIPv4(sdp: string): string {
   } catch (error) {
     log.warn(`Error modifying SDP for IPv4 compatibility: ${error}`, {
       file: UTILS_FILE,
-      method: modifySdpForIPv4.name,
+      method: 'modifySdpForIPv4',
     });
 
     return sdp; // Return original SDP in case of an error
@@ -1615,7 +1644,8 @@ export async function uploadLogs(
   throwError = false
 ): Promise<UploadLogsResponse | undefined> {
   const webex = SDKConnector.getWebex();
-  const feedbackId = crypto.randomUUID();
+  // const feedbackId = crypto.randomUUID();
+  const feedbackId = uuid();
   try {
     const response = await webex.internal.support.submitLogs(
       {...metaData, feedbackId},
@@ -1633,7 +1663,10 @@ export async function uploadLogs(
       METRIC_TYPE.BEHAVIORAL,
       response?.trackingid,
       feedbackId,
-      metaData?.correlationId
+      metaData?.correlationId,
+      undefined,
+      metaData?.callId,
+      metaData?.broadworksCorrelationInfo
     );
 
     return {
@@ -1641,6 +1674,9 @@ export async function uploadLogs(
       ...(response.url ? {url: response.url} : {}),
       ...(response.userId ? {userId: response.userId} : {}),
       ...(response.correlationId ? {correlationId: response.correlationId} : {}),
+      ...(metaData?.broadworksCorrelationInfo
+        ? {broadworksCorrelationInfo: metaData?.broadworksCorrelationInfo}
+        : {}),
       feedbackId,
     };
   } catch (error) {
@@ -1654,9 +1690,12 @@ export async function uploadLogs(
       METRIC_EVENT.UPLOAD_LOGS_FAILED,
       UPLOAD_LOGS_ACTION,
       METRIC_TYPE.BEHAVIORAL,
+      undefined,
       feedbackId,
       metaData?.correlationId,
-      errorLog.message
+      errorLog.message,
+      metaData?.callId,
+      metaData?.broadworksCorrelationInfo
     );
 
     if (throwError) {

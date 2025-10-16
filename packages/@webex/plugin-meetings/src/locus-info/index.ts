@@ -31,6 +31,51 @@ import LocusDeltaParser from './parser';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
+export type LocusDTO = {
+  controls?: any;
+  fullState?: {
+    active: boolean;
+    count: number;
+    lastActive: string;
+    locked: boolean;
+    sessionId: string;
+    seessionIds: string[];
+    startTime: number;
+    state: string;
+    type: string;
+  };
+  host?: {
+    id: string;
+    incomingCallProtocols: any[];
+    isExternal: boolean;
+    name: string;
+    orgId: string;
+  };
+  info?: any;
+  links?: any;
+  mediaShares?: any[];
+  meetings?: any[];
+  participants: any[];
+  replaces?: any[];
+  self?: any;
+  sequence?: {
+    dirtyParticipants: number;
+    entries: number[];
+    rangeEnd: number;
+    rangeStart: number;
+    sequenceHash: number;
+    sessionToken: string;
+    since: string;
+    totalParticipants: number;
+  };
+  syncUrl?: string;
+  url?: string;
+};
+
+export type LocusApiResponseBody = {
+  locus: LocusDTO; // this LocusDTO here might not be the full one (for example it won't have all the participants, but it should have self)
+};
+
 /**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object
  * @export
@@ -93,19 +138,26 @@ export default class LocusInfo extends EventsScope {
    * Does a Locus sync. It tries to get the latest delta DTO or if it can't, it falls back to getting the full Locus DTO.
    *
    * @param {Meeting} meeting
+   * @param {boolean} isLocusUrlChanged
+   * @param {Locus} locus
    * @returns {undefined}
    */
-  private doLocusSync(meeting: any) {
-    let isDelta;
+  private doLocusSync(meeting: any, isLocusUrlChanged: boolean, locus: any) {
     let url;
+    let isDelta = false;
     let meetingDestroyed = false;
 
-    if (this.locusParser.workingCopy.syncUrl) {
+    if (isLocusUrlChanged) {
+      // for the locus url changed case from breakout to main session, we should always do a full sync, in this case, the url from locus is always on main session,
+      // so use the main session locus url to get the full locus(full participants list in the response).
+      // for the locus url changed case from main session to breakout, we don't need to care about it here,
+      // because it is a USE_INCOMING case, it will not be executed here.
+      url = locus.url;
+    } else if (this.locusParser.workingCopy?.syncUrl) {
       url = this.locusParser.workingCopy.syncUrl;
       isDelta = true;
     } else {
       url = meeting.locusUrl;
-      isDelta = false;
     }
 
     LoggerProxy.logger.info(
@@ -217,6 +269,7 @@ export default class LocusInfo extends EventsScope {
    */
   applyLocusDeltaData(action: string, locus: any, meeting: any) {
     const {DESYNC, USE_CURRENT, USE_INCOMING, WAIT, LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
+    const isLocusUrlChanged = action === LOCUS_URL_CHANGED;
 
     switch (action) {
       case USE_INCOMING:
@@ -228,7 +281,7 @@ export default class LocusInfo extends EventsScope {
         break;
       case DESYNC:
       case LOCUS_URL_CHANGED:
-        this.doLocusSync(meeting);
+        this.doLocusSync(meeting, isLocusUrlChanged, locus);
         break;
       default:
         LoggerProxy.logger.info(
@@ -286,7 +339,7 @@ export default class LocusInfo extends EventsScope {
     this.updateLocusCache(locus);
     // above section only updates the locusInfo object
     // The below section makes sure it updates the locusInfo as well as updates the meeting object
-    this.updateParticipants(locus.participants);
+    this.updateParticipants(locus.participants, []);
     // For 1:1 space meeting the conversation Url does not exist in locus.conversation
     this.updateConversationUrl(locus.conversationUrl, locus.info);
     this.updateControls(locus.controls, locus.self);
@@ -316,6 +369,16 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Handles HTTP response from Locus API call.
+   * @param {Meeting} meeting meeting object
+   * @param {LocusApiResponseBody} responseBody body of the http response from Locus API call
+   * @returns {void}
+   */
+  handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
+    this.handleLocusDelta(responseBody.locus, meeting);
+  }
+
+  /**
    * @param {Meeting} meeting
    * @param {Object} data
    * @returns {undefined}
@@ -326,6 +389,8 @@ export default class LocusInfo extends EventsScope {
     const {eventType} = data;
     const locus = this.getTheLocusToUpdate(data.locus);
     LoggerProxy.logger.info(`Locus-info:index#parse --> received locus data: ${eventType}`);
+
+    locus.jsSdkMeta = {removedParticipantIds: []};
 
     switch (eventType) {
       case LOCUSEVENT.PARTICIPANT_JOIN:
@@ -392,7 +457,11 @@ export default class LocusInfo extends EventsScope {
     this.participants = locus.participants;
     const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.updateLocusInfo(locus);
-    this.updateParticipants(locus.participants, isReplaceMembers);
+    this.updateParticipants(
+      locus.participants,
+      locus.jsSdkMeta?.removedParticipantIds,
+      isReplaceMembers
+    );
     this.isMeetingActive();
     this.handleOneOnOneEvent(eventType);
     this.updateEmbeddedApps(locus.embeddedApps);
@@ -454,7 +523,11 @@ export default class LocusInfo extends EventsScope {
     const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.mergeParticipants(this.participants, locus.participants);
     this.updateLocusInfo(locus);
-    this.updateParticipants(locus.participants, isReplaceMembers);
+    this.updateParticipants(
+      locus.participants,
+      locus.jsSdkMeta?.removedParticipantIds,
+      isReplaceMembers
+    );
     this.isMeetingActive();
   }
 
@@ -745,11 +818,12 @@ export default class LocusInfo extends EventsScope {
   /**
    * update meeting's members
    * @param {Object} participants new participants object
+   * @param {Array} removedParticipantIds list of removed participants
    * @param {Boolean} isReplace is replace the whole members
    * @returns {Array} updatedParticipants
    * @memberof LocusInfo
    */
-  updateParticipants(participants: object, isReplace?: boolean) {
+  updateParticipants(participants: object, removedParticipantIds?: string[], isReplace?: boolean) {
     this.emitScoped(
       {
         file: 'locus-info',
@@ -758,6 +832,7 @@ export default class LocusInfo extends EventsScope {
       EVENTS.LOCUS_INFO_UPDATE_PARTICIPANTS,
       {
         participants,
+        removedParticipantIds,
         recordingId: this.parsedLocus.controls && this.parsedLocus.controls.record?.modifiedBy,
         selfIdentity: this.parsedLocus.self && this.parsedLocus.self.selfIdentity,
         selfId: this.parsedLocus.self && this.parsedLocus.self.selfId,
@@ -1254,10 +1329,7 @@ export default class LocusInfo extends EventsScope {
    */
   updateMeetingInfo(info: object, self?: object) {
     const roles = self ? SelfUtils.getRoles(self) : this.parsedLocus.self?.roles || [];
-    if (
-      (info && !isEqual(this.info, info)) ||
-      (roles.length && !isEqual(this.roles, roles) && info)
-    ) {
+    if ((info && !isEqual(this.info, info)) || (!isEqual(this.roles, roles) && info)) {
       const isJoined = SelfUtils.isJoined(self || this.parsedLocus.self);
       const parsedInfo = InfoUtils.getInfos(this.parsedLocus.info, info, roles, isJoined);
 

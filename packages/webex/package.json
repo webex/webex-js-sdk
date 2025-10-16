@@ -26,7 +26,7 @@
     "directory": "packages/webex"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browser": {
     "./dist/config-storage.js": "./dist/config-storage.shim.js",
@@ -49,6 +49,7 @@
     "deploy:npm": "yarn npm publish"
   },
   "devDependencies": {
+    "@babel/core": "^7.22.11",
     "@webex/babel-config-legacy": "workspace:*",
     "@webex/eslint-config-legacy": "workspace:*",
     "@webex/jest-config-legacy": "workspace:*",
@@ -60,6 +61,7 @@
     "@webex/test-helper-mock-webex": "workspace:*",
     "@webex/test-helper-test-users": "workspace:*",
     "eslint": "^8.24.0",
+    "prettier": "^2.7.1",
     "sinon": "^9.2.4",
     "webex": "workspace:*"
   },
@@ -68,6 +70,7 @@
     "@babel/runtime-corejs2": "^7.14.8",
     "@webex/calling": "workspace:*",
     "@webex/common": "workspace:*",
+    "@webex/contact-center": "workspace:*",
     "@webex/internal-plugin-calendar": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-dss": "workspace:*",
@@ -78,7 +81,6 @@
     "@webex/internal-plugin-voicea": "workspace:*",
     "@webex/plugin-attachment-actions": "workspace:*",
     "@webex/plugin-authorization": "workspace:*",
-    "@webex/plugin-cc": "workspace:*",
     "@webex/plugin-device-manager": "workspace:*",
     "@webex/plugin-encryption": "workspace:*",
     "@webex/plugin-logger": "workspace:*",

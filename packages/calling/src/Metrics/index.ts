@@ -1,8 +1,15 @@
 import {CallError, CallingClientError} from '../Errors';
 import {METRIC_FILE, VERSION} from '../CallingClient/constants';
-import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../common/types';
+import {CallId, CorrelationId, IDeviceInfo, MobiusServers, ServiceIndicator} from '../common/types';
 import {WebexSDK} from '../SDKConnector/types';
-import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT, SERVER_TYPE} from './types';
+import {
+  REG_ACTION,
+  IMetricManager,
+  METRIC_TYPE,
+  METRIC_EVENT,
+  SERVER_TYPE,
+  CONNECTION_ACTION,
+} from './types';
 import {LineError} from '../Errors/catalog/LineError';
 import log from '../Logger';
 
@@ -28,6 +35,34 @@ class MetricManager implements IMetricManager {
     this.serviceIndicator = indicator;
   }
 
+  public submitConnectionMetrics(
+    name: METRIC_EVENT,
+    metricAction: CONNECTION_ACTION,
+    type: METRIC_TYPE,
+    downTimestamp: string,
+    upTimestamp: string
+  ) {
+    const metricData = {
+      tags: {
+        metricAction,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: this.serviceIndicator,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        downTimestamp,
+        upTimestamp,
+      },
+      type,
+    };
+
+    if (metricData) {
+      this.webex.internal.metrics.submitClientMetrics(name, metricData);
+    }
+  }
+
   public submitUploadLogsMetric(
     name: METRIC_EVENT,
     action: string,
@@ -36,52 +71,50 @@ class MetricManager implements IMetricManager {
     feedbackId?: string,
     correlationId?: string,
     stack?: string,
-    callId?: string
+    callId?: string,
+    broadworksCorrelationInfo?: string
   ) {
     let data;
 
+    const commonData = {
+      tags: {
+        action,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: this.serviceIndicator,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        correlation_id: correlationId,
+        broadworksCorrelationInfo,
+        tracking_id: trackingId,
+        feedback_id: feedbackId,
+        call_id: callId,
+      },
+      type,
+    };
+
     switch (name) {
       case METRIC_EVENT.UPLOAD_LOGS_SUCCESS: {
-        data = {
-          tags: {
-            action,
-            device_id: this.deviceInfo?.device?.deviceId,
-            service_indicator: this.serviceIndicator,
-          },
-          fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-            correlation_id: correlationId,
-            tracking_id: trackingId,
-            feedback_id: feedbackId,
-            call_id: callId,
-          },
-          type,
-        };
+        data = commonData;
+
         break;
       }
+
       case METRIC_EVENT.UPLOAD_LOGS_FAILED: {
         data = {
-          tags: {
-            action,
-            device_id: this.deviceInfo?.device?.deviceId,
-            service_indicator: this.serviceIndicator,
-          },
+          ...commonData,
           fields: {
-            device_url: this.deviceInfo?.device?.clientDeviceUri,
-            mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-            correlation_id: correlationId,
-            tracking_id: trackingId,
-            feedback_id: feedbackId,
+            ...commonData.fields,
             error: stack,
-            call_id: callId,
           },
-          type,
         };
+
+        break;
       }
     }
+
     if (data) {
       this.webex.internal.metrics.submitClientMetrics(name, data);
     }
@@ -92,6 +125,78 @@ class MetricManager implements IMetricManager {
    */
   public setDeviceInfo(deviceInfo: IDeviceInfo) {
     this.deviceInfo = deviceInfo;
+  }
+
+  /**
+   * @param name - Name of the metric being submitted.
+   * @param metricAction - Type of action sent in the metric.
+   * @param type - Type of metric.
+   * @param region - Region string.
+   * @param trackingId - Tracking ID string.
+   */
+  public submitRegionInfoMetric(
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    mobiusHost: string,
+    clientRegion: string,
+    countryCode: string,
+    trackingId?: string
+  ) {
+    const data = {
+      tags: {
+        action: metricAction,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: ServiceIndicator.CALLING,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        mobius_host: mobiusHost,
+        client_region: clientRegion,
+        country_code: countryCode,
+        tracking_id: trackingId,
+      },
+      type,
+    };
+
+    this.webex.internal.metrics.submitClientMetrics(name, data);
+  }
+
+  /**
+   * @param name - Name of the metric being submitted.
+   * @param metricAction - Type of action sent in the metric.
+   * @param type - Type of metric.
+   * @param mobiusServers - Array of Mobius server objects.
+   */
+  public submitMobiusServersMetric(
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    mobiusServers: MobiusServers,
+    trackingId?: string
+  ) {
+    const data = {
+      tags: {
+        action: metricAction,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: ServiceIndicator.CALLING,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        primary_mobius_servers_region: mobiusServers.primary.region,
+        primary_mobius_servers_uris: mobiusServers.primary.uris.join(','),
+        backup_mobius_servers_region: mobiusServers.backup.region,
+        backup_mobius_servers_uris: mobiusServers.backup.uris.join(','),
+        tracking_id: trackingId,
+      },
+      type,
+    };
+
+    this.webex.internal.metrics.submitClientMetrics(name, data);
   }
 
   /**

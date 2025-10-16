@@ -19,7 +19,7 @@
     "directory": "packages/@webex/plugin-meetings"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browserify": {
     "transform": [
@@ -43,7 +43,6 @@
     "@webex/eslint-config-legacy": "workspace:*",
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
-    "@webex/plugin-meetings": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
     "@webex/test-helper-chai": "workspace:*",
     "@webex/test-helper-mocha": "workspace:*",
@@ -62,8 +61,8 @@
   },
   "dependencies": {
     "@webex/common": "workspace:*",
-    "@webex/event-dictionary-ts": "^1.0.1819",
-    "@webex/internal-media-core": "2.18.5",
+    "@webex/event-dictionary-ts": "^1.0.1930",
+    "@webex/internal-media-core": "2.19.0",
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",

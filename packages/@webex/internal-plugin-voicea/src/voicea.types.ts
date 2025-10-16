@@ -70,6 +70,7 @@ interface TranscriptionResponse {
   csis: number[];
   data: string;
   command_response: string;
+  language: string;
 }
 /**
  * Type for CaptionLanguageResponse

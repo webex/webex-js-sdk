@@ -8,7 +8,7 @@ import {get, merge} from 'lodash';
 import {Timer} from '@webex/common-timers';
 
 import {
-  MakeMeetingRequestOptions,
+  AiAssistantRequestOptions,
   RequestOptions,
   RequestResponse,
   SummarizeMeetingOptions,
@@ -25,7 +25,9 @@ import {
   ACTION_TYPES,
   CONTENT_TYPES,
   CONTEXT_RESOURCE_TYPES,
+  RESPONSE_NAMES,
 } from './constants';
+import {decryptCitedAnswer, decryptMessage, decryptToolUse, decryptWorkspace} from './utils';
 
 const AIAssistant = WebexPlugin.extend({
   namespace: 'AIAssistant',
@@ -153,16 +155,37 @@ const AIAssistant = WebexPlugin.extend({
   },
 
   /**
-   * Decrypts the encrypted value using the encryption key URL
-   * @param {Object} options
-   * @param {string} options.value the encrypted value to decrypt
-   * @param {string} options.encryptionKeyUrl the encryption key URL to use for
-   * @returns {Promise<Object>} returns a promise that resolves with the decrypted value
+   * Decrypts the response content in place
+   * @param {any} responseContent the content object from the assistant-api response
+   * @returns {Promise} resolves once decryption is complete
    */
-  async _decryptData({value, encryptionKeyUrl}) {
-    const result = await this.webex.internal.encryption.decryptText(encryptionKeyUrl, value);
-
-    return result;
+  async _decryptContent(responseContent) {
+    switch (responseContent.name) {
+      case RESPONSE_NAMES.MESSAGE: {
+        await decryptMessage(responseContent, this.webex);
+        break;
+      }
+      case RESPONSE_NAMES.CITED_ANSWER: {
+        await decryptCitedAnswer(responseContent, this.webex);
+        break;
+      }
+      case RESPONSE_NAMES.TOOL_RESULT: {
+        // No encrypted content in tool_result
+        break;
+      }
+      case RESPONSE_NAMES.TOOL_USE: {
+        await decryptToolUse(responseContent, this.webex);
+        break;
+      }
+      case RESPONSE_NAMES.WORKSPACE: {
+        await decryptWorkspace(responseContent, this.webex);
+        break;
+      }
+      default:
+        this.logger.error(
+          `AI assistant->_decryptContent#ERROR, Unknown response content name: ${responseContent.name}`
+        );
+    }
   },
 
   /**
@@ -170,17 +193,15 @@ const AIAssistant = WebexPlugin.extend({
    * @param {Object} options
    * @param {string} options.resource the URL to query
    * @param {Mixed} options.params additional params for the body of the request
-   * @param {string} options.dataPath the path to get the data in the result object
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   _request(options: RequestOptions): Promise<RequestResponse> {
-    const {resource, params, dataPath} = options;
+    const {resource, params} = options;
 
     const timeout = this.config.requestTimeout;
-    const requestId = uuid.v4();
+    const requestId = options.requestId || uuid.v4();
     const eventName = this._getResultEventName(requestId);
     const streamEventName = this._getStreamEventName(requestId);
-    let concatenatedMessage = '';
 
     // eslint-disable-next-line no-async-promise-executor
     return new Promise((resolve, reject) => {
@@ -196,80 +217,36 @@ const AIAssistant = WebexPlugin.extend({
 
       this.listenTo(this, eventName, async (data) => {
         timer.reset();
-        const resultData = get(data, dataPath, []);
+        const resultData = get(data, 'response.content', {});
         const errorMessage = get(data, 'response.errorMessage');
         const errorCode = get(data, 'response.errorCode');
+        const responseType = get(data, 'responseType');
 
         if (data.finished) {
-          // For finished messages, decrypt and emit the final complete message
           timer.cancel();
-
-          try {
-            let decryptedMessage;
-            if (resultData?.value) {
-              decryptedMessage = await this._decryptData(resultData);
-            }
-
-            // Emit the final message with entire response object plus legacy properties
-            this.trigger(
-              streamEventName,
-              merge({}, data.response, {
-                message: decryptedMessage || '',
-                requestId,
-                finished: true,
-                errorMessage,
-                errorCode,
-              })
-            );
-
-            this.stopListening(this, eventName);
-          } catch (decryptError) {
-            this.trigger(
-              streamEventName,
-              merge({}, data.response, {
-                message: concatenatedMessage,
-                requestId,
-                finished: true,
-                errorMessage: errorMessage || decryptError.message,
-                errorCode,
-              })
-            );
-          }
-        } else {
-          // For non-finished messages, concatenate and emit the accumulated message
-          try {
-            let decryptedMessage = '';
-            if (resultData?.value) {
-              decryptedMessage = await this._decryptData(resultData);
-            }
-
-            concatenatedMessage += decryptedMessage;
-
-            // Emit the concatenated message so far with entire response object plus legacy properties
-            this.trigger(
-              streamEventName,
-              merge({}, data.response, {
-                message: concatenatedMessage,
-                requestId,
-                finished: false,
-                errorMessage,
-                errorCode,
-              })
-            );
-          } catch (decryptError) {
-            // If decryption fails, we still want to continue listening for more messages
-            this.trigger(
-              streamEventName,
-              merge({}, data.response, {
-                message: concatenatedMessage,
-                requestId,
-                finished: false,
-                errorMessage: errorMessage || decryptError.message,
-                errorCode,
-              })
-            );
-          }
+          this.stopListening(this, eventName);
         }
+
+        let decryptErrorMessage;
+
+        try {
+          if (!errorCode) {
+            await this._decryptContent(resultData);
+          }
+        } catch (decryptError) {
+          decryptErrorMessage = decryptError.message;
+        }
+
+        this.trigger(
+          streamEventName,
+          merge({}, data.response, {
+            responseType,
+            requestId,
+            finished: data.finished,
+            errorMessage: errorMessage || decryptErrorMessage,
+            errorCode,
+          })
+        );
       });
 
       this.webex
@@ -280,13 +257,14 @@ const AIAssistant = WebexPlugin.extend({
           contentType: 'application/json',
           body: {clientRequestId: requestId, ...params},
         })
-        .catch((error) => {
-          reject(error);
-        })
         .then(({body}) => {
           resolve({...body, requestId, streamEventName});
-          timer.start();
+        })
+        .catch((error) => {
+          reject(error);
         });
+
+      timer.start();
     });
   },
 
@@ -301,9 +279,12 @@ const AIAssistant = WebexPlugin.extend({
    * @param {Object} options.parameters optional parameters to include in the request (for action type only)
    * @param {Object} options.assistant optional parameter to specify the assistant to use
    * @param {Object} options.locale optional locale to use for the request, defaults to 'en_US'
+   * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
+   * @public
+   * @memberof AIAssistant
    */
-  async _makeMeetingRequest(options: MakeMeetingRequestOptions): Promise<RequestResponse> {
+  async makeAiAssistantRequest(options: AiAssistantRequestOptions): Promise<RequestResponse> {
     let value = options.contentValue;
 
     if (options.contentType === 'message') {
@@ -322,19 +303,19 @@ const AIAssistant = WebexPlugin.extend({
       value,
     };
 
-    if (options.contentType === 'action' && options.parameters) {
+    if (options.parameters) {
       content.parameters = options.parameters;
     }
 
     return this._request({
       resource: options.sessionId ? `sessions/${options.sessionId}/messages` : 'sessions/messages',
-      dataPath: 'response.content',
       params: {
         async: 'chunked',
         locale: options.locale || 'en_US',
         content,
         ...(options.assistant ? {assistant: options.assistant} : {}),
       },
+      ...(options.requestId ? {requestId: options.requestId} : {}),
     });
   },
 
@@ -346,10 +327,11 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
    * @param {number} options.lastMinutes Optional number of minutes to summarize from the end of the meeting. If not included, summarizes from the start.
+   * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   summarizeMeeting(options: SummarizeMeetingOptions): Promise<RequestResponse> {
-    return this._makeMeetingRequest({
+    return this.makeAiAssistantRequest({
       ...options,
       contentType: CONTENT_TYPES.ACTION,
       contentValue: ACTION_TYPES.SUMMARIZE_FOR_ME,
@@ -371,10 +353,11 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.meetingSite the name.webex.com site for the meeting
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
+   * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   wasMyNameMentioned(options: SummarizeMeetingOptions): Promise<RequestResponse> {
-    return this._makeMeetingRequest({
+    return this.makeAiAssistantRequest({
       ...options,
       contextResources: [
         {
@@ -395,10 +378,11 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.meetingSite the name.webex.com site for the meeting
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
+   * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   showAllActionItems(options: SummarizeMeetingOptions): Promise<RequestResponse> {
-    return this._makeMeetingRequest({
+    return this.makeAiAssistantRequest({
       ...options,
       contextResources: [
         {
@@ -433,10 +417,11 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
    * @param {string} options.question the question to ask about the meeting content
+   * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   askMeAnything(options: SummarizeMeetingOptions & {question: string}): Promise<RequestResponse> {
-    return this._makeMeetingRequest({
+    return this.makeAiAssistantRequest({
       ...options,
       contextResources: [
         {

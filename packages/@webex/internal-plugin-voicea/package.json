@@ -11,12 +11,11 @@
     "directory": "packages/@webex/internal-plugin-voicea"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "dependencies": {
     "@webex/internal-plugin-llm": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
-    "@webex/plugin-meetings": "workspace:*",
     "@webex/webex-core": "workspace:*",
     "uuid": "^3.3.2"
   },
