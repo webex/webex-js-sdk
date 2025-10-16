@@ -1001,8 +1001,7 @@ export default class Reachability extends EventsScope {
       const cluster = clusterList[key];
 
       // @ts-ignore
-      const reachabilityEnablePerUrlForUdp =
-        this.webex?.config?.meetings?.reachabilityEnablePerUrlForUdp === true;
+      const reachabilityEnablePerUrlForUdp = this.webex?.config?.meetings?.reachabilityEnablePerUrlForUdp === true;
 
       this.clusterReachability[key] = new ClusterReachability(
         key,
