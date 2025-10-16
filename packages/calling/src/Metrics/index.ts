@@ -2,7 +2,14 @@ import {CallError, CallingClientError} from '../Errors';
 import {METRIC_FILE, VERSION} from '../CallingClient/constants';
 import {CallId, CorrelationId, IDeviceInfo, MobiusServers, ServiceIndicator} from '../common/types';
 import {WebexSDK} from '../SDKConnector/types';
-import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT, SERVER_TYPE} from './types';
+import {
+  REG_ACTION,
+  IMetricManager,
+  METRIC_TYPE,
+  METRIC_EVENT,
+  SERVER_TYPE,
+  CONNECTION_ACTION,
+} from './types';
 import {LineError} from '../Errors/catalog/LineError';
 import log from '../Logger';
 
@@ -26,6 +33,34 @@ class MetricManager implements IMetricManager {
     log.info('Initializing metric manager...', {file: METRIC_FILE});
     this.webex = webex;
     this.serviceIndicator = indicator;
+  }
+
+  public submitConnectionMetrics(
+    name: METRIC_EVENT,
+    metricAction: CONNECTION_ACTION,
+    type: METRIC_TYPE,
+    downTimestamp: string,
+    upTimestamp: string
+  ) {
+    const metricData = {
+      tags: {
+        metricAction,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: this.serviceIndicator,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        downTimestamp,
+        upTimestamp,
+      },
+      type,
+    };
+
+    if (metricData) {
+      this.webex.internal.metrics.submitClientMetrics(name, metricData);
+    }
   }
 
   public submitUploadLogsMetric(

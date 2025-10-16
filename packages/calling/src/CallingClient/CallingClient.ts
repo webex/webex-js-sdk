@@ -47,13 +47,13 @@ import {
   IP_ENDPOINT,
   SPARK_USER_AGENT,
   URL_ENDPOINT,
-  NETWORK_FLAP_TIMEOUT,
   API_V1,
   MOBIUS_US_PROD,
   MOBIUS_EU_PROD,
   MOBIUS_US_INT,
   MOBIUS_EU_INT,
   METHODS,
+  NETWORK_FLAP_TIMEOUT,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -62,6 +62,7 @@ import {
   REG_ACTION,
   METRIC_TYPE,
   IMetricManager,
+  CONNECTION_ACTION,
   MOBIUS_SERVER_ACTION,
 } from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
@@ -102,6 +103,16 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   public mediaEngine: typeof Media;
 
   private lineDict: Record<string, ILine> = {};
+
+  private isNetworkDown = false;
+
+  private networkDownTimestamp = '';
+
+  private networkUpTimestamp = '';
+
+  private mercuryDownTimestamp = '';
+
+  private mercuryUpTimestamp = '';
 
   /**
    * @ignore
@@ -180,8 +191,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.registerCallsClearedListener();
   }
 
-  // async calls required to run after constructor
-
   /**
    * Initializes the `CallingClient` by performing the following steps:
    *
@@ -224,48 +233,162 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     await this.getMobiusServers();
     await this.createLine();
 
-    /* Better to run the timer once rather than after every registration */
-    this.detectNetworkChange();
+    this.setupNetworkEventListeners();
   }
 
   /**
-   * Register callbacks for network changes.
+   * Ping a reliable external endpoint with a short timeout to infer connectivity.
    */
-  private async detectNetworkChange() {
+  private async checkNetworkReachability(): Promise<boolean> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      // Using a common connectivity check endpoint that returns 204 with minimal payload.
+      // no-cors mode yields an opaque response but a successful fetch implies reachability.
+      await fetch('https://www.google.com/generate_204', {
+        method: 'GET',
+        cache: 'no-cache',
+        mode: 'no-cors',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      return true;
+    } catch (error) {
+      log.warn(`Network connectivity probe failed: ${error}`, {
+        file: CALLING_CLIENT_FILE,
+        method: 'pingExternal',
+      });
+
+      return false;
+    }
+  }
+
+  private async checkCallStatus() {
+    const loggerContext = {
+      file: CALLING_CLIENT_FILE,
+      method: 'checkCallStatus',
+    };
+    const calls = Object.values(this.callManager.getActiveCalls());
+    for (const call of calls) {
+      call
+        .postStatus()
+        .then(() => {
+          log.info(`Call is active`, loggerContext);
+          /*
+           * Media Renegotiation Possibility if call keepalive succeeds,
+           * for cases like WebRTC disconnect and media inactivity.
+           */
+        })
+        .catch((err) => {
+          log.warn(`Call Keepalive failed: ${err}`, loggerContext);
+
+          call.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
+        });
+    }
+  }
+
+  private handleNetworkOffline = async () => {
+    this.networkDownTimestamp = new Date().toISOString();
+    this.isNetworkDown = !(await this.checkNetworkReachability());
+    log.warn(`Network has gone down, wait for it to come back up`, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.NETWORK_OFFLINE,
+    });
+
+    if (this.isNetworkDown) {
+      const line = Object.values(this.lineDict)[0];
+      line.registration.clearKeepaliveTimer();
+    }
+  };
+
+  // Wondering if we should keep this for timestamp recording purpose
+  private handleNetworkOnline = () => {
     log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
-      method: METHODS.DETECT_NETWORK_CHANGE,
+      method: METHODS.NETWORK_ONLINE,
     });
-    let retry = false;
+    this.networkUpTimestamp = new Date().toISOString();
+  };
 
-    // this is a temporary logic to get registration obj
-    // it will change once we have proper lineId and multiple lines as well
-    const line = Object.values(this.lineDict)[0];
+  private handleMercuryOffline = () => {
+    log.warn(`Mercury down, waiting for connection to be up`, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.MERCURY_OFFLINE,
+    });
+    this.mercuryDownTimestamp = new Date().toISOString();
+    this.metricManager.submitConnectionMetrics(
+      METRIC_EVENT.CONNECTION_ERROR,
+      CONNECTION_ACTION.MERCURY_DOWN,
+      METRIC_TYPE.BEHAVIORAL,
+      this.mercuryDownTimestamp,
+      this.mercuryUpTimestamp
+    );
+  };
 
-    setInterval(async () => {
-      if (
-        !this.webex.internal.mercury.connected &&
-        !retry &&
-        !Object.keys(this.callManager.getActiveCalls()).length
-      ) {
-        log.warn(`Network has flapped, waiting for mercury connection to be up`, {
-          file: CALLING_CLIENT_FILE,
-          method: METHODS.DETECT_NETWORK_CHANGE,
-        });
+  private handleMercuryOnline = async () => {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.MERCURY_ONLINE,
+    });
+    this.mercuryUpTimestamp = new Date().toISOString();
+    if (this.isNetworkDown) {
+      const callCheckInterval = setInterval(async () => {
+        if (!Object.keys(this.callManager.getActiveCalls()).length) {
+          clearInterval(callCheckInterval);
+          const line = Object.values(this.lineDict)[0];
 
-        line.registration.clearKeepaliveTimer();
-
-        retry = true;
-      }
-
-      if (retry && this.webex.internal.mercury.connected) {
-        if (line.getStatus() !== RegistrationStatus.IDLE) {
-          retry = await line.registration.handleConnectionRestoration(retry);
-        } else {
-          retry = false;
+          if (line.getStatus() !== RegistrationStatus.IDLE) {
+            this.isNetworkDown = await line.registration.handleConnectionRestoration(
+              this.isNetworkDown
+            );
+          } else {
+            this.isNetworkDown = false;
+          }
         }
+      }, NETWORK_FLAP_TIMEOUT);
+
+      if (Object.keys(this.callManager.getActiveCalls()).length) {
+        await this.checkCallStatus();
       }
-    }, NETWORK_FLAP_TIMEOUT);
+
+      this.metricManager.submitConnectionMetrics(
+        METRIC_EVENT.CONNECTION_ERROR,
+        CONNECTION_ACTION.NETWORK_FLAP,
+        METRIC_TYPE.BEHAVIORAL,
+        this.networkDownTimestamp,
+        this.networkUpTimestamp
+      );
+    } else {
+      if (Object.keys(this.callManager.getActiveCalls()).length) {
+        await this.checkCallStatus();
+      }
+      this.metricManager.submitConnectionMetrics(
+        METRIC_EVENT.CONNECTION_ERROR,
+        CONNECTION_ACTION.MERCURY_UP,
+        METRIC_TYPE.BEHAVIORAL,
+        this.mercuryDownTimestamp,
+        this.mercuryUpTimestamp
+      );
+    }
+  };
+
+  private setupNetworkEventListeners(): void {
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener('online', this.handleNetworkOnline);
+
+      window.addEventListener('offline', this.handleNetworkOffline);
+    }
+
+    this.webex.internal.mercury.on('offline', () => {
+      this.handleMercuryOffline();
+    });
+
+    this.webex.internal.mercury.on('online', () => {
+      this.handleMercuryOnline();
+    });
   }
 
   /**

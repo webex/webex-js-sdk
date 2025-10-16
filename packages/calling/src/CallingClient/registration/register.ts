@@ -565,9 +565,9 @@ export class Registration implements IRegistration {
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
-        log.log('Mercury connection is up again, re-registering with Webex Calling if needed', {
+        log.log('Network is up again, re-registering with Webex Calling if needed', {
           file: REGISTRATION_FILE,
-          method: this.handleConnectionRestoration.name,
+          method: METHODS.HANDLE_CONNECTION_RESTORATION,
         });
         this.clearKeepaliveTimer();
         if (this.isDeviceRegistered()) {
@@ -588,11 +588,11 @@ export class Registration implements IRegistration {
            * it back to primary.
            */
           const abort = await this.restorePreviousRegistration(
-            this.handleConnectionRestoration.name
+            METHODS.HANDLE_CONNECTION_RESTORATION
           );
 
           if (!abort && !this.isDeviceRegistered()) {
-            await this.restartRegistration(this.handleConnectionRestoration.name);
+            await this.restartRegistration(METHODS.HANDLE_CONNECTION_RESTORATION);
           }
         }
         retry = false;
