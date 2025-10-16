@@ -3,20 +3,18 @@ import {v4 as uuid} from 'uuid';
 import {HTTP_METHODS, KeepaliveStatusMessage, WorkerMessageType} from '../../common/types';
 
 let keepaliveTimer: NodeJS.Timeout | undefined;
-let trackingId: string;
 
 const messageHandler = (event: MessageEvent) => {
   const {type} = event.data;
 
   const postKeepAlive = async (accessToken: string, deviceUrl: string, url: string) => {
-    trackingId = `web_worker_${uuid()}`;
     const response = await fetch(`${url}/status`, {
       method: HTTP_METHODS.POST,
       headers: {
         'cisco-device-url': deviceUrl,
         'spark-user-agent': 'webex-calling/beta',
         Authorization: `${accessToken}`,
-        trackingId,
+        trackingId: `web_worker_${uuid()}`,
       },
     });
 
@@ -49,15 +47,23 @@ const messageHandler = (event: MessageEvent) => {
           }
           keepAliveRetryCount = 0;
         } catch (err: any) {
-          keepAliveRetryCount += 1;
-          const errorBody = await err.json();
+          const headers = {} as Record<string, string>;
+          if (err.headers.has('Retry-After')) {
+            headers['retry-after'] = err.headers.get('Retry-After');
+          }
+
+          if (err.headers.has('Trackingid')) {
+            // eslint-disable-next-line dot-notation
+            headers['trackingid'] = err.headers.get('Trackingid');
+          }
+
           const error = {
-            body: errorBody,
+            headers,
             statusCode: err.status,
             statusText: err.statusText,
-            trackingId,
             type: err.type,
           };
+          keepAliveRetryCount += 1;
           postMessage({
             type: WorkerMessageType.KEEPALIVE_FAILURE,
             err: error,

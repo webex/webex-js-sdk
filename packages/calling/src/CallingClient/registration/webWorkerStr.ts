@@ -30,20 +30,18 @@ const WorkerMessageType = {
 };
 
 let keepaliveTimer;
-let trackingId;
 
 const messageHandler = (event) => {
   const {type} = event.data;
 
   const postKeepAlive = async (accessToken, deviceUrl, url) => {
-    trackingId = \`web_worker_\${uuid()}\`;
     const response = await fetch(\`\${url}/status\`, {
       method: HTTP_METHODS.POST,
       headers: {
         'cisco-device-url': deviceUrl,
         'spark-user-agent': 'webex-calling/beta',
         Authorization: \`\${accessToken}\`,
-        trackingId,
+        trackingId: \`web_worker_\${uuid()}\`,
       },
     });
 
@@ -76,14 +74,22 @@ const messageHandler = (event) => {
           }
           keepAliveRetryCount = 0;
         } catch (err) {
-          const errorBody = await err.json();
+          let headers = {};
+          if(err.headers.has('Retry-After')) {
+            headers['retry-after'] = err.headers.get('Retry-After');
+          } 
+
+          if(err.headers.has('Trackingid')) {
+            headers['trackingid'] = err.headers.get('Trackingid');
+          }   
+
           const error = {
-            body: errorBody,
+            headers,
             statusCode: err.status,
             statusText: err.statusText,
-            trackingId,
             type: err.type,
           };
+
           keepAliveRetryCount += 1
           self.postMessage({
             type: WorkerMessageType.KEEPALIVE_FAILURE,

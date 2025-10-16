@@ -1,7 +1,6 @@
 import {v4 as uuid} from 'uuid';
 import messageHandler from './webWorker';
 import {WorkerMessageType} from '../../common/types';
-import {mockPostResponse} from './registerFixtures';
 
 (global as any).self = global;
 
@@ -73,12 +72,19 @@ describe('webWorker', () => {
     });
     expect(postMessageSpy).not.toHaveBeenCalled();
 
-    const fakeFailureRespponse = {
+    const failureHeaders = {
+      has: (key: string) => key === 'Retry-After' || key === 'Trackingid',
+      get: (key: string) =>
+        // eslint-disable-next-line no-nested-ternary
+        key === 'Retry-After' ? '10' : key === 'Trackingid' ? 'web_worker_mock-uuid' : null,
+    } as any;
+    const fakeFailureResponse = {
       ok: false,
-      status: 401,
-      json: () => Promise.resolve(mockPostResponse),
-    };
-    (global.fetch as jest.Mock).mockResolvedValue(fakeFailureRespponse);
+      status: 429,
+      statusText: 'Too Many Requests',
+      headers: failureHeaders,
+    } as any;
+    (global.fetch as jest.Mock).mockResolvedValue(fakeFailureResponse);
 
     messageHandler({
       data: {
@@ -96,25 +102,28 @@ describe('webWorker', () => {
 
     expect((global.fetch as jest.Mock).mock.calls.length).toBe(2);
     expect(postMessageSpy).toHaveBeenCalledWith({
+      type: WorkerMessageType.KEEPALIVE_FAILURE,
       err: {
-        body: mockPostResponse,
-        statusCode: 401,
-        statusText: undefined,
-        trackingId: 'web_worker_mock-uuid',
+        headers: {'retry-after': '10', trackingid: 'web_worker_mock-uuid'},
+        statusCode: 429,
+        statusText: 'Too Many Requests',
         type: undefined,
       },
       keepAliveRetryCount: 1,
-      type: 'KEEPALIVE_FAILURE',
     });
   });
 
   it('should post KEEPALIVE_FAILURE when fetch fails', async () => {
+    const failureHeaders2 = {
+      has: (key: string) => key === 'Trackingid',
+      get: (key: string) => (key === 'Trackingid' ? 'web_worker_mock-uuid' : null),
+    } as any;
     (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: false, // Indicate a non-OK response
-      status: 401, // Mock the status code
-      statusText: 'Not Found', // Mock status text
-      json: () => Promise.resolve(mockPostResponse),
-    });
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized',
+      headers: failureHeaders2,
+    } as any);
 
     messageHandler({
       data: {
@@ -132,10 +141,9 @@ describe('webWorker', () => {
     expect(postMessageSpy).toHaveBeenCalledWith({
       type: WorkerMessageType.KEEPALIVE_FAILURE,
       err: {
-        body: mockPostResponse,
+        headers: {trackingid: 'web_worker_mock-uuid'},
         statusCode: 401,
-        statusText: 'Not Found',
-        trackingId: 'web_worker_mock-uuid',
+        statusText: 'Unauthorized',
         type: undefined,
       },
       keepAliveRetryCount: 1,
@@ -144,12 +152,16 @@ describe('webWorker', () => {
 
   it('should post KEEPALIVE_SUCCESS after a failure when fetch succeeds', async () => {
     // Set fetch so that first tick rejects (failure) and second tick resolves (success)
+    const failureHeaders3 = {
+      has: (key: string) => key === 'Trackingid',
+      get: (key: string) => (key === 'Trackingid' ? 'web_worker_mock-uuid' : null),
+    } as any;
     const mockError = {
-      ok: false, // Indicate a non-OK response
-      status: 401, // Mock the status code
-      statusText: 'Not Found', // Mock status text
-      json: () => Promise.resolve(mockPostResponse),
-    };
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      headers: failureHeaders3,
+    } as any;
 
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce(mockError)

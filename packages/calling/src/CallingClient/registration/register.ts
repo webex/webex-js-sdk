@@ -852,7 +852,7 @@ export class Registration implements IRegistration {
                     METRIC_TYPE.BEHAVIORAL,
                     KEEPALIVE_UTIL,
                     serverType,
-                    event.data.err.trackingId ?? '',
+                    error.headers?.trackingid ?? '',
                     event.data.keepAliveRetryCount,
                     clientError
                   );
