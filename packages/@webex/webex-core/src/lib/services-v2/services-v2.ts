@@ -1,6 +1,6 @@
 import sha256 from 'crypto-js/sha256';
 
-import {union, unionBy} from 'lodash';
+import {toNumber, union, unionBy} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from '../metrics';
@@ -159,9 +159,8 @@ const Services = WebexPlugin.extend({
         serviceGroup = 'postauth';
         break;
     }
-
     // confirm catalog update for group is not in progress.
-    if (catalog.status[serviceGroup].collecting) {
+    if (catalog.status?.[serviceGroup]?.collecting) {
       return this.waitForCatalog(serviceGroup);
     }
 
@@ -196,7 +195,11 @@ const Services = WebexPlugin.extend({
       forceRefresh,
     })
       .then((serviceHostMap: ServiceHostmap) => {
-        catalog.updateServiceGroups(serviceGroup, serviceHostMap);
+        catalog.updateServiceGroups(
+          serviceGroup,
+          serviceHostMap?.services,
+          serviceHostMap?.timestamp
+        );
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
       })
@@ -345,7 +348,56 @@ const Services = WebexPlugin.extend({
         })
     );
   },
+  /**
+   * Update cluster id via mercury service update. If the cluster id does not exist,
+   * fetch new catalog.
+   *
+   * @param {ActiveServices} newActiveClusters - The new active clusters to switch to.
+   * @returns {Promsie<void>}
+   * */
+  switchActiveClusterIds(newActiveClusters: ActiveServices): Promise<void> {
+    this.logger.info('services: switching active cluster ids');
 
+    const newActiveClusterIds = Object.values(newActiveClusters);
+
+    const missingClusterIds = newActiveClusterIds.some((clusterId) => {
+      // if the clusterId does not exist in the catalog, fetch the catalog
+      return !this._services.find((service) => service.id === clusterId);
+    });
+
+    if (missingClusterIds) {
+      this.logger.warn(
+        'services: some cluster ids do not exist in the catalog, fetching the catalog'
+      );
+
+      // fetch the catalog
+      return this.initServiceCatalogs(true);
+    }
+    // update the active services
+    this._updateActiveServices(newActiveClusters);
+    this.logger.info('services: active cluster ids updated successfully');
+
+    return Promise.resolve();
+  },
+
+  /**
+   * Invalidate cache via mercury notification. If the timestamp is newer than current,
+   * refetch catalog services.
+   *
+   * @param {string} timestamp - The timestamp of invalidation notification.
+   * @returns {Promsie<void>}
+   * */
+  invalidateCache(timestamp: string): Promise<void> {
+    this.logger.info('services: invalidate cache, timestamp:', timestamp);
+    const lastTime = toNumber(this._getCatalog()?.timestamp) || 0;
+    const invalidateTime = toNumber(timestamp) || 0;
+    if (invalidateTime > lastTime) {
+      this.logger.info('services: invalidateCache, refresh services');
+      this.initServiceCatalogs(true);
+    }
+
+    return Promise.resolve();
+  },
   /**
    * Get user meeting preferences (preferred webex site).
    *
@@ -462,7 +514,11 @@ const Services = WebexPlugin.extend({
 
     const serviceHostMap = this._formatReceivedHostmap(hostMap);
 
-    return catalog.updateServiceGroups(serviceGroup, serviceHostMap);
+    return catalog.updateServiceGroups(
+      serviceGroup,
+      serviceHostMap?.services,
+      serviceHostMap?.timestamp
+    );
   },
 
   /**
@@ -698,8 +754,14 @@ const Services = WebexPlugin.extend({
    * catalog endpoint.
    * @returns {Array<Service>}
    */
-  _formatReceivedHostmap({services, activeServices}) {
-    const formattedHostmap = services.map((service) => this._formatHostMapEntry(service));
+  _formatReceivedHostmap({services, activeServices, timestamp, orgId, format}) {
+    const formattedHostmap: ServiceHostmap = {
+      activeServices,
+      services: services.map((service) => this._formatHostMapEntry(service)),
+      timestamp,
+      orgId,
+      format,
+    };
     this._updateActiveServices(activeServices);
     this._updateServices(services);
 
@@ -927,10 +989,10 @@ const Services = WebexPlugin.extend({
 
   /**
    * Make the initial requests to collect the root catalogs.
-   *
+   * @param {boolean} refresh - Is need force update
    * @returns {Promise<void, Error>} - Errors if the token is unavailable.
    */
-  initServiceCatalogs(): Promise<void> {
+  initServiceCatalogs(refresh = false): Promise<void> {
     this.logger.info('services: initializing initial service catalogs');
 
     // Destructure the credentials plugin.
@@ -943,12 +1005,12 @@ const Services = WebexPlugin.extend({
         // Get the user's OrgId.
         .then(() => credentials.getOrgId())
         // Begin collecting the preauth/limited catalog.
-        .then((orgId) => this.collectPreauthCatalog({orgId}))
+        .then((orgId) => this.collectPreauthCatalog({orgId}, refresh))
         .then(() => {
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
             // Attempt to collect the postauth catalog.
-            return this.updateServices().catch(() => {
+            return this.updateServices({forceRefresh: refresh}).catch(() => {
               this.initFailed = true;
               this.logger.warn('services: cannot retrieve postauth catalog');
             });
