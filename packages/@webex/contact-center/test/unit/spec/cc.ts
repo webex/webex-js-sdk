@@ -118,6 +118,7 @@ describe('webex.cc', () => {
       },
       config: {
         getAgentConfig: jest.fn(),
+        getOutdialAniEntries: jest.fn(),
       },
       webSocketManager: mockWebSocketManager,
       connectionService: {
@@ -161,7 +162,7 @@ describe('webex.cc', () => {
     };
 
     jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
-    jest.spyOn(Services, 'getInstance').mockReturnValue(mockServicesInstance);
+    jest.spyOn(Services, 'getInstance').mockReturnValue(mockServicesInstance as any);
     jest.spyOn(TaskManager, 'getTaskManager').mockReturnValue(mockTaskManager);
     jest.spyOn(WebexRequest, 'getInstance').mockReturnValue(mockWebexRequest);
     // Instantiate ContactCenter to ensure it's fully initialized
@@ -1316,7 +1317,7 @@ describe('webex.cc', () => {
   });
 
   describe('startOutdial', () => {
-    it('should make outdial call successfully.', async () => {
+    it('should make outdial call successfully without origin.', async () => {
       // Setup outDialEp.
       webex.cc.agentConfig = {
         outDialEp: 'test-entry-point',
@@ -1325,9 +1326,10 @@ describe('webex.cc', () => {
       // destination number required for making outdial call.
       const destination = '1234567890';
 
-      // Construct Payload for startOutdial.
+      // Construct Payload for startOutdial without origin.
       const newPayload = {
         destination,
+        origin: undefined,
         entryPointId: 'test-entry-point',
         direction: OUTDIAL_DIRECTION,
         attributes: ATTRIBUTES,
@@ -1342,6 +1344,49 @@ describe('webex.cc', () => {
         .mockResolvedValue(mockResponse);
 
       const result = await webex.cc.startOutdial(destination);
+
+      // Verify logging calls
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting outbound dial', {
+        module: CC_FILE,
+        method: 'startOutdial',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Outbound dial completed successfully', {
+        module: CC_FILE,
+        method: 'startOutdial',
+      });
+
+      expect(startOutdialMock).toHaveBeenCalledWith({data: newPayload});
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should make outdial call successfully with origin.', async () => {
+      // Setup outDialEp.
+      webex.cc.agentConfig = {
+        outDialEp: 'test-entry-point',
+      };
+
+      // destination number and origin for making outdial call.
+      const destination = '1234567890';
+      const origin = '+19403016307';
+
+      // Construct Payload for startOutdial with origin.
+      const newPayload = {
+        destination,
+        origin,
+        entryPointId: 'test-entry-point',
+        direction: OUTDIAL_DIRECTION,
+        attributes: ATTRIBUTES,
+        mediaType: OUTDIAL_MEDIA_TYPE,
+        outboundType: OUTBOUND_TYPE,
+      } as const;
+
+      const mockResponse = {} as AgentContact;
+
+      const startOutdialMock = jest
+        .spyOn(webex.cc.services.dialer, 'startOutdial')
+        .mockResolvedValue(mockResponse);
+
+      const result = await webex.cc.startOutdial(destination, origin);
 
       // Verify logging calls
       expect(LoggerProxy.info).toHaveBeenCalledWith('Starting outbound dial', {
@@ -1929,6 +1974,209 @@ describe('webex.cc', () => {
         loginOption: data.loginOption,
         dialNumber: data.dialNumber,
       });
+    });
+  });
+
+  describe('getOutdialAniEntries', () => {
+    const mockOutdialANI = 'ani-123-456';
+    const mockParams = {
+      outdialANI: mockOutdialANI,
+      page: 0,
+      pageSize: 10,
+      search: 'test',
+      filter: 'active=true',
+      attributes: 'id,name,number',
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      // Reset orgId mock to return valid value
+      webex.credentials.getOrgId.mockReturnValue('mockOrgId');
+    });
+
+    it('should successfully fetch outdial ANI entries and track success metrics', async () => {
+      const mockResult = [
+        {
+          id: '142fba3c-8502-4446-bf6e-584fd657553a',
+          name: 'Test Entry',
+          number: '+19403016307',
+        },
+        {
+          id: '6f53000b-e04a-4418-9de9-ba511d2367cb',
+          name: 'Another Entry',
+          number: '+19403016308',
+        },
+      ];
+
+      // Mock the service call to return successful result
+      webex.cc.services.config.getOutdialAniEntries.mockResolvedValue(mockResult);
+
+      const result = await webex.cc.getOutdialAniEntries(mockParams);
+
+      // Verify the service was called with correct parameters
+      expect(webex.cc.services.config.getOutdialAniEntries).toHaveBeenCalledWith('mockOrgId', {
+        outdialANI: mockOutdialANI,
+        page: 0,
+        pageSize: 10,
+        search: 'test',
+        filter: 'active=true',
+        attributes: 'id,name,number',
+      });
+
+      // Verify the result is returned correctly
+      expect(result).toEqual(mockResult);
+
+      // Verify success metrics are tracked
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_SUCCESS,
+        {
+          outdialANI: mockOutdialANI,
+          resultCount: 2,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      // Verify success logging
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        `Successfully retrieved outdial ANI entries for ANI ID ${mockOutdialANI}`,
+        {
+          module: CC_FILE,
+          method: 'getOutdialAniEntries',
+        }
+      );
+    });
+
+    it('should handle empty results and track success metrics with zero count', async () => {
+      const mockResult = [];
+
+      // Mock the service call to return empty result
+      webex.cc.services.config.getOutdialAniEntries.mockResolvedValue(mockResult);
+
+      const result = await webex.cc.getOutdialAniEntries({outdialANI: mockOutdialANI});
+
+      // Verify the result is returned correctly
+      expect(result).toEqual(mockResult);
+
+      // Verify success metrics are tracked with zero count
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_SUCCESS,
+        {
+          outdialANI: mockOutdialANI,
+          resultCount: 0,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+    });
+
+    it('should handle undefined results and track success metrics with zero count', async () => {
+      // Mock the service call to return undefined
+      webex.cc.services.config.getOutdialAniEntries.mockResolvedValue(undefined);
+
+      const result = await webex.cc.getOutdialAniEntries({outdialANI: mockOutdialANI});
+
+      // Verify the result is returned correctly
+      expect(result).toBeUndefined();
+
+      // Verify success metrics are tracked with zero count
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_SUCCESS,
+        {
+          outdialANI: mockOutdialANI,
+          resultCount: 0,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+    });
+
+    it('should handle service failure and track failure metrics', async () => {
+      const mockError = new Error('Service unavailable') as any;
+      mockError.details = {
+        trackingId: 'test-tracking-id',
+        orgId: 'mockOrgId',
+        error: 'Service error',
+      };
+
+      // Mock the service call to throw an error
+      webex.cc.services.config.getOutdialAniEntries.mockRejectedValue(mockError);
+
+      // Mock getErrorDetails to return a detailed error
+      const detailedError = new Error('Detailed service error');
+      getErrorDetailsSpy.mockReturnValue({error: detailedError});
+
+      await expect(webex.cc.getOutdialAniEntries(mockParams)).rejects.toThrow('Detailed service error');
+
+      // Verify failure metrics are tracked
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(mockError.details),
+          outdialANI: mockOutdialANI,
+          error: mockError,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      // Verify error logging
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `Failed to fetch outdial ANI entries for ANI ID ${mockOutdialANI} due to: ${mockError}`,
+        {
+          module: CC_FILE,
+          method: 'getOutdialAniEntries',
+          trackingId: 'test-tracking-id',
+        }
+      );
+
+      // Verify getErrorDetails was called
+      expect(getErrorDetailsSpy).toHaveBeenCalledWith(
+        mockError,
+        'getOutdialAniEntries',
+        CC_FILE
+      );
+    });
+
+    it('should throw error when orgId is not found', async () => {
+      // Mock getOrgId to return null
+      webex.credentials.getOrgId.mockReturnValue(null);
+
+      await expect(webex.cc.getOutdialAniEntries(mockParams)).rejects.toThrow('Org ID not found.');
+
+      // Verify error logging
+      expect(LoggerProxy.error).toHaveBeenCalledWith('Org ID not found.', {
+        module: CC_FILE,
+        method: 'getOutdialAniEntries',
+      });
+
+      // Verify service was not called
+      expect(webex.cc.services.config.getOutdialAniEntries).not.toHaveBeenCalled();
+
+      // Verify no metrics were tracked
+      expect(mockMetricsManager.trackEvent).not.toHaveBeenCalled();
+    });
+
+    it('should handle minimal parameters correctly', async () => {
+      const minimalParams = {outdialANI: mockOutdialANI};
+      const mockResult = [{id: 'test', name: 'Test', number: '+1234567890'}];
+
+      webex.cc.services.config.getOutdialAniEntries.mockResolvedValue(mockResult);
+
+      const result = await webex.cc.getOutdialAniEntries(minimalParams);
+
+      // Verify the service was called with minimal parameters
+      expect(webex.cc.services.config.getOutdialAniEntries).toHaveBeenCalledWith('mockOrgId', {
+        outdialANI: mockOutdialANI,
+      });
+
+      expect(result).toEqual(mockResult);
+
+      // Verify success metrics are tracked
+      expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+        METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_SUCCESS,
+        {
+          outdialANI: mockOutdialANI,
+          resultCount: 1,
+        },
+        ['behavioral', 'business', 'operational']
+      );
     });
   });
 });
