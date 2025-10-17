@@ -15,7 +15,7 @@ import SDKConnector from '../SDKConnector';
 
 import log from '../Logger';
 import {
-  CONTACTS_FILE,
+  CONTACTS_CLIENT,
   CONTACTS_SCHEMA,
   CONTACT_FILTER,
   DEFAULT_GROUP_NAME,
@@ -80,7 +80,7 @@ export class ContactsClient implements IContacts {
     this.contacts = undefined;
     this.defaultGroupId = '';
 
-    log.setLogger(logger.level, CONTACTS_FILE);
+    log.setLogger(logger.level, CONTACTS_CLIENT);
   }
 
   /**
@@ -265,7 +265,7 @@ export class ContactsClient implements IContacts {
     inputList: SCIMListResponse
   ): Contact[] | null {
     const loggerContext = {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: 'resolveCloudContacts',
     };
     const finalContactList: Contact[] = [];
@@ -334,7 +334,7 @@ export class ContactsClient implements IContacts {
    */
   public async getContacts(): Promise<ContactResponse> {
     const loggerContext = {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: METHODS.GET_CONTACTS,
     };
 
@@ -349,6 +349,11 @@ export class ContactsClient implements IContacts {
         uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}`,
         method: HTTP_METHODS.GET,
       });
+
+      log.log(
+        `Response code: ${response.statusCode} and Response trackingId: ${response?.headers?.trackingid}`,
+        loggerContext
+      );
 
       const responseBody = response.body as ContactList;
 
@@ -444,7 +449,7 @@ export class ContactsClient implements IContacts {
    */
   private async createNewEncryptionKeyUrl(): Promise<string> {
     const loggerContext = {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
     };
 
@@ -468,7 +473,7 @@ export class ContactsClient implements IContacts {
    */
   private async fetchEncryptionKeyUrl(): Promise<string> {
     const loggerContext = {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: METHODS.FETCH_ENCRYPTION_KEY_URL,
     };
 
@@ -489,7 +494,7 @@ export class ContactsClient implements IContacts {
 
     this.encryptionKeyUrl = await this.createNewEncryptionKeyUrl();
     log.log(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: this.fetchEncryptionKeyUrl.name,
     });
     const response: ContactResponse = await this.createContactGroup(
@@ -500,7 +505,7 @@ export class ContactsClient implements IContacts {
     if (response.data.group?.groupId) {
       this.defaultGroupId = response.data.group?.groupId;
       log.log(`Successfully created default group with ID: ${this.defaultGroupId}`, {
-        file: CONTACTS_FILE,
+        file: CONTACTS_CLIENT,
         method: this.fetchEncryptionKeyUrl.name,
       });
     }
@@ -515,7 +520,7 @@ export class ContactsClient implements IContacts {
    */
   private async fetchDefaultGroup(): Promise<string> {
     const loggerContext = {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: METHODS.FETCH_DEFAULT_GROUP,
     };
 
@@ -523,7 +528,7 @@ export class ContactsClient implements IContacts {
 
     if (this.defaultGroupId) {
       log.log(`Using existing default group with ID: ${this.defaultGroupId}`, {
-        file: CONTACTS_FILE,
+        file: CONTACTS_CLIENT,
         method: this.fetchDefaultGroup.name,
       });
 
@@ -536,7 +541,7 @@ export class ContactsClient implements IContacts {
         if (this.groups[i].displayName === DEFAULT_GROUP_NAME) {
           this.defaultGroupId = this.groups[i].groupId;
           log.log(`Found default group with ID: ${this.defaultGroupId}`, {
-            file: CONTACTS_FILE,
+            file: CONTACTS_CLIENT,
             method: this.fetchDefaultGroup.name,
           });
 
@@ -546,7 +551,7 @@ export class ContactsClient implements IContacts {
     }
 
     log.log('No default group found.', {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: this.fetchDefaultGroup.name,
     });
 
@@ -557,7 +562,7 @@ export class ContactsClient implements IContacts {
     if (group) {
       const groupId = group.groupId;
       log.log(`Successfully created new default group with ID: ${groupId}`, {
-        file: CONTACTS_FILE,
+        file: CONTACTS_CLIENT,
         method: this.fetchDefaultGroup.name,
       });
 
@@ -580,7 +585,7 @@ export class ContactsClient implements IContacts {
     groupType?: GroupType
   ): Promise<ContactResponse> {
     const loggerContext = {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: METHODS.CREATE_CONTACT_GROUP,
     };
 
@@ -628,6 +633,9 @@ export class ContactsClient implements IContacts {
         body: groupInfo,
       });
 
+      log.log(`Response code: ${response.statusCode}`, loggerContext);
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
+
       const group = response.body as ContactGroup;
 
       group.displayName = displayName;
@@ -660,7 +668,7 @@ export class ContactsClient implements IContacts {
    */
   public async deleteContactGroup(groupId: string) {
     const loggerContext = {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: METHODS.DELETE_CONTACT_GROUP,
     };
 
@@ -673,6 +681,9 @@ export class ContactsClient implements IContacts {
         uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}/${groupId}`,
         method: HTTP_METHODS.DELETE,
       });
+
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
+
       const contactResponse: ContactResponse = {
         statusCode: Number(response[STATUS_CODE]),
         data: {},
@@ -711,7 +722,7 @@ export class ContactsClient implements IContacts {
    */
   public async createContact(contactInfo: Contact): Promise<ContactResponse> {
     const loggerContext = {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: METHODS.CREATE_CONTACT,
     };
 
@@ -774,6 +785,9 @@ export class ContactsClient implements IContacts {
         body: requestBody,
       });
 
+      log.log(`Response code: ${response.statusCode}`, loggerContext);
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
+
       const newContact = response.body as Contact;
 
       contact.contactId = newContact.contactId;
@@ -818,7 +832,7 @@ export class ContactsClient implements IContacts {
    */
   public async deleteContact(contactId: string): Promise<ContactResponse> {
     const loggerContext = {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: METHODS.DELETE_CONTACT,
     };
 
