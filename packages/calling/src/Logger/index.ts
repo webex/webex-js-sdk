@@ -187,13 +187,13 @@ const logTrace = (message: string, context: LogContext) => {
 /**
  * Can be used to print only errors.
  *
- * @param error - Error string .
+ * @param errorMsg - Error string .
  * @param context - File and method which called.
  */
-const logError = (error: Error, context: LogContext) => {
+const logError = (errorMsg: string, context: LogContext) => {
   if (currentLogLevel >= LOGGING_LEVEL.error) {
     writeToLogger(
-      `${format(context, '[ERROR]')} - !${LOG_PREFIX.ERROR}!${LOG_PREFIX.MESSAGE}:${error.message}`,
+      `${format(context, '[ERROR]')} - !${LOG_PREFIX.ERROR}!${LOG_PREFIX.MESSAGE}:${errorMsg}`,
       LOGGER.ERROR
     );
   }

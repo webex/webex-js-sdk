@@ -108,11 +108,11 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         })
       );
       expect(errorSpy).toHaveBeenCalledWith(
-        expect.any(Error),
-        expect.objectContaining({
+        `Failed to get voicemail list: ${JSON.stringify(failurePayload)}`,
+        {
           file: 'WxCallBackendConnector',
           method: 'getVoicemailList',
-        })
+        }
       );
     });
 
@@ -150,9 +150,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       );
       expect(errorSpy).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({
-          message: expect.stringContaining('Failed to mark voicemail as read'),
-        }),
+        `Failed to mark voicemail as read: ${JSON.stringify(failurePayload)}`,
         {
           file: 'WxCallBackendConnector',
           method: 'voicemailMarkAsRead',
@@ -194,9 +192,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       );
       expect(errorSpy).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({
-          message: expect.stringContaining('Failed to mark voicemail as unread'),
-        }),
+        `Failed to mark voicemail as unread: ${JSON.stringify(failurePayload)}`,
         {
           file: 'WxCallBackendConnector',
           method: 'voicemailMarkAsUnread',
@@ -238,9 +234,7 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         }
       );
       expect(errorSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Failed to delete voicemail'),
-        }),
+        `Failed to delete voicemail: ${JSON.stringify(failurePayload)}`,
         {
           file: 'WxCallBackendConnector',
           method: 'deleteVoicemail',
@@ -447,12 +441,13 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         file: 'WxCallBackendConnector',
         method: 'getVoicemailSummary',
       });
+
       expect(errorSpy).toHaveBeenCalledWith(
-        expect.any(Error),
-        expect.objectContaining({
+        `Failed to get voicemail summary: ${JSON.stringify(failurePayload)}`,
+        {
           file: 'WxCallBackendConnector',
           method: 'getVoicemailSummary',
-        })
+        }
       );
     });
 

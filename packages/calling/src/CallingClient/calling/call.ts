@@ -985,8 +985,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleOutgoingCallSetup.name,
       });
     } catch (e) {
-      const err = new Error(`Failed to setup the call: ${e}`);
-      log.error(err, {
+      log.error(`Failed to setup the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_SETUP,
       });
@@ -1061,8 +1060,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
     } catch (e) {
-      const err = new Error(`Failed to put the call on hold: ${e}`);
-      log.error(err, {
+      log.error(`Failed to put the call on hold: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_CALL_HOLD,
       });
@@ -1137,8 +1135,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
     } catch (e) {
-      const err = new Error(`Failed to resume the call: ${e}`);
-      log.error(err, {
+      log.error(`Failed to resume the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_CALL_RESUME,
       });
@@ -1262,8 +1259,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: METHODS.HANDLE_OUTGOING_CALL_ALERTING,
       });
     } catch (e) {
-      const err = new Error(`Failed to signal call progression: ${e}`);
-      log.error(err, {
+      log.error(`Failed to signal call progression: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_ALERTING,
       });
@@ -1348,8 +1344,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
       });
     } catch (e) {
-      const err = new Error(`Failed to connect the call: ${e}`);
-      log.error(err, {
+      log.error(`Failed to connect the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
       });
@@ -1400,7 +1395,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
       });
     } catch (e) {
-      log.warn('Failed to delete the call', {
+      log.warn(`Failed to delete the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
       });
@@ -2065,10 +2060,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       log.info(`callFrom: ${callFrom}`, loggerContext);
     } catch (error) {
       const errorInfo = error as WebexRequestPayload;
-      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
-      const err = new Error(`Failed to upload webrtc telemetry statistics. ${errorStatus}`);
+      const errorStatus = await serviceErrorCodeHandler(errorInfo, loggerContext);
 
-      log.error(err, loggerContext);
+      log.error(
+        `Failed to upload webrtc telemetry statistics. ${JSON.stringify(errorStatus)}`,
+        loggerContext
+      );
 
       await uploadLogs({
         correlationId: this.correlationId,

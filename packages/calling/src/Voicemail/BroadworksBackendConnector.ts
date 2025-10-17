@@ -150,8 +150,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
 
-      const error = new Error(`Failed to get userId: ${err}`);
-      log.error(error, loggerContext);
+      log.error(`Failed to get userId: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       return serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -179,11 +178,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
       this.bwtoken = response[TOKEN][BEARER];
       log.log('Successfully fetched Broadworks token', loggerContext);
     } catch (err: unknown) {
-      const error = new Error(`Broadworks token exception: ${err}`);
-      log.error(error, {
-        file: BROADWORKS_VOICEMAIL_FILE,
-        method: METHODS.GET_BW_TOKEN,
-      });
+      log.error(`Broadworks token exception: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
     }
   }
@@ -291,8 +286,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
           statusCode: err instanceof Error ? Number(err.message) : '',
         } as WebexRequestPayload;
 
-        const error = new Error(`Failed to get voicemail list: ${err}`);
-        log.error(error, loggerContext);
+        log.error(`Failed to get voicemail list: ${JSON.stringify(err)}`, loggerContext);
         await uploadLogs();
 
         const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -381,8 +375,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
 
-      const error = new Error(`Failed to get voicemail content: ${err}`);
-      log.error(error, loggerContext);
+      log.error(`Failed to get voicemail content: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -444,8 +437,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
 
-      const error = new Error(`Failed to mark voicemail as read: ${err}`);
-      log.error(error, loggerContext);
+      log.error(`Failed to mark voicemail as read: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -498,8 +490,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
 
-      const error = new Error(`Failed to mark voicemail as unread: ${err}`);
-      log.error(error, loggerContext);
+      log.error(`Failed to mark voicemail as unread: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -552,8 +543,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
 
-      const error = new Error(`Failed to delete voicemail: ${err}`);
-      log.error(error, loggerContext);
+      log.error(`Failed to delete voicemail: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);

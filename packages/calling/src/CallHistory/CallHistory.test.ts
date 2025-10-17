@@ -96,7 +96,13 @@ describe('Call history tests', () => {
       'invoking with days=7, limit=2000, sort=ASC, sortBy=startTime',
       {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
     );
-    expect(errorSpy).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      `Failed to get call history: ${JSON.stringify(failurePayload)}`,
+      {
+        file: CALL_HISTORY_FILE,
+        method: METHODS.GET_CALL_HISTORY_DATA,
+      }
+    );
     expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -117,7 +123,13 @@ describe('Call history tests', () => {
       'invoking with days=0, limit=0, sort=ASC, sortBy=startTime',
       {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
     );
-    expect(errorSpy).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      `Failed to get call history: ${JSON.stringify(failurePayload)}`,
+      {
+        file: CALL_HISTORY_FILE,
+        method: METHODS.GET_CALL_HISTORY_DATA,
+      }
+    );
     expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -299,7 +311,10 @@ describe('Call history tests', () => {
         },
         methodDetails
       );
-      expect(errorSpy).toHaveBeenCalled();
+      expect(errorSpy).toBeCalledWith(
+        expect.stringContaining('Failed to update missed calls'),
+        methodDetails
+      );
       expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -593,10 +608,13 @@ describe('Call history tests', () => {
         },
         methodDetails
       );
-      expect(errorSpy).toHaveBeenCalledWith(expect.any(Error), {
-        file: CALL_HISTORY_FILE,
-        method: METHODS.DELETE_CALL_HISTORY_RECORDS,
-      });
+      expect(errorSpy).toBeCalledWith(
+        expect.stringContaining('Failed to delete call history records'),
+        {
+          file: CALL_HISTORY_FILE,
+          method: METHODS.DELETE_CALL_HISTORY_RECORDS,
+        }
+      );
       expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
 

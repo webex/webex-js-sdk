@@ -49,7 +49,7 @@ describe('Coverage tests for logger', () => {
     log.trace(fakePrint, dummyContext);
     expect(traceSpy).not.toHaveBeenCalledTimes(1);
 
-    log.error(new Error(fakePrint), dummyContext);
+    log.error(fakePrint, dummyContext);
     expect(errorSpy).toHaveBeenCalledTimes(1);
   });
 

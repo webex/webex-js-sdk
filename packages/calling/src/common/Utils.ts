@@ -1680,8 +1680,8 @@ export async function uploadLogs(
       feedbackId,
     };
   } catch (error) {
-    const errorLog = new Error(`Failed to upload Logs ${error}`);
-    log.error(errorLog, {
+    const errorLog = new Error(`Failed to upload Logs ${JSON.stringify(error)}`);
+    log.error(errorLog.message, {
       file: UTILS_FILE,
       method: 'uploadLogs',
     });

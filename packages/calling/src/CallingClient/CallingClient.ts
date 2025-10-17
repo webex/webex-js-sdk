@@ -471,8 +471,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
         break;
       } catch (err: unknown) {
-        const error = new Error(`Failed to get client region info: ${err}`);
-        log.error(error, {
+        log.error(`Failed to get client region info: ${JSON.stringify(err)}`, {
           method: METHODS.GET_CLIENT_REGION_INFO,
           file: CALLING_CLIENT_FILE,
         });
@@ -606,8 +605,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           }
         );
       } catch (err: unknown) {
-        const error = new Error(`Failed to get Mobius servers: ${err}`);
-        log.error(error, {
+        log.error(`Failed to get Mobius servers: ${JSON.stringify(err)}`, {
           method: METHODS.GET_MOBIUS_SERVERS,
           file: CALLING_CLIENT_FILE,
         });

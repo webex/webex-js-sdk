@@ -185,9 +185,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const error = new Error(`Failed to get voicemail list: ${err}`);
-      log.error(error, loggerContext);
-
+      log.error(`Failed to get voicemail list: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
@@ -218,8 +216,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return response as VoicemailResponseEvent;
     } catch (err: unknown) {
-      const error = new Error(`Failed to get voicemail content: ${err}`);
-      log.error(error, loggerContext);
+      log.error(`Failed to get voicemail content: ${JSON.stringify(err)}`, loggerContext);
 
       await uploadLogs();
 
@@ -370,8 +367,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const error = new Error(`Failed to mark voicemail as read: ${err}`);
-      log.error(error, loggerContext);
+      log.error(`Failed to mark voicemail as read: ${JSON.stringify(err)}`, loggerContext);
 
       await uploadLogs();
 
@@ -418,8 +414,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const error = new Error(`Failed to mark voicemail as unread: ${err}`);
-      log.error(error, loggerContext);
+      log.error(`Failed to mark voicemail as unread: ${JSON.stringify(err)}`, loggerContext);
 
       await uploadLogs();
 
@@ -463,8 +458,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const error = new Error(`Failed to delete voicemail: ${err}`);
-      log.error(error, loggerContext);
+      log.error(`Failed to delete voicemail: ${JSON.stringify(err)}`, loggerContext);
 
       await uploadLogs();
 
