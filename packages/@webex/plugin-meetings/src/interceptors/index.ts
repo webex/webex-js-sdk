@@ -1,3 +1,4 @@
 import LocusRetryStatusInterceptor from './locusRetry';
+import LocusRouteTokenInterceptor from './locusRouteToken';
 
-export {LocusRetryStatusInterceptor};
+export {LocusRetryStatusInterceptor, LocusRouteTokenInterceptor};
