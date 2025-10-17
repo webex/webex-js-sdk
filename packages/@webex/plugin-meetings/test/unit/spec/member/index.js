@@ -20,14 +20,17 @@ describe('member', () => {
     assert.exists(member.canReclaimHost);
   });
 
-    describe('processRoles', () => {
-    it('checks that processRoles calls extractRoleCapabilities', () => {
-      sinon.spy(MemberUtil, 'extractRoleCapabilities');
-      member.processRoles(participant);
+   describe('processRoles', () => {
+  it('checks that processRoles calls extractRoleCapabilities', () => {
+    MemberUtil.extractRoleCapabilities = sinon.fake();
 
-      assert.calledOnceWithExactly(MemberUtil.extractRoleCapabilities, participant);
-    });
+    member.processRoles(participant);
+
+    assert.calledOnceWithExactly(MemberUtil.extractRoleCapabilities, participant);
+
+    delete MemberUtil.extractRoleCapabilities;
   });
+});
 
   describe('roles', () => {
     it('checks that processParticipant calls processRoles', () => {

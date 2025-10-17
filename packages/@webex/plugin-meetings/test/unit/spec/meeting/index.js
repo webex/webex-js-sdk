@@ -11444,6 +11444,7 @@ describe('plugin-meetings', () => {
         let canShareWhiteBoardSpy;
         let canMoveToLobbySpy;
         let isSpokenLanguageAutoDetectionEnabledSpy;
+        let showAutoEndMeetingWarningSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
