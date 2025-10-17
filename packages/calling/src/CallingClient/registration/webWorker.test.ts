@@ -77,13 +77,13 @@ describe('webWorker', () => {
       get: (key: string) =>
         // eslint-disable-next-line no-nested-ternary
         key === 'Retry-After' ? '10' : key === 'Trackingid' ? 'web_worker_mock-uuid' : null,
-    } as any;
+    };
     const fakeFailureResponse = {
       ok: false,
       status: 429,
       statusText: 'Too Many Requests',
       headers: failureHeaders,
-    } as any;
+    };
     (global.fetch as jest.Mock).mockResolvedValue(fakeFailureResponse);
 
     messageHandler({
@@ -117,13 +117,13 @@ describe('webWorker', () => {
     const failureHeaders2 = {
       has: (key: string) => key === 'Trackingid',
       get: (key: string) => (key === 'Trackingid' ? 'web_worker_mock-uuid' : null),
-    } as any;
+    };
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: false,
       status: 401,
       statusText: 'Unauthorized',
       headers: failureHeaders2,
-    } as any);
+    });
 
     messageHandler({
       data: {
@@ -155,13 +155,13 @@ describe('webWorker', () => {
     const failureHeaders3 = {
       has: (key: string) => key === 'Trackingid',
       get: (key: string) => (key === 'Trackingid' ? 'web_worker_mock-uuid' : null),
-    } as any;
+    };
     const mockError = {
       ok: false,
       status: 404,
       statusText: 'Not Found',
       headers: failureHeaders3,
-    } as any;
+    };
 
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce(mockError)
