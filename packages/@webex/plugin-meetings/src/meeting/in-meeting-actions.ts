@@ -42,6 +42,7 @@ interface IInMeetingActions {
   isLocalRecordingStopped?: boolean;
   isLocalRecordingPaused?: boolean;
   isLocalStreamingStarted?: boolean;
+  isLocalStreamingStopped?: boolean;
 
   isManualCaptionActive?: boolean;
   isSaveTranscriptsEnabled?: boolean;
@@ -188,6 +189,8 @@ export default class InMeetingActions implements IInMeetingActions {
   isManualCaptionActive = null;
 
   isLocalStreamingStarted = null;
+
+  isLocalStreamingStopped = null;
 
   isSaveTranscriptsEnabled = null;
 
@@ -367,6 +370,7 @@ export default class InMeetingActions implements IInMeetingActions {
     isLocalRecordingStopped: this.isLocalRecordingStopped,
     isLocalRecordingPaused: this.isLocalRecordingPaused,
     isLocalStreamingStarted: this.isLocalStreamingStarted,
+    isLocalStreamingStopped: this.isLocalStreamingStopped,
     canStopManualCaption: this.canStopManualCaption,
     isManualCaptionActive: this.isManualCaptionActive,
     isSaveTranscriptsEnabled: this.isSaveTranscriptsEnabled,

@@ -976,6 +976,7 @@ describe('plugin-meetings', () => {
       {functionName: 'isLocalRecordingStopped', displayHint: 'LOCAL_RECORDING_STATUS_STOPPED'},
       {functionName: 'isLocalRecordingPaused', displayHint: 'LOCAL_RECORDING_STATUS_PAUSED'},
       {functionName: 'isLocalStreamingStarted',dispalyHint:'STREAMING_STATUS_STARTED'},
+      {functionName: 'isLocalStreamingStopped', displayHint: 'STREAMING_STATUS_STOPPED'},
 
       {functionName: 'isManualCaptionActive', displayHint: 'MANUAL_CAPTION_STATUS_ACTIVE'},
 

@@ -636,6 +636,9 @@ const MeetingUtil = {
   isLocalStreamingStarted: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.STREAMING_STATUS_STARTED),
 
+  isLocalStreamingStopped: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.STREAMING_STATUS_STOPPED),
+
   canStopManualCaption: (displayHints) => displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STOP),
 
   isManualCaptionActive: (displayHints) =>
