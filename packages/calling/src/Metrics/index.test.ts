@@ -14,11 +14,9 @@ const webex = getTestUtilsWebex();
 describe('CALLING: Metric tests', () => {
   const metricManager = getMetricManager(webex, ServiceIndicator.CALLING);
   const mockDeviceInfo = getMockDeviceInfo();
-  const mockSubmitClientMetric = jest.fn();
+  const submitClientMetricSpy = jest.spyOn(webex.internal.metrics, 'submitClientMetrics');
   const MOCK_VERSION_NUMBER = '1.0.0';
   const originalEnv = process.env;
-
-  webex.internal.metrics.submitClientMetrics = mockSubmitClientMetric;
 
   const mockCallId = '123456';
   const mockCorrelationId = '0931237';
@@ -26,7 +24,7 @@ describe('CALLING: Metric tests', () => {
   const mockMediaAction = 'S_SEND_ROAP_OFFER';
 
   beforeEach(() => {
-    mockSubmitClientMetric.mockClear();
+    submitClientMetricSpy.mockClear();
     process.env = {
       ...originalEnv,
       CALLING_SDK_VERSION: MOCK_VERSION_NUMBER,
@@ -75,7 +73,7 @@ describe('CALLING: Metric tests', () => {
         undefined,
         undefined
       );
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.REGISTRATION, expectedData);
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.REGISTRATION, expectedData);
     });
 
     it('submit registration failure metric', () => {
@@ -124,8 +122,61 @@ describe('CALLING: Metric tests', () => {
         undefined,
         clientError
       );
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(
+      expect(submitClientMetricSpy).toBeCalledOnceWith(
         METRIC_EVENT.REGISTRATION_ERROR,
+        expectedData
+      );
+    });
+
+    it('submit keepalive failure metric', () => {
+      metricManager.setDeviceInfo(mockDeviceInfo);
+
+      const clientError = createClientError(
+        '',
+        {},
+        ERROR_TYPE.DEFAULT,
+        RegistrationStatus.INACTIVE
+      );
+      const err = <ErrorObject>{};
+
+      err.context = {};
+      err.message = 'Unknown Error';
+      err.type = ERROR_TYPE.NOT_FOUND;
+
+      clientError.setError(err);
+
+      const expectedData = {
+        tags: {
+          action: REG_ACTION.KEEPALIVE_FAILURE,
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          reg_source: REGISTRATION_UTIL,
+          server_type: 'BACKUP',
+          trackingId: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+          keepalive_count: 1,
+          error: clientError.getError().message,
+          error_type: clientError.getError().type,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitRegistrationMetric(
+        METRIC_EVENT.KEEPALIVE_ERROR,
+        REG_ACTION.KEEPALIVE_FAILURE,
+        METRIC_TYPE.BEHAVIORAL,
+        REGISTRATION_UTIL,
+        'BACKUP',
+        'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
+        1,
+        clientError
+      );
+      expect(submitClientMetricSpy).toHaveBeenCalledWith(
+        METRIC_EVENT.KEEPALIVE_ERROR,
         expectedData
       );
     });
@@ -144,7 +195,7 @@ describe('CALLING: Metric tests', () => {
         undefined
       );
 
-      expect(mockSubmitClientMetric).not.toBeCalled();
+      expect(submitClientMetricSpy).not.toBeCalled();
       expect(logSpy).toBeCalledOnceWith(
         'Invalid metric name received. Rejecting request to submit metric.',
         {
@@ -184,7 +235,7 @@ describe('CALLING: Metric tests', () => {
         mockCallId,
         mockCorrelationId
       );
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.CALL, expectedData);
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.CALL, expectedData);
     });
 
     it('submit call failure metric', () => {
@@ -231,7 +282,7 @@ describe('CALLING: Metric tests', () => {
         mockCorrelationId,
         callError
       );
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.CALL_ERROR, expectedData);
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.CALL_ERROR, expectedData);
     });
 
     it('submit unknown call metric', () => {
@@ -245,7 +296,7 @@ describe('CALLING: Metric tests', () => {
         mockCorrelationId
       );
 
-      expect(mockSubmitClientMetric).not.toBeCalled();
+      expect(submitClientMetricSpy).not.toBeCalled();
       expect(logSpy).toBeCalledOnceWith(
         'Invalid metric name received. Rejecting request to submit metric.',
         {
@@ -291,7 +342,7 @@ describe('CALLING: Metric tests', () => {
         mockSdp,
         mockSdp
       );
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.MEDIA, expectedData);
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MEDIA, expectedData);
     });
 
     it('submit media failure metric', () => {
@@ -342,7 +393,7 @@ describe('CALLING: Metric tests', () => {
         mockSdp,
         callError
       );
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.MEDIA_ERROR, expectedData);
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MEDIA_ERROR, expectedData);
     });
 
     it('submit unknown media metric', () => {
@@ -358,7 +409,7 @@ describe('CALLING: Metric tests', () => {
         mockSdp
       );
 
-      expect(mockSubmitClientMetric).not.toBeCalled();
+      expect(submitClientMetricSpy).not.toBeCalled();
       expect(logSpy).toBeCalledOnceWith(
         'Invalid metric name received. Rejecting request to submit metric.',
         {
@@ -397,7 +448,7 @@ describe('CALLING: Metric tests', () => {
         mockCorrelationId
       );
 
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
     });
 
     it('submit bnr disabled metric', () => {
@@ -423,7 +474,7 @@ describe('CALLING: Metric tests', () => {
         mockCorrelationId
       );
 
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_DISABLED, expectedData);
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.BNR_DISABLED, expectedData);
     });
 
     it('submit unknown bnr metric', () => {
@@ -436,7 +487,7 @@ describe('CALLING: Metric tests', () => {
         mockCorrelationId
       );
 
-      expect(mockSubmitClientMetric).not.toBeCalled();
+      expect(submitClientMetricSpy).not.toBeCalled();
       expect(logSpy).toBeCalledOnceWith(
         'Invalid metric name received. Rejecting request to submit metric.',
         {
@@ -468,9 +519,9 @@ describe('CALLING: Metric tests', () => {
         VOICEMAIL_ACTION.GET_VOICEMAILS,
         METRIC_TYPE.BEHAVIORAL
       );
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL, expectedData1);
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL, expectedData1);
 
-      mockSubmitClientMetric.mockClear();
+      submitClientMetricSpy.mockClear();
 
       const expectedData2 = {
         ...expectedData1,
@@ -484,7 +535,7 @@ describe('CALLING: Metric tests', () => {
         'messageId'
       );
 
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL, expectedData2);
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL, expectedData2);
     });
 
     it('submit voicemail failure metric', () => {
@@ -512,12 +563,9 @@ describe('CALLING: Metric tests', () => {
         errorMessage,
         401
       );
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(
-        METRIC_EVENT.VOICEMAIL_ERROR,
-        expectedData1
-      );
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL_ERROR, expectedData1);
 
-      mockSubmitClientMetric.mockClear();
+      submitClientMetricSpy.mockClear();
 
       const expectedData2 = {
         ...expectedData1,
@@ -533,10 +581,7 @@ describe('CALLING: Metric tests', () => {
         401
       );
 
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(
-        METRIC_EVENT.VOICEMAIL_ERROR,
-        expectedData2
-      );
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL_ERROR, expectedData2);
     });
 
     it('submit unknown voicemail metric', () => {
@@ -548,7 +593,7 @@ describe('CALLING: Metric tests', () => {
         METRIC_TYPE.BEHAVIORAL
       );
 
-      expect(mockSubmitClientMetric).not.toBeCalled();
+      expect(submitClientMetricSpy).not.toBeCalled();
       expect(logSpy).toBeCalledOnceWith(
         'Invalid metric name received. Rejecting request to submit metric.',
         {
@@ -585,7 +630,7 @@ describe('CALLING: Metric tests', () => {
         mockCorrelationId
       );
 
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
     });
   });
 
@@ -630,7 +675,7 @@ describe('CALLING: Metric tests', () => {
         broadworksCorrelationInfo
       );
 
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(
+      expect(submitClientMetricSpy).toBeCalledOnceWith(
         METRIC_EVENT.UPLOAD_LOGS_SUCCESS,
         expectedData
       );
@@ -675,7 +720,7 @@ describe('CALLING: Metric tests', () => {
         broadworksCorrelationInfo
       );
 
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(
+      expect(submitClientMetricSpy).toBeCalledOnceWith(
         METRIC_EVENT.UPLOAD_LOGS_FAILED,
         expectedData
       );

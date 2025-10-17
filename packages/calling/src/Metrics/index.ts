@@ -1,8 +1,15 @@
 import {CallError, CallingClientError} from '../Errors';
 import {METRIC_FILE, VERSION} from '../CallingClient/constants';
-import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../common/types';
+import {CallId, CorrelationId, IDeviceInfo, MobiusServers, ServiceIndicator} from '../common/types';
 import {WebexSDK} from '../SDKConnector/types';
-import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT, SERVER_TYPE} from './types';
+import {
+  REG_ACTION,
+  IMetricManager,
+  METRIC_TYPE,
+  METRIC_EVENT,
+  SERVER_TYPE,
+  CONNECTION_ACTION,
+} from './types';
 import {LineError} from '../Errors/catalog/LineError';
 import log from '../Logger';
 
@@ -26,6 +33,34 @@ class MetricManager implements IMetricManager {
     log.info('Initializing metric manager...', {file: METRIC_FILE});
     this.webex = webex;
     this.serviceIndicator = indicator;
+  }
+
+  public submitConnectionMetrics(
+    name: METRIC_EVENT,
+    metricAction: CONNECTION_ACTION,
+    type: METRIC_TYPE,
+    downTimestamp: string,
+    upTimestamp: string
+  ) {
+    const metricData = {
+      tags: {
+        metricAction,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: this.serviceIndicator,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        downTimestamp,
+        upTimestamp,
+      },
+      type,
+    };
+
+    if (metricData) {
+      this.webex.internal.metrics.submitClientMetrics(name, metricData);
+    }
   }
 
   public submitUploadLogsMetric(
@@ -96,6 +131,78 @@ class MetricManager implements IMetricManager {
    * @param name - Name of the metric being submitted.
    * @param metricAction - Type of action sent in the metric.
    * @param type - Type of metric.
+   * @param region - Region string.
+   * @param trackingId - Tracking ID string.
+   */
+  public submitRegionInfoMetric(
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    mobiusHost: string,
+    clientRegion: string,
+    countryCode: string,
+    trackingId?: string
+  ) {
+    const data = {
+      tags: {
+        action: metricAction,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: ServiceIndicator.CALLING,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        mobius_host: mobiusHost,
+        client_region: clientRegion,
+        country_code: countryCode,
+        tracking_id: trackingId,
+      },
+      type,
+    };
+
+    this.webex.internal.metrics.submitClientMetrics(name, data);
+  }
+
+  /**
+   * @param name - Name of the metric being submitted.
+   * @param metricAction - Type of action sent in the metric.
+   * @param type - Type of metric.
+   * @param mobiusServers - Array of Mobius server objects.
+   */
+  public submitMobiusServersMetric(
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    mobiusServers: MobiusServers,
+    trackingId?: string
+  ) {
+    const data = {
+      tags: {
+        action: metricAction,
+        device_id: this.deviceInfo?.device?.deviceId,
+        service_indicator: ServiceIndicator.CALLING,
+      },
+      fields: {
+        device_url: this.deviceInfo?.device?.clientDeviceUri,
+        mobius_url: this.deviceInfo?.device?.uri,
+        calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+        primary_mobius_servers_region: mobiusServers.primary.region,
+        primary_mobius_servers_uris: mobiusServers.primary.uris.join(','),
+        backup_mobius_servers_region: mobiusServers.backup.region,
+        backup_mobius_servers_uris: mobiusServers.backup.uris.join(','),
+        tracking_id: trackingId,
+      },
+      type,
+    };
+
+    this.webex.internal.metrics.submitClientMetrics(name, data);
+  }
+
+  /**
+   * @param name - Name of the metric being submitted.
+   * @param metricAction - Type of action sent in the metric.
+   * @param type - Type of metric.
    * @param clientError - Error object used to populate error details in metric.
    */
   public submitRegistrationMetric(
@@ -132,34 +239,69 @@ class MetricManager implements IMetricManager {
       }
 
       case METRIC_EVENT.REGISTRATION_ERROR: {
+        let errorData;
         if (clientError) {
-          data = {
-            tags: {
-              action: metricAction,
-              device_id: this.deviceInfo?.device?.deviceId,
-              service_indicator: this.serviceIndicator,
-            },
-            fields: {
-              device_url: this.deviceInfo?.device?.clientDeviceUri,
-              mobius_url: this.deviceInfo?.device?.uri,
-              calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-              reg_source: caller,
-              server_type: serverType,
-              trackingId,
-              keepalive_count: keepaliveCount,
-              error: clientError.getError().message,
-              error_type: clientError.getError().type,
-            },
-            type,
+          errorData = {
+            msg: clientError.getError().message,
+            type: clientError.getError().type,
           };
         }
+        data = {
+          tags: {
+            action: metricAction,
+            device_id: this.deviceInfo?.device?.deviceId,
+            service_indicator: this.serviceIndicator,
+          },
+          fields: {
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            mobius_url: this.deviceInfo?.device?.uri,
+            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            reg_source: caller,
+            server_type: serverType,
+            trackingId,
+            error: errorData?.msg,
+            error_type: errorData?.type,
+          },
+          type,
+        };
+
+        break;
+      }
+
+      case METRIC_EVENT.KEEPALIVE_ERROR: {
+        let errorData;
+        if (clientError) {
+          errorData = {
+            msg: clientError.getError().message,
+            type: clientError.getError().type,
+          };
+        }
+        data = {
+          tags: {
+            action: metricAction,
+            device_id: this.deviceInfo?.device?.deviceId,
+            service_indicator: this.serviceIndicator,
+          },
+          fields: {
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            mobius_url: this.deviceInfo?.device?.uri,
+            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            reg_source: caller,
+            server_type: serverType,
+            trackingId,
+            keepalive_count: keepaliveCount,
+            error: errorData?.msg,
+            error_type: errorData?.type,
+          },
+          type,
+        };
         break;
       }
 
       default:
         log.warn('Invalid metric name received. Rejecting request to submit metric.', {
           file: METRIC_FILE,
-          method: this.submitRegistrationMetric.name,
+          method: 'submitRegistrationMetric',
         });
         break;
     }
@@ -233,7 +375,7 @@ class MetricManager implements IMetricManager {
       default:
         log.warn('Invalid metric name received. Rejecting request to submit metric.', {
           file: METRIC_FILE,
-          method: this.submitCallMetric.name,
+          method: 'submitCallMetric',
         });
         break;
     }
@@ -315,7 +457,7 @@ class MetricManager implements IMetricManager {
       default:
         log.warn('Invalid metric name received. Rejecting request to submit metric.', {
           file: METRIC_FILE,
-          method: this.submitMediaMetric.name,
+          method: 'submitMediaMetric',
         });
         break;
     }
@@ -387,7 +529,7 @@ class MetricManager implements IMetricManager {
       default:
         log.warn('Invalid metric name received. Rejecting request to submit metric.', {
           file: METRIC_FILE,
-          method: this.submitVoicemailMetric.name,
+          method: 'submitVoicemailMetric',
         });
         break;
     }
@@ -422,7 +564,7 @@ class MetricManager implements IMetricManager {
     } else {
       log.warn('Invalid metric name received. Rejecting request to submit metric.', {
         file: METRIC_FILE,
-        method: this.submitBNRMetric.name,
+        method: 'submitBNRMetric',
       });
     }
 

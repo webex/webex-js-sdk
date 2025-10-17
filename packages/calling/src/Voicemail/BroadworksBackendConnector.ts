@@ -265,6 +265,8 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         }
         const voicemailListResponse = (await response.json()) as VoicemailList;
 
+        log.log(`Response trackingId: ${response.headers?.get('trackingid')}`, loggerContext);
+
         if (
           Object.keys(voicemailListResponse?.VoiceMessagingMessages?.messageInfoList).length === 0
         ) {
@@ -349,6 +351,9 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         throw new Error(`${response.status}`);
       }
       const xmlData = await response.text();
+
+      log.log(`Response trackingId: ${response.headers?.get('trackingid')}`, loggerContext);
+
       const parser = new DOMParser();
       const xmlDOM = parser.parseFromString(xmlData, XML_TYPE);
       const mediaDetails = xmlDOM.getElementsByTagName(MESSAGE_MEDIA_CONTENT)[0];
@@ -425,6 +430,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
       }
 
       log.log(`Successfully marked voicemail with ID ${messageId} as read`, loggerContext);
+      log.log(`Response trackingId: ${response.headers?.get('trackingid')}`, loggerContext);
 
       const responseDetails: VoicemailResponseEvent = {
         statusCode: response.status,
