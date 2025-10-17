@@ -354,6 +354,7 @@ export async function handleRegistrationErrors(
         RegistrationStatus.INACTIVE,
         lineError
       );
+
       emitterCb(lineError, finalError);
       break;
     }
