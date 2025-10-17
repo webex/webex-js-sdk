@@ -1,6 +1,5 @@
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
-import ExtendedError from '../Errors/catalog/ExtendedError';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
@@ -218,8 +217,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to get call history: ${err}`) as ExtendedError;
-      log.error(extendedError, {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA});
+      const error = new Error(`Failed to get call history: ${err}`);
+      log.error(error, {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA});
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
@@ -285,8 +284,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to update missed calls: ${err}`) as ExtendedError;
-      log.error(extendedError, {file: CALL_HISTORY_FILE, method: METHODS.UPDATE_MISSED_CALLS});
+      const error = new Error(`Failed to update missed calls: ${err}`);
+      log.error(error, {file: CALL_HISTORY_FILE, method: METHODS.UPDATE_MISSED_CALLS});
       await uploadLogs();
 
       // Catch the 401 error from try block, return the error object to user
@@ -334,8 +333,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
       return ucmLineDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to fetch UCM lines data: ${err}`) as ExtendedError;
-      log.error(extendedError, {file: CALL_HISTORY_FILE, method: METHODS.FETCH_UCM_LINES_DATA});
+      const error = new Error(`Failed to fetch UCM lines data: ${err}`);
+      log.error(error, {file: CALL_HISTORY_FILE, method: METHODS.FETCH_UCM_LINES_DATA});
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
@@ -427,10 +426,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(
-        `Failed to delete call history records: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, {
+      const error = new Error(`Failed to delete call history records: ${err}`);
+      log.error(error, {
         file: CALL_HISTORY_FILE,
         method: METHODS.DELETE_CALL_HISTORY_RECORDS,
       });

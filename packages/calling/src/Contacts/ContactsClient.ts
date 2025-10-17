@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-import ExtendedError from 'Errors/catalog/ExtendedError';
 import {
   FAILURE_MESSAGE,
   METHOD_START_MESSAGE,
@@ -433,8 +432,8 @@ export class ContactsClient implements IContacts {
       return contactResponse;
     } catch (err: unknown) {
       const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(`Error fetching contacts: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      const error = new Error(`Error fetching contacts: ${err}`);
+      log.error(error, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
       await uploadLogs();
 
@@ -653,8 +652,8 @@ export class ContactsClient implements IContacts {
       return contactResponse;
     } catch (err: unknown) {
       const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(`Unable to create contact group: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      const error = new Error(`Unable to create contact group: ${err}`);
+      log.error(error, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
       await uploadLogs();
 
@@ -705,10 +704,8 @@ export class ContactsClient implements IContacts {
       return contactResponse;
     } catch (err: unknown) {
       const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(
-        `Unable to delete contact group ${groupId}: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      const error = new Error(`Unable to delete contact group ${groupId}: ${err}`);
+      log.error(error, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
       await uploadLogs();
 
@@ -817,8 +814,8 @@ export class ContactsClient implements IContacts {
       return contactResponse;
     } catch (err: unknown) {
       const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(`Failed to create contact: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      const error = new Error(`Failed to create contact: ${err}`);
+      log.error(error, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
       await uploadLogs();
 
@@ -865,10 +862,8 @@ export class ContactsClient implements IContacts {
       return contactResponse;
     } catch (err: unknown) {
       const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(
-        `Unable to delete contact ${contactId}: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      const error = new Error(`Unable to delete contact ${contactId}: ${err}`);
+      log.error(error, loggerContext);
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
       await uploadLogs();
 

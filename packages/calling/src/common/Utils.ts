@@ -4,7 +4,6 @@
 import * as platform from 'platform';
 import {v4 as uuid} from 'uuid';
 import {METRIC_EVENT, METRIC_TYPE, UPLOAD_LOGS_ACTION} from '../Metrics/types';
-import ExtendedError from '../Errors/catalog/ExtendedError';
 import {getMetricManager} from '../Metrics';
 import {restoreRegistrationCallBack, retry429CallBack} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
@@ -1681,7 +1680,7 @@ export async function uploadLogs(
       feedbackId,
     };
   } catch (error) {
-    const errorLog = new Error(`Failed to upload Logs ${error}`) as ExtendedError;
+    const errorLog = new Error(`Failed to upload Logs ${error}`);
     log.error(errorLog, {
       file: UTILS_FILE,
       method: 'uploadLogs',

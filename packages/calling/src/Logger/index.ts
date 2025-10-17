@@ -2,7 +2,6 @@
 import {Logger} from '../SDKConnector/types';
 import {REPO_NAME} from '../CallingClient/constants';
 import {IMetaContext} from '../common/types';
-import ExtendedError from '../Errors/catalog/ExtendedError';
 import {LOGGING_LEVEL, LogContext, LOGGER, LOG_PREFIX} from './types';
 
 /*
@@ -191,7 +190,7 @@ const logTrace = (message: string, context: LogContext) => {
  * @param error - Error string .
  * @param context - File and method which called.
  */
-const logError = (error: ExtendedError, context: LogContext) => {
+const logError = (error: Error, context: LogContext) => {
   if (currentLogLevel >= LOGGING_LEVEL.error) {
     writeToLogger(
       `${format(context, '[ERROR]')} - !${LOG_PREFIX.ERROR}!${LOG_PREFIX.MESSAGE}:${error.message}`,

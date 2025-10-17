@@ -570,6 +570,14 @@ describe('Voicemail webex call Backend Connector Test case', () => {
         headers: {},
       });
       expect(response).toStrictEqual(responseDetails);
+      expect(infoSpy).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
+        file: 'WxCallBackendConnector',
+        method: 'getVoicemailSummary',
+      });
+      expect(logSpy).toHaveBeenCalledWith('Successfully fetched voicemail summary', {
+        file: 'WxCallBackendConnector',
+        method: 'getVoicemailSummary',
+      });
     });
 
     it('verify that PENDING transcription status is passed while transcribing is in progress in the backend', async () => {
@@ -879,6 +887,17 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const response = await wxCallBackendConnector.voicemailMarkAsRead(messageId.$);
 
       expect(response).toStrictEqual(EMPTY_SUCCESS_RESPONSE);
+      expect(infoSpy).toHaveBeenCalledWith(
+        `${METHOD_START_MESSAGE} with messageId: ${messageId.$}`,
+        {
+          file: 'WxCallBackendConnector',
+          method: 'voicemailMarkAsRead',
+        }
+      );
+      expect(logSpy).toHaveBeenCalledWith('Successfully marked voicemail as read', {
+        file: 'WxCallBackendConnector',
+        method: 'voicemailMarkAsRead',
+      });
     });
 
     it('verify successful voicemailMarkAsUnread', async () => {
@@ -889,6 +908,17 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const response = await wxCallBackendConnector.voicemailMarkAsUnread(messageId.$);
 
       expect(response).toStrictEqual(EMPTY_SUCCESS_RESPONSE);
+      expect(infoSpy).toHaveBeenCalledWith(
+        `${METHOD_START_MESSAGE} with messageId: ${messageId.$}`,
+        {
+          file: 'WxCallBackendConnector',
+          method: 'voicemailMarkAsUnread',
+        }
+      );
+      expect(logSpy).toHaveBeenCalledWith('Successfully marked voicemail as unread', {
+        file: 'WxCallBackendConnector',
+        method: 'voicemailMarkAsUnread',
+      });
     });
 
     it('verify successful deleteVoicemail', async () => {
@@ -898,6 +928,17 @@ describe('Voicemail webex call Backend Connector Test case', () => {
       const response = await wxCallBackendConnector.deleteVoicemail(messageId.$);
 
       expect(response).toStrictEqual(EMPTY_SUCCESS_RESPONSE);
+      expect(infoSpy).toHaveBeenCalledWith(
+        `${METHOD_START_MESSAGE} with messageId: ${messageId.$}`,
+        {
+          file: 'WxCallBackendConnector',
+          method: 'deleteVoicemail',
+        }
+      );
+      expect(logSpy).toHaveBeenCalledWith('Successfully deleted voicemail', {
+        file: 'WxCallBackendConnector',
+        method: 'deleteVoicemail',
+      });
     });
 
     it('verify resolveContact', async () => {

@@ -1,6 +1,5 @@
 /* eslint-disable valid-jsdoc */
 /* eslint-disable no-underscore-dangle */
-import ExtendedError from '../Errors/catalog/ExtendedError';
 import {ERROR_CODE} from '../Errors/types';
 import SDKConnector from '../SDKConnector';
 import {
@@ -151,8 +150,8 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
 
-      const extendedError = new Error(`Failed to get userId: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      const error = new Error(`Failed to get userId: ${err}`);
+      log.error(error, loggerContext);
       await uploadLogs();
 
       return serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -180,8 +179,8 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
       this.bwtoken = response[TOKEN][BEARER];
       log.log('Successfully fetched Broadworks token', loggerContext);
     } catch (err: unknown) {
-      const extendedError = new Error(`Broadworks token exception: ${err}`) as ExtendedError;
-      log.error(extendedError, {
+      const error = new Error(`Broadworks token exception: ${err}`);
+      log.error(error, {
         file: BROADWORKS_VOICEMAIL_FILE,
         method: METHODS.GET_BW_TOKEN,
       });
@@ -292,8 +291,8 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
           statusCode: err instanceof Error ? Number(err.message) : '',
         } as WebexRequestPayload;
 
-        const extendedError = new Error(`Failed to get voicemail list: ${err}`) as ExtendedError;
-        log.error(extendedError, loggerContext);
+        const error = new Error(`Failed to get voicemail list: ${err}`);
+        log.error(error, loggerContext);
         await uploadLogs();
 
         const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -382,8 +381,8 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
 
-      const extendedError = new Error(`Failed to get voicemail content: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      const error = new Error(`Failed to get voicemail content: ${err}`);
+      log.error(error, loggerContext);
       await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -445,8 +444,8 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
 
-      const extendedError = new Error(`Failed to mark voicemail as read: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      const error = new Error(`Failed to mark voicemail as read: ${err}`);
+      log.error(error, loggerContext);
       await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -499,10 +498,8 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
 
-      const extendedError = new Error(
-        `Failed to mark voicemail as unread: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      const error = new Error(`Failed to mark voicemail as unread: ${err}`);
+      log.error(error, loggerContext);
       await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
@@ -555,8 +552,8 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
 
-      const extendedError = new Error(`Failed to delete voicemail: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      const error = new Error(`Failed to delete voicemail: ${err}`);
+      log.error(error, loggerContext);
       await uploadLogs();
 
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);

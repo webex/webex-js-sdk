@@ -1,7 +1,6 @@
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable valid-jsdoc */
-import ExtendedError from 'Errors/catalog/ExtendedError';
 import {METHOD_START_MESSAGE} from '../common/constants';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
@@ -75,8 +74,8 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
 
       return response;
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to initialize voicemail: ${err}`) as ExtendedError;
-      log.error(extendedError, {
+      const error = new Error(`Failed to initialize voicemail: ${err}`);
+      log.error(error, {
         file: VOICEMAIL_FILE,
         method: METHODS.INIT,
       });
@@ -187,8 +186,8 @@ export class Voicemail extends Eventing<VoicemailEventTypes> implements IVoicema
 
       return response;
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to get voicemail list: ${err}`) as ExtendedError;
-      log.error(extendedError, {
+      const error = new Error(`Failed to get voicemail list: ${err}`);
+      log.error(error, {
         file: VOICEMAIL_FILE,
         method: METHODS.GET_VOICEMAIL_LIST,
       });
