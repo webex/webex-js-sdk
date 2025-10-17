@@ -415,6 +415,10 @@ function createDevice() {
     unregisterElm.disabled = false;
   });
 
+  line.on('error', (error) => {
+    console.log('Error: ', error);
+  });
+
   // Start listening for incoming calls
   line.on('line:incoming_call', (callObj) => {
     call = callObj;
@@ -428,6 +432,7 @@ function createDevice() {
         imageElm.appendChild(img);
       }
     });
+
 
     call.on('disconnect', () => {
       callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
