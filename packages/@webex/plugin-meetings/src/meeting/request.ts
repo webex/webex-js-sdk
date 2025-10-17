@@ -26,8 +26,6 @@ import {
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
   ANNOTATION,
-  WEBEX_API_BASE_URL_PRODUCTION,
-  WEBEX_API_BASE_URL_INTEGRATION,
 } from '../constants';
 import {
   SendReactionOptions,
@@ -1012,25 +1010,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
-   * Get the appropriate Webex API base URL based on the environment
-   * @private
-   * @returns {string} The base URL for public Webex APIs
-   */
-  private getWebexApiBaseUrl(): string {
-    // Check if we're in integration environment by inspecting the hydra service URL
-    // @ts-ignore
-    const hydraUrl = this.webex.internal.services.get('hydra');
-
-    // If hydra URL contains 'integration' or 'int', use integration base URL
-    if (hydraUrl && (hydraUrl.includes('integration') || hydraUrl.includes('-int'))) {
-      return WEBEX_API_BASE_URL_INTEGRATION;
-    }
-
-    // Default to production
-    return WEBEX_API_BASE_URL_PRODUCTION;
-  }
-
-  /**
    * Call out to a SIP participant
    *
    * @param {any} meetingId - The meeting ID.
@@ -1041,8 +1020,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    */
   public async sipCallOut(meetingId, meetingNumber, address, displayName) {
     LoggerProxy.logger.info('Meetings:request#sipCallOut --> Calling out SIP participant', address);
-    const baseUrl = this.getWebexApiBaseUrl();
-    const uri = `${baseUrl}/meetingParticipants/callout`;
+
     const body: any = {
       meetingId,
       meetingNumber,
@@ -1055,13 +1033,17 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       // @ts-ignore
       const response = await this.request({
         method: HTTP_VERBS.POST,
-        uri,
+        service: 'hydra',
+        resource: 'meetingParticipants/callout',
         body,
+        headers: {
+          Accept: 'application/json',
+        },
       });
 
       LoggerProxy.logger.info('Meetings:request#sipCallOut --> SIP call-out successful', response);
 
-      return response;
+      return response.body;
     } catch (err) {
       LoggerProxy.logger.error(
         `Meetings:request#sipCallOut --> Error calling out SIP participant, error ${err}`
@@ -1082,16 +1064,19 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       participantId
     );
 
-    const baseUrl = this.getWebexApiBaseUrl();
-    const uri = `${baseUrl}/meetingParticipants/cancelCallout`;
+    const body = {
+      participantId,
+    };
 
     try {
       // @ts-ignore
       const response = await this.request({
         method: HTTP_VERBS.POST,
-        uri,
-        body: {
-          participantId,
+        service: 'hydra',
+        resource: 'meetingParticipants/cancelCallout',
+        body,
+        headers: {
+          Accept: 'application/json',
         },
       });
 
@@ -1100,7 +1085,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         response
       );
 
-      return response;
+      return response.body;
     } catch (err) {
       LoggerProxy.logger.error(
         `Meetings:request#cancelSipCallOut --> Error cancelling SIP participant call-out, error ${err}`

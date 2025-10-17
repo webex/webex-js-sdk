@@ -780,7 +780,6 @@ function leaveMeeting(meetingId) {
       publishShareBtn.disabled = true;
       unpublishShareBtn.disabled = true;
       enableMeetingDependentButtons(false);
-      // Clear SIP call-out fields
       clearSipCalloutFields();
     });
 }
@@ -1350,12 +1349,6 @@ function callOutSipParticipant() {
     statusElm.style.color = 'red';
     return;
   }
-
-  // Get meeting ID from the active meeting object
-  // const meetingId = meeting.meetingInfo?.meetingId;
-  // const meetingNumber = meeting.meetingInfo?.meetingId;
-  // const meetingInfo = meeting.meetingInfo
-  // console.log("meetingInfo", meetingInfo);
   // Get user input fields
   const sipAddress = document.getElementById('gc-sip-address').value.trim();
   const displayName = document.getElementById('gc-sip-display-name').value.trim();
@@ -1364,15 +1357,11 @@ function callOutSipParticipant() {
   button.disabled = true;
   statusElm.innerText = 'Calling out...';
   statusElm.style.color = 'blue';
-
-  // Call Meeting instance method with two parameters
   meeting.sipCallOut(sipAddress, displayName)
     .then((data) => {
       statusElm.innerText = 'SIP call-out successful!';
       statusElm.style.color = 'green';
       console.log('MeetingControls#callOutSipParticipant() :: success!', data);
-      
-      // Only clear SIP address and display name
       document.getElementById('gc-sip-address').value = '';
       document.getElementById('gc-sip-display-name').value = '';
       button.disabled = false;
@@ -1399,8 +1388,6 @@ function cancelSipCallOut() {
   button.disabled = true;
   statusElm.innerText = 'Cancelling...';
   statusElm.style.color = 'blue';
-  
-  // Use webex.meetings (Meetings class) for standalone cancel
   meeting.cancelSipCallOut(
     participantId,
   )
@@ -1408,8 +1395,6 @@ function cancelSipCallOut() {
       statusElm.innerText = 'SIP call-out cancelled!';
       statusElm.style.color = 'green';
       console.log('MeetingControls#cancelSipCallOut() :: success!', data);
-      
-      // Clear field
       document.getElementById('gc-sip-participant-id').value = '';
       button.disabled = false;
       validateCancelSipFields();
