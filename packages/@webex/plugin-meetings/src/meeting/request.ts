@@ -26,6 +26,8 @@ import {
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
   ANNOTATION,
+  WEBEX_API_BASE_URL_PRODUCTION,
+  WEBEX_API_BASE_URL_INTEGRATION,
 } from '../constants';
 import {
   SendReactionOptions,
@@ -1007,5 +1009,103 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         locusId,
       },
     });
+  }
+
+  /**
+   * Get the appropriate Webex API base URL based on the environment
+   * @private
+   * @returns {string} The base URL for public Webex APIs
+   */
+  private getWebexApiBaseUrl(): string {
+    // Check if we're in integration environment by inspecting the hydra service URL
+    // @ts-ignore
+    const hydraUrl = this.webex.internal.services.get('hydra');
+
+    // If hydra URL contains 'integration' or 'int', use integration base URL
+    if (hydraUrl && (hydraUrl.includes('integration') || hydraUrl.includes('-int'))) {
+      return WEBEX_API_BASE_URL_INTEGRATION;
+    }
+
+    // Default to production
+    return WEBEX_API_BASE_URL_PRODUCTION;
+  }
+
+  /**
+   * Call out to a SIP participant
+   *
+   * @param {any} meetingId - The meeting ID.
+   * @param {any} meetingNumber - The meeting number.
+   * @param {string} address - The SIP address to call out.
+   * @param {string} displayName - The display name for the participant.
+   * @returns {Promise} The API response
+   */
+  public async sipCallOut(meetingId, meetingNumber, address, displayName) {
+    LoggerProxy.logger.info('Meetings:request#sipCallOut --> Calling out SIP participant', address);
+    const baseUrl = this.getWebexApiBaseUrl();
+    const uri = `${baseUrl}/meetingParticipants/callout`;
+    const body: any = {
+      meetingId,
+      meetingNumber,
+      address,
+      displayName,
+    };
+    LoggerProxy.logger.info('Meetings:request#sipCallOut --> Request body:', body);
+
+    try {
+      // @ts-ignore
+      const response = await this.request({
+        method: HTTP_VERBS.POST,
+        uri,
+        body,
+      });
+
+      LoggerProxy.logger.info('Meetings:request#sipCallOut --> SIP call-out successful', response);
+
+      return response;
+    } catch (err) {
+      LoggerProxy.logger.error(
+        `Meetings:request#sipCallOut --> Error calling out SIP participant, error ${err}`
+      );
+      throw err;
+    }
+  }
+
+  /**
+   * Cancel an ongoing SIP call-out
+   *
+   * @param {string} participantId - The ID of the participant whose SIP call-out should be cancelled.
+   * @returns {Promise} The API response
+   */
+  public async cancelSipCallOut(participantId) {
+    LoggerProxy.logger.info(
+      'Meetings:request#cancelSipCallOut --> Cancelling SIP participant call-out',
+      participantId
+    );
+
+    const baseUrl = this.getWebexApiBaseUrl();
+    const uri = `${baseUrl}/meetingParticipants/cancelCallout`;
+
+    try {
+      // @ts-ignore
+      const response = await this.request({
+        method: HTTP_VERBS.POST,
+        uri,
+        body: {
+          participantId,
+        },
+      });
+
+      LoggerProxy.logger.info(
+        'Meetings:request#cancelSipCallOut --> SIP call-out cancelled successfully',
+        response
+      );
+
+      return response;
+    } catch (err) {
+      LoggerProxy.logger.error(
+        `Meetings:request#cancelSipCallOut --> Error cancelling SIP participant call-out, error ${err}`
+      );
+      throw err;
+    }
   }
 }

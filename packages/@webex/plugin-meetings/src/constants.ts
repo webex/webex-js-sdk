@@ -5,6 +5,10 @@ export type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
+// API Base URLs
+export const WEBEX_API_BASE_URL_PRODUCTION = 'https://webexapis.com/v1';
+export const WEBEX_API_BASE_URL_INTEGRATION = 'https://integration.webexapis.com/v1';
+
 export const AUDIO = 'audio';
 export const AUDIO_STATUS = 'audioStatus';
 export const ALERT = 'alert';
