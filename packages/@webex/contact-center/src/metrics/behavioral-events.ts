@@ -409,6 +409,20 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'queue_fetch',
     verb: 'fail',
   },
+
+  // Outdial ANI API Events
+  [METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'outdial_ani_ep_fetch',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'outdial_ani_ep_fetch',
+    verb: 'fail',
+  },
 };
 
 /**
