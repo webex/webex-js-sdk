@@ -220,14 +220,6 @@ export default class Reachability extends EventsScope {
     try {
       this.lastTrigger = trigger;
 
-      // Enable per-url UDP reachability if coming from network-checker app
-      // if (this.lastTrigger === 'network-checker') {
-      //   // @ts-ignore
-      //   if (this.webex.config?.meetings) {
-      //     this.webex.config.meetings.reachabilityEnablePerUrlForUdp = true;
-      //   }
-      // }
-
       // kick off ip version detection. We don't await it, as we don't want to waste time
       // and if it fails, that's ok we can still carry on
       // @ts-ignore
