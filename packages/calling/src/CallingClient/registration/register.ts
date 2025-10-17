@@ -216,7 +216,20 @@ export class Registration implements IRegistration {
   }
 
   /**
-   *
+   * Callback for handling 404 response from the server for register keepalive
+   */
+  private async handle404KeepaliveFailure(caller: string): Promise<void> {
+    if (caller === KEEPALIVE_UTIL) {
+      const abort = await this.attemptRegistrationWithServers(caller);
+
+      if (!abort && !this.isDeviceRegistered()) {
+        await this.startFailoverTimer();
+      }
+    }
+  }
+
+  /**
+   * Callback for handling 429 retry response from the server
    */
   private async handle429Retry(retryAfter: number, caller: string): Promise<void> {
     if (caller === FAILBACK_UTIL) {
@@ -239,6 +252,21 @@ export class Registration implements IRegistration {
       if (!abort && !this.isDeviceRegistered()) {
         await this.restartRegistration(REG_429_RETRY_UTIL);
       }
+    } else if (caller === KEEPALIVE_UTIL) {
+      this.clearKeepaliveTimer();
+      setTimeout(async () => {
+        log.log(`Resuming keepalive after ${retryAfter} seconds`, {
+          file: REGISTRATION_FILE,
+          method: REG_429_RETRY_UTIL,
+        });
+
+        // Resume the keepalive after waiting for the retry after period
+        await this.startKeepaliveTimer(
+          this.deviceInfo.device?.uri as string,
+          this.deviceInfo.keepaliveInterval as number,
+          'UNKNOWN'
+        );
+      }, retryAfter * 1000);
     } else {
       this.retryAfter = retryAfter;
     }
@@ -802,7 +830,7 @@ export class Registration implements IRegistration {
           this.webWorker.onmessage = async (event: MessageEvent) => {
             const logContext = {
               file: REGISTRATION_FILE,
-              method: this.startKeepaliveTimer.name,
+              method: KEEPALIVE_UTIL,
             };
             if (event.data.type === WorkerMessageType.KEEPALIVE_SUCCESS) {
               log.info(`Sent Keepalive, status: ${event.data.statusCode}`, logContext);
@@ -834,7 +862,9 @@ export class Registration implements IRegistration {
                     clientError
                   );
                 },
-                {method: KEEPALIVE_UTIL, file: REGISTRATION_FILE}
+                {method: KEEPALIVE_UTIL, file: REGISTRATION_FILE},
+                (retryAfter: number, retryCaller: string) =>
+                  this.handle429Retry(retryAfter, retryCaller)
               );
 
               if (abort || event.data.keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
@@ -848,6 +878,8 @@ export class Registration implements IRegistration {
                 if (!abort) {
                   /* In case of non-final error, re-attempt registration */
                   await this.reconnectOnFailure(KEEPALIVE_UTIL);
+                } else if (error.statusCode === 404) {
+                  this.handle404KeepaliveFailure(KEEPALIVE_UTIL);
                 }
               } else {
                 this.lineEmitter(LINE_EVENTS.RECONNECTING);
