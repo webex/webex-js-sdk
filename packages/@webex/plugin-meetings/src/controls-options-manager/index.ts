@@ -95,22 +95,16 @@ export default class ControlsOptionsManager {
 
   /**
    * @param {string} url
+   * @param {boolean} isMainLocus
    * @returns {void}
    * @public
    * @memberof ControlsOptionsManager
    */
-  public setLocusUrl(url: string) {
+  public setLocusUrl(url: string, isMainLocus?: boolean) {
     this.locusUrl = url;
-  }
-
-  /**
-   * @param {string} url
-   * @returns {void}
-   * @public
-   * @memberof ControlsOptionsManager
-   */
-  public setMainLocusUrl(url: string) {
-    this.mainLocusUrl = url;
+    if (isMainLocus) {
+      this.mainLocusUrl = url;
+    }
   }
 
   /**

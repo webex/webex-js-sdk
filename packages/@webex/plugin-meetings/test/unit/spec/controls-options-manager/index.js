@@ -206,7 +206,7 @@ describe('plugin-meetings', () => {
               it('should call request with mainLocusUrl and locusUrl as authorizingLocusUrl if mainLocusUrl is exist and not same with locusUrl', () => {
                 const restorable = Util.canUpdate;
                 Util.canUpdate = sinon.stub().returns(true);
-                manager.setMainLocusUrl('test/main');
+                manager.mainLocusUrl = 'test/main';
 
                 const audio = {scope: 'audio', properties: {a: 1, b: 2}};
                 const reactions = {scope: 'reactions', properties: {c: 3, d: 4}};
@@ -342,7 +342,7 @@ describe('plugin-meetings', () => {
 
               it('request with mainLocusUrl and make locusUrl as authorizingLocusUrl if mainLocusUrl is exist and not same with locusUrl', () => {
                 manager.setDisplayHints(['MUTE_ALL', 'DISABLE_HARD_MUTE', 'DISABLE_MUTE_ON_ENTRY']);
-                manager.setMainLocusUrl(`test/main`);
+                manager.mainLocusUrl = `test/main`;
 
                 const result = manager.setMuteAll(true, true, true, ['attendee']);
 

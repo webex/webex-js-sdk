@@ -10554,8 +10554,7 @@ describe('plugin-meetings', () => {
 
           meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
           meeting.recordingController = {setLocusUrl: sinon.stub().returns(undefined)};
-          meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined),
-            setMainLocusUrl: sinon.stub().returns(undefined)};
+          meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined)};
 
           meeting.breakouts.locusUrlUpdate = sinon.stub();
           meeting.annotation.locusUrlUpdate = sinon.stub();
@@ -10572,8 +10571,7 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(meeting.annotation.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
-          assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
-          assert.notCalled(meeting.controlsOptionsManager.setMainLocusUrl);
+          assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl, false);
           assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.webinar.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
@@ -10597,8 +10595,7 @@ describe('plugin-meetings', () => {
           const newLocusUrl = 'newLocusUrl/12345';
           const payload = {url: newLocusUrl, isMainLocus: true}
 
-          meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined),
-            setMainLocusUrl: sinon.stub().returns(undefined)};
+          meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined)};
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -10606,8 +10603,7 @@ describe('plugin-meetings', () => {
             payload
           );
 
-          assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
-          assert.calledWith(meeting.controlsOptionsManager.setMainLocusUrl, newLocusUrl);
+          assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl, true);
 
           done();
         });

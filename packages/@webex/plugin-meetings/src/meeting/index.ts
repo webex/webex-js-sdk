@@ -3367,10 +3367,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this.locusUrl = url;
         this.locusId = this.locusUrl?.split('/').pop();
         this.recordingController.setLocusUrl(this.locusUrl);
-        this.controlsOptionsManager.setLocusUrl(this.locusUrl);
-        if (isMainLocus) {
-          this.controlsOptionsManager.setMainLocusUrl(url);
-        }
+        this.controlsOptionsManager.setLocusUrl(this.locusUrl, !!isMainLocus);
         this.webinar.locusUrlUpdate(url);
 
         Trigger.trigger(
