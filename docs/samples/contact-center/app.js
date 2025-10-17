@@ -42,10 +42,7 @@ const updateDialNumberElm  = document.querySelector('#updateDialNumber');
 const updateTeamDropdownElm = document.querySelector('#updateTeamDropdown');
 const incomingCallListener = document.querySelector('#incomingsection');
 const incomingDetailsElm = document.querySelector('#incoming-task');
-const participantListElm = document.createElement('div');
-participantListElm.id = 'participant-list';
-participantListElm.style.cssText = 'margin-top:10px;padding:8px;border:1px solid #ccc;background:#f9f9f9;display:none;';
-incomingDetailsElm.parentNode.appendChild(participantListElm);
+const participantListElm = document.querySelector('#participant-list');
 
 // MPC: Get reference to the static "Allow participants to interact" element
 const allowInteractElm = document.getElementById('allow-interact');
@@ -1065,7 +1062,7 @@ function getConsultMPCState(task, agentId) {
   return interaction?.state;
 }
 
-function getStatus(task, agentId) {
+function getTaskStatus(task, agentId) {
   const interaction = task.data.interaction;
   if (isSecondaryEpDnAgent(task)) {
     if (interaction.state === 'conference') {
@@ -1089,7 +1086,7 @@ function getConsultStatus(task) {
     return 'No consultation in progress';
   }
 
-  const state = getStatus(task, agentId);
+  const state = getTaskStatus(task, agentId);
   
   const { interaction } = task.data;
   const taskState = interaction?.state;
@@ -1226,7 +1223,7 @@ function updateCallControlUI(task) {
       }),
       consultInitiated: () => setControls({
         'holdResumeElm': { hide: true, disable: false },
-        'muteElm': { hide: true || !isBrowser, disable: false },
+        'muteElm': { hide: true, disable: false },
         'pauseResumeRecordingElm': { hide: true, disable: false },
         'consultTabBtn': { hide: true, disable: false },
         'declineElm': { hide: true, disable: false },
