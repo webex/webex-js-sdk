@@ -45,7 +45,7 @@ export const DUMMY_MOBIUS_URL = 'https://mobius.aintgen-a-1.int.infra.webex.com/
 export const IP_ENDPOINT = 'myip';
 export const INITIAL_SEQ_NUMBER = 1;
 export const MEDIA_ENDPOINT_RESOURCE = 'media';
-export const NETWORK_FLAP_TIMEOUT = 2000;
+export const NETWORK_FLAP_TIMEOUT = 5000;
 export const CALL_HOLD_SERVICE = 'callhold';
 export const CALL_TRANSFER_SERVICE = 'calltransfer';
 export const HOLD_ENDPOINT = 'hold';
@@ -115,7 +115,6 @@ export const KEEPALIVE_UTIL = 'startKeepaliveTimer';
 export const FAILBACK_UTIL = 'executeFailback';
 export const REG_429_RETRY_UTIL = 'handle429Retry';
 export const FAILOVER_UTIL = 'startFailoverTimer';
-export const NETWORK_CHANGE_DETECTION_UTIL = 'detectNetworkChange';
 export const CALLS_CLEARED_HANDLER_UTIL = 'callsClearedHandler';
 export const RECONNECT_UTIL = 'reconnectOnFailure';
 export const NOISE_REDUCTION_EFFECT = 'noise-reduction-effect';
@@ -213,7 +212,10 @@ export const METHODS = {
   SET_MOBIUS_SERVERS: 'setMobiusServers',
   HANDLE_CONNECTION_RESTORATION: 'handleConnectionRestoration',
   RECONNECT_ON_FAILURE: 'reconnectOnFailure',
-  DETECT_NETWORK_CHANGE: 'detectNetworkChange',
+  MERCURY_OFFLINE: 'handleMercuryOffline',
+  MERCURY_ONLINE: 'handleMercuryOnline',
+  NETWORK_OFFLINE: 'handleNetworkOffline',
+  NETWORK_ONLINE: 'handleNetworkOnline',
   GET_CLIENT_REGION_INFO: 'getClientRegionInfo',
   GET_MOBIUS_SERVERS: 'getMobiusServers',
   REGISTER_CALLS_CLEARED_LISTENER: 'registerCallsClearedListener',

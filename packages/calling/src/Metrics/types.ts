@@ -12,6 +12,7 @@ export enum METRIC_EVENT {
   BNR_DISABLED = 'web-calling-sdk-bnr-disabled',
   CALL = 'web-calling-sdk-callcontrol',
   CALL_ERROR = 'web-calling-sdk-callcontrol-error',
+  CONNECTION_ERROR = 'web-calling-sdk-connection',
   MEDIA = 'web-calling-sdk-media',
   MEDIA_ERROR = 'web-calling-sdk-media-error',
   REGISTRATION = 'web-calling-sdk-registration',
@@ -54,6 +55,12 @@ export type SERVER_TYPE = 'PRIMARY' | 'BACKUP' | 'UNKNOWN';
 
 export const UPLOAD_LOGS_ACTION = 'upload_logs';
 
+export enum CONNECTION_ACTION {
+  NETWORK_FLAP = 'network_flap',
+  MERCURY_DOWN = 'mercury_down',
+  MERCURY_UP = 'mercury_up',
+}
+
 export interface IMetricManager {
   setDeviceInfo: (deviceInfo: IDeviceInfo) => void;
 
@@ -93,6 +100,14 @@ export interface IMetricManager {
     localSdp?: string,
     remoteSdp?: string,
     callError?: CallError
+  ) => void;
+
+  submitConnectionMetrics: (
+    name: METRIC_EVENT,
+    metricAction: CONNECTION_ACTION,
+    type: METRIC_TYPE,
+    downTimestamp: string,
+    upTimestamp: string
   ) => void;
 
   submitVoicemailMetric: (
