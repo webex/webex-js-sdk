@@ -10471,6 +10471,24 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to CONTROLS_AUTO_END_MEETING_WARNING_CHANGED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_AUTO_END_MEETING_WARNING_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_AUTO_END_MEETING_WARNING_UPDATED,
+            {state}
+          );
+        });
+
         it('listens to CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED', async () => {
           const state = {example: 'value'};
 
@@ -11443,6 +11461,7 @@ describe('plugin-meetings', () => {
         let canShareWhiteBoardSpy;
         let canMoveToLobbySpy;
         let isSpokenLanguageAutoDetectionEnabledSpy;
+        let showAutoEndMeetingWarningSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -11474,6 +11493,7 @@ describe('plugin-meetings', () => {
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
           canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
           canMoveToLobbySpy = sinon.spy(MeetingUtil, 'canMoveToLobby');
+          showAutoEndMeetingWarningSpy = sinon.spy(MeetingUtil, 'showAutoEndMeetingWarning');
           isSpokenLanguageAutoDetectionEnabledSpy = sinon.spy(MeetingUtil, 'isSpokenLanguageAutoDetectionEnabled');
 
         });
@@ -11481,6 +11501,7 @@ describe('plugin-meetings', () => {
         afterEach(() => {
           inMeetingActionsSetSpy.restore();
           waitingForOthersToJoinSpy.restore();
+          showAutoEndMeetingWarningSpy.restore();
         });
 
         forEach(
@@ -12028,6 +12049,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
           assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
           assert.calledWith(canMoveToLobbySpy, userDisplayHints);
+          assert.calledWith(showAutoEndMeetingWarningSpy, userDisplayHints);
           assert.calledWith(isSpokenLanguageAutoDetectionEnabledSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {

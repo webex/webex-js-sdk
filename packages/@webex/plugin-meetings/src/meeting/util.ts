@@ -660,6 +660,9 @@ const MeetingUtil = {
 
   waitingForOthersToJoin: (displayHints) => displayHints.includes(DISPLAY_HINTS.WAITING_FOR_OTHERS),
 
+  showAutoEndMeetingWarning: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.SHOW_AUTO_END_MEETING_WARNING),
+
   canSendReactions: (originalValue, displayHints) => {
     if (displayHints.includes(DISPLAY_HINTS.REACTIONS_ACTIVE)) {
       return true;

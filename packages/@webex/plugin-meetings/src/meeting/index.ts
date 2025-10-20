@@ -2976,6 +2976,18 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_AUTO_END_MEETING_WARNING_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setupLocusControlsListener',
+        },
+        EVENT_TRIGGERS.MEETING_CONTROLS_AUTO_END_MEETING_WARNING_UPDATED,
+        {state}
+      );
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_ANNOTATION_CHANGED, ({state}) => {
       Trigger.trigger(
         this,
@@ -4223,6 +4235,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this.userDisplayHints,
             this.selfUserPolicies
           ),
+          showAutoEndMeetingWarning: MeetingUtil.showAutoEndMeetingWarning(this.userDisplayHints),
           canRaiseHand: MeetingUtil.canUserRaiseHand(this.userDisplayHints),
           canLowerAllHands: MeetingUtil.canUserLowerAllHands(this.userDisplayHints),
           canLowerSomeoneElsesHand: MeetingUtil.canUserLowerSomeoneElsesHand(this.userDisplayHints),
@@ -9453,6 +9466,36 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     return Promise.reject(new Error('Error sending reaction, service url not found.'));
+  }
+
+  /**
+   * Extend the current meeting duration.
+   *
+   * @param {number} extensionMinutes - how many minutes to extend
+   * @returns {Promise}
+   * @public
+   * @memberof Meeting
+   */
+  public extendMeeting({
+    meetingPolicyUrl,
+    meetingInstanceId,
+    participantId,
+    extensionMinutes = 30,
+  }) {
+    if (!meetingInstanceId || !participantId) {
+      return Promise.reject(new Error('Missing meetingInstanceId or participantId'));
+    }
+
+    if (!meetingPolicyUrl) {
+      return Promise.reject(new Error('Missing meetingPolicyUrl'));
+    }
+
+    return this.meetingRequest.extendMeeting({
+      meetingInstanceId,
+      participantId,
+      extensionMinutes,
+      meetingPolicyUrl,
+    });
   }
 
   /**
