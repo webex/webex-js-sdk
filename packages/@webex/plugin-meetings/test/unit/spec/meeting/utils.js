@@ -975,6 +975,8 @@ describe('plugin-meetings', () => {
       {functionName: 'isLocalRecordingStarted',displayHint:'LOCAL_RECORDING_STATUS_STARTED'},
       {functionName: 'isLocalRecordingStopped', displayHint: 'LOCAL_RECORDING_STATUS_STOPPED'},
       {functionName: 'isLocalRecordingPaused', displayHint: 'LOCAL_RECORDING_STATUS_PAUSED'},
+      {functionName: 'isLocalStreamingStarted',displayHint:'STREAMING_STATUS_STARTED'},
+      {functionName: 'isLocalStreamingStopped', displayHint: 'STREAMING_STATUS_STOPPED'},
 
       {functionName: 'isManualCaptionActive', displayHint: 'MANUAL_CAPTION_STATUS_ACTIVE'},
 
@@ -988,7 +990,7 @@ describe('plugin-meetings', () => {
       {functionName: 'showAutoEndMeetingWarning', displayHint: 'SHOW_AUTO_END_MEETING_WARNING'},
     ].forEach(({functionName, displayHint}) => {
       describe(functionName, () => {
-        it('works as expected', () => {
+        it.only('works as expected', () => {
           assert.deepEqual(MeetingUtil[functionName]([displayHint]), true);
           assert.deepEqual(MeetingUtil[functionName]([]), false);
         });

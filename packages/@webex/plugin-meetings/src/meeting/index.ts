@@ -4251,6 +4251,8 @@ export default class Meeting extends StatelessWebexPlugin {
           isLocalRecordingStarted: MeetingUtil.isLocalRecordingStarted(this.userDisplayHints),
           isLocalRecordingStopped: MeetingUtil.isLocalRecordingStopped(this.userDisplayHints),
           isLocalRecordingPaused: MeetingUtil.isLocalRecordingPaused(this.userDisplayHints),
+          isLocalStreamingStarted: MeetingUtil.isLocalStreamingStarted(this.userDisplayHints),
+          isLocalStreamingStopped: MeetingUtil.isLocalStreamingStopped(this.userDisplayHints),
           isManualCaptionActive: MeetingUtil.isManualCaptionActive(this.userDisplayHints),
           isSaveTranscriptsEnabled: MeetingUtil.isSaveTranscriptsEnabled(this.userDisplayHints),
           isSpokenLanguageAutoDetectionEnabled: MeetingUtil.isSpokenLanguageAutoDetectionEnabled(
