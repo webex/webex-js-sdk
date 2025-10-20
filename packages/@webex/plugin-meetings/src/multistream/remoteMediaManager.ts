@@ -943,7 +943,9 @@ export class RemoteMediaManager extends EventsScope {
           {
             preferLiveVideo: this.config.video.preferLiveVideo,
             resolution: paneGroupInCurrentLayout.size,
-            preferredCodec: this.preferredCodec,
+            // TODO: update this once video-main supports av1 codec
+            // https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-728170
+            preferredCodec: 'h264',
           }
         );
 

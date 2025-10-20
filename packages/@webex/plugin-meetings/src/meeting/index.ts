@@ -7330,7 +7330,6 @@ export default class Meeting extends StatelessWebexPlugin {
       this.statsAnalyzer = new StatsAnalyzer({
         // @ts-ignore - config coming from registerPlugin
         config: this.config.stats,
-        // @ts-ignore
         networkQualityMonitor: this.networkQualityMonitor,
         isMultistream: this.isMultistream,
       });

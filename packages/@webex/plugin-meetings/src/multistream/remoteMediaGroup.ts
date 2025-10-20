@@ -6,7 +6,7 @@ import {NamedMediaGroup} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {getMaxFs, RemoteMedia, RemoteVideoResolution} from './remoteMedia';
-import {CodecInfo, MediaRequestId, MediaRequestManager} from './mediaRequestManager';
+import {CodecInfo, MediaRequest, MediaRequestId, MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot} from './receiveSlot';
 
 type Options = {

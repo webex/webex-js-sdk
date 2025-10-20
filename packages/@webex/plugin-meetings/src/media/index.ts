@@ -216,7 +216,6 @@ Media.createMediaConnection = (
       iceServers,
       iceCandidatesTimeout,
       skipInactiveTransceivers: false,
-      // TODO: Should we require H264 when AV1 is supported?
       requireH264: true,
       sdpMunging: {
         convertPort9to0: false,

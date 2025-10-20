@@ -223,6 +223,169 @@ describe('RemoteMediaGroup', () => {
 
   });
 
+  describe('preferredCodec', () => {
+    it('uses h264 codec by default when preferredCodec is not specified', () => {
+      new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+
+      assert.calledOnce(fakeMediaRequestManager.addRequest);
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+          }),
+          receiveSlots: fakeReceiveSlots,
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600, // medium resolution
+          }),
+        }),
+        true
+      );
+    });
+
+    it('uses h264 codec when preferredCodec is explicitly set to h264', () => {
+      new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'large',
+        preferLiveVideo: true,
+        preferredCodec: 'h264',
+      });
+
+      assert.calledOnce(fakeMediaRequestManager.addRequest);
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+          }),
+          receiveSlots: fakeReceiveSlots,
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 8192, // large resolution
+          }),
+        }),
+        true
+      );
+    });
+
+    it('uses av1 codec when preferredCodec is set to av1', () => {
+      new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+        preferredCodec: 'av1',
+      });
+
+      assert.calledOnce(fakeMediaRequestManager.addRequest);
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+          }),
+          receiveSlots: fakeReceiveSlots,
+          codecInfo: sinon.match({
+            codec: 'av1',
+            maxPicSize: 3600, // medium resolution uses maxPicSize for av1
+          }),
+        }),
+        true
+      );
+    });
+
+    it('passes preferredCodec to RemoteMedia instances', () => {
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+        resolution: 'small',
+        preferLiveVideo: true,
+        preferredCodec: 'av1',
+      });
+
+      const remoteMediaList = group.getRemoteMedia();
+      assert.strictEqual(remoteMediaList.length, NUM_SLOTS);
+
+      // Verify all RemoteMedia instances were created
+      assert.strictEqual(
+        remoteMediaList.every((item) => item instanceof RemoteMedia),
+        true
+      );
+    });
+
+    it('uses av1 codec with different resolutions', () => {
+      const resolutions = [
+        { resolution: 'small' as const, expectedMaxPicSize: 920 },
+        { resolution: 'medium' as const, expectedMaxPicSize: 3600 },
+        { resolution: 'large' as const, expectedMaxPicSize: 8192 },
+      ];
+
+      resolutions.forEach(({ resolution, expectedMaxPicSize }) => {
+        fakeMediaRequestManager.addRequest.resetHistory();
+
+        new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+          resolution,
+          preferLiveVideo: true,
+          preferredCodec: 'av1',
+        });
+
+        assert.calledOnce(fakeMediaRequestManager.addRequest);
+        assert.calledWith(
+          fakeMediaRequestManager.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'active-speaker',
+              priority: 255,
+            }),
+            receiveSlots: fakeReceiveSlots,
+            codecInfo: sinon.match({
+              codec: 'av1',
+              maxPicSize: expectedMaxPicSize,
+            }),
+          }),
+          true
+        );
+      });
+    });
+
+    it('uses h264 codec with different resolutions', () => {
+      const resolutions = [
+        { resolution: 'small' as const, expectedMaxFs: 920 },
+        { resolution: 'medium' as const, expectedMaxFs: 3600 },
+        { resolution: 'large' as const, expectedMaxFs: 8192 },
+      ];
+
+      resolutions.forEach(({ resolution, expectedMaxFs }) => {
+        fakeMediaRequestManager.addRequest.resetHistory();
+
+        new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
+          resolution,
+          preferLiveVideo: true,
+          preferredCodec: 'h264',
+        });
+
+        assert.calledOnce(fakeMediaRequestManager.addRequest);
+        assert.calledWith(
+          fakeMediaRequestManager.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'active-speaker',
+              priority: 255,
+            }),
+            receiveSlots: fakeReceiveSlots,
+            codecInfo: sinon.match({
+              codec: 'h264',
+              maxFs: expectedMaxFs,
+            }),
+          }),
+          true
+        );
+      });
+    });
+  });
+
   describe('setActiveSpeakerCsis', () => {
     it('checks when there is a csi and remote media is not in pinned array', () => {
       const PINNED_INDEX = 2;
