@@ -428,7 +428,6 @@ describe('MemberUtil.isSupportsSingleUserAutoEndMeeting', () => {
     const participant = {
       supportsSingleUserAutoEndMeeting: {},
     };
-
     assert.isTrue(MemberUtil.isSupportsSingleUserAutoEndMeeting(participant));
   });
 
