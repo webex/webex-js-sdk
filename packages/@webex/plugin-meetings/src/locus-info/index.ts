@@ -31,6 +31,51 @@ import LocusDeltaParser from './parser';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 
+export type LocusDTO = {
+  controls?: any;
+  fullState?: {
+    active: boolean;
+    count: number;
+    lastActive: string;
+    locked: boolean;
+    sessionId: string;
+    seessionIds: string[];
+    startTime: number;
+    state: string;
+    type: string;
+  };
+  host?: {
+    id: string;
+    incomingCallProtocols: any[];
+    isExternal: boolean;
+    name: string;
+    orgId: string;
+  };
+  info?: any;
+  links?: any;
+  mediaShares?: any[];
+  meetings?: any[];
+  participants: any[];
+  replaces?: any[];
+  self?: any;
+  sequence?: {
+    dirtyParticipants: number;
+    entries: number[];
+    rangeEnd: number;
+    rangeStart: number;
+    sequenceHash: number;
+    sessionToken: string;
+    since: string;
+    totalParticipants: number;
+  };
+  syncUrl?: string;
+  url?: string;
+};
+
+export type LocusApiResponseBody = {
+  locus: LocusDTO; // this LocusDTO here might not be the full one (for example it won't have all the participants, but it should have self)
+};
+
 /**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object
  * @export
@@ -294,11 +339,11 @@ export default class LocusInfo extends EventsScope {
     this.updateLocusCache(locus);
     // above section only updates the locusInfo object
     // The below section makes sure it updates the locusInfo as well as updates the meeting object
-    this.updateParticipants(locus.participants);
+    this.updateParticipants(locus.participants, []);
     // For 1:1 space meeting the conversation Url does not exist in locus.conversation
     this.updateConversationUrl(locus.conversationUrl, locus.info);
     this.updateControls(locus.controls, locus.self);
-    this.updateLocusUrl(locus.url);
+    this.updateLocusUrl(locus.url, ControlsUtils.isMainSessionDTO(locus));
     this.updateFullState(locus.fullState);
     this.updateMeetingInfo(locus.info);
     this.updateEmbeddedApps(locus.embeddedApps);
@@ -324,6 +369,16 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Handles HTTP response from Locus API call.
+   * @param {Meeting} meeting meeting object
+   * @param {LocusApiResponseBody} responseBody body of the http response from Locus API call
+   * @returns {void}
+   */
+  handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
+    this.handleLocusDelta(responseBody.locus, meeting);
+  }
+
+  /**
    * @param {Meeting} meeting
    * @param {Object} data
    * @returns {undefined}
@@ -334,6 +389,8 @@ export default class LocusInfo extends EventsScope {
     const {eventType} = data;
     const locus = this.getTheLocusToUpdate(data.locus);
     LoggerProxy.logger.info(`Locus-info:index#parse --> received locus data: ${eventType}`);
+
+    locus.jsSdkMeta = {removedParticipantIds: []};
 
     switch (eventType) {
       case LOCUSEVENT.PARTICIPANT_JOIN:
@@ -400,7 +457,11 @@ export default class LocusInfo extends EventsScope {
     this.participants = locus.participants;
     const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.updateLocusInfo(locus);
-    this.updateParticipants(locus.participants, isReplaceMembers);
+    this.updateParticipants(
+      locus.participants,
+      locus.jsSdkMeta?.removedParticipantIds,
+      isReplaceMembers
+    );
     this.isMeetingActive();
     this.handleOneOnOneEvent(eventType);
     this.updateEmbeddedApps(locus.embeddedApps);
@@ -462,7 +523,11 @@ export default class LocusInfo extends EventsScope {
     const isReplaceMembers = ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
     this.mergeParticipants(this.participants, locus.participants);
     this.updateLocusInfo(locus);
-    this.updateParticipants(locus.participants, isReplaceMembers);
+    this.updateParticipants(
+      locus.participants,
+      locus.jsSdkMeta?.removedParticipantIds,
+      isReplaceMembers
+    );
     this.isMeetingActive();
   }
 
@@ -484,7 +549,7 @@ export default class LocusInfo extends EventsScope {
     this.updateCreated(locus.created);
     this.updateFullState(locus.fullState);
     this.updateHostInfo(locus.host);
-    this.updateLocusUrl(locus.url);
+    this.updateLocusUrl(locus.url, ControlsUtils.isMainSessionDTO(locus));
     this.updateMeetingInfo(locus.info, locus.self);
     this.updateMediaShares(locus.mediaShares);
     this.updateParticipantsUrl(locus.participantsUrl);
@@ -753,11 +818,12 @@ export default class LocusInfo extends EventsScope {
   /**
    * update meeting's members
    * @param {Object} participants new participants object
+   * @param {Array} removedParticipantIds list of removed participants
    * @param {Boolean} isReplace is replace the whole members
    * @returns {Array} updatedParticipants
    * @memberof LocusInfo
    */
-  updateParticipants(participants: object, isReplace?: boolean) {
+  updateParticipants(participants: object, removedParticipantIds?: string[], isReplace?: boolean) {
     this.emitScoped(
       {
         file: 'locus-info',
@@ -766,6 +832,7 @@ export default class LocusInfo extends EventsScope {
       EVENTS.LOCUS_INFO_UPDATE_PARTICIPANTS,
       {
         participants,
+        removedParticipantIds,
         recordingId: this.parsedLocus.controls && this.parsedLocus.controls.record?.modifiedBy,
         selfIdentity: this.parsedLocus.self && this.parsedLocus.self.selfIdentity,
         selfId: this.parsedLocus.self && this.parsedLocus.self.selfId,
@@ -828,6 +895,7 @@ export default class LocusInfo extends EventsScope {
           hasAnnotationControlChanged,
           hasRemoteDesktopControlChanged,
           hasPollingQAControlChanged,
+          hasAutoEndMeetingChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
@@ -1099,6 +1167,14 @@ export default class LocusInfo extends EventsScope {
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_POLLING_QA_CHANGED,
           {state: current.pollingQAControl}
+        );
+      }
+
+      if (hasAutoEndMeetingChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_AUTO_END_MEETING_WARNING_CHANGED,
+          {state: current.autoEndMeetingWarning}
         );
       }
 
@@ -1665,10 +1741,11 @@ export default class LocusInfo extends EventsScope {
   /**
    * handles when the locus.url is updated
    * @param {String} url
+   * @param {Boolean} isMainLocus
    * @returns {undefined}
    * emits internal event locus_info_update_url
    */
-  updateLocusUrl(url: string) {
+  updateLocusUrl(url: string, isMainLocus = true) {
     if (url && this.url !== url) {
       this.url = url;
       this.updateMeeting({locusUrl: url});
@@ -1678,7 +1755,7 @@ export default class LocusInfo extends EventsScope {
           function: 'updateLocusUrl',
         },
         EVENTS.LOCUS_INFO_UPDATE_URL,
-        url
+        {url, isMainLocus}
       );
     }
   }

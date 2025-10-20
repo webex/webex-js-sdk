@@ -75,6 +75,8 @@ describe('plugin-mercury', () => {
       webex.internal.services = {
         convertUrlToPriorityHostUrl: sinon.stub().returns(Promise.resolve('ws://example-2.com')),
         markFailedUrl: sinon.stub().returns(Promise.resolve()),
+        switchActiveClusterIds: sinon.stub(),
+        invalidateCache: sinon.stub(),
       };
       webex.internal.metrics.submitClientMetrics = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
@@ -162,7 +164,6 @@ describe('plugin-mercury', () => {
             },
           },
         };
-
         assert.isFalse(mercury.connected, 'Mercury is not connected');
         assert.isTrue(mercury.connecting, 'Mercury is connecting');
         mockWebSocket.open();
@@ -188,6 +189,67 @@ describe('plugin-mercury', () => {
         return promise.then(() => {
           mercury._emit('event:featureToggle_update', envelope);
           assert.notCalled(webex.internal.feature.updateFeature);
+          sinon.restore();
+        });
+      });
+      it('Mercury emit event:ActiveClusterStatusEvent, call services switchActiveClusterIds', () => {
+        const promise = mercury.connect();
+        const activeClusterEventEnvelope = {
+          data: {
+            activeClusters: {
+              wdm: 'wdm-cluster-id.com',
+            },
+          },
+        };
+        mockWebSocket.open();
+
+        return promise.then(() => {
+          mercury._emit('event:ActiveClusterStatusEvent', activeClusterEventEnvelope);
+          assert.calledOnceWithExactly(
+            webex.internal.services.switchActiveClusterIds,
+            activeClusterEventEnvelope.data.activeClusters
+          );
+          sinon.restore();
+        });
+      });
+      it('Mercury emit event:ActiveClusterStatusEvent with no data, not call services switchActiveClusterIds', () => {
+        webex.internal.feature.updateFeature = sinon.stub();
+        const promise = mercury.connect();
+        const envelope = {};
+
+        return promise.then(() => {
+          mercury._emit('event:ActiveClusterStatusEvent', envelope);
+          assert.notCalled(webex.internal.services.switchActiveClusterIds);
+          sinon.restore();
+        });
+      });
+      it('Mercury emit event:u2c.cache-invalidation, call services invalidateCache', () => {
+        const promise = mercury.connect();
+        const u2cInvalidateEventEnvelope = {
+          data: {
+            timestamp: "1759289614",
+          },
+        };
+
+        mockWebSocket.open();
+
+        return promise.then(() => {
+          mercury._emit('event:u2c.cache-invalidation', u2cInvalidateEventEnvelope);
+          assert.calledOnceWithExactly(
+            webex.internal.services.invalidateCache,
+            u2cInvalidateEventEnvelope.data.timestamp
+          );
+          sinon.restore();
+        });
+      });
+      it('Mercury emit event:u2c.cache-invalidation with no data, not call services switchActiveClusterIds', () => {
+        webex.internal.feature.updateFeature = sinon.stub();
+        const promise = mercury.connect();
+        const envelope = {};
+
+        return promise.then(() => {
+          mercury._emit('event:u2c.cache-invalidation', envelope);
+          assert.notCalled(webex.internal.services.invalidateCache);
           sinon.restore();
         });
       });

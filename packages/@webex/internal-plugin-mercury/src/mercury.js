@@ -68,6 +68,32 @@ const Mercury = WebexPlugin.extend({
         this.webex.internal.feature.updateFeature(envelope.data.featureToggle);
       }
     });
+    /*
+     * When Cluster Migrations, notify clients using ActiveClusterStatusEvent via mercury
+     * https://wwwin-github.cisco.com/pages/Webex/crr-docs/techdocs/rr-002.html#wip-notifying-clients-of-cluster-migrations
+     * */
+    this.on('event:ActiveClusterStatusEvent', (envelope) => {
+      if (
+        typeof this.webex.internal.services?.switchActiveClusterIds === 'function' &&
+        envelope &&
+        envelope.data
+      ) {
+        this.webex.internal.services.switchActiveClusterIds(envelope.data?.activeClusters);
+      }
+    });
+    /*
+     * Using cache-invalidation via mercury to instead the method of polling via the new /timestamp endpoint from u2c
+     * https://wwwin-github.cisco.com/pages/Webex/crr-docs/techdocs/rr-005.html#websocket-notifications
+     * */
+    this.on('event:u2c.cache-invalidation', (envelope) => {
+      if (
+        typeof this.webex.internal.services?.invalidateCache === 'function' &&
+        envelope &&
+        envelope.data
+      ) {
+        this.webex.internal.services.invalidateCache(envelope.data?.timestamp);
+      }
+    });
   },
 
   /**

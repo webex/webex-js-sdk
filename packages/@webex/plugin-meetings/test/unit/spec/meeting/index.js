@@ -39,6 +39,7 @@ import {
   ConnectionState,
   MediaConnectionEventNames,
   StatsAnalyzerEventNames,
+  StatsMonitorEventNames,
   Errors,
   ErrorType,
   RemoteTrackType,
@@ -2288,13 +2289,24 @@ describe('plugin-meetings', () => {
             close: sinon.stub(),
             forceRtcMetricsSend,
           });
-          // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
+
+          const mockStatsMonitor = {removeAllListeners: sinon.stub()};
+          const mockNetworkQualityMonitor = {removeAllListeners: sinon.stub()};
+
+          // set a statsAnalyzer and statsMonitor on the meeting so that we can check that they get reset to null
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+          meeting.statsMonitor = mockStatsMonitor;
+          meeting.networkQualityMonitor = mockNetworkQualityMonitor;
           const error = await assert.isRejected(meeting.addMedia());
 
           assert.calledOnce(forceRtcMetricsSend);
+          assert.calledOnce(mockStatsMonitor.removeAllListeners);
+          assert.calledOnce(mockNetworkQualityMonitor.removeAllListeners);
 
           assert.isNull(meeting.statsAnalyzer);
+          assert.isNull(meeting.statsMonitor);
+          assert.isNull(meeting.networkQualityMonitor);
+
           assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
           assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
             name: 'internal.client.add-media.turn-discovery.start',
@@ -2406,12 +2418,23 @@ describe('plugin-meetings', () => {
 
           meeting.waitForRemoteSDPAnswer = sinon.stub().rejects();
 
-          // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
+          const mockStatsMonitor = {removeAllListeners: sinon.stub()};
+          const mockNetworkQualityMonitor = {removeAllListeners: sinon.stub()};
+
+          // set a statsAnalyzer and statsMonitor on the meeting so that we can check that they get reset to null
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+          meeting.statsMonitor = mockStatsMonitor;
+          meeting.networkQualityMonitor = mockNetworkQualityMonitor;
 
           const error = await assert.isRejected(meeting.addMedia());
 
           assert.isNull(meeting.statsAnalyzer);
+          assert.isNull(meeting.statsMonitor);
+          assert.isNull(meeting.networkQualityMonitor);
+
+          assert.calledOnce(mockStatsMonitor.removeAllListeners);
+          assert.calledOnce(mockNetworkQualityMonitor.removeAllListeners);
+
           assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
           assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
             name: 'internal.client.add-media.turn-discovery.start',
@@ -2476,8 +2499,9 @@ describe('plugin-meetings', () => {
               },
             },
           });
-          // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
+          // set a statsAnalyzer and statsMonitor on the meeting so that we can check that they get reset to null
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+          meeting.statsMonitor = {removeAllListeners: sinon.stub()};
           const error = await assert.isRejected(meeting.addMedia());
 
           assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
@@ -2521,6 +2545,7 @@ describe('plugin-meetings', () => {
           );
 
           assert.isNull(meeting.statsAnalyzer);
+          assert.isNull(meeting.statsMonitor);
         });
 
         it('should include the peer connection properties correctly for transcoded', async () => {
@@ -2537,8 +2562,14 @@ describe('plugin-meetings', () => {
               },
             },
           });
-          // set a statsAnalyzer on the meeting so that we can check that it gets reset to null
+
+          const mockStatsMonitor = {removeAllListeners: sinon.stub()};
+          const mockNetworkQualityMonitor = {removeAllListeners: sinon.stub()};
+
+          // set a statsAnalyzer and statsMonitor on the meeting so that we can check that they get reset to null
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
+          meeting.statsMonitor = mockStatsMonitor;
+          meeting.networkQualityMonitor = mockNetworkQualityMonitor;
           const error = await assert.isRejected(meeting.addMedia());
 
           assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
@@ -2582,6 +2613,10 @@ describe('plugin-meetings', () => {
           );
 
           assert.isNull(meeting.statsAnalyzer);
+          assert.isNull(meeting.statsMonitor);
+          assert.isNull(meeting.networkQualityMonitor);
+          assert.calledOnce(mockStatsMonitor.removeAllListeners);
+          assert.calledOnce(mockNetworkQualityMonitor.removeAllListeners);
         });
 
         it('should work the second time addMedia is called in case the first time fails', async () => {
@@ -4117,6 +4152,132 @@ describe('plugin-meetings', () => {
           });
         });
 
+        describe('handles StatsMonitor events', () => {
+          let statsMonitorStub;
+          let prevConfigValue;
+          let listeners;
+
+          beforeEach(async () => {
+            meeting.meetingState = 'ACTIVE';
+            prevConfigValue = meeting.config.stats.enableStatsAnalyzer;
+
+            meeting.config.stats.enableStatsAnalyzer = true;
+
+            listeners = {};
+
+            statsMonitorStub = {
+              on: sinon.stub().callsFake((event, callback) => {
+                listeners[event] = callback;
+              }),
+              removeAllListeners: sinon.stub(),
+            };
+
+            sinon.stub(meeting.mediaProperties, 'sendMediaIssueMetric');
+
+            // mock the StatsMonitor constructor
+            sinon.stub(InternalMediaCoreModule, 'StatsMonitor').returns(statsMonitorStub);
+
+            await meeting.addMedia({
+              mediaSettings: {},
+            });
+          });
+
+          afterEach(() => {
+            meeting.config.stats.enableStatsAnalyzer = prevConfigValue;
+            sinon.restore();
+          });
+
+          describe('INBOUND_AUDIO_ISSUE event', () => {
+            it('should not trigger event when no unmuted members exist', () => {
+              const fakeEventData = {issueSubType: 'DECODE_RESULTS_IN_ZERO_AUDIO_LEVEL'};
+
+              // Setup members that are either self or muted
+              const mutedMember = {
+                isSelf: false,
+                isPairedWithSelf: false,
+                isAudioMuted: true,
+              };
+              const selfMember = {
+                isSelf: true,
+                isPairedWithSelf: false,
+                isAudioMuted: false,
+              };
+              const pairedMember = {
+                isSelf: false,
+                isPairedWithSelf: true,
+                isAudioMuted: false,
+              };
+              meeting.members.membersCollection.getAll = sinon.stub().returns({
+                member1: mutedMember,
+                member2: selfMember,
+                member3: pairedMember,
+              });
+
+              // Reset the stub to clear any previous calls
+              TriggerProxy.trigger.resetHistory();
+
+              // Emit the event from statsMonitor
+              listeners[StatsMonitorEventNames.INBOUND_AUDIO_ISSUE](fakeEventData);
+
+              assert.neverCalledWith(
+                TriggerProxy.trigger,
+                meeting,
+                sinon.match.object,
+                EVENT_TRIGGERS.MEDIA_INBOUND_AUDIO_ISSUE_DETECTED,
+                fakeEventData
+              );
+              assert.notCalled(meeting.mediaProperties.sendMediaIssueMetric);
+            });
+
+            it('should trigger event and metric when there are multiple members and at least one is unmuted', () => {
+              const fakeEventData = {issueSubType: 'DECODE_RESULTS_IN_ZERO_AUDIO_LEVEL'};
+
+              // Setup mixed members - some muted, one unmuted
+              const mutedMember = {
+                isSelf: false,
+                isPairedWithSelf: false,
+                isAudioMuted: true,
+              };
+              const unmutedMember = {
+                isSelf: false,
+                isPairedWithSelf: false,
+                isAudioMuted: false,
+              };
+              const selfMember = {
+                isSelf: true,
+                isPairedWithSelf: false,
+                isAudioMuted: false,
+              };
+              meeting.members.membersCollection.getAll = sinon.stub().returns({
+                member1: mutedMember,
+                member2: unmutedMember,
+                member3: selfMember,
+              });
+
+              // Reset the stub to clear any previous calls
+              TriggerProxy.trigger.resetHistory();
+
+              // Emit the event from statsMonitor
+              listeners[StatsMonitorEventNames.INBOUND_AUDIO_ISSUE](fakeEventData);
+
+              assert.calledWith(
+                TriggerProxy.trigger,
+                meeting,
+                sinon.match.object,
+                EVENT_TRIGGERS.MEDIA_INBOUND_AUDIO_ISSUE_DETECTED,
+                fakeEventData
+              );
+
+              assert.calledOnceWithExactly(
+                meeting.mediaProperties.sendMediaIssueMetric,
+                'inbound_audio',
+                fakeEventData.issueSubType,
+                meeting.correlationId
+              );
+            });
+          });
+        });
+
         describe('bundlePolicy', () => {
           const FAKE_TURN_URL = 'turns:webex.com:3478';
           const FAKE_TURN_USER = 'some-turn-username';
@@ -5583,6 +5744,7 @@ describe('plugin-meetings', () => {
               let multistreamEventListeners;
               let transcodedEventListeners;
               let mockStatsAnalyzerCtor;
+              let statsMonitorStub;
 
               const setupFakeRoapMediaConnection = (fakeRoapMediaConnection, eventListeners) => {
                 fakeRoapMediaConnection.on.callsFake((eventName, cb) => {
@@ -5613,6 +5775,14 @@ describe('plugin-meetings', () => {
                   .callsFake(() => {
                     return {on: sinon.stub(), stopAnalyzer: sinon.stub()};
                   });
+
+                statsMonitorStub = {
+                  on: sinon.stub(),
+                  removeAllListeners: sinon.stub(),
+                };
+
+                // mock the StatsMonitor constructor
+                sinon.stub(InternalMediaCoreModule, 'StatsMonitor').returns(statsMonitorStub);
 
                 webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
                   sinon.stub();
@@ -5676,6 +5846,7 @@ describe('plugin-meetings', () => {
                   mockStatsAnalyzerCtor,
                   sinon.match({
                     isMultistream: true,
+                    statsMonitor: statsMonitorStub,
                   })
                 );
                 const initialStatsAnalyzer = mockStatsAnalyzerCtor.returnValues[0];
@@ -10300,6 +10471,24 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to CONTROLS_AUTO_END_MEETING_WARNING_CHANGED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_AUTO_END_MEETING_WARNING_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_AUTO_END_MEETING_WARNING_UPDATED,
+            {state}
+          );
+        });
+
         it('listens to CONTROLS_REMOTE_DESKTOP_CONTROL_CHANGED', async () => {
           const state = {example: 'value'};
 
@@ -10379,6 +10568,7 @@ describe('plugin-meetings', () => {
       describe('#setUpLocusUrlListener', () => {
         it('listens to the locus url update event', (done) => {
           const newLocusUrl = 'newLocusUrl/12345';
+          const payload = {url: newLocusUrl}
 
           meeting.members = {locusUrlUpdate: sinon.stub().returns(Promise.resolve(test1))};
           meeting.recordingController = {setLocusUrl: sinon.stub().returns(undefined)};
@@ -10392,14 +10582,14 @@ describe('plugin-meetings', () => {
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
             'LOCUS_INFO_UPDATE_URL',
-            newLocusUrl
+            payload
           );
           assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
           assert.calledOnceWithExactly(meeting.breakouts.locusUrlUpdate, newLocusUrl);
           assert.calledOnceWithExactly(meeting.annotation.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.members.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.recordingController.setLocusUrl, newLocusUrl);
-          assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl);
+          assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl, false);
           assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.webinar.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
@@ -10416,6 +10606,22 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
             {locusUrl: 'newLocusUrl/12345'}
           );
+
+          done();
+        });
+        it('update mainLocusUrl for controlsOptionManager if payload.isMainLocus as true', (done) => {
+          const newLocusUrl = 'newLocusUrl/12345';
+          const payload = {url: newLocusUrl, isMainLocus: true}
+
+          meeting.controlsOptionsManager = {setLocusUrl: sinon.stub().returns(undefined)};
+
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'LOCUS_INFO_UPDATE_URL',
+            payload
+          );
+
+          assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl, true);
 
           done();
         });
@@ -11254,6 +11460,8 @@ describe('plugin-meetings', () => {
         let canUserRenameOthersSpy;
         let canShareWhiteBoardSpy;
         let canMoveToLobbySpy;
+        let isSpokenLanguageAutoDetectionEnabledSpy;
+        let showAutoEndMeetingWarningSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -11285,11 +11493,15 @@ describe('plugin-meetings', () => {
           canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
           canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
           canMoveToLobbySpy = sinon.spy(MeetingUtil, 'canMoveToLobby');
+          showAutoEndMeetingWarningSpy = sinon.spy(MeetingUtil, 'showAutoEndMeetingWarning');
+          isSpokenLanguageAutoDetectionEnabledSpy = sinon.spy(MeetingUtil, 'isSpokenLanguageAutoDetectionEnabled');
+
         });
 
         afterEach(() => {
           inMeetingActionsSetSpy.restore();
           waitingForOthersToJoinSpy.restore();
+          showAutoEndMeetingWarningSpy.restore();
         });
 
         forEach(
@@ -11837,6 +12049,8 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
           assert.calledWith(canShareWhiteBoardSpy, userDisplayHints, selfUserPolicies);
           assert.calledWith(canMoveToLobbySpy, userDisplayHints);
+          assert.calledWith(showAutoEndMeetingWarningSpy, userDisplayHints);
+          assert.calledWith(isSpokenLanguageAutoDetectionEnabledSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
@@ -12625,7 +12839,7 @@ describe('plugin-meetings', () => {
                         eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                         functionName: 'remoteShare',
                         eventPayload: {
-                          memberId: null,
+                          memberId: meeting.webinar.selfIsAttendee ? beneficiaryId : null,
                           url,
                           shareInstanceId,
                           annotationInfo: undefined,
@@ -12680,7 +12894,7 @@ describe('plugin-meetings', () => {
                           eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
                           functionName: 'remoteShare',
                           eventPayload: {
-                            memberId: null,
+                            memberId: beneficiaryId,
                             url,
                             shareInstanceId,
                             annotationInfo: undefined,
@@ -14816,6 +15030,32 @@ describe('plugin-meetings', () => {
         meeting.meetingRequest.synchronizeStage,
         locusUrl,
         {overrideDefault: false}
+      );
+    });
+  });
+
+  describe('#notifyHost', () => {
+    beforeEach(() => {
+      meeting.meetingRequest.notifyHost = sinon.stub().returns(Promise.resolve());
+    });
+
+    it('sends the expected request', async () => {
+      meeting.meetingInfo.siteFullUrl = `convergedats.webex.com`;
+      const meetingUuid = 'meeting-uuid';
+      const displayName = ['Test', 'User'];
+      meeting.locusId = 'locusId';
+
+      const notifyHostPromise = meeting.notifyHost(meetingUuid, displayName);
+
+      assert.exists(notifyHostPromise.then);
+      await notifyHostPromise;
+
+      assert.calledOnceWithExactly(
+        meeting.meetingRequest.notifyHost,
+        meeting.meetingInfo.siteFullUrl,
+        meeting.locusId,
+        meetingUuid,
+        displayName,
       );
     });
   });

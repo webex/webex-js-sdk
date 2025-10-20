@@ -2,9 +2,9 @@
 import {v4 as uuid} from 'uuid';
 import {HTTP_METHODS, KeepaliveStatusMessage, WorkerMessageType} from '../../common/types';
 
-let keepaliveTimer: NodeJS.Timer | undefined;
+let keepaliveTimer: NodeJS.Timeout | undefined;
 
-export const messageHandler = (event: MessageEvent) => {
+const messageHandler = (event: MessageEvent) => {
   const {type} = event.data;
 
   const postKeepAlive = async (accessToken: string, deviceUrl: string, url: string) => {
@@ -19,7 +19,7 @@ export const messageHandler = (event: MessageEvent) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Keepalive failed with status: ${response.status}`);
+      throw response;
     }
 
     return response;
@@ -46,11 +46,27 @@ export const messageHandler = (event: MessageEvent) => {
             } as KeepaliveStatusMessage);
           }
           keepAliveRetryCount = 0;
-        } catch (err: unknown) {
+        } catch (err: any) {
+          const headers = {} as Record<string, string>;
+          if (err.headers.has('Retry-After')) {
+            headers['retry-after'] = err.headers.get('Retry-After');
+          }
+
+          if (err.headers.has('Trackingid')) {
+            // eslint-disable-next-line dot-notation
+            headers['trackingid'] = err.headers.get('Trackingid');
+          }
+
+          const error = {
+            headers,
+            statusCode: err.status,
+            statusText: err.statusText,
+            type: err.type,
+          };
           keepAliveRetryCount += 1;
           postMessage({
             type: WorkerMessageType.KEEPALIVE_FAILURE,
-            err,
+            err: error,
             keepAliveRetryCount,
           } as KeepaliveStatusMessage);
         }
@@ -68,3 +84,4 @@ export const messageHandler = (event: MessageEvent) => {
 
 // eslint-disable-next-line no-restricted-globals
 self.addEventListener('message', messageHandler);
+export default messageHandler;

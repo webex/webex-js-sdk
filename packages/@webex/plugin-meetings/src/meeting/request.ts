@@ -887,6 +887,44 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
+   * Extend the current meeting duration.
+   *
+   * @param {Object} params - Parameters for extending the meeting.
+   * @param {string} params.meetingInstanceId - The unique ID of the meeting instance.
+   * @param {string} params.participantId - The ID of the participant requesting the extension.
+   * @param {number} params.extensionMinutes - The number of minutes to extend the meeting by.
+   * @param {string} params.meetingPolicyUrl - The base URL for meeting policy service (dynamic, from locus links)
+   * @returns {Promise<any>} A promise that resolves with the server response.
+   */
+  extendMeeting({
+    meetingInstanceId,
+    participantId,
+    extensionMinutes,
+    meetingPolicyUrl,
+  }: {
+    meetingInstanceId: string;
+    participantId: string;
+    extensionMinutes: number;
+    meetingPolicyUrl: string;
+  }) {
+    if (!meetingPolicyUrl) {
+      return Promise.reject(new Error('meetingPolicyUrl is required'));
+    }
+    const uri = `${meetingPolicyUrl}/continueMeeting`;
+
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri,
+      body: {
+        meetingInstanceId,
+        requestParticipantId: participantId,
+        extensionMinutes,
+      },
+    });
+  }
+
+  /**
    * Make a network request to enable or disable reactions.
    * @param {boolean} options.enable - determines if we need to enable or disable.
    * @param {locusUrl} options.locusUrl
@@ -983,6 +1021,29 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       method: HTTP_VERBS.PATCH,
       uri: `${locusUrl}/${CONTROLS}`,
       body: {videoLayout},
+    });
+  }
+
+  /**
+   * Sends a request to notify the host of a meeting.
+   * @param {string} siteFullUrl - The site URL.
+   * @param {string} locusId - The locus ID.
+   * @param {string} meetingUuid - The meeting UUID.
+   * @param {Array<string>} displayName - The display names to notify the host about.
+   * @returns {Promise}
+   */
+  notifyHost(siteFullUrl: string, locusId: string, meetingUuid: string, displayName: string[]) {
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri: `https://${siteFullUrl}/wbxappapi/v1/meetings/${meetingUuid}/notifyhost`,
+      body: {
+        displayName,
+        size: displayName?.length,
+      },
+      headers: {
+        locusId,
+      },
     });
   }
 }
