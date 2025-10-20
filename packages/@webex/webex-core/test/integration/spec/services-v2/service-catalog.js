@@ -19,6 +19,7 @@ import {
   formattedServiceHostmapEntryConv,
   serviceHostmapV2,
 } from '../../../fixtures/host-catalog-v2';
+import {cloneDeep} from 'lodash';
 
 describe('webex-core', () => {
   describe('ServiceCatalogV2', () => {
@@ -688,8 +689,9 @@ describe('webex-core', () => {
           format: 'U2Cv2',
         };
         const notInOrderFormattedHM = services._formatReceivedHostmap(notInOrderServiceHM);
+        const checkFormattedHM = cloneDeep(notInOrderFormattedHM);
         catalog.updateServiceGroups('preauth', notInOrderFormattedHM.services);
-        assert.equal(catalog._getServiceDetail('urn:TEAM:us-east-2_a:conversation')?.serviceUrls[0], notInOrderFormattedHM.services[0].serviceUrls[1])
+        assert.equal(catalog._getServiceDetail('urn:TEAM:us-east-2_a:conversation')?.serviceUrls[0], checkFormattedHM.services[0].serviceUrls[1])
         assert.equal( catalog.get('urn:TEAM:us-east-2_a:conversation'), 'https://conv-a.wbx2.com/conversation/api/v1')
       });
     });
