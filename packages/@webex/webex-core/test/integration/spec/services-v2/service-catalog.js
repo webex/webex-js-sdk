@@ -660,7 +660,7 @@ describe('webex-core', () => {
 
         catalog.updateServiceGroups('preauth', formattedHM.services);
       });
-      it('make sure the servicesUrl is in Priority order', (done) => {
+      it('make sure the serviceUrls is in Priority order', (done) => {
         const notInOrderServiceHM = {
           activeServices: {
             conversation: 'urn:TEAM:us-east-2_a:conversation',
