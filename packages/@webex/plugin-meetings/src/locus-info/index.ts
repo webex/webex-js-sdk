@@ -343,7 +343,7 @@ export default class LocusInfo extends EventsScope {
     // For 1:1 space meeting the conversation Url does not exist in locus.conversation
     this.updateConversationUrl(locus.conversationUrl, locus.info);
     this.updateControls(locus.controls, locus.self);
-    this.updateLocusUrl(locus.url);
+    this.updateLocusUrl(locus.url, ControlsUtils.isMainSessionDTO(locus));
     this.updateFullState(locus.fullState);
     this.updateMeetingInfo(locus.info);
     this.updateEmbeddedApps(locus.embeddedApps);
@@ -549,7 +549,7 @@ export default class LocusInfo extends EventsScope {
     this.updateCreated(locus.created);
     this.updateFullState(locus.fullState);
     this.updateHostInfo(locus.host);
-    this.updateLocusUrl(locus.url);
+    this.updateLocusUrl(locus.url, ControlsUtils.isMainSessionDTO(locus));
     this.updateMeetingInfo(locus.info, locus.self);
     this.updateMediaShares(locus.mediaShares);
     this.updateParticipantsUrl(locus.participantsUrl);
@@ -1732,10 +1732,11 @@ export default class LocusInfo extends EventsScope {
   /**
    * handles when the locus.url is updated
    * @param {String} url
+   * @param {Boolean} isMainLocus
    * @returns {undefined}
    * emits internal event locus_info_update_url
    */
-  updateLocusUrl(url: string) {
+  updateLocusUrl(url: string, isMainLocus = true) {
     if (url && this.url !== url) {
       this.url = url;
       this.updateMeeting({locusUrl: url});
@@ -1745,7 +1746,7 @@ export default class LocusInfo extends EventsScope {
           function: 'updateLocusUrl',
         },
         EVENTS.LOCUS_INFO_UPDATE_URL,
-        url
+        {url, isMainLocus}
       );
     }
   }

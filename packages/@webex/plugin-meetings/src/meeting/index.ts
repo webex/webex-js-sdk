@@ -3356,27 +3356,31 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private setUpLocusUrlListener() {
-    this.locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_URL, (payload) => {
-      this.members.locusUrlUpdate(payload);
-      this.breakouts.locusUrlUpdate(payload);
-      this.simultaneousInterpretation.locusUrlUpdate(payload);
-      this.annotation.locusUrlUpdate(payload);
-      this.locusUrl = payload;
-      this.locusId = this.locusUrl?.split('/').pop();
-      this.recordingController.setLocusUrl(this.locusUrl);
-      this.controlsOptionsManager.setLocusUrl(this.locusUrl);
-      this.webinar.locusUrlUpdate(payload);
+    this.locusInfo.on(
+      EVENTS.LOCUS_INFO_UPDATE_URL,
+      (payload: {url: string; isMainLocus?: boolean}) => {
+        const {url, isMainLocus} = payload;
+        this.members.locusUrlUpdate(url);
+        this.breakouts.locusUrlUpdate(url);
+        this.simultaneousInterpretation.locusUrlUpdate(url);
+        this.annotation.locusUrlUpdate(url);
+        this.locusUrl = url;
+        this.locusId = this.locusUrl?.split('/').pop();
+        this.recordingController.setLocusUrl(this.locusUrl);
+        this.controlsOptionsManager.setLocusUrl(this.locusUrl, !!isMainLocus);
+        this.webinar.locusUrlUpdate(url);
 
-      Trigger.trigger(
-        this,
-        {
-          file: 'meeting/index',
-          function: 'setUpLocusSelfListener',
-        },
-        EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
-        {locusUrl: payload}
-      );
-    });
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpLocusSelfListener',
+          },
+          EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+          {locusUrl: url}
+        );
+      }
+    );
   }
 
   /**
