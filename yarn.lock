@@ -8911,7 +8911,7 @@ __metadata:
     eslint-plugin-prettier: 4.0.0
     eslint-plugin-tsdoc: 0.2.14
     jest: 29.3.1
-    jest-html-reporters: 3.0.11
+    jest-html-reporters: 3.1.7
     jest-junit: 13.0.0
     karma: 6.4.3
     karma-chai: 0.1.0
@@ -9064,7 +9064,7 @@ __metadata:
     eslint-plugin-prettier: 4.0.0
     eslint-plugin-tsdoc: 0.2.14
     jest: 27.5.1
-    jest-html-reporters: 3.0.11
+    jest-html-reporters: 3.1.7
     jest-junit: 13.0.0
     lodash: ^4.17.21
     prettier: 2.5.1
@@ -10263,7 +10263,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
-    jest-html-reporters: 3.0.11
+    jest-html-reporters: 3.1.7
     jest-junit: 13.0.0
     jsdom: 19.0.0
     jsdom-global: 3.0.2
@@ -23266,24 +23266,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest-html-reporters@npm:3.0.11":
-  version: 3.0.11
-  resolution: "jest-html-reporters@npm:3.0.11"
-  dependencies:
-    fast-safe-stringify: ^2.1.1
-    fs-extra: ^9.0.1
-    open: ^8.0.3
-  checksum: 35728267f6f913d7f7914e23695b15a3ddbaa3a1642b4be0e7b86f1a50f54141db1bac1e1d58a8f072610625dffc35354c2b35022cb9e82f827053d9ba868e39
-  languageName: node
-  linkType: hard
-
-"jest-html-reporters@npm:^3.0.11":
-  version: 3.1.5
-  resolution: "jest-html-reporters@npm:3.1.5"
+"jest-html-reporters@npm:3.1.7, jest-html-reporters@npm:^3.1.7":
+  version: 3.1.7
+  resolution: "jest-html-reporters@npm:3.1.7"
   dependencies:
     fs-extra: ^10.0.0
     open: ^8.0.3
-  checksum: 4b0d83c07fc5bbdd684650a1a5346b5a8bf20672b47cdac3eb1f39664e1814f33c3b99a6c5871aa5edca57d747ddab2ff29deb9bbf0b1c59112ad08c0f3fecbb
+  checksum: 3e354a19a875de2b85ab8427b027ffeff7d2c36f651202f27ef31b9db6ac77830a5d30898d7c8a4c129dbe98795ab0f33d78360664041b6181f1f892335ee595
   languageName: node
   linkType: hard
 
@@ -35530,7 +35519,7 @@ __metadata:
     jasmine: ^4.5.0
     jest: ^29.3.1
     jest-environment-jsdom: ^29.1.2
-    jest-html-reporters: ^3.0.11
+    jest-html-reporters: ^3.1.7
     jest-junit: ^14.0.1
     jsdom: 19.0.0
     jsdom-global: 3.0.2

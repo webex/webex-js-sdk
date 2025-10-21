@@ -52,7 +52,7 @@
     "@webex/plugin-authorization": "workspace:*",
     "@webex/plugin-logger": "workspace:*",
     "@webex/webex-core": "workspace:*",
-    "jest-html-reporters": "3.0.11",
+    "jest-html-reporters": "3.1.7",
     "lodash": "^4.17.21"
   },
   "devDependencies": {
