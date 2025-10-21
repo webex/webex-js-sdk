@@ -23,7 +23,7 @@
     ]
   },
   "devDependencies": {
-    "@babel/core": "^7.17.10",
+    "@babel/core": "^7.28.4",
     "@sinonjs/fake-timers": "^6.0.1",
     "@webex/babel-config-legacy": "workspace:*",
     "@webex/eslint-config-legacy": "workspace:*",

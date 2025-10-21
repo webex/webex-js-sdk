@@ -27,7 +27,7 @@
     "test:unit": "webex-legacy-tools test --unit --runner jest"
   },
   "devDependencies": {
-    "@babel/core": "^7.22.11",
+    "@babel/core": "^7.28.4",
     "@babel/plugin-transform-private-methods": "7.23.3",
     "@babel/preset-typescript": "7.16.7",
     "@commitlint/cli": "15.0.0",

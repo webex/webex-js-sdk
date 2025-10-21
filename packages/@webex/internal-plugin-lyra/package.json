@@ -20,7 +20,7 @@
     ]
   },
   "devDependencies": {
-    "@babel/core": "^7.17.10",
+    "@babel/core": "^7.28.4",
     "@ciscospark/test-users-legacy": "^1.2.0",
     "@types/randomstring": "^1",
     "@webex/babel-config-legacy": "workspace:*",

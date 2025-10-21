@@ -28,7 +28,7 @@
         "deploy:npm": "yarn npm publish"
     },
     "devDependencies": {
-        "@babel/core": "^7.22.11",
+        "@babel/core": "^7.28.4",
         "@webex/babel-config-legacy": "workspace:*",
         "@webex/eslint-config-legacy": "workspace:*",
         "@webex/jest-config-legacy": "workspace:*",

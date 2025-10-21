@@ -37,7 +37,7 @@
     "test:unit": "webex-legacy-tools test --unit --runner mocha"
   },
   "devDependencies": {
-    "@babel/core": "^7.17.10",
+    "@babel/core": "^7.28.4",
     "@types/jsdom": "^21",
     "@webex/babel-config-legacy": "workspace:*",
     "@webex/eslint-config-legacy": "workspace:*",
