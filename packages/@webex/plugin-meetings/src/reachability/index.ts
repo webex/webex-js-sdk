@@ -9,9 +9,10 @@ import {Defer} from '@webex/common';
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
 
-import {IP_VERSION, REACHABILITY, PROTOCOLS_LIST, STUN_PREFIX} from '../constants';
+import {IP_VERSION, REACHABILITY, PROTOCOLS_LIST} from '../constants';
 
 import ReachabilityRequest, {ClusterList} from './request';
+import {parseIceServerUrl} from './util';
 import {
   ClusterReachabilityResult,
   TransportResult,
@@ -1160,9 +1161,14 @@ export default class Reachability extends EventsScope {
       const clusterInfo = cloneDeep(clusterReachability.clusterInfo);
       PROTOCOLS_LIST.forEach((protocol) => {
         if (Array.isArray(clusterInfo[protocol])) {
-          clusterInfo[protocol] = clusterInfo[protocol].map((url: string) =>
-            url.startsWith(STUN_PREFIX) ? url.slice(STUN_PREFIX.length) : url
-          );
+          clusterInfo[protocol] = clusterInfo[protocol].map((url: string) => {
+            const parsed = parseIceServerUrl(url);
+            if (parsed?.host && parsed?.port) {
+              return `${parsed.host}:${parsed.port}`;
+            }
+
+            return url;
+          });
         }
       });
       result[clusterName] = clusterInfo;

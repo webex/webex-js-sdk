@@ -1381,8 +1381,6 @@ export const STUN_TURN_URL_REGEX = /^(stun|turn|turns):([^:?]+)(?::(\d+))?(?:\?.
 
 export const PROTOCOLS_LIST: Array<'udp' | 'tcp' | 'xtls'> = ['udp', 'tcp', 'xtls'];
 
-export const STUN_PREFIX = 'stun:';
-
 export const STAGE_MANAGER_TYPE = {
   LOGO: 0b001,
   BACKGROUND: 0b010,
