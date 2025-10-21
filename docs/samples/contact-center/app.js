@@ -1024,6 +1024,12 @@ function makeDisabledAndHide(element, hide, disable)
   element.disabled = disable;
 }
 
+/**
+ * Checks if the current agent is a secondary agent in a consultation scenario.
+ * Secondary agents are those who were consulted (not the original call owner).
+ * @param {Object} task - The task object containing interaction details
+ * @returns {boolean} True if this is a secondary agent (consulted party)
+ */
 function isSecondaryAgent(task) {
   const interaction = task.data.interaction;
 
@@ -1034,6 +1040,12 @@ function isSecondaryAgent(task) {
   );
 }
 
+/**
+ * Checks if the current agent is a secondary EP-DN (Entry Point Dial Number) agent.
+ * This is specifically for telephony consultations to external numbers/entry points.
+ * @param {Object} task - The task object containing interaction details
+ * @returns {boolean} True if this is a secondary EP-DN agent in telephony consultation
+ */
 function isSecondaryEpDnAgent(task) {
   return task.data.interaction.mediaType === 'telephony' && isSecondaryAgent(task);
 }
