@@ -1057,16 +1057,12 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @returns {Promise} The API response
    */
   public async sipCallOut(meetingId, meetingNumber, address, displayName) {
-    LoggerProxy.logger.info('Meetings:request#sipCallOut --> Calling out SIP participant', address);
-
     const body: any = {
       meetingId,
       meetingNumber,
       address,
       displayName,
     };
-    LoggerProxy.logger.info('Meetings:request#sipCallOut --> Request body:', body);
-
     try {
       // @ts-ignore
       const response = await this.request({
@@ -1097,11 +1093,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @returns {Promise} The API response
    */
   public async cancelSipCallOut(participantId) {
-    LoggerProxy.logger.info(
-      'Meetings:request#cancelSipCallOut --> Cancelling SIP participant call-out',
-      participantId
-    );
-
     const body = {
       participantId,
     };
