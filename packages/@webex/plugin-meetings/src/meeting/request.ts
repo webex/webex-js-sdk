@@ -887,6 +887,44 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
+   * Extend the current meeting duration.
+   *
+   * @param {Object} params - Parameters for extending the meeting.
+   * @param {string} params.meetingInstanceId - The unique ID of the meeting instance.
+   * @param {string} params.participantId - The ID of the participant requesting the extension.
+   * @param {number} params.extensionMinutes - The number of minutes to extend the meeting by.
+   * @param {string} params.meetingPolicyUrl - The base URL for meeting policy service (dynamic, from locus links)
+   * @returns {Promise<any>} A promise that resolves with the server response.
+   */
+  extendMeeting({
+    meetingInstanceId,
+    participantId,
+    extensionMinutes,
+    meetingPolicyUrl,
+  }: {
+    meetingInstanceId: string;
+    participantId: string;
+    extensionMinutes: number;
+    meetingPolicyUrl: string;
+  }) {
+    if (!meetingPolicyUrl) {
+      return Promise.reject(new Error('meetingPolicyUrl is required'));
+    }
+    const uri = `${meetingPolicyUrl}/continueMeeting`;
+
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri,
+      body: {
+        meetingInstanceId,
+        requestParticipantId: participantId,
+        extensionMinutes,
+      },
+    });
+  }
+
+  /**
    * Make a network request to enable or disable reactions.
    * @param {boolean} options.enable - determines if we need to enable or disable.
    * @param {locusUrl} options.locusUrl
