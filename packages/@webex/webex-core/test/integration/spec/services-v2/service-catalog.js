@@ -693,6 +693,7 @@ describe('webex-core', () => {
         catalog.updateServiceGroups('preauth', notInOrderFormattedHM.services);
         assert.deepEqual(catalog._getServiceDetail('urn:TEAM:us-east-2_a:conversation')?.serviceUrls[0], checkFormattedHM.services[0].serviceUrls[1])
         assert.equal( catalog.get('urn:TEAM:us-east-2_a:conversation'), 'https://conv-a.wbx2.com/conversation/api/v1')
+        done();
       });
     });
   });
