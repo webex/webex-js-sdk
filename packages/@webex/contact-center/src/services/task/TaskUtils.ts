@@ -28,7 +28,8 @@ export const isParticipantInMainInteraction = (task: ITask, agentId: string): bo
   }
 
   return Object.values(task.data.interaction.media).some(
-    (mediaObj) => mediaObj.mType === 'mainCall' && mediaObj.participants?.includes(agentId)
+    (mediaObj) =>
+      mediaObj && mediaObj.mType === 'mainCall' && mediaObj.participants?.includes(agentId)
   );
 };
 
