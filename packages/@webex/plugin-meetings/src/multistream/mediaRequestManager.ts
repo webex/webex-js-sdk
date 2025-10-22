@@ -16,7 +16,8 @@ import {cloneDeepWith, debounce} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
-import {CODEC_DEFAULTS, MAX_FS_VALUES} from './constants';
+import {CODEC_DEFAULTS, MAX_FS_VALUES, MAX_PIC_SIZE_VALUES} from './constants';
+import {getFrameSizeFromPicSize, getPicSizeFromFrameSize} from './utils';
 
 export interface ActiveSpeakerPolicyInfo {
   policy: 'active-speaker';
@@ -131,6 +132,15 @@ export class MediaRequestManager {
       MAX_FS_VALUES['90p'],
     ];
 
+    const maxPicSizeLimits = [
+      MAX_PIC_SIZE_VALUES['1080p'],
+      MAX_PIC_SIZE_VALUES['720p'],
+      MAX_PIC_SIZE_VALUES['540p'],
+      MAX_PIC_SIZE_VALUES['360p'],
+      MAX_PIC_SIZE_VALUES['180p'],
+      MAX_PIC_SIZE_VALUES['90p'],
+    ];
+
     // reduce max-fs until total macroblocks is below limit
     for (let i = 0; i < maxFsLimits.length; i += 1) {
       let totalMacroblocksRequested = 0;
@@ -149,10 +159,12 @@ export class MediaRequestManager {
           mr.codecInfo.maxPicSize = Math.min(
             mr.preferredMaxFs || CODEC_DEFAULTS.av1.maxPicSize,
             mr.codecInfo.maxPicSize || CODEC_DEFAULTS.av1.maxPicSize,
-            maxFsLimits[i]
+            maxPicSizeLimits[i]
           );
           const slotsWithLiveSource = mr.receiveSlots.filter((rs) => rs.sourceState === 'live');
-          totalMacroblocksRequested += mr.codecInfo.maxPicSize * slotsWithLiveSource.length;
+          totalMacroblocksRequested += getFrameSizeFromPicSize(
+            mr.codecInfo.maxPicSize * slotsWithLiveSource.length
+          );
         }
       });
       if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
@@ -208,9 +220,11 @@ export class MediaRequestManager {
     }
 
     if (mediaRequest.codecInfo?.codec === 'av1') {
-      return getRecommendedMaxBitrateForFrameSize(
+      const frameSize = getFrameSizeFromPicSize(
         mediaRequest.codecInfo.maxPicSize || CODEC_DEFAULTS.av1.maxPicSize
       );
+
+      return getRecommendedMaxBitrateForFrameSize(frameSize);
     }
 
     LoggerProxy.logger.warn(

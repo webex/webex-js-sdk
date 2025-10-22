@@ -291,7 +291,7 @@ describe('RemoteMediaGroup', () => {
           receiveSlots: fakeReceiveSlots,
           codecInfo: sinon.match({
             codec: 'av1',
-            maxPicSize: 3600, // medium resolution uses maxPicSize for av1
+            maxPicSize: 921600, // medium resolution uses maxPicSize for av1
           }),
         }),
         true
@@ -317,9 +317,9 @@ describe('RemoteMediaGroup', () => {
 
     it('uses av1 codec with different resolutions', () => {
       const resolutions = [
-        { resolution: 'small' as const, expectedMaxPicSize: 920 },
-        { resolution: 'medium' as const, expectedMaxPicSize: 3600 },
-        { resolution: 'large' as const, expectedMaxPicSize: 8192 },
+        { resolution: 'small' as const, expectedMaxPicSize: 235520 },
+        { resolution: 'medium' as const, expectedMaxPicSize: 921600 },
+        { resolution: 'large' as const, expectedMaxPicSize: 2097152 },
       ];
 
       resolutions.forEach(({ resolution, expectedMaxPicSize }) => {

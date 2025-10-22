@@ -3,11 +3,12 @@ import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaR
 import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
-import {getMaxFs} from '@webex/plugin-meetings/src/multistream/remoteMedia';
-import {MAX_FS_VALUES} from '@webex/plugin-meetings/src/multistream/constants';
+import {getMaxFs, getMaxPicSize} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import {MAX_FS_VALUES, MAX_PIC_SIZE_VALUES} from '@webex/plugin-meetings/src/multistream/constants';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import { expect } from 'chai';
+import { getFrameSizeFromPicSize, getPicSizeFromFrameSize } from '@webex/plugin-meetings/src/multistream/utils';
 
 type ExpectedActiveSpeaker = {
   policy: 'active-speaker';
@@ -177,7 +178,7 @@ describe('MediaRequestManager', () => {
         receiveSlots,
         codecInfo: {
           codec: 'av1',
-          maxPicSize: maxPicSize,
+          maxPicSize,
           levelIdx,
           tier: AV1_TIER,
           maxDecodeRate,
@@ -1470,7 +1471,7 @@ describe('MediaRequestManager', () => {
       addAv1ActiveSpeakerRequest(
         255,
         [fakeReceiveSlots[0], fakeReceiveSlots[1]],
-        MAX_FS_720p,
+        MAX_PIC_SIZE_VALUES['720p'],
         false,
         true,
         undefined,
@@ -1482,7 +1483,7 @@ describe('MediaRequestManager', () => {
       addAv1ReceiverSelectedRequest(
         123,
         fakeReceiveSlots[2],
-        MAX_FS_1080p,
+        MAX_PIC_SIZE_VALUES['1080p'],
         true,
         AV1_LEVEL_IDX_1080p,
         MAX_DECODE_RATE_1080p
@@ -1496,7 +1497,7 @@ describe('MediaRequestManager', () => {
           priority: 255,
           receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
           maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
-          maxPicSize: MAX_FS_720p,
+          maxPicSize: MAX_PIC_SIZE_VALUES['720p'],
           levelIdx: AV1_LEVEL_IDX_720p,
           tier: AV1_TIER,
           maxDecodeRate: MAX_DECODE_RATE_720p,
@@ -1507,7 +1508,7 @@ describe('MediaRequestManager', () => {
           csi: 123,
           receiveSlot: fakeWcmeSlots[2],
           maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-          maxPicSize: MAX_FS_1080p,
+          maxPicSize: MAX_PIC_SIZE_VALUES['1080p'],
           levelIdx: AV1_LEVEL_IDX_1080p,
           tier: AV1_TIER,
           maxDecodeRate: MAX_DECODE_RATE_1080p,
@@ -1525,7 +1526,7 @@ describe('MediaRequestManager', () => {
       addAv1ActiveSpeakerRequest(
         255,
         fakeReceiveSlots.slice(0, 4),
-        getMaxFs('large'), // This should be degraded
+        getMaxPicSize('large'), // This should be degraded
         true,
         true,
         undefined,
@@ -1540,7 +1541,7 @@ describe('MediaRequestManager', () => {
           priority: 255,
           receiveSlots: fakeWcmeSlots.slice(0, 4),
           maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
-          maxPicSize: getMaxFs('medium'), // Should be degraded
+          maxPicSize: getMaxPicSize('medium'), // Should be degraded
           levelIdx: AV1_LEVEL_IDX_1080p,
           tier: AV1_TIER,
           maxDecodeRate: MAX_DECODE_RATE_1080p,
@@ -1558,7 +1559,7 @@ describe('MediaRequestManager', () => {
       addAv1ReceiverSelectedRequest(
         456,
         fakeReceiveSlots[0],
-        MAX_FS_720p,
+        MAX_PIC_SIZE_VALUES['720p'],
         true,
         AV1_LEVEL_IDX_720p,
         MAX_DECODE_RATE_720p
@@ -1570,7 +1571,7 @@ describe('MediaRequestManager', () => {
           csi: 456,
           receiveSlot: fakeWcmeSlots[0],
           maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
-          maxPicSize: MAX_FS_720p,
+          maxPicSize: MAX_PIC_SIZE_VALUES['720p'],
           levelIdx: AV1_LEVEL_IDX_720p,
           tier: AV1_TIER,
           maxDecodeRate: MAX_DECODE_RATE_720p,
@@ -1579,7 +1580,7 @@ describe('MediaRequestManager', () => {
       ]);
 
       // Verify the utility function was called with AV1 maxPicSize
-      assert.calledWith(getRecommendedMaxBitrateForFrameSizeSpy, MAX_FS_720p);
+      assert.calledWith(getRecommendedMaxBitrateForFrameSizeSpy, getFrameSizeFromPicSize(MAX_PIC_SIZE_VALUES['720p']));
       getRecommendedMaxBitrateForFrameSizeSpy.restore();
     });
 
@@ -1591,7 +1592,7 @@ describe('MediaRequestManager', () => {
       addAv1ReceiverSelectedRequest(
         789,
         fakeReceiveSlots[1],
-        MAX_FS_1080p,
+        MAX_PIC_SIZE_VALUES['1080p'],
         true,
         AV1_LEVEL_IDX_1080p,
         MAX_DECODE_RATE_1080p
@@ -1613,7 +1614,7 @@ describe('MediaRequestManager', () => {
           csi: 789,
           receiveSlot: fakeWcmeSlots[1],
           maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-          maxPicSize: MAX_FS_1080p,
+          maxPicSize: MAX_PIC_SIZE_VALUES['1080p'],
           levelIdx: AV1_LEVEL_IDX_1080p,
           tier: AV1_TIER,
           maxDecodeRate: MAX_DECODE_RATE_1080p,
@@ -1634,7 +1635,7 @@ describe('MediaRequestManager', () => {
       addAv1ActiveSpeakerRequest(
         254,
         fakeReceiveSlots.slice(3, 5),
-        getMaxFs('large'),
+        getMaxPicSize('large'),
         true,
         true,
         undefined,
@@ -1658,7 +1659,7 @@ describe('MediaRequestManager', () => {
           priority: 254,
           receiveSlots: fakeWcmeSlots.slice(3, 5),
           maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
-          maxPicSize: getMaxFs('medium'), // AV1 degraded
+          maxPicSize: getMaxPicSize('medium'), // AV1 degraded
           levelIdx: AV1_LEVEL_IDX_1080p,
           tier: AV1_TIER,
           maxDecodeRate: MAX_DECODE_RATE_1080p,
@@ -1673,7 +1674,7 @@ describe('MediaRequestManager', () => {
       addAv1ActiveSpeakerRequest(
         255,
         [fakeReceiveSlots[0]],
-        getMaxFs('large'),
+        getMaxPicSize('large'),
         true,
         true,
         undefined,
@@ -1686,7 +1687,7 @@ describe('MediaRequestManager', () => {
       const maxFsHandlerCall = fakeReceiveSlots[0].on.getCall(1);
       const maxFsHandler = maxFsHandlerCall.args[1];
 
-      const preferredPicSize = 100;
+      const preferredPicSize = 100 * 256;
       maxFsHandler({maxFs: preferredPicSize});
 
       clock.tick(1000);

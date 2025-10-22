@@ -3,9 +3,10 @@ import {MediaType, StreamState} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
-import {CodecInfo, MediaRequest, MediaRequestId, MediaRequestManager} from './mediaRequestManager';
+import {CodecInfo, MediaRequestId, MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
-import {MAX_FS_VALUES} from './constants';
+import {MAX_FS_VALUES, MAX_PIC_SIZE_VALUES} from './constants';
+import {getCodecInfo, getPicSizeFromFrameSize} from './utils';
 
 export const RemoteMediaEvents = {
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
@@ -55,6 +56,43 @@ export function getMaxFs(paneSize: RemoteVideoResolution): number {
   }
 
   return maxFs;
+}
+
+/**
+ * Converts pane size into h264 maxFs
+ * @param {RemoteVideoResolution} paneSize
+ * @returns {number}
+ */
+export function getMaxPicSize(paneSize: RemoteVideoResolution): number {
+  let maxPicSize;
+
+  switch (paneSize) {
+    case 'thumbnail':
+      maxPicSize = MAX_PIC_SIZE_VALUES['90p'];
+      break;
+    case 'very small':
+      maxPicSize = MAX_PIC_SIZE_VALUES['180p'];
+      break;
+    case 'small':
+      maxPicSize = MAX_PIC_SIZE_VALUES['360p'];
+      break;
+    case 'medium':
+      maxPicSize = MAX_PIC_SIZE_VALUES['720p'];
+      break;
+    case 'large':
+      maxPicSize = MAX_PIC_SIZE_VALUES['1080p'];
+      break;
+    case 'best':
+      maxPicSize = MAX_PIC_SIZE_VALUES['1080p']; // for now 'best' is 1080p, so same as 'large'
+      break;
+    default:
+      LoggerProxy.logger.warn(
+        `RemoteMedia#getMaxPicSize --> unsupported paneSize: ${paneSize}, using "medium" instead`
+      );
+      maxPicSize = MAX_PIC_SIZE_VALUES['720p'];
+  }
+
+  return maxPicSize;
 }
 
 type Options = {
@@ -166,29 +204,19 @@ export class RemoteMedia extends EventsScope {
   }
 
   /**
-   * Returns the codec info for the media request
-   *
-   * @returns {MediaRequest['codecInfo'] | undefined} The codec info, or undefined if no constraints
+   * Get the current effective maxPicSize value that would be used in media requests
+   * @returns {number | undefined} The maxPicSize value, or undefined if no constraints
    */
-  private getCodecInfo(): MediaRequest['codecInfo'] | undefined {
-    const maxFs = this.getEffectiveMaxFs();
-    if (!maxFs) {
-      return undefined;
+  public getEffectiveMaxPicSize(): number | undefined {
+    if (this.maxFrameSize > 0) {
+      return getPicSizeFromFrameSize(this.maxFrameSize);
     }
 
-    switch (this.options?.preferredCodec) {
-      case 'av1':
-        return {
-          codec: 'av1',
-          maxPicSize: maxFs,
-        };
-      case 'h264':
-      default:
-        return {
-          codec: 'h264',
-          maxFs,
-        };
+    if (this.options.resolution) {
+      return getMaxPicSize(this.options.resolution);
     }
+
+    return undefined;
   }
 
   /**
@@ -231,7 +259,11 @@ export class RemoteMedia extends EventsScope {
       throw new Error('sendMediaRequest() called on an invalidated RemoteMedia instance');
     }
 
-    const codecInfo = this.getCodecInfo();
+    const codecInfo = getCodecInfo(
+      this.options.preferredCodec,
+      () => this.getEffectiveMaxFs(),
+      () => this.getEffectiveMaxPicSize()
+    );
 
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
