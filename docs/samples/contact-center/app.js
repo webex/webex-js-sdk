@@ -44,8 +44,6 @@ const incomingCallListener = document.querySelector('#incomingsection');
 const incomingDetailsElm = document.querySelector('#incoming-task');
 const participantListElm = document.querySelector('#participant-list');
 
-// MPC: Get reference to the static "Allow participants to interact" element
-const allowInteractElm = document.getElementById('allow-interact');
 const answerElm = document.querySelector('#answer');
 const declineElm = document.querySelector('#decline');
 const callControlListener = document.querySelector('#callcontrolsection');
@@ -596,13 +594,6 @@ async function initiateConsult() {
 
   closeConsultDialog();
   
-  // MPC: Show "Allow participants to interact" checkbox for second+ consultations
-  if (currentTask.data.isConferenceInProgress) {
-    allowInteractElm.style.display = 'block';
-  } else {
-    allowInteractElm.style.display = 'none';
-  }
-
   const consultPayload = {
     to: consultDestination,
     destinationType: destinationType,
@@ -732,42 +723,71 @@ async function endConsult() {
   }
 }
 
+/**
+ * Gets the count of active agent participants in the conference
+ * @param {Object} task - The task object containing interaction details
+ * @returns {number} Number of active agent participants
+ */
+function getActiveAgentCount(task) {
+  if (!task?.data?.interaction) return 0;
+  
+  const mediaMainCall = task.data.interaction.media?.[task.data.interactionId];
+  const participantsInMainCall = new Set(mediaMainCall?.participants || []);
+  const participants = task.data.interaction.participants || {};
+
+  let agentCount = 0;
+  participantsInMainCall.forEach((participantId) => {
+    const participant = participants[participantId];
+    if (
+      participant &&
+      participant.pType !== 'Customer' &&
+      participant.pType !== 'Supervisor' &&
+      participant.pType !== 'VVA' &&
+      !participant.hasLeft
+    ) {
+      agentCount++;
+    }
+  });
+
+  return agentCount;
+}
+
 // MPC: Update participant list display
 function updateParticipantList(task) {
   if (!task || !task.data || !task.data.interaction) {
     participantListElm.style.display = 'none';
-    allowInteractElm.style.display = 'none';
     return;
   }
   
   const { participants } = task.data.interaction;
+  const mediaMainCall = task.data.interaction.media?.[task.data.interactionId];
+  const participantsInMainCall = new Set(mediaMainCall?.participants || []);
   
-  // Check if "allow participants to interact" is enabled
-  const allowInteractCheckbox = document.getElementById('allow-participants-interact');
-  const allowParticipantsToInteract = allowInteractCheckbox?.checked || false;
     
   if (task.data.isConferenceInProgress) {
     let participantHtml = '<strong>📋 Active Participants:</strong><br/>';
     
-    Object.entries(participants).forEach(([participantId, participant]) => {
+    // Only show participants who are actually in the main call
+    participantsInMainCall.forEach((participantId) => {
+      const participant = participants[participantId];
+      if (!participant) return;
+      
       const role = participant.pType || 'Unknown';
       const name = participant.name || participantId.substring(0, 8);
-      const status = participant.hasLeft ? '❌' : participant.hasJoined !== false ? '✅' : '⏳';
       
-      // Show hold status for participants when "allow interact" is disabled during consult
-      let holdStatus = '';
-      if (!allowParticipantsToInteract && role === 'Customer') {
-        holdStatus = ' (🔇 On Hold)';
-      }
+      // Don't show participants who have left
+      if (participant.hasLeft) return;
       
-      participantHtml += `${status} ${role}: ${name}${holdStatus}<br/>`;
+      const status = participant.hasJoined !== false ? '✅' : '⏳';
+  
+      
+      participantHtml += `${status} ${role}: ${name}<br/>`;
     });
     
     participantListElm.innerHTML = participantHtml;
     participantListElm.style.display = 'block';
   } else {
     participantListElm.style.display = 'none';
-    allowInteractElm.style.display = 'none';
   }
 }
 
@@ -785,7 +805,7 @@ async function toggleConference() {
       buttonText: conferenceToggleBtn.textContent
     });
 
-    if (conferenceToggleBtn.textContent === 'Start Conference') {
+    if (conferenceToggleBtn.textContent === 'Merge') {
       // Handle Ctrl+Click or Shift+Click for Exit Conference when in conference + consulting
       if (event && (event.ctrlKey || event.shiftKey)) {
         if (confirm('Exit the conference? (Ctrl/Shift+Click detected)')) {
@@ -796,7 +816,7 @@ async function toggleConference() {
         }
       }
       await currentTask.consultConference();
-      console.log('Conference operation completed successfully');
+      console.log('Conference merge operation completed successfully');
       
     } else if (conferenceToggleBtn.textContent === 'Exit Conference') {
       // Exit conference when no active consultation
@@ -821,12 +841,11 @@ function updateConferenceButtonState(task, isConsultationInProgress) {
   if (!task.data.isConferenceInProgress || isConsultationInProgress) {
     // Show "Start Conference" button for ACTIVE consultation
     //conferenceToggleBtn.style.display = 'inline-block';
-    conferenceToggleBtn.textContent = 'Start Conference';
+    conferenceToggleBtn.textContent = 'Merge';
     conferenceToggleBtn.className = 'btn--green';
-    conferenceToggleBtn.title = 'Start conference with consulted agent';
+    conferenceToggleBtn.title = 'Merge consultation into conference with all participants';
   } else  {
     // MPC: In conference - show EXIT CONFERENCE (not "End Conference")
-    //conferenceToggleBtn.style.display = 'inline-block';
     conferenceToggleBtn.textContent = 'Exit Conference';
     conferenceToggleBtn.className = 'btn--red';
     conferenceToggleBtn.title = 'Exit from conference (other agents continue, you enter wrap-up)';
@@ -949,7 +968,16 @@ function enableCallControlPostConsult() {
   endElm.disabled = false;
 }
 
-
+function isInteractionOnHold(task) {
+  if (!task || !task.data || !task.data.interaction) {
+    return false;
+  }
+  const interaction = task.data.interaction;
+  if (!interaction.media) {
+    return false;
+  }
+  return Object.values(interaction.media).some((media) => media.isHold);
+} 
 
 // Register task listeners
 function registerTaskListeners(task) {
@@ -963,12 +991,9 @@ function registerTaskListeners(task) {
   });
   task.on('task:end', updateTaskList); // Update the task list UI to have latest tasks
 
-  task.on('task:hold', (task) => {
-    if (currentTask.data.interactionId === task.data.interactionId) {
-      console.info('Call has been put on hold');
-      holdResumeElm.innerText = 'Resume';
-    }
-  });
+  task.on('task:hold', updateTaskList);
+
+  task.on('task:resume', updateTaskList);
 
   // Consult flows
   task.on('task:consultCreated', updateTaskList);
@@ -978,8 +1003,6 @@ function registerTaskListeners(task) {
   task.on('task:consultAccepted', updateTaskList);
 
   task.on('task:consulting', updateTaskList);
-
-  task.on('task:consultQueueFailed', updateTaskList);  // When trying to consult queue fails
 
   task.on('task:consultQueueCancelled', updateTaskList);
 
@@ -1009,7 +1032,6 @@ function disableAllCallControls() {
   muteElm.disabled = true;
   pauseResumeRecordingElm.disabled = true;
   consultTabBtn.disabled = true;
-  declineElm.disabled = true;
   transferElm.disabled = true;
   endElm.disabled = true;
   pauseResumeRecordingElm.disabled = true;
@@ -1132,7 +1154,6 @@ function updateCallControlUI(task) {
   autoWrapupTimerElm.style.display = 'none';
   if (task.data.wrapUpRequired) {
     participantListElm.style.display = 'none';
-    allowInteractElm.style.display = 'none';
     updateButtonsPostEndCall();
     if (task.autoWrapup && task.autoWrapup.isRunning()) {
       startAutoWrapupTimer(task);
@@ -1191,7 +1212,7 @@ function updateCallControlUI(task) {
 
   if (task?.data?.interaction?.mediaType === 'telephony') {
     // hold/resume call
-    const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
+    const isHold = isInteractionOnHold(task);
     holdResumeElm.disabled = isTerminated;
     holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
 
@@ -1216,6 +1237,18 @@ function updateCallControlUI(task) {
 
     const consultStatus = getConsultStatus(task, agentId);
     console.log(`event {task.data.type} ${consultStatus}`);
+    
+    // Check if we've reached the 7 participant limit
+    const activeAgentCount = getActiveAgentCount(task);
+    const hasReachedParticipantLimit = activeAgentCount >= 7;
+    
+    // Update consult button tooltip if disabled due to participant limit
+    if (hasReachedParticipantLimit) {
+      consultTabBtn.title = 'Maximum 7 participants allowed in conference';
+    } else {
+      consultTabBtn.title = 'Initiate consultation with another agent';
+    }
+    
     updateConferenceButtonState(task, consultStatus === 'beingConsultedAccepted' || consultStatus === 'consultAccepted');
 
     // Map consultStatus to control configs
@@ -1226,7 +1259,6 @@ function updateCallControlUI(task) {
         'muteElm': { hide: false || !isBrowser, disable: false },
         'pauseResumeRecordingElm': { hide: false, disable: true },
         'consultTabBtn': { hide: true, disable: true },
-        'declineElm': { hide: true, disable: true },
         'transferElm': { hide: true, disable: true },
         'endElm': { hide: true, disable: true },
         'endConsultBtn': { hide: false, disable: false },
@@ -1237,10 +1269,9 @@ function updateCallControlUI(task) {
         'holdResumeElm': { hide: true, disable: false },
         'muteElm': { hide: true, disable: false },
         'pauseResumeRecordingElm': { hide: true, disable: false },
-        'consultTabBtn': { hide: true, disable: false },
-        'declineElm': { hide: true, disable: false },
+        'consultTabBtn': { hide: true, disable: hasReachedParticipantLimit },
         'transferElm': { hide: true, disable: false },
-        'endElm': { hide: false, disable: true },
+        'endElm': { hide: false, disable: true }, // Disable end call during consultation
         'endConsultBtn': { hide: false, disable: false },
         'consultTransferBtn': { hide: true, disable: true },
         'conferenceToggleBtn': { hide: true, disable: true },
@@ -1249,35 +1280,32 @@ function updateCallControlUI(task) {
         'holdResumeElm': { hide: true, disable: false },
         'muteElm': { hide: false || !isBrowser, disable: false },
         'pauseResumeRecordingElm': { hide: false, disable: true },
-        'consultTabBtn': { hide: true, disable: false },
-        'declineElm': { hide: true, disable: false },
+        'consultTabBtn': { hide: true, disable: hasReachedParticipantLimit },
         'transferElm': { hide: true, disable: false },
-        'endElm': { hide: true, disable: false },
+        'endElm': { hide: true, disable: true }, // Disable end call during consultation
         'endConsultBtn': { hide: false, disable: false },
         'consultTransferBtn': { hide: false, disable: false },
         'conferenceToggleBtn': { hide: false, disable: false },
       }),
       conference: () => setControls({
-        'consultTabBtn': { hide: false, disable: false },
+        'consultTabBtn': { hide: false, disable: hasReachedParticipantLimit },
         'transferElm': { hide: true, disable: false },
         'endConsultBtn': { hide: true, disable: true },
         'muteElm': { hide: false || !isBrowser, disable: false },
         'pauseResumeRecordingElm': { hide: false, disable: false },
         'holdResumeElm': { hide: false, disable: true },
-        'declineElm': { hide: true, disable: true },
-        'endElm': { hide: false, disable: false },
+        'endElm': { hide: false, disable: isHold || false }, // Allow end call in conference
         'consultTransferBtn': { hide: true, disable: true },
         'conferenceToggleBtn': { hide: false, disable: false },
       }),
       connected: () => setControls({
-        'consultTabBtn': { hide: false, disable: false },
+        'consultTabBtn': { hide: false, disable: hasReachedParticipantLimit },
         'transferElm': { hide: false, disable: false },
         'endConsultBtn': { hide: true, disable: true },
         'muteElm': { hide: false || !isBrowser, disable: false },
         'pauseResumeRecordingElm': { hide: false, disable: false },
         'holdResumeElm': { hide: false, disable: false },
-        'declineElm': { hide: true, disable: true },
-        'endElm': { hide: false, disable: false },
+        'endElm': { hide: false, disable: isHold || false },
         'consultTransferBtn': { hide: true, disable: true },
         'conferenceToggleBtn': { hide: true, disable: true },
       })
@@ -2068,7 +2096,6 @@ function renderTaskList(taskList) {
     engageElm.innerHTML = ``;
     currentTask = undefined;
     participantListElm.style.display = 'none';
-    // allowInteractElm.style.display = 'none';
     return;
   }
   
