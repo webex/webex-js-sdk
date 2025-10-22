@@ -8,9 +8,9 @@ import {ITask} from './types';
  * @returns true if the agent is the primary agent, false otherwise
  */
 export const isPrimary = (task: ITask, agentId: string): boolean => {
-  if (!task?.data?.interaction?.owner) {
+  if (!task.data?.interaction?.owner) {
     // Fall back to checking data.agentId when owner is not set
-    return task?.data?.agentId === agentId;
+    return task.data.agentId === agentId;
   }
 
   return task.data.interaction.owner === agentId;
@@ -28,7 +28,7 @@ export const isParticipantInMainInteraction = (task: ITask, agentId: string): bo
   }
 
   return Object.values(task.data.interaction.media).some(
-    (mediaObj: any) => mediaObj.mType === 'mainCall' && mediaObj.participants?.includes(agentId)
+    (mediaObj) => mediaObj.mType === 'mainCall' && mediaObj.participants?.includes(agentId)
   );
 };
 
@@ -49,20 +49,6 @@ export const checkParticipantNotInInteraction = (task: ITask, agentId: string): 
     (agentId in data.interaction.participants && data.interaction.participants[agentId].hasLeft)
   );
 };
-
-/**
- * Gets the participant status for a given agent in a task
- * @param task - The task to check
- * @param agentId - The agent ID to get status for
- * @returns Object containing various status flags for the agent
- */
-export const getParticipantStatus = (task: ITask, agentId: string) => ({
-  isPrimary: isPrimary(task, agentId),
-  isInMainInteraction: isParticipantInMainInteraction(task, agentId),
-  isNotInInteraction: checkParticipantNotInInteraction(task, agentId),
-  isOwner: task?.data?.interaction?.owner === agentId,
-  hasLeft: task?.data?.interaction?.participants?.[agentId]?.hasLeft || false,
-});
 
 /**
  * Determines if a conference is currently in progress based on the number of active agent participants

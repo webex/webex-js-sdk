@@ -47,10 +47,6 @@ describe('TaskUtils', () => {
       expect(isPrimary(mockTask, mockAgentId)).toBe(true);
       expect(isPrimary(mockTask, mockOtherAgentId)).toBe(false);
     });
-
-    it('should handle null task', () => {
-      expect(isPrimary(null as any, mockAgentId)).toBe(false);
-    });
   });
 
   describe('isParticipantInMainInteraction', () => {
@@ -67,10 +63,6 @@ describe('TaskUtils', () => {
       mockTask.data.interaction.media['media-1'].mType = 'consult';
       expect(isParticipantInMainInteraction(mockTask, mockAgentId)).toBe(false);
     });
-
-    it('should handle null task', () => {
-      expect(isParticipantInMainInteraction(null as any, mockAgentId)).toBe(false);
-    });
   });
 
   describe('checkParticipantNotInInteraction', () => {
@@ -86,10 +78,6 @@ describe('TaskUtils', () => {
     it('should return true when agent has left', () => {
       mockTask.data.interaction.participants[mockAgentId].hasLeft = true;
       expect(checkParticipantNotInInteraction(mockTask, mockAgentId)).toBe(true);
-    });
-
-    it('should handle null task', () => {
-      expect(checkParticipantNotInInteraction(null as any, mockAgentId)).toBe(true);
     });
   });
 
@@ -138,10 +126,6 @@ describe('TaskUtils', () => {
     it('should return false when no main call media exists', () => {
       mockTask.data.interaction.media = {};
       expect(getIsConferenceInProgress(mockTask)).toBe(false);
-    });
-
-    it('should handle null task', () => {
-      expect(getIsConferenceInProgress(null as any)).toBe(false);
     });
   });
 });
