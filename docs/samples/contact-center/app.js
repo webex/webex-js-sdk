@@ -1293,7 +1293,7 @@ function updateCallControlUI(task) {
         'endConsultBtn': { hide: true, disable: true },
         'muteElm': { hide: false || !isBrowser, disable: false },
         'pauseResumeRecordingElm': { hide: false, disable: false },
-        'holdResumeElm': { hide: false, disable: true },
+        'holdResumeElm': { hide: false, disable: !isHold },
         'endElm': { hide: false, disable: isHold || false }, // Allow end call in conference
         'consultTransferBtn': { hide: true, disable: true },
         'conferenceToggleBtn': { hide: false, disable: false },
@@ -1957,21 +1957,15 @@ function holdResumeCall() {
     holdResumeElm.disabled = true;
     currentTask.hold().then(() => {
       console.info('Call held successfully');
-      holdResumeElm.innerText = 'Resume';
-      holdResumeElm.disabled = false;
     }).catch((error) => {
       console.error('Failed to hold the call', error);
-      holdResumeElm.disabled = false;
     });
   } else {
     holdResumeElm.disabled = true;
     currentTask.resume().then(() => {
       console.info('Call resumed successfully');
-      holdResumeElm.innerText = 'Hold';
-      holdResumeElm.disabled = false;
     }).catch((error) => {
       console.error('Failed to resume the call', error);
-      holdResumeElm.disabled = false;
     });
   }
 }
