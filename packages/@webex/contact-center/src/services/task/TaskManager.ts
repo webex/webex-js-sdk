@@ -12,6 +12,12 @@ import LoggerProxy from '../../logger-proxy';
 import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
+import {
+  checkParticipantNotInInteraction,
+  getIsConferenceInProgress,
+  isParticipantInMainInteraction,
+  isPrimary,
+} from './TaskUtils';
 
 /** @internal */
 export default class TaskManager extends EventEmitter {
@@ -128,8 +134,7 @@ export default class TaskManager extends EventEmitter {
                 {
                   ...payload.data,
                   wrapUpRequired:
-                    payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp ||
-                    false,
+                    payload.data.interaction?.participants?.[this.agentId]?.isWrapUp || false,
                 },
                 this.wrapupData,
                 this.agentId
@@ -358,18 +363,55 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED:
             // Conference ended - update task state and emit event
             task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
+            if (
+              !task ||
+              isPrimary(task, this.agentId) ||
+              isParticipantInMainInteraction(task, this.agentId)
+            ) {
+              LoggerProxy.log('Primary or main interaction participant leaving conference');
+            } else {
+              this.removeTaskFromCollection(task);
+            }
+            task?.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
             break;
-          case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
+          case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE: {
             // Participant joined conference - update task state with participant information and emit event
-            task = this.updateTaskData(task, payload.data);
+            // Pre-calculate isConferenceInProgress with updated data to avoid double update
+            const simulatedTaskForJoin = {
+              ...task,
+              data: {...task.data, ...payload.data},
+            };
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForJoin),
+            });
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
             break;
-          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
+          }
+          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE: {
             // Conference ended - update task state and emit event
-            task = this.updateTaskData(task, payload.data);
+            // Pre-calculate isConferenceInProgress with updated data to avoid double update
+            const simulatedTaskForLeft = {
+              ...task,
+              data: {...task.data, ...payload.data},
+            };
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForLeft),
+            });
+            if (checkParticipantNotInInteraction(task, this.agentId)) {
+              if (
+                isParticipantInMainInteraction(task, this.agentId) ||
+                isPrimary(task, this.agentId)
+              ) {
+                LoggerProxy.log('Primary or main interaction participant leaving conference');
+              } else {
+                this.removeTaskFromCollection(task);
+              }
+            }
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
             break;
+          }
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED:
             // Conference exit failed - update task state and emit failure event
             task = this.updateTaskData(task, payload.data);
