@@ -23,6 +23,25 @@ export const CONFERENCE_TRANSFER = '/conference/transfer';
 export const TASK_MANAGER_FILE = 'taskManager';
 export const TASK_FILE = 'task';
 
+/**
+ * Task data field names that should be preserved during reconciliation
+ * These fields are retained even if not present in new data during updates
+ */
+export const PRESERVED_TASK_DATA_FIELDS = {
+  /** Indicates if the task is in consultation state */
+  IS_CONSULTED: 'isConsulted',
+  /** Indicates if wrap-up is required for this task */
+  WRAP_UP_REQUIRED: 'wrapUpRequired',
+  /** Indicates if a conference is currently in progress (2+ active agents) */
+  IS_CONFERENCE_IN_PROGRESS: 'isConferenceInProgress',
+};
+
+/**
+ * Array of task data field names that should not be deleted during reconciliation
+ * Used by reconcileData method to preserve important task state fields
+ */
+export const KEYS_TO_NOT_DELETE: string[] = Object.values(PRESERVED_TASK_DATA_FIELDS);
+
 // METHOD NAMES
 export const METHODS = {
   // Task class methods
