@@ -218,6 +218,10 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
           method: 'getUserId',
         }
       );
+      expect(errorSpy).toHaveBeenCalledWith('Failed to get userId: {}', {
+        file: 'BroadworksBackendConnector',
+        method: 'getUserId',
+      });
     });
 
     it('verify failed case when token is invalid', async () => {
@@ -242,6 +246,10 @@ describe('Voicemail Broadworks Backend Connector Test case', () => {
           method: 'getUserId',
         }
       );
+      expect(errorSpy).toHaveBeenCalledWith('Failed to get userId: {}', {
+        file: 'BroadworksBackendConnector',
+        method: 'getUserId',
+      });
     });
 
     it('verify no response case when token have invalid userid', async () => {
