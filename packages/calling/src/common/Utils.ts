@@ -89,6 +89,7 @@ import {
   TYPE,
   URL_ENDPOINT,
   UTILS_FILE,
+  METHODS,
 } from '../CallingClient/constants';
 import {
   DeleteCallHistoryRecordsResponse,
@@ -572,7 +573,8 @@ export async function handleCallErrors(
   correlationId: CorrelationId,
   err: WebexRequestPayload,
   caller: string,
-  file: string
+  file: string,
+  endCall?: () => void
 ) {
   const loggerContext = {
     file,
@@ -583,6 +585,9 @@ export async function handleCallErrors(
   const errorCode = Number(err.statusCode);
 
   log.warn(`Status code: ->${errorCode}`, loggerContext);
+
+  const isKeepalive =
+    caller === 'handleCallEstablished' || caller === METHODS.HANDLE_CALL_ESTABLISHED;
 
   switch (errorCode) {
     case ERROR_CODE.UNAUTHORIZED: {
@@ -597,10 +602,19 @@ export async function handleCallErrors(
       );
 
       emitterCb(callError);
+
+      if (isKeepalive && endCall) {
+        endCall();
+      }
+
       break;
     }
 
     case ERROR_CODE.FORBIDDEN:
+      if (isKeepalive && endCall) {
+        endCall();
+        break;
+      }
     /* follow through as both 403 and 503 can have similar error codes */
 
     case ERROR_CODE.SERVICE_UNAVAILABLE: {
@@ -624,6 +638,7 @@ export async function handleCallErrors(
 
       /* Handle retry-after cases */
 
+      // Common for keepalive and normal scenarios
       if (err.headers && 'retry-after' in err.headers && retryCb) {
         const retryInterval = Number(err.headers['retry-after'] as unknown);
 
@@ -631,6 +646,9 @@ export async function handleCallErrors(
         retryCb(retryInterval);
 
         return;
+      }
+      if (isKeepalive) {
+        retryCb(); // This is applicable only for the keepalive scenario
       }
 
       /* Handling various Error codes */
@@ -713,6 +731,11 @@ export async function handleCallErrors(
       );
 
       emitterCb(callError);
+
+      if (isKeepalive && endCall) {
+        endCall();
+      }
+
       break;
     }
 
@@ -728,11 +751,25 @@ export async function handleCallErrors(
       );
 
       emitterCb(callError);
+
+      if (isKeepalive && retryCb) {
+        if (err.headers && 'retry-after' in err.headers) {
+          const retryInterval = Number(err.headers['retry-after'] as unknown);
+          retryCb(retryInterval);
+        } else {
+          retryCb();
+        }
+      }
+
       break;
     }
 
     default: {
       log.warn(`Unknown Error`, loggerContext);
+
+      if (isKeepalive && retryCb) {
+        retryCb();
+      }
     }
   }
 }

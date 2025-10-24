@@ -96,6 +96,9 @@ import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_ACTION} from '../../
 import {getMetricManager} from '../../Metrics';
 import {METHOD_START_MESSAGE, SERVICES_ENDPOINT} from '../../common/constants';
 
+// TODO: Confirm this number with Mobius team
+const MAX_CALL_KEEPALIVE_RETRY_COUNT = 3;
+
 /**
  *
  */
@@ -168,6 +171,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private localAudioStream?: LocalMicrophoneStream;
 
   private rtcMetrics: RtcMetrics;
+
+  private callKeepaliveRetryCount = 0;
 
   /**
    * Getter to check if the call is muted or not.
@@ -1506,6 +1511,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: METHODS.HANDLE_CALL_ESTABLISHED,
     });
 
+    // TODO: Question: During the retries we are emitting this event. Is this correct?
     this.emit(CALL_EVENT_KEYS.ESTABLISHED, this.correlationId);
 
     /* Reset Early dialog parameters */
@@ -1520,6 +1526,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: METHODS.HANDLE_CALL_ESTABLISHED,
       });
       clearInterval(this.sessionTimer);
+
+      // If we have reached the max retry count, do not attempt to refresh the session
+      if (this.callKeepaliveRetryCount === MAX_CALL_KEEPALIVE_RETRY_COUNT) {
+        this.end();
+
+        return;
+      }
+
+      this.callKeepaliveRetryCount += 1;
     }
 
     this.sessionTimer = setInterval(async () => {
@@ -1540,9 +1555,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
          * in retry-after scenario.
          */
         /* istanbul ignore next */
-        if (this.sessionTimer) {
-          clearInterval(this.sessionTimer);
-        }
+        // if (this.sessionTimer) {
+        //   clearInterval(this.sessionTimer);
+        // }
 
         handleCallErrors(
           (callError: CallError) => {
@@ -1550,19 +1565,23 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             this.submitCallErrorMetric(callError);
           },
           ERROR_LAYER.CALL_CONTROL,
-          (interval: number) => {
-            setTimeout(() => {
-              /* We first post the status and then recursively call the handler which
-               * starts the timer again
-               */
-              this.postStatus();
-              this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
-            }, interval * 1000);
+          (interval?: number) => {
+            setTimeout(
+              () => {
+                /* We first post the status and then recursively call the handler which
+                 * starts the timer again
+                 */
+                this.postStatus();
+                this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
+              },
+              interval ? interval * 1000 : DEFAULT_SESSION_TIMER
+            );
           },
           this.getCorrelationId(),
           error,
-          this.handleCallEstablished.name,
-          CALL_FILE
+          'handleCallEstablished',
+          CALL_FILE,
+          this.end
         );
 
         await uploadLogs({

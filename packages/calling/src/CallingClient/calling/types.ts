@@ -411,7 +411,7 @@ export interface ICall extends Eventing<CallEventTypes> {
 export type DeleteRecordCallBack = (callId: CallId) => void;
 export type CallEmitterCallBack = (callerInfo: DisplayInformation) => void;
 export type CallErrorEmitterCallBack = (error: CallError) => void;
-export type RetryCallBack = (interval: number) => void;
+export type RetryCallBack = (interval?: number) => void;
 
 /**
  * Represents an interface for managing calls within a call manager.
