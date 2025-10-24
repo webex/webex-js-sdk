@@ -784,7 +784,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         throw error;
       }
 
-      const loginResponse = this.services.agent.stationLogin({
+      const loginResponse = await this.services.agent.stationLogin({
         data: {
           dialNumber:
             data.loginOption === LoginOption.BROWSER ? this.agentConfig.agentId : data.dialNumber,
