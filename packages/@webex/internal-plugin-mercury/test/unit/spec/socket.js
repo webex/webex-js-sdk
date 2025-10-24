@@ -466,12 +466,12 @@ describe('plugin-mercury', () => {
           .then(() => assert.calledWith(mockWebSocket.close, 3001, 'Custom Normal')));
 
       it('accepts the logout reason', () =>
-            socket
-              .close({
-                code: 3050,
-                reason: 'done (permanent)',
-              })
-              .then(() => assert.calledWith(mockWebSocket.close, 3050, 'done (permanent)')));
+        socket
+          .close({
+            code: 3050,
+            reason: 'done (permanent)',
+          })
+          .then(() => assert.calledWith(mockWebSocket.close, 3050, 'done (permanent)')));
 
       it('can safely be called called multiple times', () => {
         const p1 = socket.close();
