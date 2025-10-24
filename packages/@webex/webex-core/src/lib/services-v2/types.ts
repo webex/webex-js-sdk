@@ -4,7 +4,7 @@ export type ServiceGroup = 'discovery' | 'override' | 'preauth' | 'postauth' | '
 
 export type ServiceUrl = {
   baseUrl: string;
-  host: string;
+  host?: string;
   priority: number;
   failed?: boolean;
 };
@@ -70,4 +70,18 @@ export interface IServiceCatalog {
   addAllowedDomains(newAllowedDomains: string[]): void;
   updateServiceGroups(serviceGroup: ServiceGroup, serviceDetails: Array<IServiceDetail>): void;
   waitForCatalog(serviceGroup: ServiceGroup, timeout?: number): Promise<void>;
+}
+
+export interface IPreviousHostMap {
+  serviceLinks: Record<string, string>;
+  hostCatalog: Record<
+    string,
+    {
+      host: string;
+      ttl: number;
+      priority: number;
+      id: string;
+    }[]
+  >;
+  format: string;
 }

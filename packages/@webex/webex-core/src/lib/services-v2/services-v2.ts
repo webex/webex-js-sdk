@@ -14,6 +14,7 @@ import {
   Service,
   ServiceHostmap,
   ServiceGroup,
+  IPreviousHostMap,
 } from './types';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
@@ -27,6 +28,7 @@ const CLUSTER_SERVICE = process.env.WEBEX_CONVERSATION_CLUSTER_SERVICE || DEFAUL
 const DEFAULT_CLUSTER_IDENTIFIER =
   process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER || `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
 
+const U2CV2FORMAT = 'U2CV2';
 /* eslint-disable no-underscore-dangle */
 /**
  * @class
@@ -748,13 +750,71 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * covert previous host map data to current ServiceHostMap
+   *
+   * @param {Object} hostmap - the hostmap data in V1 format.
+   * @returns {Object} - the converted data
+   */
+  _convertServicesFromV1(hostmap: IPreviousHostMap): ServiceHostmap['services'] {
+    const {serviceLinks, hostCatalog} = hostmap || {};
+    const services: Service[] = [];
+    const serviceMap = new Map<string, Service>();
+
+    // Process hostCatalog to populate services with unique ids
+    if (hostCatalog) {
+      Object.entries(hostCatalog).forEach(([host, hostServices]) => {
+        hostServices.forEach((hostService) => {
+          const serviceId = hostService.id;
+          const serviceName = hostService.id.split(':').pop(); // Extract service name from id
+
+          // Get or create service entry by id
+          let service = serviceMap.get(serviceId);
+          if (!service) {
+            service = {
+              id: serviceId,
+              serviceName,
+              serviceUrls: [],
+            };
+            serviceMap.set(serviceId, service);
+          }
+
+          // Get the baseUrl from serviceLinks
+          const baseUrl = serviceLinks[serviceName];
+          if (baseUrl) {
+            // Replace the host in baseUrl with the current host
+            const url = new URL(baseUrl);
+            url.host = host;
+
+            service.serviceUrls.push({
+              baseUrl: url.href,
+              priority: hostService.priority,
+            });
+          }
+        });
+      });
+    }
+    // Convert map to array and sort serviceUrls by priority
+    serviceMap.forEach((service) => {
+      service.serviceUrls.sort((a, b) => a.priority - b.priority);
+      services.push(service);
+    });
+
+    return services;
+  },
+  /**
    * @private
    * Organize a received hostmap from a service
-   * @param {ServiceHostmap} serviceHostmap
+   * @param {ServiceHostmap} receivedHostmap
    * catalog endpoint.
    * @returns {Array<Service>}
    */
-  _formatReceivedHostmap({services, activeServices, timestamp, orgId, format}) {
+  _formatReceivedHostmap(receivedHostmap) {
+    if (!receivedHostmap) return receivedHostmap;
+    const {activeServices, timestamp, orgId, format} = receivedHostmap;
+    let {services} = receivedHostmap;
+    if (format !== U2CV2FORMAT) {
+      services = this._convertServicesFromV1(receivedHostmap);
+    }
     const formattedHostmap: ServiceHostmap = {
       activeServices,
       services: services.map((service) => this._formatHostMapEntry(service)),
@@ -904,7 +964,7 @@ const Services = WebexPlugin.extend({
   ): Promise<object> {
     const service = 'u2c';
     const resource = from ? `/${from}/catalog` : '/catalog';
-    const qs = {...(query || {}), format: 'U2CV2'};
+    const qs = {...(query || {}), format: U2CV2FORMAT};
 
     if (forceRefresh) {
       qs.timestamp = new Date().getTime();

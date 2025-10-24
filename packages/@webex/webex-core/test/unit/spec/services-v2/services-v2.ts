@@ -7,7 +7,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {ServicesV2} from '@webex/webex-core';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
-import {formattedServiceHostmapV2, serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
+import {formattedServiceHostmapV2, serviceHostmapV2, serviceHostmapV1, expectedConvertedServicesV2} from '../../../fixtures/host-catalog-v2';
 
 const waitForAsync = () =>
   new Promise<void>((resolve) =>
@@ -500,6 +500,25 @@ describe('webex-core', () => {
           ...serviceHostmapV2.services,
           {id: 'test-left-over-services'},
         ]);
+      });
+    });
+
+    describe('#_convertServicesFromV1()', () => {
+      it('converts V1 hostmap to V2 services format correctly', () => {
+        const result = services._convertServicesFromV1(serviceHostmapV1);
+
+        assert.deepEqual(result, expectedConvertedServicesV2);
+      });
+
+      it('handles empty V1 hostmap', () => {
+        const result = services._convertServicesFromV1({serviceLinks: {}});
+
+        assert.deepEqual(result, []);
+      });
+
+      it('handles undefined/null input', () => {
+        assert.deepEqual(services._convertServicesFromV1(undefined), []);
+        assert.deepEqual(services._convertServicesFromV1(null), []);
       });
     });
 
