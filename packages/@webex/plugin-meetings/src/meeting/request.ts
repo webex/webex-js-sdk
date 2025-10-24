@@ -1080,7 +1080,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       return response.body;
     } catch (err) {
       LoggerProxy.logger.error(
-        `Meetings:request#sipCallOut --> Error calling out SIP participant, error ${err}`
+        `Meetings:request#sipCallOut --> Error calling out SIP participant, error ${JSON.stringify(
+          err
+        )}`
       );
       throw err;
     }
@@ -1117,7 +1119,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       return response.body;
     } catch (err) {
       LoggerProxy.logger.error(
-        `Meetings:request#cancelSipCallOut --> Error cancelling SIP participant call-out, error ${err}`
+        `Meetings:request#cancelSipCallOut --> Error cancelling SIP participant call-out, error ${JSON.stringify(
+          err
+        )}`
       );
       throw err;
     }
