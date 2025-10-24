@@ -733,6 +733,8 @@ export type TaskData = {
   isConsulted?: boolean;
   /** Indicates if the task is in conference state */
   isConferencing: boolean;
+  /** Indicates if a conference is currently in progress (2+ active agents) */
+  isConferenceInProgress?: boolean;
   /** Identifier of agent who last updated the task */
   updatedBy?: string;
   /** Type of destination for transfer/consult */
@@ -1135,16 +1137,16 @@ export interface ITask extends EventEmitter {
   autoWrapup?: AutoWrapup;
 
   /**
-   * cancels the auto-wrapup timer for the task
-   * This method stops the auto-wrapup process if it is currently active
+   * Cancels the auto-wrapup timer for the task.
+   * This method stops the auto-wrapup process if it is currently active.
    * Note: This is supported only in single session mode. Not supported in multi-session mode.
    * @returns void
    */
   cancelAutoWrapupTimer(): void;
 
   /**
-   * Deregisters all web call event listeners
-   * Used when cleaning up task resources
+   * Deregisters all web call event listeners.
+   * Used when cleaning up task resources.
    * @ignore
    */
   unregisterWebCallListeners(): void;
@@ -1164,7 +1166,7 @@ export interface ITask extends EventEmitter {
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.accept();
+   * await task.accept();
    * ```
    */
   accept(): Promise<TaskResponse>;
@@ -1174,48 +1176,48 @@ export interface ITask extends EventEmitter {
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.decline();
+   * await task.decline();
    * ```
    */
   decline(): Promise<TaskResponse>;
 
   /**
-   * Places the current task on hold
+   * Places the current task on hold.
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.hold();
+   * await task.hold();
    * ```
    */
   hold(): Promise<TaskResponse>;
 
   /**
-   * Resumes a task that was previously on hold
+   * Resumes a task that was previously on hold.
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.resume();
+   * await task.resume();
    * ```
    */
   resume(): Promise<TaskResponse>;
 
   /**
-   * Ends/terminates the current task
+   * Ends/terminates the current task.
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.end();
+   * await task.end();
    * ```
    */
   end(): Promise<TaskResponse>;
 
   /**
-   * Initiates wrap-up process for the task with specified details
+   * Initiates wrap-up process for the task with specified details.
    * @param wrapupPayload - Wrap-up details including reason and auxiliary code
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.wrapup({
+   * await task.wrapup({
    *   wrapUpReason: "Customer issue resolved",
    *   auxCodeId: "RESOLVED"
    * });
@@ -1224,25 +1226,109 @@ export interface ITask extends EventEmitter {
   wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse>;
 
   /**
-   * Pauses the recording for current task
+   * Pauses the recording for current task.
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.pauseRecording();
+   * await task.pauseRecording();
    * ```
    */
   pauseRecording(): Promise<TaskResponse>;
 
   /**
-   * Resumes a previously paused recording
+   * Resumes a previously paused recording.
    * @param resumeRecordingPayload - Parameters for resuming the recording
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.resumeRecording({
+   * await task.resumeRecording({
    *   autoResumed: false
    * });
    * ```
    */
   resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse>;
+
+  /**
+   * Initiates a consultation with another agent or queue.
+   * @param consultPayload - Consultation details including destination and type
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.consult({ to: "agentId", destinationType: "agent" });
+   * ```
+   */
+  consult(consultPayload: ConsultPayload): Promise<TaskResponse>;
+
+  /**
+   * Ends an ongoing consultation.
+   * @param consultEndPayload - Details for ending the consultation
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.endConsult({ isConsult: true, taskId: "taskId" });
+   * ```
+   */
+  endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse>;
+
+  /**
+   * Transfers the task to another agent or queue.
+   * @param transferPayload - Transfer details including destination and type
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.transfer({ to: "queueId", destinationType: "queue" });
+   * ```
+   */
+  transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>;
+
+  /**
+   * Transfers the task after consultation.
+   * @param consultTransferPayload - Details for consult transfer (optional)
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.consultTransfer({ to: "agentId", destinationType: "agent" });
+   * ```
+   */
+  consultTransfer(consultTransferPayload?: ConsultTransferPayLoad): Promise<TaskResponse>;
+
+  /**
+   * Initiates a consult conference (merge consult call with main call).
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.consultConference();
+   * ```
+   */
+  consultConference(): Promise<TaskResponse>;
+
+  /**
+   * Exits from an ongoing conference.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.exitConference();
+   * ```
+   */
+  exitConference(): Promise<TaskResponse>;
+
+  /**
+   * Transfers the conference to another participant.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.transferConference();
+   * ```
+   */
+  transferConference(): Promise<TaskResponse>;
+
+  /**
+   * Toggles mute/unmute for the local audio stream during a WebRTC task.
+   * @returns Promise<void>
+   * @example
+   * ```typescript
+   * await task.toggleMute();
+   * ```
+   */
+  toggleMute(): Promise<void>;
 }

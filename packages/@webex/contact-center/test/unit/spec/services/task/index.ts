@@ -217,7 +217,7 @@ describe('Task', () => {
   });
 
   describe('updateTaskData cases', () => {
-    it('test updating the task data by overwrite', async () => {
+    it('updates the task data by overwrite', async () => {
       const newData = {
         type: CC_EVENTS.AGENT_CONTACT_ASSIGNED,
         agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
@@ -266,12 +266,12 @@ describe('Task', () => {
       expect(task.data).toEqual(newData);
     });
 
-    it('test updating the task data by merging', async () => {
+    it('updates the task data by merging with key removal', async () => {
       const newData = {
-        // ...taskDataMock, // Purposefully omit this to test scenario when other keys isn't present
+        // Purposefully omit other keys to test remove and merge behavior
         isConsulting: true, // Add a new custom key to test persistence
         interaction: {
-          // ...taskDataMock.interaction, // Purposefully omit this to test scenario when a nested key isn't present
+          // Purposefully omit other interaction keys to test removal
           media: {
             '58a45567-4e61-4f4b-a580-5bc86357bef0': {
               holdTimestamp: null,
@@ -298,11 +298,12 @@ describe('Task', () => {
         },
       };
 
+      // The reconcileData method removes keys from oldData that are not in newData
+      // This means only keys present in newData will remain in the final result
       const expectedData: TaskData = {
-        ...taskDataMock,
-        isConsulting: true,
+        isConsulting: true, // New key is added
         interaction: {
-          ...taskDataMock.interaction,
+          // Only the media key from newData.interaction remains
           media: {
             '58a45567-4e61-4f4b-a580-5bc86357bef0': {
               holdTimestamp: null,
@@ -324,6 +325,60 @@ describe('Task', () => {
               mediaResourceId: taskId,
               mediaType: 'telephony',
               participants: ['+14696762938', '723a8ffb-a26e-496d-b14a-ff44fb83b64f'],
+            },
+          },
+        },
+      };
+
+      expect(task.data).toEqual(taskDataMock);
+      const shouldOverwrite = false;
+      task.updateTaskData(newData, shouldOverwrite);
+
+      expect(task.data).toEqual(expectedData);
+    });
+
+    it('updates the task data by merging and preserving existing keys', async () => {
+      const newData = {
+        ...taskDataMock, // Include all existing keys to test merge without removal
+        isConsulting: true, // Add a new custom key
+        interaction: {
+          ...taskDataMock.interaction, // Include existing interaction data
+          media: {
+            ...taskDataMock.interaction.media, // Include existing media
+            '58a45567-4e61-4f4b-a580-5bc86357bef0': {
+              holdTimestamp: null,
+              isHold: true,
+              mType: 'consult',
+              mediaMgr: 'callmm',
+              mediaResourceId: '58a45567-4e61-4f4b-a580-5bc86357bef0',
+              mediaType: 'telephony',
+              participants: [
+                'f520d6b5-28ad-4f2f-b83e-781bb64af617',
+                '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+              ],
+            },
+          },
+        },
+      };
+
+      const expectedData: TaskData = {
+        ...taskDataMock,
+        isConsulting: true,
+        interaction: {
+          ...taskDataMock.interaction,
+          media: {
+            ...taskDataMock.interaction.media,
+            '58a45567-4e61-4f4b-a580-5bc86357bef0': {
+              holdTimestamp: null,
+              isHold: true,
+              mType: 'consult',
+              mediaMgr: 'callmm',
+              mediaResourceId: '58a45567-4e61-4f4b-a580-5bc86357bef0',
+              mediaType: 'telephony',
+              participants: [
+                'f520d6b5-28ad-4f2f-b83e-781bb64af617',
+                '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+              ],
             },
           },
         },
@@ -1707,9 +1762,6 @@ describe('Task', () => {
       });
     });
 
-    // TODO: Uncomment this test section in future PR for Multi-Party Conference support (>3 participants)
-    // Conference transfer tests will be uncommented when implementing enhanced multi-party conference functionality
-    /*
     describe('transferConference', () => {
       it('should successfully transfer conference', async () => {
         const mockResponse = {
@@ -1756,6 +1808,5 @@ describe('Task', () => {
         });
       });
     });
-    */
   });
 });

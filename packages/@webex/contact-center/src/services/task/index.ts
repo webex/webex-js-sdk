@@ -10,7 +10,7 @@ import {
 import {Failure} from '../core/GlobalTypes';
 import {LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
-import {METHODS} from './constants';
+import {METHODS, KEYS_TO_NOT_DELETE} from './constants';
 import routingContact from './contact';
 import LoggerProxy from '../../logger-proxy';
 import {
@@ -281,9 +281,24 @@ export default class Task extends EventEmitter implements ITask {
    * @private
    */
   private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
+    // Remove keys from oldData that are not in newData
+    Object.keys(oldData).forEach((key) => {
+      if (!(key in newData) && !KEYS_TO_NOT_DELETE.includes(key as string)) {
+        delete oldData[key];
+      }
+    });
+
+    // Merge or update keys from newData
     Object.keys(newData).forEach((key) => {
-      if (newData[key] && typeof newData[key] === 'object' && !Array.isArray(newData[key])) {
-        oldData[key] = this.reconcileData({...oldData[key]}, newData[key]);
+      if (
+        newData[key] &&
+        typeof newData[key] === 'object' &&
+        !Array.isArray(newData[key]) &&
+        oldData[key] &&
+        typeof oldData[key] === 'object' &&
+        !Array.isArray(oldData[key])
+      ) {
+        this.reconcileData(oldData[key], newData[key]);
       } else {
         oldData[key] = newData[key];
       }
@@ -1684,9 +1699,6 @@ export default class Task extends EventEmitter implements ITask {
     }
   }
 
-  // TODO: Uncomment this method in future PR for Multi-Party Conference support (>3 participants)
-  // Conference transfer will be supported when implementing enhanced multi-party conference functionality
-  /*
   /**
    * Transfers the current conference to another agent
    *
@@ -1707,7 +1719,7 @@ export default class Task extends EventEmitter implements ITask {
    * }
    * ```
    */
-  /* public async transferConference(): Promise<TaskResponse> {
+  public async transferConference(): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Transferring conference`, {
         module: TASK_FILE,
@@ -1771,5 +1783,5 @@ export default class Task extends EventEmitter implements ITask {
 
       throw err;
     }
-  } */
+  }
 }
