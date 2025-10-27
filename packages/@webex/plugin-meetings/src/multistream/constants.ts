@@ -1,5 +1,3 @@
-import {getPicSizeFromFrameSize} from './utils';
-
 export const MAX_FS_VALUES = {
   '90p': 60,
   '180p': 240,
