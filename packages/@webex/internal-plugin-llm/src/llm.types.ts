@@ -1,5 +1,9 @@
 interface ILLMChannel {
-  registerAndConnect: (locusUrl: string, datachannelUrl: string) => Promise<void>;
+  registerAndConnect: (
+    locusUrl: string,
+    datachannelUrl: string,
+    datachannelToken: string
+  ) => Promise<void>;
   isConnected: () => boolean;
   getBinding: () => string;
   getLocusUrl: () => string;

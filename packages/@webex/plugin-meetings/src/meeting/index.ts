@@ -6072,7 +6072,11 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async updateLLMConnection() {
     // @ts-ignore - Fix type
-    const {url, info: {datachannelUrl, practiceSessionDatachannelUrl} = {}} = this.locusInfo;
+    const {
+      url = undefined,
+      info: {datachannelUrl = undefined, practiceSessionDatachannelUrl = undefined} = {},
+      self: {datachannelToken = undefined} = {},
+    } = this.locusInfo || {};
 
     const isJoined = this.isJoined();
 
@@ -6081,7 +6085,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelUrl
         ? practiceSessionDatachannelUrl
         : datachannelUrl;
-
+    const dataChannelToken = datachannelToken;
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
       if (
@@ -6112,7 +6116,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, dataChannelUrl)
+      .registerAndConnect(url, dataChannelUrl, dataChannelToken)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
