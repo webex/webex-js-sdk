@@ -985,6 +985,7 @@ describe('plugin-meetings', () => {
       {functionName: 'isRealTimeTranslationEnabled', displayHint: 'DISPLAY_REAL_TIME_TRANSLATION'},
       {functionName: 'canSelectSpokenLanguages', displayHint: 'DISPLAY_NON_ENGLISH_ASR'},
       {functionName: 'waitingForOthersToJoin', displayHint: 'WAITING_FOR_OTHERS'},
+      {functionName: 'showAutoEndMeetingWarning', displayHint: 'SHOW_AUTO_END_MEETING_WARNING'},
     ].forEach(({functionName, displayHint}) => {
       describe(functionName, () => {
         it('works as expected', () => {

@@ -25,7 +25,7 @@ export type QueryOptions = {
 export interface ServiceHostmap {
   activeServices: ActiveServices;
   services: Array<Service>;
-  timeStamp: string;
+  timestamp: string;
   orgId: string;
   format: string;
 }

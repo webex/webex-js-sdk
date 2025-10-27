@@ -19,7 +19,7 @@ const messageHandler = (event: MessageEvent) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Keepalive failed with status: ${response.status}`);
+      throw response;
     }
 
     return response;
@@ -46,11 +46,27 @@ const messageHandler = (event: MessageEvent) => {
             } as KeepaliveStatusMessage);
           }
           keepAliveRetryCount = 0;
-        } catch (err: unknown) {
+        } catch (err: any) {
+          const headers = {} as Record<string, string>;
+          if (err.headers.has('Retry-After')) {
+            headers['retry-after'] = err.headers.get('Retry-After');
+          }
+
+          if (err.headers.has('Trackingid')) {
+            // eslint-disable-next-line dot-notation
+            headers['trackingid'] = err.headers.get('Trackingid');
+          }
+
+          const error = {
+            headers,
+            statusCode: err.status,
+            statusText: err.statusText,
+            type: err.type,
+          };
           keepAliveRetryCount += 1;
           postMessage({
             type: WorkerMessageType.KEEPALIVE_FAILURE,
-            err,
+            err: error,
             keepAliveRetryCount,
           } as KeepaliveStatusMessage);
         }

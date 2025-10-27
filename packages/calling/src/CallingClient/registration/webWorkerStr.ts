@@ -46,7 +46,7 @@ const messageHandler = (event) => {
     });
 
     if (!response.ok) {
-      throw new Error(\`Keepalive failed with status: \${response.status}\`);
+      throw response;
     }
 
     return response;
@@ -74,10 +74,26 @@ const messageHandler = (event) => {
           }
           keepAliveRetryCount = 0;
         } catch (err) {
-          keepAliveRetryCount += 1;
+          let headers = {};
+          if(err.headers.has('Retry-After')) {
+            headers['retry-after'] = err.headers.get('Retry-After');
+          } 
+
+          if(err.headers.has('Trackingid')) {
+            headers['trackingid'] = err.headers.get('Trackingid');
+          }   
+
+          const error = {
+            headers,
+            statusCode: err.status,
+            statusText: err.statusText,
+            type: err.type,
+          };
+
+          keepAliveRetryCount += 1
           self.postMessage({
             type: WorkerMessageType.KEEPALIVE_FAILURE,
-            err,
+            err: error,
             keepAliveRetryCount,
           });
         }

@@ -130,6 +130,15 @@ ControlsUtils.parse = (controls: any) => {
     };
   }
 
+  if (controls?.autoEndMeetingWarning) {
+    parsedControls.autoEndMeetingWarning = {
+      enabled: controls.autoEndMeetingWarning.enabled,
+      extensionDurationMinutes: controls.autoEndMeetingWarning.extensionDurationMinutes,
+      countdownDurationMinutes: controls.autoEndMeetingWarning.countdownDurationMinutes,
+      countdownStartedAt: controls.autoEndMeetingWarning.countdownStartedAt,
+    };
+  }
+
   return parsedControls;
 };
 
@@ -244,6 +253,15 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
 
       hasPollingQAControlChanged:
         current?.pollingQAControl?.enabled !== previous?.pollingQAControl?.enabled,
+
+      hasAutoEndMeetingChanged:
+        current?.autoEndMeetingWarning?.enabled !== previous?.autoEndMeetingWarning?.enabled ||
+        current?.autoEndMeetingWarning?.extensionDurationMinutes !==
+          previous?.autoEndMeetingWarning?.extensionDurationMinutes ||
+        current?.autoEndMeetingWarning?.countdownDurationMinutes !==
+          previous?.autoEndMeetingWarning?.countdownDurationMinutes ||
+        current?.autoEndMeetingWarning?.countdownStartedAt !==
+          previous?.autoEndMeetingWarning?.countdownStartedAt,
     },
   };
 };

@@ -186,6 +186,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
           headers: {...this.authHeaders},
         });
 
+        log.log(`Response code: ${response.statusCode}`, loggerContext);
+        log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
+
         const voicemailListResponse = response.body as VoicemailList;
 
         if (
@@ -268,6 +271,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const mediaContent = mediaDetails.childNodes[2]?.textContent;
 
       log.info(`Media type is  ${mediaType}`, loggerContext);
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
+
       const responseDetails: VoicemailResponseEvent = {
         statusCode: Number(response.statusCode),
         data: {
@@ -337,6 +342,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       log.log('Successfully fetched voicemail summary', loggerContext);
 
       return responseDetails;
@@ -379,6 +385,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       log.log('Successfully marked voicemail as read', loggerContext);
 
       return responseDetails;
@@ -421,6 +428,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       log.log('Successfully marked voicemail as unread', loggerContext);
 
       return responseDetails;
@@ -466,6 +474,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: SUCCESS_MESSAGE,
       };
 
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       log.log('Successfully deleted voicemail', loggerContext);
 
       return responseDetails;
@@ -516,6 +525,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         message: status.textContent,
       };
 
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
       log.log('Successfully fetched voicemail transcript', loggerContext);
 
       return responseDetails;
