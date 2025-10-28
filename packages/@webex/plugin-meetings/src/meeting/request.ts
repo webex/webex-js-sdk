@@ -1046,4 +1046,84 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       },
     });
   }
+
+  /**
+   * Call out to a SIP participant
+   *
+   * @param {any} meetingId - The meeting ID.
+   * @param {any} meetingNumber - The meeting number.
+   * @param {string} address - The SIP address to call out.
+   * @param {string} displayName - The display name for the participant.
+   * @returns {Promise} The API response
+   */
+  public async sipCallOut(meetingId, meetingNumber, address, displayName) {
+    const body: any = {
+      meetingId,
+      meetingNumber,
+      address,
+      displayName,
+    };
+    try {
+      // @ts-ignore
+      const response = await this.request({
+        method: HTTP_VERBS.POST,
+        service: 'hydra',
+        resource: 'meetingParticipants/callout',
+        body,
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      LoggerProxy.logger.info('Meetings:request#sipCallOut --> SIP call-out successful', response);
+
+      return response.body;
+    } catch (err) {
+      LoggerProxy.logger.error(
+        `Meetings:request#sipCallOut --> Error calling out SIP participant, error ${JSON.stringify(
+          err
+        )}`
+      );
+      throw err;
+    }
+  }
+
+  /**
+   * Cancel an ongoing SIP call-out
+   *
+   * @param {string} participantId - The ID of the participant whose SIP call-out should be cancelled.
+   * @returns {Promise} The API response
+   */
+  public async cancelSipCallOut(participantId) {
+    const body = {
+      participantId,
+    };
+
+    try {
+      // @ts-ignore
+      const response = await this.request({
+        method: HTTP_VERBS.POST,
+        service: 'hydra',
+        resource: 'meetingParticipants/cancelCallout',
+        body,
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      LoggerProxy.logger.info(
+        'Meetings:request#cancelSipCallOut --> SIP call-out cancelled successfully',
+        response
+      );
+
+      return response.body;
+    } catch (err) {
+      LoggerProxy.logger.error(
+        `Meetings:request#cancelSipCallOut --> Error cancelling SIP participant call-out, error ${JSON.stringify(
+          err
+        )}`
+      );
+      throw err;
+    }
+  }
 }
