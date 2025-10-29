@@ -171,10 +171,9 @@ export class RemoteMedia extends EventsScope {
    * @returns {number | undefined} The max pic size, or undefined if no constraints
    */
   public getEffectiveMaxPicSize(): number | undefined {
-    // TODO: Should we handle maxFrameSize?
-    // if (this.maxFrameSize > 0) {
-    //   return this.maxFrameSize * 288;
-    // }
+    if (this.maxPicSize > 0) {
+      return this.maxPicSize;
+    }
 
     if (this.options.resolution) {
       return getMaxPicSize(this.options.resolution);
