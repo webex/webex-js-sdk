@@ -10,9 +10,10 @@ import {RemoteMedia, RemoteVideoResolution} from './remoteMedia';
 import {ReceiveSlot, CSI} from './receiveSlot';
 import {ReceiveSlotManager} from './receiveSlotManager';
 import {RemoteMediaGroup} from './remoteMediaGroup';
-import {CodecInfo, MediaRequestManager} from './mediaRequestManager';
+import {MediaRequestManager} from './mediaRequestManager';
 import {NAMED_MEDIA_GROUP_TYPE_AUDIO} from '../constants';
 import MeetingsUtil from '../meetings/util';
+import {CodecInfo} from './codec/types';
 
 export type PaneSize = RemoteVideoResolution;
 export type LayoutId = string;

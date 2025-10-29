@@ -4,67 +4,16 @@ import {
   Policy,
   ActiveSpeakerInfo,
   ReceiverSelectedInfo,
-  CodecInfo as WcmeCodecInfo,
-  H264Codec,
-  AV1Codec,
-  getRecommendedMaxBitrateForFrameSize,
   RecommendedOpusBitrates,
-  NamedMediaGroup,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
-import {CODEC_DEFAULTS, MAX_FS_VALUES, MAX_PIC_SIZE_VALUES} from './constants';
-import {getFrameSizeFromPicSize, getPicSizeFromFrameSize} from './utils';
-
-export interface ActiveSpeakerPolicyInfo {
-  policy: 'active-speaker';
-  priority: number;
-  crossPriorityDuplication: boolean;
-  crossPolicyDuplication: boolean;
-  preferLiveVideo: boolean;
-  namedMediaGroups?: NamedMediaGroup[];
-}
-
-export interface ReceiverSelectedPolicyInfo {
-  policy: 'receiver-selected';
-  csi: number;
-}
-
-export type PolicyInfo = ActiveSpeakerPolicyInfo | ReceiverSelectedPolicyInfo;
-
-export interface H264CodecInfo {
-  codec: 'h264';
-  maxFs?: number;
-  maxFps?: number;
-  maxMbps?: number;
-  maxWidth?: number;
-  maxHeight?: number;
-}
-
-export interface AV1CodecInfo {
-  codec: 'av1';
-  levelIdx?: number;
-  tier?: number;
-  maxWidth?: number;
-  maxHeight?: number;
-  maxPicSize?: number;
-  maxDecodeRate?: number;
-}
-
-export type CodecInfo = H264CodecInfo | AV1CodecInfo;
-
-export interface MediaRequest {
-  policyInfo: PolicyInfo;
-  receiveSlots: Array<ReceiveSlot>;
-  codecInfo?: CodecInfo;
-  preferredMaxFs?: number;
-  handleMaxFs?: ({maxFs}: {maxFs: number}) => void;
-}
-
-export type MediaRequestId = string;
+import {ReceiveSlotEvents} from './receiveSlot';
+import {Resolution} from './codec/types';
+import MediaCodecHelperFactory from './codec/mediaCodecHelper.factory';
+import {MediaRequest, MediaRequestId} from './types';
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
@@ -82,6 +31,8 @@ type Options = {
   kind: Kind;
   trimRequestsToNumOfSources: boolean; // if enabled, AS speaker requests will be trimmed based on the calls to setNumCurrentSources()
 };
+
+// eslint-disable-next-line import/prefer-default-export
 export class MediaRequestManager {
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
 
@@ -123,60 +74,27 @@ export class MediaRequestManager {
   }
 
   private getDegradedClientRequests(clientRequests: ClientRequestsMap) {
-    const maxFsLimits = [
-      MAX_FS_VALUES['1080p'],
-      MAX_FS_VALUES['720p'],
-      MAX_FS_VALUES['540p'],
-      MAX_FS_VALUES['360p'],
-      MAX_FS_VALUES['180p'],
-      MAX_FS_VALUES['90p'],
-    ];
-
-    const maxPicSizeLimits = [
-      MAX_PIC_SIZE_VALUES['1080p'],
-      MAX_PIC_SIZE_VALUES['720p'],
-      MAX_PIC_SIZE_VALUES['540p'],
-      MAX_PIC_SIZE_VALUES['360p'],
-      MAX_PIC_SIZE_VALUES['180p'],
-      MAX_PIC_SIZE_VALUES['90p'],
-    ];
-
-    // reduce max-fs until total macroblocks is below limit
-    for (let i = 0; i < maxFsLimits.length; i += 1) {
+    const resolutions: Resolution[] = ['1080p', '720p', '540p', '360p', '180p', '90p'];
+    for (const resolution of resolutions) {
       let totalMacroblocksRequested = 0;
+
       Object.values(clientRequests).forEach((mr) => {
-        if (mr.codecInfo?.codec === 'h264') {
-          mr.codecInfo.maxFs = Math.min(
-            mr.preferredMaxFs || CODEC_DEFAULTS.h264.maxFs,
-            mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
-            maxFsLimits[i]
-          );
-          // we only consider sources with "live" state
-          const slotsWithLiveSource = mr.receiveSlots.filter((rs) => rs.sourceState === 'live');
-          totalMacroblocksRequested += mr.codecInfo.maxFs * slotsWithLiveSource.length;
-        }
-        if (mr.codecInfo?.codec === 'av1') {
-          mr.codecInfo.maxPicSize = Math.min(
-            mr.preferredMaxFs || CODEC_DEFAULTS.av1.maxPicSize,
-            mr.codecInfo.maxPicSize || CODEC_DEFAULTS.av1.maxPicSize,
-            maxPicSizeLimits[i]
-          );
-          const slotsWithLiveSource = mr.receiveSlots.filter((rs) => rs.sourceState === 'live');
-          totalMacroblocksRequested += getFrameSizeFromPicSize(
-            mr.codecInfo.maxPicSize * slotsWithLiveSource.length
-          );
-        }
+        const mediaCodecHelper = MediaCodecHelperFactory.create({
+          codec: mr.codecInfo?.codec,
+        });
+        totalMacroblocksRequested += mediaCodecHelper.degradeMediaRequest(mr, resolution);
       });
+
       if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
-        if (i !== 0) {
+        if (resolution !== '1080p') {
           LoggerProxy.logger.warn(
-            `multistream:mediaRequestManager --> too many streams with high max-fs, frame size will be limited to ${maxFsLimits[i]}`
+            `multistream:mediaRequestManager --> too many streams with high macroblocks requested, resolution will be limited to ${resolution}`
           );
         }
         break;
-      } else if (i === maxFsLimits.length - 1) {
+      } else if (resolution === '90p') {
         LoggerProxy.logger.warn(
-          `multistream:mediaRequestManager --> even with frame size limited to ${maxFsLimits[i]} you are still requesting too many streams, consider reducing the number of requests`
+          `multistream:mediaRequestManager --> even with resolution limited to ${resolution} you are still requesting too many streams, consider reducing the number of requests`
         );
       }
     }
@@ -213,18 +131,12 @@ export class MediaRequestManager {
       return RecommendedOpusBitrates.FB_MONO_MUSIC;
     }
 
-    if (mediaRequest.codecInfo?.codec === 'h264') {
-      return getRecommendedMaxBitrateForFrameSize(
-        mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs
-      );
-    }
+    if (mediaRequest.codecInfo?.codec) {
+      const mediaCodecHelper = MediaCodecHelperFactory.create({
+        codec: mediaRequest.codecInfo.codec,
+      });
 
-    if (mediaRequest.codecInfo?.codec === 'av1') {
-      const frameSize = getFrameSizeFromPicSize(
-        mediaRequest.codecInfo.maxPicSize || CODEC_DEFAULTS.av1.maxPicSize
-      );
-
-      return getRecommendedMaxBitrateForFrameSize(frameSize);
+      return mediaCodecHelper.getMaxPayloadBitsPerSecond(mediaRequest);
     }
 
     LoggerProxy.logger.warn(
@@ -322,47 +234,6 @@ export class MediaRequestManager {
     });
   }
 
-  /**
-   * Returns the codec infos for the given MediaRequest
-   *
-   * @param mr - MediaRequest to get the codec infos from
-   * @returns {WcmeCodecInfo[]} - Array of WcmeCodecInfo
-   */
-  // eslint-disable-next-line class-methods-use-this
-  private getCodecInfos(mr: MediaRequest): WcmeCodecInfo[] {
-    if (mr.codecInfo?.codec === 'h264') {
-      return [
-        WcmeCodecInfo.fromH264(
-          0x80,
-          new H264Codec(
-            mr.codecInfo.maxFs,
-            mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-            mr.codecInfo.maxMbps,
-            mr.codecInfo.maxWidth,
-            mr.codecInfo.maxHeight
-          )
-        ),
-      ];
-    }
-    if (mr.codecInfo?.codec === 'av1') {
-      return [
-        WcmeCodecInfo.fromAv1(
-          45,
-          new AV1Codec(
-            mr.codecInfo.levelIdx,
-            mr.codecInfo.tier,
-            mr.codecInfo.maxWidth,
-            mr.codecInfo.maxHeight,
-            mr.codecInfo.maxPicSize,
-            mr.codecInfo.maxDecodeRate
-          )
-        ),
-      ];
-    }
-
-    return [];
-  }
-
   private sendRequests() {
     const streamRequests: StreamRequest[] = [];
 
@@ -394,7 +265,10 @@ export class MediaRequestManager {
 
       const receiveSlots = mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot);
       const maxPayloadBitsPerSecond = this.getMaxPayloadBitsPerSecond(mr);
-      const codecInfos = this.getCodecInfos(mr);
+      const mediaCodecHelper = MediaCodecHelperFactory.create({
+        codec: mr.codecInfo?.codec,
+      });
+      const codecInfos = mediaCodecHelper.getWCMECodecInfos(mr);
 
       const streamRequest = new StreamRequest(
         policy,

@@ -6,9 +6,11 @@ import {NamedMediaGroup} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {getMaxFs, RemoteMedia, RemoteVideoResolution} from './remoteMedia';
-import {CodecInfo, MediaRequestId, MediaRequestManager} from './mediaRequestManager';
+import {MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot} from './receiveSlot';
-import {getCodecInfo, getPicSizeFromFrameSize} from './utils';
+import {CodecInfo} from './codec/types';
+import MediaCodecHelperFactory from './codec/mediaCodecHelper.factory';
+import {MediaRequestId} from './types';
 
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
@@ -218,11 +220,9 @@ export class RemoteMediaGroup {
   private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 
-    const codecInfo = getCodecInfo(
-      this.options.preferredCodec,
-      () => this.getEffectiveMaxFs(),
-      () => this.getEffectiveMaxPicSize()
-    );
+    const mediaCodecHelper = MediaCodecHelperFactory.create({
+      codec: this.options.preferredCodec,
+    });
 
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
@@ -239,7 +239,9 @@ export class RemoteMediaGroup {
         receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
           remoteMedia.getUnderlyingReceiveSlot()
         ) as ReceiveSlot[],
-        codecInfo,
+        codecInfo: mediaCodecHelper.getCodecInfo({
+          maxFs: this.getEffectiveMaxFs(),
+        }),
       },
       commit
     );
@@ -337,15 +339,5 @@ export class RemoteMediaGroup {
    */
   public getEffectiveMaxFs(): number | undefined {
     return this.getEffectiveMaxFsForActiveSpeaker();
-  }
-
-  /**
-   * Get the current effective maxPicSize that would be used for the active speaker media request
-   * @returns {number | undefined} The effective maxFs value
-   */
-  public getEffectiveMaxPicSize(): number | undefined {
-    const maxFs = this.getEffectiveMaxFs();
-
-    return maxFs ? getPicSizeFromFrameSize(maxFs) : undefined;
   }
 }
