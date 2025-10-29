@@ -11,9 +11,8 @@ import {cloneDeepWith, debounce} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlotEvents} from './receiveSlot';
-import {Resolution} from './codec/types';
 import MediaCodecHelperFactory from './codec/mediaCodecHelper.factory';
-import {MediaRequest, MediaRequestId} from './types';
+import {MediaRequest, MediaRequestId, RemoteVideoResolution} from './types';
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
@@ -74,7 +73,15 @@ export class MediaRequestManager {
   }
 
   private getDegradedClientRequests(clientRequests: ClientRequestsMap) {
-    const resolutions: Resolution[] = ['1080p', '720p', '540p', '360p', '180p', '90p'];
+    const resolutions: RemoteVideoResolution[] = [
+      'best',
+      'large',
+      'medium',
+      'small',
+      'very small',
+      'thumbnail',
+    ];
+
     for (const resolution of resolutions) {
       let totalMacroblocksRequested = 0;
 
@@ -86,13 +93,13 @@ export class MediaRequestManager {
       });
 
       if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
-        if (resolution !== '1080p') {
+        if (resolution !== 'best') {
           LoggerProxy.logger.warn(
             `multistream:mediaRequestManager --> too many streams with high macroblocks requested, resolution will be limited to ${resolution}`
           );
         }
         break;
-      } else if (resolution === '90p') {
+      } else if (resolution === 'thumbnail') {
         LoggerProxy.logger.warn(
           `multistream:mediaRequestManager --> even with resolution limited to ${resolution} you are still requesting too many streams, consider reducing the number of requests`
         );

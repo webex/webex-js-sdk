@@ -5,23 +5,15 @@ import EventsScope from '../common/events/events-scope';
 
 import {MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
-import {H264_CODEC_PARAMETERS} from './codec/constants';
+import {AV1_CODEC_PARAMETERS, H264_CODEC_PARAMETERS} from './codec/constants';
 import {CodecInfo} from './codec/types';
 import MediaCodecHelperFactory from './codec/mediaCodecHelper.factory';
-import {MediaRequestId} from './types';
+import {MediaRequestId, RemoteVideoResolution} from './types';
 
 export const RemoteMediaEvents = {
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
   Stopped: 'stopped',
 };
-
-export type RemoteVideoResolution =
-  | 'thumbnail' // the smallest possible resolution, 90p or less
-  | 'very small' // 180p or less
-  | 'small' // 360p or less
-  | 'medium' // 720p or less
-  | 'large' // 1080p or less
-  | 'best'; // highest possible resolution
 
 /**
  * Converts pane size into h264 maxFs
@@ -58,6 +50,44 @@ export function getMaxFs(paneSize: RemoteVideoResolution): number {
   }
 
   return maxFs;
+}
+
+/**
+ * Converts pane size into av1 maxPicSize
+ *
+ * @param resolution - The resolution to get the max pic size for
+ * @returns {number} The max pic size
+ */
+export function getMaxPicSize(resolution: RemoteVideoResolution): number {
+  let maxPicSize;
+
+  switch (resolution) {
+    case 'thumbnail':
+      maxPicSize = AV1_CODEC_PARAMETERS['90p'].maxPicSize;
+      break;
+    case 'very small':
+      maxPicSize = AV1_CODEC_PARAMETERS['180p'].maxPicSize;
+      break;
+    case 'small':
+      maxPicSize = AV1_CODEC_PARAMETERS['360p'].maxPicSize;
+      break;
+    case 'medium':
+      maxPicSize = AV1_CODEC_PARAMETERS['720p'].maxPicSize;
+      break;
+    case 'large':
+      maxPicSize = AV1_CODEC_PARAMETERS['1080p'].maxPicSize;
+      break;
+    case 'best':
+      maxPicSize = AV1_CODEC_PARAMETERS['1080p'].maxPicSize;
+      break;
+    default:
+      LoggerProxy.logger.warn(
+        `RemoteMedia#getMaxPicSize --> unsupported resolution: ${resolution}, using "medium" instead`
+      );
+      maxPicSize = AV1_CODEC_PARAMETERS['720p'].maxPicSize;
+  }
+
+  return maxPicSize;
 }
 
 type Options = {
@@ -169,6 +199,23 @@ export class RemoteMedia extends EventsScope {
   }
 
   /**
+   * Get the current effective maxPicSize value that would be used in media requests
+   * @returns {number | undefined} The max pic size, or undefined if no constraints
+   */
+  public getEffectiveMaxPicSize(): number | undefined {
+    // TODO: Should we handle maxFrameSize?
+    // if (this.maxFrameSize > 0) {
+    //   return this.maxFrameSize * 288;
+    // }
+
+    if (this.options.resolution) {
+      return getMaxPicSize(this.options.resolution);
+    }
+
+    return undefined;
+  }
+
+  /**
    * Invalidates the remote media by clearing the reference to a receive slot and
    * cancelling the media request.
    * After this call the remote media is unusable.
@@ -221,6 +268,7 @@ export class RemoteMedia extends EventsScope {
         receiveSlots: [this.receiveSlot],
         codecInfo: mediaCodecHelper.getCodecInfo({
           maxFs: this.getEffectiveMaxFs(),
+          maxPicSize: this.getEffectiveMaxPicSize(),
         }),
       },
       commit

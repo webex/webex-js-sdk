@@ -5,12 +5,12 @@ import {forEach} from 'lodash';
 import {NamedMediaGroup} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {getMaxFs, RemoteMedia, RemoteVideoResolution} from './remoteMedia';
+import {getMaxFs, getMaxPicSize, RemoteMedia} from './remoteMedia';
 import {MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot} from './receiveSlot';
 import {CodecInfo} from './codec/types';
 import MediaCodecHelperFactory from './codec/mediaCodecHelper.factory';
-import {MediaRequestId} from './types';
+import {MediaRequestId, RemoteVideoResolution} from './types';
 
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
@@ -241,6 +241,7 @@ export class RemoteMediaGroup {
         ) as ReceiveSlot[],
         codecInfo: mediaCodecHelper.getCodecInfo({
           maxFs: this.getEffectiveMaxFs(),
+          maxPicSize: this.getEffectiveMaxPicSize(),
         }),
       },
       commit
@@ -333,11 +334,38 @@ export class RemoteMediaGroup {
     return undefined;
   }
 
+  private getEffectiveMaxPicSizeForActiveSpeaker(): number | undefined {
+    // Get all effective maxPicSize values from unpinned RemoteMedia instances
+    const maxPicSizeValues = this.unpinnedRemoteMedia
+      .map((remoteMedia) => remoteMedia.getEffectiveMaxPicSize())
+      .filter((maxPicSize) => maxPicSize !== undefined);
+
+    // Use the highest maxPicSize value to ensure we don't under-request resolution for any instance
+    if (maxPicSizeValues.length > 0) {
+      return Math.max(...maxPicSizeValues);
+    }
+
+    // Fall back to group's resolution option
+    if (this.options.resolution) {
+      return getMaxPicSize(this.options.resolution);
+    }
+
+    return undefined;
+  }
+
   /**
    * Get the current effective maxFs that would be used for the active speaker media request
    * @returns {number | undefined} The effective maxFs value
    */
   public getEffectiveMaxFs(): number | undefined {
     return this.getEffectiveMaxFsForActiveSpeaker();
+  }
+
+  /**
+   * Get the current effective maxPicSize that would be used for the active speaker media request
+   * @returns {number | undefined} The effective maxPicSize value
+   */
+  public getEffectiveMaxPicSize(): number | undefined {
+    return this.getEffectiveMaxPicSizeForActiveSpeaker();
   }
 }

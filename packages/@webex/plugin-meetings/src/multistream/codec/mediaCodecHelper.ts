@@ -1,6 +1,6 @@
 import {CodecInfo as WcmeCodecInfo} from '@webex/internal-media-core';
-import {CodecInfo, Resolution} from './types';
-import {MediaRequest} from '../types';
+import {CodecInfo} from './types';
+import {MediaRequest, RemoteVideoResolution} from '../types';
 
 export type MediaCodecHelperOptions = {
   codec: 'h264' | 'av1';
@@ -21,8 +21,12 @@ export abstract class MediaCodecHelper {
     this.options = options;
   }
 
-  abstract getCodecInfo(options: {maxFs?: number}): CodecInfo | undefined;
+  abstract getCodecInfo(options: {maxFs?: number; maxPicSize?: number}): CodecInfo | undefined;
   abstract getWCMECodecInfos(mediaRequest: MediaRequest): WcmeCodecInfo[];
-  abstract degradeMediaRequest(mediaRequest: MediaRequest, resolution: Resolution): number;
+  abstract degradeMediaRequest(
+    mediaRequest: MediaRequest,
+    resolution: RemoteVideoResolution
+  ): number;
+
   abstract getMaxPayloadBitsPerSecond(mediaRequest: MediaRequest): number;
 }

@@ -6,10 +6,10 @@ import {
 } from '@webex/internal-media-core';
 import {AV1_CODEC_PARAMETERS, CODEC_DEFAULTS} from './constants';
 import {MediaCodecHelper} from './mediaCodecHelper';
-import {AV1CodecInfo, Resolution} from './types';
-import {MediaRequest} from '../types';
+import {AV1CodecInfo} from './types';
+import {MediaRequest, RemoteVideoResolution} from '../types';
 
-export const PicSizeConverter = {
+const picSizeConverter = {
   toFrameSize: (picSize: number): number => {
     return Math.floor(picSize / 288);
   },
@@ -28,13 +28,12 @@ export default class MediaCodecHelperAV1 extends MediaCodecHelper {
    * @param {Object} options - The options for the AV1 codec info
    * @returns {AV1CodecInfo} The AV1 codec info
    */
-  getCodecInfo(options: {maxFs?: number}): AV1CodecInfo {
-    if (!options.maxFs) {
+  getCodecInfo(options: {maxPicSize?: number}): AV1CodecInfo {
+    if (!options.maxPicSize) {
       return undefined;
     }
-    const maxPicSize = PicSizeConverter.toPicSize(options.maxFs);
 
-    return this.getParameters(maxPicSize);
+    return this.getParameters(options.maxPicSize);
   }
 
   /**
@@ -44,17 +43,13 @@ export default class MediaCodecHelperAV1 extends MediaCodecHelper {
    * @param {Resolution} resolution - The resolution to degrade to
    * @returns {number} The total macroblocks requested
    */
-  degradeMediaRequest(mr: MediaRequest, resolution: Resolution): number {
+  degradeMediaRequest(mr: MediaRequest, resolution: RemoteVideoResolution): number {
     if (mr.codecInfo?.codec !== 'av1') {
       return 0;
     }
 
-    const preferredMaxPicSize = mr.preferredMaxFs
-      ? PicSizeConverter.toPicSize(mr.preferredMaxFs)
-      : CODEC_DEFAULTS.av1.maxPicSize;
-
+    // TODO: in mr there is preferredMaxFs, what about preferredMaxPicSize?
     mr.codecInfo.maxPicSize = Math.min(
-      preferredMaxPicSize,
       mr.codecInfo.maxPicSize || CODEC_DEFAULTS.av1.maxPicSize,
       AV1_CODEC_PARAMETERS[resolution].maxPicSize
     );
@@ -62,7 +57,8 @@ export default class MediaCodecHelperAV1 extends MediaCodecHelper {
     // we only consider sources with "live" state
     const slotsWithLiveSource = mr.receiveSlots.filter((rs) => rs.sourceState === 'live');
 
-    return PicSizeConverter.toFrameSize(mr.codecInfo.maxPicSize) * slotsWithLiveSource.length;
+    // TODO: how to get macroblocks from maxPicSize?
+    return picSizeConverter.toFrameSize(mr.codecInfo.maxPicSize) * slotsWithLiveSource.length;
   }
 
   /**
@@ -75,8 +71,9 @@ export default class MediaCodecHelperAV1 extends MediaCodecHelper {
     if (mediaRequest.codecInfo?.codec !== 'av1') {
       return 0;
     }
-    const frameSize = PicSizeConverter.toFrameSize(mediaRequest.codecInfo.maxPicSize);
+    const frameSize = picSizeConverter.toFrameSize(mediaRequest.codecInfo.maxPicSize);
 
+    // TODO: should we also have getRecommendedMaxBitrateForPicSize?
     return getRecommendedMaxBitrateForFrameSize(frameSize);
   }
 

@@ -1,5 +1,3 @@
-export type Resolution = '90p' | '180p' | '360p' | '540p' | '720p' | '1080p';
-
 export interface H264CodecInfo {
   codec: 'h264';
   maxFs?: number;

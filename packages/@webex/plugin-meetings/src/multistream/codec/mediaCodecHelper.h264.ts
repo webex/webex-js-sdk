@@ -6,8 +6,8 @@ import {
 } from '@webex/internal-media-core';
 import {CODEC_DEFAULTS, H264_CODEC_PARAMETERS} from './constants';
 import {MediaCodecHelper} from './mediaCodecHelper';
-import {H264CodecInfo, Resolution} from './types';
-import {MediaRequest} from '../types';
+import {H264CodecInfo} from './types';
+import {MediaRequest, RemoteVideoResolution} from '../types';
 
 /**
  * Class for H264 media codec info
@@ -38,7 +38,7 @@ export default class MediaCodecHelperH264 extends MediaCodecHelper {
    * @param {Resolution} resolution - The resolution to degrade to
    * @returns {number} The total macroblocks requested
    */
-  degradeMediaRequest(mr: MediaRequest, resolution: Resolution): number {
+  degradeMediaRequest(mr: MediaRequest, resolution: RemoteVideoResolution): number {
     if (mr.codecInfo?.codec !== 'h264') {
       return 0;
     }
