@@ -12,6 +12,7 @@ import EventsScope from '../common/events/events-scope';
 export const ReceiveSlotEvents = {
   SourceUpdate: 'sourceUpdate',
   MaxFsUpdate: 'maxFsUpdate',
+  MaxPicSizeUpdate: 'maxPicSizeUpdate',
 };
 
 export type {StreamState} from '@webex/internal-media-core';
@@ -97,6 +98,25 @@ export class ReceiveSlot extends EventsScope {
       ReceiveSlotEvents.MaxFsUpdate,
       {
         maxFs: newFs,
+      }
+    );
+  }
+
+  /**
+   * Set the max frame size for this slot
+   * @param newFs frame size
+   */
+  public setMaxPicSize(newPicSize) {
+    // emit event for media request manager to listen to
+
+    this.emit(
+      {
+        file: 'meeting/receiveSlot',
+        function: 'findMemberId',
+      },
+      ReceiveSlotEvents.MaxPicSizeUpdate,
+      {
+        maxPicSize: newPicSize,
       }
     );
   }

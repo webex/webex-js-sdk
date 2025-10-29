@@ -9,13 +9,17 @@ import {MediaCodecHelper} from './mediaCodecHelper';
 import {AV1CodecInfo} from './types';
 import {MediaRequest, RemoteVideoResolution} from '../types';
 
-const picSizeConverter = {
-  toFrameSize: (picSize: number): number => {
-    return Math.floor(picSize / 288);
-  },
-  toPicSize: (frameSize: number): number => {
-    return frameSize * 288;
-  },
+/**
+ * Converts picSize in pixels to a frame size.
+ * Frame size is rounded up to the nearest 16x16 macroblock unit.
+ *
+ * @param {number} picSize - The picture size in pixels.
+ * @returns {number} The frame size.
+ */
+const picSizeToFrameSize = (picSize: number): number => {
+  const round16 = (n: number) => Math.ceil(n / 16) * 16;
+
+  return round16(picSize / 256);
 };
 
 /**
@@ -48,8 +52,12 @@ export default class MediaCodecHelperAV1 extends MediaCodecHelper {
       return 0;
     }
 
-    // TODO: in mr there is preferredMaxFs, what about preferredMaxPicSize?
+    const preferredMaxPicSize = mr.preferredMaxPicSize
+      ? mr.preferredMaxPicSize
+      : CODEC_DEFAULTS.av1.maxPicSize;
+
     mr.codecInfo.maxPicSize = Math.min(
+      preferredMaxPicSize,
       mr.codecInfo.maxPicSize || CODEC_DEFAULTS.av1.maxPicSize,
       AV1_CODEC_PARAMETERS[resolution].maxPicSize
     );
@@ -57,8 +65,7 @@ export default class MediaCodecHelperAV1 extends MediaCodecHelper {
     // we only consider sources with "live" state
     const slotsWithLiveSource = mr.receiveSlots.filter((rs) => rs.sourceState === 'live');
 
-    // TODO: how to get macroblocks from maxPicSize?
-    return picSizeConverter.toFrameSize(mr.codecInfo.maxPicSize) * slotsWithLiveSource.length;
+    return picSizeToFrameSize(mr.codecInfo.maxPicSize) * slotsWithLiveSource.length;
   }
 
   /**
@@ -71,7 +78,7 @@ export default class MediaCodecHelperAV1 extends MediaCodecHelper {
     if (mediaRequest.codecInfo?.codec !== 'av1') {
       return 0;
     }
-    const frameSize = picSizeConverter.toFrameSize(mediaRequest.codecInfo.maxPicSize);
+    const frameSize = picSizeToFrameSize(mediaRequest.codecInfo.maxPicSize);
 
     // TODO: should we also have getRecommendedMaxBitrateForPicSize?
     return getRecommendedMaxBitrateForFrameSize(frameSize);

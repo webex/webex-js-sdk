@@ -296,15 +296,19 @@ export class MediaRequestManager {
 
     this.clientRequests[newId] = mediaRequest;
 
-    const eventHandler = ({maxFs}) => {
+    mediaRequest.handleMaxFs = ({maxFs}) => {
       mediaRequest.preferredMaxFs = maxFs;
       this.debouncedSourceUpdateListener();
     };
-    mediaRequest.handleMaxFs = eventHandler;
+    mediaRequest.handleMaxPicSize = ({maxPicSize}) => {
+      mediaRequest.preferredMaxPicSize = maxPicSize;
+      this.debouncedSourceUpdateListener();
+    };
 
     mediaRequest.receiveSlots.forEach((rs) => {
       rs.on(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
       rs.on(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
+      rs.on(ReceiveSlotEvents.MaxPicSizeUpdate, mediaRequest.handleMaxPicSize);
     });
 
     if (commit) {
@@ -320,6 +324,7 @@ export class MediaRequestManager {
     mediaRequest?.receiveSlots.forEach((rs) => {
       rs.off(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
       rs.off(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
+      rs.off(ReceiveSlotEvents.MaxPicSizeUpdate, mediaRequest.handleMaxPicSize);
     });
 
     delete this.clientRequests[requestId];

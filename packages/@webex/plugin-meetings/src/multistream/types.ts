@@ -23,7 +23,9 @@ export interface MediaRequest {
   receiveSlots: Array<ReceiveSlot>;
   codecInfo?: CodecInfo;
   preferredMaxFs?: number;
+  preferredMaxPicSize?: number;
   handleMaxFs?: ({maxFs}: {maxFs: number}) => void;
+  handleMaxPicSize?: ({maxPicSize}: {maxPicSize: number}) => void;
 }
 
 export type MediaRequestId = string;

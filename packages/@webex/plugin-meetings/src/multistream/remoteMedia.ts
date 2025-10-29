@@ -21,73 +21,33 @@ export const RemoteMediaEvents = {
  * @returns {number}
  */
 export function getMaxFs(paneSize: RemoteVideoResolution): number {
-  let maxFs;
-
-  switch (paneSize) {
-    case 'thumbnail':
-      maxFs = H264_CODEC_PARAMETERS['90p'].maxFs;
-      break;
-    case 'very small':
-      maxFs = H264_CODEC_PARAMETERS['180p'].maxFs;
-      break;
-    case 'small':
-      maxFs = H264_CODEC_PARAMETERS['360p'].maxFs;
-      break;
-    case 'medium':
-      maxFs = H264_CODEC_PARAMETERS['720p'].maxFs;
-      break;
-    case 'large':
-      maxFs = H264_CODEC_PARAMETERS['1080p'].maxFs;
-      break;
-    case 'best':
-      maxFs = H264_CODEC_PARAMETERS['1080p'].maxFs; // for now 'best' is 1080p, so same as 'large'
-      break;
-    default:
-      LoggerProxy.logger.warn(
-        `RemoteMedia#getMaxFs --> unsupported paneSize: ${paneSize}, using "medium" instead`
-      );
-      maxFs = H264_CODEC_PARAMETERS['720p'].maxFs;
+  if (paneSize in H264_CODEC_PARAMETERS) {
+    return H264_CODEC_PARAMETERS[paneSize].maxFs;
   }
 
-  return maxFs;
+  LoggerProxy.logger.warn(
+    `RemoteMedia#getMaxFs --> unsupported paneSize: ${paneSize}, using "medium" instead`
+  );
+
+  return H264_CODEC_PARAMETERS.medium.maxFs;
 }
 
 /**
  * Converts pane size into av1 maxPicSize
  *
- * @param resolution - The resolution to get the max pic size for
+ * @param paneSize - The resolution to get the max pic size for
  * @returns {number} The max pic size
  */
-export function getMaxPicSize(resolution: RemoteVideoResolution): number {
-  let maxPicSize;
-
-  switch (resolution) {
-    case 'thumbnail':
-      maxPicSize = AV1_CODEC_PARAMETERS['90p'].maxPicSize;
-      break;
-    case 'very small':
-      maxPicSize = AV1_CODEC_PARAMETERS['180p'].maxPicSize;
-      break;
-    case 'small':
-      maxPicSize = AV1_CODEC_PARAMETERS['360p'].maxPicSize;
-      break;
-    case 'medium':
-      maxPicSize = AV1_CODEC_PARAMETERS['720p'].maxPicSize;
-      break;
-    case 'large':
-      maxPicSize = AV1_CODEC_PARAMETERS['1080p'].maxPicSize;
-      break;
-    case 'best':
-      maxPicSize = AV1_CODEC_PARAMETERS['1080p'].maxPicSize;
-      break;
-    default:
-      LoggerProxy.logger.warn(
-        `RemoteMedia#getMaxPicSize --> unsupported resolution: ${resolution}, using "medium" instead`
-      );
-      maxPicSize = AV1_CODEC_PARAMETERS['720p'].maxPicSize;
+export function getMaxPicSize(paneSize: RemoteVideoResolution): number {
+  if (paneSize in AV1_CODEC_PARAMETERS) {
+    return AV1_CODEC_PARAMETERS[paneSize].maxPicSize;
   }
 
-  return maxPicSize;
+  LoggerProxy.logger.warn(
+    `RemoteMedia#getMaxPicSize --> unsupported paneSize: ${paneSize}, using "medium" instead`
+  );
+
+  return AV1_CODEC_PARAMETERS.medium.maxPicSize;
 }
 
 type Options = {
@@ -124,6 +84,13 @@ export class RemoteMedia extends EventsScope {
   private maxFrameSize = 0;
 
   /**
+   * The max pic size of the media request, used for logging and media requests.
+   * Set by setSizeHint() based on video element dimensions.
+   * When > 0, this value takes precedence over options.resolution in sendMediaRequest().
+   */
+  private maxPicSize = 0;
+
+  /**
    * Constructs RemoteMedia instance
    *
    * @param receiveSlot
@@ -152,9 +119,6 @@ export class RemoteMedia extends EventsScope {
    * @note width/height of 0 will be ignored
    */
   public setSizeHint(width, height) {
-    // only base on height for now
-    let fs: number;
-
     if (width === 0 || height === 0) {
       return;
     }
@@ -164,22 +128,26 @@ export class RemoteMedia extends EventsScope {
     const threshold = 1.1;
     const getThresholdHeight = (h: number) => Math.round(h * threshold);
 
+    let resolution: RemoteVideoResolution;
+
     if (height < getThresholdHeight(90)) {
-      fs = H264_CODEC_PARAMETERS['90p'].maxFs;
+      resolution = 'thumbnail';
     } else if (height < getThresholdHeight(180)) {
-      fs = H264_CODEC_PARAMETERS['180p'].maxFs;
+      resolution = 'very small';
     } else if (height < getThresholdHeight(360)) {
-      fs = H264_CODEC_PARAMETERS['360p'].maxFs;
+      resolution = 'small';
     } else if (height < getThresholdHeight(540)) {
-      fs = H264_CODEC_PARAMETERS['540p'].maxFs;
+      resolution = 'medium';
     } else if (height <= 720) {
-      fs = H264_CODEC_PARAMETERS['720p'].maxFs;
+      resolution = 'large';
     } else {
-      fs = H264_CODEC_PARAMETERS['1080p'].maxFs;
+      resolution = 'best';
     }
 
-    this.maxFrameSize = fs;
-    this.receiveSlot?.setMaxFs(fs);
+    this.maxFrameSize = getMaxFs(resolution);
+    this.maxPicSize = getMaxPicSize(resolution);
+    this.receiveSlot?.setMaxFs(this.maxFrameSize);
+    this.receiveSlot?.setMaxPicSize(this.maxPicSize);
   }
 
   /**
