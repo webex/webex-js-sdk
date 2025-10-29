@@ -285,14 +285,14 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @throws {Error} if the options are not valid and complete, must have invitee with memberId AND locusUrl
    * @memberof MembersRequest
    */
-  cancelSIPInvite(options: any) {
+  cancelInviteByMemberId(options: any) {
     if (!options?.invitee?.memberId || !options?.locusUrl) {
       throw new ParameterError(
         'invitee must be passed and the associated locus url for this meeting object must be defined.'
       );
     }
 
-    const requestParams = MembersUtil.generateCancelSIPInviteRequestParams(options);
+    const requestParams = MembersUtil.generateCancelInviteByMemberIdRequestParams(options);
 
     return this.locusDeltaRequest(requestParams);
   }

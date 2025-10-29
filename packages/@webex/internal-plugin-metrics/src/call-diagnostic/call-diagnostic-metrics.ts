@@ -41,6 +41,9 @@ import {
   ClientSubServiceType,
   BrowserLaunchMethodType,
   DelayedClientEvent,
+  DelayedClientFeatureEvent,
+  FeatureEvent,
+  ClientFeatureEventPayload,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
@@ -58,6 +61,8 @@ import {
   AUTHENTICATION_FAILED_CODE,
   WEBEX_SUB_SERVICE_TYPES,
   SDP_OFFER_CREATION_ERROR_MAP,
+  CALL_FEATURE_LOG_IDENTIFIER,
+  CALL_FEATURE_EVENT_FAILED_TO_SEND,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -70,6 +75,7 @@ type GetOriginOptions = {
   browserLaunchMethod?: BrowserLaunchMethodType;
   environment?: EnvironmentType;
   newEnvironment?: NewEnvironmentType;
+  vendorId?: string;
 };
 
 type GetIdentifiersOptions = {
@@ -97,7 +103,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private hasLoggedBrowserSerial: boolean;
   private device: any;
   private delayedClientEvents: DelayedClientEvent[] = [];
+  private delayedClientFeatureEvents: DelayedClientFeatureEvent[] = [];
   private eventErrorCache: WeakMap<any, any> = new WeakMap();
+  private isMercuryConnected = false;
+  private eventLimitTracker: Map<string, number> = new Map();
+  private eventLimitWarningsLogged: Set<string> = new Set();
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -148,6 +158,16 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     return undefined;
+  }
+
+  /**
+   * Sets mercury connected status for event data object in CA events
+   * @public
+   * @param status - boolean value indicating mercury connection status
+   * @return {void}
+   */
+  public setMercuryConnectedStatus(status: boolean): void {
+    this.isMercuryConnected = status;
   }
 
   /**
@@ -276,6 +296,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       if (options?.browserLaunchMethod) {
         origin.clientInfo.browserLaunchMethod = options.browserLaunchMethod;
+      }
+
+      if (options?.vendorId) {
+        origin.clientInfo.vendorId = options.vendorId;
       }
 
       return origin;
@@ -416,12 +440,97 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * TODO: NOT IMPLEMENTED
-   * Submit Feature Event
+   * Create feature event
+   * @param name
+   * @param payload
+   * @param options
    * @returns
    */
-  public submitFeatureEvent() {
-    throw Error('Not implemented');
+  private prepareClientFeatureEvent({
+    name,
+    payload,
+    options,
+  }: {
+    name: FeatureEvent['name'];
+    payload?: ClientFeatureEventPayload;
+    options?: SubmitClientEventOptions;
+  }) {
+    const {meetingId, correlationId} = options;
+    let featureEventObject: FeatureEvent['payload'];
+
+    // events that will most likely happen in join phase
+    if (meetingId) {
+      featureEventObject = this.createFeatureEventObjectInMeeting({name, options});
+    } else {
+      throw new Error('Not implemented');
+    }
+
+    // merge any new properties, or override existing ones
+    featureEventObject = merge(featureEventObject, payload);
+
+    // append client event data to the call diagnostic event
+    const featureEvent = this.prepareDiagnosticEvent(featureEventObject, options);
+
+    return featureEvent;
+  }
+
+  /**
+   * Submit Feature Event
+   * submit to business_ucf
+   * @returns
+   */
+  public submitFeatureEvent({
+    name,
+    payload,
+    options,
+    delaySubmitEvent,
+  }: {
+    name: FeatureEvent['name'];
+    payload?: ClientFeatureEventPayload;
+    options?: SubmitClientEventOptions;
+    delaySubmitEvent?: boolean;
+  }) {
+    if (delaySubmitEvent) {
+      // Preserve the time when the event was triggered if delaying the submission to Call Features
+      const delayedOptions = {
+        ...options,
+        triggeredTime: new Date().toISOString(),
+      };
+
+      this.delayedClientFeatureEvents.push({
+        name,
+        payload,
+        options: delayedOptions,
+      });
+
+      return Promise.resolve();
+    }
+
+    this.logger.log(
+      CALL_FEATURE_LOG_IDENTIFIER,
+      'CallFeatureMetrics: @submitFeatureEvent. Submit Client Feature Event CA event.',
+      `name: ${name}`
+    );
+    const featureEvent = this.prepareClientFeatureEvent({name, payload, options});
+
+    this.validator({type: 'ce', event: featureEvent});
+
+    return this.submitToCallFeatures(featureEvent);
+  }
+
+  /**
+   * Submit Feature Event
+   * type is business
+   * @param event
+   */
+  submitToCallFeatures(event: Event): Promise<any> {
+    // build metrics-a event type
+    const finalEvent = {
+      eventPayload: event,
+      type: ['business'],
+    };
+
+    return this.callDiagnosticEventsBatcher.request(finalEvent);
   }
 
   /**
@@ -564,6 +673,144 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
+   * Checks if an event should be limited based on criteria defined in the event dictionary.
+   * Returns true if the event should be sent, false if it has reached its limit.
+   * @param event - The diagnostic event object
+   * @returns boolean indicating whether the event should be sent
+   */
+  private shouldSendEvent({event}: Event): boolean {
+    const eventName = event?.name as string;
+    const correlationId = event?.identifiers?.correlationId;
+
+    if (!correlationId || correlationId === 'unknown') {
+      return true;
+    }
+
+    const limitKeyPrefix = `${eventName}:${correlationId}`;
+
+    switch (eventName) {
+      case 'client.media.render.start':
+      case 'client.media.render.stop':
+      case 'client.media.rx.start':
+      case 'client.media.rx.stop':
+      case 'client.media.tx.start':
+      case 'client.media.tx.stop': {
+        // Send only once per mediaType-correlationId pair (or mediaType-correlationId-shareInstanceId for share/share_audio)
+        const mediaType = event?.mediaType;
+        if (mediaType) {
+          if (mediaType === 'share' || mediaType === 'share_audio') {
+            const shareInstanceId = event?.shareInstanceId;
+            if (shareInstanceId) {
+              const limitKey = `${limitKeyPrefix}:${mediaType}:${shareInstanceId}`;
+
+              return this.checkAndIncrementEventCount(
+                limitKey,
+                1,
+                `${eventName} for ${mediaType} instance ${shareInstanceId}`
+              );
+            }
+          } else {
+            const limitKey = `${limitKeyPrefix}:${mediaType}`;
+
+            return this.checkAndIncrementEventCount(
+              limitKey,
+              1,
+              `${eventName} for mediaType ${mediaType}`
+            );
+          }
+        }
+        break;
+      }
+
+      case 'client.roap-message.received':
+      case 'client.roap-message.sent': {
+        // Send only once per correlationId and roap.messageType/roap.type
+        const roapMessageType = event?.roap?.messageType || event?.roap?.type;
+        if (roapMessageType) {
+          const limitKey = `${limitKeyPrefix}:${roapMessageType}`;
+
+          return this.checkAndIncrementEventCount(
+            limitKey,
+            1,
+            `${eventName} for ROAP type ${roapMessageType}`
+          );
+        }
+        break;
+      }
+
+      default:
+        return true;
+    }
+
+    return true;
+  }
+
+  /**
+   * Checks the current count for a limit key and increments if under limit.
+   * @param limitKey - The unique key for this limit combination
+   * @param maxCount - Maximum allowed count
+   * @param eventDescription - Description for logging
+   * @returns true if under limit and incremented, false if at/over limit
+   */
+  private checkAndIncrementEventCount(
+    limitKey: string,
+    maxCount: number,
+    eventDescription: string
+  ): boolean {
+    const currentCount = this.eventLimitTracker.get(limitKey) || 0;
+
+    if (currentCount >= maxCount) {
+      // Log warning only once per limit key
+      if (!this.eventLimitWarningsLogged.has(limitKey)) {
+        this.logger.log(
+          CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+          `CallDiagnosticMetrics: Event limit reached for ${eventDescription}. ` +
+            `Max count ${maxCount} exceeded. Event will not be sent.`,
+          `limitKey: ${limitKey}`
+        );
+        this.eventLimitWarningsLogged.add(limitKey);
+      }
+
+      return false;
+    }
+
+    // Increment count and allow event
+    this.eventLimitTracker.set(limitKey, currentCount + 1);
+
+    return true;
+  }
+
+  /**
+   * Clears event limit tracking
+   */
+  public clearEventLimits(): void {
+    this.eventLimitTracker.clear();
+    this.eventLimitWarningsLogged.clear();
+  }
+
+  /**
+   * Clears event limit tracking for a specific correlationId only.
+   * Keeps limits for other meetings intact.
+   */
+  public clearEventLimitsForCorrelationId(correlationId: string): void {
+    if (!correlationId) {
+      return;
+    }
+    // Keys are formatted as "eventName:correlationId:..." across all limiters.
+    const hasCorrIdAtSecondToken = (key: string) => key.split(':')[1] === correlationId;
+    for (const key of Array.from(this.eventLimitTracker.keys())) {
+      if (hasCorrIdAtSecondToken(key)) {
+        this.eventLimitTracker.delete(key);
+      }
+    }
+    for (const key of Array.from(this.eventLimitWarningsLogged.values())) {
+      if (hasCorrIdAtSecondToken(key)) {
+        this.eventLimitWarningsLogged.delete(key);
+      }
+    }
+  }
+
+  /**
    * Generate error payload for Client Event
    * @param rawError
    */
@@ -680,20 +927,20 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * Create client event object for in meeting events
-   * @param arg - create args
-   * @param arg.event - event key
-   * @param arg.options - options
+   * Create common object for in meeting events
+   * @param name
+   * @param options
+   * @param eventType - 'client' | 'feature'
    * @returns object
    */
-  private createClientEventObjectInMeeting({
+  private createCommonEventObjectInMeeting({
     name,
     options,
-    errors,
+    eventType = 'client',
   }: {
-    name: ClientEvent['name'];
+    name: string;
     options?: SubmitClientEventOptions;
-    errors?: ClientEventPayloadError;
+    eventType?: 'client' | 'feature';
   }) {
     const {
       meetingId,
@@ -708,16 +955,21 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     if (!meeting) {
       console.warn(
-        'Attempt to send client event but no meeting was found...',
+        'Attempt to send common event but no meeting was found...',
         `name: ${name}, meetingId: ${meetingId}`
       );
       // @ts-ignore
-      this.webex.internal.metrics.submitClientMetrics(CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND, {
-        fields: {
-          meetingId,
-          name,
-        },
-      });
+      this.webex.internal.metrics.submitClientMetrics(
+        eventType === 'feature'
+          ? CALL_FEATURE_EVENT_FAILED_TO_SEND
+          : CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND,
+        {
+          fields: {
+            meetingId,
+            name,
+          },
+        }
+      );
 
       return undefined;
     }
@@ -731,12 +983,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       sessionCorrelationId,
     });
 
-    // create client event object
-    const clientEventObject: ClientEvent['payload'] = {
+    // create common event object structur
+    const commonEventObject = {
       name,
       canProceed: true,
       identifiers,
-      errors,
       eventData: {
         webClientDomain: window.location.hostname,
       },
@@ -757,18 +1008,80 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
     if (joinFlowVersion) {
-      clientEventObject.joinFlowVersion = joinFlowVersion;
+      // @ts-ignore
+      commonEventObject.joinFlowVersion = joinFlowVersion;
     }
     const meetingJoinedTime = meeting.isoLocalClientMeetingJoinTime;
     if (meetingJoinedTime) {
-      clientEventObject.meetingJoinedTime = meetingJoinedTime;
+      // @ts-ignore
+      commonEventObject.meetingJoinedTime = meetingJoinedTime;
     }
 
     if (options.meetingJoinPhase) {
-      clientEventObject.meetingJoinPhase = options.meetingJoinPhase;
+      // @ts-ignore
+      commonEventObject.meetingJoinPhase = options.meetingJoinPhase;
     }
 
-    return clientEventObject;
+    return commonEventObject;
+  }
+
+  /**
+   * Create client event object for in meeting events
+   * @param arg - create args
+   * @param arg.event - event key
+   * @param arg.options - options
+   * @returns object
+   */
+  private createClientEventObjectInMeeting({
+    name,
+    options,
+    errors,
+  }: {
+    name: ClientEvent['name'];
+    options?: SubmitClientEventOptions;
+    errors?: ClientEventPayloadError;
+  }) {
+    const commonObject = this.createCommonEventObjectInMeeting({
+      name,
+      options,
+      eventType: 'client',
+    });
+    if (!commonObject) return undefined;
+
+    return {
+      ...commonObject,
+      errors,
+      eventData: {
+        ...commonObject.eventData,
+        isMercuryConnected: this.isMercuryConnected,
+      },
+    } as ClientEvent['payload'];
+  }
+
+  /**
+   * Create feature event object for in meeting function event
+   * @param name
+   * @param options
+   * @returns object
+   */
+  private createFeatureEventObjectInMeeting({
+    name,
+    options,
+  }: {
+    name: FeatureEvent['name'];
+    options?: SubmitClientEventOptions;
+  }) {
+    const commonObject = this.createCommonEventObjectInMeeting({
+      name,
+      options,
+      eventType: 'feature',
+    });
+    if (!commonObject) return undefined;
+
+    return {
+      ...commonObject,
+      key: 'UcfFeatureUsage',
+    } as FeatureEvent['payload'];
   }
 
   /**
@@ -807,6 +1120,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers,
       eventData: {
         webClientDomain: window.location.hostname,
+        isMercuryConnected: this.isMercuryConnected,
       },
       loginType: this.getCurLoginType(),
       // @ts-ignore
@@ -930,6 +1244,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     );
     const diagnosticEvent = this.prepareClientEvent({name, payload, options});
 
+    if (!this.shouldSendEvent(diagnosticEvent)) {
+      return Promise.resolve();
+    }
+
     if (options?.preLoginId) {
       return this.submitToCallDiagnosticsPreLogin(diagnosticEvent, options?.preLoginId);
     }
@@ -960,6 +1278,31 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     });
 
     this.delayedClientEvents = [];
+
+    return Promise.all(promises);
+  }
+
+  /**
+   * Submit Delayed feature Event CA events. Clears submitDelayedClientFeatureEvents array after submission.
+   */
+  public submitDelayedClientFeatureEvents(overrides?: Partial<DelayedClientEvent['options']>) {
+    this.logger.log(
+      CALL_FEATURE_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @submitDelayedClientFeatureEvents. Submitting delayed feature events.'
+    );
+
+    if (this.delayedClientFeatureEvents.length === 0) {
+      return Promise.resolve();
+    }
+
+    const promises = this.delayedClientFeatureEvents.map((delayedSubmitClientEventParams) => {
+      const {name, payload, options} = delayedSubmitClientEventParams;
+      const optionsWithOverrides: DelayedClientEvent['options'] = {...options, ...overrides};
+
+      return this.submitFeatureEvent({name, payload, options: optionsWithOverrides});
+    });
+
+    this.delayedClientFeatureEvents = [];
 
     return Promise.all(promises);
   }

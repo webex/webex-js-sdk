@@ -1,4 +1,5 @@
 /* eslint-disable valid-jsdoc */
+import {METHOD_START_MESSAGE} from '../common/constants';
 import {getCallingBackEnd} from '../common/Utils';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
@@ -13,7 +14,7 @@ import log from '../Logger';
 import {CALLING_BACKEND} from '../common/types';
 
 import {WxCallBackendConnector} from './WxCallBackendConnector';
-import {CALL_SETTINGS_FILE} from './constants';
+import {CALL_SETTINGS_FILE, METHODS} from './constants';
 import {UcmBackendConnector} from './UcmBackendConnector';
 
 /**
@@ -57,9 +58,9 @@ export class CallSettings implements ICallSettings {
    */
   private initializeBackendConnector(logger: LoggerInterface, useProdWebexApis?: boolean) {
     this.callingBackend = getCallingBackEnd(this.webex);
-    log.info(`Initializing Connector for ${this.callingBackend} backend`, {
+    log.info(`${METHOD_START_MESSAGE} with ${this.callingBackend} backend`, {
       file: CALL_SETTINGS_FILE,
-      method: this.initializeBackendConnector.name,
+      method: METHODS.INITIALIZE_BACKEND_CONNECTOR,
     });
 
     switch (this.callingBackend) {
@@ -81,6 +82,11 @@ export class CallSettings implements ICallSettings {
    * Reads call waiting setting in Webex.
    */
   public async getCallWaitingSetting() {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALL_SETTINGS_FILE,
+      method: METHODS.GET_CALL_WAITING_SETTING,
+    });
+
     return this.backendConnector.getCallWaitingSetting();
   }
 
@@ -88,6 +94,11 @@ export class CallSettings implements ICallSettings {
    * Reads DND setting in Webex.
    */
   public async getDoNotDisturbSetting(): Promise<CallSettingResponse> {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALL_SETTINGS_FILE,
+      method: METHODS.GET_DO_NOT_DISTURB_SETTING,
+    });
+
     return this.backendConnector.getDoNotDisturbSetting();
   }
 
@@ -96,6 +107,11 @@ export class CallSettings implements ICallSettings {
    * @param enabled - true to enable DND, false to disable DND.
    */
   public async setDoNotDisturbSetting(enabled: boolean): Promise<CallSettingResponse> {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALL_SETTINGS_FILE,
+      method: METHODS.SET_DO_NOT_DISTURB_SETTING,
+    });
+
     return this.backendConnector.setDoNotDisturbSetting(enabled);
   }
 
@@ -104,6 +120,11 @@ export class CallSettings implements ICallSettings {
    *
    */
   public async getCallForwardSetting(): Promise<CallSettingResponse> {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALL_SETTINGS_FILE,
+      method: METHODS.GET_CALL_FORWARD_SETTING,
+    });
+
     return this.backendConnector.getCallForwardSetting();
   }
 
@@ -114,6 +135,11 @@ export class CallSettings implements ICallSettings {
   public async setCallForwardSetting(
     callForwardingRequest: CallForwardSetting
   ): Promise<CallSettingResponse> {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALL_SETTINGS_FILE,
+      method: METHODS.SET_CALL_FORWARD_SETTING,
+    });
+
     return this.backendConnector.setCallForwardSetting(callForwardingRequest);
   }
 
@@ -121,6 +147,11 @@ export class CallSettings implements ICallSettings {
    * Reads Voicemail setting in Webex.
    */
   public async getVoicemailSetting(): Promise<CallSettingResponse> {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALL_SETTINGS_FILE,
+      method: METHODS.GET_VOICEMAIL_SETTING,
+    });
+
     return this.backendConnector.getVoicemailSetting();
   }
 
@@ -131,6 +162,11 @@ export class CallSettings implements ICallSettings {
   public async setVoicemailSetting(
     voicemailRequest: VoicemailSetting
   ): Promise<CallSettingResponse> {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALL_SETTINGS_FILE,
+      method: METHODS.SET_VOICEMAIL_SETTING,
+    });
+
     return this.backendConnector.setVoicemailSetting(voicemailRequest);
   }
 
@@ -141,6 +177,11 @@ export class CallSettings implements ICallSettings {
    * @param directoryNumber - Directory number of the user.
    */
   public async getCallForwardAlwaysSetting(directoryNumber?: string): Promise<CallSettingResponse> {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALL_SETTINGS_FILE,
+      method: METHODS.GET_CALL_FORWARD_ALWAYS_SETTING,
+    });
+
     return this.backendConnector.getCallForwardAlwaysSetting(directoryNumber);
   }
 }

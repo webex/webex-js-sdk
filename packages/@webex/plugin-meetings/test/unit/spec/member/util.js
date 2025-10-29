@@ -417,6 +417,30 @@ describe('plugin-meetings', () => {
     });
   });
 
+describe('MemberUtil.isSupportsSingleUserAutoEndMeeting', () => {
+  it('throws an error when there is no participant', () => {
+    assert.throws(() => {
+      MemberUtil.isSupportsSingleUserAutoEndMeeting();
+    }, 'Single user auto end meeting support could not be processed, participant is undefined.');
+  });
+
+  it('returns true when single user auto end meeting is supported', () => {
+    const participant = {
+      supportsSingleUserAutoEndMeeting: {},
+    };
+    assert.isTrue(MemberUtil.isSupportsSingleUserAutoEndMeeting(participant));
+  });
+
+  it('returns false when single user auto end meeting is not supported', () => {
+    const participant = {
+      doesNotSupportSingleUserAutoEndMeeting: {},
+    };
+
+    assert.isFalse(MemberUtil.isSupportsSingleUserAutoEndMeeting(participant));
+  });
+});
+
+
   describe('MemberUtil.isLiveAnnotationSupported', () => {
     it('throws an error when there is no participant', () => {
       assert.throws(() => {

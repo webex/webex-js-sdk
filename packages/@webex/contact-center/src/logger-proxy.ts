@@ -105,6 +105,29 @@ export default class LoggerProxy {
     const interactionId = context.interactionId ? ` - interactionId:${context.interactionId}` : '';
     const trackingId = context.trackingId ? ` - trackingId:${context.trackingId}` : '';
 
-    return `${timestamp} ${LOG_PREFIX} - [${level}]: module:${moduleName} - method:${methodName}${interactionId}${trackingId} - ${message}`;
+    // Format additional data if provided
+    let dataString = '';
+    if (context.data) {
+      try {
+        dataString = ` - data:${JSON.stringify(context.data)}`;
+      } catch (e) {
+        dataString = ` - data:[object]`;
+      }
+    }
+
+    // Format error if provided
+    let errorString = '';
+    if (context.error) {
+      if (context.error instanceof Error) {
+        errorString = ` - error:${context.error.name}:${context.error.message}`;
+        if (context.error.stack && level === LOGGING_LEVEL.error) {
+          errorString += ` - stack:${context.error.stack}`;
+        }
+      } else {
+        errorString = ` - error:${String(context.error)}`;
+      }
+    }
+
+    return `${timestamp} ${LOG_PREFIX} - [${level}]: module:${moduleName} - method:${methodName}${interactionId}${trackingId}${dataString}${errorString} - ${message}`;
   }
 }

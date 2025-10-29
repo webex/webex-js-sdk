@@ -12,6 +12,20 @@ describe('metrics/behavioral-events', () => {
         verb: 'set',
       });
 
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.AGENT_CONTACT_ASSIGN_FAILED)).toEqual({
+        product,
+        agent: 'service',
+        target: 'agent_contact_assign',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.AGENT_INVITE_FAILED)).toEqual({
+        product,
+        agent: 'service',
+        target: 'agent_invite',
+        verb: 'fail',
+      });
+
       expect(getEventTaxonomy(METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS)).toEqual({
         product,
         agent: 'user',
@@ -93,6 +107,48 @@ describe('metrics/behavioral-events', () => {
         product,
         agent: 'user',
         target: 'websocket_register',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_start',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_start',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_END_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_end',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_END_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_end',
+        verb: 'fail',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_transfer',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_conference_transfer',
         verb: 'fail',
       });
 

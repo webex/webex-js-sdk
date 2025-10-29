@@ -1,4 +1,4 @@
-export const CONTACTS_FILE = 'Contacts';
+export const CONTACTS_CLIENT = 'ContactsClient';
 export const CONTACT_FILTER = 'contacts';
 export const GROUP_FILTER = 'groups';
 export const ENCRYPT_FILTER = 'encrypt';
@@ -20,3 +20,14 @@ export enum encryptedFields {
   SIP_ADDRESSES = 'sipAddresses',
   TITLE = 'title',
 }
+
+export const METHODS = {
+  GET_CONTACTS: 'getContacts',
+  CREATE_NEW_ENCRYPTION_KEY_URL: 'createNewEncryptionKeyUrl',
+  FETCH_ENCRYPTION_KEY_URL: 'fetchEncryptionKeyUrl',
+  FETCH_DEFAULT_GROUP: 'fetchDefaultGroup',
+  CREATE_CONTACT_GROUP: 'createContactGroup',
+  DELETE_CONTACT_GROUP: 'deleteContactGroup',
+  CREATE_CONTACT: 'createContact',
+  DELETE_CONTACT: 'deleteContact',
+};

@@ -11,7 +11,7 @@
     "directory": "packages/@webex/internal-plugin-flag"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "scripts": {
     "build": "yarn build:src",

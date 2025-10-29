@@ -1,4 +1,5 @@
 import {LOGGER} from '../Logger/types';
+import log from '../Logger';
 import * as utils from '../common/Utils';
 import {
   FAILURE_MESSAGE,
@@ -11,6 +12,8 @@ import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
 import {UcmBackendConnector} from './UcmBackendConnector';
 import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT} from './constants';
 import {CallForwardAlwaysSetting, CallForwardingSettingsUCM, IUcmBackendConnector} from './types';
+
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
 
 describe('Call Settings Client Tests for UcmBackendConnector', () => {
   const webex = getTestUtilsWebex();
@@ -62,6 +65,12 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       });
 
       webex.request.mockResolvedValue(responsePayload);
+
+      // Setup log spies
+      jest.spyOn(log, 'log').mockImplementation(() => {});
+      jest.spyOn(log, 'info').mockImplementation(() => {});
+      jest.spyOn(log, 'warn').mockImplementation(() => {});
+      jest.spyOn(log, 'error').mockImplementation(() => {});
     });
 
     it('Success: Get Call Forward Always setting when set to destination', async () => {
@@ -77,6 +86,19 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8001', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8001',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Success: Get Call Forward Always setting when set to voicemail', async () => {
@@ -92,6 +114,19 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8002', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8002',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Success: Get Call Forward Always setting when not set', async () => {
@@ -107,6 +142,19 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8003', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8003',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Success: Get Call Forward Always setting when directory num matching with e16number and set to destination', async () => {
@@ -122,6 +170,19 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8006', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8006',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Failure: Get Call Forward Always setting fails', async () => {
@@ -145,6 +206,19 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         file: UCM_CONNECTOR_FILE,
         method: callSettingsClient.getCallForwardAlwaysSetting.name,
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8002', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.error).toHaveBeenCalledWith(
+        new Error('Failed to get call forward always setting: [object Object]'),
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
+      expect(log.log).not.toHaveBeenCalled();
     });
 
     it('Failure: Get Call Forward Always setting fails - wrong directoryNumber', async () => {
@@ -157,6 +231,12 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8005', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Failure: Get Call Forward Always setting fails when no directoryNumberProvided', async () => {
@@ -166,10 +246,16 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(FAILURE_MESSAGE);
       expect(response.data.error).toEqual('Directory Number is mandatory for UCM backend');
       expect(webex.request).not.toBeCalled();
+
+      expect(log.info).toHaveBeenCalledWith('invoking', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     describe('Unsupported methods return failure', () => {
-      const unsupportedMethods: string[] = [
+      const unsupportedMethods = [
         'getCallWaitingSetting',
         'getDoNotDisturbSetting',
         'setDoNotDisturbSetting',

@@ -45,6 +45,28 @@ export const CC_TASK_EVENTS = {
   AGENT_CONSULT_END_FAILED: 'AgentConsultEndFailed',
   /** Event emitted when consultation conference ends */
   AGENT_CONSULT_CONFERENCE_ENDED: 'AgentConsultConferenceEnded',
+  /** Event emitted when consultation conference is in progress */
+  AGENT_CONSULT_CONFERENCING: 'AgentConsultConferencing',
+  /** Event emitted when consultation conference starts */
+  AGENT_CONSULT_CONFERENCED: 'AgentConsultConferenced',
+  /** Event emitted when consultation conference fails */
+  AGENT_CONSULT_CONFERENCE_FAILED: 'AgentConsultConferenceFailed',
+  /** Event emitted when participant joins conference */
+  PARTICIPANT_JOINED_CONFERENCE: 'ParticipantJoinedConference',
+  /** Event emitted when participant leaves conference */
+  PARTICIPANT_LEFT_CONFERENCE: 'ParticipantLeftConference',
+  /** Event emitted when participant leaving conference fails */
+  PARTICIPANT_LEFT_CONFERENCE_FAILED: 'ParticipantLeftConferenceFailed',
+  /** Event emitted when consultation conference end fails */
+  AGENT_CONSULT_CONFERENCE_END_FAILED: 'AgentConsultConferenceEndFailed',
+  /** Event emitted when conference is successfully transferred */
+  AGENT_CONFERENCE_TRANSFERRED: 'AgentConferenceTransferred',
+  /** Event emitted when conference transfer fails */
+  AGENT_CONFERENCE_TRANSFER_FAILED: 'AgentConferenceTransferFailed',
+  /** Event emitted when consulted participant is moving/being transferred */
+  CONSULTED_PARTICIPANT_MOVING: 'ConsultedParticipantMoving',
+  /** Event emitted for post-call activity by participant */
+  PARTICIPANT_POST_CALL_ACTIVITY: 'ParticipantPostCallActivity',
   /** Event emitted when contact is blind transferred */
   AGENT_BLIND_TRANSFERRED: 'AgentBlindTransferred',
   /** Event emitted when blind transfer fails */
@@ -1052,66 +1074,45 @@ export type CallDistributionGroup = {
 };
 
 /**
- * Comprehensive configuration for a contact service queue
+ * Represents a single outdial ANI (Automatic Number Identification) entry
  * @public
  */
-export type ContactServiceQueue = {
-  /** Unique identifier for the queue */
+export type OutdialAniEntry = {
+  /** Unique identifier for the ANI entry */
   id: string;
-  /** Queue name */
+  /** Display name for the ANI entry */
   name: string;
-  /** Queue description */
-  description: string;
-  /** Type of queue */
-  queueType: string;
-  /** Whether to check agent availability before routing */
-  checkAgentAvailability: boolean;
-  /** Type of channel this queue handles */
-  channelType: string;
-  /** Service level threshold in seconds */
-  serviceLevelThreshold: number;
-  /** Maximum number of active contacts allowed */
-  maxActiveContacts: number;
-  /** Maximum time contacts can wait in queue (seconds) */
-  maxTimeInQueue: number;
-  /** Default music on hold media file ID */
-  defaultMusicInQueueMediaFileId: string;
-  /** Queue timezone */
-  timezone: string;
-  /** Whether queue is active */
-  active: boolean;
-  /** Whether outbound campaign routing is enabled */
-  outdialCampaignEnabled: boolean;
-  /** Whether monitoring is permitted */
-  monitoringPermitted: boolean;
-  /** Whether parking is permitted */
-  parkingPermitted: boolean;
-  /** Whether recording is permitted */
-  recordingPermitted: boolean;
-  /** Whether recording all calls is permitted */
-  recordingAllCallsPermitted: boolean;
-  /** Whether pausing recordings is permitted */
-  pauseRecordingPermitted: boolean;
-  /** Maximum recording pause duration in seconds */
-  recordingPauseDuration: number;
-  /** Control flow script URL */
-  controlFlowScriptUrl: string;
-  /** IVR requeue URL */
-  ivrRequeueUrl: string;
-  /** Type of routing strategy */
-  routingType: string;
-  /** Queue-specific routing type */
-  queueRoutingType: string;
-  /** Queue skill requirements for routing */
-  queueSkillRequirements: object[];
-  /** Associated agents */
-  agents: object[];
-  /** Call distribution group configurations */
-  callDistributionGroups: CallDistributionGroup[];
-  /** Associated resource links */
-  links: Array<string>;
-  /** Timestamp when queue was created */
-  createdTime: string;
-  /** Timestamp when queue was last updated */
-  lastUpdatedTime: string;
+  /** Phone number associated with this ANI entry */
+  number: string;
+  /** Related links for this ANI entry */
+  links: string[];
+  /** Timestamp when this entry was created (Unix timestamp in milliseconds) */
+  createdTime: number;
+  /** Timestamp when this entry was last updated (Unix timestamp in milliseconds) */
+  lastUpdatedTime: number;
+};
+
+/**
+ * Response structure for outdial ANI entries API call
+ * @public
+ */
+export type OutdialAniEntriesResponse = OutdialAniEntry[];
+
+/**
+ * Parameters for fetching outdial ANI entries
+ * @public
+ */
+export type OutdialAniParams = {
+  /** Outdial ANI ID from agent profile */
+  outdialANI: string;
+  /** Page number for pagination (optional) */
+  page?: number;
+  /** Number of entries per page (optional) */
+  pageSize?: number;
+  /** Search string to filter entries (optional) */
+  search?: string;
+  /** Filter expression for advanced filtering (optional) */
+  filter?: string;
+  /** Comma-separated list of attributes to include in response (optional) */
+  attributes?: string;
 };

@@ -828,6 +828,26 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to toggle usage of audio twcc support
+   *
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleEnableAudioTwccForMultistream(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+
+    // @ts-ignore
+    if (this.config.enableAudioTwccForMultistream !== newValue) {
+      // @ts-ignore
+      this.config.enableAudioTwccForMultistream = newValue;
+    }
+  }
+
+  /**
    * API to toggle stopping ICE Candidates Gathering after first relay candidate,
    * needs to be called before webex.meetings.joinWithMedia()
    *
@@ -1311,6 +1331,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
    * @param {String} [meetingLookupUrl] - meeting info prefetch url
    * @param {string} sessionCorrelationId - the optional specified sessionCorrelationId (callStateForMetrics.sessionCorrelationId) can be provided instead
+   * @param {String} classificationId - If space support classification, it will provide it while start instant meeting
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1325,7 +1346,8 @@ export default class Meetings extends WebexPlugin {
     callStateForMetrics: CallStateForMetrics = undefined,
     meetingInfo = undefined,
     meetingLookupUrl = undefined,
-    sessionCorrelationId: string = undefined
+    sessionCorrelationId: string = undefined,
+    classificationId: string = undefined
   ) {
     // Validate meeting information based on the provided destination and
     // type. This must be performed prior to determining if the meeting is
@@ -1395,7 +1417,8 @@ export default class Meetings extends WebexPlugin {
               callStateForMetrics,
               failOnMissingMeetingInfo,
               meetingInfo,
-              meetingLookupUrl
+              meetingLookupUrl,
+              classificationId
             ).then((createdMeeting: any) => {
               // If the meeting was successfully created.
               if (createdMeeting && createdMeeting.on) {
@@ -1509,6 +1532,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
    * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
    * @param {String} [meetingLookupUrl] - meeting info prefetch url
+   * @param {String} classificationId see create()
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
    * @memberof Meetings
@@ -1521,7 +1545,8 @@ export default class Meetings extends WebexPlugin {
     callStateForMetrics: CallStateForMetrics = undefined,
     failOnMissingMeetingInfo = false,
     meetingInfo = undefined,
-    meetingLookupUrl = undefined
+    meetingLookupUrl = undefined,
+    classificationId = undefined
   ) {
     const meeting = new Meeting(
       {
@@ -1540,10 +1565,11 @@ export default class Meetings extends WebexPlugin {
       {
         // @ts-ignore
         parent: this.webex,
+      },
+      (newMeeting) => {
+        this.meetingCollection.set(newMeeting);
       }
     );
-
-    this.meetingCollection.set(meeting);
 
     try {
       // if no participant has joined the scheduled meeting (meaning meeting is not active) and we get a locusEvent,
@@ -1568,6 +1594,7 @@ export default class Meetings extends WebexPlugin {
       // @ts-ignore
       const {enableUnifiedMeetings} = this.config.experimental;
       const meetingInfoOptions = {
+        classificationId,
         extraParams: infoExtraParams,
         sendCAevents: !!callStateForMetrics?.correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
       };

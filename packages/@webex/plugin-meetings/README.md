@@ -30,9 +30,9 @@ This is a plugin for the Cisco Webex JS SDK . Please see our [developer portal](
 
 ## API Docs and Sample App
 
-API Docs: https://webex.github.io/webex-js-sdk/api/
-Hosted Sample App: https://webex.github.io/webex-js-sdk/samples/browser-plugin-meetings/
-See https://github.com/webex/webex-js-sdk/tree/master/docs/samples/browser-plugin-meetings for the sample app code vs the readme
+API Docs: <https://webex.github.io/webex-js-sdk/api/>
+Hosted Sample App: <https://webex.github.io/webex-js-sdk/samples/browser-plugin-meetings/>
+See <https://github.com/webex/webex-js-sdk/tree/master/docs/samples/browser-plugin-meetings> for the sample app code vs the readme
 
 #### Device Registration
 
@@ -110,6 +110,7 @@ webex.meetings.syncMeetings().then(() => {
 ```
 
 Or, to keep meetings with an locus url that is still active and any meeting without a locus url:
+
 ```js
 let existingMeetings;
 // Sync Meetings From Server
@@ -343,6 +344,7 @@ webex.meetings.on('meeting:added', (addedMeeting) => {
     addedMeeting.join().then(() => {});
   }
 ```
+
 ##### Reject an incoming meeting
 
 When listening to an added meeting, to determine if it is an "incoming" meeting, check the type property of the meeting:
@@ -468,7 +470,9 @@ audioOutputSelect.onchange = function () {
   attachSinkId(document.getElementById('remoteaudio'), audioOutputSelect.value);
 };
 ```
-##### Availabel joining options
+
+##### Available joining options
+
 ```
 /**
    * Make a network request to join a meeting
@@ -490,21 +494,29 @@ audioOutputSelect.onchange = function () {
    * @returns {Promise}
    */
 ```
+
 ##### options.deviceCapabilities
+
 This option provides toggles that Locus service needs, and those toggles will control the performance or features of the meetings to be joined, see examples:
+
 ###### Breakout Sessions
+
 ```
   if (breakoutsSupported) {
     deviceCapabilities.push(BREAKOUTS.BREAKOUTS_SUPPORTED);
   }
 ```
+
 ###### Live Annotation
+
 ```
   if (liveAnnotationSupported) {
     deviceCapabilities.push(ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED);
   }
 ```
+
 ###### Audio Disclaimer
+
 ```
 const joinOptions = {
     locale: 'en_UK', // audio disclaimer language
@@ -695,7 +707,7 @@ webex.meetings.personalMeetingRoom.get().then((pmr) => {
 
 #### Usage of Webex Devices
 
-For details on how to use the devices see https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/%40webex/plugin-device-manager
+For details on how to use the devices see <https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/%40webex/plugin-device-manager>
 
 ##### Leave a Meeting Using a Device
 
@@ -785,7 +797,7 @@ meeting.reconnect();
 
 #### Scheduled Meetings
 
-For scheduled meetings see https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/%40webex/internal-plugin-calendar
+For scheduled meetings see <https://github.com/webex/webex-js-sdk/tree/master/packages/node_modules/%40webex/internal-plugin-calendar>
 
 #### Member
 
@@ -1187,13 +1199,14 @@ meeting.members.on(...)
 ```
 
 There are several events submitted by this package that you can subscribe to.
-| Event Name | Description |
-|---|---|
-| `members:update` | Fired when a member in the collection has been updated |
+
+| Event Name               | Description                                                                       |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| `members:update`         | Fired when a member in the collection has been updated                            |
 | `members:content:update` | Fired when a member in the collection has a changed content stream (share screen) |
-| `members:host:update` | Fired when a member in the collection has a changed host value |
-| `members:self:update` | Fired when a member in the collection has a changed self value |
-|---|---|
+| `members:host:update`    | Fired when a member in the collection has a changed host value                    |
+| `members:self:update`    | Fired when a member in the collection has a changed self value                    |
+| ---                      | ---                                                                               |
 
 `members:update` has the following payload
 
@@ -1252,4 +1265,4 @@ Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/web
 
 ## License
 
-© 2016-2020 Cisco and/or its affiliates. All Rights Reserved.
+© 2016-2025 Cisco and/or its affiliates. All Rights Reserved.

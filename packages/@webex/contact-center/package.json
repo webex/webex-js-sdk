@@ -1,6 +1,7 @@
 {
   "name": "@webex/contact-center",
   "description": "This package provides a set of APIs to perform various operations for the Agent flow within Webex Contact Center",
+  "license": "Cisco's General Terms (https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html)",
   "contributors": [
     "Adhwaith Menon <adhmenon@cisco.com>",
     "Bharath Balan <bhabalan@cisco.com>",
@@ -12,9 +13,14 @@
     "Sreekanth Narayanan <sreenara@cisco.com>"
   ],
   "main": "dist/webex.js",
+  "types": "./dist/types/index.d.ts",
   "devMain": "src/index.ts",
   "exports": {
-    ".": "./dist/webex.js",
+    ".": {
+      "import": "./dist/webex.js",
+      "require": "./dist/webex.js",
+      "types": "./dist/types/index.d.ts"
+    },
     "./package": "./package.json"
   },
   "repository": {
@@ -50,6 +56,7 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
+    "@babel/core": "^7.22.11",
     "@babel/preset-typescript": "7.22.11",
     "@types/jest": "27.4.1",
     "@typescript-eslint/eslint-plugin": "5.38.1",

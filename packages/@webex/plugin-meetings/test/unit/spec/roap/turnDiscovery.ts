@@ -321,7 +321,7 @@ describe('TurnDiscovery', () => {
             result,
             undefined,
             undefined,
-            'failure: Unexpected token o in JSON at position 1'
+            `failure: Unexpected token 'o', "not a json" is not valid JSON`
           );
           checkFailureMetricsSent();
         });
@@ -568,7 +568,7 @@ describe('TurnDiscovery', () => {
       // @ts-ignore
       mockRoapRequest.sendRoap.resetHistory();
 
-      // simulate the response with some empty urls, normally there would be just 1, but we put more just for the sake of testing 
+      // simulate the response with some empty urls, normally there would be just 1, but we put more just for the sake of testing
       td.handleTurnDiscoveryResponse(
         {
           messageType: 'TURN_DISCOVERY_RESPONSE',
@@ -960,7 +960,7 @@ describe('TurnDiscovery', () => {
 
       assert.deepEqual(result, {
         turnServerInfo: undefined,
-        turnDiscoverySkippedReason: 'failure: Unexpected token o in JSON at position 1',
+        turnDiscoverySkippedReason: `failure: Unexpected token 'o', "not a json" is not valid JSON`,
       });
     });
 

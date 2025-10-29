@@ -424,10 +424,11 @@ describe('TaskManager', () => {
     );
   });
 
-  it('should emit TASK_END event on AGENT_INVITE_FAILED event', () => {
+  it('should emit TASK_REJECT event on AGENT_INVITE_FAILED event', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
       const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
+      const metricsTrackSpy = jest.spyOn(taskManager.metricsManager, 'trackEvent');
       const payload = {
         data: {
           type: CC_EVENTS.AGENT_INVITE_FAILED,
@@ -442,6 +443,7 @@ describe('TaskManager', () => {
           destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
           owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
           queueMgr: 'aqm',
+          reason: 'INVITE_FAILED',
         },
       };
 
@@ -452,12 +454,58 @@ describe('TaskManager', () => {
         { ...payload.data}
       );
       expect(taskEmitSpy).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_END, 
-        taskManager.getTask(taskId)
+        TASK_EVENTS.TASK_REJECT, 
+        payload.data.reason
       );
+      // Verify the correct metric event name is used for AGENT_INVITE_FAILED
+      expect(metricsTrackSpy).toHaveBeenCalled();
+      expect(metricsTrackSpy.mock.calls[0][0]).toBe('Agent Invite Failed');
   });
 
-  it('should emit TASK_HYDRATE event on AGENT_CONTACT event', () => {
+
+  it('should not emit TASK_HYDRATE if task is already present in taskManager', () => {
+    const payload = {
+      data: {
+        ...initalPayload.data,
+        type: CC_EVENTS.AGENT_CONTACT,
+      },
+    };
+    const taskEmitSpy = jest.spyOn(taskManager, 'emit');
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(taskEmitSpy).not.toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_HYDRATE,
+      taskManager.getTask(taskId)
+    );
+    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(
+      taskManager.getTask(taskId)
+    );
+  });
+
+  it('should emit TASK_INCOMING event on AGENT_CONTACT event if task is new and not in the taskManager ', () => {
+    taskManager.taskCollection = [];
+    const payload = {
+      data: {
+        ...initalPayload.data,
+        interaction: {mediaType: 'telephony', state: 'new'},
+        type: CC_EVENTS.AGENT_CONTACT,
+      },
+    };
+
+    const taskEmitSpy = jest.spyOn(taskManager, 'emit');
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_INCOMING,
+      taskManager.getTask(taskId)
+    );
+    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(
+      taskManager.getTask(taskId)
+    );
+  });
+
+  it('should emit TASK_HYDRATE event on AGENT_CONTACT event if task is connected and not in the taskManager ', () => {
+    taskManager.taskCollection = [];
     const payload = {
       data: {
         ...initalPayload.data,
@@ -469,7 +517,9 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, taskManager.getTask(taskId));
-    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(taskManager.getTask(taskId));
+    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(
+      taskManager.getTask(taskId)
+    );
   });
 
   it('should emit TASK_END event on AGENT_WRAPUP event', () => {
@@ -489,14 +539,18 @@ describe('TaskManager', () => {
         destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
         owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
         queueMgr: 'aqm',
+        wrapUpRequired: true
       },
     };
 
-    const updateTaskDataSpy = jest.spyOn(taskManager.getTask(taskId), 'updateTaskData');
+    const task = taskManager.getTask(taskId);
+    const updateTaskDataSpy = jest.spyOn(task, 'updateTaskData');
+    const taskEmitSpy = jest.spyOn(task, 'emit');
 
     webSocketManagerMock.emit('message', JSON.stringify(wrapupPayload));
 
-    expect(updateTaskDataSpy).toHaveBeenCalledWith({...wrapupPayload.data, wrapUpRequired: true});
+    expect(updateTaskDataSpy).toHaveBeenCalledWith(wrapupPayload.data);
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END, task);
   });
 
   it('should emit TASK_HOLD event on AGENT_CONTACT_HELD event', () => {
@@ -647,6 +701,13 @@ describe('TaskManager', () => {
   });
 
   it('should emit TASK_CONSULT_ACCEPTED event on AGENT_CONSULTING event', () => {
+    const initialConsultingPayload = {
+      data: {
+        ...initalPayload.data,
+        type: CC_EVENTS.AGENT_OFFER_CONSULT,
+      },
+    };
+
     const consultingPayload = {
       data: {
         ...initalPayload.data,
@@ -661,8 +722,8 @@ describe('TaskManager', () => {
     });
 
     const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
+    webSocketManagerMock.emit('message', JSON.stringify(initialConsultingPayload));
     webSocketManagerMock.emit('message', JSON.stringify(consultingPayload));
-    expect(taskManager.getTask(taskId).updateTaskData).toHaveBeenCalledWith(consultingPayload.data);
     expect(taskManager.getTask(taskId).data.isConsulted).toBe(true);
     expect(taskEmitSpy).toHaveBeenCalledWith(
       TASK_EVENTS.TASK_CONSULT_ACCEPTED,
@@ -806,10 +867,68 @@ describe('TaskManager', () => {
 
     taskManager.taskCollection[taskId] = taskManager.getTask(taskId);
     const taskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
+    const metricsTrackSpy = jest.spyOn(taskManager.metricsManager, 'trackEvent');
 
     webSocketManagerMock.emit('message', JSON.stringify(ronaPayload));
 
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_REJECT, ronaPayload.data.reason);
+    // Verify the correct metric event name is used for AGENT_CONTACT_OFFER_RONA
+    expect(metricsTrackSpy).toHaveBeenCalled();
+    expect(metricsTrackSpy.mock.calls[0][0]).toBe('Agent RONA');
+  });
+
+  it('should emit TASK_REJECT event on AGENT_CONTACT_ASSIGN_FAILED event', () => {
+    // First, emit AGENT_CONTACT_RESERVED to set up currentTask
+    const reservedPayload = {
+      data: {
+        type: CC_EVENTS.AGENT_CONTACT_RESERVED,
+        agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        eventTime: 1733211616959,
+        eventType: 'RoutingMessage',
+        interaction: {},
+        interactionId: taskId,
+        orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
+        trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(reservedPayload));
+
+    const assignFailedPayload = {
+      data: {
+        type: CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED,
+        agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        eventTime: 1733211616959,
+        eventType: 'RoutingMessage',
+        interaction: {},
+        interactionId: taskId,
+        orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
+        trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
+        reason: 'ASSIGN_FAILED',
+      },
+    };
+
+    taskManager.taskCollection[taskId] = taskManager.getTask(taskId);
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const taskUpdateDataSpy = jest.spyOn(task, 'updateTaskData');
+    const metricsTrackSpy = jest.spyOn(taskManager.metricsManager, 'trackEvent');
+
+    webSocketManagerMock.emit('message', JSON.stringify(assignFailedPayload));
+
+    expect(taskUpdateDataSpy).toHaveBeenCalledWith(assignFailedPayload.data);
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_REJECT, assignFailedPayload.data.reason);
+    // Verify the correct metric event name is used for AGENT_CONTACT_ASSIGN_FAILED
+    expect(metricsTrackSpy).toHaveBeenCalled();
+    expect(metricsTrackSpy.mock.calls[0][0]).toBe('Agent Contact Assign Failed');
   });
 
   it('should remove currentTask from taskCollection on AGENT_WRAPPEDUP event', () => {
@@ -1281,6 +1400,388 @@ describe('TaskManager', () => {
         webSocketManagerMock.emit('message', JSON.stringify(payload));
         expect(spy).toHaveBeenCalledWith(taskEvent, task);
       });
+    });
+  });
+
+  describe('Conference event handling', () => {
+    let task;
+    const agentId = '723a8ffb-a26e-496d-b14a-ff44fb83b64f';
+    
+    beforeEach(() => {
+      // Set the agentId on taskManager before tests run
+      taskManager.setAgentId(agentId);
+      
+      task = {
+        data: { interactionId: taskId },
+        emit: jest.fn(),
+        updateTaskData: jest.fn().mockImplementation((updatedData) => {
+          // Mock the updateTaskData method to actually update task.data
+          task.data = { ...task.data, ...updatedData };
+          return task;
+        }),
+      };
+      taskManager.taskCollection[taskId] = task;
+    });
+
+    it('should handle AGENT_CONSULT_CONFERENCED event', () => {
+      const payload = {
+        data: {
+          type: CC_EVENTS.AGENT_CONSULT_CONFERENCED,
+          interactionId: taskId,
+          isConferencing: true,
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.data.isConferencing).toBe(true);
+      expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONFERENCE_STARTED, task);
+    });
+
+    it('should handle AGENT_CONSULT_CONFERENCING event', () => {
+      const payload = {
+        data: {
+          type: CC_EVENTS.AGENT_CONSULT_CONFERENCING,
+          interactionId: taskId,
+          isConferencing: true,
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.data.isConferencing).toBe(true);
+      // No task event emission for conferencing - only for conferenced (completed)
+      expect(task.emit).not.toHaveBeenCalledWith(TASK_EVENTS.TASK_CONFERENCE_STARTED, task);
+    });
+
+    it('should handle AGENT_CONSULT_CONFERENCE_FAILED event', () => {
+      const payload = {
+        data: {
+          type: CC_EVENTS.AGENT_CONSULT_CONFERENCE_FAILED,
+          interactionId: taskId,
+          reason: 'Network error',
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.data.reason).toBe('Network error');
+      // No event emission expected for failure - handled by contact method promise rejection
+    });
+
+    it('should handle PARTICIPANT_JOINED_CONFERENCE event', () => {
+      const payload = {
+        data: {
+          type: CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE,
+          interactionId: taskId,
+          participantId: 'new-participant-123',
+          participantType: 'agent',
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.data.participantId).toBe('new-participant-123');
+      expect(task.data.participantType).toBe('agent');
+      // No specific task event emission for participant joined - just data update
+    });
+
+    describe('PARTICIPANT_LEFT_CONFERENCE event handling', () => {
+      it('should emit TASK_PARTICIPANT_LEFT event when participant leaves conference', () => {
+        const payload = {
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            interaction: {
+              participants: {
+                [agentId]: {
+                  hasLeft: false,
+                },
+              },
+            },
+          },
+        };
+
+        webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+        expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
+      });
+
+      it('should NOT remove task when agent is still in interaction', () => {
+        const payload = {
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            interaction: {
+              participants: {
+                [agentId]: {
+                  hasLeft: false,
+                },
+              },
+            },
+          },
+        };
+
+        webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+        // Task should still exist in collection
+        expect(taskManager.getTask(taskId)).toBeDefined();
+        expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
+      });
+
+      it('should NOT remove task when agent left but is in main interaction', () => {
+        const payload = {
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            interaction: {
+              participants: {
+                [agentId]: {
+                  hasLeft: true,
+                },
+              },
+              media: {
+                [taskId]: {
+                  mType: 'mainCall',
+                  participants: [agentId],
+                },
+              },
+            },
+          },
+        };
+
+        const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+        webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+        // Task should still exist - not removed
+        expect(removeTaskSpy).not.toHaveBeenCalled();
+        expect(taskManager.getTask(taskId)).toBeDefined();
+        expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
+      });
+
+      it('should NOT remove task when agent left but is primary (owner)', () => {
+        const payload = {
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            interaction: {
+              participants: {
+                [agentId]: {
+                  hasLeft: true,
+                },
+              },
+              owner: agentId,
+              media: {
+                [taskId]: {
+                  mType: 'consultCall',
+                  participants: ['other-agent'],
+                },
+              },
+            },
+          },
+        };
+
+        const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+        webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+        // Task should still exist - not removed because agent is primary
+        expect(removeTaskSpy).not.toHaveBeenCalled();
+        expect(taskManager.getTask(taskId)).toBeDefined();
+        expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
+      });
+
+      it('should remove task when agent left and is NOT in main interaction and is NOT primary', () => {
+        const payload = {
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            interaction: {
+              participants: {
+                [agentId]: {
+                  hasLeft: true,
+                },
+              },
+              owner: 'another-agent-id',
+              media: {
+                [taskId]: {
+                  mType: 'mainCall',
+                  participants: ['another-agent-id'],
+                },
+              },
+            },
+          },
+        };
+
+        const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+        webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+        // Task should be removed
+        expect(removeTaskSpy).toHaveBeenCalled();
+        expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
+      });
+
+      it('should remove task when agent is not in participants list', () => {
+        const payload = {
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            interaction: {
+              participants: {
+                'other-agent-id': {
+                  hasLeft: false,
+                },
+              },
+              owner: 'another-agent-id',
+            },
+          },
+        };
+
+        const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+        webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+        // Task should be removed because agent is not in participants
+        expect(removeTaskSpy).toHaveBeenCalled();
+        expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
+      });
+
+      it('should update isConferenceInProgress based on remaining active agents', () => {
+        const payload = {
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            interaction: {
+              participants: {
+                [agentId]: {
+                  hasLeft: false,
+                  pType: 'Agent',
+                },
+                'agent-2': {
+                  hasLeft: false,
+                  pType: 'Agent',
+                },
+                'customer-1': {
+                  hasLeft: false,
+                  pType: 'Customer',
+                },
+              },
+              media: {
+                [taskId]: {
+                  mType: 'mainCall',
+                  participants: [agentId, 'agent-2', 'customer-1'],
+                },
+              },
+            },
+          },
+        };
+
+        webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+        // isConferenceInProgress should be true (2 active agents)
+        expect(task.data.isConferenceInProgress).toBe(true);
+        expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
+      });
+
+      it('should set isConferenceInProgress to false when only one agent remains', () => {
+        const payload = {
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            interaction: {
+              participants: {
+                [agentId]: {
+                  hasLeft: false,
+                  pType: 'Agent',
+                },
+                'agent-2': {
+                  hasLeft: true,
+                  pType: 'Agent',
+                },
+                'customer-1': {
+                  hasLeft: false,
+                  pType: 'Customer',
+                },
+              },
+              media: {
+                [taskId]: {
+                  mType: 'mainCall',
+                  participants: [agentId, 'customer-1'],
+                },
+              },
+            },
+          },
+        };
+
+        webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+        // isConferenceInProgress should be false (only 1 active agent)
+        expect(task.data.isConferenceInProgress).toBe(false);
+        expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
+      });
+
+      it('should handle participant left when no participants data exists', () => {
+        const payload = {
+          data: {
+            type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
+            interactionId: taskId,
+            interaction: {},
+          },
+        };
+
+        const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+        webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+        // When no participants data exists, checkParticipantNotInInteraction returns true
+        // Since agent won't be in main interaction either, task should be removed
+        expect(removeTaskSpy).toHaveBeenCalled();
+        expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
+      });
+    });
+
+    it('should handle PARTICIPANT_LEFT_CONFERENCE_FAILED event', () => {
+      const payload = {
+        data: {
+          type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED,
+          interactionId: taskId,
+          reason: 'Exit failed',
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.data.reason).toBe('Exit failed');
+      // No event emission expected for failure - handled by contact method promise rejection
+    });
+
+    it('should only update task for matching interactionId', () => {
+      const otherTaskId = 'other-task-id';
+      const otherTask = {
+        data: { interactionId: otherTaskId },
+        emit: jest.fn(),
+      };
+      taskManager.taskCollection[otherTaskId] = otherTask;
+
+      const payload = {
+        data: {
+          type: CC_EVENTS.AGENT_CONSULT_CONFERENCED,
+          interactionId: taskId,
+          isConferencing: true,
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      // Only the matching task should be updated
+      expect(task.data.isConferencing).toBe(true);
+      expect(task.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONFERENCE_STARTED, task);
+      
+      // Other task should not be affected
+      expect(otherTask.data.isConferencing).toBeUndefined();
+      expect(otherTask.emit).not.toHaveBeenCalled();
     });
   });  
 });

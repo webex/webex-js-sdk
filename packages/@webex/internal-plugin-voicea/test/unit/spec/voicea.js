@@ -127,6 +127,7 @@ describe('plugin-voicea', () => {
                     csis: [123456],
                   },
                 ],
+                transcript_id: sinon.match.string,
               },
             },
             trackingId: sinon.match.string,
@@ -165,6 +166,7 @@ describe('plugin-voicea', () => {
                     csis: [654321],
                   },
                 ],
+                transcript_id: sinon.match.string,
               },
             },
             trackingId: sinon.match.string,
@@ -238,6 +240,7 @@ describe('plugin-voicea', () => {
           captionLanguages: ['af', 'am'],
           spokenLanguages: ['en'],
           maxLanguages: 5,
+          currentSpokenLanguage: 'en',
         });
       });
 
@@ -246,11 +249,13 @@ describe('plugin-voicea', () => {
 
         voiceaService.on(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, spy);
         voiceaService.listenToEvents();
+        voiceaService.currentSpokenLanguage = 'fr';
         await voiceaService.processAnnouncementMessage({});
         assert.calledOnceWithExactly(spy, {
           captionLanguages: [],
           spokenLanguages: [],
           maxLanguages: 0,
+          currentSpokenLanguage: 'fr',
         });
       });
     });
@@ -286,6 +291,7 @@ describe('plugin-voicea', () => {
     describe('#setSpokenLanguage', () => {
       it('sets spoken language', async () => {
         const languageCode = 'en';
+        let languageAssignment = 'DEFAULT';
         const triggerSpy = sinon.spy();
 
         voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
@@ -301,7 +307,8 @@ describe('plugin-voicea', () => {
             url: `${locusUrl}/controls/`,
             body: {
               transcribe: {
-                spokenLanguage: languageCode
+                spokenLanguage: languageCode,
+                languageAssignment,
               }
             },
           })
@@ -428,34 +435,34 @@ describe('plugin-voicea', () => {
     });
 
     describe('#turnOnCaptions', () => {
-      let requestTurnOnCaptions, isCaptionProcessing;
+      let requestTurnOnCaptions;
       beforeEach(() => {
         requestTurnOnCaptions = sinon.stub(voiceaService, 'requestTurnOnCaptions');
-        isCaptionProcessing = sinon.stub(voiceaService, 'isCaptionProcessing').returns(false);
+        voiceaService.captionStatus = 'idle';
         voiceaService.webex.internal.llm.isConnected.returns(true);
       });
 
       afterEach(() => {
         requestTurnOnCaptions.restore();
-        isCaptionProcessing.restore();
+        voiceaService.captionStatus = 'idle';
         voiceaService.webex.internal.llm.isConnected.returns(true);
       });
 
       it('call request turn on captions', () => {
-        isCaptionProcessing.returns(false);
+        voiceaService.captionStatus = 'idle';
         voiceaService.turnOnCaptions();
         assert.calledOnce(requestTurnOnCaptions);
       });
 
       it("turns on captions before llm connected", () => {
-        isCaptionProcessing.returns(false);
+        voiceaService.captionStatus = 'idle';
         voiceaService.webex.internal.llm.isConnected.returns(true);
         // assert.throws(() => voiceaService.turnOnCaptions(), "can not turn on captions before llm connected");
         assert.notCalled(requestTurnOnCaptions);
       });
 
       it('should not turn on duplicate when processing', () => {
-        isCaptionProcessing.returns(true);
+        voiceaService.captionStatus = 'sending';
         voiceaService.turnOnCaptions();
         assert.notCalled(voiceaService.requestTurnOnCaptions);
       });
@@ -875,6 +882,28 @@ describe('plugin-voicea', () => {
           timestamp: '11:00',
         });
       });
+
+      it('processes a language detected', async () => {
+        voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
+
+        const voiceaPayload = {
+          id: '9bc51440-1a22-7c81-6add-4b6ff7b59f7c',
+          meeting: 'fd5bd0fc-06fb-4fd1-982b-554c4368f101',
+          type: 'language_detected',
+          language: 'pl'
+        };
+
+        // eslint-disable-next-line no-underscore-dangle
+        await voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
+          data: {relayType: 'voicea.transcription', voiceaPayload},
+        });
+
+        assert.calledOnceWithExactly(functionSpy, voiceaPayload);
+
+        assert.calledOnceWithExactly(triggerSpy, {languageCode: 'pl'});
+      });
+
     });
 
     describe('#processManualTranscription', () => {
@@ -1020,6 +1049,17 @@ describe('plugin-voicea', () => {
         assert.equal(voiceaService.getAnnounceStatus(), "joined");
       });
     });
+
+    describe('#onSpokenLanguageUpdate', () => {
+      it('should trigger SPOKEN_LANGUAGE_UPDATE event with correct languageCode', () => {
+        const triggerSpy = sinon.spy();
+        voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
+
+        const languageCode = 'fr';
+        voiceaService.onSpokenLanguageUpdate(languageCode, '123');
+        assert.equal(voiceaService.currentSpokenLanguage, languageCode);
+        assert.calledOnceWithExactly(triggerSpy, {languageCode, meetingId: '123'});
+      });
+    });
   });
 });
-

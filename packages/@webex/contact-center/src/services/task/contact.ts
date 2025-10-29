@@ -17,6 +17,9 @@ import {
   TRANSFER,
   UNHOLD,
   WRAPUP,
+  CONSULT_CONFERENCE,
+  CONFERENCE_EXIT,
+  CONFERENCE_TRANSFER,
 } from './constants';
 import * as Contact from './types';
 import {DESTINATION_TYPE} from './types';
@@ -423,6 +426,83 @@ export default function routingContact(aqm: AqmReqs) {
           data: {type: 'AgentCtqCancelFailed'},
         },
         errId: 'Service.aqm.task.cancelCtq',
+      },
+    })),
+
+    /*
+     * Start consult conference
+     */
+    consultConference: aqm.req(
+      (p: {interactionId: string; data: Contact.ConsultConferenceData}) => ({
+        url: `${TASK_API}${p.interactionId}${CONSULT_CONFERENCE}`,
+        data: p.data,
+        host: WCC_API_GATEWAY,
+        err,
+        notifSuccess: {
+          bind: {
+            type: TASK_MESSAGE_TYPE,
+            data: {
+              type: [CC_EVENTS.AGENT_CONSULT_CONFERENCED, CC_EVENTS.AGENT_CONSULT_CONFERENCING],
+              interactionId: p.interactionId,
+            }, // any of the two events can be received for API success event
+          },
+          msg: {} as Contact.AgentContact,
+        },
+        notifFail: {
+          bind: {
+            type: TASK_MESSAGE_TYPE,
+            data: {type: CC_EVENTS.AGENT_CONSULT_CONFERENCE_FAILED},
+          },
+          errId: 'Service.aqm.task.consultConference',
+        },
+      })
+    ),
+
+    /*
+     * Exit conference
+     */
+    exitConference: aqm.req((p: {interactionId: string}) => ({
+      url: `${TASK_API}${p.interactionId}${CONFERENCE_EXIT}`,
+      data: {},
+      host: WCC_API_GATEWAY,
+      err,
+      notifSuccess: {
+        bind: {
+          type: TASK_MESSAGE_TYPE,
+          data: {type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE, interactionId: p.interactionId},
+        },
+        msg: {} as Contact.AgentContact,
+      },
+      notifFail: {
+        bind: {
+          type: TASK_MESSAGE_TYPE,
+          data: {type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED}, // to be finalized
+        },
+        errId: 'Service.aqm.task.consultConference',
+      },
+    })),
+
+    /*
+     * Transfer conference
+     */
+    conferenceTransfer: aqm.req((p: {interactionId: string}) => ({
+      url: `${TASK_API}${p.interactionId}${CONFERENCE_TRANSFER}`,
+      data: {},
+      host: WCC_API_GATEWAY,
+      err,
+      notifSuccess: {
+        bind: {
+          type: TASK_MESSAGE_TYPE,
+          data: {type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE, interactionId: p.interactionId},
+        },
+        msg: {} as Contact.AgentContact,
+      },
+      notifFail: {
+        bind: {
+          type: TASK_MESSAGE_TYPE,
+          data: {type: CC_EVENTS.AGENT_CONFERENCE_TRANSFER_FAILED},
+        },
+        errId: 'Service.aqm.task.consultConference',
       },
     })),
   };

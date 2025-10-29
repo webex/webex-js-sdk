@@ -1,4 +1,5 @@
 import uuid from 'uuid';
+import {has} from 'lodash';
 import {
   HTTP_VERBS,
   CONTROLS,
@@ -13,6 +14,7 @@ import {
 } from '../constants';
 
 import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
+import {Invitee} from '../meeting/type';
 
 const MembersUtil = {
   /**
@@ -47,6 +49,9 @@ const MembersUtil = {
         address:
           options.invitee.emailAddress || options.invitee.email || options.invitee.phoneNumber,
         ...(options.invitee.roles ? {roles: options.invitee.roles} : {}),
+        ...(has(options.invitee, 'isInternalNumber')
+          ? {isInternalNumber: options.invitee.isInternalNumber}
+          : {}),
       },
     ],
     alertIfActive: options.alertIfActive,
@@ -101,16 +106,23 @@ const MembersUtil = {
     return requestParams;
   },
 
-  isInvalidInvitee: (invitee) => {
+  isInvalidInvitee: (invitee: Invitee) => {
     if (!(invitee && (invitee.email || invitee.emailAddress || invitee.phoneNumber))) {
       return true;
     }
 
     if (invitee.phoneNumber) {
+      if (invitee.isInternalNumber) {
+        return !DIALER_REGEX.INTERNAL_NUMBER.test(invitee.phoneNumber);
+      }
+
       return !DIALER_REGEX.E164_FORMAT.test(invitee.phoneNumber);
     }
 
-    return !VALID_EMAIL_ADDRESS.test(invitee.email || invitee.emailAddress);
+    return !(
+      VALID_EMAIL_ADDRESS.test(invitee.email || invitee.emailAddress) ||
+      DIALER_REGEX.SIP_ADDRESS.test(invitee.email || invitee.emailAddress)
+    );
   },
 
   getRemoveMemberRequestParams: (options) => {
@@ -178,13 +190,21 @@ const MembersUtil = {
    * @param {String} requestingParticipantId id of the participant who is sending request (optional)
    * @param {String} alias alias name
    * @param {String} locusUrl url
+   * @param {String} suffix optional suffix
    * @returns {Object} consists of {memberID: string, requestingParticipantId: string, alias: string, locusUrl: string}
    */
-  generateEditDisplayNameMemberOptions: (memberId, requestingParticipantId, alias, locusUrl) => ({
+  generateEditDisplayNameMemberOptions: (
     memberId,
     requestingParticipantId,
     alias,
     locusUrl,
+    suffix
+  ) => ({
+    memberId,
+    requestingParticipantId,
+    alias,
+    locusUrl,
+    suffix,
   }),
 
   getMuteMemberRequestParams: (options) => {
@@ -289,10 +309,18 @@ const MembersUtil = {
    * @returns {Object} request parameters (method, uri, body) needed to make a editDisplayName request
    */
   editDisplayNameMemberRequestParams: (options) => {
-    const body = {
+    const body: {
+      aliasValue: string;
+      requestingParticipantId: string;
+      suffixValue?: string;
+    } = {
       aliasValue: options.alias,
       requestingParticipantId: options.requestingParticipantId,
     };
+
+    if (options.suffix !== undefined) {
+      body.suffixValue = options.suffix;
+    }
     const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${ALIAS}`;
 
     return {
@@ -368,17 +396,20 @@ const MembersUtil = {
     return requestParams;
   },
 
-  cancelSIPInviteOptions: (invitee, locusUrl) => ({
+  cancelInviteByMemberIdOptions: (invitee, locusUrl) => ({
     invitee,
     locusUrl,
   }),
 
-  generateCancelSIPInviteRequestParams: (options) => {
+  generateCancelInviteByMemberIdRequestParams: (options) => {
+    const {memberId, isInternalNumber} = options.invitee;
+    const hasIsInternalNumberProp = has(options.invitee, 'isInternalNumber');
     const body = {
       actionType: _REMOVE_,
       invitees: [
         {
-          address: options.invitee.memberId,
+          address: memberId,
+          ...(hasIsInternalNumberProp ? {isInternalNumber} : {}),
         },
       ],
     };

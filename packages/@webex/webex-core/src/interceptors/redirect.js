@@ -10,6 +10,7 @@ import {Interceptor} from '@webex/http-core';
 const requestHeaderName = 'cisco-no-http-redirect';
 const responseHeaderName = 'cisco-location';
 const LOCUS_REDIRECT_ERROR = 2000002;
+const APPAPI_REDIRECT_ERROR = 404100;
 
 /**
  * @class
@@ -89,6 +90,33 @@ export default class RedirectInterceptor extends Interceptor {
       } else {
         // for GET requests
         options.uri = response.body.location;
+      }
+
+      this.webex.logger.warn('redirect: url redirects needed to', options.uri);
+      options.$redirectCount += 1;
+      if (options.$redirectCount > this.webex.config.maxLocusRedirects) {
+        return Promise.reject(new Error('Maximum redirects exceeded'));
+      }
+
+      return this.webex.request(options);
+    } else if (
+      response.headers &&
+      response.body &&
+      response.body.code === APPAPI_REDIRECT_ERROR &&
+      response.body.data &&
+      response.body.data.siteFullUrl
+    ) {
+      options = clone(options);
+
+      this.webex.logger.warn('redirect: url redirects needed from', options.uri);
+      if (response.options && response.options.qs) {
+        // for POST requests
+        const newUrl = response.body.data.siteFullUrl.split('?');
+
+        options.uri = newUrl[0]; // params are already present in the qs
+      } else {
+        // for GET requests
+        options.uri = options.uri.replace(/(?<=https:\/\/)[^/]+/, response.body.data.siteFullUrl);
       }
 
       this.webex.logger.warn('redirect: url redirects needed to', options.uri);

@@ -164,6 +164,14 @@ describe('plugin-meetings', () => {
 
         assert.equal(parsedControls.rdcControl.enabled, newControls.rdcControl.enabled);
       });
+      
+      it('should parse the pollingQAControl control', () => {
+        const newControls = {pollingQAControl: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.pollingQAControl.enabled, newControls.pollingQAControl.enabled);
+      });
 
       describe('videoEnabled', () => {
         it('returns expected', () => {
@@ -409,6 +417,50 @@ describe('plugin-meetings', () => {
         const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
         assert.equal(updates.hasRemoteDesktopControlChanged, true);
+      });
+
+      it('returns hasPollingQAControlChanged = true when changed', () => {
+        const newControls = {pollingQAControl: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasPollingQAControlChanged, true);
+      });
+
+      it('returns false when previous spoken language is undefined and current is a invalid value', () => {
+        const previous = { transcribe: undefined };
+        const current = { transcribe: { spokenLanguage: null } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, false);
+      });
+
+      it('detects spoken language change when previous is undefined and current is a valid value', () => {
+        const previous = { transcribe: undefined };
+        const current = { transcribe: { spokenLanguage: 'en-US' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, true);
+      });
+
+      it('returns false when spoken language changes to a same value', () => {
+        const previous = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+        const current = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, false);
+      });
+
+      it('returns true when spoken language changes to a different value', () => {
+        const previous = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+        const current = { transcribe: {caption: true, spokenLanguage: 'fr-FR' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasTranscribeSpokenLanguageChanged, true);
       });
 
       describe('videoEnabled', () => {

@@ -48,6 +48,10 @@ export interface RemoteDesktopControlProperties {
   enabled?: boolean;
 }
 
+export interface PollingQAProperties {
+  enabled?: boolean;
+}
+
 export type Properties =
   | AudioProperties
   | RaiseHandProperties
@@ -56,7 +60,8 @@ export type Properties =
   | VideoProperties
   | ViewTheParticipantListProperties
   | AnnotationProperties
-  | RemoteDesktopControlProperties;
+  | RemoteDesktopControlProperties
+  | PollingQAProperties;
 
 export interface ControlConfig<Props = Properties> {
   /**
