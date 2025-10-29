@@ -38,7 +38,7 @@ yarn build:local
 ## Testing
 
 ```bash
- yarn workspace @webex/plugin-cc run test:unit
+ yarn workspace @webex/contact-center run test:unit
 ```
 
 ## Samples 
@@ -50,16 +50,16 @@ yarn build:local
 To consume the latest stable version of the Calling SDK one can use NPM or CDN.
 # NPM
 ```javascript
-  npm install @webex/plugin-cc
+  npm install @webex/contact-center
 ```
 (or)
 
 ```javascript
-  yarn add @webex/plugin-cc
+  yarn add @webex/contact-center
 ```
 
 ```javascript
-  import ContactCenter from '@webex/plugin-cc'
+  import ContactCenter from '@webex/contact-center'
 ```
 # CDN
 ```javascript

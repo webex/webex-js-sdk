@@ -1,6 +1,6 @@
 # Webex JS SDK: Contact Center Plugin
 
-Welcome to the documentation for the **@webex/plugin-cc** package, part of the [Webex JS SDK](https://github.com/webex/webex-js-sdk). This plugin provides APIs and utilities for integrating Webex Contact Center features into your JavaScript applications.
+Welcome to the documentation for the **@webex/contact-center** package, part of the [Webex JS SDK](https://github.com/webex/webex-js-sdk). This plugin provides APIs and utilities for integrating Webex Contact Center features into your JavaScript applications.
 
 ## Overview
 
@@ -11,13 +11,13 @@ Welcome to the documentation for the **@webex/plugin-cc** package, part of the [
 ## Getting Started
 
 ```bash
-npm install @webex/plugin-cc
+npm install @webex/contact-center
 ```
 
 Add the plugin to your Webex SDK instance:
 
 ```js
-import Webex from '@webex/plugin-cc';
+import Webex from '@webex/contact-center';
 
 // Initialize Webex SDK with default configuration
 const webex = Webex.init();
@@ -26,7 +26,7 @@ const webex = Webex.init();
 Or, initialize with a custom configuration:
 
 ```js
-import Webex from '@webex/plugin-cc';
+import Webex from '@webex/contact-center';
 
 const customConfig = {
   logger: {
