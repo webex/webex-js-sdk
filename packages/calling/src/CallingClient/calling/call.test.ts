@@ -1400,15 +1400,15 @@ describe('State Machine handler tests', () => {
     await flushPromises(2);
     expect(call.isConnected()).toBe(false);
 
-    expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_ERROR');
-    expect(call['callStateMachine'].state.value).toBe('S_UNKNOWN');
+    expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_TEARDOWN');
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_CLEARED');
     expect(warnSpy).toHaveBeenCalledWith('Failed to process MediaOk request', {
       file: 'call',
       method: 'handleRoapEstablished',
     });
-    expect(uploadLogsSpy).toHaveBeenCalledWith({
-      correlationId: call.getCorrelationId(),
-      callId: call.getCallId(),
+    expect(warnSpy).toHaveBeenCalledWith('Call failed due to media issue', {
+      file: 'call',
+      method: 'handleRoapError',
     });
   });
 
@@ -1701,6 +1701,32 @@ describe('State Machine handler tests', () => {
       method: 'handleRoapError',
     });
     expect(stateMachineSpy).toBeCalledOnceWith({data: {media: true}, type: 'E_UNKNOWN'});
+  });
+
+  it("does not post media when ROAP error messageType isn't 'ERROR' and disconnects if not connected", async () => {
+    const postMediaSpy = jest.spyOn(call as any, 'postMedia');
+    const stateMachineSpy = jest.spyOn(call, 'sendCallStateMachineEvt');
+    const warnSpy = jest.spyOn(log, 'warn');
+
+    call['connected'] = false;
+    call['mediaStateMachine'].state.value = 'S_SEND_ROAP_ANSWER';
+
+    const errorEvent = {
+      type: 'E_ROAP_ERROR',
+      data: {
+        seq: 3,
+        messageType: 'OK',
+      },
+    } as RoapEvent;
+
+    await call['handleRoapError']({} as MediaContext, errorEvent);
+
+    expect(postMediaSpy).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith('Call failed due to media issue', {
+      file: 'call',
+      method: 'handleRoapError',
+    });
+    expect(stateMachineSpy).toBeCalledOnceWith({type: 'E_UNKNOWN', data: {media: true}});
   });
 
   it('state changes during successful incoming call with out of order events', async () => {
