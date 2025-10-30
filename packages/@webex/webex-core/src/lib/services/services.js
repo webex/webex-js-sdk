@@ -61,6 +61,9 @@ const Services = WebexPlugin.extend({
 
   _hostCatalog: null,
 
+  // Map of active cluster ids per service, e.g. { wdm: 'urn:TEAM:ap-southeast-2_m:wdm' }
+  _activeServices: {},
+
   /**
    * Get the registry associated with this webex instance.
    *
@@ -103,6 +106,21 @@ const Services = WebexPlugin.extend({
    */
   get(name, priorityHost, serviceGroup) {
     const catalog = this._getCatalog();
+
+    // Prefer active cluster selection when available (e.g., in-region WDM)
+    const clusterId = this._activeServices && this._activeServices[name];
+
+    if (clusterId) {
+      const service = catalog.findServiceFromClusterId({
+        clusterId,
+        priorityHost,
+        serviceGroup,
+      });
+
+      if (service && service.url) {
+        return service.url;
+      }
+    }
 
     return catalog.get(name, priorityHost, serviceGroup);
   },
@@ -158,6 +176,39 @@ const Services = WebexPlugin.extend({
     const catalog = this._getCatalog();
 
     return catalog.markFailedUrl(url, noPriorityHosts);
+  },
+
+  /**
+   * Get all Mobius cluster host entries from the legacy host catalog.
+   * @returns {Array<Object>}
+   */
+  getMobiusClusters() {
+    const clusters = [];
+    const hostCatalog = this._hostCatalog || {};
+
+    Object.entries(hostCatalog).forEach(([host, entries]) => {
+      (entries || []).forEach((entry) => {
+        if (typeof entry?.id === 'string' && entry.id.endsWith(':mobius')) {
+          // Ensure host is included; prefer entry.host if present, else use the map key
+          const withHost = entry.host ? entry.host : host;
+          // Skip duplicates for the same host
+          if (!clusters.find((c) => c && c.host === withHost)) {
+            clusters.push({...entry, host: withHost});
+          }
+        }
+      });
+    });
+
+    return clusters;
+  },
+
+  /**
+   * Merge provided active cluster mappings into current state.
+   * @param {Record<string,string>} activeServices
+   * @returns {void}
+   */
+  _updateActiveServices(activeServices) {
+    this._activeServices = {...this._activeServices, ...activeServices};
   },
 
   /**
@@ -498,6 +549,30 @@ const Services = WebexPlugin.extend({
         // On failure, reject with error from **License**.
         .catch((error) => Promise.reject(error))
     );
+  },
+
+  /**
+   * Update cluster id via mercury/service update. Allows selecting in-region URLs (e.g., WDM).
+   * If a provided clusterId cannot be resolved to a service, it will be ignored.
+   * @param {Record<string,string>} newActiveClusters - e.g. { wdm: 'urn:TEAM:ap-southeast-2_m:wdm' }
+   * @returns {Promise<void>}
+   */
+  switchActiveClusterIds(newActiveClusters) {
+    this.logger.info('services: switching active cluster ids');
+
+    if (!newActiveClusters || typeof newActiveClusters !== 'object') {
+      this.logger.warn('services: invalid newActiveClusters provided to switchActiveClusterIds');
+
+      return Promise.resolve();
+    }
+
+    // Do not validate against current catalog readiness; persist desired mapping immediately.
+    // When catalogs are ready, `get()` will resolve URLs via clusterId.
+    this._updateActiveServices(newActiveClusters);
+
+    this.logger.info('services: active cluster ids updated successfully');
+
+    return Promise.resolve();
   },
 
   /**

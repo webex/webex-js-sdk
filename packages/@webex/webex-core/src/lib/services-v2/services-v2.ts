@@ -104,6 +104,41 @@ const Services = WebexPlugin.extend({
     return catalog.markFailedServiceUrl(url);
   },
 
+  /*
+   * Get all Mobius cluster host entries from the v2 services list
+   */
+  getMobiusClusters(): Array<{
+    host: string;
+    ttl: number;
+    priority: number;
+    id: string;
+    homeCluster?: boolean;
+  }> {
+    const clusters: Array<{
+      host: string;
+      ttl: number;
+      priority: number;
+      id: string;
+      homeCluster?: boolean;
+    }> = [];
+    const services: Array<Service> = this._services || [];
+
+    services.forEach((service) => {
+      if (service?.serviceName === 'mobius' && Array.isArray(service.serviceUrls)) {
+        service.serviceUrls.forEach((serviceUrl) => {
+          clusters.push({
+            host: serviceUrl.host,
+            priority: serviceUrl.priority,
+            id: service.id,
+            ttl: 0,
+          });
+        });
+      }
+    });
+
+    return clusters;
+  },
+
   /**
    * saves all the services from the pre and post catalog service
    * @param {ActiveServices} activeServices
