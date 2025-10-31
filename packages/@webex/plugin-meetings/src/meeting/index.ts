@@ -10043,4 +10043,31 @@ export default class Meeting extends StatelessWebexPlugin {
       displayName
     );
   }
+
+  /**
+   * Call out a SIP participant to a meeting
+   * @param {string} address - The SIP address or phone number
+   * @param {string} displayName - The display name for the participant
+   * @param {string} [correlationId] - Optional correlation ID
+   * @returns {Promise} Promise that resolves when the call-out is initiated
+   */
+  sipCallOut(address: string, displayName: string) {
+    return this.meetingRequest.sipCallOut(
+      this.meetingInfo.meetingId,
+      this.meetingInfo.meetingId,
+      address,
+      displayName
+    );
+  }
+
+  /**
+   * Cancel an ongoing SIP call-out
+   * @param {string} participantId - The participant ID to cancel
+   * @returns {Promise} Promise that resolves when the call-out is cancelled
+   * @public
+   * @memberof Meetings
+   */
+  cancelSipCallOut(participantId: string) {
+    return this.meetingRequest.cancelSipCallOut(participantId);
+  }
 }

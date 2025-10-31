@@ -990,7 +990,7 @@ describe('plugin-meetings', () => {
       {functionName: 'showAutoEndMeetingWarning', displayHint: 'SHOW_AUTO_END_MEETING_WARNING'},
     ].forEach(({functionName, displayHint}) => {
       describe(functionName, () => {
-        it.only('works as expected', () => {
+        it('works as expected', () => {
           assert.deepEqual(MeetingUtil[functionName]([displayHint]), true);
           assert.deepEqual(MeetingUtil[functionName]([]), false);
         });

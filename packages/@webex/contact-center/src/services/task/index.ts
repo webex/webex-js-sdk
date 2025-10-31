@@ -10,7 +10,7 @@ import {
 import {Failure} from '../core/GlobalTypes';
 import {LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
-import {METHODS} from './constants';
+import {METHODS, KEYS_TO_NOT_DELETE} from './constants';
 import routingContact from './contact';
 import LoggerProxy from '../../logger-proxy';
 import {
@@ -281,9 +281,24 @@ export default class Task extends EventEmitter implements ITask {
    * @private
    */
   private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
+    // Remove keys from oldData that are not in newData
+    Object.keys(oldData).forEach((key) => {
+      if (!(key in newData) && !KEYS_TO_NOT_DELETE.includes(key as string)) {
+        delete oldData[key];
+      }
+    });
+
+    // Merge or update keys from newData
     Object.keys(newData).forEach((key) => {
-      if (newData[key] && typeof newData[key] === 'object' && !Array.isArray(newData[key])) {
-        oldData[key] = this.reconcileData({...oldData[key]}, newData[key]);
+      if (
+        newData[key] &&
+        typeof newData[key] === 'object' &&
+        !Array.isArray(newData[key]) &&
+        oldData[key] &&
+        typeof oldData[key] === 'object' &&
+        !Array.isArray(oldData[key])
+      ) {
+        this.reconcileData(oldData[key], newData[key]);
       } else {
         oldData[key] = newData[key];
       }
@@ -511,6 +526,7 @@ export default class Task extends EventEmitter implements ITask {
    * Puts the current task/interaction on hold.
    * Emits task:hold event when successful. For voice tasks, this mutes the audio.
    *
+   * @param mediaResourceId - Optional media resource ID to use for the hold operation. If not provided, uses the task's current mediaResourceId
    * @returns Promise<TaskResponse>
    * @throws Error if hold operation fails
    * @example
@@ -531,9 +547,17 @@ export default class Task extends EventEmitter implements ITask {
    *   console.error('Failed to place task on hold:', error);
    *   // Handle error (e.g., show error message, reset UI state)
    * }
+   *
+   * // Place task on hold with custom mediaResourceId
+   * try {
+   *   await task.hold('custom-media-resource-id');
+   *   console.log('Successfully placed task on hold with custom mediaResourceId');
+   * } catch (error) {
+   *   console.error('Failed to place task on hold:', error);
+   * }
    * ```
    */
-  public async hold(): Promise<TaskResponse> {
+  public async hold(mediaResourceId?: string): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Holding task`, {
         module: TASK_FILE,
@@ -546,9 +570,11 @@ export default class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
       ]);
 
+      const effectiveMediaResourceId = mediaResourceId ?? this.data.mediaResourceId;
+
       const response = await this.contact.hold({
         interactionId: this.data.interactionId,
-        data: {mediaResourceId: this.data.mediaResourceId},
+        data: {mediaResourceId: effectiveMediaResourceId},
       });
 
       this.metricsManager.trackEvent(
@@ -556,7 +582,7 @@ export default class Task extends EventEmitter implements ITask {
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
           taskId: this.data.interactionId,
-          mediaResourceId: this.data.mediaResourceId,
+          mediaResourceId: effectiveMediaResourceId,
         },
         ['operational', 'behavioral']
       );
@@ -578,11 +604,13 @@ export default class Task extends EventEmitter implements ITask {
         errorData: err.data?.errorData,
         reasonCode: err.data?.reasonCode,
       };
+      const effectiveMediaResourceId = mediaResourceId ?? this.data.mediaResourceId;
+
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
         {
           taskId: this.data.interactionId,
-          mediaResourceId: this.data.mediaResourceId,
+          mediaResourceId: effectiveMediaResourceId,
           error: error.toString(),
           ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
@@ -597,6 +625,7 @@ export default class Task extends EventEmitter implements ITask {
    * Resumes the task/interaction that was previously put on hold.
    * Emits task:resume event when successful. For voice tasks, this restores the audio.
    *
+   * @param mediaResourceId - Optional media resource ID to use for the resume operation. If not provided, uses the task's current mediaResourceId from interaction media
    * @returns Promise<TaskResponse>
    * @throws Error if resume operation fails
    * @example
@@ -617,9 +646,17 @@ export default class Task extends EventEmitter implements ITask {
    *   console.error('Failed to resume task:', error);
    *   // Handle error (e.g., show error message)
    * }
+   *
+   * // Resume task from hold with custom mediaResourceId
+   * try {
+   *   await task.resume('custom-media-resource-id');
+   *   console.log('Successfully resumed task from hold with custom mediaResourceId');
+   * } catch (error) {
+   *   console.error('Failed to resume task:', error);
+   * }
    * ```
    */
-  public async resume(): Promise<TaskResponse> {
+  public async resume(mediaResourceId?: string): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Resuming task`, {
         module: TASK_FILE,
@@ -627,7 +664,9 @@ export default class Task extends EventEmitter implements ITask {
         interactionId: this.data.interactionId,
       });
       const {mainInteractionId} = this.data.interaction;
-      const {mediaResourceId} = this.data.interaction.media[mainInteractionId];
+      const defaultMediaResourceId =
+        this.data.interaction.media[mainInteractionId]?.mediaResourceId;
+      const effectiveMediaResourceId = mediaResourceId ?? defaultMediaResourceId;
 
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS,
@@ -636,7 +675,7 @@ export default class Task extends EventEmitter implements ITask {
 
       const response = await this.contact.unHold({
         interactionId: this.data.interactionId,
-        data: {mediaResourceId},
+        data: {mediaResourceId: effectiveMediaResourceId},
       });
 
       this.metricsManager.trackEvent(
@@ -644,7 +683,7 @@ export default class Task extends EventEmitter implements ITask {
         {
           taskId: this.data.interactionId,
           mainInteractionId,
-          mediaResourceId,
+          mediaResourceId: effectiveMediaResourceId,
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
         },
         ['operational', 'behavioral']
@@ -661,6 +700,11 @@ export default class Task extends EventEmitter implements ITask {
     } catch (error) {
       const err = generateTaskErrorObject(error, METHODS.RESUME, TASK_FILE);
       const mainInteractionId = this.data.interaction?.mainInteractionId;
+      const defaultMediaResourceId = mainInteractionId
+        ? this.data.interaction.media[mainInteractionId]?.mediaResourceId
+        : '';
+      const effectiveMediaResourceId = mediaResourceId ?? defaultMediaResourceId;
+
       const taskErrorProps = {
         trackingId: err.data?.trackingId,
         errorMessage: err.data?.message,
@@ -673,9 +717,7 @@ export default class Task extends EventEmitter implements ITask {
         {
           taskId: this.data.interactionId,
           mainInteractionId,
-          mediaResourceId: mainInteractionId
-            ? this.data.interaction.media[mainInteractionId].mediaResourceId
-            : '',
+          mediaResourceId: effectiveMediaResourceId,
           ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
@@ -1684,9 +1726,6 @@ export default class Task extends EventEmitter implements ITask {
     }
   }
 
-  // TODO: Uncomment this method in future PR for Multi-Party Conference support (>3 participants)
-  // Conference transfer will be supported when implementing enhanced multi-party conference functionality
-  /*
   /**
    * Transfers the current conference to another agent
    *
@@ -1707,7 +1746,7 @@ export default class Task extends EventEmitter implements ITask {
    * }
    * ```
    */
-  /* public async transferConference(): Promise<TaskResponse> {
+  public async transferConference(): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Transferring conference`, {
         module: TASK_FILE,
@@ -1771,5 +1810,5 @@ export default class Task extends EventEmitter implements ITask {
 
       throw err;
     }
-  } */
+  }
 }

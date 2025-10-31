@@ -217,7 +217,7 @@ describe('Task', () => {
   });
 
   describe('updateTaskData cases', () => {
-    it('test updating the task data by overwrite', async () => {
+    it('updates the task data by overwrite', async () => {
       const newData = {
         type: CC_EVENTS.AGENT_CONTACT_ASSIGNED,
         agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
@@ -266,12 +266,12 @@ describe('Task', () => {
       expect(task.data).toEqual(newData);
     });
 
-    it('test updating the task data by merging', async () => {
+    it('updates the task data by merging with key removal', async () => {
       const newData = {
-        // ...taskDataMock, // Purposefully omit this to test scenario when other keys isn't present
+        // Purposefully omit other keys to test remove and merge behavior
         isConsulting: true, // Add a new custom key to test persistence
         interaction: {
-          // ...taskDataMock.interaction, // Purposefully omit this to test scenario when a nested key isn't present
+          // Purposefully omit other interaction keys to test removal
           media: {
             '58a45567-4e61-4f4b-a580-5bc86357bef0': {
               holdTimestamp: null,
@@ -298,11 +298,12 @@ describe('Task', () => {
         },
       };
 
+      // The reconcileData method removes keys from oldData that are not in newData
+      // This means only keys present in newData will remain in the final result
       const expectedData: TaskData = {
-        ...taskDataMock,
-        isConsulting: true,
+        isConsulting: true, // New key is added
         interaction: {
-          ...taskDataMock.interaction,
+          // Only the media key from newData.interaction remains
           media: {
             '58a45567-4e61-4f4b-a580-5bc86357bef0': {
               holdTimestamp: null,
@@ -324,6 +325,60 @@ describe('Task', () => {
               mediaResourceId: taskId,
               mediaType: 'telephony',
               participants: ['+14696762938', '723a8ffb-a26e-496d-b14a-ff44fb83b64f'],
+            },
+          },
+        },
+      };
+
+      expect(task.data).toEqual(taskDataMock);
+      const shouldOverwrite = false;
+      task.updateTaskData(newData, shouldOverwrite);
+
+      expect(task.data).toEqual(expectedData);
+    });
+
+    it('updates the task data by merging and preserving existing keys', async () => {
+      const newData = {
+        ...taskDataMock, // Include all existing keys to test merge without removal
+        isConsulting: true, // Add a new custom key
+        interaction: {
+          ...taskDataMock.interaction, // Include existing interaction data
+          media: {
+            ...taskDataMock.interaction.media, // Include existing media
+            '58a45567-4e61-4f4b-a580-5bc86357bef0': {
+              holdTimestamp: null,
+              isHold: true,
+              mType: 'consult',
+              mediaMgr: 'callmm',
+              mediaResourceId: '58a45567-4e61-4f4b-a580-5bc86357bef0',
+              mediaType: 'telephony',
+              participants: [
+                'f520d6b5-28ad-4f2f-b83e-781bb64af617',
+                '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+              ],
+            },
+          },
+        },
+      };
+
+      const expectedData: TaskData = {
+        ...taskDataMock,
+        isConsulting: true,
+        interaction: {
+          ...taskDataMock.interaction,
+          media: {
+            ...taskDataMock.interaction.media,
+            '58a45567-4e61-4f4b-a580-5bc86357bef0': {
+              holdTimestamp: null,
+              isHold: true,
+              mType: 'consult',
+              mediaMgr: 'callmm',
+              mediaResourceId: '58a45567-4e61-4f4b-a580-5bc86357bef0',
+              mediaType: 'telephony',
+              participants: [
+                'f520d6b5-28ad-4f2f-b83e-781bb64af617',
+                '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+              ],
             },
           },
         },
@@ -570,6 +625,40 @@ describe('Task', () => {
     );
   });
 
+  it('should hold the task with custom mediaResourceId and return the expected response', async () => {
+    const customMediaResourceId = 'custom-media-resource-id-123';
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.hold.mockResolvedValue(expectedResponse);
+
+    const response = await task.hold(customMediaResourceId);
+
+    expect(contactMock.hold).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: {mediaResourceId: customMediaResourceId},
+    });
+    expect(response).toEqual(expectedResponse);
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Holding task`, {
+      module: TASK_FILE,
+      method: 'hold',
+      interactionId: task.data.interactionId,
+    });
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Task placed on hold successfully`, {
+      module: TASK_FILE,
+      method: 'hold',
+      interactionId: task.data.interactionId,
+    });
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS,
+      {
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+        taskId: taskDataMock.interactionId,
+        mediaResourceId: customMediaResourceId,
+      },
+      ['operational', 'behavioral']
+    );
+  });
+
   it('should handle errors in hold method', async () => {
     const error = {details: (global as any).makeFailure('Hold Failed')};
     contactMock.hold.mockImplementation(() => {
@@ -591,6 +680,36 @@ describe('Task', () => {
       {
         taskId: taskDataMock.interactionId,
         mediaResourceId: taskDataMock.mediaResourceId,
+        error: error.toString(),
+        ...expectedTaskErrorFieldsHold,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('should handle errors in hold method with custom mediaResourceId', async () => {
+    const customMediaResourceId = 'custom-media-resource-id-456';
+    const error = {details: (global as any).makeFailure('Hold Failed with custom mediaResourceId')};
+    contactMock.hold.mockImplementation(() => {
+      throw error;
+    });
+
+    await expect(task.hold(customMediaResourceId)).rejects.toThrow(error.details.data.reason);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'hold', TASK_FILE);
+    const expectedTaskErrorFieldsHold = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        mediaResourceId: customMediaResourceId,
         error: error.toString(),
         ...expectedTaskErrorFieldsHold,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
@@ -623,6 +742,29 @@ describe('Task', () => {
     );
   });
 
+  it('should resume the task with custom mediaResourceId and return the expected response', async () => {
+    const customMediaResourceId = 'custom-media-resource-id-789';
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.unHold.mockResolvedValue(expectedResponse);
+    const response = await task.resume(customMediaResourceId);
+    expect(contactMock.unHold).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: {mediaResourceId: customMediaResourceId},
+    });
+    expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+        mainInteractionId: taskDataMock.interaction.mainInteractionId,
+        mediaResourceId: customMediaResourceId,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+      },
+      ['operational', 'behavioral']
+    );
+  });
+
   it('should handle errors in resume method', async () => {
     const error = {details: (global as any).makeFailure('Resume Failed')};
     contactMock.unHold.mockImplementation(() => {
@@ -647,6 +789,36 @@ describe('Task', () => {
         mediaResourceId:
           taskDataMock.interaction.media[taskDataMock.interaction.mainInteractionId]
             .mediaResourceId,
+        ...expectedTaskErrorFieldsResume,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('should handle errors in resume method with custom mediaResourceId', async () => {
+    const customMediaResourceId = 'custom-media-resource-id-999';
+    const error = {details: (global as any).makeFailure('Resume Failed with custom mediaResourceId')};
+    contactMock.unHold.mockImplementation(() => {
+      throw error;
+    });
+
+    await expect(task.resume(customMediaResourceId)).rejects.toThrow(error.details.data.reason);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'resume', TASK_FILE);
+    const expectedTaskErrorFieldsResume = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        mainInteractionId: taskDataMock.interaction.mainInteractionId,
+        mediaResourceId: customMediaResourceId,
         ...expectedTaskErrorFieldsResume,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
@@ -1707,9 +1879,6 @@ describe('Task', () => {
       });
     });
 
-    // TODO: Uncomment this test section in future PR for Multi-Party Conference support (>3 participants)
-    // Conference transfer tests will be uncommented when implementing enhanced multi-party conference functionality
-    /*
     describe('transferConference', () => {
       it('should successfully transfer conference', async () => {
         const mockResponse = {
@@ -1756,6 +1925,5 @@ describe('Task', () => {
         });
       });
     });
-    */
   });
 });

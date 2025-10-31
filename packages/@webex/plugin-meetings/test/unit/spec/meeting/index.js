@@ -15059,4 +15059,53 @@ describe('plugin-meetings', () => {
       );
     });
   });
+
+  describe('#sipCallOut', () => {
+    beforeEach(() => {
+      meeting.meetingRequest.sipCallOut = sinon.stub().returns(Promise.resolve({body: {}}));
+    });
+
+    it('sends the expected request', async () => {
+      const address = 'sip:user@example.com';
+      const displayName = 'John Doe';
+      const meetingId = 'a643beaa47f04eedac08f1310ca12366';
+
+      meeting.meetingInfo = {
+        meetingId,
+      };
+
+      const sipCallOutPromise = meeting.sipCallOut(address, displayName);
+
+      assert.exists(sipCallOutPromise.then);
+      await sipCallOutPromise;
+
+      assert.calledOnceWithExactly(
+        meeting.meetingRequest.sipCallOut,
+        meetingId,
+        meetingId,
+        address,
+        displayName
+      );
+    });
+  });
+
+  describe('#cancelSipCallOut', () => {
+    beforeEach(() => {
+      meeting.meetingRequest.cancelSipCallOut = sinon.stub().returns(Promise.resolve({body: {}}));
+    });
+
+    it('sends the expected request', async () => {
+      const participantId = '12345-abcde';
+
+      const cancelSipCallOutPromise = meeting.cancelSipCallOut(participantId);
+
+      assert.exists(cancelSipCallOutPromise.then);
+      await cancelSipCallOutPromise;
+
+      assert.calledOnceWithExactly(
+        meeting.meetingRequest.cancelSipCallOut,
+        participantId
+      );
+    });
+  });
 });
