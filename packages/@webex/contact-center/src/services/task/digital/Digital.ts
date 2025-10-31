@@ -15,6 +15,18 @@ export default class Digital extends Task implements IDigital {
   }
 
   /**
+   * Updates the task data with new information
+   * @param newData - Updated task data to apply
+   * @param shouldOverwrite - Whether to completely replace existing data
+   * @returns Updated Digital task instance
+   */
+  public updateTaskData(newData: TaskData, shouldOverwrite = false): IDigital {
+    super.updateTaskData(newData, shouldOverwrite);
+
+    return this;
+  }
+
+  /**
    * This is used for incoming digital task accept by agent.
    *
    * @returns Promise<TaskResponse>

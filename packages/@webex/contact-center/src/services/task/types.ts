@@ -1,3 +1,5 @@
+/* eslint-disable import/no-cycle */
+// eslint-disable-next-line import/no-unresolved
 import {CallId} from '@webex/calling/dist/types/common/types';
 import EventEmitter from 'events';
 import {Msg} from '../core/GlobalTypes';
@@ -761,7 +763,122 @@ export type TaskData = {
   reservationInteractionId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
+
+  /**
+   * Current consultation status derived from state machine
+   * Values: CONSULT_INITIATED, CONSULT_ACCEPTED, BEING_CONSULTED,
+   *         BEING_CONSULTED_ACCEPTED, CONNECTED, CONFERENCE, CONSULT_COMPLETED
+   */
+  consultStatus?: string;
+
+  /**
+   * Indicates if consultation is in progress (state machine: CONSULTING)
+   */
+  isConsultInProgress?: boolean;
+
+  /**
+   * Indicates if the task is on hold (state machine: HELD)
+   */
+  isOnHold?: boolean;
+
+  /**
+   * Indicates if customer is currently in the call
+   * Derived from participants in main media
+   */
+  isCustomerInCall?: boolean;
+
+  /**
+   * Count of conference participants (agents only)
+   * Used for determining if max participants reached
+   */
+  conferenceParticipantsCount?: number;
+
+  /**
+   * Indicates if this is a secondary agent (consulted party)
+   */
+  isSecondaryAgent?: boolean;
+
+  /**
+   * Indicates if this is a secondary EP-DN agent (telephony consult to external)
+   */
+  isSecondaryEpDnAgent?: boolean;
+
+  /**
+   * Task state for MPC (Multi-Party Conference) scenarios
+   * Maps participant consultState to task state
+   */
+  mpcState?: string;
 };
+
+/**
+ * Helper class for managing task action control state
+ * Tracks visibility and enabled state for task actions that can be executed
+ * @public
+ */
+export class TaskActionControl {
+  public visible: boolean;
+  private enabled: boolean;
+
+  constructor(visible: boolean, enabled: boolean) {
+    this.visible = visible;
+    this.enabled = enabled;
+  }
+
+  setVisiblity(visible: boolean): void {
+    this.visible = visible;
+  }
+
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+  }
+
+  isVisible(): boolean {
+    return this.visible;
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+}
+
+/**
+ * UI actions configuration for task operations
+ * Maps each available action to its control state
+ * This is used by the UI to determine which actions can be performed
+ * @public
+ */
+export type TaskUIActions = {
+  accept: TaskActionControl;
+  decline: TaskActionControl;
+  hold: TaskActionControl;
+  mute: TaskActionControl;
+  end: TaskActionControl;
+  transfer: TaskActionControl;
+  consult: TaskActionControl;
+  consultTransfer: TaskActionControl;
+  endConsult: TaskActionControl;
+  recording: TaskActionControl;
+  conference: TaskActionControl;
+  wrapup: TaskActionControl;
+  /** NEW: Agent exits from an ongoing conference */
+  exitConference?: TaskActionControl;
+  /** NEW: Transfer entire conference to another destination */
+  transferConference?: TaskActionControl;
+  /** NEW: Merge consultation to conference */
+  mergeToConference?: TaskActionControl;
+};
+
+/**
+ * @deprecated Use TaskActionControl instead
+ * @public
+ */
+export const TaskButtonControl = TaskActionControl;
+
+/**
+ * @deprecated Use TaskUIActions instead
+ * @public
+ */
+export type TaskUIControls = TaskUIActions;
 
 /**
  * Type representing an agent contact message within the contact center system
@@ -1334,3 +1451,58 @@ export interface ITask extends EventEmitter {
    */
   toggleMute(): Promise<void>;
 }
+
+/**
+ * Interface for managing digital channel task operations in the contact center
+ * Digital channels (chat, email, social, SMS) have a simpler interface than voice
+ * Extends ITask but overrides updateTaskData to return IDigital
+ * @public
+ */
+export interface IDigital extends Omit<ITask, 'updateTaskData'> {
+  /**
+   * UI controls configuration
+   */
+  taskUiControls: TaskUIActions;
+
+  /**
+   * Updates the task data
+   * @param newData - Updated task data
+   * @param shouldOverwrite - Whether to completely replace existing data
+   * @returns Updated Digital task instance
+   */
+  updateTaskData(newData: TaskData, shouldOverwrite?: boolean): IDigital;
+}
+
+/**
+ * Interface for managing voice/telephony task operations in the contact center
+ * Extends ITask with voice-specific functionality for hold/resume operations
+ * @public
+ */
+export interface IVoice extends ITask {
+  /**
+   * Toggles hold/resume state for a voice task.
+   * If the task is currently on hold, it will be resumed.
+   * If the task is active, it will be placed on hold.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await voiceTask.holdResume();
+   * ```
+   */
+  holdResume(): Promise<TaskResponse>;
+}
+
+/**
+ * Legacy IOldTask interface for backward compatibility
+ * @deprecated Use ITask, IVoice, or IDigital instead
+ * @ignore
+ */
+export type IOldTask = ITask;
+
+/**
+ * Legacy IWebRTC interface - maintained for backward compatibility
+ * @deprecated
+ * @ignore
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface IWebRTC {}

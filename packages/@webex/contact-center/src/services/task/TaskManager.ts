@@ -124,7 +124,7 @@ export default class TaskManager extends EventEmitter {
             if (!task) {
               // Re-create task if it does not exist
               // This can happen when the task is created after the event is received (multi session)
-              TaskFactory.createTask(
+              task = TaskFactory.createTask(
                 this.contact,
                 this.webCallingService,
                 {...payload.data, isConsulted: false},
@@ -137,7 +137,7 @@ export default class TaskManager extends EventEmitter {
             break;
 
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            TaskFactory.createTask(
+            task = TaskFactory.createTask(
               this.contact,
               this.webCallingService,
               {...payload.data, isConsulted: false},

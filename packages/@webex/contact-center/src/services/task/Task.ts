@@ -1,5 +1,6 @@
 import {EventEmitter} from 'events';
 import {CallId} from '@webex/calling/dist/types/common/types';
+import {interpret, Interpreter} from 'xstate';
 import {
   ITask,
   TaskData,
@@ -8,7 +9,7 @@ import {
   TaskId,
   TransferPayLoad,
   TaskButtonControl,
-  TaskUIControls,
+  TaskUIActions,
   DESTINATION_TYPE,
 } from './types';
 import {CC_FILE} from '../../constants';
@@ -17,13 +18,27 @@ import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import LoggerProxy from '../../logger-proxy';
+import {
+  createTaskStateMachineWithActions,
+  createActionsWithCallbacks,
+  TaskEvent,
+  TaskState,
+  TaskContext,
+  TaskEventPayload,
+  type ActionCallbacks,
+  guards,
+} from './state-machine';
+import AutoWrapup from './AutoWrapup';
 
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
   protected metricsManager: MetricsManager;
+  protected stateMachineService?: Interpreter<TaskContext, any, TaskEventPayload>;
   public data: TaskData;
   public webCallMap: Record<TaskId, CallId>;
-  public taskUiControls: TaskUIControls;
+  public taskUiControls: TaskUIActions;
+  private ronaTimerId?: NodeJS.Timeout;
+  private autoWrapupTimerId?: NodeJS.Timeout;
 
   constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
     super();
@@ -32,6 +47,264 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
     this.initialiseUIControls();
+    this.initializeStateMachine();
+  }
+
+  // Properties from ITask interface
+  public autoWrapup?: AutoWrapup;
+
+  // Abstract method that all child classes must implement
+  public abstract accept(): Promise<TaskResponse>;
+
+  // Voice-specific methods with default implementations that throw errors
+  // Voice class will override these with actual implementations
+  public async decline(): Promise<TaskResponse> {
+    this.unsupportedMethodError('decline');
+
+    return Promise.reject(new Error('decline not supported for this channel type'));
+  }
+
+  public async pauseRecording(): Promise<TaskResponse> {
+    this.unsupportedMethodError('pauseRecording');
+
+    return Promise.reject(new Error('pauseRecording not supported for this channel type'));
+  }
+
+  public async resumeRecording(): Promise<TaskResponse> {
+    this.unsupportedMethodError('resumeRecording');
+
+    return Promise.reject(new Error('resumeRecording not supported for this channel type'));
+  }
+
+  public async consult(): Promise<TaskResponse> {
+    this.unsupportedMethodError('consult');
+
+    return Promise.reject(new Error('consult not supported for this channel type'));
+  }
+
+  public async endConsult(): Promise<TaskResponse> {
+    this.unsupportedMethodError('endConsult');
+
+    return Promise.reject(new Error('endConsult not supported for this channel type'));
+  }
+
+  public async consultTransfer(): Promise<TaskResponse> {
+    this.unsupportedMethodError('consultTransfer');
+
+    return Promise.reject(new Error('consultTransfer not supported for this channel type'));
+  }
+
+  public async consultConference(): Promise<TaskResponse> {
+    this.unsupportedMethodError('consultConference');
+
+    return Promise.reject(new Error('consultConference not supported for this channel type'));
+  }
+
+  public async exitConference(): Promise<TaskResponse> {
+    this.unsupportedMethodError('exitConference');
+
+    return Promise.reject(new Error('exitConference not supported for this channel type'));
+  }
+
+  public async transferConference(): Promise<TaskResponse> {
+    this.unsupportedMethodError('transferConference');
+
+    return Promise.reject(new Error('transferConference not supported for this channel type'));
+  }
+
+  public async toggleMute(): Promise<void> {
+    this.unsupportedMethodError('toggleMute');
+
+    return Promise.reject(new Error('toggleMute not supported for this channel type'));
+  }
+
+  // Utility methods with default implementations
+  public cancelAutoWrapupTimer(): void {
+    // Default implementation - child classes can override
+    if (this.autoWrapupTimerId) {
+      clearTimeout(this.autoWrapupTimerId);
+      this.autoWrapupTimerId = undefined;
+    }
+  }
+
+  public unregisterWebCallListeners(): void {
+    // Default implementation - child classes can override
+    LoggerProxy.log('unregisterWebCallListeners called', {
+      module: CC_FILE,
+      method: 'unregisterWebCallListeners',
+    });
+  }
+
+  // Voice tasks use holdResume(), but provide separate methods for interface compliance
+  public async hold(): Promise<TaskResponse> {
+    throw new Error('hold() not implemented. Use holdResume() for voice tasks.');
+  }
+
+  public async resume(): Promise<TaskResponse> {
+    throw new Error('resume() not implemented. Use holdResume() for voice tasks.');
+  }
+
+  /**
+   * Initialize the state machine with custom action callbacks
+   */
+  private initializeStateMachine(): void {
+    const callbacks: ActionCallbacks = {
+      onTaskIncoming: (taskData) => {
+        LoggerProxy.log('State machine: Task incoming', {
+          module: CC_FILE,
+          method: 'onTaskIncoming',
+          interactionId: taskData.interactionId,
+        });
+      },
+      onTaskAssigned: (taskData) => {
+        LoggerProxy.log('State machine: Task assigned', {
+          module: CC_FILE,
+          method: 'onTaskAssigned',
+          interactionId: taskData.interactionId,
+        });
+      },
+      onStartRonaTimer: (timeout) => {
+        this.startRonaTimer(timeout);
+
+        return null;
+      },
+      onStopRonaTimer: () => {
+        this.stopRonaTimer();
+      },
+      onStartAutoWrapupTimer: (timeout) => {
+        this.startAutoWrapupTimer(timeout);
+
+        return null;
+      },
+      onStopAutoWrapupTimer: () => {
+        this.stopAutoWrapupTimer();
+      },
+      onCleanupResources: () => {
+        this.cleanupResources();
+      },
+    };
+
+    const customActions = createActionsWithCallbacks(callbacks);
+    const machine = createTaskStateMachineWithActions(customActions);
+
+    this.stateMachineService = interpret(machine)
+      .onTransition(() => {
+        LoggerProxy.log('State machine transition', {
+          module: CC_FILE,
+          method: 'onTransition',
+        });
+
+        // Compute derived properties after state transition
+        const agentId = this.data.agentId;
+        if (agentId) {
+          this.computeDerivedProperties(agentId);
+        }
+
+        // Update UI controls based on current state
+        this.updateUIControlsFromState();
+      })
+      .start();
+  }
+
+  /**
+   * Send an event to the state machine
+   */
+  protected sendStateMachineEvent(event: TaskEventPayload): void {
+    if (this.stateMachineService) {
+      this.stateMachineService.send(event);
+    }
+  }
+
+  /**
+   * Get the current state machine state
+   */
+  protected getCurrentState(): TaskState | undefined {
+    return this.stateMachineService?.state?.value as TaskState;
+  }
+
+  /**
+   * Update UI controls based on the current state machine state
+   * Child classes should override this to provide specific UI control logic
+   */
+  protected updateUIControlsFromState(): void {
+    // Default implementation - child classes should override
+    LoggerProxy.log('Updating UI controls from state', {
+      module: CC_FILE,
+      method: 'updateUIControlsFromState',
+    });
+  }
+
+  /**
+   * Start RONA (Ring on No Answer) timer
+   */
+  private startRonaTimer(timeout: number): void {
+    this.stopRonaTimer();
+    this.ronaTimerId = setTimeout(() => {
+      LoggerProxy.warn('RONA timeout reached', {
+        module: CC_FILE,
+        method: 'startRonaTimer',
+        interactionId: this.data.interactionId,
+      });
+      this.sendStateMachineEvent({type: TaskEvent.RONA});
+    }, timeout);
+  }
+
+  /**
+   * Stop RONA timer
+   */
+  private stopRonaTimer(): void {
+    if (this.ronaTimerId) {
+      clearTimeout(this.ronaTimerId);
+      this.ronaTimerId = undefined;
+    }
+  }
+
+  /**
+   * Start auto-wrapup timer
+   */
+  private startAutoWrapupTimer(timeout: number): void {
+    this.stopAutoWrapupTimer();
+    this.autoWrapupTimerId = setTimeout(() => {
+      LoggerProxy.log('Auto-wrapup timeout reached', {
+        module: CC_FILE,
+        method: 'startAutoWrapupTimer',
+        interactionId: this.data.interactionId,
+      });
+      this.sendStateMachineEvent({type: TaskEvent.AUTO_WRAPUP});
+    }, timeout);
+  }
+
+  /**
+   * Stop auto-wrapup timer
+   */
+  private stopAutoWrapupTimer(): void {
+    if (this.autoWrapupTimerId) {
+      clearTimeout(this.autoWrapupTimerId);
+      this.autoWrapupTimerId = undefined;
+    }
+  }
+
+  /**
+   * Cleanup task resources (WebRTC, timers, etc.)
+   */
+  private cleanupResources(): void {
+    this.stopRonaTimer();
+    this.stopAutoWrapupTimer();
+    LoggerProxy.log('Cleaning up task resources', {
+      module: CC_FILE,
+      method: 'cleanupResources',
+      interactionId: this.data.interactionId,
+    });
+  }
+
+  /**
+   * Stop the state machine service
+   */
+  protected stopStateMachine(): void {
+    if (this.stateMachineService) {
+      this.stateMachineService.stop();
+      this.stateMachineService = undefined;
+    }
   }
 
   private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
@@ -98,6 +371,150 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   /**
+   * Compute derived properties from state machine context
+   * Called whenever task data is updated or state transitions occur
+   */
+  protected computeDerivedProperties(agentId: string): void {
+    const context = this.stateMachineService?.state?.context;
+    if (!context) return;
+
+    try {
+      // Compute consultStatus
+      this.data.consultStatus = this.getConsultStatusFromContext(context, agentId);
+
+      // Compute isConsultInProgress
+      this.data.isConsultInProgress = guards.isConsulting(context);
+
+      // Compute isOnHold
+      this.data.isOnHold = guards.isHeld(context);
+
+      // Compute isConferenceInProgress (already exists but ensure consistency)
+      this.data.isConferenceInProgress =
+        guards.isConferencing(context) && context.participants.length >= 2;
+
+      // Compute isCustomerInCall
+      this.data.isCustomerInCall = this.checkCustomerInCall();
+
+      // Compute conferenceParticipantsCount
+      this.data.conferenceParticipantsCount = context.participants.length;
+
+      // Compute isSecondaryAgent
+      this.data.isSecondaryAgent = this.checkIsSecondaryAgent();
+
+      // Compute isSecondaryEpDnAgent
+      this.data.isSecondaryEpDnAgent =
+        this.data.interaction.mediaType === 'telephony' && this.data.isSecondaryAgent;
+
+      // Compute mpcState
+      this.data.mpcState = this.getMPCState(agentId);
+    } catch (error) {
+      LoggerProxy.error('Error computing derived properties', {
+        module: CC_FILE,
+        method: 'computeDerivedProperties',
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get consultation status from state machine context
+   */
+  private getConsultStatusFromContext(context: TaskContext, agentId: string): string {
+    const state = context.currentState;
+    const participants = this.data.interaction?.participants || {};
+    const participant: any = Object.values(participants).find(
+      (p: any) => p.pType === 'Agent' && p.id === agentId
+    );
+
+    if (state === TaskState.CONSULT_INITIATED) {
+      return participant?.isConsulted ? 'BEING_CONSULTED' : 'CONSULT_INITIATED';
+    }
+    if (state === TaskState.CONSULTING) {
+      return participant?.isConsulted ? 'BEING_CONSULTED_ACCEPTED' : 'CONSULT_ACCEPTED';
+    }
+    if (state === TaskState.CONNECTED) {
+      return 'CONNECTED';
+    }
+    if (state === TaskState.CONFERENCING) {
+      return 'CONFERENCE';
+    }
+    if (state === TaskState.CONSULT_COMPLETED) {
+      return 'CONSULT_COMPLETED';
+    }
+
+    return 'NO_CONSULTATION_IN_PROGRESS';
+  }
+
+  /**
+   * Check if customer is in call
+   */
+  private checkCustomerInCall(): boolean {
+    if (!this.data?.interaction?.media || !this.data?.interactionId) {
+      return false;
+    }
+
+    const mediaMainCall = this.data.interaction.media[this.data.interactionId];
+    const participantsInMainCall = new Set(mediaMainCall?.participants);
+    const participants = this.data.interaction?.participants;
+
+    if (participantsInMainCall.size > 0 && participants) {
+      return Array.from(participantsInMainCall).some((participantId: string) => {
+        const participant = participants[participantId];
+
+        return participant && participant.pType === 'CUSTOMER' && !participant.hasLeft;
+      });
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if this is a secondary agent (consulted party)
+   */
+  private checkIsSecondaryAgent(): boolean {
+    const interaction = this.data.interaction;
+
+    return (
+      !!interaction.callProcessingDetails &&
+      interaction.callProcessingDetails.relationshipType === 'CONSULT' &&
+      !!interaction.callProcessingDetails.parentInteractionId &&
+      interaction.callProcessingDetails.parentInteractionId !== interaction.interactionId
+    );
+  }
+
+  /**
+   * Get MPC state based on participant consultState
+   */
+  private getMPCState(agentId: string): string {
+    const interaction = this.data.interaction;
+    const currentState = this.getCurrentState();
+
+    if (
+      !this.data.consultMediaResourceId ||
+      !interaction.participants[agentId]?.consultState ||
+      currentState === TaskState.WRAPPING_UP ||
+      currentState === TaskState.POST_CALL
+    ) {
+      return interaction?.state || (currentState as string);
+    }
+
+    const consultState = interaction.participants[agentId]?.consultState;
+
+    switch (consultState) {
+      case 'INITIATED':
+        return TaskState.CONSULT_INITIATED;
+      case 'COMPLETED':
+        return currentState === TaskState.CONNECTED
+          ? TaskState.CONNECTED
+          : TaskState.CONSULT_COMPLETED;
+      case 'CONFERENCING':
+        return TaskState.CONFERENCING;
+      default:
+        return TaskState.CONSULTING;
+    }
+  }
+
+  /**
    * This method is used to update the task data.
    * @param updatedData - TaskData
    * @param shouldOverwrite - boolean
@@ -107,12 +524,19 @@ export default abstract class Task extends EventEmitter implements ITask {
    * task.updateTaskData(updatedData, true);
    * ```
    */
-  public updateTaskData(updatedData: TaskData, shouldOverwrite = false) {
+  public updateTaskData(updatedData: TaskData, shouldOverwrite = false): ITask {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
-    this.setUIControls();
-  }
 
-  public abstract accept(): Promise<TaskResponse>;
+    // Compute derived properties from state machine
+    const agentId = this.data.agentId;
+    if (agentId) {
+      this.computeDerivedProperties(agentId);
+    }
+
+    this.setUIControls();
+
+    return this;
+  }
 
   /**
    * This is used to blind transfer or vTeam transfer the task

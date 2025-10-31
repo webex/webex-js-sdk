@@ -420,7 +420,7 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async resumeRecording(
-    resumeRecordingPayload: ResumeRecordingPayload
+    resumeRecordingPayload?: ResumeRecordingPayload
   ): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Resuming recording`, {
@@ -483,7 +483,7 @@ export default class Voice extends Task implements IVoice {
    * task.consult(consultPayload).then(()=>{}).catch(()=>{});
    * ```
    * */
-  public async consult(consultPayload: ConsultPayload): Promise<TaskResponse> {
+  public async consult(consultPayload?: ConsultPayload): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Starting consult`, {
         module: CC_FILE,
@@ -547,7 +547,7 @@ export default class Voice extends Task implements IVoice {
    * });
    * ```
    */
-  public async endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse> {
+  public async endConsult(consultEndPayload?: ConsultEndPayload): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Ending consult`, {
         module: CC_FILE,
@@ -682,5 +682,107 @@ export default class Voice extends Task implements IVoice {
       );
       throw detailedError;
     }
+  }
+
+  /**
+   * Performs a consult transfer
+   * @param consultTransferPayload - Optional payload for consult transfer
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   */
+  public async consultTransfer(
+    consultTransferPayload?: ConsultTransferPayLoad
+  ): Promise<TaskResponse> {
+    try {
+      LoggerProxy.info('Performing consult transfer', {
+        module: CC_FILE,
+        method: METHODS.CONSULT_TRANSFER,
+        interactionId: this.data.interactionId,
+      });
+
+      let payload: ConsultTransferPayLoad;
+      if (consultTransferPayload) {
+        payload = consultTransferPayload;
+      } else if (this.data.destAgentId) {
+        payload = {
+          to: this.data.destAgentId,
+          destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+        };
+      } else {
+        throw new Error('No destination specified for consult transfer');
+      }
+
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+      ]);
+
+      const result = await this.contact.consultTransfer({
+        interactionId: this.data.interactionId,
+        data: payload,
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          destination: payload.to,
+          destinationType: payload.destinationType,
+          isConsultTransfer: true,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      return result;
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT_TRANSFER, CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Initiates a consult conference (merge consult call with main call)
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   */
+  public async consultConference(): Promise<TaskResponse> {
+    super.unsupportedMethodError(METHODS.CONSULT_CONFERENCE);
+  }
+
+  /**
+   * Exits from an ongoing conference
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   */
+  public async exitConference(): Promise<TaskResponse> {
+    super.unsupportedMethodError(METHODS.EXIT_CONFERENCE);
+  }
+
+  /**
+   * Transfers the conference to another participant
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   */
+  public async transferConference(): Promise<TaskResponse> {
+    super.unsupportedMethodError(METHODS.TRANSFER_CONFERENCE);
+  }
+
+  /**
+   * Toggles mute/unmute for the local audio stream during a WebRTC task
+   * @returns Promise<void>
+   * @throws Error
+   */
+  public async toggleMute(): Promise<void> {
+    super.unsupportedMethodError(METHODS.TOGGLE_MUTE);
   }
 }
