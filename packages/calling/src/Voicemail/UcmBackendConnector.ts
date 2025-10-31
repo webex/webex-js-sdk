@@ -1,7 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable valid-jsdoc */
 /* eslint-disable @typescript-eslint/no-shadow */
-import ExtendedError from '../Errors/catalog/ExtendedError';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
@@ -186,9 +185,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to get voicemail list: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
-
+      log.error(`Failed to get voicemail list: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
@@ -219,8 +216,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return response as VoicemailResponseEvent;
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to get voicemail content: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to get voicemail content: ${JSON.stringify(err)}`, loggerContext);
 
       await uploadLogs();
 
@@ -371,8 +367,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to mark voicemail as read: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to mark voicemail as read: ${JSON.stringify(err)}`, loggerContext);
 
       await uploadLogs();
 
@@ -419,10 +414,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(
-        `Failed to mark voicemail as unread: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to mark voicemail as unread: ${JSON.stringify(err)}`, loggerContext);
 
       await uploadLogs();
 
@@ -466,8 +458,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to delete voicemail: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to delete voicemail: ${JSON.stringify(err)}`, loggerContext);
 
       await uploadLogs();
 

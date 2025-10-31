@@ -164,7 +164,7 @@ export class Registration implements IRegistration {
         },
       });
     } catch (error) {
-      log.warn(`Delete failed with Mobius ${error}`, {
+      log.warn(`Delete failed with Mobius: ${JSON.stringify(error)}`, {
         file: REGISTRATION_FILE,
         method: METHODS.DELETE_REGISTRATION,
       });
@@ -407,10 +407,13 @@ export class Registration implements IRegistration {
           break;
         }
       } catch (error) {
-        log.warn(`Ping failed for primary Mobius: ${mobiusUrl} with error: ${error}`, {
-          file: REGISTRATION_FILE,
-          method: FAILBACK_UTIL,
-        });
+        log.warn(
+          `Ping failed for primary Mobius: ${mobiusUrl} with error: ${JSON.stringify(error)}`,
+          {
+            file: REGISTRATION_FILE,
+            method: FAILBACK_UTIL,
+          }
+        );
         status = 'down';
       }
     }
@@ -918,7 +921,7 @@ export class Registration implements IRegistration {
         method: METHODS.DEREGISTER,
       });
     } catch (err) {
-      log.warn(`Delete failed with Mobius: ${err}`, {
+      log.warn(`Delete failed with Mobius: ${JSON.stringify(err)}`, {
         file: REGISTRATION_FILE,
         method: METHODS.DEREGISTER,
       });
