@@ -48,11 +48,11 @@ const messageHandler = (event: MessageEvent) => {
           keepAliveRetryCount = 0;
         } catch (err: any) {
           const headers = {} as Record<string, string>;
-          if (err.headers.has('Retry-After')) {
+          if (err.headers?.has('Retry-After')) {
             headers['retry-after'] = err.headers.get('Retry-After');
           }
 
-          if (err.headers.has('Trackingid')) {
+          if (err.headers?.has('Trackingid')) {
             // eslint-disable-next-line dot-notation
             headers['trackingid'] = err.headers.get('Trackingid');
           }
