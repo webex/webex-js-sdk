@@ -112,7 +112,7 @@ export default class TaskManager extends EventEmitter {
           interactionId: payload.data?.interactionId,
         });
         switch (payload.data.type) {
-          case CC_EVENTS.AGENT_CONTACT:
+          case CC_EVENTS.AGENT_CONTACT: {
             // Case1 : Task is already present in taskCollection
             if (this.taskCollection[payload.data.interactionId]) {
               LoggerProxy.log(`Got AGENT_CONTACT: Task already exists in collection`, {
@@ -128,6 +128,12 @@ export default class TaskManager extends EventEmitter {
                 method: METHODS.REGISTER_TASK_LISTENERS,
                 interactionId: payload.data.interactionId,
               });
+
+              // Pre-calculate isConferenceInProgress for the initial task data
+              const simulatedTaskForAgentContact = {
+                data: {...payload.data},
+              } as ITask;
+
               task = new Task(
                 this.contact,
                 this.webCallingService,
@@ -135,6 +141,7 @@ export default class TaskManager extends EventEmitter {
                   ...payload.data,
                   wrapUpRequired:
                     payload.data.interaction?.participants?.[this.agentId]?.isWrapUp || false,
+                  isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForAgentContact),
                 },
                 this.wrapupData,
                 this.agentId
@@ -165,6 +172,7 @@ export default class TaskManager extends EventEmitter {
               }
             }
             break;
+          }
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
             task = new Task(
               this.contact,
