@@ -700,6 +700,16 @@ async function initiateConsultTransfer() {
   }
 }
 
+function toggleTransferOptions() {
+  const transferOptions = document.getElementById('transfer-options');
+  if (transferOptions.style.display === 'none') {
+    transferOptions.style.display = 'block';
+    onTransferTypeSelectionChanged(); // To load the default destination type view
+  } else {
+    transferOptions.style.display = 'none';
+  }
+}
+
 // Function to end consult
 async function endConsult() {
   const taskId = currentTask.data?.interactionId;
@@ -2306,4 +2316,3 @@ updateLoginOptionElm.addEventListener('change', updateApplyButtonState);
 updateDialNumberElm.addEventListener('input', updateApplyButtonState);
 
 updateApplyButtonState();
-

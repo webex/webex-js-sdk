@@ -1,0 +1,318 @@
+/**
+ * Task State Machine Guards
+ *
+ * Guard functions that determine if a state transition is allowed.
+ * These functions validate the current context before allowing transitions.
+ *
+ * NOTE: Guards currently only use context parameter. TaskEventPayload is imported
+ * for future use if guards need to inspect event data for more complex validations.
+ * TODO: If guards need event data in the future, add event parameter back to guard signatures.
+ */
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import {TaskContext, TaskState, TaskEventPayload} from './types';
+
+/**
+ * Guard functions for state machine transitions
+ */
+export const guards = {
+  /**
+   * Can accept if in OFFERED or OFFERED_CONSULT state
+   */
+  canAccept: (context: TaskContext): boolean => {
+    return (
+      context.currentState === TaskState.OFFERED ||
+      context.currentState === TaskState.OFFERED_CONSULT
+    );
+  },
+
+  /**
+   * Can only hold if connected and not already on hold
+   */
+  canHold: (context: TaskContext): boolean => {
+    if (context.currentState !== TaskState.CONNECTED) {
+      return false;
+    }
+
+    // Check if already on hold
+    if (context.isHold) {
+      return false;
+    }
+
+    return true;
+  },
+
+  /**
+   * Can only resume if currently held
+   */
+  canResume: (context: TaskContext): boolean => {
+    if (context.currentState !== TaskState.HELD) {
+      return false;
+    }
+
+    // Must be on hold to resume
+    if (!context.isHold) {
+      return false;
+    }
+
+    return true;
+  },
+
+  /**
+   * Can only consult if not already in consult/conference
+   */
+  canConsult: (context: TaskContext): boolean => {
+    // Must be in CONNECTED or HELD state
+    if (context.currentState !== TaskState.CONNECTED && context.currentState !== TaskState.HELD) {
+      return false;
+    }
+
+    // Cannot consult if already in conference
+    if (context.isConferencing) {
+      return false;
+    }
+
+    return true;
+  },
+
+  /**
+   * Can only start conference if consult destination agent has joined
+   */
+  canStartConference: (context: TaskContext): boolean => {
+    if (context.currentState !== TaskState.CONSULTING) {
+      return false;
+    }
+
+    // Destination agent must have joined
+    if (!context.consultDestinationAgentJoined) {
+      return false;
+    }
+
+    return true;
+  },
+
+  /**
+   * Can only transfer if not in certain states
+   */
+  canTransfer: (context: TaskContext): boolean => {
+    // Can transfer from CONNECTED, HELD, or CONSULTING
+    return (
+      context.currentState === TaskState.CONNECTED ||
+      context.currentState === TaskState.HELD ||
+      context.currentState === TaskState.CONSULTING
+    );
+  },
+
+  /**
+   * Can only exit conference if actually in conference
+   */
+  canExitConference: (context: TaskContext): boolean => {
+    return context.currentState === TaskState.CONFERENCING;
+  },
+
+  /**
+   * Can only wrapup if in WRAPPING_UP state
+   */
+  canWrapup: (context: TaskContext): boolean => {
+    return context.currentState === TaskState.WRAPPING_UP;
+  },
+
+  /**
+   * Check if current task is from a consult offer
+   */
+  isConsulted: (context: TaskContext): boolean => {
+    return context.isConsulted;
+  },
+
+  /**
+   * Check if conference is ending (less than 2 participants)
+   */
+  isConferenceEnding: (context: TaskContext): boolean => {
+    if (context.currentState !== TaskState.CONFERENCING) {
+      return false;
+    }
+
+    // Conference ends when fewer than 2 participants remain
+    return context.participants.length < 2;
+  },
+
+  /**
+   * Can merge consult to conference if in CONSULTING state and destination agent has joined
+   */
+  canMergeConsultToConference: (context: TaskContext): boolean => {
+    return (
+      context.currentState === TaskState.CONSULTING &&
+      context.consultDestinationAgentJoined &&
+      !context.isConferencing &&
+      context.conferenceParticipants.length === 0
+    );
+  },
+
+  /**
+   * Can add participant to conference if in CONFERENCING state and not at max capacity
+   */
+  canAddToConference: (context: TaskContext): boolean => {
+    return (
+      context.isConferencing &&
+      context.conferenceParticipants.length < context.maxConferenceParticipants &&
+      context.currentState === TaskState.CONFERENCING
+    );
+  },
+
+  /**
+   * Can transfer conference if initiator and in CONFERENCING state
+   * Note: event parameter would be needed to check agentId, but keeping signature consistent
+   */
+  canTransferConference: (context: TaskContext): boolean => {
+    if (context.currentState !== TaskState.CONFERENCING) {
+      return false;
+    }
+
+    // In future, we'd check if the requesting agent is the initiator via event data
+    // For now, check if there's an initiator set
+    return context.conferenceInitiatorId !== null;
+  },
+
+  /**
+   * Should end conference if fewer than 2 agents remain
+   */
+  shouldEndConference: (context: TaskContext): boolean => {
+    const agentCount = context.conferenceParticipants.filter((p) => p.type === 'AGENT').length;
+
+    return agentCount < 2;
+  },
+
+  /**
+   * Check if recording is active
+   */
+  recordingActive: (context: TaskContext): boolean => {
+    return context.recordingActive && !context.recordingPaused;
+  },
+
+  /**
+   * Check if recording is paused
+   */
+  recordingPaused: (context: TaskContext): boolean => {
+    return context.recordingActive && context.recordingPaused;
+  },
+
+  /**
+   * Check if wrapup is required
+   */
+  wrapupRequired: (context: TaskContext): boolean => {
+    return context.wrapUpRequired;
+  },
+
+  /**
+   * Check if in connected state
+   */
+  isConnected: (context: TaskContext): boolean => {
+    return context.currentState === TaskState.CONNECTED;
+  },
+
+  /**
+   * Check if in held state
+   */
+  isHeld: (context: TaskContext): boolean => {
+    return context.currentState === TaskState.HELD;
+  },
+
+  /**
+   * Check if in consulting state
+   */
+  isConsulting: (context: TaskContext): boolean => {
+    return context.currentState === TaskState.CONSULTING;
+  },
+
+  /**
+   * Check if in conferencing state
+   */
+  isConferencing: (context: TaskContext): boolean => {
+    return context.currentState === TaskState.CONFERENCING;
+  },
+
+  /**
+   * Check if user is consult initiator
+   */
+  isConsultInitiator: (context: TaskContext): boolean => {
+    return context.consultInitiator;
+  },
+
+  /**
+   * Check if interaction state is 'new' (for CONTACT_ENDED event)
+   */
+  isInteractionStateNew: (context: TaskContext): boolean => {
+    if (!context.taskData || !context.taskData.interaction) {
+      return false;
+    }
+
+    return context.taskData.interaction.state === 'new';
+  },
+};
+
+/**
+ * Helper function to check if operation is allowed in current state
+ * This can be used from outside the state machine
+ */
+export function canPerformOperation(context: TaskContext, operation: keyof typeof guards): boolean {
+  const guard = guards[operation];
+  if (!guard) {
+    return false;
+  }
+
+  return guard(context);
+}
+
+/**
+ * Validate state transition
+ * Returns true if transition from current state to target state is valid
+ */
+export function isValidTransition(currentState: TaskState, targetState: TaskState): boolean {
+  // Define valid transitions matrix
+  const validTransitions: Record<TaskState, TaskState[]> = {
+    [TaskState.IDLE]: [TaskState.OFFERED, TaskState.OFFERED_CONSULT],
+    [TaskState.OFFERED]: [TaskState.CONNECTED, TaskState.TERMINATED],
+    [TaskState.OFFERED_CONSULT]: [TaskState.CONSULTING, TaskState.TERMINATED],
+    [TaskState.CONNECTED]: [
+      TaskState.HELD,
+      TaskState.CONSULTING,
+      TaskState.WRAPPING_UP,
+      TaskState.TERMINATED,
+      TaskState.CONSULT_INITIATED, // NOT IMPLEMENTED: MPC state
+    ],
+    [TaskState.HELD]: [TaskState.CONNECTED, TaskState.CONSULTING],
+    [TaskState.CONSULTING]: [
+      TaskState.CONNECTED,
+      TaskState.CONFERENCING,
+      TaskState.WRAPPING_UP,
+      TaskState.TERMINATED,
+      TaskState.CONSULT_COMPLETED, // NOT IMPLEMENTED: MPC state
+    ],
+    [TaskState.CONFERENCING]: [
+      TaskState.CONNECTED,
+      TaskState.WRAPPING_UP,
+      TaskState.TERMINATED,
+      TaskState.POST_CALL, // NOT IMPLEMENTED: Post-call state
+    ],
+    [TaskState.WRAPPING_UP]: [TaskState.COMPLETED],
+    [TaskState.COMPLETED]: [],
+    [TaskState.TERMINATED]: [],
+    // NOT IMPLEMENTED: MPC (Multi-Party Conference) states
+    [TaskState.CONSULT_INITIATED]: [
+      TaskState.CONSULTING,
+      TaskState.CONSULT_COMPLETED,
+      TaskState.TERMINATED,
+    ],
+    [TaskState.CONSULT_COMPLETED]: [TaskState.CONNECTED, TaskState.WRAPPING_UP],
+    // NOT IMPLEMENTED: Post-call state
+    [TaskState.POST_CALL]: [TaskState.WRAPPING_UP, TaskState.COMPLETED],
+    // NOT IMPLEMENTED: Parked state
+    [TaskState.PARKED]: [TaskState.CONNECTED, TaskState.TERMINATED],
+    // NOT IMPLEMENTED: Monitoring state
+    [TaskState.MONITORING]: [TaskState.IDLE, TaskState.TERMINATED],
+  };
+
+  const allowedTargets = validTransitions[currentState] || [];
+
+  return allowedTargets.includes(targetState);
+}

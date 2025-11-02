@@ -19,6 +19,7 @@ import {
   isPrimary,
 } from './TaskUtils';
 import WebRTC from './voice/WebRTC';
+import {TaskEvent, type TaskEventPayload} from './state-machine';
 /** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -103,6 +104,137 @@ export default class TaskManager extends EventEmitter {
 
   public unregisterIncomingCallEvent() {
     this.webCallingService.off(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
+  }
+
+  /**
+   * Map WebSocket CC_EVENTS to state machine TaskEvent
+   * @param ccEvent - The CC_EVENT type from WebSocket
+   * @param payload - The event payload
+   * @returns TaskEventPayload for state machine or null if no mapping
+   */
+  private mapWebSocketEventToStateMachineEvent(
+    ccEvent: CC_EVENTS,
+    payload: any
+  ): TaskEventPayload | null {
+    const mediaResourceId =
+      payload.data?.mediaResourceId ||
+      payload.data?.interaction?.media?.[payload.data?.interactionId]?.mediaResourceId;
+
+    switch (ccEvent) {
+      case CC_EVENTS.AGENT_OFFER_CONTACT:
+        return {type: TaskEvent.OFFER, taskData: payload.data};
+
+      case CC_EVENTS.AGENT_OFFER_CONSULT:
+        return {type: TaskEvent.OFFER_CONSULT, taskData: payload.data};
+
+      case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
+        return {type: TaskEvent.ASSIGN, taskData: payload.data};
+
+      case CC_EVENTS.AGENT_CONTACT_HELD:
+        return {type: TaskEvent.HOLD, mediaResourceId: mediaResourceId || ''};
+
+      case CC_EVENTS.AGENT_CONTACT_UNHELD:
+        return {type: TaskEvent.UNHOLD, mediaResourceId: mediaResourceId || ''};
+
+      case CC_EVENTS.AGENT_CONSULT_CREATED:
+        return {type: TaskEvent.CONSULT_CREATED, taskData: payload.data};
+
+      case CC_EVENTS.AGENT_CONSULTING:
+        return {
+          type: TaskEvent.CONSULTING_ACTIVE,
+          consultDestinationAgentJoined: true,
+        };
+
+      case CC_EVENTS.AGENT_CONSULT_ENDED:
+        return {type: TaskEvent.CONSULT_END};
+
+      case CC_EVENTS.AGENT_CONSULT_FAILED:
+        return {type: TaskEvent.CONSULT_FAILED, reason: payload.data?.reason};
+
+      case CC_EVENTS.AGENT_CTQ_CANCELLED:
+        return {type: TaskEvent.CTQ_CANCEL};
+
+      case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
+      case CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED:
+        return {type: TaskEvent.TRANSFER};
+
+      case CC_EVENTS.AGENT_WRAPUP:
+      case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
+        return {type: TaskEvent.WRAPUP_START};
+
+      case CC_EVENTS.CONTACT_ENDED:
+        return {type: TaskEvent.CONTACT_ENDED};
+
+      case CC_EVENTS.AGENT_INVITE_FAILED:
+        return {type: TaskEvent.INVITE_FAILED, reason: payload.data?.reason};
+
+      case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
+        return {type: TaskEvent.RONA};
+
+      case CC_EVENTS.CONTACT_RECORDING_PAUSED:
+        return {type: TaskEvent.PAUSE_RECORDING};
+
+      case CC_EVENTS.CONTACT_RECORDING_RESUMED:
+        return {type: TaskEvent.RESUME_RECORDING};
+
+      case CC_EVENTS.AGENT_CONSULT_CONFERENCING:
+        return {type: TaskEvent.START_CONFERENCE};
+
+      case CC_EVENTS.AGENT_CONSULT_CONFERENCED:
+        return {type: TaskEvent.CONFERENCE_START, participants: []};
+
+      case CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED:
+        return {type: TaskEvent.CONFERENCE_END};
+
+      case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
+        return {
+          type: TaskEvent.PARTICIPANT_JOIN,
+          participant: {
+            id: payload.data?.participantId || '',
+            type: 'AGENT',
+            joinedAt: new Date(),
+            isInitiator: false,
+            canBeRemoved: true,
+          },
+        };
+
+      case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
+        return {
+          type: TaskEvent.PARTICIPANT_LEAVE,
+          participantId: payload.data?.participantId || '',
+        };
+
+      default:
+        // Not all events need state machine mapping
+        return null;
+    }
+  }
+
+  /**
+   * Send WebSocket event to state machine if task exists
+   * @param ccEvent - The CC_EVENT type
+   * @param payload - The event payload
+   * @param task - The task instance
+   */
+  private sendEventToStateMachine(ccEvent: CC_EVENTS, payload: any, task?: ITask): void {
+    // Check if task has state machine (will be added in Task interface)
+    const taskWithStateMachine = task as any;
+    if (!taskWithStateMachine?.stateMachine) {
+      return;
+    }
+
+    const stateMachineEvent = this.mapWebSocketEventToStateMachineEvent(ccEvent, payload);
+
+    if (stateMachineEvent) {
+      LoggerProxy.log(`Sending event to state machine: ${ccEvent} -> ${stateMachineEvent.type}`, {
+        module: TASK_MANAGER_FILE,
+        method: 'sendEventToStateMachine',
+        interactionId: payload.data?.interactionId,
+      });
+
+      // Send event to task's state machine
+      taskWithStateMachine.stateMachine.send(stateMachineEvent);
+    }
   }
 
   private registerTaskListeners() {
@@ -410,8 +542,14 @@ export default class TaskManager extends EventEmitter {
           default:
             break;
         }
+
+        // Send all events to state machine after processing
+        // Task may have been created in AGENT_CONTACT or AGENT_CONTACT_RESERVED cases
         if (task) {
           task.emit(payload.data.type, payload.data);
+
+          // Send event to state machine for all events
+          this.sendEventToStateMachine(payload.data.type, payload, task);
         }
       }
     });

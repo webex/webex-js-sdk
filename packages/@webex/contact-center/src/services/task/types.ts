@@ -2,8 +2,10 @@
 // eslint-disable-next-line import/no-unresolved
 import {CallId} from '@webex/calling/dist/types/common/types';
 import EventEmitter from 'events';
+import {Interpreter} from 'xstate';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
+import {TaskContext, TaskEventPayload} from './state-machine/types';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -1254,6 +1256,21 @@ export interface ITask extends EventEmitter {
    * as defined in {@link AutoWrapup}
    */
   autoWrapup?: AutoWrapup;
+
+  /**
+   * State machine instance for managing task state transitions and derived properties.
+   * The state machine handles:
+   * - State transitions (IDLE → OFFERED → CONNECTED → HELD, etc.)
+   * - Derived properties (canHold, canResume, isConsulted, etc.)
+   * - Action availability based on current state
+   *
+   * This is part of the migration from manual state management to centralized state machine.
+   * During the transition period, both the old setUIControls() and state machine coexist.
+   *
+   * @see createTaskStateMachine
+   * @internal
+   */
+  stateMachine?: Interpreter<TaskContext, any, TaskEventPayload>;
 
   /**
    * Cancels the auto-wrapup timer for the task.

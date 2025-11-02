@@ -13,14 +13,38 @@ import {
   CONSULT_TRANSFER_DESTINATION_TYPE,
 } from '../types';
 import Task from '../Task';
-import {CC_EVENTS} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
+import {TaskState, guards, TaskEvent} from '../state-machine';
 
 export default class Voice extends Task implements IVoice {
   private isEndCallEnabled: boolean;
   private isEndConsultEnabled: boolean;
+
+  /**
+   * UI Control state constants for better readability.
+   * These represent [visibility, enabled] tuples used by updateTaskUiControls().
+   *
+   * @example
+   * // Button is shown and clickable
+   * this.updateTaskUiControls({ accept: Voice.VISIBLE_ENABLED });
+   *
+   * // Button is shown but grayed out/disabled
+   * this.updateTaskUiControls({ transfer: Voice.VISIBLE_DISABLED });
+   *
+   * // Button is not displayed at all
+   * this.updateTaskUiControls({ consult: Voice.HIDDEN });
+   */
+
+  /** Button is visible and enabled (clickable) - [true, true] */
+  private static readonly VISIBLE_ENABLED = [true, true] as [boolean, boolean];
+
+  /** Button is visible but disabled (grayed out) - [true, false] */
+  private static readonly VISIBLE_DISABLED = [true, false] as [boolean, boolean];
+
+  /** Button is hidden (not displayed) - [false, false] */
+  private static readonly HIDDEN = [false, false] as [boolean, boolean];
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -33,6 +57,66 @@ export default class Voice extends Task implements IVoice {
     this.isEndConsultEnabled = callOptions.isEndConsultEnabled ?? true;
   }
 
+  /**
+   * Helper method to create UI control state based on visibility and enabled status.
+   * Returns [visibility, enabled] tuple for use with updateTaskUiControls().
+   *
+   * @param visible - Whether the button should be displayed
+   * @param enabled - Whether the button should be clickable (only applies if visible)
+   * @returns Tuple of [visibility, enabled] booleans
+   *
+   * @example
+   * // Dynamic control based on state
+   * this.updateTaskUiControls({
+   *   hold: this.uiControl(true, this.canPerformOperation('hold')),
+   *   end: this.uiControl(this.isEndCallEnabled, this.isEndCallEnabled)
+   * });
+   */
+  private uiControl(visible: boolean, enabled: boolean): [boolean, boolean] {
+    if (!visible) return Voice.HIDDEN;
+
+    return enabled ? Voice.VISIBLE_ENABLED : Voice.VISIBLE_DISABLED;
+  }
+
+  /**
+   * Helper method to check if an operation is allowed in the current state
+   */
+  private canPerformOperation(operation: string): boolean {
+    const context = this.stateMachineService?.state?.context;
+    if (!context) {
+      return false;
+    }
+
+    switch (operation) {
+      case 'hold':
+        return guards.canHold(context);
+      case 'resume':
+        return guards.canResume(context);
+      case 'consult':
+        return guards.canConsult(context);
+      case 'conference':
+        return guards.canStartConference(context);
+      case 'transfer':
+        return guards.canTransfer(context);
+      case 'exitConference':
+        return guards.canExitConference(context);
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Helper to check if consult destination agent has joined
+   */
+  private isConsultAgentJoined(): boolean {
+    const context = this.stateMachineService?.state?.context;
+
+    return context?.consultDestinationAgentJoined || false;
+  }
+
+  /**
+   * Legacy helper for consulting controls
+   */
   private applyConsultingControls(): void {
     this.updateTaskUiControls({
       hold: [false, false],
@@ -52,192 +136,58 @@ export default class Voice extends Task implements IVoice {
     }
   }
 
-  protected setUIControls(): void {
-    const eventType = this.data.type;
+  /**
+   * State-based UI control logic, driven by state machine context.
+   * This method derives UI control states directly from the `can*` flags
+   * in the state machine's context, ensuring a single source of truth.
+   */
+  protected updateUIControlsFromState(): void {
+    const context = this.stateMachineService?.state?.context;
+    if (!context) {
+      // Fallback to legacy logic if state machine is not yet initialized
+      this.setUIControls();
 
-    switch (eventType) {
-      case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-        this.updateTaskUiControls({
-          accept: [false, false],
-          decline: [false, false],
-          hold: [true, true],
-          transfer: [true, true],
-          consult: [true, true],
-          recording: [true, true],
-          end: [this.isEndCallEnabled, this.isEndCallEnabled],
-          endConsult: [false, false],
-          wrapup: [false, false],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_WRAPUP:
-      case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
-        this.updateTaskUiControls({
-          consultTransfer: [false, false],
-          recording: [false, false],
-          end: [false, false],
-          endConsult: [false, false],
-          hold: [false, false],
-          transfer: [false, false],
-          consult: [false, false],
-          wrapup: [true, true],
-        });
-        break;
-
-      case CC_EVENTS.CONTACT_ENDED:
-      case CC_EVENTS.AGENT_INVITE_FAILED:
-        this.updateTaskUiControls({
-          hold: [false, false],
-          transfer: [false, false],
-          consult: [false, false],
-          consultTransfer: [false, false],
-          recording: [false, false],
-          end: [false, false],
-          endConsult: [false, false],
-        });
-        if (this.data.interaction.state !== 'new') {
-          this.updateTaskUiControls({wrapup: [true, true]});
-        }
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT_HELD:
-        this.updateTaskUiControls({
-          hold: [true, true],
-          transfer: [true, true],
-          consult: [true, true],
-          recording: [true, true],
-          end: [this.isEndCallEnabled, false],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT_UNHELD:
-        this.updateTaskUiControls({
-          hold: [true, true],
-          transfer: [true, true],
-          consult: [true, true],
-          recording: [true, true],
-          end: [this.isEndCallEnabled, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
-        this.updateTaskUiControls({
-          hold: [false, false],
-          transfer: [false, false],
-          consult: [false, false],
-          consultTransfer: [false, false],
-          recording: [false, false],
-          end: [false, false],
-          wrapup: [true, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
-        this.updateTaskUiControls({
-          hold: [true, true],
-          transfer: [true, true],
-          consult: [true, true],
-          recording: [true, true],
-          end: [this.isEndCallEnabled, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONSULT_CREATED:
-        this.updateTaskUiControls({
-          hold: [false, false],
-          consult: [false, false],
-          transfer: [true, false],
-          end: [this.isEndCallEnabled, false],
-          consultTransfer: [true, false],
-          recording: [true, false],
-          endConsult: [true, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_OFFER_CONSULT:
-        this.updateTaskUiControls({
-          endConsult: [this.isEndConsultEnabled, this.isEndConsultEnabled],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONSULTING:
-        if (!this.data.isConsulted) {
-          this.updateTaskUiControls({
-            hold: [false, false],
-            transfer: [true, false],
-            consult: [false, false],
-            consultTransfer: [true, true],
-            recording: [true, false],
-            endConsult: [true, true],
-            end: [this.isEndCallEnabled, false],
-          });
-        } else {
-          this.updateTaskUiControls({
-            endConsult: [this.isEndConsultEnabled, this.isEndConsultEnabled],
-          });
-        }
-        break;
-
-      case CC_EVENTS.AGENT_CONSULT_FAILED:
-      case CC_EVENTS.AGENT_CONSULT_ENDED:
-        if (!this.data.isConsulted) {
-          this.updateTaskUiControls({
-            hold: [true, true],
-            transfer: [true, true],
-            consult: [true, true],
-            recording: [true, true],
-            end: [this.isEndCallEnabled, this.isEndCallEnabled],
-            consultTransfer: [false, false],
-            endConsult: [false, false],
-            wrapup: [false, false],
-          });
-        } else {
-          this.updateTaskUiControls({
-            endConsult: [false, false],
-          });
-        }
-        break;
-
-      case CC_EVENTS.AGENT_CTQ_CANCELLED:
-        this.updateTaskUiControls({
-          hold: [true, true],
-          transfer: [true, true],
-          consult: [true, true],
-          recording: [true, true],
-          end: [this.isEndCallEnabled, this.isEndCallEnabled],
-          consultTransfer: [false, false],
-          endConsult: [false, false],
-          wrapup: [false, false],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT:
-        if (this.data.interaction.isTerminated) {
-          this.updateTaskUiControls({
-            hold: [false, false],
-            transfer: [false, false],
-            consult: [false, false],
-            consultTransfer: [false, false],
-            recording: [false, false],
-            end: [false, false],
-            wrapup: [true, true],
-          });
-        } else if (this.data.interaction.state === 'connected' && !this.data.isConsulted) {
-          this.updateTaskUiControls({
-            hold: [true, true],
-            transfer: [true, true],
-            consult: [true, true],
-            recording: [true, true],
-            end: [this.isEndCallEnabled, this.isEndCallEnabled],
-          });
-        } else if (this.data.interaction.state === 'consulting') {
-          this.applyConsultingControls();
-        }
-        break;
-
-      default:
-        break;
+      return;
     }
+
+    const {
+      canHold,
+      canResume,
+      canConsult,
+      canEndConsult,
+      canTransfer,
+      canWrapup,
+      isHold,
+      currentState,
+    } = context;
+
+    const isOffered =
+      currentState === TaskState.OFFERED || currentState === TaskState.OFFERED_CONSULT;
+
+    this.updateTaskUiControls({
+      accept: this.uiControl(isOffered, true),
+      decline: this.uiControl(isOffered, true),
+      hold: this.uiControl(canHold || canResume, canHold || canResume),
+      transfer: this.uiControl(canTransfer, canTransfer),
+      consult: this.uiControl(canConsult, canConsult),
+      endConsult: this.uiControl(canEndConsult, canEndConsult),
+      wrapup: this.uiControl(canWrapup, canWrapup),
+      end: this.uiControl(this.isEndCallEnabled, !isHold),
+      // Recording and conference controls can be added here as well
+    });
+  }
+
+  /**
+   * @deprecated Legacy event-based UI control logic. Kept for backward compatibility.
+   * This will be removed once the state machine is fully adopted.
+   */
+  protected setUIControls(): void {
+    // This method is now a fallback and will be removed.
+    // The logic has been migrated to `updateUIControlsFromState`.
+    LoggerProxy.warn('Legacy setUIControls() called. This method is deprecated.', {
+      module: CC_FILE,
+      method: 'setUIControls',
+    });
   }
 
   /**
@@ -247,7 +197,51 @@ export default class Voice extends Task implements IVoice {
    * @throws Error
    */
   public async accept(): Promise<TaskResponse> {
-    super.unsupportedMethodError(METHODS.ACCEPT);
+    LoggerProxy.info(`Accepting task`, {
+      module: CC_FILE,
+      method: 'accept',
+      interactionId: this.data.interactionId,
+    });
+    this.metricsManager.timeEvent([
+      METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+      METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+    ]);
+    try {
+      const response = await this.contact.accept({
+        interactionId: this.data.interactionId,
+      });
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          mediaResourceId: this.data.mediaResourceId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral']
+      );
+      LoggerProxy.log(`Task accepted successfully`, {
+        module: CC_FILE,
+        method: 'accept',
+        trackingId: response.trackingId,
+        interactionId: this.data.interactionId,
+      });
+      this.sendStateMachineEvent({type: TaskEvent.ACCEPT});
+
+      return response;
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, 'accept', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
+        {
+          taskId: this.data.interactionId,
+          mediaResourceId: this.data.mediaResourceId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral']
+      );
+      throw detailedError;
+    }
   }
 
   /**
@@ -258,6 +252,32 @@ export default class Voice extends Task implements IVoice {
    */
   public async decline(): Promise<TaskResponse> {
     super.unsupportedMethodError(METHODS.REJECT);
+  }
+
+  /**
+   * This is used to hold the task.
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * task.hold().then(()=>{}).catch(()=>{})
+   * ```
+   * */
+  public async hold(): Promise<TaskResponse> {
+    return this.holdResume();
+  }
+
+  /**
+   * This is used to resume the task.
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * task.resume().then(()=>{}).catch(()=>{})
+   * ```
+   * */
+  public async resume(): Promise<TaskResponse> {
+    return this.holdResume();
   }
 
   /**
@@ -276,6 +296,30 @@ export default class Voice extends Task implements IVoice {
     If the media resource is not found, default to resuming the task
     */
     const shouldHold = !this.data.interaction.media[this.data.mediaResourceId].isHold;
+
+    // Validate operation is allowed in current state
+    const context = this.stateMachineService?.state?.context;
+    if (context) {
+      if (shouldHold && !guards.canHold(context)) {
+        const error = new Error(`Cannot hold call in current state: ${context.currentState}`);
+        LoggerProxy.error('Hold operation not allowed', {
+          module: CC_FILE,
+          method: METHODS.HOLD_RESUME,
+          interactionId: this.data.interactionId,
+        });
+        throw error;
+      }
+
+      if (!shouldHold && !guards.canResume(context)) {
+        const error = new Error(`Cannot resume call in current state: ${context.currentState}`);
+        LoggerProxy.error('Resume operation not allowed', {
+          module: CC_FILE,
+          method: METHODS.HOLD_RESUME,
+          interactionId: this.data.interactionId,
+        });
+        throw error;
+      }
+    }
 
     LoggerProxy.info(`${shouldHold ? 'Holding' : 'Resuming'} task`, {
       module: CC_FILE,
@@ -367,6 +411,18 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async pauseRecording(): Promise<TaskResponse> {
+    // Validate recording is active
+    const context = this.stateMachineService?.state?.context;
+    if (context && !guards.recordingActive(context)) {
+      const error = new Error('Recording is not active or already paused');
+      LoggerProxy.error('Pause recording operation not allowed', {
+        module: CC_FILE,
+        method: 'pauseRecording',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
     try {
       LoggerProxy.info(`Pausing recording`, {
         module: CC_FILE,
@@ -422,6 +478,18 @@ export default class Voice extends Task implements IVoice {
   public async resumeRecording(
     resumeRecordingPayload?: ResumeRecordingPayload
   ): Promise<TaskResponse> {
+    // Validate recording is paused
+    const context = this.stateMachineService?.state?.context;
+    if (context && !guards.recordingPaused(context)) {
+      const error = new Error('Recording is not paused');
+      LoggerProxy.error('Resume recording operation not allowed', {
+        module: CC_FILE,
+        method: 'resumeRecording',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
     try {
       LoggerProxy.info(`Resuming recording`, {
         module: CC_FILE,
@@ -484,6 +552,22 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async consult(consultPayload?: ConsultPayload): Promise<TaskResponse> {
+    // Validate consult is allowed
+    const context = this.stateMachineService?.state?.context;
+    if (context && !guards.canConsult(context)) {
+      const error = new Error(
+        `Cannot initiate consult in ${context.currentState} state${
+          context.isConferencing ? ' (already in conference)' : ''
+        }`
+      );
+      LoggerProxy.error('Consult operation not allowed', {
+        module: CC_FILE,
+        method: 'consult',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
     try {
       LoggerProxy.info(`Starting consult`, {
         module: CC_FILE,
@@ -756,6 +840,22 @@ export default class Voice extends Task implements IVoice {
    * @throws Error
    */
   public async consultConference(): Promise<TaskResponse> {
+    // Validate conference can start
+    const context = this.stateMachineService?.state?.context;
+    if (context && !guards.canStartConference(context)) {
+      const error = new Error(
+        context.currentState !== TaskState.CONSULTING
+          ? 'Must be in consulting state to start conference'
+          : 'Consult agent has not joined yet'
+      );
+      LoggerProxy.error('Conference operation not allowed', {
+        module: CC_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
     super.unsupportedMethodError(METHODS.CONSULT_CONFERENCE);
   }
 

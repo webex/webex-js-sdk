@@ -419,4 +419,66 @@ describe('Voice Task', () => {
       expect(ctrl.end.visible).toBe(false);
     });
   });
+  describe('state machine integration', () => {
+    it('should have a stateMachine property', () => {
+      const voice = new Voice(dummyContact, baseData, {});
+      expect(voice.stateMachine).toBeDefined();
+    });
+
+    it('should be in the initial state', () => {
+      const voice = new Voice(dummyContact, baseData, {});
+      expect(voice.state).toBe('Idle');
+      expect(voice.isRinging).toBe(false);
+    });
+
+    it('should transition to Ringing on AGENT_OFFER_CONTACT', () => {
+      const voice = new Voice(dummyContact, baseData, {});
+      voice.updateTaskData({
+        ...baseData,
+        type: CC_EVENTS.AGENT_OFFER_CONTACT,
+      } as any);
+      expect(voice.state).toBe('Ringing');
+      expect(voice.isRinging).toBe(true);
+    });
+
+    it('should transition to Connected on AGENT_CONTACT_ASSIGNED', () => {
+      const voice = new Voice(dummyContact, baseData, {});
+      voice.updateTaskData({
+        ...baseData,
+        type: CC_EVENTS.AGENT_CONTACT_ASSIGNED,
+      } as any);
+      expect(voice.state).toBe('Connected');
+      expect(voice.isRinging).toBe(false);
+    });
+
+    it('should transition to Held on AGENT_CONTACT_HELD', () => {
+      const voice = new Voice(dummyContact, baseData, {});
+      voice.updateTaskData({
+        ...baseData,
+        type: CC_EVENTS.AGENT_CONTACT_HELD,
+      } as any);
+      expect(voice.state).toBe('Held');
+      expect(voice.isRinging).toBe(false);
+    });
+
+    it('should transition to Consulting on AGENT_CONSULTING', () => {
+      const voice = new Voice(dummyContact, baseData, {});
+      voice.updateTaskData({
+        ...baseData,
+        type: CC_EVENTS.AGENT_CONSULTING,
+      } as any);
+      expect(voice.state).toBe('Consulting');
+      expect(voice.isRinging).toBe(false);
+    });
+
+    it('should transition to WrapUp on AGENT_CONTACT_UNASSIGNED', () => {
+      const voice = new Voice(dummyContact, baseData, {});
+      voice.updateTaskData({
+        ...baseData,
+        type: CC_EVENTS.AGENT_CONTACT_UNASSIGNED,
+      } as any);
+      expect(voice.state).toBe('WrapUp');
+      expect(voice.isRinging).toBe(false);
+    });
+  });
 });

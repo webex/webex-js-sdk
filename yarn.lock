@@ -9055,6 +9055,7 @@ __metadata:
     "@webex/plugin-logger": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/webex-core": "workspace:*"
+    "@xstate/inspect": ^0.8.0
     eslint: ^8.24.0
     eslint-config-airbnb-base: 15.0.0
     eslint-config-prettier: 8.3.0
@@ -9070,6 +9071,7 @@ __metadata:
     prettier: 2.5.1
     typedoc: ^0.25.0
     typescript: 4.9.5
+    xstate: ^4.38.0
   languageName: unknown
   linkType: soft
 
@@ -11280,6 +11282,22 @@ __metadata:
   version: 0.8.10
   resolution: "@xmldom/xmldom@npm:0.8.10"
   checksum: 4c136aec31fb3b49aaa53b6fcbfe524d02a1dc0d8e17ee35bd3bf35e9ce1344560481cd1efd086ad1a4821541482528672306d5e37cdbd187f33d7fadd3e2cf0
+  languageName: node
+  linkType: hard
+
+"@xstate/inspect@npm:^0.8.0":
+  version: 0.8.0
+  resolution: "@xstate/inspect@npm:0.8.0"
+  dependencies:
+    fast-safe-stringify: ^2.1.1
+  peerDependencies:
+    "@types/ws": ^8.0.0
+    ws: ^8.0.0
+    xstate: ^4.37.0
+  peerDependenciesMeta:
+    "@types/ws":
+      optional: true
+  checksum: 38a25552e3c454e05d952a226963ed19fe0028afa2393e9c1d857f225b4df01684a7edbbc3c321b6a2b25e28236e255d6d6a8ba1231b57fa891f0301c5ad1e05
   languageName: node
   linkType: hard
 
@@ -36427,7 +36445,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"xstate@npm:^4.30.6":
+"xstate@npm:^4.30.6, xstate@npm:^4.38.0":
   version: 4.38.3
   resolution: "xstate@npm:4.38.3"
   checksum: b52e5bf349834ede65b1eadf9b160b818341739b1306e882c35dd6c4ddb92f18342f534d5080c5218f935254230721faca3d34b66cbb3b6f19d8496516f23eca

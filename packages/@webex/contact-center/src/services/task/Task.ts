@@ -40,6 +40,50 @@ export default abstract class Task extends EventEmitter implements ITask {
   private ronaTimerId?: NodeJS.Timeout;
   private autoWrapupTimerId?: NodeJS.Timeout;
 
+  /**
+   * State machine instance for managing task state transitions and derived properties.
+   * Exposed publicly to allow access to state machine context and current state.
+   * @internal
+   */
+  public stateMachine?: Interpreter<TaskContext, any, TaskEventPayload>;
+
+  // State machine derived properties (getters)
+  public get canHold(): boolean {
+    return this.stateMachine?.state.context.canHold ?? false;
+  }
+
+  public get canResume(): boolean {
+    return this.stateMachine?.state.context.canResume ?? false;
+  }
+
+  public get canConsult(): boolean {
+    return this.stateMachine?.state.context.canConsult ?? false;
+  }
+
+  public get canEndConsult(): boolean {
+    return this.stateMachine?.state.context.canEndConsult ?? false;
+  }
+
+  public get canTransfer(): boolean {
+    return this.stateMachine?.state.context.canTransfer ?? false;
+  }
+
+  public get canWrapup(): boolean {
+    return this.stateMachine?.state.context.canWrapup ?? false;
+  }
+
+  public get isHeld(): boolean {
+    return this.stateMachine?.state.matches(TaskState.HELD) ?? false;
+  }
+
+  public get isConsulting(): boolean {
+    return this.stateMachine?.state.matches(TaskState.CONSULTING) ?? false;
+  }
+
+  public get isConferencing(): boolean {
+    return this.stateMachine?.state.matches(TaskState.CONFERENCING) ?? false;
+  }
+
   constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
     super();
     this.contact = contact;
@@ -48,6 +92,8 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.webCallMap = {};
     this.initialiseUIControls();
     this.initializeStateMachine();
+    // Expose stateMachineService as public stateMachine for ITask interface compliance
+    this.stateMachine = this.stateMachineService;
   }
 
   // Properties from ITask interface
@@ -137,11 +183,21 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   // Voice tasks use holdResume(), but provide separate methods for interface compliance
   public async hold(): Promise<TaskResponse> {
-    throw new Error('hold() not implemented. Use holdResume() for voice tasks.');
+    this.unsupportedMethodError('hold');
+
+    return Promise.reject(new Error('hold not supported for this channel type'));
   }
 
   public async resume(): Promise<TaskResponse> {
-    throw new Error('resume() not implemented. Use holdResume() for voice tasks.');
+    this.unsupportedMethodError('resume');
+
+    return Promise.reject(new Error('resume not supported for this channel type'));
+  }
+
+  public async holdResume(): Promise<TaskResponse> {
+    this.unsupportedMethodError('holdResume');
+
+    return Promise.reject(new Error('holdResume not supported for this channel type'));
   }
 
   /**
@@ -204,6 +260,9 @@ export default abstract class Task extends EventEmitter implements ITask {
         this.updateUIControlsFromState();
       })
       .start();
+
+    // Expose as public property for ITask interface
+    this.stateMachine = this.stateMachineService;
   }
 
   /**
@@ -304,6 +363,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     if (this.stateMachineService) {
       this.stateMachineService.stop();
       this.stateMachineService = undefined;
+      this.stateMachine = undefined;
     }
   }
 
