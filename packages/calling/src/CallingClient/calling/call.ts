@@ -8,7 +8,6 @@ import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {EffectEvent, TrackEffect} from '@webex/web-media-effects';
 import {RtcMetrics} from '@webex/internal-plugin-metrics';
-import ExtendedError from '../../Errors/catalog/ExtendedError';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {
   handleCallErrors,
@@ -986,8 +985,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleOutgoingCallSetup.name,
       });
     } catch (e) {
-      const extendedError = new Error(`Failed to setup the call: ${e}`) as ExtendedError;
-      log.error(extendedError, {
+      log.error(`Failed to setup the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_SETUP,
       });
@@ -1062,8 +1060,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
     } catch (e) {
-      const extendedError = new Error(`Failed to put the call on hold: ${e}`) as ExtendedError;
-      log.error(extendedError, {
+      log.error(`Failed to put the call on hold: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_CALL_HOLD,
       });
@@ -1138,8 +1135,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
     } catch (e) {
-      const extendedError = new Error(`Failed to resume the call: ${e}`) as ExtendedError;
-      log.error(extendedError, {
+      log.error(`Failed to resume the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_CALL_RESUME,
       });
@@ -1262,13 +1258,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_ALERTING,
       });
-    } catch (err) {
-      const extendedError = new Error(`Failed to signal call progression: ${err}`) as ExtendedError;
-      log.error(extendedError, {
+    } catch (e) {
+      log.error(`Failed to signal call progression: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_ALERTING,
       });
-      const errData = err as MobiusCallResponse;
+      const errData = e as MobiusCallResponse;
 
       handleCallErrors(
         (error: CallError) => {
@@ -1348,13 +1343,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
       });
-    } catch (err) {
-      const extendedError = new Error(`Failed to connect the call: ${err}`) as ExtendedError;
-      log.error(extendedError, {
+    } catch (e) {
+      log.error(`Failed to connect the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
       });
-      const errData = err as MobiusCallResponse;
+      const errData = e as MobiusCallResponse;
 
       handleCallErrors(
         (error: CallError) => {
@@ -1401,7 +1395,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
       });
     } catch (e) {
-      log.warn('Failed to delete the call', {
+      log.warn(`Failed to delete the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
       });
@@ -2066,12 +2060,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       log.info(`callFrom: ${callFrom}`, loggerContext);
     } catch (error) {
       const errorInfo = error as WebexRequestPayload;
-      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
-      const errorLog = new Error(
-        `Failed to upload webrtc telemetry statistics. ${errorStatus}`
-      ) as ExtendedError;
+      const errorStatus = await serviceErrorCodeHandler(errorInfo, loggerContext);
 
-      log.error(errorLog, loggerContext);
+      log.error(
+        `Failed to upload webrtc telemetry statistics. ${JSON.stringify(errorStatus)}`,
+        loggerContext
+      );
 
       await uploadLogs({
         correlationId: this.correlationId,

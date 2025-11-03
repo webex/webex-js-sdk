@@ -1183,23 +1183,33 @@ export interface ITask extends EventEmitter {
 
   /**
    * Places the current task on hold.
+   * @param mediaResourceId - Optional media resource ID to use for the hold operation. If not provided, uses the task's current mediaResourceId
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
+   * // Hold with default mediaResourceId
    * await task.hold();
+   *
+   * // Hold with custom mediaResourceId
+   * await task.hold('custom-media-resource-id');
    * ```
    */
-  hold(): Promise<TaskResponse>;
+  hold(mediaResourceId?: string): Promise<TaskResponse>;
 
   /**
    * Resumes a task that was previously on hold.
+   * @param mediaResourceId - Optional media resource ID to use for the resume operation. If not provided, uses the task's current mediaResourceId from interaction media
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
+   * // Resume with default mediaResourceId
    * await task.resume();
+   *
+   * // Resume with custom mediaResourceId
+   * await task.resume('custom-media-resource-id');
    * ```
    */
-  resume(): Promise<TaskResponse>;
+  resume(mediaResourceId?: string): Promise<TaskResponse>;
 
   /**
    * Ends/terminates the current task.
