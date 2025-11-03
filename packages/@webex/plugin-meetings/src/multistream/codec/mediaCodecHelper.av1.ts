@@ -1,7 +1,7 @@
 /* eslint-disable class-methods-use-this */
 import {
   AV1Codec,
-  getRecommendedMaxBitrateForFrameSize,
+  getRecommendedMaxBitrateForPicSize,
   CodecInfo as WcmeCodecInfo,
 } from '@webex/internal-media-core';
 import {AV1_CODEC_PARAMETERS, CODEC_DEFAULTS, PANE_SIZE_TO_RESOLUTION} from './constants';
@@ -78,10 +78,8 @@ export default class MediaCodecHelperAV1 implements MediaCodecHelper {
     if (mediaRequest.codecInfo?.codec !== 'av1') {
       return 0;
     }
-    const frameSize = picSizeToFrameSize(mediaRequest.codecInfo.maxPicSize);
 
-    // TODO: should we also have getRecommendedMaxBitrateForPicSize?
-    return getRecommendedMaxBitrateForFrameSize(frameSize);
+    return getRecommendedMaxBitrateForPicSize(mediaRequest.codecInfo.maxPicSize);
   }
 
   /**
