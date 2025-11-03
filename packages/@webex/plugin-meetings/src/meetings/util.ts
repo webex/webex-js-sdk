@@ -1,6 +1,6 @@
 /* globals window */
 
-import {Media} from '@webex/internal-media-core';
+import {CodecInfo} from '@webex/web-capabilities';
 import {
   _CREATED_,
   _INCOMING_,
@@ -153,26 +153,6 @@ MeetingsUtil.parseDefaultSiteFromMeetingPreferences = (userPreferences) => {
 };
 
 /**
- * Will check to see if the H.264 media codec is supported.
- * @async
- * @private
- * @returns {Promise<boolean>}
- */
-MeetingsUtil.isH264CodecAvailable = async () => {
-  return Media.isH264CodecAvailable();
-};
-
-/**
- * Will check to see if the AV1 media codec is supported.
- * @async
- * @private
- * @returns {Promise<boolean>}
- */
-MeetingsUtil.isAV1CodecAvailable = async () => {
-  return Media.isAV1CodecAvailable();
-};
-
-/**
  * Notifies the user whether or not the H.264
  * codec is present. Will continuously check
  * until max duration.
@@ -195,13 +175,13 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
 
   // Disable notifications and start H.264 download only
   if (disableNotifications) {
-    MeetingsUtil.isH264CodecAvailable();
+    CodecInfo.isH264Available();
 
     return;
   }
 
   // Codec loaded trigger event notification
-  if (await MeetingsUtil.isH264CodecAvailable()) {
+  if (await CodecInfo.isH264Available()) {
     Trigger.trigger(
       this,
       {

@@ -9132,7 +9132,7 @@ __metadata:
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/ts-sdp": ^1.8.1
-    "@webex/web-capabilities": ^1.6.0
+    "@webex/web-capabilities": "link:../../../../web-capabilities"
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
@@ -9812,14 +9812,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/web-capabilities@npm:^1.6.0":
-  version: 1.6.0
-  resolution: "@webex/web-capabilities@npm:1.6.0"
-  dependencies:
-    bowser: ^2.11.0
-  checksum: 18473b9f63cd12b13534f69aadee26d737401025a6e8de1485eee778c6f6a87fd7d1fab60d66f8ae3c15bcd7b3db0ffe614994bdaef5dc199261175448980330
+"@webex/web-capabilities@link:../../../../web-capabilities::locator=%40webex%2Fplugin-meetings%40workspace%3Apackages%2F%40webex%2Fplugin-meetings":
+  version: 0.0.0-use.local
+  resolution: "@webex/web-capabilities@link:../../../../web-capabilities::locator=%40webex%2Fplugin-meetings%40workspace%3Apackages%2F%40webex%2Fplugin-meetings"
   languageName: node
-  linkType: hard
+  linkType: soft
 
 "@webex/web-media-effects@npm:2.27.1":
   version: 2.27.1

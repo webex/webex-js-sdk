@@ -3,17 +3,18 @@ import {cloneDeep, forEach, remove} from 'lodash';
 import {EventMap} from 'typed-emitter';
 import {MediaType, NamedMediaGroup} from '@webex/internal-media-core';
 
+import {CodecInfo as CodecInfoCapabilities} from '@webex/web-capabilities';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
-import {RemoteMedia, RemoteVideoResolution} from './remoteMedia';
+import {RemoteMedia} from './remoteMedia';
 import {ReceiveSlot, CSI} from './receiveSlot';
 import {ReceiveSlotManager} from './receiveSlotManager';
 import {RemoteMediaGroup} from './remoteMediaGroup';
 import {MediaRequestManager} from './mediaRequestManager';
 import {NAMED_MEDIA_GROUP_TYPE_AUDIO} from '../constants';
-import MeetingsUtil from '../meetings/util';
 import {CodecInfo} from './codec/types';
+import {RemoteVideoResolution} from './types';
 
 export type PaneSize = RemoteVideoResolution;
 export type LayoutId = string;
@@ -376,7 +377,7 @@ export class RemoteMediaManager extends EventsScope {
    * Updates the preferred codec
    */
   private async updatePreferredCodec() {
-    const isAV1CodecAvailable = await MeetingsUtil.isAV1CodecAvailable();
+    const isAV1CodecAvailable = await CodecInfoCapabilities.isAV1Available();
     switch (true) {
       case isAV1CodecAvailable:
         this.preferredCodec = 'av1';
