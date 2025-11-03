@@ -63,6 +63,8 @@ export class ContactsClient implements IContacts {
 
   private defaultGroupId: string;
 
+  private contactsServiceUrl: string;
+
   /**
    * @ignore
    */
@@ -79,7 +81,11 @@ export class ContactsClient implements IContacts {
     this.groups = undefined;
     this.contacts = undefined;
     this.defaultGroupId = '';
-
+    this.contactsServiceUrl =
+      this.webex.internal.services._serviceUrls.contactsService ||
+      this.webex.internal.services.get(
+        this.webex.internal.services._activeServices.contactsService
+      );
     log.setLogger(logger.level, CONTACTS_CLIENT);
   }
 
@@ -346,7 +352,7 @@ export class ContactsClient implements IContacts {
     try {
       const response = <WebexRequestPayload>await this.webex.request({
         // eslint-disable-next-line no-underscore-dangle
-        uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}`,
+        uri: `${this.contactsServiceUrl}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}`,
         method: HTTP_METHODS.GET,
       });
 
@@ -628,7 +634,7 @@ export class ContactsClient implements IContacts {
     try {
       const response = <WebexRequestPayload>await this.webex.request({
         // eslint-disable-next-line no-underscore-dangle
-        uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}`,
+        uri: `${this.contactsServiceUrl}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}`,
         method: HTTP_METHODS.POST,
         body: groupInfo,
       });
@@ -678,7 +684,7 @@ export class ContactsClient implements IContacts {
       log.info(`Deleting contact group: ${groupId}`, loggerContext);
       const response = <WebexRequestPayload>await this.webex.request({
         // eslint-disable-next-line no-underscore-dangle
-        uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}/${groupId}`,
+        uri: `${this.contactsServiceUrl}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}/${groupId}`,
         method: HTTP_METHODS.DELETE,
       });
 
@@ -780,7 +786,7 @@ export class ContactsClient implements IContacts {
 
       const response = <WebexRequestPayload>await this.webex.request({
         // eslint-disable-next-line no-underscore-dangle
-        uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}`,
+        uri: `${this.contactsServiceUrl}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}`,
         method: HTTP_METHODS.POST,
         body: requestBody,
       });
@@ -842,7 +848,7 @@ export class ContactsClient implements IContacts {
       log.info(`Deleting contact : ${contactId}`, loggerContext);
       const response = <WebexRequestPayload>await this.webex.request({
         // eslint-disable-next-line no-underscore-dangle
-        uri: `${this.webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}/${contactId}`,
+        uri: `${this.contactsServiceUrl}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}/${contactId}`,
         method: HTTP_METHODS.DELETE,
       });
 
