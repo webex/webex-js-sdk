@@ -121,6 +121,7 @@ export default class TaskManager extends EventEmitter {
       payload.data?.interaction?.media?.[payload.data?.interactionId]?.mediaResourceId;
 
     switch (ccEvent) {
+      case CC_EVENTS.AGENT_CONTACT_RESERVED:
       case CC_EVENTS.AGENT_OFFER_CONTACT:
         return {type: TaskEvent.OFFER, taskData: payload.data};
 
@@ -219,7 +220,7 @@ export default class TaskManager extends EventEmitter {
   private sendEventToStateMachine(ccEvent: CC_EVENTS, payload: any, task?: ITask): void {
     // Check if task has state machine (will be added in Task interface)
     const taskWithStateMachine = task as any;
-    if (!taskWithStateMachine?.stateMachine) {
+    if (!taskWithStateMachine?.stateMachineService) {
       return;
     }
 
@@ -233,7 +234,7 @@ export default class TaskManager extends EventEmitter {
       });
 
       // Send event to task's state machine
-      taskWithStateMachine.stateMachine.send(stateMachineEvent);
+      taskWithStateMachine.stateMachineService.send(stateMachineEvent);
     }
   }
 

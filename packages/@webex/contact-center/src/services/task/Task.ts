@@ -244,11 +244,21 @@ export default abstract class Task extends EventEmitter implements ITask {
     const machine = createTaskStateMachineWithActions(customActions);
 
     this.stateMachineService = interpret(machine)
-      .onTransition(() => {
-        LoggerProxy.log('State machine transition', {
-          module: CC_FILE,
-          method: 'onTransition',
-        });
+      .onTransition((state) => {
+        // CRITICAL FIX: Sync context.currentState with XState's internal state
+        // The context.currentState field was not being updated, causing it to stay IDLE
+        // even though XState's internal state was transitioning correctly
+        if (state.context.currentState !== state.value) {
+          state.context.currentState = state.value as TaskState;
+        }
+
+        LoggerProxy.log(
+          `State machine transition: ${state.context.previousState || 'N/A'} -> ${state.value}`,
+          {
+            module: CC_FILE,
+            method: 'onTransition',
+          }
+        );
 
         // Compute derived properties after state transition
         const agentId = this.data.agentId;

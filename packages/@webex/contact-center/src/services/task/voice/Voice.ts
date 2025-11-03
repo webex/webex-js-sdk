@@ -16,7 +16,7 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, guards, TaskEvent} from '../state-machine';
+import {TaskState, guards} from '../state-machine';
 
 export default class Voice extends Task implements IVoice {
   private isEndCallEnabled: boolean;
@@ -197,51 +197,7 @@ export default class Voice extends Task implements IVoice {
    * @throws Error
    */
   public async accept(): Promise<TaskResponse> {
-    LoggerProxy.info(`Accepting task`, {
-      module: CC_FILE,
-      method: 'accept',
-      interactionId: this.data.interactionId,
-    });
-    this.metricsManager.timeEvent([
-      METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
-      METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
-    ]);
-    try {
-      const response = await this.contact.accept({
-        interactionId: this.data.interactionId,
-      });
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS,
-        {
-          taskId: this.data.interactionId,
-          mediaResourceId: this.data.mediaResourceId,
-          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
-        },
-        ['operational', 'behavioral']
-      );
-      LoggerProxy.log(`Task accepted successfully`, {
-        module: CC_FILE,
-        method: 'accept',
-        trackingId: response.trackingId,
-        interactionId: this.data.interactionId,
-      });
-      this.sendStateMachineEvent({type: TaskEvent.ACCEPT});
-
-      return response;
-    } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'accept', CC_FILE);
-      this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
-        {
-          taskId: this.data.interactionId,
-          mediaResourceId: this.data.mediaResourceId,
-          error: error.toString(),
-          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
-        },
-        ['operational', 'behavioral']
-      );
-      throw detailedError;
-    }
+    super.unsupportedMethodError(METHODS.ACCEPT);
   }
 
   /**
