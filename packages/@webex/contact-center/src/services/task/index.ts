@@ -4,8 +4,9 @@ import {CallId} from '@webex/calling/dist/types/common/types';
 import {
   generateTaskErrorObject,
   deriveConsultTransferDestinationType,
-  getDestinationAgentId,
   buildConsultConferenceParamData,
+  calculateDestAgentId,
+  calculateDestAgentIdForFetchingDestType,
 } from '../core/Utils';
 import {Failure} from '../core/GlobalTypes';
 import {LoginOption} from '../../types';
@@ -1449,10 +1450,7 @@ export default class Task extends EventEmitter implements ITask {
   ): Promise<TaskResponse> {
     try {
       // Get the destination agent ID using custom logic from participants data
-      const destAgentId = getDestinationAgentId(
-        this.data.interaction?.participants,
-        this.data.agentId
-      );
+      const destAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
 
       // Resolve the target id (queue consult transfers go to the accepted agent)
       if (!destAgentId) {
@@ -1514,10 +1512,7 @@ export default class Task extends EventEmitter implements ITask {
         reasonCode: err.data?.reasonCode,
       };
       const failedDestinationType = deriveConsultTransferDestinationType(this.data);
-      const failedDestAgentId = getDestinationAgentId(
-        this.data.interaction?.participants,
-        this.data.agentId
-      );
+      const failedDestAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
@@ -1557,21 +1552,31 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async consultConference(): Promise<TaskResponse> {
     try {
-      // Get the destination agent ID using custom logic from participants data (same as consultTransfer)
-      const destAgentId = getDestinationAgentId(
-        this.data.interaction?.participants,
-        this.data.agentId
-      );
+      // Get the destination agent ID using Agent Desktop's calculateDestAgentId logic
+      // This handles multi-party conference scenarios, CBT (Click-to-Dial), and EP-DN cases
+      const destAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
 
       // Validate that we have a destination agent (for queue consult scenarios)
       if (!destAgentId) {
         throw new Error('No agent has accepted this queue consult yet');
       }
+
+      // Get the destination agent ID for fetching destination type
+      // This helps determine the correct participant type for CBT and EP-DN scenarios
+      const destAgentIdForFetchingDestType = calculateDestAgentIdForFetchingDestType(
+        this.data.interaction,
+        this.agentId
+      );
+
+      // Derive destination type from the participant's type property
+      const destAgentType = destAgentIdForFetchingDestType
+        ? this.data.interaction.participants[destAgentIdForFetchingDestType]?.pType
+        : undefined;
       // Extract consultation conference data from task data (used in both try and catch)
       const consultationData = {
         agentId: this.agentId,
         destAgentId,
-        destinationType: this.data.destinationType || 'agent',
+        destinationType: destAgentType || this.data.destinationType || 'agent',
       };
 
       LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
@@ -1622,16 +1627,25 @@ export default class Task extends EventEmitter implements ITask {
 
       // Track failure metrics (following consultTransfer pattern)
       // Recalculate destination info for error tracking
-      const failedDestAgentId = getDestinationAgentId(
-        this.data.interaction?.participants,
-        this.data.agentId
+      const failedDestAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
+
+      // Get the destination agent ID for fetching destination type
+      // This helps determine the correct participant type for CBT and EP-DN scenarios
+      const failedDestAgentIdForFetchingDestType = calculateDestAgentIdForFetchingDestType(
+        this.data.interaction,
+        this.agentId
       );
+
+      // Derive destination type from the participant's type property
+      const failedDestAgentType = failedDestAgentIdForFetchingDestType
+        ? this.data.interaction.participants[failedDestAgentIdForFetchingDestType]?.pType
+        : undefined;
 
       // Build conference data for error tracking using recalculated data
       const failedConsultationData = {
         agentId: this.agentId,
         destAgentId: failedDestAgentId,
-        destinationType: this.data.destinationType || 'agent',
+        destinationType: failedDestAgentType || this.data.destinationType || 'agent',
       };
 
       const failedParamsData = buildConsultConferenceParamData(

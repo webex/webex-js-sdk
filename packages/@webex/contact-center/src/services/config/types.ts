@@ -91,6 +91,8 @@ export const CC_TASK_EVENTS = {
   CONTACT_RECORDING_RESUME_FAILED: 'ContactRecordingResumeFailed',
   /** Event emitted when contact ends */
   CONTACT_ENDED: 'ContactEnded',
+  /** Event emitted when contact is merged */
+  CONTACT_MERGED: 'ContactMerged',
   /** Event emitted when ending contact fails */
   AGENT_CONTACT_END_FAILED: 'AgentContactEndFailed',
   /** Event emitted when agent enters wrap-up state */

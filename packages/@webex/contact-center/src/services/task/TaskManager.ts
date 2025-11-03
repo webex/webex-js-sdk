@@ -286,6 +286,16 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           }
+          case CC_EVENTS.CONTACT_MERGED: {
+            // Update task data
+            if (payload.data.interaction.childInteractionId) {
+              this.removeTaskFromCollection(payload.data.interaction.childInteractionId);
+            }
+            task = this.updateTaskData(task, payload.data);
+
+            task.emit(TASK_EVENTS.TASK_MERGED, task);
+            break;
+          }
           case CC_EVENTS.AGENT_CONTACT_HELD:
             // As soon as the main interaction is held, we need to emit TASK_HOLD
             task = this.updateTaskData(task, payload.data);

@@ -273,6 +273,120 @@ export const getDestinationAgentId = (
   return id;
 };
 
+/**
+ * Constants for participant and media types
+ */
+const EP_DN = 'EpDn';
+const DN = 'dn';
+const AGENT = 'Agent';
+const STATE_CONSULT = 'consult';
+
+/**
+ * Gets the consulted agent ID from the media object by finding the agent
+ * in the consult media participants (excluding the current agent).
+ * Matches Agent Desktop's getConsultedAgentId implementation.
+ *
+ * @param media - The media object from the interaction
+ * @param agentId - The current agent's ID to exclude from the search
+ * @returns The consulted agent ID, or empty string if none found
+ */
+export const getConsultedAgentId = (media: Interaction['media'], agentId: string): string => {
+  let consultParticipants: string[] = [];
+  let consultedParticipantId = '';
+
+  Object.keys(media).forEach((key) => {
+    if (media[key].mType === STATE_CONSULT) {
+      consultParticipants = media[key].participants;
+    }
+  });
+
+  if (consultParticipants.includes(agentId)) {
+    const id = consultParticipants.find((participant) => participant !== agentId);
+    consultedParticipantId = id || consultedParticipantId;
+  }
+
+  return consultedParticipantId;
+};
+
+/**
+ * Gets the destination agent ID for CTR (Click-to-Dial) scenarios.
+ * This handles cases where the consulted participant is not directly in participants
+ * but can be found by matching the dial number (dn).
+ * Matches Agent Desktop's getDestAgentIdForCBT implementation.
+ *
+ * @param interaction - The interaction object
+ * @param consultingAgent - The consulting agent identifier
+ * @returns The destination agent ID for CBT, or empty string if none found
+ */
+export const getDestAgentIdForCBT = (interaction: Interaction, consultingAgent: string): string => {
+  const participants = interaction.participants;
+  let destAgentIdForCBT = '';
+
+  // First check if it's not a non-CBT scenario (consultingAgent exists but not in participants)
+  if (consultingAgent && !participants[consultingAgent]) {
+    const foundEntry = Object.entries(participants).find(
+      ([, participant]: [string, Interaction['participants'][string]]) => {
+        return (
+          participant.pType.toLowerCase() === DN &&
+          participant.type === AGENT &&
+          participant.dn === consultingAgent
+        );
+      }
+    );
+
+    if (foundEntry) {
+      destAgentIdForCBT = foundEntry[0];
+    }
+  }
+
+  return destAgentIdForCBT;
+};
+
+/**
+ * Calculates the destination agent ID for consult operations.
+ * This matches Agent Desktop's calculateDestAgentId implementation (else branch).
+ * Since feature flags are gated in SDK, this uses the advanced logic directly.
+ *
+ * @param interaction - The interaction object
+ * @param agentId - The current agent's ID
+ * @returns The destination agent ID
+ */
+export const calculateDestAgentId = (interaction: Interaction, agentId: string): string => {
+  const consultingAgent = getConsultedAgentId(interaction.media, agentId);
+
+  // In case of non-CBT, below function will return empty string so it will not go inside if condition
+  // It will execute the normal flow
+  const destAgentIdCBT = getDestAgentIdForCBT(interaction, consultingAgent);
+  if (destAgentIdCBT) {
+    return destAgentIdCBT;
+  }
+
+  return interaction.participants[consultingAgent]?.type === EP_DN
+    ? interaction.participants[consultingAgent]?.epId
+    : interaction.participants[consultingAgent]?.id;
+};
+
+/**
+ * Calculates the destination agent ID for fetching destination type.
+ * This matches Agent Desktop's calculateDestAgentIdForFetchingDestType implementation (else branch).
+ * Since feature flags are gated in SDK, this uses the advanced logic directly.
+ *
+ * @param interaction - The interaction object
+ * @param agentId - The current agent's ID
+ * @returns The destination agent ID for determining destination type
+ */
+export const calculateDestAgentIdForFetchingDestType = (
+  interaction: Interaction,
+  agentId: string
+): string => {
+  const consultingAgent = getConsultedAgentId(interaction.media, agentId);
+
+  // In case of non-CBT, below function will return empty string
+  const destAgentIdCBT = getDestAgentIdForCBT(interaction, consultingAgent);
+
+  return destAgentIdCBT || consultingAgent;
+};
+
 export const deriveConsultTransferDestinationType = (
   taskData?: TaskData
 ): ConsultTransferPayLoad['destinationType'] => {
@@ -312,7 +426,7 @@ export const buildConsultConferenceParamData = (
   if ('destinationType' in dataPassed) {
     if (dataPassed.destinationType === 'DN') {
       data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
-    } else if (dataPassed.destinationType === 'EP_DN') {
+    } else if (dataPassed.destinationType === 'EP-DN') {
       data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
     } else {
       // Keep the existing destinationType if it's something else (like "agent" or "Agent")

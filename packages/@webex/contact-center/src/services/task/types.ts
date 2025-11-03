@@ -490,6 +490,8 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_PARTICIPANT_LEFT_FAILED = 'task:participantLeftFailed',
+
+  TASK_MERGED = 'task:merged',
 }
 
 /**
