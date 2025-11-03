@@ -10,16 +10,16 @@ import {MediaRequest, RemoteVideoResolution} from '../types';
 import LoggerProxy from '../../common/logs/logger-proxy';
 
 /**
- * Converts picSize in pixels to a frame size.
- * Frame size is rounded up to the nearest 16x16 macroblock unit.
+ * Converts pixels to macroblocks.
+ * Pixels are rounded up to the nearest 16x16 macroblock unit.
  *
- * @param {number} picSize - The picture size in pixels.
- * @returns {number} The frame size.
+ * @param {number} pixels - The number of pixels.
+ * @returns {number} The macroblocks.
  */
-const picSizeToFrameSize = (picSize: number): number => {
+const pixelsToMacroblocks = (pixels: number): number => {
   const round16 = (n: number) => Math.ceil(n / 16) * 16;
 
-  return round16(picSize / 256);
+  return round16(pixels);
 };
 
 /**
@@ -65,7 +65,7 @@ export default class MediaCodecHelperAV1 implements MediaCodecHelper {
     // we only consider sources with "live" state
     const slotsWithLiveSource = mr.receiveSlots.filter((rs) => rs.sourceState === 'live');
 
-    return picSizeToFrameSize(mr.codecInfo.maxPicSize) * slotsWithLiveSource.length;
+    return pixelsToMacroblocks(mr.codecInfo.maxPicSize) * slotsWithLiveSource.length;
   }
 
   /**
