@@ -17,6 +17,8 @@ import {
   getIsConferenceInProgress,
   isParticipantInMainInteraction,
   isPrimary,
+  isSecondaryEpDnAgent,
+  isTaskRinging,
 } from './TaskUtils';
 
 /** @internal */
@@ -247,19 +249,43 @@ export default class TaskManager extends EventEmitter {
               },
               ['behavioral', 'operational']
             );
-            this.handleTaskCleanup(task);
+            // RONA/ASSIGN_FAILED/INVITE_FAILED always delete the task (matches Agent Desktop)
+            this.handleTaskCleanup(task, true);
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
           }
-          case CC_EVENTS.CONTACT_ENDED:
+          case CC_EVENTS.CONTACT_ENDED: {
+            // Agent Desktop logic: Check if task should be deleted immediately
+            // BEFORE updating the task data
+            const {interaction} = payload.data;
+            let shouldDeleteTask = false;
+
+            if (
+              interaction.state === 'new' ||
+              (interaction.state === 'wrapUp' && // check if current state is wrapUp
+                interaction.contactDirection.type === 'OUTBOUND' &&
+                isTaskRinging(task, this.agentId)) || // check if task previous state is ringing
+              isSecondaryEpDnAgent(interaction)
+            ) {
+              shouldDeleteTask = true;
+            }
+
+            // Update task data
             task = this.updateTaskData(task, {
               ...payload.data,
-              wrapUpRequired: payload.data.interaction.state !== 'new',
+              wrapUpRequired: !shouldDeleteTask && payload.data.interaction.state !== 'new',
             });
-            this.handleTaskCleanup(task);
-            task.emit(TASK_EVENTS.TASK_END, task);
 
+            // Handle cleanup based on whether task should be deleted
+            if (shouldDeleteTask) {
+              this.handleTaskCleanup(task, true);
+            } else {
+              this.handleTaskCleanup(task, false);
+            }
+
+            task.emit(TASK_EVENTS.TASK_END, task);
             break;
+          }
           case CC_EVENTS.AGENT_CONTACT_HELD:
             // As soon as the main interaction is held, we need to emit TASK_HOLD
             task = this.updateTaskData(task, payload.data);
@@ -498,7 +524,14 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
-  private handleTaskCleanup(task: ITask) {
+  /**
+   * Handles cleanup of task resources including web call cleanup and task removal
+   * @param task - The task to clean up
+   * @param shouldRemoveTask - Whether to remove the task from collection immediately
+   * @private
+   */
+  private handleTaskCleanup(task: ITask, shouldRemoveTask?: boolean) {
+    // Clean up web calling resources for browser-based telephony tasks
     if (
       this.webCallingService.loginOption === LoginOption.BROWSER &&
       task.data.interaction.mediaType === 'telephony'
@@ -506,9 +539,10 @@ export default class TaskManager extends EventEmitter {
       task.unregisterWebCallListeners();
       this.webCallingService.cleanUpCall();
     }
-    if (task.data.interaction.state === 'new') {
-      // Only remove tasks in 'new' state immediately. For other states,
-      // retain tasks until they complete wrap-up, unless the task disconnected before being answered.
+
+    // Remove task from collection if explicitly requested
+    // This happens for RONA, CONTACT_ENDED with specific conditions, etc.
+    if (shouldRemoveTask) {
       this.removeTaskFromCollection(task);
     }
   }

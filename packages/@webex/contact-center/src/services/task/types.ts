@@ -757,6 +757,8 @@ export type TaskData = {
   isWebCallMute?: boolean;
   /** Identifier for reservation interaction */
   reservationInteractionId?: string;
+  /** Identifier for the reserved agent channel (used for campaign tasks) */
+  reservedAgentChannelId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
 };
