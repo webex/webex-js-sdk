@@ -1703,30 +1703,66 @@ describe('State Machine handler tests', () => {
     expect(stateMachineSpy).toBeCalledOnceWith({data: {media: true}, type: 'E_UNKNOWN'});
   });
 
-  it("does not post media when ROAP error messageType isn't 'ERROR' and disconnects if not connected", async () => {
-    const postMediaSpy = jest.spyOn(call as any, 'postMedia');
-    const stateMachineSpy = jest.spyOn(call, 'sendCallStateMachineEvt');
+  it('incoming call: failing ROAP_ANSWER posts error path and tears down', async () => {
+    const statusPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 403,
+      body: mockStatusBody,
+    });
+
     const warnSpy = jest.spyOn(log, 'warn');
+    const postMediaSpy = jest.spyOn(call as any, 'postMedia').mockRejectedValueOnce(statusPayload);
 
-    call['connected'] = false;
-    call['mediaStateMachine'].state.value = 'S_SEND_ROAP_ANSWER';
+    // Simulate inbound call flow
+    call['direction'] = CallDirection.INBOUND;
 
-    const errorEvent = {
-      type: 'E_ROAP_ERROR',
+    const setupEvent = {
+      type: 'E_RECV_CALL_SETUP',
       data: {
-        seq: 3,
-        messageType: 'OK',
+        seq: 1,
+        messageType: 'OFFER',
       },
-    } as RoapEvent;
+    };
 
-    await call['handleRoapError']({} as MediaContext, errorEvent);
+    call.sendCallStateMachineEvt(setupEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
 
-    expect(postMediaSpy).not.toHaveBeenCalled();
+    const connectEvent = {type: 'E_SEND_CALL_CONNECT'};
+    call.sendCallStateMachineEvt(connectEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
+
+    const offerEvent = {
+      type: 'E_RECV_ROAP_OFFER',
+      data: {
+        seq: 1,
+        messageType: 'OFFER',
+      },
+    };
+    call.sendMediaStateMachineEvt(offerEvent as RoapEvent);
+
+    const answerEvent = {
+      type: 'E_SEND_ROAP_ANSWER',
+      data: {
+        seq: 1,
+        messageType: 'ANSWER',
+      },
+    };
+
+    await call.sendMediaStateMachineEvt(answerEvent as RoapEvent);
+    await flushPromises(2);
+
+    expect(postMediaSpy).toBeCalledOnceWith(answerEvent.data as RoapMessage);
+    expect(warnSpy).toHaveBeenCalledWith('Failed to send MediaAnswer request', {
+      file: 'call',
+      method: 'handleOutgoingRoapAnswer',
+    });
     expect(warnSpy).toHaveBeenCalledWith('Call failed due to media issue', {
       file: 'call',
       method: 'handleRoapError',
     });
-    expect(stateMachineSpy).toBeCalledOnceWith({type: 'E_UNKNOWN', data: {media: true}});
+
+    // Final state should be torn down and cleared for unconnected call
+    expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_TEARDOWN');
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_CLEARED');
   });
 
   it('state changes during successful incoming call with out of order events', async () => {
