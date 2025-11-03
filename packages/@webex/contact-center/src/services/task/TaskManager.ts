@@ -112,7 +112,7 @@ export default class TaskManager extends EventEmitter {
           interactionId: payload.data?.interactionId,
         });
         switch (payload.data.type) {
-          case CC_EVENTS.AGENT_CONTACT: {
+          case CC_EVENTS.AGENT_CONTACT:
             // Case1 : Task is already present in taskCollection
             if (this.taskCollection[payload.data.interactionId]) {
               LoggerProxy.log(`Got AGENT_CONTACT: Task already exists in collection`, {
@@ -172,7 +172,7 @@ export default class TaskManager extends EventEmitter {
               }
             }
             break;
-          }
+
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
             task = new Task(
               this.contact,
