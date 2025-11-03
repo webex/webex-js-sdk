@@ -4,9 +4,30 @@ import EventsScope from '../common/events/events-scope';
 
 import {MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
-import {CodecInfo} from './codec/types';
+import {CodecInfo, SupportedResolution} from './codec/types';
 import {MediaRequestId, RemoteVideoResolution} from './types';
 import MediaCodecHelper from './codec/mediaCodecHelper';
+import {H264_CODEC_PARAMETERS} from './codec/constants';
+
+export type {
+  /** @deprecated use RemoteVideoResolution from @webex/plugin-meetings/src/types instead */
+  RemoteVideoResolution,
+} from './types';
+
+/** @deprecated use H264_CODEC_PARAMETERS from @webex/plugin-meetings/src/codec/constants instead */
+export const MAX_FS_VALUES = {
+  '90p': H264_CODEC_PARAMETERS['90p'].maxFs,
+  '180p': H264_CODEC_PARAMETERS['180p'].maxFs,
+  '360p': H264_CODEC_PARAMETERS['360p'].maxFs,
+  '540p': H264_CODEC_PARAMETERS['540p'].maxFs,
+  '720p': H264_CODEC_PARAMETERS['720p'].maxFs,
+  '1080p': H264_CODEC_PARAMETERS['1080p'].maxFs,
+} satisfies Record<SupportedResolution, number>;
+
+/** @deprecated use MediaCodecHelper.H264.getMaxFs() from @webex/plugin-meetings/src/codec/mediaCodecHelper.h264 instead */
+export const getMaxFs = (paneSize: RemoteVideoResolution): number => {
+  return MediaCodecHelper.H264.getMaxFs(paneSize);
+};
 
 export const RemoteMediaEvents = {
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
@@ -94,17 +115,17 @@ export class RemoteMedia extends EventsScope {
     let resolution: RemoteVideoResolution;
 
     if (height < getThresholdHeight(90)) {
-      resolution = RemoteVideoResolution.Thumbnail;
+      resolution = 'thumbnail';
     } else if (height < getThresholdHeight(180)) {
-      resolution = RemoteVideoResolution.VerySmall;
+      resolution = 'very small';
     } else if (height < getThresholdHeight(360)) {
-      resolution = RemoteVideoResolution.Small;
+      resolution = 'small';
     } else if (height < getThresholdHeight(540)) {
-      resolution = RemoteVideoResolution.Medium;
+      resolution = 'medium';
     } else if (height <= 720) {
-      resolution = RemoteVideoResolution.Large;
+      resolution = 'large';
     } else {
-      resolution = RemoteVideoResolution.Best;
+      resolution = 'best';
     }
 
     this.maxFrameSize = MediaCodecHelper.H264.getMaxFs(resolution);

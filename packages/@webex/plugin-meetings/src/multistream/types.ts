@@ -30,17 +30,16 @@ export interface MediaRequest {
 
 export type MediaRequestId = string;
 
-export enum RemoteVideoResolution {
+export type RemoteVideoResolution =
   /** the smallest possible resolution, 90p or less */
-  Thumbnail = 'thumbnail',
+  | 'thumbnail'
   /** 180p or less */
-  VerySmall = 'very small',
+  | 'very small'
   /** 360p or less */
-  Small = 'small',
+  | 'small'
   /** 720p or less */
-  Medium = 'medium',
+  | 'medium'
   /** 1080p or less */
-  Large = 'large',
+  | 'large'
   /** highest possible resolution */
-  Best = 'best',
-}
+  | 'best';
