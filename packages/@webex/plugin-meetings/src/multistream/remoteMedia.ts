@@ -1,54 +1,17 @@
 /* eslint-disable valid-jsdoc */
 import {MediaType, StreamState} from '@webex/internal-media-core';
-import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
 import {MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
-import {AV1_CODEC_PARAMETERS, H264_CODEC_PARAMETERS} from './codec/constants';
 import {CodecInfo} from './codec/types';
-import MediaCodecHelperFactory from './codec/mediaCodecHelper.factory';
 import {MediaRequestId, RemoteVideoResolution} from './types';
+import MediaCodecHelper from './codec/mediaCodecHelper';
 
 export const RemoteMediaEvents = {
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
   Stopped: 'stopped',
 };
-
-/**
- * Converts pane size into h264 maxFs
- * @param {RemoteVideoResolution} paneSize
- * @returns {number}
- */
-export function getMaxFs(paneSize: RemoteVideoResolution): number {
-  if (paneSize in H264_CODEC_PARAMETERS) {
-    return H264_CODEC_PARAMETERS[paneSize].maxFs;
-  }
-
-  LoggerProxy.logger.warn(
-    `RemoteMedia#getMaxFs --> unsupported paneSize: ${paneSize}, using "medium" instead`
-  );
-
-  return H264_CODEC_PARAMETERS.medium.maxFs;
-}
-
-/**
- * Converts pane size into av1 maxPicSize
- *
- * @param paneSize - The resolution to get the max pic size for
- * @returns {number} The max pic size
- */
-export function getMaxPicSize(paneSize: RemoteVideoResolution): number {
-  if (paneSize in AV1_CODEC_PARAMETERS) {
-    return AV1_CODEC_PARAMETERS[paneSize].maxPicSize;
-  }
-
-  LoggerProxy.logger.warn(
-    `RemoteMedia#getMaxPicSize --> unsupported paneSize: ${paneSize}, using "medium" instead`
-  );
-
-  return AV1_CODEC_PARAMETERS.medium.maxPicSize;
-}
 
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
@@ -144,8 +107,8 @@ export class RemoteMedia extends EventsScope {
       resolution = 'best';
     }
 
-    this.maxFrameSize = getMaxFs(resolution);
-    this.maxPicSize = getMaxPicSize(resolution);
+    this.maxFrameSize = MediaCodecHelper.H264.getMaxFs(resolution);
+    this.maxPicSize = MediaCodecHelper.AV1.getMaxPicSize(resolution);
     this.receiveSlot?.setMaxFs(this.maxFrameSize);
     this.receiveSlot?.setMaxPicSize(this.maxPicSize);
   }
@@ -160,7 +123,7 @@ export class RemoteMedia extends EventsScope {
     }
 
     if (this.options.resolution) {
-      return getMaxFs(this.options.resolution);
+      return MediaCodecHelper.H264.getMaxFs(this.options.resolution);
     }
 
     return undefined;
@@ -176,7 +139,7 @@ export class RemoteMedia extends EventsScope {
     }
 
     if (this.options.resolution) {
-      return getMaxPicSize(this.options.resolution);
+      return MediaCodecHelper.AV1.getMaxPicSize(this.options.resolution);
     }
 
     return undefined;
@@ -222,10 +185,7 @@ export class RemoteMedia extends EventsScope {
       throw new Error('sendMediaRequest() called on an invalidated RemoteMedia instance');
     }
 
-    const mediaCodecHelper = MediaCodecHelperFactory.create({
-      codec: this.options.preferredCodec,
-    });
-
+    const mediaCodecHelper = MediaCodecHelper.get(this.options.preferredCodec);
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
         policyInfo: {

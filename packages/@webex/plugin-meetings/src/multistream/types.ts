@@ -1,5 +1,5 @@
 import {NamedMediaGroup} from '@webex/internal-media-core';
-import {CodecInfo} from './codec/types';
+import type {CodecInfo} from './codec/types';
 import {ReceiveSlot} from './receiveSlot';
 
 export interface ActiveSpeakerPolicyInfo {

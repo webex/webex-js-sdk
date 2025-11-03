@@ -4,10 +4,10 @@ import {
   getRecommendedMaxBitrateForFrameSize,
   CodecInfo as WcmeCodecInfo,
 } from '@webex/internal-media-core';
-import {AV1_CODEC_PARAMETERS, CODEC_DEFAULTS} from './constants';
-import {MediaCodecHelper} from './mediaCodecHelper';
-import {AV1CodecInfo} from './types';
+import {AV1_CODEC_PARAMETERS, CODEC_DEFAULTS, PANE_SIZE_TO_RESOLUTION} from './constants';
+import {MediaCodecHelper, AV1CodecInfo, SupportedResolution} from './types';
 import {MediaRequest, RemoteVideoResolution} from '../types';
+import LoggerProxy from '../../common/logs/logger-proxy';
 
 /**
  * Converts picSize in pixels to a frame size.
@@ -25,7 +25,7 @@ const picSizeToFrameSize = (picSize: number): number => {
 /**
  * Class for AV1 media codec info
  */
-export default class MediaCodecHelperAV1 extends MediaCodecHelper {
+export default class MediaCodecHelperAV1 implements MediaCodecHelper {
   /**
    * Gets the AV1 codec info
    *
@@ -47,7 +47,7 @@ export default class MediaCodecHelperAV1 extends MediaCodecHelper {
    * @param {Resolution} resolution - The resolution to degrade to
    * @returns {number} The total macroblocks requested
    */
-  degradeMediaRequest(mr: MediaRequest, resolution: RemoteVideoResolution): number {
+  degradeMediaRequest(mr: MediaRequest, resolution: SupportedResolution): number {
     if (mr.codecInfo?.codec !== 'av1') {
       return 0;
     }
@@ -128,5 +128,26 @@ export default class MediaCodecHelperAV1 extends MediaCodecHelper {
       codec: 'av1',
       ...parameters[0],
     };
+  }
+
+  /**
+   * Converts pane size into av1 maxPicSize
+   *
+   * @param {RemoteVideoResolution} paneSize - The pane size to get the max pic size for
+   * @returns {number} The max pic size
+   */
+  getMaxPicSize(paneSize: RemoteVideoResolution): number {
+    let resolution: SupportedResolution;
+
+    if (paneSize in PANE_SIZE_TO_RESOLUTION) {
+      resolution = PANE_SIZE_TO_RESOLUTION[paneSize];
+    } else {
+      LoggerProxy.logger.warn(
+        `MediaCodecHelperAV1#getMaxPicSize --> unsupported paneSize: ${paneSize}, using "medium" instead`
+      );
+      resolution = PANE_SIZE_TO_RESOLUTION.medium;
+    }
+
+    return AV1_CODEC_PARAMETERS[resolution].maxPicSize;
   }
 }

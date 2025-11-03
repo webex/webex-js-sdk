@@ -4,15 +4,15 @@ import {
   H264Codec,
   CodecInfo as WcmeCodecInfo,
 } from '@webex/internal-media-core';
-import {CODEC_DEFAULTS, H264_CODEC_PARAMETERS} from './constants';
-import {MediaCodecHelper} from './mediaCodecHelper';
-import {H264CodecInfo} from './types';
+import {CODEC_DEFAULTS, H264_CODEC_PARAMETERS, PANE_SIZE_TO_RESOLUTION} from './constants';
+import {MediaCodecHelper, H264CodecInfo, SupportedResolution} from './types';
 import {MediaRequest, RemoteVideoResolution} from '../types';
+import LoggerProxy from '../../common/logs/logger-proxy';
 
 /**
  * Class for H264 media codec info
  */
-export default class MediaCodecHelperH264 extends MediaCodecHelper {
+export default class MediaCodecHelperH264 implements MediaCodecHelper {
   /**
    * Gets the H264 codec info
    *
@@ -38,7 +38,7 @@ export default class MediaCodecHelperH264 extends MediaCodecHelper {
    * @param {Resolution} resolution - The resolution to degrade to
    * @returns {number} The total macroblocks requested
    */
-  degradeMediaRequest(mr: MediaRequest, resolution: RemoteVideoResolution): number {
+  degradeMediaRequest(mr: MediaRequest, resolution: SupportedResolution): number {
     if (mr.codecInfo?.codec !== 'h264') {
       return 0;
     }
@@ -92,5 +92,26 @@ export default class MediaCodecHelperH264 extends MediaCodecHelper {
         )
       ),
     ];
+  }
+
+  /**
+   * Converts pane size into h264 maxFs
+   *
+   * @param {RemoteVideoResolution} paneSize - The pane size to get the max fs for
+   * @returns {number} The max fs
+   */
+  getMaxFs(paneSize: RemoteVideoResolution): number {
+    let resolution: SupportedResolution;
+
+    if (paneSize in PANE_SIZE_TO_RESOLUTION) {
+      resolution = PANE_SIZE_TO_RESOLUTION[paneSize];
+    } else {
+      LoggerProxy.logger.warn(
+        `MediaCodecHelperH264#getMaxFs --> unsupported paneSize: ${paneSize}, using "medium" instead`
+      );
+      resolution = PANE_SIZE_TO_RESOLUTION.medium;
+    }
+
+    return H264_CODEC_PARAMETERS[resolution].maxFs;
   }
 }

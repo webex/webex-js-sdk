@@ -1,32 +1,22 @@
-import {CodecInfo as WcmeCodecInfo} from '@webex/internal-media-core';
-import {CodecInfo} from './types';
-import {MediaRequest, RemoteVideoResolution} from '../types';
+import MediaCodecHelperAV1 from './mediaCodecHelper.av1';
+import MediaCodecHelperH264 from './mediaCodecHelper.h264';
 
 export type MediaCodecHelperOptions = {
   codec: 'h264' | 'av1';
 };
 
-/**
- * Abstract class for media codec info
- */
-export abstract class MediaCodecHelper {
-  protected readonly options: MediaCodecHelperOptions;
+const MediaCodecHelper = {
+  AV1: new MediaCodecHelperAV1(),
+  H264: new MediaCodecHelperH264(),
+  get: (codec?: 'av1' | 'h264'): MediaCodecHelperAV1 | MediaCodecHelperH264 => {
+    switch (codec) {
+      case 'av1':
+        return MediaCodecHelper.AV1;
+      case 'h264':
+      default:
+        return MediaCodecHelper.H264;
+    }
+  },
+};
 
-  /**
-   * Constructor for MediaCodecHelper
-   *
-   * @param {MediaCodecHelperOptions} options - The options for the media codec info
-   */
-  constructor(options: MediaCodecHelperOptions) {
-    this.options = options;
-  }
-
-  abstract getCodecInfo(options: {maxFs?: number; maxPicSize?: number}): CodecInfo | undefined;
-  abstract getWCMECodecInfos(mediaRequest: MediaRequest): WcmeCodecInfo[];
-  abstract degradeMediaRequest(
-    mediaRequest: MediaRequest,
-    resolution: RemoteVideoResolution
-  ): number;
-
-  abstract getMaxPayloadBitsPerSecond(mediaRequest: MediaRequest): number;
-}
+export default MediaCodecHelper;

@@ -11,8 +11,9 @@ import {cloneDeepWith, debounce} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlotEvents} from './receiveSlot';
-import MediaCodecHelperFactory from './codec/mediaCodecHelper.factory';
-import {MediaRequest, MediaRequestId, RemoteVideoResolution} from './types';
+import {MediaRequest, MediaRequestId} from './types';
+import {SupportedResolution} from './codec/types';
+import MediaCodecHelper from './codec/mediaCodecHelper';
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
@@ -73,33 +74,24 @@ export class MediaRequestManager {
   }
 
   private getDegradedClientRequests(clientRequests: ClientRequestsMap) {
-    const resolutions: RemoteVideoResolution[] = [
-      'best',
-      'large',
-      'medium',
-      'small',
-      'very small',
-      'thumbnail',
-    ];
+    const resolutions: SupportedResolution[] = ['1080p', '720p', '540p', '360p', '180p', '90p'];
 
     for (const resolution of resolutions) {
       let totalMacroblocksRequested = 0;
 
       Object.values(clientRequests).forEach((mr) => {
-        const mediaCodecHelper = MediaCodecHelperFactory.create({
-          codec: mr.codecInfo?.codec,
-        });
+        const mediaCodecHelper = MediaCodecHelper.get(mr.codecInfo?.codec);
         totalMacroblocksRequested += mediaCodecHelper.degradeMediaRequest(mr, resolution);
       });
 
       if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
-        if (resolution !== 'best') {
+        if (resolution !== '1080p') {
           LoggerProxy.logger.warn(
             `multistream:mediaRequestManager --> too many streams with high macroblocks requested, resolution will be limited to ${resolution}`
           );
         }
         break;
-      } else if (resolution === 'thumbnail') {
+      } else if (resolution === '90p') {
         LoggerProxy.logger.warn(
           `multistream:mediaRequestManager --> even with resolution limited to ${resolution} you are still requesting too many streams, consider reducing the number of requests`
         );
@@ -139,9 +131,7 @@ export class MediaRequestManager {
     }
 
     if (mediaRequest.codecInfo?.codec) {
-      const mediaCodecHelper = MediaCodecHelperFactory.create({
-        codec: mediaRequest.codecInfo.codec,
-      });
+      const mediaCodecHelper = MediaCodecHelper.get(mediaRequest.codecInfo.codec);
 
       return mediaCodecHelper.getMaxPayloadBitsPerSecond(mediaRequest);
     }
@@ -272,9 +262,7 @@ export class MediaRequestManager {
 
       const receiveSlots = mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot);
       const maxPayloadBitsPerSecond = this.getMaxPayloadBitsPerSecond(mr);
-      const mediaCodecHelper = MediaCodecHelperFactory.create({
-        codec: mr.codecInfo?.codec,
-      });
+      const mediaCodecHelper = MediaCodecHelper.get(mr.codecInfo?.codec);
       const codecInfos = mediaCodecHelper.getWCMECodecInfos(mr);
 
       const streamRequest = new StreamRequest(

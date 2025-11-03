@@ -5,12 +5,12 @@ import {forEach} from 'lodash';
 import {NamedMediaGroup} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {getMaxFs, getMaxPicSize, RemoteMedia} from './remoteMedia';
+import {RemoteMedia} from './remoteMedia';
 import {MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot} from './receiveSlot';
 import {CodecInfo} from './codec/types';
-import MediaCodecHelperFactory from './codec/mediaCodecHelper.factory';
 import {MediaRequestId, RemoteVideoResolution} from './types';
+import MediaCodecHelper from './codec/mediaCodecHelper';
 
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
@@ -220,10 +220,7 @@ export class RemoteMediaGroup {
   private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 
-    const mediaCodecHelper = MediaCodecHelperFactory.create({
-      codec: this.options.preferredCodec,
-    });
-
+    const mediaCodecHelper = MediaCodecHelper.get(this.options.preferredCodec);
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -328,7 +325,7 @@ export class RemoteMediaGroup {
 
     // Fall back to group's resolution option
     if (this.options.resolution) {
-      return getMaxFs(this.options.resolution);
+      return MediaCodecHelper.H264.getMaxFs(this.options.resolution);
     }
 
     return undefined;
@@ -347,7 +344,7 @@ export class RemoteMediaGroup {
 
     // Fall back to group's resolution option
     if (this.options.resolution) {
-      return getMaxPicSize(this.options.resolution);
+      return MediaCodecHelper.AV1.getMaxPicSize(this.options.resolution);
     }
 
     return undefined;
