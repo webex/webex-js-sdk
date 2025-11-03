@@ -225,13 +225,6 @@ export type LocalStreams = {
   };
 };
 
-export type AdditionalMediaOptions = {
-  sendVideo?: boolean; // if not specified, default value of videoEnabled is used
-  receiveVideo?: boolean; // if not specified, default value of videoEnabled is used
-  sendAudio?: boolean; // if not specified, default value of audioEnabled true is used
-  receiveAudio?: boolean; // if not specified, default value of audioEnabled true is used
-};
-
 export type AddMediaOptions = {
   localStreams?: LocalStreams;
   audioEnabled?: boolean; // if not specified, default value true is used
@@ -242,6 +235,13 @@ export type AddMediaOptions = {
   bundlePolicy?: BundlePolicy; // applies only to multistream meetings
   allowMediaInLobby?: boolean; // allows adding media when in the lobby
   additionalMediaOptions?: AdditionalMediaOptions; // allows adding additional options like send/receive audio/video
+};
+
+export type AdditionalMediaOptions = {
+  sendVideo?: boolean; // if not specified, default value of videoEnabled is used
+  receiveVideo?: boolean; // if not specified, default value of videoEnabled is used
+  sendAudio?: boolean; // if not specified, default value of audioEnabled true is used
+  receiveAudio?: boolean; // if not specified, default value of audioEnabled true is used
 };
 
 export type CallStateForMetrics = {
