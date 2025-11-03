@@ -93,7 +93,7 @@ export class ReceiveSlot extends EventsScope {
     this.emit(
       {
         file: 'meeting/receiveSlot',
-        function: 'findMemberId',
+        function: 'setMaxFs',
       },
       ReceiveSlotEvents.MaxFsUpdate,
       {
@@ -112,7 +112,7 @@ export class ReceiveSlot extends EventsScope {
     this.emit(
       {
         file: 'meeting/receiveSlot',
-        function: 'findMemberId',
+        function: 'setMaxPicSize',
       },
       ReceiveSlotEvents.MaxPicSizeUpdate,
       {
