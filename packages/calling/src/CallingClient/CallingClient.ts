@@ -156,7 +156,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     // Returns an array of ServiceHost-like entries: {host, priority, id, ttl}
     // @ts-ignore - services may be v1 or v2, both expose getMobiusClusters()
     this.mobiusClusters = this.webex.internal.services.getMobiusClusters();
-    console.log('pkesari_mobiusClusters', this.mobiusClusters);
     this.mobiusHost = '';
 
     this.registerSessionsListener();
@@ -489,7 +488,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       });
       clientRegion = this.sdkConfig?.discovery?.region;
       countryCode = this.sdkConfig?.discovery?.country;
-      this.mobiusHost = this.webex.internal.services._serviceUrls.mobius; // This needs to be fixed too as per services.v2 catalog
+      this.mobiusHost =
+        this.webex.internal.services._serviceUrls.mobius ||
+        this.webex.internal.services.get(this.webex.internal.services._activeServices.mobius);
     } else {
       log.log('Updating region and country through Region discovery', {
         file: CALLING_CLIENT_FILE,

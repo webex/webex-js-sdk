@@ -128,6 +128,10 @@ export interface WebexSDK {
         'ucmgmt-gateway': string;
         contactsService: string;
       };
+      _activeServices: {
+        mobius: string;
+      };
+      get: (service: string) => string;
       fetchClientRegionInfo: () => Promise<ClientRegionInfo>;
     };
     metrics: {
