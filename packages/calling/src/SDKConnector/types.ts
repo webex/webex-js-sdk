@@ -129,6 +129,11 @@ export interface WebexSDK {
         contactsService: string;
       };
       _activeServices: {
+        broadworksIdpProxy: string;
+        contactsService: string;
+        hydra: string;
+        janus: string;
+        mercuryApi: string;
         mobius: string;
       };
       get: (service: string) => string;

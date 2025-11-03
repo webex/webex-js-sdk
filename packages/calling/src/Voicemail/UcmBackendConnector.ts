@@ -254,7 +254,10 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
     return new Promise((resolve, reject) => {
       const voicemailContentUrl = `${this.vgVoiceMessageURI}${VOICEMAILS}/${messageId}/${CONTENT}`;
-      const mercuryApi = `${this.webex.internal.services._serviceUrls.mercuryApi}`;
+      const mercuryUrl =
+        this.webex.internal.services._serviceUrls.mercuryApi ||
+        this.webex.internal.services.get(this.webex.internal.services._activeServices.mercuryApi);
+      const mercuryApi = `${mercuryUrl}`;
 
       this.returnUcmPromise(voicemailContentUrl, mercuryApi)
         .then((response: VoicemailResponseEvent) => {
