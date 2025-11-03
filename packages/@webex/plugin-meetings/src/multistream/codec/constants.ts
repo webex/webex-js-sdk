@@ -82,11 +82,11 @@ export const CODEC_DEFAULTS = {
   av1: AV1_CODEC_PARAMETERS['1080p'],
 };
 
-export const PANE_SIZE_TO_RESOLUTION: Record<RemoteVideoResolution, SupportedResolution> = {
-  thumbnail: '90p',
-  'very small': '180p',
-  small: '360p',
-  medium: '720p',
-  large: '1080p',
-  best: '1080p',
-};
+export const PANE_SIZE_TO_RESOLUTION = {
+  [RemoteVideoResolution.Thumbnail]: '90p',
+  [RemoteVideoResolution.VerySmall]: '180p',
+  [RemoteVideoResolution.Small]: '360p',
+  [RemoteVideoResolution.Medium]: '720p',
+  [RemoteVideoResolution.Large]: '1080p',
+  [RemoteVideoResolution.Best]: '1080p',
+} satisfies Record<RemoteVideoResolution, SupportedResolution>;

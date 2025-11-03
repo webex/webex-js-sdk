@@ -94,17 +94,17 @@ export class RemoteMedia extends EventsScope {
     let resolution: RemoteVideoResolution;
 
     if (height < getThresholdHeight(90)) {
-      resolution = 'thumbnail';
+      resolution = RemoteVideoResolution.Thumbnail;
     } else if (height < getThresholdHeight(180)) {
-      resolution = 'very small';
+      resolution = RemoteVideoResolution.VerySmall;
     } else if (height < getThresholdHeight(360)) {
-      resolution = 'small';
+      resolution = RemoteVideoResolution.Small;
     } else if (height < getThresholdHeight(540)) {
-      resolution = 'medium';
+      resolution = RemoteVideoResolution.Medium;
     } else if (height <= 720) {
-      resolution = 'large';
+      resolution = RemoteVideoResolution.Large;
     } else {
-      resolution = 'best';
+      resolution = RemoteVideoResolution.Best;
     }
 
     this.maxFrameSize = MediaCodecHelper.H264.getMaxFs(resolution);
