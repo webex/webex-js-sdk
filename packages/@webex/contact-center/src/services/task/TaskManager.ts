@@ -287,11 +287,45 @@ export default class TaskManager extends EventEmitter {
             break;
           }
           case CC_EVENTS.CONTACT_MERGED: {
-            // Update task data
             if (payload.data.interaction.childInteractionId) {
-              this.removeTaskFromCollection(payload.data.interaction.childInteractionId);
+              this.removeTaskFromCollection(
+                this.taskCollection[payload.data.interaction.childInteractionId]
+              );
             }
-            task = this.updateTaskData(task, payload.data);
+
+            if (this.taskCollection[payload.data.interactionId]) {
+              LoggerProxy.log(`Got CONTACT_MERGED: Task already exists in collection`, {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              });
+            } else if (!this.taskCollection[payload.data.interactionId]) {
+              // Case2 : Task is not present in taskCollection
+              LoggerProxy.log(`Got CONTACT_MERGED : Creating new task in taskManager`, {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              });
+
+              // Pre-calculate isConferenceInProgress for the initial task data
+              const simulatedTaskForAgentContact = {
+                data: {...payload.data},
+              } as ITask;
+
+              task = new Task(
+                this.contact,
+                this.webCallingService,
+                {
+                  ...payload.data,
+                  wrapUpRequired:
+                    payload.data.interaction?.participants?.[this.agentId]?.isWrapUp || false,
+                  isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForAgentContact),
+                },
+                this.wrapupData,
+                this.agentId
+              );
+              this.taskCollection[payload.data.interactionId] = task;
+            }
 
             task.emit(TASK_EVENTS.TASK_MERGED, task);
             break;
