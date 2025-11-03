@@ -1,6 +1,6 @@
 /* globals window */
 
-import {CodecInfo} from '@webex/web-capabilities';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import {
   _CREATED_,
   _INCOMING_,
@@ -172,16 +172,15 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
   const maxDuration = 3e5; // ms
   const shouldTrigger = firstChecked === undefined;
   const shouldStopChecking = firstChecked && Date.now() - firstChecked >= maxDuration;
+  const isH264Available =
+    WebCapabilities.isCapableOfReceivingVideoCodec('video/H264') === CapabilityState.CAPABLE;
 
-  // Disable notifications and start H.264 download only
   if (disableNotifications) {
-    CodecInfo.isH264Available();
-
     return;
   }
 
   // Codec loaded trigger event notification
-  if (await CodecInfo.isH264Available()) {
+  if (isH264Available) {
     Trigger.trigger(
       this,
       {

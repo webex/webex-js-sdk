@@ -3,7 +3,7 @@ import {cloneDeep, forEach, remove} from 'lodash';
 import {EventMap} from 'typed-emitter';
 import {MediaType, NamedMediaGroup} from '@webex/internal-media-core';
 
-import {CodecInfo as CodecInfoCapabilities} from '@webex/web-capabilities';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
@@ -377,9 +377,9 @@ export class RemoteMediaManager extends EventsScope {
    * Updates the preferred codec
    */
   private async updatePreferredCodec() {
-    const isAV1CodecAvailable = await CodecInfoCapabilities.isAV1Available();
+    const isAV1CodecAvailable = WebCapabilities.isCapableOfReceivingVideoCodec('video/AV1');
     switch (true) {
-      case isAV1CodecAvailable:
+      case isAV1CodecAvailable === CapabilityState.CAPABLE:
         this.preferredCodec = 'av1';
         break;
       default:
