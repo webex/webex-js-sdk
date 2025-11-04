@@ -625,6 +625,40 @@ describe('Task', () => {
     );
   });
 
+  it('should hold the task with custom mediaResourceId and return the expected response', async () => {
+    const customMediaResourceId = 'custom-media-resource-id-123';
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.hold.mockResolvedValue(expectedResponse);
+
+    const response = await task.hold(customMediaResourceId);
+
+    expect(contactMock.hold).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: {mediaResourceId: customMediaResourceId},
+    });
+    expect(response).toEqual(expectedResponse);
+    expect(loggerInfoSpy).toHaveBeenCalledWith(`Holding task`, {
+      module: TASK_FILE,
+      method: 'hold',
+      interactionId: task.data.interactionId,
+    });
+    expect(loggerLogSpy).toHaveBeenCalledWith(`Task placed on hold successfully`, {
+      module: TASK_FILE,
+      method: 'hold',
+      interactionId: task.data.interactionId,
+    });
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_HOLD_SUCCESS,
+      {
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+        taskId: taskDataMock.interactionId,
+        mediaResourceId: customMediaResourceId,
+      },
+      ['operational', 'behavioral']
+    );
+  });
+
   it('should handle errors in hold method', async () => {
     const error = {details: (global as any).makeFailure('Hold Failed')};
     contactMock.hold.mockImplementation(() => {
@@ -646,6 +680,36 @@ describe('Task', () => {
       {
         taskId: taskDataMock.interactionId,
         mediaResourceId: taskDataMock.mediaResourceId,
+        error: error.toString(),
+        ...expectedTaskErrorFieldsHold,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('should handle errors in hold method with custom mediaResourceId', async () => {
+    const customMediaResourceId = 'custom-media-resource-id-456';
+    const error = {details: (global as any).makeFailure('Hold Failed with custom mediaResourceId')};
+    contactMock.hold.mockImplementation(() => {
+      throw error;
+    });
+
+    await expect(task.hold(customMediaResourceId)).rejects.toThrow(error.details.data.reason);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'hold', TASK_FILE);
+    const expectedTaskErrorFieldsHold = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        mediaResourceId: customMediaResourceId,
         error: error.toString(),
         ...expectedTaskErrorFieldsHold,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
@@ -678,6 +742,29 @@ describe('Task', () => {
     );
   });
 
+  it('should resume the task with custom mediaResourceId and return the expected response', async () => {
+    const customMediaResourceId = 'custom-media-resource-id-789';
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.unHold.mockResolvedValue(expectedResponse);
+    const response = await task.resume(customMediaResourceId);
+    expect(contactMock.unHold).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: {mediaResourceId: customMediaResourceId},
+    });
+    expect(response).toEqual(expectedResponse);
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS,
+      {
+        taskId: taskDataMock.interactionId,
+        mainInteractionId: taskDataMock.interaction.mainInteractionId,
+        mediaResourceId: customMediaResourceId,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(expectedResponse),
+      },
+      ['operational', 'behavioral']
+    );
+  });
+
   it('should handle errors in resume method', async () => {
     const error = {details: (global as any).makeFailure('Resume Failed')};
     contactMock.unHold.mockImplementation(() => {
@@ -702,6 +789,36 @@ describe('Task', () => {
         mediaResourceId:
           taskDataMock.interaction.media[taskDataMock.interaction.mainInteractionId]
             .mediaResourceId,
+        ...expectedTaskErrorFieldsResume,
+        ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
+      },
+      ['operational', 'behavioral']
+    );
+  });
+
+  it('should handle errors in resume method with custom mediaResourceId', async () => {
+    const customMediaResourceId = 'custom-media-resource-id-999';
+    const error = {details: (global as any).makeFailure('Resume Failed with custom mediaResourceId')};
+    contactMock.unHold.mockImplementation(() => {
+      throw error;
+    });
+
+    await expect(task.resume(customMediaResourceId)).rejects.toThrow(error.details.data.reason);
+    expect(generateTaskErrorObjectSpy).toHaveBeenCalledWith(error, 'resume', TASK_FILE);
+    const expectedTaskErrorFieldsResume = {
+      trackingId: error.details.trackingId,
+      errorMessage: error.details.data.reason,
+      errorType: '',
+      errorData: '',
+      reasonCode: 0,
+    };
+    expect(mockMetricsManager.trackEvent).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
+      {
+        taskId: taskDataMock.interactionId,
+        mainInteractionId: taskDataMock.interaction.mainInteractionId,
+        mediaResourceId: customMediaResourceId,
         ...expectedTaskErrorFieldsResume,
         ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details),
       },
@@ -1712,6 +1829,64 @@ describe('Task', () => {
           method: 'consultConference',
           interactionId: taskId,
         });
+      });
+
+      it('should dynamically calculate destAgentId from participants when this.data.destAgentId is null', async () => {
+        // Simulate scenario where destAgentId is not preserved (e.g., after hold/unhold)
+        task.data.destAgentId = null;
+        
+        const consultedAgentId = 'consulted-agent-123';
+        getDestinationAgentIdSpy.mockReturnValue(consultedAgentId);
+        
+        const mockResponse = {
+          trackingId: 'test-tracking-dynamic',
+          interactionId: taskId,
+        };
+        contactMock.consultConference.mockResolvedValue(mockResponse);
+
+        const result = await task.consultConference();
+
+        // Verify getDestinationAgentId was called to dynamically calculate the destination
+        expect(getDestinationAgentIdSpy).toHaveBeenCalledWith(
+          taskDataMock.interaction?.participants,
+          taskDataMock.agentId
+        );
+
+        // Verify the conference was called with the dynamically calculated destAgentId
+        expect(contactMock.consultConference).toHaveBeenCalledWith({
+          interactionId: taskId,
+          data: {
+            agentId: taskDataMock.agentId,
+            to: consultedAgentId, // Dynamically calculated value
+            destinationType: 'agent',
+          },
+        });
+        expect(result).toEqual(mockResponse);
+      });
+
+      it('should throw error when no destination agent is found (queue consult not accepted)', async () => {
+        // Simulate queue consult scenario where no agent has accepted yet
+        getDestinationAgentIdSpy.mockReturnValue(''); // No agent found
+        
+        // Mock generateTaskErrorObject to wrap the error
+        const wrappedError = new Error('Error while performing consultConference');
+        generateTaskErrorObjectSpy.mockReturnValue(wrappedError);
+
+        await expect(task.consultConference()).rejects.toThrow('Error while performing consultConference');
+        
+        // Verify the conference was NOT called
+        expect(contactMock.consultConference).not.toHaveBeenCalled();
+        
+        // Verify metrics were tracked for the failure
+        expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+          'Task Conference Start Failed',
+          expect.objectContaining({
+            taskId: taskId,
+            destination: '', // No destination found
+            destinationType: 'agent',
+          }),
+          ['operational', 'behavioral', 'business']
+        );
       });
     });
 

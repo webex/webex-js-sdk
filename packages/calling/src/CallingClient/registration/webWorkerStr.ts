@@ -75,11 +75,11 @@ const messageHandler = (event) => {
           keepAliveRetryCount = 0;
         } catch (err) {
           let headers = {};
-          if(err.headers.has('Retry-After')) {
+          if(err.headers?.has('Retry-After')) {
             headers['retry-after'] = err.headers.get('Retry-After');
           } 
 
-          if(err.headers.has('Trackingid')) {
+          if(err.headers?.has('Trackingid')) {
             headers['trackingid'] = err.headers.get('Trackingid');
           }   
 

@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
-import ExtendedError from 'Errors/catalog/ExtendedError';
 import {METHOD_START_MESSAGE} from '../common/constants';
 import {
   filterMobiusUris,
