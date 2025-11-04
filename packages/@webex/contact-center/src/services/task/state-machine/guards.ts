@@ -9,6 +9,7 @@
  * TODO: If guards need event data in the future, add event parameter back to guard signatures.
  */
 
+import {StateValue} from 'xstate';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {TaskContext, TaskState, TaskEventPayload} from './types';
 
@@ -19,18 +20,18 @@ export const guards = {
   /**
    * Can accept if in OFFERED or OFFERED_CONSULT state
    */
-  canAccept: (context: TaskContext): boolean => {
-    return (
-      context.currentState === TaskState.OFFERED ||
-      context.currentState === TaskState.OFFERED_CONSULT
-    );
+  canAccept: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
+    const state = meta.state.value as TaskState;
+
+    return state === TaskState.OFFERED || state === TaskState.OFFERED_CONSULT;
   },
 
   /**
    * Can only hold if connected and not already on hold
    */
-  canHold: (context: TaskContext): boolean => {
-    if (context.currentState !== TaskState.CONNECTED) {
+  canHold: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
+    const state = meta.state.value as TaskState;
+    if (state !== TaskState.CONNECTED) {
       return false;
     }
 
@@ -45,8 +46,9 @@ export const guards = {
   /**
    * Can only resume if currently held
    */
-  canResume: (context: TaskContext): boolean => {
-    if (context.currentState !== TaskState.HELD) {
+  canResume: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
+    const state = meta.state.value as TaskState;
+    if (state !== TaskState.HELD) {
       return false;
     }
 
@@ -61,9 +63,10 @@ export const guards = {
   /**
    * Can only consult if not already in consult/conference
    */
-  canConsult: (context: TaskContext): boolean => {
+  canConsult: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
+    const state = meta.state.value as TaskState;
     // Must be in CONNECTED or HELD state
-    if (context.currentState !== TaskState.CONNECTED && context.currentState !== TaskState.HELD) {
+    if (state !== TaskState.CONNECTED && state !== TaskState.HELD) {
       return false;
     }
 
@@ -78,8 +81,13 @@ export const guards = {
   /**
    * Can only start conference if consult destination agent has joined
    */
-  canStartConference: (context: TaskContext): boolean => {
-    if (context.currentState !== TaskState.CONSULTING) {
+  canStartConference: (
+    context: TaskContext,
+    event: any,
+    meta: {state: {value: StateValue}}
+  ): boolean => {
+    const state = meta.state.value as TaskState;
+    if (state !== TaskState.CONSULTING) {
       return false;
     }
 
@@ -94,27 +102,35 @@ export const guards = {
   /**
    * Can only transfer if not in certain states
    */
-  canTransfer: (context: TaskContext): boolean => {
+  canTransfer: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
+    const state = meta.state.value as TaskState;
     // Can transfer from CONNECTED, HELD, or CONSULTING
+
     return (
-      context.currentState === TaskState.CONNECTED ||
-      context.currentState === TaskState.HELD ||
-      context.currentState === TaskState.CONSULTING
+      state === TaskState.CONNECTED || state === TaskState.HELD || state === TaskState.CONSULTING
     );
   },
 
   /**
    * Can only exit conference if actually in conference
    */
-  canExitConference: (context: TaskContext): boolean => {
-    return context.currentState === TaskState.CONFERENCING;
+  canExitConference: (
+    context: TaskContext,
+    event: any,
+    meta: {state: {value: StateValue}}
+  ): boolean => {
+    const state = meta.state.value as TaskState;
+
+    return state === TaskState.CONFERENCING;
   },
 
   /**
    * Can only wrapup if in WRAPPING_UP state
    */
-  canWrapup: (context: TaskContext): boolean => {
-    return context.currentState === TaskState.WRAPPING_UP;
+  canWrapup: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
+    const state = meta.state.value as TaskState;
+
+    return state === TaskState.WRAPPING_UP;
   },
 
   /**
@@ -127,8 +143,13 @@ export const guards = {
   /**
    * Check if conference is ending (less than 2 participants)
    */
-  isConferenceEnding: (context: TaskContext): boolean => {
-    if (context.currentState !== TaskState.CONFERENCING) {
+  isConferenceEnding: (
+    context: TaskContext,
+    event: any,
+    meta: {state: {value: StateValue}}
+  ): boolean => {
+    const state = meta.state.value as TaskState;
+    if (state !== TaskState.CONFERENCING) {
       return false;
     }
 
@@ -139,9 +160,15 @@ export const guards = {
   /**
    * Can merge consult to conference if in CONSULTING state and destination agent has joined
    */
-  canMergeConsultToConference: (context: TaskContext): boolean => {
+  canMergeConsultToConference: (
+    context: TaskContext,
+    event: any,
+    meta: {state: {value: StateValue}}
+  ): boolean => {
+    const state = meta.state.value as TaskState;
+
     return (
-      context.currentState === TaskState.CONSULTING &&
+      state === TaskState.CONSULTING &&
       context.consultDestinationAgentJoined &&
       !context.isConferencing &&
       context.conferenceParticipants.length === 0
@@ -151,11 +178,17 @@ export const guards = {
   /**
    * Can add participant to conference if in CONFERENCING state and not at max capacity
    */
-  canAddToConference: (context: TaskContext): boolean => {
+  canAddToConference: (
+    context: TaskContext,
+    event: any,
+    meta: {state: {value: StateValue}}
+  ): boolean => {
+    const state = meta.state.value as TaskState;
+
     return (
       context.isConferencing &&
       context.conferenceParticipants.length < context.maxConferenceParticipants &&
-      context.currentState === TaskState.CONFERENCING
+      state === TaskState.CONFERENCING
     );
   },
 
@@ -163,8 +196,13 @@ export const guards = {
    * Can transfer conference if initiator and in CONFERENCING state
    * Note: event parameter would be needed to check agentId, but keeping signature consistent
    */
-  canTransferConference: (context: TaskContext): boolean => {
-    if (context.currentState !== TaskState.CONFERENCING) {
+  canTransferConference: (
+    context: TaskContext,
+    event: any,
+    meta: {state: {value: StateValue}}
+  ): boolean => {
+    const state = meta.state.value as TaskState;
+    if (state !== TaskState.CONFERENCING) {
       return false;
     }
 
@@ -206,29 +244,41 @@ export const guards = {
   /**
    * Check if in connected state
    */
-  isConnected: (context: TaskContext): boolean => {
-    return context.currentState === TaskState.CONNECTED;
+  isConnected: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
+    const state = meta.state.value as TaskState;
+
+    return state === TaskState.CONNECTED;
   },
 
   /**
    * Check if in held state
    */
-  isHeld: (context: TaskContext): boolean => {
-    return context.currentState === TaskState.HELD;
+  isHeld: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
+    const state = meta.state.value as TaskState;
+
+    return state === TaskState.HELD;
   },
 
   /**
    * Check if in consulting state
    */
-  isConsulting: (context: TaskContext): boolean => {
-    return context.currentState === TaskState.CONSULTING;
+  isConsulting: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
+    const state = meta.state.value as TaskState;
+
+    return state === TaskState.CONSULTING;
   },
 
   /**
    * Check if in conferencing state
    */
-  isConferencing: (context: TaskContext): boolean => {
-    return context.currentState === TaskState.CONFERENCING;
+  isConferencing: (
+    context: TaskContext,
+    event: any,
+    meta: {state: {value: StateValue}}
+  ): boolean => {
+    const state = meta.state.value as TaskState;
+
+    return state === TaskState.CONFERENCING;
   },
 
   /**
@@ -254,13 +304,17 @@ export const guards = {
  * Helper function to check if operation is allowed in current state
  * This can be used from outside the state machine
  */
-export function canPerformOperation(context: TaskContext, operation: keyof typeof guards): boolean {
+export function canPerformOperation(
+  context: TaskContext,
+  operation: keyof typeof guards,
+  state: {value: StateValue}
+): boolean {
   const guard = guards[operation];
   if (!guard) {
     return false;
   }
 
-  return guard(context);
+  return guard(context, null, {state});
 }
 
 /**

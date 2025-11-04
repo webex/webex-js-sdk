@@ -26,63 +26,19 @@ import {
   TaskContext,
   TaskEventPayload,
   type ActionCallbacks,
-  guards,
 } from './state-machine';
 import AutoWrapup from './AutoWrapup';
 
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
   protected metricsManager: MetricsManager;
-  protected stateMachineService?: Interpreter<TaskContext, any, TaskEventPayload>;
+  public stateMachineService?: Interpreter<TaskContext, any, TaskEventPayload>;
   public data: TaskData;
   public webCallMap: Record<TaskId, CallId>;
   public taskUiControls: TaskUIActions;
+  public state: any;
   private ronaTimerId?: NodeJS.Timeout;
   private autoWrapupTimerId?: NodeJS.Timeout;
-
-  /**
-   * State machine instance for managing task state transitions and derived properties.
-   * Exposed publicly to allow access to state machine context and current state.
-   * @internal
-   */
-  public stateMachine?: Interpreter<TaskContext, any, TaskEventPayload>;
-
-  // State machine derived properties (getters)
-  public get canHold(): boolean {
-    return this.stateMachine?.state.context.canHold ?? false;
-  }
-
-  public get canResume(): boolean {
-    return this.stateMachine?.state.context.canResume ?? false;
-  }
-
-  public get canConsult(): boolean {
-    return this.stateMachine?.state.context.canConsult ?? false;
-  }
-
-  public get canEndConsult(): boolean {
-    return this.stateMachine?.state.context.canEndConsult ?? false;
-  }
-
-  public get canTransfer(): boolean {
-    return this.stateMachine?.state.context.canTransfer ?? false;
-  }
-
-  public get canWrapup(): boolean {
-    return this.stateMachine?.state.context.canWrapup ?? false;
-  }
-
-  public get isHeld(): boolean {
-    return this.stateMachine?.state.matches(TaskState.HELD) ?? false;
-  }
-
-  public get isConsulting(): boolean {
-    return this.stateMachine?.state.matches(TaskState.CONSULTING) ?? false;
-  }
-
-  public get isConferencing(): boolean {
-    return this.stateMachine?.state.matches(TaskState.CONFERENCING) ?? false;
-  }
 
   constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
     super();
@@ -92,8 +48,6 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.webCallMap = {};
     this.initialiseUIControls();
     this.initializeStateMachine();
-    // Expose stateMachineService as public stateMachine for ITask interface compliance
-    this.stateMachine = this.stateMachineService;
   }
 
   // Properties from ITask interface
@@ -245,13 +199,6 @@ export default abstract class Task extends EventEmitter implements ITask {
 
     this.stateMachineService = interpret(machine)
       .onTransition((state) => {
-        // CRITICAL FIX: Sync context.currentState with XState's internal state
-        // The context.currentState field was not being updated, causing it to stay IDLE
-        // even though XState's internal state was transitioning correctly
-        if (state.context.currentState !== state.value) {
-          state.context.currentState = state.value as TaskState;
-        }
-
         LoggerProxy.log(
           `State machine transition: ${state.context.previousState || 'N/A'} -> ${state.value}`,
           {
@@ -259,7 +206,7 @@ export default abstract class Task extends EventEmitter implements ITask {
             method: 'onTransition',
           }
         );
-
+        this.state = state;
         // Compute derived properties after state transition
         const agentId = this.data.agentId;
         if (agentId) {
@@ -270,9 +217,6 @@ export default abstract class Task extends EventEmitter implements ITask {
         this.updateUIControlsFromState();
       })
       .start();
-
-    // Expose as public property for ITask interface
-    this.stateMachine = this.stateMachineService;
   }
 
   /**
@@ -373,7 +317,6 @@ export default abstract class Task extends EventEmitter implements ITask {
     if (this.stateMachineService) {
       this.stateMachineService.stop();
       this.stateMachineService = undefined;
-      this.stateMachine = undefined;
     }
   }
 
@@ -445,22 +388,24 @@ export default abstract class Task extends EventEmitter implements ITask {
    * Called whenever task data is updated or state transitions occur
    */
   protected computeDerivedProperties(agentId: string): void {
-    const context = this.stateMachineService?.state?.context;
-    if (!context) return;
+    const state = this.stateMachineService?.state;
+    if (!state) return;
+
+    const {context} = state;
 
     try {
       // Compute consultStatus
-      this.data.consultStatus = this.getConsultStatusFromContext(context, agentId);
+      this.data.consultStatus = this.getConsultStatus(agentId);
 
       // Compute isConsultInProgress
-      this.data.isConsultInProgress = guards.isConsulting(context);
+      this.data.isConsultInProgress = state.matches(TaskState.CONSULTING);
 
       // Compute isOnHold
-      this.data.isOnHold = guards.isHeld(context);
+      this.data.isOnHold = state.matches(TaskState.HELD);
 
       // Compute isConferenceInProgress (already exists but ensure consistency)
       this.data.isConferenceInProgress =
-        guards.isConferencing(context) && context.participants.length >= 2;
+        state.matches(TaskState.CONFERENCING) && context.participants.length >= 2;
 
       // Compute isCustomerInCall
       this.data.isCustomerInCall = this.checkCustomerInCall();
@@ -487,28 +432,29 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * Get consultation status from state machine context
+   * Get consultation status from state machine
    */
-  private getConsultStatusFromContext(context: TaskContext, agentId: string): string {
-    const state = context.currentState;
+  private getConsultStatus(agentId: string): string {
+    const state = this.stateMachineService?.state;
+    if (!state) return 'NONE';
     const participants = this.data.interaction?.participants || {};
     const participant: any = Object.values(participants).find(
       (p: any) => p.pType === 'Agent' && p.id === agentId
     );
 
-    if (state === TaskState.CONSULT_INITIATED) {
+    if (state.matches(TaskState.CONSULT_INITIATED)) {
       return participant?.isConsulted ? 'BEING_CONSULTED' : 'CONSULT_INITIATED';
     }
-    if (state === TaskState.CONSULTING) {
+    if (state.matches(TaskState.CONSULTING)) {
       return participant?.isConsulted ? 'BEING_CONSULTED_ACCEPTED' : 'CONSULT_ACCEPTED';
     }
-    if (state === TaskState.CONNECTED) {
+    if (state.matches(TaskState.CONNECTED)) {
       return 'CONNECTED';
     }
-    if (state === TaskState.CONFERENCING) {
+    if (state.matches(TaskState.CONFERENCING)) {
       return 'CONFERENCE';
     }
-    if (state === TaskState.CONSULT_COMPLETED) {
+    if (state.matches(TaskState.CONSULT_COMPLETED)) {
       return 'CONSULT_COMPLETED';
     }
 

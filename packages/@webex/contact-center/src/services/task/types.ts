@@ -1270,7 +1270,8 @@ export interface ITask extends EventEmitter {
    * @see createTaskStateMachine
    * @internal
    */
-  stateMachine?: Interpreter<TaskContext, any, TaskEventPayload>;
+  stateMachineService?: Interpreter<TaskContext, any, TaskEventPayload>;
+  state?: any;
 
   /**
    * Cancels the auto-wrapup timer for the task.

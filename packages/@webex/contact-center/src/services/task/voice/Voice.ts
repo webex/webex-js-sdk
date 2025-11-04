@@ -82,24 +82,32 @@ export default class Voice extends Task implements IVoice {
    * Helper method to check if an operation is allowed in the current state
    */
   private canPerformOperation(operation: string): boolean {
-    const context = this.stateMachineService?.state?.context;
-    if (!context) {
+    const state = this.stateMachineService?.state;
+    if (!state) {
       return false;
     }
 
     switch (operation) {
       case 'hold':
-        return guards.canHold(context);
+        return state.matches(TaskState.CONNECTED) && !state.context.isHold;
       case 'resume':
-        return guards.canResume(context);
+        return state.matches(TaskState.HELD) && state.context.isHold;
       case 'consult':
-        return guards.canConsult(context);
+        return (
+          (state.matches(TaskState.CONNECTED) || state.matches(TaskState.HELD)) &&
+          !state.context.isConsulted &&
+          !state.context.isConferencing
+        );
       case 'conference':
-        return guards.canStartConference(context);
+        return state.matches(TaskState.CONSULTING) && state.context.consultDestinationAgentJoined;
       case 'transfer':
-        return guards.canTransfer(context);
+        return (
+          state.matches(TaskState.CONNECTED) ||
+          state.matches(TaskState.HELD) ||
+          state.matches(TaskState.CONSULTING)
+        );
       case 'exitConference':
-        return guards.canExitConference(context);
+        return state.matches(TaskState.CONFERENCING);
       default:
         return false;
     }
@@ -142,27 +150,18 @@ export default class Voice extends Task implements IVoice {
    * in the state machine's context, ensuring a single source of truth.
    */
   protected updateUIControlsFromState(): void {
-    const context = this.stateMachineService?.state?.context;
-    if (!context) {
+    const state = this.stateMachineService?.state;
+    if (!state) {
       // Fallback to legacy logic if state machine is not yet initialized
       this.setUIControls();
 
       return;
     }
 
-    const {
-      canHold,
-      canResume,
-      canConsult,
-      canEndConsult,
-      canTransfer,
-      canWrapup,
-      isHold,
-      currentState,
-    } = context;
+    const {context} = state;
+    const {canHold, canResume, canConsult, canEndConsult, canTransfer, canWrapup, isHold} = context;
 
-    const isOffered =
-      currentState === TaskState.OFFERED || currentState === TaskState.OFFERED_CONSULT;
+    const isOffered = state.matches(TaskState.OFFERED) || state.matches(TaskState.OFFERED_CONSULT);
 
     this.updateTaskUiControls({
       accept: this.uiControl(isOffered, true),
@@ -254,20 +253,21 @@ export default class Voice extends Task implements IVoice {
     const shouldHold = !this.data.interaction.media[this.data.mediaResourceId].isHold;
 
     // Validate operation is allowed in current state
-    const context = this.stateMachineService?.state?.context;
-    if (context) {
-      if (shouldHold && !guards.canHold(context)) {
-        const error = new Error(`Cannot hold call in current state: ${context.currentState}`);
-        LoggerProxy.error('Hold operation not allowed', {
-          module: CC_FILE,
-          method: METHODS.HOLD_RESUME,
-          interactionId: this.data.interactionId,
-        });
-        throw error;
-      }
-
-      if (!shouldHold && !guards.canResume(context)) {
-        const error = new Error(`Cannot resume call in current state: ${context.currentState}`);
+    const state = this.stateMachineService?.state;
+    if (state) {
+      const currentState = state.value as TaskState;
+      if (shouldHold) {
+        if (!state.matches(TaskState.CONNECTED) || state.context.isHold) {
+          const error = new Error(`Cannot hold call in current state: ${currentState}`);
+          LoggerProxy.error('Hold operation not allowed', {
+            module: CC_FILE,
+            method: METHODS.HOLD_RESUME,
+            interactionId: this.data.interactionId,
+          });
+          throw error;
+        }
+      } else if (!state.matches(TaskState.HELD) || !state.context.isHold) {
+        const error = new Error(`Cannot resume call in current state: ${currentState}`);
         LoggerProxy.error('Resume operation not allowed', {
           module: CC_FILE,
           method: METHODS.HOLD_RESUME,
@@ -509,11 +509,18 @@ export default class Voice extends Task implements IVoice {
    * */
   public async consult(consultPayload?: ConsultPayload): Promise<TaskResponse> {
     // Validate consult is allowed
-    const context = this.stateMachineService?.state?.context;
-    if (context && !guards.canConsult(context)) {
+    const state = this.stateMachineService?.state;
+    const canConsult =
+      state &&
+      (state.matches(TaskState.CONNECTED) || state.matches(TaskState.HELD)) &&
+      !state.context.isConsulted &&
+      !state.context.isConferencing;
+
+    if (!canConsult) {
+      const currentState = state?.value as TaskState;
       const error = new Error(
-        `Cannot initiate consult in ${context.currentState} state${
-          context.isConferencing ? ' (already in conference)' : ''
+        `Cannot initiate consult in ${currentState} state${
+          state?.context.isConferencing ? ' (already in conference)' : ''
         }`
       );
       LoggerProxy.error('Consult operation not allowed', {
@@ -797,13 +804,19 @@ export default class Voice extends Task implements IVoice {
    */
   public async consultConference(): Promise<TaskResponse> {
     // Validate conference can start
-    const context = this.stateMachineService?.state?.context;
-    if (context && !guards.canStartConference(context)) {
-      const error = new Error(
-        context.currentState !== TaskState.CONSULTING
-          ? 'Must be in consulting state to start conference'
-          : 'Consult agent has not joined yet'
-      );
+    const state = this.stateMachineService?.state;
+    if (!state || !state.matches(TaskState.CONSULTING)) {
+      const error = new Error('Must be in consulting state to start conference');
+      LoggerProxy.error('Conference operation not allowed', {
+        module: CC_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
+    if (!state.context.consultDestinationAgentJoined) {
+      const error = new Error('Consult agent has not joined yet');
       LoggerProxy.error('Conference operation not allowed', {
         module: CC_FILE,
         method: METHODS.CONSULT_CONFERENCE,
