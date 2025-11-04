@@ -382,7 +382,7 @@ export default class TaskManager extends EventEmitter {
               ...payload.data,
               isConferenceInProgress: getIsConferenceInProgress(payload.data),
             });
-            task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
+            task?.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
             break;
           }
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE: {
@@ -508,7 +508,7 @@ export default class TaskManager extends EventEmitter {
       this.handleTaskCleanup(task, false);
     }
 
-    task.emit(TASK_EVENTS.TASK_END, task);
+    task?.emit(TASK_EVENTS.TASK_END, task);
 
     return task;
   }
@@ -556,7 +556,7 @@ export default class TaskManager extends EventEmitter {
       this.taskCollection[taskData.interactionId] = task;
     }
 
-    task.emit(TASK_EVENTS.TASK_MERGED, task);
+    this.emit(TASK_EVENTS.TASK_MERGED, task);
 
     return task;
   }

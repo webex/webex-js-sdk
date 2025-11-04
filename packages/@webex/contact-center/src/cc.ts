@@ -397,6 +397,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   /**
+   * Handles task merged events when tasks are combined eg: EPDN merge/transfer
+   * @private
+   * @param {ITask} task The task object that has been merged
+   */
+  private handleTaskMerged = (task: ITask) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_MERGED, task);
+  };
+
+  /**
    * Sets up event listeners for incoming tasks and task hydration
    * Subscribes to task events from the task manager
    * @private
@@ -404,6 +414,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private incomingTaskListener() {
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+    this.taskManager.on(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
   }
 
   /**
