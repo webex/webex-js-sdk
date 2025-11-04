@@ -374,13 +374,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     });
     const regionInfo = {} as RegionInfo;
 
-    // for (const mobius of this.mobiusClusters) {
-    // if (mobius.host) {
-    //   this.mobiusHost = `https://${mobius.host}${API_V1}`;
-    // } else {
-    //   this.mobiusHost = mobius as unknown as string;
-    // }
-
     try {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${DISCOVERY_URL}`,
@@ -410,7 +403,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         }
       );
 
-      // Metrics for region info - trying clusters in loop
       this.metricManager.submitRegionInfoMetric(
         METRIC_EVENT.MOBIUS_DISCOVERY,
         MOBIUS_SERVER_ACTION.REGION_INFO,
@@ -589,12 +581,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           );
 
           if (abort) {
-            // Upload logs on final error
+            useDefault = true;
             // eslint-disable-next-line no-await-in-loop
             await uploadLogs();
+            break;
           }
-
-          useDefault = true;
         }
       }
     } else {
