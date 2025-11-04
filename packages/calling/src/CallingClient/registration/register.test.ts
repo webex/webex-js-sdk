@@ -727,6 +727,110 @@ describe('Registration Tests', () => {
     });
   });
 
+  describe('restorePreviousRegistration 429 handling tests', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.clearAllMocks();
+      jest.useRealTimers();
+    });
+
+    it('should schedule retry when 429 with retry-after < 60 seconds during reconnect', async () => {
+      restartSpy = jest.spyOn(reg, 'restartRegistration');
+      reg.setActiveMobiusUrl(mobiusUris.primary[0]);
+      const failurePayload429Small = <WebexRequestPayload>(<unknown>{
+        statusCode: 429,
+        body: 'SOMETHING RANDOM',
+        headers: {
+          'retry-after': 30,
+        },
+      });
+      webex.request
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload)
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.reconnectOnFailure('SOMETHING RANDOM'); // This call is being used to set the retry-after value
+
+      await reg.reconnectOnFailure('SOMETHING RANDOM'); // This call is being used to trigger the retry
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(restartSpy).toHaveBeenCalledTimes(1);
+      expect(restartSpy).toHaveBeenCalledWith('SOMETHING RANDOM');
+    });
+
+    it('should try backup servers when 429 with retry-after >= 60 seconds on primary during reconnect', async () => {
+      // Setup: Register successfully with primary first
+      const attemptRegistrationWithServersSpy = jest.spyOn(reg, 'attemptRegistrationWithServers');
+      reg.setActiveMobiusUrl(mobiusUris.primary[0]);
+      const failurePayload429Small = <WebexRequestPayload>(<unknown>{
+        statusCode: 429,
+        body: 'SOMETHING RANDOM',
+        headers: {
+          'retry-after': 100,
+        },
+      });
+      webex.request
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload)
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.reconnectOnFailure('SOMETHING RANDOM'); // This call is being used to trigger the retry
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(attemptRegistrationWithServersSpy).toHaveBeenCalledTimes(2);
+      expect(attemptRegistrationWithServersSpy).toHaveBeenNthCalledWith(1, 'SOMETHING RANDOM', [
+        mobiusUris.primary[0],
+      ]);
+      // Immediately try backup servers when retry-after >= 60 seconds on primary
+      expect(attemptRegistrationWithServersSpy).toHaveBeenNthCalledWith(
+        2,
+        'SOMETHING RANDOM',
+        mobiusUris.backup
+      );
+    });
+    it('should restart registration with primary if we get 429 while on backup', async () => {
+      // Setup: Register successfully with primary first
+      restartSpy = jest.spyOn(reg, 'restartRegistration');
+      const attemptRegistrationWithServersSpy = jest.spyOn(reg, 'attemptRegistrationWithServers');
+      reg.setActiveMobiusUrl(mobiusUris.backup[0]);
+      const failurePayload429Small = <WebexRequestPayload>(<unknown>{
+        statusCode: 429,
+        body: 'SOMETHING RANDOM',
+        headers: {
+          'retry-after': 100,
+        },
+      });
+      webex.request
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload)
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.reconnectOnFailure('SOMETHING RANDOM'); // This call is being used to trigger the retry
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(attemptRegistrationWithServersSpy).toHaveBeenCalledTimes(2);
+      expect(attemptRegistrationWithServersSpy).toHaveBeenNthCalledWith(1, 'SOMETHING RANDOM', [
+        mobiusUris.backup[0],
+      ]);
+      // Immediately try primary servers when retry-after >= 60 seconds on backup
+      expect(restartSpy).toHaveBeenCalledTimes(1);
+      expect(restartSpy).toHaveBeenCalledWith('SOMETHING RANDOM');
+      expect(attemptRegistrationWithServersSpy).toHaveBeenNthCalledWith(2, 'SOMETHING RANDOM', [
+        mobiusUris.primary[0],
+      ]);
+    });
+  });
+
   describe('Registration failover tests', () => {
     it('verify unreachable primary with reachable backup servers', async () => {
       jest.useFakeTimers();
@@ -872,7 +976,10 @@ describe('Registration Tests', () => {
       // delete should be successful
       global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
 
-      postRegistrationSpy.mockRejectedValue(failurePayload429Two);
+      // Mock to fail twice with 429 (once for executeFailback, once for restorePreviousRegistration)
+      postRegistrationSpy
+        .mockRejectedValueOnce(failurePayload429Two)
+        .mockRejectedValueOnce(failurePayload429Two);
 
       /* Wait for failback to be triggered. */
       jest.advanceTimersByTime(
@@ -892,11 +999,14 @@ describe('Registration Tests', () => {
         failurePayload429Two.headers['retry-after'],
         'executeFailback'
       );
-      expect(reg.failback429RetryAttempts).toBe(0);
+      // After handling 429 during failback, the counter is incremented to 1
+      expect(reg.failback429RetryAttempts).toBe(1);
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(restoreSpy).toBeCalledOnceWith(REG_429_RETRY_UTIL);
-      expect(restartSpy).toBeCalledOnceWith(REG_429_RETRY_UTIL);
-      expect(reg.failbackTimer).toBe(undefined);
+      // restartRegistration is not called immediately because 429 with retry-after < 60
+      // schedules a delayed retry instead
+      expect(restartSpy).not.toBeCalled();
+      expect(reg.failbackTimer).not.toBe(undefined); // Timer is set in handle429Retry
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
       expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
     });
