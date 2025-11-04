@@ -131,11 +131,6 @@ export default class TaskManager extends EventEmitter {
                 interactionId: payload.data.interactionId,
               });
 
-              // Pre-calculate isConferenceInProgress for the initial task data
-              const simulatedTaskForAgentContact = {
-                data: {...payload.data},
-              } as ITask;
-
               task = new Task(
                 this.contact,
                 this.webCallingService,
@@ -143,7 +138,7 @@ export default class TaskManager extends EventEmitter {
                   ...payload.data,
                   wrapUpRequired:
                     payload.data.interaction?.participants?.[this.agentId]?.isWrapUp || false,
-                  isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForAgentContact),
+                  isConferenceInProgress: getIsConferenceInProgress(payload.data),
                 },
                 this.wrapupData,
                 this.agentId
@@ -254,82 +249,12 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
           }
-          case CC_EVENTS.CONTACT_ENDED: {
-            // Agent Desktop logic: Check if task should be deleted immediately
-            // BEFORE updating the task data
-            const {interaction} = payload.data;
-            let shouldDeleteTask = false;
-
-            if (
-              interaction.state === 'new' ||
-              (interaction.state === 'wrapUp' && // check if current state is wrapUp
-                interaction.contactDirection.type === 'OUTBOUND' &&
-                isTaskRinging(task, this.agentId)) || // check if task previous state is ringing
-              isSecondaryEpDnAgent(interaction)
-            ) {
-              shouldDeleteTask = true;
-            }
-
-            // Update task data
-            task = this.updateTaskData(task, {
-              ...payload.data,
-              wrapUpRequired: !shouldDeleteTask && payload.data.interaction.state !== 'new',
-            });
-
-            // Handle cleanup based on whether task should be deleted
-            if (shouldDeleteTask) {
-              this.handleTaskCleanup(task, true);
-            } else {
-              this.handleTaskCleanup(task, false);
-            }
-
-            task.emit(TASK_EVENTS.TASK_END, task);
+          case CC_EVENTS.CONTACT_ENDED:
+            task = this.handleContactEnded(task, payload.data);
             break;
-          }
-          case CC_EVENTS.CONTACT_MERGED: {
-            if (payload.data.interaction.childInteractionId) {
-              this.removeTaskFromCollection(
-                this.taskCollection[payload.data.interaction.childInteractionId]
-              );
-            }
-
-            if (this.taskCollection[payload.data.interactionId]) {
-              LoggerProxy.log(`Got CONTACT_MERGED: Task already exists in collection`, {
-                module: TASK_MANAGER_FILE,
-                method: METHODS.REGISTER_TASK_LISTENERS,
-                interactionId: payload.data.interactionId,
-              });
-            } else if (!this.taskCollection[payload.data.interactionId]) {
-              // Case2 : Task is not present in taskCollection
-              LoggerProxy.log(`Got CONTACT_MERGED : Creating new task in taskManager`, {
-                module: TASK_MANAGER_FILE,
-                method: METHODS.REGISTER_TASK_LISTENERS,
-                interactionId: payload.data.interactionId,
-              });
-
-              // Pre-calculate isConferenceInProgress for the initial task data
-              const simulatedTaskForAgentContact = {
-                data: {...payload.data},
-              } as ITask;
-
-              task = new Task(
-                this.contact,
-                this.webCallingService,
-                {
-                  ...payload.data,
-                  wrapUpRequired:
-                    payload.data.interaction?.participants?.[this.agentId]?.isWrapUp || false,
-                  isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForAgentContact),
-                },
-                this.wrapupData,
-                this.agentId
-              );
-              this.taskCollection[payload.data.interactionId] = task;
-            }
-
-            task.emit(TASK_EVENTS.TASK_MERGED, task);
+          case CC_EVENTS.CONTACT_MERGED:
+            task = this.handleContactMerged(task, payload.data);
             break;
-          }
           case CC_EVENTS.AGENT_CONTACT_HELD:
             // As soon as the main interaction is held, we need to emit TASK_HOLD
             task = this.updateTaskData(task, payload.data);
@@ -453,29 +378,19 @@ export default class TaskManager extends EventEmitter {
             task?.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
             break;
           case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE: {
-            // Participant joined conference - update task state with participant information and emit event
-            // Pre-calculate isConferenceInProgress with updated data to avoid double update
-            const simulatedTaskForJoin = {
-              ...task,
-              data: {...task.data, ...payload.data},
-            };
             task = this.updateTaskData(task, {
               ...payload.data,
-              isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForJoin),
+              isConferenceInProgress: getIsConferenceInProgress(payload.data),
             });
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
             break;
           }
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE: {
             // Conference ended - update task state and emit event
-            // Pre-calculate isConferenceInProgress with updated data to avoid double update
-            const simulatedTaskForLeft = {
-              ...task,
-              data: {...task.data, ...payload.data},
-            };
+
             task = this.updateTaskData(task, {
               ...payload.data,
-              isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForLeft),
+              isConferenceInProgress: getIsConferenceInProgress(payload.data),
             });
             if (checkParticipantNotInInteraction(task, this.agentId)) {
               if (
@@ -555,6 +470,95 @@ export default class TaskManager extends EventEmitter {
 
       return task;
     }
+  }
+
+  /**
+   * Handles CONTACT_ENDED event logic
+   * @param task - The task to process
+   * @param taskData - The task data from the event payload
+   * @returns Updated task
+   * @private
+   */
+  private handleContactEnded(task: ITask, taskData: TaskData): ITask {
+    // Agent Desktop logic: Check if task should be deleted immediately
+    // BEFORE updating the task data
+    const {interaction} = taskData;
+    let shouldDeleteTask = false;
+
+    if (
+      interaction.state === 'new' ||
+      (interaction.state === 'wrapUp' && // check if current state is wrapUp
+        interaction.contactDirection.type === 'OUTBOUND' &&
+        isTaskRinging(task, this.agentId)) || // check if task previous state is ringing
+      isSecondaryEpDnAgent(interaction)
+    ) {
+      shouldDeleteTask = true;
+    }
+
+    // Update task data
+    task = this.updateTaskData(task, {
+      ...taskData,
+      wrapUpRequired: !shouldDeleteTask && taskData.interaction.state !== 'new',
+    });
+
+    // Handle cleanup based on whether task should be deleted
+    if (shouldDeleteTask) {
+      this.handleTaskCleanup(task, true);
+    } else {
+      this.handleTaskCleanup(task, false);
+    }
+
+    task.emit(TASK_EVENTS.TASK_END, task);
+
+    return task;
+  }
+
+  /**
+   * Handles CONTACT_MERGED event logic
+   * @param task - The task to process
+   * @param taskData - The task data from the event payload
+   * @returns Updated or newly created task
+   * @private
+   */
+  private handleContactMerged(task: ITask, taskData: TaskData): ITask {
+    if (taskData.childInteractionId) {
+      // remove the child task from collection
+      this.removeTaskFromCollection(this.taskCollection[taskData.childInteractionId]);
+    }
+
+    if (this.taskCollection[taskData.interactionId]) {
+      LoggerProxy.log(`Got CONTACT_MERGED: Task already exists in collection`, {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.REGISTER_TASK_LISTENERS,
+        interactionId: taskData.interactionId,
+      });
+      // update the task data
+      task = this.updateTaskData(task, taskData);
+    } else if (!this.taskCollection[taskData.interactionId]) {
+      // Case2 : Task is not present in taskCollection
+      LoggerProxy.log(`Got CONTACT_MERGED : Creating new task in taskManager`, {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.REGISTER_TASK_LISTENERS,
+        interactionId: taskData.interactionId,
+      });
+
+      task = new Task(
+        this.contact,
+        this.webCallingService,
+        {
+          ...taskData,
+          wrapUpRequired: taskData.interaction?.participants?.[this.agentId]?.isWrapUp || false,
+          isConferenceInProgress: getIsConferenceInProgress(taskData),
+        },
+        this.wrapupData,
+        this.agentId
+      );
+      this.taskCollection[taskData.interactionId] = task;
+    }
+
+    task.emit(TASK_EVENTS.TASK_MERGED, task);
+
+    return task;
   }
 
   private removeTaskFromCollection(task: ITask) {

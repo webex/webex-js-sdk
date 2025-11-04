@@ -1,5 +1,5 @@
 /* eslint-disable import/prefer-default-export */
-import {Interaction, ITask} from './types';
+import {Interaction, ITask, TaskData} from './types';
 
 /**
  * Determines if the given agent is the primary agent (owner) of the task
@@ -53,13 +53,13 @@ export const checkParticipantNotInInteraction = (task: ITask, agentId: string): 
 
 /**
  * Determines if a conference is currently in progress based on the number of active agent participants
- * @param task - The task to check for conference status
+ * @param TaskData - The payLoad data to check for conference status
  * @returns true if there are 2 or more active agent participants in the main call, false otherwise
  */
-export const getIsConferenceInProgress = (task: ITask): boolean => {
-  const mediaMainCall = task?.data?.interaction?.media?.[task?.data?.interactionId];
+export const getIsConferenceInProgress = (data: TaskData): boolean => {
+  const mediaMainCall = data?.interaction?.media?.[data?.interactionId];
   const participantsInMainCall = new Set(mediaMainCall?.participants);
-  const participants = task?.data?.interaction?.participants;
+  const participants = data?.interaction?.participants;
 
   const agentParticipants = new Set();
   if (participantsInMainCall.size > 0) {

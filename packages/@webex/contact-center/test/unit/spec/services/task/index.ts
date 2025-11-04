@@ -40,6 +40,7 @@ describe('Task', () => {
   let loggerLogSpy;
   let loggerErrorSpy;
   let getDestinationAgentIdSpy;
+  let calculateDestAgentIdSpy;
 
   const taskId = '0ae913a4-c857-4705-8d49-76dd3dde75e4';
   const mockTrack = {} as MediaStreamTrack;
@@ -119,6 +120,32 @@ describe('Task', () => {
       interaction: {
         mediaType: 'telephony',
         mainInteractionId: taskId,
+        participants: {
+          '723a8ffb-a26e-496d-b14a-ff44fb83b64f': {
+            pType: 'Agent',
+            type: 'AGENT',
+            id: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+            hasLeft: false,
+            hasJoined: true,
+            isWrapUp: false,
+          },
+          'f520d6b5-28ad-4f2f-b83e-781bb64af617': {
+            pType: 'Agent',
+            type: 'AGENT',
+            id: 'f520d6b5-28ad-4f2f-b83e-781bb64af617',
+            hasLeft: false,
+            hasJoined: true,
+            isWrapUp: false,
+          },
+          'ebeb893b-ba67-4f36-8418-95c7492b28c2': {
+            pType: 'Agent',
+            type: 'AGENT',
+            id: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+            hasLeft: false,
+            hasJoined: true,
+            isWrapUp: false,
+          },
+        },
         media: {
           '58a45567-4e61-4f4b-a580-5bc86357bef0': {
             holdTimestamp: null,
@@ -149,6 +176,9 @@ describe('Task', () => {
     getDestinationAgentIdSpy = jest
       .spyOn(Utils, 'getDestinationAgentId')
       .mockReturnValue(taskDataMock.destAgentId);
+
+    // Mock calculateDestAgentId to return the expected destination agent
+    calculateDestAgentIdSpy = jest.spyOn(Utils, 'calculateDestAgentId').mockReturnValue(taskDataMock.destAgentId);
 
     // Create an instance of Task
     task = new Task(contactMock, webCallingService, taskDataMock);
@@ -1082,7 +1112,7 @@ describe('Task', () => {
     };
 
     // For this negative case, ensure computed destination is empty
-    getDestinationAgentIdSpy.mockReturnValueOnce('');
+    calculateDestAgentIdSpy.mockReturnValueOnce('');
 
     await expect(
       taskWithoutDestAgentId.consultTransfer(queueConsultTransferPayload)
@@ -1836,7 +1866,7 @@ describe('Task', () => {
         task.data.destAgentId = null;
         
         const consultedAgentId = 'consulted-agent-123';
-        getDestinationAgentIdSpy.mockReturnValue(consultedAgentId);
+        calculateDestAgentIdSpy.mockReturnValue(consultedAgentId);
         
         const mockResponse = {
           trackingId: 'test-tracking-dynamic',
@@ -1846,9 +1876,9 @@ describe('Task', () => {
 
         const result = await task.consultConference();
 
-        // Verify getDestinationAgentId was called to dynamically calculate the destination
-        expect(getDestinationAgentIdSpy).toHaveBeenCalledWith(
-          taskDataMock.interaction?.participants,
+        // Verify calculateDestAgentId was called to dynamically calculate the destination
+        expect(calculateDestAgentIdSpy).toHaveBeenCalledWith(
+          taskDataMock.interaction,
           taskDataMock.agentId
         );
 
@@ -1866,7 +1896,7 @@ describe('Task', () => {
 
       it('should throw error when no destination agent is found (queue consult not accepted)', async () => {
         // Simulate queue consult scenario where no agent has accepted yet
-        getDestinationAgentIdSpy.mockReturnValue(''); // No agent found
+        calculateDestAgentIdSpy.mockReturnValue(''); // No agent found
         
         // Mock generateTaskErrorObject to wrap the error
         const wrappedError = new Error('Error while performing consultConference');
