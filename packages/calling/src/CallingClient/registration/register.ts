@@ -207,9 +207,32 @@ export class Registration implements IRegistration {
    */
   private async restorePreviousRegistration(caller: string): Promise<boolean> {
     let abort = false;
-
+    // Testing:
+    // 4XX
+    // 429 big n small value
+    // 404
+    // 500
     if (this.activeMobiusUrl) {
       abort = await this.attemptRegistrationWithServers(caller, [this.activeMobiusUrl]);
+      if (this.retryAfter) {
+        if (this.retryAfter < RETRY_TIMER_UPPER_LIMIT) {
+          // If retry-after is less than threshold, honor it and schedule retry
+          setTimeout(async () => {
+            await this.restartRegistration(caller);
+          }, this.retryAfter * 1000);
+        } else if (
+          this.primaryMobiusUris.includes(this.activeMobiusUrl) &&
+          this.backupMobiusUris.length > 0
+        ) {
+          // If we are using primary and got 429, switch to backup
+          abort = await this.attemptRegistrationWithServers(caller, this.backupMobiusUris);
+        } else {
+          // If we are using backup and got 429, restart registration
+          this.restartRegistration(caller);
+        }
+
+        return true;
+      }
     }
 
     return abort;
