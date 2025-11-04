@@ -41,6 +41,7 @@ describe('Task', () => {
   let loggerErrorSpy;
   let getDestinationAgentIdSpy;
   let calculateDestAgentIdSpy;
+  let calculateDestAgentIdForFetchingDestTypeSpy;
 
   const taskId = '0ae913a4-c857-4705-8d49-76dd3dde75e4';
   const mockTrack = {} as MediaStreamTrack;
@@ -1917,6 +1918,194 @@ describe('Task', () => {
           }),
           ['operational', 'behavioral', 'business']
         );
+      });
+
+      it('should calculate destination type from participant type for regular agents', async () => {
+        const destAgentId = 'consulted-agent-456';
+        const destAgentIdForType = 'consulted-agent-456';
+        
+        calculateDestAgentIdSpy = jest.spyOn(Utils, 'calculateDestAgentId').mockReturnValue(destAgentId);
+        calculateDestAgentIdForFetchingDestTypeSpy = jest
+          .spyOn(Utils, 'calculateDestAgentIdForFetchingDestType')
+          .mockReturnValue(destAgentIdForType);
+
+        // Set up interaction with Agent type participant
+        task.data.interaction = {
+          ...taskDataMock.interaction,
+          participants: {
+            [destAgentIdForType]: {
+              type: 'Agent',
+              pType: 'Agent', // pType is 'Agent'
+              id: destAgentIdForType,
+            },
+          },
+        };
+
+        const mockResponse = {trackingId: 'test-tracking-id', interactionId: taskId};
+        contactMock.consultConference.mockResolvedValue(mockResponse);
+
+        await task.consultConference();
+
+        expect(calculateDestAgentIdForFetchingDestTypeSpy).toHaveBeenCalledWith(
+          task.data.interaction,
+          taskDataMock.agentId
+        );
+
+        expect(contactMock.consultConference).toHaveBeenCalledWith({
+          interactionId: taskId,
+          data: {
+            agentId: taskDataMock.agentId,
+            to: destAgentId,
+            destinationType: 'agent', // pType 'Agent' gets lowercased to 'agent'
+          },
+        });
+      });
+
+      it('should use DN destination type for dial number participants', async () => {
+        const destAgentId = 'dn-uuid-123';
+        const destAgentIdForType = 'dn-uuid-123';
+        
+        calculateDestAgentIdSpy = jest.spyOn(Utils, 'calculateDestAgentId').mockReturnValue(destAgentId);
+        calculateDestAgentIdForFetchingDestTypeSpy = jest
+          .spyOn(Utils, 'calculateDestAgentIdForFetchingDestType')
+          .mockReturnValue(destAgentIdForType);
+
+        // Set up interaction with DN type participant (pType is lowercase 'dn')
+        task.data.interaction = {
+          ...taskDataMock.interaction,
+          participants: {
+            [destAgentIdForType]: {
+              type: 'DN',
+              pType: 'dn', // pType is lowercase
+              id: destAgentIdForType,
+              dn: '5551234567',
+            },
+          },
+        };
+
+        const mockResponse = {trackingId: 'test-tracking-id-dn', interactionId: taskId};
+        contactMock.consultConference.mockResolvedValue(mockResponse);
+
+        await task.consultConference();
+
+        expect(contactMock.consultConference).toHaveBeenCalledWith({
+          interactionId: taskId,
+          data: {
+            agentId: taskDataMock.agentId,
+            to: destAgentId,
+            destinationType: 'dn', // pType 'dn' gets lowercased to 'dn'
+          },
+        });
+      });
+
+      it('should use EpDn destination type for entry point dial number participants', async () => {
+        const destAgentId = 'epdn-uuid-456';
+        const destAgentIdForType = 'epdn-uuid-456';
+        
+        calculateDestAgentIdSpy = jest.spyOn(Utils, 'calculateDestAgentId').mockReturnValue(destAgentId);
+        calculateDestAgentIdForFetchingDestTypeSpy = jest
+          .spyOn(Utils, 'calculateDestAgentIdForFetchingDestType')
+          .mockReturnValue(destAgentIdForType);
+
+        // Set up interaction with EpDn type participant (pType is 'EpDn')
+        task.data.interaction = {
+          ...taskDataMock.interaction,
+          participants: {
+            [destAgentIdForType]: {
+              type: 'EpDn',
+              pType: 'EpDn', // pType is EpDn
+              id: destAgentIdForType,
+              epId: 'entry-point-id',
+            },
+          },
+        };
+
+        const mockResponse = {trackingId: 'test-tracking-id-epdn', interactionId: taskId};
+        contactMock.consultConference.mockResolvedValue(mockResponse);
+
+        await task.consultConference();
+
+        expect(contactMock.consultConference).toHaveBeenCalledWith({
+          interactionId: taskId,
+          data: {
+            agentId: taskDataMock.agentId,
+            to: destAgentId,
+            destinationType: 'epdn', // pType 'EpDn' gets lowercased to 'epdn'
+          },
+        });
+      });
+
+      it('should fall back to task.data.destinationType when participant type is not found', async () => {
+        const destAgentId = 'consulted-agent-789';
+        
+        calculateDestAgentIdSpy = jest.spyOn(Utils, 'calculateDestAgentId').mockReturnValue(destAgentId);
+        calculateDestAgentIdForFetchingDestTypeSpy = jest
+          .spyOn(Utils, 'calculateDestAgentIdForFetchingDestType')
+          .mockReturnValue(''); // No agent found for type lookup
+
+        task.data.destinationType = 'EPDN';
+
+        const mockResponse = {trackingId: 'test-tracking-id-fallback', interactionId: taskId};
+        contactMock.consultConference.mockResolvedValue(mockResponse);
+
+        await task.consultConference();
+
+        expect(contactMock.consultConference).toHaveBeenCalledWith({
+          interactionId: taskId,
+          data: {
+            agentId: taskDataMock.agentId,
+            to: destAgentId,
+            destinationType: 'epdn', // 'EPDN' gets lowercased to 'epdn'
+          },
+        });
+      });
+
+      it('should handle CBT scenarios with correct destination type', async () => {
+        const destAgentId = 'agent-cbt-uuid';
+        const destAgentIdForType = 'agent-cbt-uuid';
+        
+        calculateDestAgentIdSpy = jest.spyOn(Utils, 'calculateDestAgentId').mockReturnValue(destAgentId);
+        calculateDestAgentIdForFetchingDestTypeSpy = jest
+          .spyOn(Utils, 'calculateDestAgentIdForFetchingDestType')
+          .mockReturnValue(destAgentIdForType);
+
+        // Set up CBT scenario where agent is identified by DN
+        task.data.interaction = {
+          ...taskDataMock.interaction,
+          media: {
+            consult: {
+              mType: 'consult',
+              participants: [taskDataMock.agentId, '5551234567'],
+            },
+          },
+          participants: {
+            [destAgentIdForType]: {
+              type: 'Agent',
+              pType: 'dn', // pType is 'dn' for CBT
+              dn: '5551234567',
+              id: destAgentIdForType,
+            },
+          },
+        };
+
+        const mockResponse = {trackingId: 'test-tracking-id-cbt', interactionId: taskId};
+        contactMock.consultConference.mockResolvedValue(mockResponse);
+
+        await task.consultConference();
+
+        expect(calculateDestAgentIdForFetchingDestTypeSpy).toHaveBeenCalledWith(
+          task.data.interaction,
+          taskDataMock.agentId
+        );
+
+        expect(contactMock.consultConference).toHaveBeenCalledWith({
+          interactionId: taskId,
+          data: {
+            agentId: taskDataMock.agentId,
+            to: destAgentId,
+            destinationType: 'dn', // pType 'dn' gets lowercased to 'dn'
+          },
+        });
       });
     });
 
