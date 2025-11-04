@@ -96,8 +96,7 @@ import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_ACTION} from '../../
 import {getMetricManager} from '../../Metrics';
 import {METHOD_START_MESSAGE, SERVICES_ENDPOINT} from '../../common/constants';
 
-// TODO: Confirm this number with Mobius team
-const MAX_CALL_KEEPALIVE_RETRY_COUNT = 3;
+const MAX_CALL_KEEPALIVE_RETRY_COUNT = 4;
 
 /**
  *
@@ -1004,7 +1003,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         ERROR_LAYER.CALL_CONTROL,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        /* istanbul ignore next */ (interval: number) => undefined,
+        /* istanbul ignore next */ (interval?: number) => undefined,
         this.getCorrelationId(),
         errData,
         METHODS.HANDLE_OUTGOING_CALL_SETUP,
@@ -1079,7 +1078,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         ERROR_LAYER.CALL_CONTROL,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        /* istanbul ignore next */ (interval: number) => undefined,
+        /* istanbul ignore next */ (interval?: number) => undefined,
         this.getCorrelationId(),
         errData,
         METHODS.HANDLE_CALL_HOLD,
@@ -1154,7 +1153,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         ERROR_LAYER.CALL_CONTROL,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        /* istanbul ignore next */ (interval: number) => undefined,
+        /* istanbul ignore next */ (interval?: number) => undefined,
         this.getCorrelationId(),
         errData,
         METHODS.HANDLE_CALL_RESUME,
@@ -1278,7 +1277,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         ERROR_LAYER.CALL_CONTROL,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        /* istanbul ignore next */ (interval: number) => undefined,
+        /* istanbul ignore next */ (interval?: number) => undefined,
         this.getCorrelationId(),
         errData,
         METHODS.HANDLE_OUTGOING_CALL_ALERTING,
@@ -1363,7 +1362,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         ERROR_LAYER.CALL_CONTROL,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        /* istanbul ignore next */ (interval: number) => undefined,
+        /* istanbul ignore next */ (interval?: number) => undefined,
         this.getCorrelationId(),
         errData,
         METHODS.HANDLE_OUTGOING_CALL_CONNECT,
@@ -1760,13 +1759,16 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         handleCallErrors(
           this.getEmitterCallback(errData),
           ERROR_LAYER.MEDIA,
-          (interval: number) => {
+          (interval?: number) => {
             /* Start retry if only it is a midcall case */
             /* istanbul ignore else */
             if (this.connected) {
-              setTimeout(() => {
-                this.sendMediaStateMachineEvt({type: 'E_ROAP_OK', data: event.data});
-              }, interval * 1000);
+              setTimeout(
+                () => {
+                  this.sendMediaStateMachineEvt({type: 'E_ROAP_OK', data: event.data});
+                },
+                interval ? interval * 1000 : DEFAULT_SESSION_TIMER
+              );
             }
           },
           this.getCorrelationId(),
@@ -1849,7 +1851,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           },
           ERROR_LAYER.MEDIA,
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          /* istanbul ignore next */ (interval: number) => undefined,
+          /* istanbul ignore next */ (interval?: number) => undefined,
           this.getCorrelationId(),
           errData,
           this.handleRoapError.name,
@@ -1919,12 +1921,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       handleCallErrors(
         this.getEmitterCallback(errData),
         ERROR_LAYER.MEDIA,
-        (interval: number) => {
+        (interval?: number) => {
           /* Start retry if only it is a midcall case */
           if (this.connected) {
-            setTimeout(() => {
-              this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.data});
-            }, interval * 1000);
+            setTimeout(
+              () => {
+                this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.data});
+              },
+              interval ? interval * 1000 : DEFAULT_SESSION_TIMER
+            );
           }
         },
         this.getCorrelationId(),
@@ -1973,12 +1978,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       handleCallErrors(
         this.getEmitterCallback(errData),
         ERROR_LAYER.MEDIA,
-        (interval: number) => {
+        (interval?: number) => {
           /* Start retry if only it is a midcall case */
           if (this.connected) {
-            setTimeout(() => {
-              this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.data});
-            }, interval * 1000);
+            setTimeout(
+              () => {
+                this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.data});
+              },
+              interval ? interval * 1000 : DEFAULT_SESSION_TIMER
+            );
           }
         },
         this.getCorrelationId(),
@@ -2499,7 +2507,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           },
           ERROR_LAYER.CALL_CONTROL,
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          /* istanbul ignore next */ (interval: number) => undefined,
+          /* istanbul ignore next */ (interval?: number) => undefined,
           this.getCorrelationId(),
           errData,
           METHODS.COMPLETE_TRANSFER,
@@ -2556,7 +2564,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           },
           ERROR_LAYER.CALL_CONTROL,
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          /* istanbul ignore next */ (interval: number) => undefined,
+          /* istanbul ignore next */ (interval?: number) => undefined,
           this.getCorrelationId(),
           errData,
           METHODS.COMPLETE_TRANSFER,
