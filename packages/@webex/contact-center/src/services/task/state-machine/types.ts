@@ -133,26 +133,18 @@ export interface TaskContext {
   taskData: TaskData | null;
 
   // State tracking
-  currentState: TaskState;
   previousState: TaskState | null;
-
-  // Media tracking
-  mediaResourceId: string | null;
 
   // Consult tracking
   consultInitiator: boolean;
   consultDestination: string | null;
-  consultDestinationType: 'agent' | 'queue' | 'entryPoint' | null;
   consultDestinationAgentJoined: boolean;
-  consultMediaResourceId: string | null;
 
   // Conference tracking
   conferenceInitiatorId: string | null;
   conferenceParticipants: ConferenceParticipant[];
   maxConferenceParticipants: number;
   participants: string[]; // DEPRECATED: Use conferenceParticipants instead
-
-  isPrimary: boolean;
 
   // Recording tracking
   recordingActive: boolean;
@@ -164,11 +156,6 @@ export interface TaskContext {
 
   // RONA tracking
   ronaTimer: number | null;
-
-  // Timestamps
-  offeredAt: number | null;
-  connectedAt: number | null;
-  endedAt: number | null;
 }
 
 /**

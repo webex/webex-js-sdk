@@ -13,7 +13,7 @@
  */
 
 import {assign} from 'xstate';
-import {TaskContext, TaskState, TaskEventPayload, isEventOfType, TaskEvent} from './types';
+import {TaskContext, TaskEventPayload, isEventOfType, TaskEvent} from './types';
 
 /**
  * Create initial context for a new task
@@ -21,27 +21,19 @@ import {TaskContext, TaskState, TaskEventPayload, isEventOfType, TaskEvent} from
 export function createInitialContext(): TaskContext {
   return {
     taskData: null,
-    currentState: TaskState.IDLE,
     previousState: null,
-    mediaResourceId: null,
     consultInitiator: false,
     consultDestination: null,
-    consultDestinationType: null,
     consultDestinationAgentJoined: false,
-    consultMediaResourceId: null,
     conferenceInitiatorId: null,
     conferenceParticipants: [],
     maxConferenceParticipants: 10,
     participants: [], // DEPRECATED: Use conferenceParticipants instead
-    isPrimary: false,
     recordingActive: false,
     recordingPaused: false,
     wrapUpRequired: false,
     autoWrapupTimer: null,
     ronaTimer: null,
-    offeredAt: null,
-    connectedAt: null,
-    endedAt: null,
   };
 }
 
@@ -57,7 +49,6 @@ export const actions = {
     if (isEventOfType(event, TaskEvent.OFFER) || isEventOfType(event, TaskEvent.OFFER_CONSULT)) {
       return {
         taskData: event.taskData,
-        offeredAt: Date.now(),
       };
     }
 
@@ -71,7 +62,6 @@ export const actions = {
     if (isEventOfType(event, TaskEvent.ASSIGN)) {
       return {
         taskData: event.taskData,
-        connectedAt: Date.now(),
       };
     }
     if (isEventOfType(event, TaskEvent.CONSULT_CREATED)) {
@@ -97,7 +87,6 @@ export const actions = {
     if (isEventOfType(event, TaskEvent.CONSULT)) {
       return {
         consultDestination: event.destination,
-        consultDestinationType: event.destinationType,
       };
     }
 
@@ -163,9 +152,7 @@ export const actions = {
         },
       ],
       consultDestination: null,
-      consultDestinationType: null,
       consultDestinationAgentJoined: false,
-      consultMediaResourceId: null,
     };
   }),
 
@@ -229,24 +216,6 @@ export const actions = {
   }),
 
   /**
-   * Set hold state
-   */
-  setHoldState: assign<TaskContext, TaskEventPayload>((context, event) => {
-    if (isEventOfType(event, TaskEvent.HOLD)) {
-      return {
-        mediaResourceId: event.mediaResourceId,
-      };
-    }
-    if (isEventOfType(event, TaskEvent.UNHOLD)) {
-      return {
-        mediaResourceId: event.mediaResourceId,
-      };
-    }
-
-    return {};
-  }),
-
-  /**
    * Set recording state
    */
   setRecordingState: assign<TaskContext, TaskEventPayload>((context, event) => {
@@ -265,27 +234,10 @@ export const actions = {
   }),
 
   /**
-   * Update state tracking
-   */
-  updateState: assign<TaskContext, TaskEventPayload>((context) => {
-    return {
-      previousState: context.currentState,
-    };
-  }),
-
-  /**
-   * Mark task as ended
-   */
-  markEnded: assign<TaskContext, TaskEventPayload>({
-    endedAt: Date.now(),
-  }),
-
-  /**
    * Clear consult state
    */
   clearConsultState: assign<TaskContext, TaskEventPayload>({
     consultDestination: null,
-    consultDestinationType: null,
     consultDestinationAgentJoined: false,
   }),
 

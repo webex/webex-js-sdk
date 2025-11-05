@@ -1,17 +1,128 @@
 import {CC_FILE, METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import {IDigital, TaskResponse, TaskData} from '../types';
-import {CC_EVENTS} from '../../config/types';
 import Task from '../Task';
-import routingContact from '../contact';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
+import {TaskState} from '../state-machine';
 
 export default class Digital extends Task implements IDigital {
-  constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
-    super(contact, data);
-    this.updateTaskUiControls({accept: [true, true]});
+  /**
+   * Compute UI controls based on state machine state for digital channels.
+   * This method determines which buttons should be visible and enabled
+   * based on the current task state.
+   *
+   * @returns UI control states for all task actions
+   */
+  protected computeUIControls(): import('../Task').TaskUIControls {
+    const state = this.stateMachineService?.state;
+
+    if (!state) {
+      // Fallback if state machine not initialized
+      return super.computeUIControls();
+    }
+
+    // Determine current state
+    const isOffered = state.matches(TaskState.OFFERED);
+    const isConnected = state.matches(TaskState.CONNECTED);
+    const isWrappingUp = state.matches(TaskState.WRAPPING_UP);
+    const isTerminated = this.data.interaction?.isTerminated ?? false;
+
+    // For digital channels, determine if task needs wrapup
+    const needsWrapup = isTerminated || isWrappingUp;
+
+    return {
+      // Accept button: visible when task is offered
+      accept: {
+        visible: isOffered,
+        enabled: isOffered,
+      },
+
+      // Decline: not used in digital channels
+      decline: {
+        visible: false,
+        enabled: false,
+      },
+
+      // Hold: not used in digital channels
+      hold: {
+        visible: false,
+        enabled: false,
+      },
+
+      // Mute: not used in digital channels
+      mute: {
+        visible: false,
+        enabled: false,
+      },
+
+      // End button: visible when connected, not when wrapping up
+      end: {
+        visible: isConnected && !isWrappingUp,
+        enabled: isConnected && !isWrappingUp,
+      },
+
+      // Transfer button: visible when connected, not when wrapping up
+      transfer: {
+        visible: isConnected && !isWrappingUp,
+        enabled: isConnected && !isWrappingUp,
+      },
+
+      // Consult: not used in digital channels
+      consult: {
+        visible: false,
+        enabled: false,
+      },
+
+      // Consult transfer: not used in digital channels
+      consultTransfer: {
+        visible: false,
+        enabled: false,
+      },
+
+      // End consult: not used in digital channels
+      endConsult: {
+        visible: false,
+        enabled: false,
+      },
+
+      // Recording: not used in digital channels
+      recording: {
+        visible: false,
+        enabled: false,
+      },
+
+      // Conference: not used in digital channels
+      conference: {
+        visible: false,
+        enabled: false,
+      },
+
+      // Wrapup button: visible when task is terminated or in wrapup state
+      wrapup: {
+        visible: needsWrapup,
+        enabled: needsWrapup,
+      },
+
+      // Exit conference: not used in digital channels
+      exitConference: {
+        visible: false,
+        enabled: false,
+      },
+
+      // Transfer conference: not used in digital channels
+      transferConference: {
+        visible: false,
+        enabled: false,
+      },
+
+      // Merge to conference: not used in digital channels
+      mergeToConference: {
+        visible: false,
+        enabled: false,
+      },
+    };
   }
 
   /**
@@ -79,65 +190,6 @@ export default class Digital extends Task implements IDigital {
         ['operational', 'behavioral', 'business']
       );
       throw detailedError;
-    }
-  }
-
-  protected setUIControls(): void {
-    const eventType = this.data.type;
-
-    switch (eventType) {
-      case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-        // once accepted: enable transfer + end
-        this.updateTaskUiControls({
-          accept: [false, false],
-          transfer: [true, true],
-          end: [true, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
-      case CC_EVENTS.AGENT_BLIND_TRANSFERRED:
-      case CC_EVENTS.AGENT_WRAPUP:
-        // after transfer or end: enable wrapup
-        this.updateTaskUiControls({
-          transfer: [false, false],
-          end: [false, false],
-          wrapup: [true, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT:
-        if (this.data.interaction.isTerminated) {
-          this.updateTaskUiControls({
-            transfer: [false, false],
-            end: [false, false],
-            wrapup: [true, true],
-          });
-        } else if (this.data.interaction.state === 'connected') {
-          this.updateTaskUiControls({
-            accept: [false, false],
-            transfer: [true, true],
-            end: [true, true],
-          });
-        } else if (this.data.interaction.state === 'new') {
-          this.updateTaskUiControls({
-            accept: [true, true],
-            transfer: [false, false],
-            end: [false, false],
-          });
-        }
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
-        this.updateTaskUiControls({
-          accept: [false, false],
-          transfer: [false, false],
-          end: [false, false],
-        });
-        break;
-
-      default:
-        break;
     }
   }
 }
