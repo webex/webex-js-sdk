@@ -1552,7 +1552,7 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async consultConference(): Promise<TaskResponse> {
     try {
-      // Get the destination agent ID using Agent Desktop's calculateDestAgentId logic
+      // Get the destination agent ID dynamically from participants
       // This handles multi-party conference scenarios, CBT (Click-to-Dial), and EP-DN cases
       const destAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
 

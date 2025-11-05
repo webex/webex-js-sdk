@@ -244,7 +244,7 @@ export default class TaskManager extends EventEmitter {
               },
               ['behavioral', 'operational']
             );
-            // RONA/ASSIGN_FAILED/INVITE_FAILED always delete the task (matches Agent Desktop)
+            // RONA/ASSIGN_FAILED/INVITE_FAILED always delete the task immediately
             this.handleTaskCleanup(task, true);
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
@@ -482,8 +482,7 @@ export default class TaskManager extends EventEmitter {
    * @private
    */
   private handleContactEnded(task: ITask, taskData: TaskData): ITask {
-    // Agent Desktop logic: Check if task should be deleted immediately
-    // BEFORE updating the task data
+    // Check if task should be deleted immediately BEFORE updating the task data
     const {interaction} = taskData;
     let shouldDeleteTask = false;
 
@@ -575,13 +574,13 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * Handles cleanup of task resources including web call cleanup and task removal
+   * Handles cleanup of task resources including Desktop/WebRTC call cleanup and task removal
    * @param task - The task to clean up
    * @param shouldRemoveTask - Whether to remove the task from collection immediately
    * @private
    */
   private handleTaskCleanup(task: ITask, shouldRemoveTask?: boolean) {
-    // Clean up web calling resources for browser-based telephony tasks
+    // Clean up Desktop/WebRTC calling resources for browser-based telephony tasks
     if (
       this.webCallingService.loginOption === LoginOption.BROWSER &&
       task.data.interaction.mediaType === 'telephony'

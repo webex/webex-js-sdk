@@ -11,6 +11,7 @@ import {
   CONSULT_TRANSFER_DESTINATION_TYPE,
   Interaction,
 } from '../task/types';
+import {PARTICIPANT_TYPES} from './constants';
 
 /**
  * Extracts common error details from a Webex request payload.
@@ -274,17 +275,8 @@ export const getDestinationAgentId = (
 };
 
 /**
- * Constants for participant and media types
- */
-const EP_DN = 'EpDn';
-const DN = 'dn';
-const AGENT = 'Agent';
-const STATE_CONSULT = 'consult';
-
-/**
  * Gets the consulted agent ID from the media object by finding the agent
  * in the consult media participants (excluding the current agent).
- * Matches Agent Desktop's getConsultedAgentId implementation.
  *
  * @param media - The media object from the interaction
  * @param agentId - The current agent's ID to exclude from the search
@@ -295,7 +287,7 @@ export const getConsultedAgentId = (media: Interaction['media'], agentId: string
   let consultedParticipantId = '';
 
   Object.keys(media).forEach((key) => {
-    if (media[key].mType === STATE_CONSULT) {
+    if (media[key].mType === PARTICIPANT_TYPES.STATE_CONSULT) {
       consultParticipants = media[key].participants;
     }
   });
@@ -312,7 +304,6 @@ export const getConsultedAgentId = (media: Interaction['media'], agentId: string
  * Gets the destination agent ID for CTR (Click-to-Dial) scenarios.
  * This handles cases where the consulted participant is not directly in participants
  * but can be found by matching the dial number (dn).
- * Matches Agent Desktop's getDestAgentIdForCBT implementation.
  *
  * @param interaction - The interaction object
  * @param consultingAgent - The consulting agent identifier
@@ -327,8 +318,8 @@ export const getDestAgentIdForCBT = (interaction: Interaction, consultingAgent: 
     const foundEntry = Object.entries(participants).find(
       ([, participant]: [string, Interaction['participants'][string]]) => {
         return (
-          participant.pType.toLowerCase() === DN &&
-          participant.type === AGENT &&
+          participant.pType.toLowerCase() === PARTICIPANT_TYPES.DN &&
+          participant.type === PARTICIPANT_TYPES.AGENT &&
           participant.dn === consultingAgent
         );
       }
@@ -344,8 +335,6 @@ export const getDestAgentIdForCBT = (interaction: Interaction, consultingAgent: 
 
 /**
  * Calculates the destination agent ID for consult operations.
- * This matches Agent Desktop's calculateDestAgentId implementation (else branch).
- * Since feature flags are gated in SDK, this uses the advanced logic directly.
  *
  * @param interaction - The interaction object
  * @param agentId - The current agent's ID
@@ -361,15 +350,13 @@ export const calculateDestAgentId = (interaction: Interaction, agentId: string):
     return destAgentIdCBT;
   }
 
-  return interaction.participants[consultingAgent]?.type === EP_DN
+  return interaction.participants[consultingAgent]?.type === PARTICIPANT_TYPES.EP_DN
     ? interaction.participants[consultingAgent]?.epId
     : interaction.participants[consultingAgent]?.id;
 };
 
 /**
  * Calculates the destination agent ID for fetching destination type.
- * This matches Agent Desktop's calculateDestAgentIdForFetchingDestType implementation (else branch).
- * Since feature flags are gated in SDK, this uses the advanced logic directly.
  *
  * @param interaction - The interaction object
  * @param agentId - The current agent's ID
@@ -402,12 +389,11 @@ export const deriveConsultTransferDestinationType = (
 };
 
 /**
- * Builds consult conference parameter data using EXACT Agent Desktop logic.
- * This matches the Agent Desktop's consultConference implementation exactly.
+ * Builds consult conference parameter data for conference operations.
  *
- * @param dataPassed - Original consultation data from Agent Desktop format
+ * @param dataPassed - Original consultation data
  * @param interactionIdPassed - The interaction ID for the task
- * @returns Object with interactionId and ConsultConferenceData matching Agent Desktop format
+ * @returns Object with interactionId and ConsultConferenceData
  * @public
  */
 export const buildConsultConferenceParamData = (
@@ -422,7 +408,7 @@ export const buildConsultConferenceParamData = (
     destinationType: '',
   };
 
-  // Agent Desktop destination type logic
+  // Handle destination type mapping
   if ('destinationType' in dataPassed) {
     if (dataPassed.destinationType === 'DN') {
       data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;

@@ -101,7 +101,6 @@ export const isSecondaryAgent = (interaction: Interaction): boolean => {
 /**
  * Checks if the current agent is a secondary EP-DN (Entry Point Dial Number) agent.
  * This is specifically for telephony consultations to external numbers/entry points.
- * Matches Agent Desktop's isSecondaryEpDnAgent logic.
  * @param task - The task object containing interaction details
  * @returns true if this is a secondary EP-DN agent in telephony consultation, false otherwise
  */
@@ -115,7 +114,6 @@ export const isSecondaryEpDnAgent = (interaction: Interaction): boolean => {
 
 /**
  * Checks if the agent was added to a campaign and is in ringing state
- * Matches Agent Desktop's isAgentAddedToCampaign logic
  * @param task - The task object
  * @param agentId - The agent ID to check
  * @returns true if agent was added to campaign, false otherwise
@@ -135,7 +133,6 @@ const isAgentAddedToCampaign = (task: ITask, agentId: string): boolean => {
 
 /**
  * Checks if the task type is CampaignContactUpdated
- * Matches Agent Desktop's isAgentAddedToCampaignNew logic
  * Campaign tasks should not be in ringing state if agent is in wrapUp
  * @param task - The task object
  * @param agentId - The agent ID to check
@@ -153,8 +150,7 @@ const isAgentAddedToCampaignNew = (task: ITask, agentId: string): boolean => {
 
 /**
  * Checks if the task is in a ringing state for the agent
- * This matches Agent Desktop's isTaskRinging logic which checks both
- * isAgentContactInRingingState and isAgentContactInOfferConsultState
+ * Evaluates both regular ringing states and consult offer states
  * @param task - The task object containing interaction details
  * @param agentId - The agent ID to check
  * @returns true if the task is in ringing state, false otherwise
@@ -169,7 +165,6 @@ export const isTaskRinging = (task: ITask, agentId: string): boolean => {
   }
 
   // Check if agent is in ringing state for normal interactions
-  // This matches Agent Desktop's isAgentContactInRingingState
   if (
     interaction.state === 'new' ||
     interaction.state === 'connected' ||
@@ -187,7 +182,6 @@ export const isTaskRinging = (task: ITask, agentId: string): boolean => {
   }
 
   // Check if agent is in offer consult state
-  // This matches Agent Desktop's isAgentContactInOfferConsultState
   if (interaction.state === 'consult') {
     return !participant.isWrapUp && !participant.hasJoined && participant.isConsulted === true;
   }

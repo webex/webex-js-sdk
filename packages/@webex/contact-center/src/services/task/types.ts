@@ -1044,7 +1044,7 @@ export type ConsultConferenceData = {
 };
 
 /**
- * Legacy consultation conference data type matching Agent Desktop
+ * Legacy consultation conference data type
  * @public
  */
 export type consultConferencePayloadData = {
