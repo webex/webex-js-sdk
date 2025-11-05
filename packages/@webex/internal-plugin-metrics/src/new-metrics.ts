@@ -9,6 +9,7 @@ import CallDiagnosticMetrics from './call-diagnostic/call-diagnostic-metrics';
 import BehavioralMetrics from './behavioral-metrics';
 import OperationalMetrics from './operational-metrics';
 import BusinessMetrics from './business-metrics';
+import PreLoginMetrics from './prelogin-metrics';
 import {
   RecursivePartial,
   MetricEventProduct,
@@ -45,6 +46,7 @@ class Metrics extends WebexPlugin {
   behavioralMetrics: BehavioralMetrics;
   operationalMetrics: OperationalMetrics;
   businessMetrics: BusinessMetrics;
+  preLoginMetrics: PreLoginMetrics;
   isReady = false;
 
   /**
@@ -87,6 +89,8 @@ class Metrics extends WebexPlugin {
     this.webex.once('ready', () => {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
+      // @ts-ignore
+      this.preLoginMetrics = new PreLoginMetrics({}, {parent: this.webex});
       this.isReady = true;
       this.setDelaySubmitClientEvents({
         shouldDelay: this.delaySubmitClientEvents,
@@ -249,6 +253,23 @@ class Metrics extends WebexPlugin {
     this.lazyBuildBusinessMetrics();
 
     return this.businessMetrics.submitBusinessEvent({name, payload, table, metadata});
+  }
+
+  /**
+   * Call Analyzer: Pre-Login Event
+   * @param args
+   */
+  submitPreLoginEvent(preLoginId: string, name: string, payload: EventPayload): Promise<any> {
+    if (!this.isReady) {
+      // @ts-ignore
+      this.webex.logger.log(
+        `NewMetrics: @submitPreLoginEvent. Attempted to submit before webex.ready: ${name}`
+      );
+
+      return Promise.resolve();
+    }
+
+    return this.preLoginMetrics.submitPreLoginEvent(preLoginId, name, payload);
   }
 
   /**
