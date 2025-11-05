@@ -429,10 +429,12 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.CONSULTED_PARTICIPANT_MOVING:
             // Participant is being moved/transferred - update task state with movement info
             task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_PARTICIPANT_MOVING, task);
             break;
           case CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY:
             // Post-call activity for participant - update task state with activity details
             task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
             break;
           default:
             break;

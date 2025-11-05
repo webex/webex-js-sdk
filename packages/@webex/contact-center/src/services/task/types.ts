@@ -491,7 +491,41 @@ export enum TASK_EVENTS {
    */
   TASK_PARTICIPANT_LEFT_FAILED = 'task:participantLeftFailed',
 
+  /**
+   * Triggered when a contact is merged
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_MERGED, (task: ITask) => {
+   *   console.log('Contact merged:', task.data.interactionId);
+   *   // Handle contact merge
+   * });
+   * ```
+   */
   TASK_MERGED = 'task:merged',
+
+  /**
+   * Triggered when a consulted participant is being moved/transferred
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_PARTICIPANT_MOVING, (task: ITask) => {
+   *   console.log('Participant is being moved:', task.data.interactionId);
+   *   // Handle participant movement
+   * });
+   * ```
+   */
+  TASK_PARTICIPANT_MOVING = 'task:participantMoving',
+
+  /**
+   * Triggered when a participant enters post-call activity state
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, (task: ITask) => {
+   *   console.log('Participant in post-call activity:', task.data.interactionId);
+   *   // Handle post-call activity
+   * });
+   * ```
+   */
+  TASK_POST_CALL_ACTIVITY = 'task:postCallActivity',
 }
 
 /**
