@@ -22,7 +22,13 @@ import {
   RegistrationStatus,
 } from './types';
 import log from '../Logger';
-import {CALL_FILE, DUMMY_METRICS, UTILS_FILE, REGISTER_UTIL} from '../CallingClient/constants';
+import {
+  CALL_FILE,
+  DUMMY_METRICS,
+  UTILS_FILE,
+  REGISTER_UTIL,
+  DEFAULT_KEEPALIVE_INTERVAL,
+} from '../CallingClient/constants';
 import {
   CALL_ERROR_CODE,
   ERROR_CODE,
@@ -231,8 +237,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
 
     expect(emitted).toBe(true);
     expect(endSpy).not.toHaveBeenCalled();
-    expect(retrySpy).toHaveBeenCalledTimes(1);
-    expect(retrySpy.mock.calls[0].length).toBe(0);
+    expect(retrySpy).toHaveBeenCalledWith(DEFAULT_KEEPALIVE_INTERVAL);
   });
 
   it('404 during keepalive emits not found and ends call (no retry)', async () => {
@@ -319,8 +324,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
 
     expect(emitted).toBe(true);
     expect(endSpy).not.toHaveBeenCalled();
-    expect(retrySpy).toHaveBeenCalledTimes(1);
-    expect(retrySpy.mock.calls[0].length).toBe(0);
+    expect(retrySpy).toHaveBeenCalledWith(DEFAULT_KEEPALIVE_INTERVAL);
   });
 });
 

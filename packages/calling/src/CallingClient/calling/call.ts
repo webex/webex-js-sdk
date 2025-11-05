@@ -1564,17 +1564,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             this.submitCallErrorMetric(callError);
           },
           ERROR_LAYER.CALL_CONTROL,
-          (interval?: number) => {
-            setTimeout(
-              () => {
-                /* We first post the status and then recursively call the handler which
-                 * starts the timer again
-                 */
-                this.postStatus();
-                this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
-              },
-              interval ? interval * 1000 : DEFAULT_SESSION_TIMER
-            );
+          (interval: number) => {
+            setTimeout(() => {
+              /* We first post the status and then recursively call the handler which
+               * starts the timer again
+               */
+              this.postStatus();
+              this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
+            }, interval * 1000);
           },
           this.getCorrelationId(),
           error,
@@ -1759,16 +1756,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         handleCallErrors(
           this.getEmitterCallback(errData),
           ERROR_LAYER.MEDIA,
-          (interval?: number) => {
+          (interval: number) => {
             /* Start retry if only it is a midcall case */
             /* istanbul ignore else */
             if (this.connected) {
-              setTimeout(
-                () => {
-                  this.sendMediaStateMachineEvt({type: 'E_ROAP_OK', data: event.data});
-                },
-                interval ? interval * 1000 : DEFAULT_SESSION_TIMER
-              );
+              setTimeout(() => {
+                this.sendMediaStateMachineEvt({type: 'E_ROAP_OK', data: event.data});
+              }, interval * 1000);
             }
           },
           this.getCorrelationId(),
@@ -1921,15 +1915,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       handleCallErrors(
         this.getEmitterCallback(errData),
         ERROR_LAYER.MEDIA,
-        (interval?: number) => {
+        (interval: number) => {
           /* Start retry if only it is a midcall case */
           if (this.connected) {
-            setTimeout(
-              () => {
-                this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.data});
-              },
-              interval ? interval * 1000 : DEFAULT_SESSION_TIMER
-            );
+            setTimeout(() => {
+              this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.data});
+            }, interval * 1000);
           }
         },
         this.getCorrelationId(),
@@ -1978,15 +1969,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       handleCallErrors(
         this.getEmitterCallback(errData),
         ERROR_LAYER.MEDIA,
-        (interval?: number) => {
+        (interval: number) => {
           /* Start retry if only it is a midcall case */
           if (this.connected) {
-            setTimeout(
-              () => {
-                this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.data});
-              },
-              interval ? interval * 1000 : DEFAULT_SESSION_TIMER
-            );
+            setTimeout(() => {
+              this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.data});
+            }, interval * 1000);
           }
         },
         this.getCorrelationId(),

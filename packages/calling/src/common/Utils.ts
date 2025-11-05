@@ -90,6 +90,7 @@ import {
   URL_ENDPOINT,
   UTILS_FILE,
   METHODS,
+  DEFAULT_KEEPALIVE_INTERVAL,
 } from '../CallingClient/constants';
 import {
   DeleteCallHistoryRecordsResponse,
@@ -648,7 +649,7 @@ export async function handleCallErrors(
         return;
       }
       if (isKeepalive) {
-        retryCb(); // This is applicable only for the keepalive scenario
+        retryCb(DEFAULT_KEEPALIVE_INTERVAL); // This is applicable only for the keepalive scenario
       }
 
       /* Handling various Error codes */
@@ -757,7 +758,7 @@ export async function handleCallErrors(
           const retryInterval = Number(err.headers['retry-after'] as unknown);
           retryCb(retryInterval);
         } else {
-          retryCb();
+          retryCb(DEFAULT_KEEPALIVE_INTERVAL);
         }
       }
 
@@ -768,7 +769,7 @@ export async function handleCallErrors(
       log.warn(`Unknown Error`, loggerContext);
 
       if (isKeepalive && retryCb) {
-        retryCb();
+        retryCb(DEFAULT_KEEPALIVE_INTERVAL);
       }
     }
   }
