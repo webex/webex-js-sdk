@@ -586,7 +586,7 @@ describe('createMediaConnection', () => {
 
   testEnableInboundAudioLevelMonitoring(
     'enables enableInboundAudioLevelMonitoring for multistream when browser is Chrome',
-    {isChrome: true, isEdge: false},
+    {isChrome: true},
     true,
     {
       iceServers: [],
@@ -597,7 +597,7 @@ describe('createMediaConnection', () => {
 
   testEnableInboundAudioLevelMonitoring(
     'enables enableInboundAudioLevelMonitoring for multistream when browser is Edge',
-    {isChrome: false, isEdge: true},
+    {isEdge: true},
     true,
     {
       iceServers: [],
@@ -608,7 +608,7 @@ describe('createMediaConnection', () => {
 
   testEnableInboundAudioLevelMonitoring(
     'does not enable enableInboundAudioLevelMonitoring for multistream when browser is Firefox',
-    {isChrome: false, isEdge: false, isFirefox: true},
+    {isFirefox: true},
     true,
     {
       iceServers: [],
@@ -620,7 +620,7 @@ describe('createMediaConnection', () => {
 
   testEnableInboundAudioLevelMonitoring(
     'does not enable enableInboundAudioLevelMonitoring for non-multistream connections even when browser is Chrome',
-    {isChrome: true, isEdge: false},
+    {isChrome: true},
     false,
     {
       iceServers: [],
