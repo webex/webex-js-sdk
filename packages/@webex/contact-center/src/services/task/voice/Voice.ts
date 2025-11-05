@@ -1,5 +1,9 @@
-import {CC_FILE, METHODS} from '../../../constants';
-import {getErrorDetails} from '../../core/Utils';
+import {CC_FILE, METHODS, TASK_FILE} from '../../../constants';
+import {
+  getErrorDetails,
+  buildConsultConferenceParamData,
+  generateTaskErrorObject,
+} from '../../core/Utils';
 import routingContact from '../contact';
 import {
   ConsultPayload,
@@ -89,15 +93,11 @@ export default class Voice extends Task implements IVoice {
 
     switch (operation) {
       case 'hold':
-        return state.matches(TaskState.CONNECTED) && !state.context.isHold;
+        return state.matches(TaskState.CONNECTED);
       case 'resume':
-        return state.matches(TaskState.HELD) && state.context.isHold;
+        return state.matches(TaskState.HELD);
       case 'consult':
-        return (
-          (state.matches(TaskState.CONNECTED) || state.matches(TaskState.HELD)) &&
-          !state.context.isConsulted &&
-          !state.context.isConferencing
-        );
+        return state.matches(TaskState.CONNECTED) || state.matches(TaskState.HELD);
       case 'conference':
         return state.matches(TaskState.CONSULTING) && state.context.consultDestinationAgentJoined;
       case 'transfer':
@@ -123,70 +123,123 @@ export default class Voice extends Task implements IVoice {
   }
 
   /**
-   * Legacy helper for consulting controls
+   * Compute UI controls based on state machine state.
+   * This replaces the old updateUIControlsFromState() method.
+   * Returns plain objects instead of mutating taskUiControls.
    */
-  private applyConsultingControls(): void {
-    this.updateTaskUiControls({
-      hold: [false, false],
-      transfer: [false, false],
-      consult: [false, false],
-      recording: [true, false],
-    });
-
-    if (!this.data.isConsulted) {
-      this.updateTaskUiControls({
-        consultTransfer: [true, true],
-        endConsult: [true, true],
-        end: [this.isEndCallEnabled, false],
-      });
-    } else {
-      this.updateTaskUiControls({endConsult: [this.isEndConsultEnabled, this.isEndConsultEnabled]});
-    }
-  }
-
-  /**
-   * State-based UI control logic, driven by state machine context.
-   * This method derives UI control states directly from the `can*` flags
-   * in the state machine's context, ensuring a single source of truth.
-   */
-  protected updateUIControlsFromState(): void {
+  protected override computeUIControls(): import('../Task').TaskUIControls {
     const state = this.stateMachineService?.state;
-    if (!state) {
-      // Fallback to legacy logic if state machine is not yet initialized
-      this.setUIControls();
 
-      return;
+    if (!state) {
+      // Fallback if state machine not initialized
+      return super.computeUIControls();
     }
 
-    const {context} = state;
-    const {canHold, canResume, canConsult, canEndConsult, canTransfer, canWrapup, isHold} = context;
-
+    // Determine UI control states based on current state and context
     const isOffered = state.matches(TaskState.OFFERED) || state.matches(TaskState.OFFERED_CONSULT);
+    const isConnected = state.matches(TaskState.CONNECTED);
+    const isHeld = state.matches(TaskState.HELD);
+    const isConsulting = state.matches(TaskState.CONSULTING);
+    const isConferencing = state.matches(TaskState.CONFERENCING);
+    const isWrappingUp = state.matches(TaskState.WRAPPING_UP);
 
-    this.updateTaskUiControls({
-      accept: this.uiControl(isOffered, true),
-      decline: this.uiControl(isOffered, true),
-      hold: this.uiControl(canHold || canResume, canHold || canResume),
-      transfer: this.uiControl(canTransfer, canTransfer),
-      consult: this.uiControl(canConsult, canConsult),
-      endConsult: this.uiControl(canEndConsult, canEndConsult),
-      wrapup: this.uiControl(canWrapup, canWrapup),
-      end: this.uiControl(this.isEndCallEnabled, !isHold),
-      // Recording and conference controls can be added here as well
-    });
-  }
+    const context = state.context;
 
-  /**
-   * @deprecated Legacy event-based UI control logic. Kept for backward compatibility.
-   * This will be removed once the state machine is fully adopted.
-   */
-  protected setUIControls(): void {
-    // This method is now a fallback and will be removed.
-    // The logic has been migrated to `updateUIControlsFromState`.
-    LoggerProxy.warn('Legacy setUIControls() called. This method is deprecated.', {
-      module: CC_FILE,
-      method: 'setUIControls',
-    });
+    // Return computed UI controls based on state machine state
+    return {
+      // Accept button: visible when offered, always enabled
+      accept: {
+        visible: isOffered,
+        enabled: true,
+      },
+
+      // Decline button: visible when offered, always enabled
+      decline: {
+        visible: isOffered,
+        enabled: true,
+      },
+
+      // Hold button: visible when connected or held
+      // Enabled based on current state (hold when connected, resume when held)
+      hold: {
+        visible: isConnected || isHeld,
+        enabled: isConnected || isHeld,
+      },
+
+      // Mute button: visible when active call, disabled during wrapup
+      mute: {
+        visible: isConnected || isHeld,
+        enabled: !isWrappingUp,
+      },
+
+      // End button: conditional based on config, disabled when held or wrapping up
+      end: {
+        visible: this.isEndCallEnabled,
+        enabled: !isHeld && !isWrappingUp,
+      },
+
+      // Transfer button: visible in connected/held/consulting states
+      transfer: {
+        visible: isConnected || isHeld || isConsulting,
+        enabled: true,
+      },
+
+      // Consult button: visible when connected or held
+      // Enabled when in connected or held states (not consulting/conferencing)
+      consult: {
+        visible: isConnected || isHeld,
+        enabled: isConnected || isHeld,
+      },
+
+      // Consult transfer: visible during consulting
+      consultTransfer: {
+        visible: isConsulting,
+        enabled: true,
+      },
+
+      // End consult button: visible during consulting state
+      endConsult: {
+        visible: isConsulting,
+        enabled: this.isEndConsultEnabled,
+      },
+
+      // Recording controls: based on recording state
+      recording: {
+        visible: isConnected || isHeld,
+        enabled: !context.recordingPaused,
+      },
+
+      // Conference button: visible during consulting
+      // Enabled only if consulted agent has joined
+      conference: {
+        visible: isConsulting,
+        enabled: context.consultDestinationAgentJoined,
+      },
+
+      // Wrapup button: visible during wrapup state
+      wrapup: {
+        visible: isWrappingUp,
+        enabled: true,
+      },
+
+      // Exit conference button: visible during conference
+      exitConference: {
+        visible: isConferencing,
+        enabled: true,
+      },
+
+      // Transfer conference: visible during conference
+      transferConference: {
+        visible: isConferencing,
+        enabled: true,
+      },
+
+      // Merge to conference: visible during consulting (alias for conference)
+      mergeToConference: {
+        visible: isConsulting,
+        enabled: context.consultDestinationAgentJoined,
+      },
+    };
   }
 
   /**
@@ -257,7 +310,7 @@ export default class Voice extends Task implements IVoice {
     if (state) {
       const currentState = state.value as TaskState;
       if (shouldHold) {
-        if (!state.matches(TaskState.CONNECTED) || state.context.isHold) {
+        if (!state.matches(TaskState.CONNECTED)) {
           const error = new Error(`Cannot hold call in current state: ${currentState}`);
           LoggerProxy.error('Hold operation not allowed', {
             module: CC_FILE,
@@ -266,7 +319,7 @@ export default class Voice extends Task implements IVoice {
           });
           throw error;
         }
-      } else if (!state.matches(TaskState.HELD) || !state.context.isHold) {
+      } else if (!state.matches(TaskState.HELD)) {
         const error = new Error(`Cannot resume call in current state: ${currentState}`);
         LoggerProxy.error('Resume operation not allowed', {
           module: CC_FILE,
@@ -511,18 +564,11 @@ export default class Voice extends Task implements IVoice {
     // Validate consult is allowed
     const state = this.stateMachineService?.state;
     const canConsult =
-      state &&
-      (state.matches(TaskState.CONNECTED) || state.matches(TaskState.HELD)) &&
-      !state.context.isConsulted &&
-      !state.context.isConferencing;
+      state && (state.matches(TaskState.CONNECTED) || state.matches(TaskState.HELD));
 
     if (!canConsult) {
       const currentState = state?.value as TaskState;
-      const error = new Error(
-        `Cannot initiate consult in ${currentState} state${
-          state?.context.isConferencing ? ' (already in conference)' : ''
-        }`
-      );
+      const error = new Error(`Cannot initiate consult in ${currentState} state`);
       LoggerProxy.error('Consult operation not allowed', {
         module: CC_FILE,
         method: 'consult',
@@ -799,51 +845,239 @@ export default class Voice extends Task implements IVoice {
 
   /**
    * Initiates a consult conference (merge consult call with main call)
+   * Creates a three-way conference between the agent, customer, and consulted party
    * @returns Promise<TaskResponse>
    * @throws Error
    */
   public async consultConference(): Promise<TaskResponse> {
-    // Validate conference can start
-    const state = this.stateMachineService?.state;
-    if (!state || !state.matches(TaskState.CONSULTING)) {
-      const error = new Error('Must be in consulting state to start conference');
-      LoggerProxy.error('Conference operation not allowed', {
-        module: CC_FILE,
+    // Extract consultation conference data from task data (used in both try and catch)
+    const consultationData = {
+      agentId: this.data.agentId,
+      destAgentId: this.data.destAgentId,
+      destinationType: this.data.destinationType || 'agent',
+    };
+
+    try {
+      LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
+        module: TASK_FILE,
         method: METHODS.CONSULT_CONFERENCE,
         interactionId: this.data.interactionId,
       });
-      throw error;
-    }
 
-    if (!state.context.consultDestinationAgentJoined) {
-      const error = new Error('Consult agent has not joined yet');
-      LoggerProxy.error('Conference operation not allowed', {
-        module: CC_FILE,
+      const paramsDataForConferenceV2 = buildConsultConferenceParamData(
+        consultationData,
+        this.data.interactionId
+      );
+
+      const response = await this.contact.consultConference({
+        interactionId: paramsDataForConferenceV2.interactionId,
+        data: paramsDataForConferenceV2.data,
+      });
+
+      // Track success metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          destination: paramsDataForConferenceV2.data.to,
+          destinationType: paramsDataForConferenceV2.data.destinationType,
+          agentId: paramsDataForConferenceV2.data.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Consult conference started successfully`, {
+        module: TASK_FILE,
         method: METHODS.CONSULT_CONFERENCE,
         interactionId: this.data.interactionId,
       });
-      throw error;
-    }
 
-    super.unsupportedMethodError(METHODS.CONSULT_CONFERENCE);
+      return response;
+    } catch (error) {
+      const err = generateTaskErrorObject(error, METHODS.CONSULT_CONFERENCE, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
+
+      // Track failure metrics (following consultTransfer pattern)
+      // Build conference data for error tracking using extracted data
+      const failedParamsData = buildConsultConferenceParamData(
+        consultationData,
+        this.data.interactionId
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED,
+        {
+          taskId: this.data.interactionId,
+          destination: failedParamsData.data.to,
+          destinationType: failedParamsData.data.destinationType,
+          agentId: failedParamsData.data.agentId,
+          error: error.toString(),
+          ...taskErrorProps,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to start consult conference`, {
+        module: TASK_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw err;
+    }
   }
 
   /**
    * Exits from an ongoing conference
+   * Exits the agent from the conference, leaving the customer and consulted party connected
    * @returns Promise<TaskResponse>
    * @throws Error
    */
   public async exitConference(): Promise<TaskResponse> {
-    super.unsupportedMethodError(METHODS.EXIT_CONFERENCE);
+    try {
+      LoggerProxy.info(`Exiting consult conference`, {
+        module: TASK_FILE,
+        method: METHODS.EXIT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      // Validate that interaction ID exists
+      if (!this.data.interactionId) {
+        throw new Error('Invalid interaction ID');
+      }
+
+      const response = await this.contact.exitConference({
+        interactionId: this.data.interactionId,
+      });
+
+      // Track success metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_END_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Consult conference exited successfully`, {
+        module: TASK_FILE,
+        method: METHODS.EXIT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      const err = generateTaskErrorObject(error, METHODS.EXIT_CONFERENCE, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
+
+      // Track failure metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_END_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...taskErrorProps,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to exit consult conference`, {
+        module: TASK_FILE,
+        method: METHODS.EXIT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw err;
+    }
   }
 
   /**
    * Transfers the conference to another participant
+   * Moves the entire conference (including all participants) to a new agent,
+   * while the current agent exits and goes to wrapup
    * @returns Promise<TaskResponse>
    * @throws Error
    */
   public async transferConference(): Promise<TaskResponse> {
-    super.unsupportedMethodError(METHODS.TRANSFER_CONFERENCE);
+    try {
+      LoggerProxy.info(`Transferring conference`, {
+        module: TASK_FILE,
+        method: METHODS.TRANSFER_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      // Validate that interaction ID exists
+      if (!this.data.interactionId) {
+        throw new Error('Invalid interaction ID');
+      }
+
+      const response = await this.contact.conferenceTransfer({
+        interactionId: this.data.interactionId,
+      });
+
+      // Track success metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Conference transferred successfully`, {
+        module: TASK_FILE,
+        method: METHODS.TRANSFER_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      const err = generateTaskErrorObject(error, METHODS.TRANSFER_CONFERENCE, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
+
+      // Track failure metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...taskErrorProps,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to transfer conference`, {
+        module: TASK_FILE,
+        method: METHODS.TRANSFER_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw err;
+    }
   }
 
   /**

@@ -24,13 +24,11 @@ export function createInitialContext(): TaskContext {
     currentState: TaskState.IDLE,
     previousState: null,
     mediaResourceId: null,
-    isConsulted: false,
     consultInitiator: false,
     consultDestination: null,
     consultDestinationType: null,
     consultDestinationAgentJoined: false,
     consultMediaResourceId: null,
-    isConferencing: false,
     conferenceInitiatorId: null,
     conferenceParticipants: [],
     maxConferenceParticipants: 10,
@@ -38,20 +36,12 @@ export function createInitialContext(): TaskContext {
     isPrimary: false,
     recordingActive: false,
     recordingPaused: false,
-    isHold: false,
     wrapUpRequired: false,
     autoWrapupTimer: null,
     ronaTimer: null,
     offeredAt: null,
     connectedAt: null,
     endedAt: null,
-    // Action availability flags
-    canHold: false,
-    canResume: false,
-    canConsult: false,
-    canEndConsult: false,
-    canTransfer: false,
-    canWrapup: false,
   };
 }
 
@@ -68,7 +58,6 @@ export const actions = {
       return {
         taskData: event.taskData,
         offeredAt: Date.now(),
-        isConsulted: event.type === TaskEvent.OFFER_CONSULT,
       };
     }
 
@@ -109,7 +98,6 @@ export const actions = {
       return {
         consultDestination: event.destination,
         consultDestinationType: event.destinationType,
-        isConsulted: true,
       };
     }
 
@@ -137,7 +125,6 @@ export const actions = {
       const participantIds = event.participants?.map((p) => p.id) || [];
 
       return {
-        isConferencing: true,
         conferenceParticipants: event.participants || [],
         participants: participantIds,
       };
@@ -158,7 +145,6 @@ export const actions = {
     }
 
     return {
-      isConferencing: true,
       conferenceInitiatorId: agentId,
       conferenceParticipants: [
         {
@@ -237,7 +223,6 @@ export const actions = {
    * Clear conferencing state
    */
   clearConferencing: assign<TaskContext, TaskEventPayload>({
-    isConferencing: false,
     conferenceInitiatorId: null,
     conferenceParticipants: [],
     participants: [],
@@ -249,13 +234,11 @@ export const actions = {
   setHoldState: assign<TaskContext, TaskEventPayload>((context, event) => {
     if (isEventOfType(event, TaskEvent.HOLD)) {
       return {
-        isHold: true,
         mediaResourceId: event.mediaResourceId,
       };
     }
     if (isEventOfType(event, TaskEvent.UNHOLD)) {
       return {
-        isHold: false,
         mediaResourceId: event.mediaResourceId,
       };
     }

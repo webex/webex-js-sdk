@@ -29,16 +29,199 @@ import {
 } from './state-machine';
 import AutoWrapup from './AutoWrapup';
 
+const PARTICIPANT_TYPE_AGENT = 'Agent';
+const PARTICIPANT_TYPE_CUSTOMER = 'Customer';
+const PARTICIPANT_TYPE_SUPERVISOR = 'Supervisor';
+const PARTICIPANT_TYPE_VVA = 'VVA';
+
+const EXCLUDED_PARTICIPANT_TYPES = [
+  PARTICIPANT_TYPE_AGENT,
+  PARTICIPANT_TYPE_CUSTOMER,
+  PARTICIPANT_TYPE_SUPERVISOR,
+  PARTICIPANT_TYPE_VVA,
+];
+
+const MEDIA_TYPE_CONSULT = 'consult';
+const MEDIA_TYPE_TELEPHONY = 'telephony';
+
+const INTERACTION_STATE_NEW = 'new';
+const INTERACTION_STATE_CONSULT = 'consult';
+const INTERACTION_STATE_CONNECTED = 'connected';
+const INTERACTION_STATE_CONFERENCE = 'conference';
+const INTERACTION_STATE_WRAPUP = 'wrapup';
+const INTERACTION_STATE_POST_CALL = 'post_call';
+
+const CONSULT_STATE_INITIATED = 'INITIATED';
+const CONSULT_STATE_COMPLETED = 'COMPLETED';
+const CONSULT_STATE_CONFERENCING = 'CONFERENCING';
+
+const RELATIONSHIP_TYPE_CONSULT = 'CONSULT';
+
+const TASK_STATE_CONSULT = 'consult';
+const TASK_STATE_CONSULTING = 'consulting';
+const TASK_STATE_CONSULT_COMPLETED = 'consult_completed';
+
+/**
+ * Participant information for UI display
+ */
+export type Participant = {
+  id: string;
+  name?: string;
+  pType?: string;
+};
+
+/**
+ * Immutable task properties computed once at task creation.
+ * These properties don't change throughout the task lifecycle.
+ */
+export interface TaskImmutableProps {
+  /** Unique interaction identifier */
+  readonly interactionId: string | null;
+  /** Media type (telephony, chat, email) */
+  readonly mediaType: string | null;
+  /** Media channel identifier */
+  readonly mediaChannel: string | null;
+  /** True if this is a telephony task */
+  readonly isCall: boolean;
+  /** True if this is a chat task */
+  readonly isChat: boolean;
+  /** True if this is an email task */
+  readonly isEmail: boolean;
+  /** True if this is a digital channel (chat or email) */
+  readonly isDigitalChannel: boolean;
+  /** True if agent is the secondary agent in consult/conference */
+  readonly isSecondaryAgent: boolean;
+  /** True if agent is secondary EP/DN agent */
+  readonly isSecondaryEpDnAgent: boolean;
+  /** Timestamp when agent joined the interaction */
+  readonly agentJoinTimestamp: number | null;
+}
+
+/**
+ * Dynamic task properties computed on-demand from current task state.
+ * These properties reflect the current state and can change as events occur.
+ */
+export interface TaskDynamicProps {
+  /** Full interaction data object */
+  readonly interaction: TaskData['interaction'] | null;
+  /** Call-specific details */
+  readonly callDetails: Record<string, unknown> | null;
+  /** Current consultation status */
+  readonly consultStatus: string | null;
+  /** True if consultation is in progress */
+  readonly isConsultInProgress: boolean;
+  /** True if main call is on hold */
+  readonly isOnHold: boolean;
+  /** Alias for isOnHold */
+  readonly isHeld: boolean;
+  /** True if consult call is on hold */
+  readonly consultCallHeld: boolean;
+  /** True if conference is active */
+  readonly isConferenceInProgress: boolean;
+  /** Number of conference participants */
+  readonly conferenceParticipantsCount: number;
+  /** List of conference participants */
+  readonly conferenceParticipants: Participant[];
+  /** True if customer is still in the call */
+  readonly isCustomerInCall: boolean;
+  /** Current MPC (Multi-Party Conference) state */
+  readonly mpcState: string | null;
+  /** Information about the consulting agent */
+  readonly consultingAgent: Participant | null;
+  /** Remaining auto-wrapup time in seconds */
+  readonly autoWrapupSeconds: number | null;
+  /** True if auto-wrapup can be cancelled */
+  readonly canCancelAutoWrapup: boolean;
+  /** True if consult has been initiated */
+  readonly isConsultInitiated: boolean;
+  /** True if consult has been accepted */
+  readonly isConsultAccepted: boolean;
+  /** True if this agent is being consulted */
+  readonly isBeingConsulted: boolean;
+  /** True if consult has completed */
+  readonly isConsultCompleted: boolean;
+  /** True if consult is initiated or accepted */
+  readonly isConsultInitiatedOrAccepted: boolean;
+  /** True if consult is initiated or accepted (not being consulted) */
+  readonly isConsultInitiatedOrAcceptedOnly: boolean;
+  /** True if consult is initiated, accepted, or being consulted */
+  readonly isConsultInitiatedOrAcceptedOrBeingConsulted: boolean;
+  /** True if this agent received a consult request */
+  readonly isConsultReceived: boolean;
+  /** True if consult is both initiated and accepted */
+  readonly isConsultInitiatedAndAccepted: boolean;
+  /** True if this is an incoming task for the agent */
+  readonly isIncomingTask: boolean;
+}
+
+/**
+ * UI control state for a single task action button.
+ * Represents visibility and enabled state for UI components.
+ */
+export interface UIControlState {
+  /** Whether the button should be displayed */
+  visible: boolean;
+  /** Whether the button should be clickable (only applies if visible) */
+  enabled: boolean;
+}
+
+/**
+ * UI controls for all task actions.
+ * Computed from state machine state and context.
+ */
+export interface TaskUIControls {
+  accept: UIControlState;
+  decline: UIControlState;
+  hold: UIControlState;
+  mute: UIControlState;
+  end: UIControlState;
+  transfer: UIControlState;
+  consult: UIControlState;
+  consultTransfer: UIControlState;
+  endConsult: UIControlState;
+  recording: UIControlState;
+  conference: UIControlState;
+  wrapup: UIControlState;
+  exitConference: UIControlState;
+  transferConference: UIControlState;
+  mergeToConference: UIControlState;
+}
+
+/**
+ * Combined task properties for UI components.
+ * Provides convenient access to both immutable and dynamic task properties,
+ * plus computed UI controls based on state machine state.
+ */
+export interface TaskDerivedState extends TaskImmutableProps, TaskDynamicProps {
+  /** UI controls computed from state machine state */
+  uiControls: TaskUIControls;
+}
+
+/**
+ * @deprecated Use TaskDerivedState instead
+ */
+export type TaskAccessor = TaskDerivedState;
+
+/**
+ * @deprecated Use Participant instead
+ */
+export type TaskAccessorParticipant = Participant;
+
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
   protected metricsManager: MetricsManager;
   public stateMachineService?: Interpreter<TaskContext, any, TaskEventPayload>;
   public data: TaskData;
   public webCallMap: Record<TaskId, CallId>;
-  public taskUiControls: TaskUIActions;
   public state: any;
   private ronaTimerId?: NodeJS.Timeout;
   private autoWrapupTimerId?: NodeJS.Timeout;
+
+  /**
+   * Immutable task properties computed once at construction.
+   * These values don't change throughout the task lifecycle.
+   */
+  private readonly immutableProps: TaskImmutableProps;
 
   constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
     super();
@@ -46,7 +229,10 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.data = data;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
-    this.initialiseUIControls();
+    if (this.data?.agentId) {
+      this.data.isIncomingTask = this.isIncomingTask(this.data.agentId);
+    }
+    this.immutableProps = this.computeImmutableProps();
     this.initializeStateMachine();
   }
 
@@ -155,6 +341,171 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   /**
+   * Get computed task state for UI components.
+   * Combines immutable properties (computed once) with dynamic properties
+   * (computed fresh from current state) and UI controls (computed from state machine).
+   *
+   * @returns Combined immutable and dynamic task properties plus UI controls
+   *
+   * @example
+   * ```typescript
+   * // Access immutable properties
+   * const mediaType = task.derived.mediaType;
+   * const isCall = task.derived.isCall;
+   *
+   * // Access dynamic properties (always fresh)
+   * if (task.derived.isConsultInProgress) {
+   *   showConsultUI();
+   * }
+   *
+   * // Access UI controls (computed from state machine)
+   * <button
+   *   visible={task.derived.uiControls.hold.visible}
+   *   enabled={task.derived.uiControls.hold.enabled}
+   *   onClick={() => task.hold()}
+   * >
+   *   Hold
+   * </button>
+   * ```
+   */
+  public get derived(): TaskDerivedState {
+    return {
+      ...this.immutableProps,
+      ...this.computeDynamicProps(),
+      uiControls: this.computeUIControls(),
+    };
+  }
+
+  /**
+   * Backward compatibility getter for taskUiControls.
+   * @deprecated Use task.derived.uiControls instead
+   * This provides the same data but computed fresh from state machine state.
+   *
+   * @example
+   * ```typescript
+   * // Old way (deprecated)
+   * const visible = task.taskUiControls.hold.visible;
+   *
+   * // New way (recommended)
+   * const visible = task.derived.uiControls.hold.visible;
+   * ```
+   */
+  public get taskUiControls(): TaskUIActions {
+    // Convert computed UI controls to TaskActionControl objects for backward compatibility
+    const controls = this.computeUIControls();
+    const result: any = {};
+
+    Object.keys(controls).forEach((key) => {
+      const control = controls[key as keyof TaskUIControls];
+      result[key] = new TaskButtonControl(control.visible, control.enabled);
+    });
+
+    return result as TaskUIActions;
+  }
+
+  /**
+   * @deprecated Use `derived` instead for better clarity
+   */
+  public get accessor(): TaskDerivedState {
+    return this.derived;
+  }
+
+  /**
+   * Compute immutable properties once at task creation.
+   * These properties are based on initial task data and don't change.
+   */
+  private computeImmutableProps(): TaskImmutableProps {
+    const interaction = this.data?.interaction ?? null;
+    const agentId = this.data?.agentId;
+    const mediaType = interaction?.mediaType ?? null;
+    const isCall = mediaType === MEDIA_TYPE_TELEPHONY;
+    const isChat = mediaType === 'chat';
+    const isEmail = mediaType === 'email';
+    const isDigitalChannel = Boolean(isChat || isEmail);
+
+    return {
+      interactionId: this.data?.interactionId ?? null,
+      mediaType,
+      mediaChannel: interaction?.mediaChannel ?? null,
+      isCall,
+      isChat,
+      isEmail,
+      isDigitalChannel,
+      isSecondaryAgent: this.isSecondaryAgent(),
+      isSecondaryEpDnAgent: this.isSecondaryEpDnAgent(),
+      agentJoinTimestamp: agentId ? this.getAgentJoinTimestamp(agentId) : null,
+    };
+  }
+
+  /**
+   * Compute dynamic properties that can change as task state evolves.
+   * These are computed fresh on each access to reflect current state.
+   *
+   * HYBRID APPROACH:
+   * - Simple boolean flags (isOnHold, isConsultInProgress, isConferenceInProgress)
+   *   are read from state machine context for consistency
+   * - Complex computed properties (participants lists, timestamps, etc.)
+   *   are computed from this.data as before
+   */
+  private computeDynamicProps(): TaskDynamicProps {
+    const agentId = this.data?.agentId;
+
+    const consultStatus = agentId
+      ? this.getConsultStatus(agentId)
+      : this.data?.consultStatus ?? null;
+    const isConsultInitiated = consultStatus === 'CONSULT_INITIATED';
+    const isConsultAccepted = consultStatus === 'CONSULT_ACCEPTED';
+    const isBeingConsulted =
+      consultStatus === 'BEING_CONSULTED' || consultStatus === 'BEING_CONSULTED_ACCEPTED';
+    const isConsultCompleted = consultStatus === 'CONSULT_COMPLETED';
+    const isConsultInitiatedOrAccepted =
+      isConsultInitiated || isConsultAccepted || isBeingConsulted;
+    const isConsultInitiatedOrAcceptedOnly = isConsultInitiated || isConsultAccepted;
+    const isConsultInitiatedOrAcceptedOrBeingConsulted =
+      isConsultInitiated || isConsultAccepted || isBeingConsulted;
+    const isConsultReceived = isBeingConsulted;
+    const isConsultInitiatedAndAccepted = isConsultAccepted;
+
+    // Derive state flags from state machine state
+    const state = this.stateMachineService?.state;
+    const isConsultInProgress =
+      state?.matches(TaskState.CONSULTING) ?? this.getIsConsultInProgress();
+    const isOnHold = state?.matches(TaskState.HELD) ?? this.isInteractionOnHold();
+    const isConferenceInProgress =
+      state?.matches(TaskState.CONFERENCING) ?? this.getIsConferenceInProgress();
+
+    return {
+      interaction: this.data?.interaction ?? null,
+      callDetails: this.getCallAssociatedDetails(),
+      consultStatus,
+      // Derived from state machine state, fallback to computed
+      isConsultInProgress,
+      isOnHold,
+      isHeld: isOnHold,
+      consultCallHeld: agentId ? this.findHoldStatus(MEDIA_TYPE_CONSULT, agentId) : false,
+      isConferenceInProgress,
+      // Complex properties still computed from this.data
+      conferenceParticipantsCount: this.getConferenceParticipantsCount(),
+      conferenceParticipants: agentId ? this.getConferenceParticipants(agentId) : [],
+      isCustomerInCall: this.getIsCustomerInCall(),
+      mpcState: agentId ? this.getConsultMPCState(agentId) : this.data?.interaction?.state ?? null,
+      consultingAgent: agentId ? this.getConsultingAgentParticipant(agentId) : null,
+      autoWrapupSeconds: this.getAutoWrapupSeconds(),
+      canCancelAutoWrapup: this.canCancelAutoWrapup(),
+      isConsultInitiated,
+      isConsultAccepted,
+      isBeingConsulted,
+      isConsultCompleted,
+      isConsultInitiatedOrAccepted,
+      isConsultInitiatedOrAcceptedOnly,
+      isConsultInitiatedOrAcceptedOrBeingConsulted,
+      isConsultReceived,
+      isConsultInitiatedAndAccepted,
+      isIncomingTask: agentId ? this.isIncomingTask(agentId) : false,
+    };
+  }
+
+  /**
    * Initialize the state machine with custom action callbacks
    */
   private initializeStateMachine(): void {
@@ -207,11 +558,6 @@ export default abstract class Task extends EventEmitter implements ITask {
           }
         );
         this.state = state;
-        // Compute derived properties after state transition
-        const agentId = this.data.agentId;
-        if (agentId) {
-          this.computeDerivedProperties(agentId);
-        }
 
         // Update UI controls based on current state
         this.updateUIControlsFromState();
@@ -236,15 +582,40 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * Update UI controls based on the current state machine state
-   * Child classes should override this to provide specific UI control logic
+   * Compute UI controls based on current state machine state.
+   * This method should be overridden by child classes (Voice, Digital)
+   * to provide channel-specific UI control logic.
+   *
+   * @returns UI control states for all task actions
+   */
+  protected computeUIControls(): TaskUIControls {
+    // Default implementation - all controls hidden
+    // Child classes should override this method
+    return {
+      accept: {visible: false, enabled: false},
+      decline: {visible: false, enabled: false},
+      hold: {visible: false, enabled: false},
+      mute: {visible: false, enabled: false},
+      end: {visible: false, enabled: false},
+      transfer: {visible: false, enabled: false},
+      consult: {visible: false, enabled: false},
+      consultTransfer: {visible: false, enabled: false},
+      endConsult: {visible: false, enabled: false},
+      recording: {visible: false, enabled: false},
+      conference: {visible: false, enabled: false},
+      wrapup: {visible: false, enabled: false},
+      exitConference: {visible: false, enabled: false},
+      transferConference: {visible: false, enabled: false},
+      mergeToConference: {visible: false, enabled: false},
+    };
+  }
+
+  /**
+   * @deprecated Legacy method - no longer needed with computed UI controls
+   * Child classes no longer need to override this.
    */
   protected updateUIControlsFromState(): void {
-    // Default implementation - child classes should override
-    LoggerProxy.log('Updating UI controls from state', {
-      module: CC_FILE,
-      method: 'updateUIControlsFromState',
-    });
+    // No-op - UI controls are now computed via derived.uiControls
   }
 
   /**
@@ -332,27 +703,13 @@ export default abstract class Task extends EventEmitter implements ITask {
     return oldData;
   }
 
-  private initialiseUIControls() {
-    this.taskUiControls = {
-      accept: new TaskButtonControl(false, false),
-      decline: new TaskButtonControl(false, false),
-      hold: new TaskButtonControl(false, false),
-      mute: new TaskButtonControl(false, false),
-      end: new TaskButtonControl(false, false),
-      transfer: new TaskButtonControl(false, false),
-      consult: new TaskButtonControl(false, false),
-      consultTransfer: new TaskButtonControl(false, false),
-      endConsult: new TaskButtonControl(false, false),
-      recording: new TaskButtonControl(false, false),
-      conference: new TaskButtonControl(false, false),
-      wrapup: new TaskButtonControl(false, false),
-    };
-  }
-
   /**
-   * This method is used to set the UI controls data. Will be implemented in child classes.
+   * @deprecated Legacy method - UI controls are now computed via derived.uiControls
+   * This method is kept for backward compatibility but does nothing.
    */
-  protected setUIControls() {}
+  protected setUIControls() {
+    // No-op - UI controls are now computed automatically
+  }
 
   /**
    *
@@ -368,166 +725,444 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * Apply visibility & enabled flags in one go.
-   * Usage: updateTaskUiControls({ hold: [true,true], end: [false,true] })
+   * @deprecated Legacy method - UI controls are now computed via derived.uiControls
+   * This method is kept for backward compatibility but does nothing.
+   * Child classes no longer need to call this method.
    */
-  protected updateTaskUiControls(
-    config: Partial<Record<keyof typeof this.taskUiControls, [boolean, boolean]>>
-  ): void {
-    Object.entries(config).forEach(([k, [vis, en]]) => {
-      const ctl = this.taskUiControls[k as keyof typeof this.taskUiControls];
-      if (ctl) {
-        ctl.setVisiblity(vis);
-        ctl.setEnabled(en);
-      }
-    });
+  protected updateTaskUiControls(): void {
+    // No-op - UI controls are now computed automatically from state machine
   }
 
-  /**
-   * Compute derived properties from state machine context
-   * Called whenever task data is updated or state transitions occur
-   */
-  protected computeDerivedProperties(agentId: string): void {
-    const state = this.stateMachineService?.state;
-    if (!state) return;
+  private getCallAssociatedDetails(): Record<string, unknown> | null {
+    const interaction = this.data?.interaction as Record<string, any> | undefined;
 
-    const {context} = state;
+    return interaction?.callAssociatedDetails ?? null;
+  }
+
+  private getConsultingAgentParticipant(agentId?: string | null): Participant | null {
+    if (!agentId || !this.data?.interaction?.participants) {
+      return null;
+    }
+
+    const participants = Object.values(this.data.interaction.participants) as Array<any>;
+
+    const consultingAgent = participants.find((participant) => {
+      if (!participant) {
+        return false;
+      }
+      const participantId = participant.id ?? participant.participantId;
+      const participantType =
+        typeof participant.pType === 'string' ? participant.pType.toUpperCase() : '';
+
+      if (participantId === agentId) {
+        return false;
+      }
+
+      if (participant.hasLeft) {
+        return false;
+      }
+
+      return participantType === 'AGENT';
+    });
+
+    if (!consultingAgent) {
+      return null;
+    }
+
+    return {
+      id: consultingAgent.id ?? consultingAgent.participantId ?? '',
+      name: consultingAgent.name ?? consultingAgent.id ?? consultingAgent.participantId ?? '',
+      pType: consultingAgent.pType,
+    };
+  }
+
+  private getAgentJoinTimestamp(agentId?: string | null): number | null {
+    if (!agentId) {
+      return null;
+    }
+
+    const participant = this.data?.interaction?.participants?.[agentId];
+    const joinTimestamp = participant?.joinTimestamp;
+
+    return typeof joinTimestamp === 'number' ? joinTimestamp : null;
+  }
+
+  private getAutoWrapupSeconds(): number | null {
+    if (!this.autoWrapup || typeof this.autoWrapup.getTimeLeftSeconds !== 'function') {
+      return null;
+    }
 
     try {
-      // Compute consultStatus
-      this.data.consultStatus = this.getConsultStatus(agentId);
+      const timeLeft = this.autoWrapup.getTimeLeftSeconds();
 
-      // Compute isConsultInProgress
-      this.data.isConsultInProgress = state.matches(TaskState.CONSULTING);
-
-      // Compute isOnHold
-      this.data.isOnHold = state.matches(TaskState.HELD);
-
-      // Compute isConferenceInProgress (already exists but ensure consistency)
-      this.data.isConferenceInProgress =
-        state.matches(TaskState.CONFERENCING) && context.participants.length >= 2;
-
-      // Compute isCustomerInCall
-      this.data.isCustomerInCall = this.checkCustomerInCall();
-
-      // Compute conferenceParticipantsCount
-      this.data.conferenceParticipantsCount = context.participants.length;
-
-      // Compute isSecondaryAgent
-      this.data.isSecondaryAgent = this.checkIsSecondaryAgent();
-
-      // Compute isSecondaryEpDnAgent
-      this.data.isSecondaryEpDnAgent =
-        this.data.interaction.mediaType === 'telephony' && this.data.isSecondaryAgent;
-
-      // Compute mpcState
-      this.data.mpcState = this.getMPCState(agentId);
+      return typeof timeLeft === 'number' && Number.isFinite(timeLeft) ? timeLeft : null;
     } catch (error) {
-      LoggerProxy.error('Error computing derived properties', {
+      LoggerProxy.warn('AutoWrapup getTimeLeftSeconds failed', {
         module: CC_FILE,
-        method: 'computeDerivedProperties',
-        error: error.message,
+        method: 'getAutoWrapupSeconds',
+        error: (error as Error).message,
       });
+
+      return null;
     }
   }
 
+  private canCancelAutoWrapup(): boolean {
+    return Boolean(
+      (this.autoWrapup as {allowCancelAutoWrapup?: boolean} | undefined)?.allowCancelAutoWrapup
+    );
+  }
+
   /**
-   * Get consultation status from state machine
+   * Determine if task is incoming for given agent
+   */
+  public isIncomingTask(agentId: string): boolean {
+    const taskData = this.data;
+    const taskState = taskData?.interaction?.state;
+    const participants = taskData?.interaction?.participants;
+    const hasJoined = agentId && participants?.[agentId]?.hasJoined;
+
+    return (
+      !taskData?.wrapUpRequired &&
+      !hasJoined &&
+      (taskState === INTERACTION_STATE_NEW ||
+        taskState === INTERACTION_STATE_CONSULT ||
+        taskState === INTERACTION_STATE_CONNECTED ||
+        taskState === INTERACTION_STATE_CONFERENCE)
+    );
+  }
+
+  /**
+   * Get consultation status derived from interaction state
    */
   private getConsultStatus(agentId: string): string {
-    const state = this.stateMachineService?.state;
-    if (!state) return 'NONE';
-    const participants = this.data.interaction?.participants || {};
-    const participant: any = Object.values(participants).find(
-      (p: any) => p.pType === 'Agent' && p.id === agentId
-    );
+    if (!agentId) {
+      return 'NO_CONSULTATION_IN_PROGRESS';
+    }
+    if (!this.data?.interaction) {
+      return 'NO_CONSULTATION_IN_PROGRESS';
+    }
 
-    if (state.matches(TaskState.CONSULT_INITIATED)) {
-      return participant?.isConsulted ? 'BEING_CONSULTED' : 'CONSULT_INITIATED';
+    const state = this.getTaskStatus(agentId);
+    const participants = this.data.interaction.participants || {};
+    const participant = participants[agentId];
+    const beingConsulted = Boolean(participant?.isConsulted) || this.isSecondaryEpDnAgent();
+
+    if (state === TASK_STATE_CONSULT) {
+      return beingConsulted ? 'BEING_CONSULTED' : 'CONSULT_INITIATED';
     }
-    if (state.matches(TaskState.CONSULTING)) {
-      return participant?.isConsulted ? 'BEING_CONSULTED_ACCEPTED' : 'CONSULT_ACCEPTED';
+    if (state === TASK_STATE_CONSULTING) {
+      return beingConsulted ? 'BEING_CONSULTED_ACCEPTED' : 'CONSULT_ACCEPTED';
     }
-    if (state.matches(TaskState.CONNECTED)) {
+    if (state === INTERACTION_STATE_CONNECTED) {
       return 'CONNECTED';
     }
-    if (state.matches(TaskState.CONFERENCING)) {
+    if (state === INTERACTION_STATE_CONFERENCE) {
       return 'CONFERENCE';
     }
-    if (state.matches(TaskState.CONSULT_COMPLETED)) {
+    if (state === TASK_STATE_CONSULT_COMPLETED) {
       return 'CONSULT_COMPLETED';
     }
 
     return 'NO_CONSULTATION_IN_PROGRESS';
   }
 
-  /**
-   * Check if customer is in call
-   */
-  private checkCustomerInCall(): boolean {
-    if (!this.data?.interaction?.media || !this.data?.interactionId) {
-      return false;
+  private getTaskStatus(agentId: string): string {
+    if (!agentId) {
+      return 'NO_CONSULTATION_IN_PROGRESS';
+    }
+    const interaction = this.data.interaction;
+    if (!interaction) {
+      return 'NO_CONSULTATION_IN_PROGRESS';
     }
 
-    const mediaMainCall = this.data.interaction.media[this.data.interactionId];
-    const participantsInMainCall = new Set(mediaMainCall?.participants);
-    const participants = this.data.interaction?.participants;
+    if (this.isSecondaryEpDnAgent()) {
+      if (interaction.state === INTERACTION_STATE_CONFERENCE) {
+        return INTERACTION_STATE_CONFERENCE;
+      }
 
-    if (participantsInMainCall.size > 0 && participants) {
-      return Array.from(participantsInMainCall).some((participantId: string) => {
-        const participant = participants[participantId];
-
-        return participant && participant.pType === 'CUSTOMER' && !participant.hasLeft;
-      });
+      return TASK_STATE_CONSULTING;
     }
 
-    return false;
+    if (
+      (interaction.state === INTERACTION_STATE_WRAPUP ||
+        interaction.state === INTERACTION_STATE_POST_CALL) &&
+      interaction.participants?.[agentId]?.consultState === CONSULT_STATE_COMPLETED
+    ) {
+      return TASK_STATE_CONSULT_COMPLETED;
+    }
+
+    return this.getConsultMPCState(agentId);
   }
 
-  /**
-   * Check if this is a secondary agent (consulted party)
-   */
-  private checkIsSecondaryAgent(): boolean {
+  private getConsultMPCState(agentId: string): string {
+    const interaction = this.data.interaction;
+    const consultMediaResourceId = this.findMediaResourceId(MEDIA_TYPE_CONSULT);
+
+    if (
+      consultMediaResourceId &&
+      interaction.participants?.[agentId]?.consultState &&
+      interaction.state !== INTERACTION_STATE_WRAPUP &&
+      interaction.state !== INTERACTION_STATE_POST_CALL
+    ) {
+      const consultState = interaction.participants[agentId]?.consultState;
+
+      switch (consultState) {
+        case CONSULT_STATE_INITIATED:
+          return TASK_STATE_CONSULT;
+        case CONSULT_STATE_COMPLETED:
+          return interaction.state === INTERACTION_STATE_CONNECTED
+            ? INTERACTION_STATE_CONNECTED
+            : TASK_STATE_CONSULT_COMPLETED;
+        case CONSULT_STATE_CONFERENCING:
+          return INTERACTION_STATE_CONFERENCE;
+        default:
+          return TASK_STATE_CONSULTING;
+      }
+    }
+
+    return interaction?.state || 'NO_CONSULTATION_IN_PROGRESS';
+  }
+
+  private isSecondaryAgent(): boolean {
     const interaction = this.data.interaction;
 
     return (
       !!interaction.callProcessingDetails &&
-      interaction.callProcessingDetails.relationshipType === 'CONSULT' &&
+      interaction.callProcessingDetails.relationshipType === RELATIONSHIP_TYPE_CONSULT &&
       !!interaction.callProcessingDetails.parentInteractionId &&
       interaction.callProcessingDetails.parentInteractionId !== interaction.interactionId
     );
   }
 
-  /**
-   * Get MPC state based on participant consultState
-   */
-  private getMPCState(agentId: string): string {
+  private isSecondaryEpDnAgent(): boolean {
+    return this.data.interaction.mediaType === MEDIA_TYPE_TELEPHONY && this.isSecondaryAgent();
+  }
+
+  public getIsConferenceInProgress(): boolean {
+    const interaction = this.data?.interaction;
+    const interactionId = this.data?.interactionId;
+
+    if (!interaction?.media || !interactionId) {
+      return false;
+    }
+
+    const mediaMainCall = interaction.media[interactionId];
+    const participantsInMainCall = new Set(mediaMainCall?.participants);
+    const participants = interaction.participants ?? {};
+
+    let agentCount = 0;
+    participantsInMainCall.forEach((participantId: string) => {
+      const participant = participants[participantId];
+      if (
+        participant &&
+        !EXCLUDED_PARTICIPANT_TYPES.includes(participant.pType) &&
+        !participant.hasLeft
+      ) {
+        agentCount += 1;
+      }
+    });
+
+    return agentCount >= 2;
+  }
+
+  public getConferenceParticipants(agentId?: string): Participant[] {
+    const participantsList: Participant[] = [];
+    const interaction = this.data?.interaction;
+    const interactionId = this.data?.interactionId;
+
+    if (!interaction?.media || !interactionId) {
+      return participantsList;
+    }
+
+    const mediaMainCall = interaction.media?.[interactionId];
+    const participantsInMainCall = new Set(mediaMainCall?.participants ?? []);
+    const participants = interaction.participants ?? {};
+
+    participantsInMainCall.forEach((participantId: string) => {
+      const participant = participants[participantId];
+      if (
+        participant &&
+        !EXCLUDED_PARTICIPANT_TYPES.includes(participant.pType) &&
+        !participant.hasLeft &&
+        participant.id !== agentId
+      ) {
+        participantsList.push({
+          id: participant.id,
+          pType: participant.pType,
+          name: participant.name || participant.id,
+        });
+      }
+    });
+
+    return participantsList;
+  }
+
+  public getConferenceParticipantsCount(): number {
+    const interaction = this.data?.interaction;
+    const interactionId = this.data?.interactionId;
+
+    if (!interaction?.media || !interactionId) {
+      return 0;
+    }
+
+    const mediaMainCall = interaction.media?.[interactionId];
+    const participantsInMainCall = new Set(mediaMainCall?.participants ?? []);
+    const participants = interaction.participants ?? {};
+
+    let count = 0;
+    participantsInMainCall.forEach((participantId: string) => {
+      const participant = participants[participantId];
+      if (
+        participant &&
+        !EXCLUDED_PARTICIPANT_TYPES.includes(participant.pType) &&
+        !participant.hasLeft
+      ) {
+        count += 1;
+      }
+    });
+
+    return count;
+  }
+
+  public getIsCustomerInCall(): boolean {
+    const interaction = this.data?.interaction;
+    const interactionId = this.data?.interactionId;
+
+    if (!interaction?.media || !interactionId) {
+      return false;
+    }
+
+    const mediaMainCall = interaction.media[interactionId];
+    const participantsInMainCall = new Set(mediaMainCall?.participants);
+    const participants = interaction.participants ?? {};
+
+    for (const participantId of participantsInMainCall) {
+      const participant = participants[participantId];
+      if (participant && participant.pType === PARTICIPANT_TYPE_CUSTOMER && !participant.hasLeft) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  public getIsConsultInProgress(): boolean {
+    const media = this.data?.interaction?.media;
+    if (!media) {
+      return false;
+    }
+
+    return Object.values(media).some((entry: any) => entry?.mType === MEDIA_TYPE_CONSULT);
+  }
+
+  public isInteractionOnHold(): boolean {
+    const media = this.data?.interaction?.media;
+    if (!media) {
+      return false;
+    }
+
+    return Object.values(media).some((entry: any) => Boolean(entry?.isHold));
+  }
+
+  private setMediaTypeForEpDn(mType: string): string {
+    if (this.isSecondaryEpDnAgent()) {
+      return 'mainCall';
+    }
+
+    return mType;
+  }
+
+  public findMediaResourceId(mType: string): string {
+    const mediaEntries = this.data?.interaction?.media;
+    if (!mediaEntries) {
+      return '';
+    }
+
+    const normalizedType = this.setMediaTypeForEpDn(mType);
+
+    for (const key of Object.keys(mediaEntries)) {
+      const media = (mediaEntries as Record<string, any>)[key];
+      if (media?.mType === normalizedType) {
+        return media.mediaResourceId ?? key;
+      }
+    }
+
+    return '';
+  }
+
+  private isConsultOnHoldMPC(agentId: string): boolean {
+    const currentState = this.getConsultMPCState(agentId);
+    const isInConsultState =
+      currentState === TASK_STATE_CONSULT || currentState === TASK_STATE_CONSULTING;
+    const consultMediaResourceId = this.findMediaResourceId(MEDIA_TYPE_CONSULT);
+    let mediaEntry: any;
+    if (consultMediaResourceId) {
+      mediaEntry = (this.data.interaction.media as Record<string, any>)[consultMediaResourceId];
+      if (!mediaEntry) {
+        mediaEntry = Object.values(this.data.interaction.media as Record<string, any>).find(
+          (entry) => entry?.mediaResourceId === consultMediaResourceId
+        );
+      }
+    }
+
+    const isConsultHold = consultMediaResourceId && mediaEntry?.isHold;
+
+    return isInConsultState && !isConsultHold;
+  }
+
+  public findHoldStatus(mType: string, agentId: string): boolean {
     const interaction = this.data.interaction;
-    const currentState = this.getCurrentState();
+    if (!agentId || !interaction?.media) {
+      return false;
+    }
+
+    const normalizedType = this.setMediaTypeForEpDn(mType);
+    const mediaId = this.findMediaResourceId(normalizedType);
+    let mediaEntry = (interaction.media as Record<string, any>)[mediaId];
+    if (!mediaEntry) {
+      mediaEntry = Object.values(interaction.media as Record<string, any>).find(
+        (entry) => entry?.mediaResourceId === mediaId
+      );
+    }
+
+    if (!mediaEntry) {
+      return false;
+    }
 
     if (
-      !this.data.consultMediaResourceId ||
-      !interaction.participants[agentId]?.consultState ||
-      currentState === TaskState.WRAPPING_UP ||
-      currentState === TaskState.POST_CALL
+      normalizedType === 'mainCall' &&
+      mediaEntry.participants?.includes(agentId) &&
+      (this.isConsultOnHoldMPC(agentId) ||
+        this.getConsultMPCState(agentId) === TASK_STATE_CONSULT_COMPLETED)
     ) {
-      return interaction?.state || (currentState as string);
+      return true;
     }
 
-    const consultState = interaction.participants[agentId]?.consultState;
-
-    switch (consultState) {
-      case 'INITIATED':
-        return TaskState.CONSULT_INITIATED;
-      case 'COMPLETED':
-        return currentState === TaskState.CONNECTED
-          ? TaskState.CONNECTED
-          : TaskState.CONSULT_COMPLETED;
-      case 'CONFERENCING':
-        return TaskState.CONFERENCING;
-      default:
-        return TaskState.CONSULTING;
+    if (normalizedType === MEDIA_TYPE_CONSULT && mediaEntry.participants?.includes(agentId)) {
+      return Boolean(mediaEntry.isHold);
     }
+
+    return Boolean(mediaEntry.isHold);
+  }
+
+  public findHoldTimestamp(mType = 'mainCall'): number | null {
+    const interaction = this.data?.interaction;
+    const media = interaction?.media;
+    if (!media) {
+      return null;
+    }
+
+    const normalizedType = this.setMediaTypeForEpDn(mType);
+
+    for (const key of Object.keys(media)) {
+      const mediaEntry = (media as Record<string, any>)[key];
+      if (mediaEntry?.mType === normalizedType) {
+        return mediaEntry.holdTimestamp ?? null;
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -542,12 +1177,6 @@ export default abstract class Task extends EventEmitter implements ITask {
    */
   public updateTaskData(updatedData: TaskData, shouldOverwrite = false): ITask {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
-
-    // Compute derived properties from state machine
-    const agentId = this.data.agentId;
-    if (agentId) {
-      this.computeDerivedProperties(agentId);
-    }
 
     this.setUIControls();
 

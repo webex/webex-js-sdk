@@ -31,16 +31,9 @@ export const guards = {
    */
   canHold: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
     const state = meta.state.value as TaskState;
-    if (state !== TaskState.CONNECTED) {
-      return false;
-    }
 
-    // Check if already on hold
-    if (context.isHold) {
-      return false;
-    }
-
-    return true;
+    // Can only hold if in CONNECTED state (not already HELD)
+    return state === TaskState.CONNECTED;
   },
 
   /**
@@ -48,16 +41,9 @@ export const guards = {
    */
   canResume: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
     const state = meta.state.value as TaskState;
-    if (state !== TaskState.HELD) {
-      return false;
-    }
 
-    // Must be on hold to resume
-    if (!context.isHold) {
-      return false;
-    }
-
-    return true;
+    // Can only resume if in HELD state
+    return state === TaskState.HELD;
   },
 
   /**
@@ -65,17 +51,9 @@ export const guards = {
    */
   canConsult: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
     const state = meta.state.value as TaskState;
-    // Must be in CONNECTED or HELD state
-    if (state !== TaskState.CONNECTED && state !== TaskState.HELD) {
-      return false;
-    }
 
-    // Cannot consult if already in conference
-    if (context.isConferencing) {
-      return false;
-    }
-
-    return true;
+    // Can consult if in CONNECTED or HELD state (CONFERENCING is a separate state)
+    return state === TaskState.CONNECTED || state === TaskState.HELD;
   },
 
   /**
@@ -135,9 +113,12 @@ export const guards = {
 
   /**
    * Check if current task is from a consult offer
+   * Now derived from state instead of context flag
    */
-  isConsulted: (context: TaskContext): boolean => {
-    return context.isConsulted;
+  isConsulted: (context: TaskContext, event: any, meta: {state: {value: StateValue}}): boolean => {
+    const state = meta.state.value as TaskState;
+
+    return state === TaskState.CONSULTING;
   },
 
   /**
@@ -170,7 +151,6 @@ export const guards = {
     return (
       state === TaskState.CONSULTING &&
       context.consultDestinationAgentJoined &&
-      !context.isConferencing &&
       context.conferenceParticipants.length === 0
     );
   },
@@ -186,9 +166,8 @@ export const guards = {
     const state = meta.state.value as TaskState;
 
     return (
-      context.isConferencing &&
-      context.conferenceParticipants.length < context.maxConferenceParticipants &&
-      state === TaskState.CONFERENCING
+      state === TaskState.CONFERENCING &&
+      context.conferenceParticipants.length < context.maxConferenceParticipants
     );
   },
 

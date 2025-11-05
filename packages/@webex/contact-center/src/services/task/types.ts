@@ -779,6 +779,11 @@ export type TaskData = {
   isConsultInProgress?: boolean;
 
   /**
+   * Indicates if the task is incoming for the active agent
+   */
+  isIncomingTask?: boolean;
+
+  /**
    * Indicates if the task is on hold (state machine: HELD)
    */
   isOnHold?: boolean;

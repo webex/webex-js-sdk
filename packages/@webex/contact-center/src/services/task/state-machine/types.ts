@@ -113,6 +113,20 @@ export interface ConferenceParticipant {
 
 /**
  * Context data maintained by the state machine
+ *
+ * IMPORTANT: This context should only store data that CANNOT be derived from the state machine's current state.
+ *
+ * STATE-DERIVED PROPERTIES (NOT stored in context, derived from state machine state):
+ * - isHold: Derived from state === TaskState.HELD
+ * - isConsulted: Derived from state === TaskState.CONSULTING or state === TaskState.OFFERED_CONSULT
+ * - isConferencing: Derived from state === TaskState.CONFERENCING
+ * - isConnected: Derived from state === TaskState.CONNECTED
+ * - isWrappingUp: Derived from state === TaskState.WRAPPING_UP
+ * - isOffered: Derived from state === TaskState.OFFERED or state === TaskState.OFFERED_CONSULT
+ *
+ * These boolean flags were removed because they duplicate information already available
+ * in the state machine's current state, violating the single source of truth principle.
+ * Use state.matches(TaskState.XXX) instead to check these conditions.
  */
 export interface TaskContext {
   // Task data
@@ -126,7 +140,6 @@ export interface TaskContext {
   mediaResourceId: string | null;
 
   // Consult tracking
-  isConsulted: boolean;
   consultInitiator: boolean;
   consultDestination: string | null;
   consultDestinationType: 'agent' | 'queue' | 'entryPoint' | null;
@@ -134,7 +147,6 @@ export interface TaskContext {
   consultMediaResourceId: string | null;
 
   // Conference tracking
-  isConferencing: boolean;
   conferenceInitiatorId: string | null;
   conferenceParticipants: ConferenceParticipant[];
   maxConferenceParticipants: number;
@@ -145,9 +157,6 @@ export interface TaskContext {
   // Recording tracking
   recordingActive: boolean;
   recordingPaused: boolean;
-
-  // Hold tracking
-  isHold: boolean;
 
   // Wrapup tracking
   wrapUpRequired: boolean;
@@ -160,14 +169,6 @@ export interface TaskContext {
   offeredAt: number | null;
   connectedAt: number | null;
   endedAt: number | null;
-
-  // Action availability flags
-  canHold: boolean;
-  canResume: boolean;
-  canConsult: boolean;
-  canEndConsult: boolean;
-  canTransfer: boolean;
-  canWrapup: boolean;
 }
 
 /**
