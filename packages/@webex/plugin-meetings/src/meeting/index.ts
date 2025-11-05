@@ -30,6 +30,7 @@ import {
   NetworkQualityMonitor,
   StatsMonitor,
   StatsMonitorEventNames,
+  InboundAudioIssueSubTypes,
 } from '@webex/internal-media-core';
 
 import {
