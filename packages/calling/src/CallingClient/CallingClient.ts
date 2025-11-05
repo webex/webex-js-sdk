@@ -383,11 +383,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         },
       });
 
-      log.log(`Response trackingId: ${response?.headers?.trackingid}`, {
-        file: CALLING_CLIENT_FILE,
-        method: METHODS.GET_CLIENT_REGION_INFO,
-      });
-
       const clientRegionInfo = response.body as ClientRegionInfo;
 
       regionInfo.clientRegion = clientRegionInfo?.clientRegion ? clientRegionInfo.clientRegion : '';
@@ -412,8 +407,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         response?.headers?.trackingid ?? ''
       );
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to get client region info: ${err}`) as ExtendedError;
-      log.error(extendedError, {
+      log.error(`Failed to get client region info: ${JSON.stringify(err)}`, {
         method: METHODS.GET_CLIENT_REGION_INFO,
         file: CALLING_CLIENT_FILE,
       });
@@ -552,10 +546,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
               method: GET_MOBIUS_SERVERS_UTIL,
             }
           );
+
           break;
         } catch (err: unknown) {
-          const extendedError = new Error(`Failed to get Mobius servers: ${err}`) as ExtendedError;
-          log.error(extendedError, {
+          log.error(`Failed to get Mobius servers: ${JSON.stringify(err)}`, {
             method: METHODS.GET_MOBIUS_SERVERS,
             file: CALLING_CLIENT_FILE,
           });
