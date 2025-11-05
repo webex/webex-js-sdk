@@ -1510,7 +1510,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: METHODS.HANDLE_CALL_ESTABLISHED,
     });
 
-    // TODO: Question: During the retries we are emitting this event. Is this correct?
     this.emit(CALL_EVENT_KEYS.ESTABLISHED, this.correlationId);
 
     /* Reset Early dialog parameters */
@@ -1529,6 +1528,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       // If we have reached the max retry count, do not attempt to refresh the session
       if (this.callKeepaliveRetryCount === MAX_CALL_KEEPALIVE_RETRY_COUNT) {
         this.end();
+        this.callKeepaliveRetryCount = 0;
 
         return;
       }
@@ -1554,9 +1554,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
          * in retry-after scenario.
          */
         /* istanbul ignore next */
-        // if (this.sessionTimer) {
-        //   clearInterval(this.sessionTimer);
-        // }
+        if (this.sessionTimer) {
+          clearInterval(this.sessionTimer);
+        }
 
         handleCallErrors(
           (callError: CallError) => {
