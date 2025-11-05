@@ -8279,6 +8279,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@wdio/logger@npm:^9.1.3":
+  version: 9.18.0
+  resolution: "@wdio/logger@npm:9.18.0"
+  dependencies:
+    chalk: ^5.1.2
+    loglevel: ^1.6.0
+    loglevel-plugin-prefix: ^0.8.4
+    safe-regex2: ^5.0.0
+    strip-ansi: ^7.1.0
+  checksum: be27f1b94bb754a6c4e644d6a20aa0bb2a14f600571edd1a234dc6604f0f682b57f62c4233dae2225623b46a5e9a3738d20c939cb0ed2a9793ba4534c6b9779e
+  languageName: node
+  linkType: hard
+
 "@wdio/mocha-framework@npm:^7.19.5":
   version: 7.33.0
   resolution: "@wdio/mocha-framework@npm:7.33.0"
@@ -11283,6 +11296,13 @@ __metadata:
   version: 2.7.45
   resolution: "@zip.js/zip.js@npm:2.7.45"
   checksum: c78999b4794168eed698dc610bb5152677929996e3bbe45af7439854be345b7a0a2a14d2e555748a97b496141399927949d18cc604e3403f23494c47e0c47480
+  languageName: node
+  linkType: hard
+
+"@zip.js/zip.js@npm:^2.7.54":
+  version: 2.8.8
+  resolution: "@zip.js/zip.js@npm:2.8.8"
+  checksum: 51333312cdd471da02a19c9504e0bc1606bb94353488d51c6b2482430df23e41a40c657a20151b753b81a53fbd278d7b6c8240be0c700e5235007703affe8765
   languageName: node
   linkType: hard
 
@@ -19941,21 +19961,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"geckodriver@npm:^4.4.2":
-  version: 4.4.2
-  resolution: "geckodriver@npm:4.4.2"
+"geckodriver@npm:^6.0.2":
+  version: 6.0.2
+  resolution: "geckodriver@npm:6.0.2"
   dependencies:
-    "@wdio/logger": ^8.28.0
-    "@zip.js/zip.js": ^2.7.44
+    "@wdio/logger": ^9.1.3
+    "@zip.js/zip.js": ^2.7.54
     decamelize: ^6.0.0
     http-proxy-agent: ^7.0.2
-    https-proxy-agent: ^7.0.4
-    node-fetch: ^3.3.2
-    tar-fs: ^3.0.6
-    which: ^4.0.0
+    https-proxy-agent: ^7.0.5
+    modern-tar: ^0.3.4
   bin:
     geckodriver: bin/geckodriver.js
-  checksum: 3aacdf716a5f84860f84fccbda127b65e639008b2aeadd616a70e7d5f6d742730b59d9dd12dfba81cd8fb6ec4eaa875af05e5af38965adc997906d9971a80d99
+  checksum: cd34b353b585060ba953d0810c74261f9f67ad80f95ee64ad99819500c78eb90f493023b79d77d69d91165a664fdcdb23e58264b4f77c6fc54fc5bb9d9580ba2
   languageName: node
   linkType: hard
 
@@ -27133,6 +27151,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"modern-tar@npm:^0.3.4":
+  version: 0.3.5
+  resolution: "modern-tar@npm:0.3.5"
+  checksum: 9ded5d82de028911bf1056a796ba4cd897f2a4949c763c3a248e2c4840911ca72cca9e85ec85de3f4c17563ca4910b05bbc0a0e4adcfa226d03ec680ebe53f0e
+  languageName: node
+  linkType: hard
+
 "modify-values@npm:^1.0.0":
   version: 1.0.1
   resolution: "modify-values@npm:1.0.1"
@@ -30655,6 +30680,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ret@npm:~0.5.0":
+  version: 0.5.0
+  resolution: "ret@npm:0.5.0"
+  checksum: 3763aff074a56baa072afcfb5c19b09fb7c05045a27715bf4f28395cd11ab98cc2d0698bf4a3cd3f1c5e650ed167362d354c0e545ab134a6b7ec83df5e9d7d42
+  languageName: node
+  linkType: hard
+
 "retry@npm:^0.12.0":
   version: 0.12.0
   resolution: "retry@npm:0.12.0"
@@ -30981,6 +31013,15 @@ __metadata:
     get-intrinsic: ^1.1.3
     is-regex: ^1.1.4
   checksum: bc566d8beb8b43c01b94e67de3f070fd2781685e835959bbbaaec91cc53381145ca91f69bd837ce6ec244817afa0a5e974fc4e40a2957f0aca68ac3add1ddd34
+  languageName: node
+  linkType: hard
+
+"safe-regex2@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "safe-regex2@npm:5.0.0"
+  dependencies:
+    ret: ~0.5.0
+  checksum: 61c061da3382e3fb9c1c5e50932da6926684132f69ef40da753ce2ae2746ef1be1e7d4d0c6b788d11c4596e8e3ce95775f147915a4893e1d129b86e7bec01ef2
   languageName: node
   linkType: hard
 
@@ -35468,7 +35509,7 @@ __metadata:
     express-validator: ^5.3.1
     firefox-profile: ^4.0.0
     fs-extra: ^8.1.0
-    geckodriver: ^4.4.2
+    geckodriver: ^6.0.2
     glob: ^7.1.4
     humanize-string: ^1.0.2
     husky: ^7.0.4
