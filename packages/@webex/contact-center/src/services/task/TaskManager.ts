@@ -535,7 +535,7 @@ export default class TaskManager extends EventEmitter {
       });
       // update the task data
       task = this.updateTaskData(task, taskData);
-    } else if (!this.taskCollection[taskData.interactionId]) {
+    } else {
       // Case2 : Task is not present in taskCollection
       LoggerProxy.log(`Got CONTACT_MERGED : Creating new task in taskManager`, {
         module: TASK_MANAGER_FILE,
