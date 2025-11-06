@@ -1556,14 +1556,24 @@ export default class Task extends EventEmitter implements ITask {
    * ```
    */
   public async consultConference(): Promise<TaskResponse> {
-    // Extract consultation conference data from task data (used in both try and catch)
-    const consultationData = {
-      agentId: this.agentId,
-      destAgentId: this.data.destAgentId,
-      destinationType: this.data.destinationType || 'agent',
-    };
-
     try {
+      // Get the destination agent ID using custom logic from participants data (same as consultTransfer)
+      const destAgentId = getDestinationAgentId(
+        this.data.interaction?.participants,
+        this.data.agentId
+      );
+
+      // Validate that we have a destination agent (for queue consult scenarios)
+      if (!destAgentId) {
+        throw new Error('No agent has accepted this queue consult yet');
+      }
+      // Extract consultation conference data from task data (used in both try and catch)
+      const consultationData = {
+        agentId: this.agentId,
+        destAgentId,
+        destinationType: this.data.destinationType || 'agent',
+      };
+
       LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
         module: TASK_FILE,
         method: METHODS.CONSULT_CONFERENCE,
@@ -1611,9 +1621,21 @@ export default class Task extends EventEmitter implements ITask {
       };
 
       // Track failure metrics (following consultTransfer pattern)
-      // Build conference data for error tracking using extracted data
+      // Recalculate destination info for error tracking
+      const failedDestAgentId = getDestinationAgentId(
+        this.data.interaction?.participants,
+        this.data.agentId
+      );
+
+      // Build conference data for error tracking using recalculated data
+      const failedConsultationData = {
+        agentId: this.agentId,
+        destAgentId: failedDestAgentId,
+        destinationType: this.data.destinationType || 'agent',
+      };
+
       const failedParamsData = buildConsultConferenceParamData(
-        consultationData,
+        failedConsultationData,
         this.data.interactionId
       );
 

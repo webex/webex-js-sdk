@@ -1830,6 +1830,64 @@ describe('Task', () => {
           interactionId: taskId,
         });
       });
+
+      it('should dynamically calculate destAgentId from participants when this.data.destAgentId is null', async () => {
+        // Simulate scenario where destAgentId is not preserved (e.g., after hold/unhold)
+        task.data.destAgentId = null;
+        
+        const consultedAgentId = 'consulted-agent-123';
+        getDestinationAgentIdSpy.mockReturnValue(consultedAgentId);
+        
+        const mockResponse = {
+          trackingId: 'test-tracking-dynamic',
+          interactionId: taskId,
+        };
+        contactMock.consultConference.mockResolvedValue(mockResponse);
+
+        const result = await task.consultConference();
+
+        // Verify getDestinationAgentId was called to dynamically calculate the destination
+        expect(getDestinationAgentIdSpy).toHaveBeenCalledWith(
+          taskDataMock.interaction?.participants,
+          taskDataMock.agentId
+        );
+
+        // Verify the conference was called with the dynamically calculated destAgentId
+        expect(contactMock.consultConference).toHaveBeenCalledWith({
+          interactionId: taskId,
+          data: {
+            agentId: taskDataMock.agentId,
+            to: consultedAgentId, // Dynamically calculated value
+            destinationType: 'agent',
+          },
+        });
+        expect(result).toEqual(mockResponse);
+      });
+
+      it('should throw error when no destination agent is found (queue consult not accepted)', async () => {
+        // Simulate queue consult scenario where no agent has accepted yet
+        getDestinationAgentIdSpy.mockReturnValue(''); // No agent found
+        
+        // Mock generateTaskErrorObject to wrap the error
+        const wrappedError = new Error('Error while performing consultConference');
+        generateTaskErrorObjectSpy.mockReturnValue(wrappedError);
+
+        await expect(task.consultConference()).rejects.toThrow('Error while performing consultConference');
+        
+        // Verify the conference was NOT called
+        expect(contactMock.consultConference).not.toHaveBeenCalled();
+        
+        // Verify metrics were tracked for the failure
+        expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
+          'Task Conference Start Failed',
+          expect.objectContaining({
+            taskId: taskId,
+            destination: '', // No destination found
+            destinationType: 'agent',
+          }),
+          ['operational', 'behavioral', 'business']
+        );
+      });
     });
 
     describe('exitConference', () => {
