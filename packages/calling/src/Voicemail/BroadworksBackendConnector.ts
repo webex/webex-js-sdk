@@ -168,7 +168,7 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
 
     log.info(METHOD_START_MESSAGE, loggerContext);
     const broadworksIdpProxyUrl =
-      this.webex.internal.services._serviceUrls.broadworksIdpProxy ||
+      this.webex.internal.services._serviceUrls?.broadworksIdpProxy ||
       this.webex.internal.services.get(
         this.webex.internal.services._activeServices.broadworksIdpProxy
       );

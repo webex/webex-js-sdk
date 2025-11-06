@@ -81,7 +81,7 @@ export class ContactsClient implements IContacts {
     this.contacts = undefined;
     this.defaultGroupId = '';
     this.contactsServiceUrl =
-      this.webex.internal.services._serviceUrls.contactsService ||
+      this.webex.internal.services._serviceUrls?.contactsService ||
       this.webex.internal.services.get(
         this.webex.internal.services._activeServices.contactsService
       );

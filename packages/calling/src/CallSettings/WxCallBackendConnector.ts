@@ -68,7 +68,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
     this.webex = this.sdkConnector.getWebex();
     /* eslint no-underscore-dangle: 0 */
     this.hydraEndpoint =
-      this.webex.internal.services._serviceUrls.hydra ||
+      this.webex.internal.services._serviceUrls?.hydra ||
       this.webex.internal.services.get(this.webex.internal.services._activeServices.hydra);
     log.setLogger(logger.level, WEBEX_CALLING_CONNECTOR_FILE);
 

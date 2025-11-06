@@ -105,7 +105,7 @@ const Services = WebexPlugin.extend({
   },
 
   /*
-   * Get all Mobius cluster host entries from the v2 services list
+   *  Get all Mobius cluster host entries from the v2 services list.
    */
   getMobiusClusters(): Array<{
     host: string;
@@ -126,12 +126,15 @@ const Services = WebexPlugin.extend({
     services.forEach((service) => {
       if (service?.serviceName === 'mobius' && Array.isArray(service.serviceUrls)) {
         service.serviceUrls.forEach((serviceUrl) => {
-          clusters.push({
-            host: serviceUrl.host,
-            priority: serviceUrl.priority,
-            id: service.id,
-            ttl: 0,
-          });
+          if (!clusters.find((c) => c && c.host === serviceUrl.baseUrl)) {
+            serviceUrl.baseUrl = serviceUrl.baseUrl.replace('https://', '').replace('/api/v1', '');
+            clusters.push({
+              host: serviceUrl.baseUrl,
+              priority: serviceUrl.priority,
+              id: service.id,
+              ttl: 0,
+            });
+          }
         });
       }
     });
