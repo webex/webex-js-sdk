@@ -1553,7 +1553,7 @@ export default class Task extends EventEmitter implements ITask {
   public async consultConference(): Promise<TaskResponse> {
     try {
       // Get the destination agent ID dynamically from participants
-      // This handles multi-party conference scenarios, CBT (Click-Based Telephony), and EP-DN cases
+      // This handles multi-party conference scenarios, CBT (Capacity Based Team), and EP-DN cases
       const destAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
 
       // Validate that we have a destination agent (for queue consult scenarios)
@@ -1562,7 +1562,7 @@ export default class Task extends EventEmitter implements ITask {
       }
 
       // Get the destination agent ID for fetching destination type
-      // This helps determine the correct participant type for CBT (Click-Based Telephony) and EP-DN scenarios
+      // This helps determine the correct participant type for CBT (Capacity Based Team) and EP-DN scenarios
       const destAgentIdForFetchingDestType = calculateDestAgentIdForFetchingDestType(
         this.data.interaction,
         this.agentId
@@ -1630,7 +1630,7 @@ export default class Task extends EventEmitter implements ITask {
       const failedDestAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
 
       // Get the destination agent ID for fetching destination type
-      // This helps determine the correct participant type for CBT (Click-Based Telephony) and EP-DN scenarios
+      // This helps determine the correct participant type for CBT (Capacity Based Team) and EP-DN scenarios
       const failedDestAgentIdForFetchingDestType = calculateDestAgentIdForFetchingDestType(
         this.data.interaction,
         this.agentId

@@ -301,11 +301,11 @@ export const getConsultedAgentId = (media: Interaction['media'], agentId: string
 };
 
 /**
- * Gets the destination agent ID for CBT (Click-Based Telephony) scenarios.
- * CBT refers to Click-to-Call or Click-to-Dial functionality where consultations
- * are initiated via clicking on a contact/number in the interface.
- * This handles cases where the consulted participant is not directly in participants
- * but can be found by matching the dial number (dn).
+ * Gets the destination agent ID for CBT (Capacity Based Team) scenarios.
+ * CBT refers to teams created in Control Hub with capacity-based routing
+ * (as opposed to agent-based routing). This handles cases where the consulted
+ * participant is not directly in participants but can be found by matching
+ * the dial number (dn).
  *
  * @param interaction - The interaction object
  * @param consultingAgent - The consulting agent identifier
@@ -345,7 +345,7 @@ export const getDestAgentIdForCBT = (interaction: Interaction, consultingAgent: 
 export const calculateDestAgentId = (interaction: Interaction, agentId: string): string => {
   const consultingAgent = getConsultedAgentId(interaction.media, agentId);
 
-  // Check if this is a CBT (Click-Based Telephony) scenario
+  // Check if this is a CBT (Capacity Based Team) scenario
   // If not CBT, the function will return empty string and we'll use the normal flow
   const destAgentIdCBT = getDestAgentIdForCBT(interaction, consultingAgent);
   if (destAgentIdCBT) {
@@ -370,7 +370,7 @@ export const calculateDestAgentIdForFetchingDestType = (
 ): string => {
   const consultingAgent = getConsultedAgentId(interaction.media, agentId);
 
-  // Check if this is a CBT (Click-Based Telephony) scenario, otherwise use consultingAgent
+  // Check if this is a CBT (Capacity Based Team) scenario, otherwise use consultingAgent
   const destAgentIdCBT = getDestAgentIdForCBT(interaction, consultingAgent);
 
   return destAgentIdCBT || consultingAgent;
