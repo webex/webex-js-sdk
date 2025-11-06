@@ -259,7 +259,17 @@ class Metrics extends WebexPlugin {
    * Call Analyzer: Pre-Login Event
    * @param args
    */
-  submitPreLoginEvent(preLoginId: string, name: string, payload: EventPayload): Promise<any> {
+  SubmitPreLoginEvent({
+    name,
+    preLoginId,
+    payload,
+    metadata,
+  }: {
+    name: string;
+    preLoginId: string;
+    payload: EventPayload;
+    metadata?: EventPayload;
+  }): Promise<void> {
     if (!this.isReady) {
       // @ts-ignore
       this.webex.logger.log(
@@ -269,7 +279,12 @@ class Metrics extends WebexPlugin {
       return Promise.resolve();
     }
 
-    return this.preLoginMetrics.submitPreLoginEvent(preLoginId, name, payload);
+    return this.preLoginMetrics.submitPreLoginEvent({
+      name,
+      preLoginId,
+      payload,
+      metadata,
+    });
   }
 
   /**

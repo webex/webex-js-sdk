@@ -1,20 +1,31 @@
 import GenericMetrics from './generic-metrics';
-import {EventPayload} from './metrics.types';
+import {EventPayload, Table} from './metrics.types';
 import PreLoginMetricsBatcher from './prelogin-metrics-batcher';
 
 /**
+ * Builds a formatted event object for metrics submission.
  * @param {string} name - Metric name
- * @param {EventPayload} payload - Metric payload
- * @returns {object} Metrics Payload
+ * @param {string} preLoginId - Pre-login user identifier
+ * @param {EventPayload} payload - Metric payload data
+ * @param {EventPayload} metadata - Additional metadata to include in the event
+ * @returns {object} Formatted metrics event object with type, eventPayload, and timestamp
  */
-function buildEvent(name: string, payload: EventPayload) {
+function buildEvent(
+  name: string,
+  preLoginId: string,
+  payload: EventPayload,
+  metadata: EventPayload
+) {
+  const payloadWithPreLoginId = {...payload, preLoginId};
+
   return {
     type: ['business'],
     eventPayload: {
       key: name,
       client_timestamp: new Date().toISOString(),
-      // ...metadata,
-      value: payload,
+      preLoginId,
+      ...metadata,
+      value: payloadWithPreLoginId,
     },
   };
 }
@@ -42,18 +53,35 @@ export default class PreLoginMetrics extends GenericMetrics {
   }
 
   /**
-   * @param {string} preLoginId - A string representing the pre-login user ID
-   * @param {string} name - Metric name
-   * @param {EventPayload} payload - Metric payload
-   * @returns {Promise<any>} Metrics Payload
+   * Submit a business metric to our metrics endpoint.
+   * Routes to the correct table with the correct schema payload by table.
+   * @see https://confluence-eng-gpk2.cisco.com/conf/display/WAP/Business+metrics++-%3E+ROMA
+   * @param {Object} options - The options object
+   * @param {string} options.name - Name of the metric
+   * @param {string} options.preLoginId - ID to identify pre-login user
+   * @param {EventPayload} options.payload - User payload of the metric
+   * @param {EventPayload} [options.metadata] - Optional metadata to include outside of eventPayload.value
+   * @returns {Promise<void>} Promise that resolves when the metric is submitted
    */
-  public submitPreLoginEvent(
-    preLoginId: string,
-    name: string,
-    payload: EventPayload
-  ): Promise<any> {
-    // build metrics-a event type
-    const finalEvent = buildEvent(name, payload);
+  public submitPreLoginEvent({
+    name,
+    preLoginId,
+    payload,
+    metadata,
+  }: {
+    name: string;
+    preLoginId: string;
+    payload: EventPayload;
+    metadata?: EventPayload;
+  }): Promise<void> {
+    if (!metadata) {
+      metadata = {};
+    }
+    if (!metadata.appType) {
+      metadata.appType = 'Web Client';
+    }
+
+    const finalEvent = buildEvent(name, preLoginId, payload, metadata);
 
     this.preLoginMetricsBatcher.savePreLoginId(preLoginId);
 
