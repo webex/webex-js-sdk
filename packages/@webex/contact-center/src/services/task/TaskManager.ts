@@ -385,14 +385,14 @@ export default class TaskManager extends EventEmitter {
             } else {
               this.removeTaskFromCollection(task);
             }
-            task?.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
+            task.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
             break;
           case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE: {
             task = this.updateTaskData(task, {
               ...payload.data,
               isConferenceInProgress: getIsConferenceInProgress(payload.data),
             });
-            task?.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
+            task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
             break;
           }
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE: {
