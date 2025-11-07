@@ -6,8 +6,6 @@ import WebexRequest from './WebexRequest';
 import {
   TaskData,
   ConsultTransferPayLoad,
-  ConsultConferenceData,
-  consultConferencePayloadData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
   Interaction,
 } from '../task/types';
@@ -345,45 +343,4 @@ export const deriveConsultTransferDestinationType = (
   }
 
   return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
-};
-
-/**
- * Builds consult conference parameter data for conference operations.
- *
- * @param dataPassed - Original consultation data
- * @param interactionIdPassed - The interaction ID for the task
- * @returns Object with interactionId and ConsultConferenceData
- * @public
- */
-export const buildConsultConferenceParamData = (
-  dataPassed: consultConferencePayloadData,
-  interactionIdPassed: string
-): {interactionId: string; data: ConsultConferenceData} => {
-  const data: ConsultConferenceData = {
-    // Include agentId if present in input data
-    ...('agentId' in dataPassed && {agentId: dataPassed.agentId}),
-    // Handle destAgentId from consultation data
-    to: dataPassed.destAgentId,
-    destinationType: '',
-  };
-
-  // Handle destination type mapping
-  if ('destinationType' in dataPassed) {
-    if (dataPassed.destinationType === 'DN') {
-      data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
-    } else if (dataPassed.destinationType === 'EP-DN') {
-      data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
-    } else {
-      // Keep the existing destinationType if it's something else (like "agent" or "Agent")
-      // Convert "Agent" to lowercase for consistency
-      data.destinationType = dataPassed.destinationType.toLowerCase();
-    }
-  } else {
-    data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
-  }
-
-  return {
-    interactionId: interactionIdPassed,
-    data,
-  };
 };

@@ -229,7 +229,7 @@ describe('Utils', () => {
       });
     });
 
-    it('should return DUPLICATE_LOCATION message and fieldName for DN number', () => {
+    it('should return DUPLICATE_LOCATION message and fieldName for dial number', () => {
       const failure = {data: {reason: 'DUPLICATE_LOCATION'}} as Failure;
       const result = Utils.getStationLoginErrorData(failure, LoginOption.AGENT_DN);
       expect(result).toEqual({
@@ -376,7 +376,7 @@ describe('Utils', () => {
       expect(result).toBe('');
     });
 
-    it('should return empty string when no matching DN found', () => {
+    it('should return empty string when no matching dial number found', () => {
       const interaction: any = {
         participants: {
           'agent-uuid-123': {
@@ -408,7 +408,7 @@ describe('Utils', () => {
       expect(result).toBe('');
     });
 
-    it('should match only when pType is dn and type is Agent', () => {
+    it('should match only when participant type is dial number and type is Agent', () => {
       const interaction: any = {
         participants: {
           'participant-1': {
@@ -434,12 +434,12 @@ describe('Utils', () => {
       expect(result).toBe('participant-3');
     });
 
-    it('should handle case-insensitive pType comparison', () => {
+    it('should handle case-insensitive participant type comparison', () => {
       const interaction: any = {
         participants: {
           'agent-uuid': {
             type: 'Agent',
-            pType: 'DN', // Uppercase
+            pType: 'DN', // Uppercase (dial number)
             dn: '5551234567',
           },
         },

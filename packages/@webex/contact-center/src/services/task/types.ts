@@ -1032,19 +1032,6 @@ export type ConsultConferenceData = {
 };
 
 /**
- * Legacy consultation conference data type
- * @public
- */
-export type consultConferencePayloadData = {
-  /** Identifier of the agent initiating consult/conference */
-  agentId: string;
-  /** Type of destination (e.g., 'agent', 'queue') */
-  destinationType: string;
-  /** Identifier of the destination agent */
-  destAgentId: string;
-};
-
-/**
  * Parameters required for cancelling a consult to queue operation
  * @public
  */

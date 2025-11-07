@@ -1908,28 +1908,7 @@ describe('TaskManager', () => {
       managerEmitSpy = jest.spyOn(taskManager, 'emit');
     });
 
-    it('should emit TASK_MERGED event when CONTACT_MERGED is received for existing task', () => {
-      const mergedPayload = {
-        data: {
-          type: CC_EVENTS.CONTACT_MERGED,
-          interactionId: taskId,
-          agentId: taskDataMock.agentId,
-          interaction: {
-            ...taskDataMock.interaction,
-            mergedData: 'some-merged-info',
-          },
-        },
-      };
-
-      webSocketManagerMock.emit('message', JSON.stringify(mergedPayload));
-
-      expect(managerEmitSpy).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_MERGED,
-        expect.any(Object)
-      );
-    });
-
-    it('should update existing task data when CONTACT_MERGED is received', () => {
+    it('should update existing task data and emit TASK_MERGED event when CONTACT_MERGED is received', () => {
       const mergedPayload = {
         data: {
           type: CC_EVENTS.CONTACT_MERGED,
@@ -1948,6 +1927,7 @@ describe('TaskManager', () => {
       const updatedTask = taskManager.getTask(taskId);
       expect(updatedTask).toBeDefined();
       expect(updatedTask.data.interaction.customField).toBe('updated-value');
+      expect(updatedTask.data.interaction.state).toBe('merged');
       expect(managerEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_MERGED, updatedTask);
     });
 
