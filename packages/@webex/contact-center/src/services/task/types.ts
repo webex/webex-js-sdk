@@ -504,18 +504,6 @@ export enum TASK_EVENTS {
   TASK_MERGED = 'task:merged',
 
   /**
-   * Triggered when a consulted participant is being moved/transferred
-   * @example
-   * ```typescript
-   * task.on(TASK_EVENTS.TASK_PARTICIPANT_MOVING, (task: ITask) => {
-   *   console.log('Participant is being moved:', task.data.interactionId);
-   *   // Handle participant movement
-   * });
-   * ```
-   */
-  TASK_PARTICIPANT_MOVING = 'task:participantMoving',
-
-  /**
    * Triggered when a participant enters post-call activity state
    * @example
    * ```typescript

@@ -1495,6 +1495,18 @@ describe('TaskManager', () => {
           interactionId: taskId,
           participantId: 'new-participant-123',
           participantType: 'agent',
+          interaction: {
+            participants: {
+              [agentId]: { pType: 'Agent', hasLeft: false },
+              'new-participant-123': { pType: 'Agent', hasLeft: false },
+            },
+            media: {
+              [taskId]: {
+                mType: 'mainCall',
+                participants: [agentId, 'new-participant-123'],
+              },
+            },
+          },
         },
       };
 

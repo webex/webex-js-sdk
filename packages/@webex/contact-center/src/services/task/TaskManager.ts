@@ -18,7 +18,6 @@ import {
   isParticipantInMainInteraction,
   isPrimary,
   isSecondaryEpDnAgent,
-  isTaskRinging,
 } from './TaskUtils';
 
 /** @internal */
@@ -244,13 +243,24 @@ export default class TaskManager extends EventEmitter {
               },
               ['behavioral', 'operational']
             );
-            // RONA/ASSIGN_FAILED/INVITE_FAILED always delete the task immediately
-            this.handleTaskCleanup(task, true);
+            this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
           }
           case CC_EVENTS.CONTACT_ENDED:
-            task = this.handleContactEnded(task, payload.data);
+            // Update task data
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              wrapUpRequired:
+                payload.data.interaction.state !== 'new' &&
+                !isSecondaryEpDnAgent(payload.data.interaction),
+            });
+
+            // Handle cleanup based on whether task should be deleted
+            this.handleTaskCleanup(task);
+
+            task?.emit(TASK_EVENTS.TASK_END, task);
+
             break;
           case CC_EVENTS.CONTACT_MERGED:
             task = this.handleContactMerged(task, payload.data);
@@ -426,11 +436,6 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED, task);
             break;
-          case CC_EVENTS.CONSULTED_PARTICIPANT_MOVING:
-            // Participant is being moved/transferred - update task state with movement info
-            task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_PARTICIPANT_MOVING, task);
-            break;
           case CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY:
             // Post-call activity for participant - update task state with activity details
             task = this.updateTaskData(task, payload.data);
@@ -472,46 +477,6 @@ export default class TaskManager extends EventEmitter {
 
       return task;
     }
-  }
-
-  /**
-   * Handles CONTACT_ENDED event logic
-   * @param task - The task to process
-   * @param taskData - The task data from the event payload
-   * @returns Updated task
-   * @private
-   */
-  private handleContactEnded(task: ITask, taskData: TaskData): ITask {
-    // Check if task should be deleted immediately BEFORE updating the task data
-    const {interaction} = taskData;
-    let shouldDeleteTask = false;
-
-    if (
-      interaction.state === 'new' ||
-      (interaction.state === 'wrapUp' && // check if current state is wrapUp
-        interaction.contactDirection.type === 'OUTBOUND' &&
-        isTaskRinging(task, this.agentId)) || // check if task previous state is ringing
-      isSecondaryEpDnAgent(interaction)
-    ) {
-      shouldDeleteTask = true;
-    }
-
-    // Update task data
-    task = this.updateTaskData(task, {
-      ...taskData,
-      wrapUpRequired: !shouldDeleteTask && taskData.interaction.state !== 'new',
-    });
-
-    // Handle cleanup based on whether task should be deleted
-    if (shouldDeleteTask) {
-      this.handleTaskCleanup(task, true);
-    } else {
-      this.handleTaskCleanup(task, false);
-    }
-
-    task?.emit(TASK_EVENTS.TASK_END, task);
-
-    return task;
   }
 
   /**
@@ -576,10 +541,9 @@ export default class TaskManager extends EventEmitter {
   /**
    * Handles cleanup of task resources including Desktop/WebRTC call cleanup and task removal
    * @param task - The task to clean up
-   * @param shouldRemoveTask - Whether to remove the task from collection immediately
    * @private
    */
-  private handleTaskCleanup(task: ITask, shouldRemoveTask?: boolean) {
+  private handleTaskCleanup(task: ITask) {
     // Clean up Desktop/WebRTC calling resources for browser-based telephony tasks
     if (
       this.webCallingService.loginOption === LoginOption.BROWSER &&
@@ -589,9 +553,9 @@ export default class TaskManager extends EventEmitter {
       this.webCallingService.cleanUpCall();
     }
 
-    // Remove task from collection if explicitly requested
-    // This happens for RONA, CONTACT_ENDED with specific conditions, etc.
-    if (shouldRemoveTask) {
+    if (task.data.interaction.state === 'new' || isSecondaryEpDnAgent(task.data.interaction)) {
+      // Only remove tasks in 'new' state or isSecondaryEpDnAgent immediately. For other states,
+      // retain tasks until they complete wrap-up, unless the task disconnected before being answered.
       this.removeTaskFromCollection(task);
     }
   }

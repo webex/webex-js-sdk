@@ -11,7 +11,7 @@ import {
   CONSULT_TRANSFER_DESTINATION_TYPE,
   Interaction,
 } from '../task/types';
-import {PARTICIPANT_TYPES} from './constants';
+import {PARTICIPANT_TYPES, STATE_CONSULT} from './constants';
 
 /**
  * Extracts common error details from a Webex request payload.
@@ -219,62 +219,6 @@ export const createErrDetailsObject = (errObj: WebexRequestPayload) => {
 };
 
 /**
- * Derives the consult transfer destination type based on the provided task data.
- *
- * Logic parity with desktop behavior:
- * - If agent action is dialing a number (DN/EPDN/ENTRYPOINT):
- *   - ENTRYPOINT/EPDN map to ENTRYPOINT
- *   - DN maps to DIALNUMBER
- * - Otherwise defaults to AGENT
- *
- * @param taskData - The task data used to infer the agent action and destination type
- * @returns The normalized destination type to be used for consult transfer
- */
-/**
- * Checks if a participant type represents a non-customer participant.
- * Non-customer participants include agents, dial numbers, entry point dial numbers,
- * and entry points.
- */
-const isNonCustomerParticipant = (participantType: string): boolean => {
-  return (
-    participantType === 'Agent' ||
-    participantType === 'DN' ||
-    participantType === 'EpDn' ||
-    participantType === 'entryPoint'
-  );
-};
-
-/**
- * Gets the destination agent ID from participants data by finding the first
- * non-customer participant that is not the current agent and is not in wrap-up state.
- *
- * @param participants - The participants data from the interaction
- * @param agentId - The current agent's ID to exclude from the search
- * @returns The destination agent ID, or empty string if none found
- */
-export const getDestinationAgentId = (
-  participants: Interaction['participants'],
-  agentId: string
-): string => {
-  let id = '';
-
-  if (participants) {
-    Object.keys(participants).forEach((participant) => {
-      const participantData = participants[participant];
-      if (
-        isNonCustomerParticipant(participantData.type) &&
-        participantData.id !== agentId &&
-        !participantData.isWrapUp
-      ) {
-        id = participantData.id;
-      }
-    });
-  }
-
-  return id;
-};
-
-/**
  * Gets the consulted agent ID from the media object by finding the agent
  * in the consult media participants (excluding the current agent).
  *
@@ -287,7 +231,7 @@ export const getConsultedAgentId = (media: Interaction['media'], agentId: string
   let consultedParticipantId = '';
 
   Object.keys(media).forEach((key) => {
-    if (media[key].mType === PARTICIPANT_TYPES.STATE_CONSULT) {
+    if (media[key].mType === STATE_CONSULT) {
       consultParticipants = media[key].participants;
     }
   });
@@ -364,16 +308,29 @@ export const calculateDestAgentId = (interaction: Interaction, agentId: string):
  * @param agentId - The current agent's ID
  * @returns The destination agent ID for determining destination type
  */
-export const calculateDestAgentIdForFetchingDestType = (
-  interaction: Interaction,
-  agentId: string
-): string => {
+export const calculateDestType = (interaction: Interaction, agentId: string): string => {
   const consultingAgent = getConsultedAgentId(interaction.media, agentId);
 
   // Check if this is a CBT (Capacity Based Team) scenario, otherwise use consultingAgent
   const destAgentIdCBT = getDestAgentIdForCBT(interaction, consultingAgent);
+  const destinationaegntId = destAgentIdCBT || consultingAgent;
+  const destAgentType = destinationaegntId
+    ? interaction.participants[destinationaegntId]?.pType
+    : undefined;
+  if (destAgentType) {
+    if (destAgentType === 'DN') {
+      return CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
+    }
+    if (destAgentType === 'EP-DN') {
+      return CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
+    }
+    // Keep the existing destinationType if it's something else (like "agent" or "Agent")
+    // Convert "Agent" to lowercase for consistency
 
-  return destAgentIdCBT || consultingAgent;
+    return destAgentType.toLowerCase();
+  }
+
+  return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
 };
 
 export const deriveConsultTransferDestinationType = (

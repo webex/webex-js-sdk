@@ -75,9 +75,10 @@ export const PARTICIPANT_TYPES = {
   DN: 'dn',
   /** Participant type for Agent */
   AGENT: 'Agent',
-  /** Interaction state for consultation */
-  STATE_CONSULT: 'consult',
 };
+
+/** Interaction state for consultation */
+export const STATE_CONSULT = 'consult';
 
 // Method names for core services
 export const METHODS = {
