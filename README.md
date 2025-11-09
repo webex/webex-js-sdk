@@ -4,7 +4,7 @@
 ![state: Stable](https://img.shields.io/badge/State-Stable-blue?style=flat-square)
 ![scope: Public](https://img.shields.io/badge/Scope-Public-darkgreen?style=flat-square)
 
-This project is designed as a mono-repository for all publicly-provided JavaScript packages from Cisco's Webex Developer Experience team. These packages consist of mostly API-related modules that allow for seamless integration with the collection of services that belong to the Webex platform.
+This project is designed as a mono-repository for all publicly-provided JavaScript packages from Cisco's Webex Developer Experience team. These packages consist mostly of API-related modules that allow for seamless integration with the collection of services that belong to the Webex platform.
 
 - [Webex JS SDK](#webex-js-sdk)
   - [Installation](#installation)
@@ -36,7 +36,7 @@ npm install {module}
 yarn add {module}
 ```
 
-In addition to the module consumption via [NPMJS](https://www.npmjs.com/), these modules can also be consumed via our CDN. See the below examples of how to consume the unified modules via our CDN:
+In addition to the module consumption via [NPMJS](https://www.npmjs.com/), these modules can also be consumed via our CDN. See the examples below of how to consume the unified modules via our CDN:
 
 ```html
 <html>
@@ -57,7 +57,7 @@ The available unified modules within this project are listed below:
 
 ### Modular Modules
 
-Modular modules are an alternative to using a unified module, and require a greater understanding of how the modules are architected in order to consume them appropriately. These modules are typically consumed as **dependencies** of another project and can be installed by performing the following commands:
+Modular modules are an alternative to using a unified module and require a greater understanding of how the modules are architected in order to consume them appropriately. These modules are typically consumed as **dependencies** of another project and can be installed by performing the following commands:
 
 ```bash
 # using NPM
@@ -77,17 +77,17 @@ Notable authorization-related modular packages:
 
 ## Usage
 
-This section will define the general usage examples for this project.
+This section provides general usage examples for this project.
 
 ### Module Consumption
 
-For general consumption documentation, please visit our [Cisco Webex for Developers portal](https://developer.webex.com/), as this will typically what is necessary to begin development using the various packages within the Webex JS SDK. Additionally, some of the modules within this project contain independent documentation available within each of their respective folder scopes. Please review these independent documentation articles as needed.
+For general consumption documentation, please visit our [Cisco Webex for Developers portal](https://developer.webex.com/), as this will typically provide what is necessary to begin development using the various packages within the Webex JS SDK. Additionally, some of the modules within this project contain independent documentation available within each of their respective folder scopes. Please review these independent documentation articles as needed.
 
 It is recommended to visit our [Getting Started with NodeJS](https://developer.webex.com/docs/sdks/node) guide for the most up-to-date documentation on consuming the Webex JS SDK via Module.
 
 ### Browser Consumption
 
-This section outlines how to directly consume the Webex JS SDK unified `webex` bundle within your HTML document. This bundle can be consumed directly via [unpkg](https://unpkg.com/) or [jsdelivr](https://jsdelivr.com/) respectfully. See the below examples:
+This section outlines how to directly consume the Webex JS SDK unified `webex` bundle within your HTML document. This bundle can be consumed directly via [unpkg](https://unpkg.com/) or [jsdelivr](https://jsdelivr.com/), respectively. See the examples below:
 
 ```html
 <html>
@@ -128,7 +128,7 @@ After installation, the following `script` should be added to your `./package.js
 }
 ```
 
-The above executable accepts a **distribution tag**, which will match an available `tag` from the [current tags section](https://www.npmjs.com/package/webex?activeTab=versions) of [NPMJS](https://www.npmjs.com/) as well as a list of packages that should be updated when the command executes (this will collect the latest synced version). It is recommended to provide the `--packages` argument with the complete list of `@webex`-scoped packages your project consumes in order to promote well-synchronized versions between all packages.
+The above executable accepts a **distribution tag**, which will match an available `tag` from the [current tags section](https://www.npmjs.com/package/webex?activeTab=versions) of [NPMJS](https://www.npmjs.com/) as well as a list of packages that should be updated when the command executes (this will collect the latest synced version). It is recommended to provide the `--packages` argument with the complete list of `@webex`-scoped packages your project consumes to promote well-synchronized versions between all packages.
 
 The `@webex/package-tools` package contains a collection of helpful tools used to manage packages within this project from both within and outside of this project. Please review the [documentation](./packages/tools/package/) associated with the `@webex/package-tools` package for more information.
 
@@ -142,7 +142,7 @@ For detailed instructions on how to contribute, please refer to the [contributin
 
 ## Issues
 
-Please reach out to our developer support team in regards to any issues you may be experiencing within the Webex JS SDK.
+Please contact our developer support team if you encounter any issues with the Webex JS SDK.
 
 - <https://developer.webex.com/support>
 - <devsupport@webex.com>
