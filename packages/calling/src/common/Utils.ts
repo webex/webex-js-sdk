@@ -587,8 +587,7 @@ export async function handleCallErrors(
 
   log.warn(`Status code: ->${errorCode}`, loggerContext);
 
-  const isKeepalive =
-    caller === 'handleCallEstablished' || caller === METHODS.HANDLE_CALL_ESTABLISHED;
+  const isKeepalive = caller === METHODS.HANDLE_CALL_ESTABLISHED;
 
   switch (errorCode) {
     case ERROR_CODE.UNAUTHORIZED: {
@@ -754,12 +753,12 @@ export async function handleCallErrors(
       emitterCb(callError);
 
       if (isKeepalive && retryCb) {
-        if (err.headers && 'retry-after' in err.headers) {
-          const retryInterval = Number(err.headers['retry-after'] as unknown);
-          retryCb(retryInterval);
-        } else {
-          retryCb(DEFAULT_KEEPALIVE_INTERVAL);
-        }
+        const retryInterval =
+          err.headers && 'retry-after' in err.headers
+            ? Number(err.headers['retry-after'] as unknown)
+            : DEFAULT_KEEPALIVE_INTERVAL;
+
+        retryCb(retryInterval);
       }
 
       break;

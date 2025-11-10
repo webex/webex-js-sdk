@@ -1527,7 +1527,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       // If we have reached the max retry count, do not attempt to refresh the session
       if (this.callKeepaliveRetryCount === MAX_CALL_KEEPALIVE_RETRY_COUNT) {
-        this.end();
+        this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
         this.callKeepaliveRetryCount = 0;
 
         return;
