@@ -207,11 +207,7 @@ export class Registration implements IRegistration {
    */
   private async restorePreviousRegistration(caller: string): Promise<boolean> {
     let abort = false;
-    // Testing:
-    // 4XX
-    // 429 big n small value
-    // 404
-    // 500
+
     if (this.activeMobiusUrl) {
       abort = await this.attemptRegistrationWithServers(caller, [this.activeMobiusUrl]);
       if (this.retryAfter) {
