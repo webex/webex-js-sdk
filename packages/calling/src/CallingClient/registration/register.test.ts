@@ -1370,11 +1370,13 @@ describe('Registration Tests', () => {
 
     it('checks for keep-alive failure with final error: 404', async () => {
       await beforeEachSetupForKeepalive();
+      webex.request.mockResolvedValueOnce(successPayload);
       const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
       const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
       const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
       const clearTimerSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
-      jest.spyOn(utils, 'handleRegistrationErrors').mockResolvedValue(true);
+      const handle404CbSpy = jest.spyOn(reg, 'handle404KeepaliveFailure');
+      const registerSpy = jest.spyOn(reg, 'attemptRegistrationWithServers');
 
       reg.webWorker.onmessage({
         data: {
@@ -1383,6 +1385,7 @@ describe('Registration Tests', () => {
           keepAliveRetryCount: 1,
         },
       } as MessageEvent);
+
       await flushPromises();
 
       expect(warnSpy).toBeCalledWith(
@@ -1392,19 +1395,89 @@ describe('Registration Tests', () => {
           method: 'startKeepaliveTimer',
         })
       );
-      expect(handleErrorSpy).toBeCalledOnceWith({statusCode: 404}, expect.anything(), {
-        file: REGISTRATION_FILE,
-        method: KEEPALIVE_UTIL,
-      });
-      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(handleErrorSpy).toBeCalledOnceWith(
+        {statusCode: 404},
+        expect.anything(),
+        {
+          file: REGISTRATION_FILE,
+          method: KEEPALIVE_UTIL,
+        },
+        expect.anything()
+      );
+
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.ERROR, undefined, expect.anything());
       expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
-      expect(clearTimerSpy).toBeCalledTimes(1);
+      expect(clearTimerSpy).toBeCalledTimes(2);
       expect(reconnectSpy).not.toHaveBeenCalled();
       expect(restoreSpy).not.toHaveBeenCalled();
       expect(restartRegSpy).not.toHaveBeenCalled();
       expect(reg.reconnectPending).toStrictEqual(false);
+
+      expect(handle404CbSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(registerSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+    });
+
+    it('checks for keep-alive failure with 429', async () => {
+      await beforeEachSetupForKeepalive();
+      const keepaliveSpy = jest.spyOn(reg, 'startKeepaliveTimer');
+      const postMessageSpy = jest.spyOn(Worker.prototype, 'postMessage');
+      const clearTimerSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+      const retry429Spy = jest.spyOn(reg, 'handle429Retry');
+
+      reg.webWorker.onmessage({
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 429, headers: {'retry-after': 20}},
+          keepAliveRetryCount: 1,
+        },
+      } as MessageEvent);
+      await flushPromises();
+
+      expect(warnSpy).toBeCalledWith(
+        'Keep-alive missed 1 times. Status -> 429 ',
+        expect.objectContaining({
+          file: REGISTRATION_FILE,
+          method: 'startKeepaliveTimer',
+        })
+      );
+      expect(handleErrorSpy).toBeCalledOnceWith(
+        {statusCode: 429, headers: {'retry-after': 20}},
+        expect.anything(),
+        {
+          file: REGISTRATION_FILE,
+          method: KEEPALIVE_UTIL,
+        },
+        expect.anything()
+      );
+      expect(retry429Spy).toBeCalledOnceWith(20, 'startKeepaliveTimer');
+      expect(clearTimerSpy).toBeCalledTimes(1);
+      expect(reg.reconnectPending).toStrictEqual(false);
       expect(reg.keepaliveTimer).toBe(undefined);
       expect(reg.webWorker).toBeUndefined();
+
+      jest.advanceTimersByTime(20 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(keepaliveSpy).toBeCalledOnceWith(
+        reg.deviceInfo.device?.uri as string,
+        reg.deviceInfo.keepaliveInterval as number,
+        'UNKNOWN'
+      );
+      expect(logSpy).toBeCalledWith('Resuming keepalive after 20 seconds', {
+        file: REGISTRATION_FILE,
+        method: 'handle429Retry',
+      });
+      expect(reg.webWorker).toBeDefined();
+      expect(postMessageSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'START_KEEPALIVE',
+          accessToken: expect.any(String),
+          deviceUrl: expect.any(String),
+          interval: expect.any(Number),
+          retryCountThreshold: expect.any(Number),
+          url: expect.any(String),
+        })
+      );
     });
   });
 

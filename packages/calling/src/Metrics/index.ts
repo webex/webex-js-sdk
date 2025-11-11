@@ -239,34 +239,69 @@ class MetricManager implements IMetricManager {
       }
 
       case METRIC_EVENT.REGISTRATION_ERROR: {
+        let errorData;
         if (clientError) {
-          data = {
-            tags: {
-              action: metricAction,
-              device_id: this.deviceInfo?.device?.deviceId,
-              service_indicator: this.serviceIndicator,
-            },
-            fields: {
-              device_url: this.deviceInfo?.device?.clientDeviceUri,
-              mobius_url: this.deviceInfo?.device?.uri,
-              calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
-              reg_source: caller,
-              server_type: serverType,
-              trackingId,
-              keepalive_count: keepaliveCount,
-              error: clientError.getError().message,
-              error_type: clientError.getError().type,
-            },
-            type,
+          errorData = {
+            msg: clientError.getError().message,
+            type: clientError.getError().type,
           };
         }
+        data = {
+          tags: {
+            action: metricAction,
+            device_id: this.deviceInfo?.device?.deviceId,
+            service_indicator: this.serviceIndicator,
+          },
+          fields: {
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            mobius_url: this.deviceInfo?.device?.uri,
+            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            reg_source: caller,
+            server_type: serverType,
+            trackingId,
+            error: errorData?.msg,
+            error_type: errorData?.type,
+          },
+          type,
+        };
+
+        break;
+      }
+
+      case METRIC_EVENT.KEEPALIVE_ERROR: {
+        let errorData;
+        if (clientError) {
+          errorData = {
+            msg: clientError.getError().message,
+            type: clientError.getError().type,
+          };
+        }
+        data = {
+          tags: {
+            action: metricAction,
+            device_id: this.deviceInfo?.device?.deviceId,
+            service_indicator: this.serviceIndicator,
+          },
+          fields: {
+            device_url: this.deviceInfo?.device?.clientDeviceUri,
+            mobius_url: this.deviceInfo?.device?.uri,
+            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            reg_source: caller,
+            server_type: serverType,
+            trackingId,
+            keepalive_count: keepaliveCount,
+            error: errorData?.msg,
+            error_type: errorData?.type,
+          },
+          type,
+        };
         break;
       }
 
       default:
         log.warn('Invalid metric name received. Rejecting request to submit metric.', {
           file: METRIC_FILE,
-          method: this.submitRegistrationMetric.name,
+          method: 'submitRegistrationMetric',
         });
         break;
     }
@@ -340,7 +375,7 @@ class MetricManager implements IMetricManager {
       default:
         log.warn('Invalid metric name received. Rejecting request to submit metric.', {
           file: METRIC_FILE,
-          method: this.submitCallMetric.name,
+          method: 'submitCallMetric',
         });
         break;
     }
@@ -422,7 +457,7 @@ class MetricManager implements IMetricManager {
       default:
         log.warn('Invalid metric name received. Rejecting request to submit metric.', {
           file: METRIC_FILE,
-          method: this.submitMediaMetric.name,
+          method: 'submitMediaMetric',
         });
         break;
     }
@@ -494,7 +529,7 @@ class MetricManager implements IMetricManager {
       default:
         log.warn('Invalid metric name received. Rejecting request to submit metric.', {
           file: METRIC_FILE,
-          method: this.submitVoicemailMetric.name,
+          method: 'submitVoicemailMetric',
         });
         break;
     }
@@ -529,7 +564,7 @@ class MetricManager implements IMetricManager {
     } else {
       log.warn('Invalid metric name received. Rejecting request to submit metric.', {
         file: METRIC_FILE,
-        method: this.submitBNRMetric.name,
+        method: 'submitBNRMetric',
       });
     }
 

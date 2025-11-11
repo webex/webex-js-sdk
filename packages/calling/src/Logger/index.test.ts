@@ -1,4 +1,3 @@
-import ExtendedError from '../Errors/catalog/ExtendedError';
 import {LOGGER} from './types';
 import log from '.';
 
@@ -50,7 +49,7 @@ describe('Coverage tests for logger', () => {
     log.trace(fakePrint, dummyContext);
     expect(traceSpy).not.toHaveBeenCalledTimes(1);
 
-    log.error(new Error(fakePrint) as ExtendedError, dummyContext);
+    log.error(fakePrint, dummyContext);
     expect(errorSpy).toHaveBeenCalledTimes(1);
   });
 

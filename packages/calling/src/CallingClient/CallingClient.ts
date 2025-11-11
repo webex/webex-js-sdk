@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
-import ExtendedError from 'Errors/catalog/ExtendedError';
 import {METHOD_START_MESSAGE} from '../common/constants';
 import {
   filterMobiusUris,
@@ -472,10 +471,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
         break;
       } catch (err: unknown) {
-        const extendedError = new Error(
-          `Failed to get client region info: ${err}`
-        ) as ExtendedError;
-        log.error(extendedError, {
+        log.error(`Failed to get client region info: ${JSON.stringify(err)}`, {
           method: METHODS.GET_CLIENT_REGION_INFO,
           file: CALLING_CLIENT_FILE,
         });
@@ -609,8 +605,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           }
         );
       } catch (err: unknown) {
-        const extendedError = new Error(`Failed to get Mobius servers: ${err}`) as ExtendedError;
-        log.error(extendedError, {
+        log.error(`Failed to get Mobius servers: ${JSON.stringify(err)}`, {
           method: METHODS.GET_MOBIUS_SERVERS,
           file: CALLING_CLIENT_FILE,
         });

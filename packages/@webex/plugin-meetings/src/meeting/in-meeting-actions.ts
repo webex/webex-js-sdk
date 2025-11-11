@@ -41,6 +41,8 @@ interface IInMeetingActions {
   isLocalRecordingStarted?: boolean;
   isLocalRecordingStopped?: boolean;
   isLocalRecordingPaused?: boolean;
+  isLocalStreamingStarted?: boolean;
+  isLocalStreamingStopped?: boolean;
 
   isManualCaptionActive?: boolean;
   isSaveTranscriptsEnabled?: boolean;
@@ -92,6 +94,7 @@ interface IInMeetingActions {
   canDoVideo?: boolean;
   canAnnotate?: boolean;
   canUseVoip?: boolean;
+  showAutoEndMeetingWarning?: boolean;
   supportHQV?: boolean;
   supportHDV?: boolean;
   canShareWhiteBoard?: boolean;
@@ -185,6 +188,10 @@ export default class InMeetingActions implements IInMeetingActions {
   isLocalRecordingPaused = null;
 
   isManualCaptionActive = null;
+
+  isLocalStreamingStarted = null;
+
+  isLocalStreamingStopped = null;
 
   isSaveTranscriptsEnabled = null;
 
@@ -284,6 +291,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canUseVoip = null;
 
+  showAutoEndMeetingWarning = null;
+
   supportHQV = null;
 
   enforceVirtualBackground = null;
@@ -363,6 +372,8 @@ export default class InMeetingActions implements IInMeetingActions {
     isLocalRecordingStarted: this.isLocalRecordingStarted,
     isLocalRecordingStopped: this.isLocalRecordingStopped,
     isLocalRecordingPaused: this.isLocalRecordingPaused,
+    isLocalStreamingStarted: this.isLocalStreamingStarted,
+    isLocalStreamingStopped: this.isLocalStreamingStopped,
     canStopManualCaption: this.canStopManualCaption,
     isManualCaptionActive: this.isManualCaptionActive,
     isSaveTranscriptsEnabled: this.isSaveTranscriptsEnabled,
@@ -405,6 +416,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canShareFile: this.canShareFile,
     canShareApplication: this.canShareApplication,
     canShareCamera: this.canShareCamera,
+    showAutoEndMeetingWarning: this.showAutoEndMeetingWarning,
     canShareDesktop: this.canShareDesktop,
     canShareContent: this.canShareContent,
     canTransferFile: this.canTransferFile,

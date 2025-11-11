@@ -211,6 +211,20 @@ const MemberUtil = {
    * @param {Object} participant - The locus participant object.
    * @returns {Boolean}
    */
+  isSupportsSingleUserAutoEndMeeting: (participant) => {
+    if (!participant) {
+      throw new ParameterError(
+        'Single user auto end meeting support could not be processed, participant is undefined.'
+      );
+    }
+
+    return !participant.doesNotSupportSingleUserAutoEndMeeting;
+  },
+
+  /**
+   * @param {Object} participant - The locus participant object.
+   * @returns {Boolean}
+   */
   isInterpretationSupported: (participant) => {
     if (!participant) {
       throw new ParameterError(

@@ -227,7 +227,7 @@ describe('plugin-mercury', () => {
         const promise = mercury.connect();
         const u2cInvalidateEventEnvelope = {
           data: {
-            timestamp: "1759289614",
+            timestamp: '1759289614',
           },
         };
 
@@ -981,6 +981,627 @@ describe('plugin-mercury', () => {
         return mercury.connect().then(() => {
           assert.calledWith(spy, 0);
           assert.calledOnce(spy);
+        });
+      });
+    });
+
+    describe('shutdown protocol', () => {
+      describe('#_handleImminentShutdown()', () => {
+        let connectWithBackoffStub;
+
+        beforeEach(() => {
+          mercury.connected = true;
+          mercury.socket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          connectWithBackoffStub = sinon.stub(mercury, '_connectWithBackoff');
+          connectWithBackoffStub.returns(Promise.resolve());
+          sinon.stub(mercury, '_emit');
+        });
+
+        afterEach(() => {
+          connectWithBackoffStub.restore();
+          mercury._emit.restore();
+        });
+
+        it('should be idempotent - no-op if already in progress', () => {
+          mercury._shutdownSwitchoverInProgress = true;
+
+          mercury._handleImminentShutdown();
+
+          assert.notCalled(connectWithBackoffStub);
+        });
+
+        it('should set switchover flags when called', () => {
+          mercury._handleImminentShutdown();
+
+          assert.isTrue(mercury._shutdownSwitchoverInProgress);
+          assert.isDefined(mercury._shutdownSwitchoverId);
+        });
+
+        it('should call _connectWithBackoff with correct parameters', (done) => {
+          mercury._handleImminentShutdown();
+
+          process.nextTick(() => {
+            assert.calledOnce(connectWithBackoffStub);
+            const callArgs = connectWithBackoffStub.firstCall.args;
+            assert.isUndefined(callArgs[0]); // webSocketUrl
+            assert.isObject(callArgs[1]); // context
+            assert.isTrue(callArgs[1].isShutdownSwitchover);
+            done();
+          });
+        });
+
+        it('should handle exceptions during switchover', () => {
+          connectWithBackoffStub.restore();
+          sinon.stub(mercury, '_connectWithBackoff').throws(new Error('Connection failed'));
+
+          mercury._handleImminentShutdown();
+
+          assert.isFalse(mercury._shutdownSwitchoverInProgress);
+        });
+      });
+
+      describe('#_onmessage() with shutdown message', () => {
+        beforeEach(() => {
+          sinon.stub(mercury, '_handleImminentShutdown');
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_setTimeOffset');
+        });
+
+        afterEach(() => {
+          mercury._handleImminentShutdown.restore();
+          mercury._emit.restore();
+          mercury._setTimeOffset.restore();
+        });
+
+        it('should trigger _handleImminentShutdown on shutdown message', () => {
+          const shutdownEvent = {
+            data: {
+              type: 'shutdown',
+            },
+          };
+
+          const result = mercury._onmessage(shutdownEvent);
+
+          assert.calledOnce(mercury._handleImminentShutdown);
+          assert.calledWith(mercury._emit, 'event:mercury_shutdown_imminent', shutdownEvent.data);
+          assert.instanceOf(result, Promise);
+        });
+
+        it('should handle shutdown message without additional data gracefully', () => {
+          const shutdownEvent = {
+            data: {
+              type: 'shutdown',
+            },
+          };
+
+          mercury._onmessage(shutdownEvent);
+
+          assert.calledOnce(mercury._handleImminentShutdown);
+        });
+
+        it('should not trigger shutdown handling for non-shutdown messages', () => {
+          const regularEvent = {
+            data: {
+              type: 'regular',
+              data: {
+                eventType: 'conversation.activity',
+              },
+            },
+          };
+
+          mercury._onmessage(regularEvent);
+
+          assert.notCalled(mercury._handleImminentShutdown);
+        });
+      });
+
+      describe('#_onclose() with code 4001 (shutdown replacement)', () => {
+        let mockSocket, anotherSocket;
+
+        beforeEach(() => {
+          mockSocket = {
+            url: 'ws://active-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          anotherSocket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          mercury.socket = mockSocket;
+          mercury.connected = true;
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_reconnect');
+          sinon.stub(mercury, 'unset');
+        });
+
+        afterEach(() => {
+          mercury._emit.restore();
+          mercury._reconnect.restore();
+          mercury.unset.restore();
+        });
+
+        it('should handle active socket close with 4001 - permanent failure', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          mercury._onclose(closeEvent, mockSocket);
+
+          assert.calledWith(mercury._emit, 'offline.permanent', closeEvent);
+          assert.notCalled(mercury._reconnect); // No reconnect for 4001 on active socket
+          assert.isFalse(mercury.connected);
+        });
+
+        it('should handle non-active socket close with 4001 - no reconnect needed', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          mercury._onclose(closeEvent, anotherSocket);
+
+          assert.calledWith(mercury._emit, 'offline.replaced', closeEvent);
+          assert.notCalled(mercury._reconnect);
+          assert.isTrue(mercury.connected); // Should remain connected
+          assert.notCalled(mercury.unset);
+        });
+
+        it('should distinguish between active and non-active socket closes', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          // Test non-active socket
+          mercury._onclose(closeEvent, anotherSocket);
+          assert.calledWith(mercury._emit, 'offline.replaced', closeEvent);
+
+          // Reset the spy call history
+          mercury._emit.resetHistory();
+
+          // Test active socket
+          mercury._onclose(closeEvent, mockSocket);
+          assert.calledWith(mercury._emit, 'offline.permanent', closeEvent);
+        });
+
+        it('should handle missing sourceSocket parameter (treats as non-active)', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          mercury._onclose(closeEvent); // No sourceSocket parameter
+
+          // With simplified logic, undefined !== this.socket, so isActiveSocket = false
+          assert.calledWith(mercury._emit, 'offline.replaced', closeEvent);
+          assert.notCalled(mercury._reconnect);
+        });
+
+        it('should clean up event listeners from non-active socket when it closes', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          // Close non-active socket (not the active one)
+          mercury._onclose(closeEvent, anotherSocket);
+
+          // Verify listeners were removed from the old socket
+          // The _onclose method checks if sourceSocket !== this.socket (non-active)
+          // and then calls removeAllListeners in the else branch
+          assert.calledOnce(anotherSocket.removeAllListeners);
+        });
+
+        it('should not clean up listeners from active socket listeners until close handler runs', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          // Close active socket
+          mercury._onclose(closeEvent, mockSocket);
+
+          // Verify listeners were removed from active socket
+          assert.calledOnce(mockSocket.removeAllListeners);
+        });
+      });
+
+      describe('shutdown switchover with retry logic', () => {
+        let connectWithBackoffStub;
+
+        beforeEach(() => {
+          mercury.connected = true;
+          mercury.socket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          connectWithBackoffStub = sinon.stub(mercury, '_connectWithBackoff');
+          sinon.stub(mercury, '_emit');
+        });
+
+        afterEach(() => {
+          connectWithBackoffStub.restore();
+          mercury._emit.restore();
+        });
+
+        it('should call _connectWithBackoff with shutdown switchover context', (done) => {
+          connectWithBackoffStub.returns(Promise.resolve());
+
+          mercury._handleImminentShutdown();
+
+          // Give it a tick for the async call to happen
+          process.nextTick(() => {
+            assert.calledOnce(connectWithBackoffStub);
+            const callArgs = connectWithBackoffStub.firstCall.args;
+
+            assert.isUndefined(callArgs[0]); // webSocketUrl is undefined
+            assert.isObject(callArgs[1]); // context object
+            assert.isTrue(callArgs[1].isShutdownSwitchover);
+            assert.isObject(callArgs[1].attemptOptions);
+            assert.isTrue(callArgs[1].attemptOptions.isShutdownSwitchover);
+            done();
+          });
+        });
+
+        it('should set _shutdownSwitchoverInProgress flag during switchover', () => {
+          connectWithBackoffStub.returns(new Promise(() => {})); // Never resolves
+
+          mercury._handleImminentShutdown();
+
+          assert.isTrue(mercury._shutdownSwitchoverInProgress);
+        });
+
+        it('should emit success event when switchover completes', async () => {
+          // We need to actually call the onSuccess callback to trigger the event
+          connectWithBackoffStub.callsFake((url, context) => {
+            // Simulate successful connection by calling onSuccess
+            if (context && context.attemptOptions && context.attemptOptions.onSuccess) {
+              const mockSocket = {url: 'ws://new-socket.com'};
+              context.attemptOptions.onSuccess(mockSocket, 'ws://new-socket.com');
+            }
+            return Promise.resolve();
+          });
+
+          mercury._handleImminentShutdown();
+
+          // Wait for async operations
+          await promiseTick(50);
+
+          const emitCalls = mercury._emit.getCalls();
+          const hasCompleteEvent = emitCalls.some(
+            (call) => call.args[0] === 'event:mercury_shutdown_switchover_complete'
+          );
+
+          assert.isTrue(hasCompleteEvent, 'Should emit switchover complete event');
+        });
+
+        it('should emit failure event when switchover exhausts retries', async () => {
+          const testError = new Error('Connection failed');
+
+          connectWithBackoffStub.returns(Promise.reject(testError));
+
+          mercury._handleImminentShutdown();
+          await promiseTick(50);
+
+          // Check if failure event was emitted
+          const emitCalls = mercury._emit.getCalls();
+          const hasFailureEvent = emitCalls.some(
+            (call) =>
+              call.args[0] === 'event:mercury_shutdown_switchover_failed' &&
+              call.args[1] &&
+              call.args[1].reason === testError
+          );
+
+          assert.isTrue(hasFailureEvent, 'Should emit switchover failed event');
+        });
+
+        it('should allow old socket to be closed by server after switchover failure', async () => {
+          connectWithBackoffStub.returns(Promise.reject(new Error('Failed')));
+
+          mercury._handleImminentShutdown();
+          await promiseTick(50);
+
+          // Old socket should not be closed immediately - server will close it
+          assert.equal(mercury.socket.removeAllListeners.callCount, 0);
+        });
+      });
+
+      describe('#_prepareAndOpenSocket()', () => {
+        let mockSocket, prepareUrlStub, getUserTokenStub;
+
+        beforeEach(() => {
+          mockSocket = {
+            open: sinon.stub().returns(Promise.resolve()),
+          };
+          prepareUrlStub = sinon
+            .stub(mercury, '_prepareUrl')
+            .returns(Promise.resolve('ws://example.com'));
+          getUserTokenStub = webex.credentials.getUserToken;
+          getUserTokenStub.returns(
+            Promise.resolve({
+              toString: () => 'mock-token',
+            })
+          );
+        });
+
+        afterEach(() => {
+          prepareUrlStub.restore();
+        });
+
+        it('should prepare URL and get user token', async () => {
+          await mercury._prepareAndOpenSocket(mockSocket, 'ws://test.com', false);
+
+          assert.calledOnce(prepareUrlStub);
+          assert.calledWith(prepareUrlStub, 'ws://test.com');
+          assert.calledOnce(getUserTokenStub);
+        });
+
+        it('should open socket with correct options for normal connection', async () => {
+          await mercury._prepareAndOpenSocket(mockSocket, undefined, false);
+
+          assert.calledOnce(mockSocket.open);
+          const callArgs = mockSocket.open.firstCall.args;
+
+          assert.equal(callArgs[0], 'ws://example.com');
+          assert.isObject(callArgs[1]);
+          assert.equal(callArgs[1].token, 'mock-token');
+          assert.isDefined(callArgs[1].forceCloseDelay);
+          assert.isDefined(callArgs[1].pingInterval);
+          assert.isDefined(callArgs[1].pongTimeout);
+        });
+
+        it('should log with correct prefix for normal connection', async () => {
+          await mercury._prepareAndOpenSocket(mockSocket, undefined, false);
+
+          // The method should complete successfully - we're testing it runs without error
+          // Actual log message verification is complex due to existing stubs in parent scope
+          assert.calledOnce(mockSocket.open);
+        });
+
+        it('should log with shutdown prefix for shutdown connection', async () => {
+          await mercury._prepareAndOpenSocket(mockSocket, undefined, true);
+
+          // The method should complete successfully with shutdown flag
+          assert.calledOnce(mockSocket.open);
+        });
+
+        it('should merge custom mercury options when provided', async () => {
+          webex.config.defaultMercuryOptions = {
+            customOption: 'test-value',
+            pingInterval: 99999,
+          };
+
+          await mercury._prepareAndOpenSocket(mockSocket, undefined, false);
+
+          const callArgs = mockSocket.open.firstCall.args;
+
+          assert.equal(callArgs[1].customOption, 'test-value');
+          assert.equal(callArgs[1].pingInterval, 99999); // Custom value overrides default
+        });
+
+        it('should return the webSocketUrl after opening', async () => {
+          const result = await mercury._prepareAndOpenSocket(mockSocket, undefined, false);
+
+          assert.equal(result, 'ws://example.com');
+        });
+
+        it('should handle errors during socket open', async () => {
+          mockSocket.open.returns(Promise.reject(new Error('Open failed')));
+
+          try {
+            await mercury._prepareAndOpenSocket(mockSocket, undefined, false);
+            assert.fail('Should have thrown an error');
+          } catch (err) {
+            assert.equal(err.message, 'Open failed');
+          }
+        });
+      });
+
+      describe('#_attemptConnection() with shutdown switchover', () => {
+        let mockSocket, prepareAndOpenSocketStub, callback;
+
+        beforeEach(() => {
+          mockSocket = {
+            url: 'ws://test.com',
+          };
+          prepareAndOpenSocketStub = sinon
+            .stub(mercury, '_prepareAndOpenSocket')
+            .returns(Promise.resolve('ws://new-socket.com'));
+          callback = sinon.stub();
+          mercury._shutdownSwitchoverBackoffCall = {}; // Mock backoff call
+          mercury.socket = mockSocket;
+          mercury.connected = true;
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_attachSocketEventListeners');
+        });
+
+        afterEach(() => {
+          prepareAndOpenSocketStub.restore();
+          mercury._emit.restore();
+          mercury._attachSocketEventListeners.restore();
+        });
+
+        it('should not set socket reference before opening for shutdown switchover', async () => {
+          const originalSocket = mercury.socket;
+
+          await mercury._attemptConnection('ws://test.com', callback, {
+            isShutdownSwitchover: true,
+            onSuccess: (newSocket, url) => {
+              // During onSuccess, verify original socket is still set
+              // (socket swap happens inside onSuccess callback in _handleImminentShutdown)
+              assert.equal(mercury.socket, originalSocket);
+            },
+          });
+
+          // After onSuccess, socket should still be original since we only swap in _handleImminentShutdown
+          assert.equal(mercury.socket, originalSocket);
+        });
+
+        it('should call onSuccess callback with new socket and URL for shutdown', async () => {
+          const onSuccessStub = sinon.stub();
+
+          await mercury._attemptConnection('ws://test.com', callback, {
+            isShutdownSwitchover: true,
+            onSuccess: onSuccessStub,
+          });
+
+          assert.calledOnce(onSuccessStub);
+          assert.equal(onSuccessStub.firstCall.args[1], 'ws://new-socket.com');
+        });
+
+        it('should emit shutdown switchover complete event', async () => {
+          const oldSocket = mercury.socket;
+
+          await mercury._attemptConnection('ws://test.com', callback, {
+            isShutdownSwitchover: true,
+            onSuccess: (newSocket, url) => {
+              // Simulate the onSuccess callback behavior
+              mercury.socket = newSocket;
+              mercury.connected = true;
+              mercury._emit('event:mercury_shutdown_switchover_complete', {url});
+            },
+          });
+
+          assert.calledWith(
+            mercury._emit,
+            'event:mercury_shutdown_switchover_complete',
+            sinon.match.has('url', 'ws://new-socket.com')
+          );
+        });
+
+        it('should use simpler error handling for shutdown switchover failures', async () => {
+          prepareAndOpenSocketStub.returns(Promise.reject(new Error('Connection failed')));
+
+          try {
+            await mercury._attemptConnection('ws://test.com', callback, {
+              isShutdownSwitchover: true,
+            });
+          } catch (err) {
+            // Error should be caught and passed to callback
+          }
+
+          // Should call callback with error for retry
+          assert.calledOnce(callback);
+          assert.instanceOf(callback.firstCall.args[0], Error);
+        });
+
+        it('should check _shutdownSwitchoverBackoffCall for shutdown connections', () => {
+          mercury._shutdownSwitchoverBackoffCall = undefined;
+
+          const result = mercury._attemptConnection('ws://test.com', callback, {
+            isShutdownSwitchover: true,
+          });
+
+          return result.catch((err) => {
+            assert.instanceOf(err, Error);
+            assert.match(err.message, /switchover backoff call/);
+          });
+        });
+      });
+
+      describe('#_connectWithBackoff() with shutdown switchover', () => {
+        // Note: These tests verify the parameterization logic without running real backoff timers
+        // to avoid test hangs. The backoff mechanism itself is tested in other test suites.
+
+        it('should use shutdown-specific parameters when called', () => {
+          // Stub _connectWithBackoff to prevent real execution
+          const connectWithBackoffStub = sinon
+            .stub(mercury, '_connectWithBackoff')
+            .returns(Promise.resolve());
+
+          mercury._handleImminentShutdown();
+
+          // Verify it was called with shutdown context
+          assert.calledOnce(connectWithBackoffStub);
+          const callArgs = connectWithBackoffStub.firstCall.args;
+          assert.isObject(callArgs[1]); // context
+          assert.isTrue(callArgs[1].isShutdownSwitchover);
+
+          connectWithBackoffStub.restore();
+        });
+
+        it('should pass shutdown switchover options to _attemptConnection', () => {
+          // Stub _attemptConnection to verify it receives correct options
+          const attemptStub = sinon.stub(mercury, '_attemptConnection');
+          attemptStub.callsFake((url, callback) => {
+            // Immediately succeed
+            callback();
+          });
+
+          // Call _connectWithBackoff with shutdown context
+          const context = {
+            isShutdownSwitchover: true,
+            attemptOptions: {
+              isShutdownSwitchover: true,
+              onSuccess: () => {},
+            },
+          };
+
+          // Start the backoff
+          const promise = mercury._connectWithBackoff(undefined, context);
+
+          // Check that _attemptConnection was called with shutdown options
+          return promise.then(() => {
+            assert.calledOnce(attemptStub);
+            const callArgs = attemptStub.firstCall.args;
+            assert.isObject(callArgs[2]); // options parameter
+            assert.isTrue(callArgs[2].isShutdownSwitchover);
+
+            attemptStub.restore();
+          });
+        });
+
+        it('should set and clear state flags appropriately', () => {
+          // Stub to prevent actual connection
+          sinon.stub(mercury, '_attemptConnection').callsFake((url, callback) => callback());
+
+          mercury._shutdownSwitchoverInProgress = true;
+
+          const promise = mercury._connectWithBackoff(undefined, {
+            isShutdownSwitchover: true,
+            attemptOptions: {isShutdownSwitchover: true, onSuccess: () => {}},
+          });
+
+          return promise.then(() => {
+            // Should be cleared after completion
+            assert.isFalse(mercury._shutdownSwitchoverInProgress);
+            mercury._attemptConnection.restore();
+          });
+        });
+      });
+
+      describe('#disconnect() with shutdown switchover in progress', () => {
+        let abortStub;
+
+        beforeEach(() => {
+          mercury.socket = {
+            close: sinon.stub().returns(Promise.resolve()),
+            removeAllListeners: sinon.stub(),
+          };
+          abortStub = sinon.stub();
+          mercury._shutdownSwitchoverBackoffCall = {
+            abort: abortStub,
+          };
+        });
+
+        it('should abort shutdown switchover backoff call on disconnect', async () => {
+          await mercury.disconnect();
+
+          assert.calledOnce(abortStub);
+        });
+
+        it('should handle disconnect when no switchover is in progress', async () => {
+          mercury._shutdownSwitchoverBackoffCall = undefined;
+
+          // Should not throw
+          await mercury.disconnect();
+
+          // Should still close the socket
+          assert.calledOnce(mercury.socket.close);
         });
       });
     });

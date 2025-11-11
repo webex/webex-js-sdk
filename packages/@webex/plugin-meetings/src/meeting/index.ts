@@ -30,6 +30,7 @@ import {
   NetworkQualityMonitor,
   StatsMonitor,
   StatsMonitorEventNames,
+  InboundAudioIssueSubTypes,
 } from '@webex/internal-media-core';
 
 import {
@@ -57,6 +58,7 @@ import {
   NoMediaEstablishedYetError,
   UserNotJoinedError,
   AddMediaFailed,
+  SdpResponseTimeoutError,
 } from '../common/errors/webex-errors';
 
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -2976,6 +2978,18 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_AUTO_END_MEETING_WARNING_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setupLocusControlsListener',
+        },
+        EVENT_TRIGGERS.MEETING_CONTROLS_AUTO_END_MEETING_WARNING_UPDATED,
+        {state}
+      );
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_ANNOTATION_CHANGED, ({state}) => {
       Trigger.trigger(
         this,
@@ -3356,27 +3370,31 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private setUpLocusUrlListener() {
-    this.locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_URL, (payload) => {
-      this.members.locusUrlUpdate(payload);
-      this.breakouts.locusUrlUpdate(payload);
-      this.simultaneousInterpretation.locusUrlUpdate(payload);
-      this.annotation.locusUrlUpdate(payload);
-      this.locusUrl = payload;
-      this.locusId = this.locusUrl?.split('/').pop();
-      this.recordingController.setLocusUrl(this.locusUrl);
-      this.controlsOptionsManager.setLocusUrl(this.locusUrl);
-      this.webinar.locusUrlUpdate(payload);
+    this.locusInfo.on(
+      EVENTS.LOCUS_INFO_UPDATE_URL,
+      (payload: {url: string; isMainLocus?: boolean}) => {
+        const {url, isMainLocus} = payload;
+        this.members.locusUrlUpdate(url);
+        this.breakouts.locusUrlUpdate(url);
+        this.simultaneousInterpretation.locusUrlUpdate(url);
+        this.annotation.locusUrlUpdate(url);
+        this.locusUrl = url;
+        this.locusId = this.locusUrl?.split('/').pop();
+        this.recordingController.setLocusUrl(this.locusUrl);
+        this.controlsOptionsManager.setLocusUrl(this.locusUrl, !!isMainLocus);
+        this.webinar.locusUrlUpdate(url);
 
-      Trigger.trigger(
-        this,
-        {
-          file: 'meeting/index',
-          function: 'setUpLocusSelfListener',
-        },
-        EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
-        {locusUrl: payload}
-      );
-    });
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpLocusSelfListener',
+          },
+          EVENT_TRIGGERS.MEETING_LOCUS_URL_UPDATE,
+          {locusUrl: url}
+        );
+      }
+    );
   }
 
   /**
@@ -4219,6 +4237,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this.userDisplayHints,
             this.selfUserPolicies
           ),
+          showAutoEndMeetingWarning: MeetingUtil.showAutoEndMeetingWarning(this.userDisplayHints),
           canRaiseHand: MeetingUtil.canUserRaiseHand(this.userDisplayHints),
           canLowerAllHands: MeetingUtil.canUserLowerAllHands(this.userDisplayHints),
           canLowerSomeoneElsesHand: MeetingUtil.canUserLowerSomeoneElsesHand(this.userDisplayHints),
@@ -4234,6 +4253,8 @@ export default class Meeting extends StatelessWebexPlugin {
           isLocalRecordingStarted: MeetingUtil.isLocalRecordingStarted(this.userDisplayHints),
           isLocalRecordingStopped: MeetingUtil.isLocalRecordingStopped(this.userDisplayHints),
           isLocalRecordingPaused: MeetingUtil.isLocalRecordingPaused(this.userDisplayHints),
+          isLocalStreamingStarted: MeetingUtil.isLocalStreamingStarted(this.userDisplayHints),
+          isLocalStreamingStopped: MeetingUtil.isLocalStreamingStopped(this.userDisplayHints),
           isManualCaptionActive: MeetingUtil.isManualCaptionActive(this.userDisplayHints),
           isSaveTranscriptsEnabled: MeetingUtil.isSaveTranscriptsEnabled(this.userDisplayHints),
           isSpokenLanguageAutoDetectionEnabled: MeetingUtil.isSpokenLanguageAutoDetectionEnabled(
@@ -7432,7 +7453,7 @@ export default class Meeting extends StatelessWebexPlugin {
         } seconds`
       );
 
-      const error = new Error('Timed out waiting for REMOTE SDP ANSWER');
+      const error = new SdpResponseTimeoutError();
 
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
@@ -9450,6 +9471,36 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Extend the current meeting duration.
+   *
+   * @param {number} extensionMinutes - how many minutes to extend
+   * @returns {Promise}
+   * @public
+   * @memberof Meeting
+   */
+  public extendMeeting({
+    meetingPolicyUrl,
+    meetingInstanceId,
+    participantId,
+    extensionMinutes = 30,
+  }) {
+    if (!meetingInstanceId || !participantId) {
+      return Promise.reject(new Error('Missing meetingInstanceId or participantId'));
+    }
+
+    if (!meetingPolicyUrl) {
+      return Promise.reject(new Error('Missing meetingPolicyUrl'));
+    }
+
+    return this.meetingRequest.extendMeeting({
+      meetingInstanceId,
+      participantId,
+      extensionMinutes,
+      meetingPolicyUrl,
+    });
+  }
+
+  /**
    * Method to enable or disable reactions inside the meeting.
    *
    * @param  {boolean} enable - enable or disable reactions
@@ -9993,5 +10044,32 @@ export default class Meeting extends StatelessWebexPlugin {
       meetingUuid,
       displayName
     );
+  }
+
+  /**
+   * Call out a SIP participant to a meeting
+   * @param {string} address - The SIP address or phone number
+   * @param {string} displayName - The display name for the participant
+   * @param {string} [correlationId] - Optional correlation ID
+   * @returns {Promise} Promise that resolves when the call-out is initiated
+   */
+  sipCallOut(address: string, displayName: string) {
+    return this.meetingRequest.sipCallOut(
+      this.meetingInfo.meetingId,
+      this.meetingInfo.meetingId,
+      address,
+      displayName
+    );
+  }
+
+  /**
+   * Cancel an ongoing SIP call-out
+   * @param {string} participantId - The participant ID to cancel
+   * @returns {Promise} Promise that resolves when the call-out is cancelled
+   * @public
+   * @memberof Meetings
+   */
+  cancelSipCallOut(participantId: string) {
+    return this.meetingRequest.cancelSipCallOut(participantId);
   }
 }
