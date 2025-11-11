@@ -839,6 +839,131 @@ describe('webex-core', () => {
         assert.equal(webex.config.credentials.authorizeUrl, authUrl);
       });
     });
+
+    describe('U2C catalog cache behavior', () => {
+      let webex;
+      let services;
+      let catalog;
+      let localStorageBackup;
+  
+      // simple in-memory localStorage shim
+      const makeLocalStorageShim = () => {
+        const store = new Map();
+        return {
+          getItem: (k) => (store.has(k) ? store.get(k) : null),
+          setItem: (k, v) => store.set(k, v),
+          removeItem: (k) => store.delete(k),
+          _store: store,
+        };
+      };
+  
+      beforeEach(() => {
+        // build a fresh webex instance
+        // use the standard helper you use elsewhere in this file to construct WebexCore if available
+        webex = new WebexCore({config: {credentials: {federation: true}}});
+        services = webex.internal.services;
+        catalog = services._getCatalog();
+  
+        // stub window.localStorage
+        localStorageBackup = global.window.localStorage;
+        global.window.localStorage = makeLocalStorageShim();
+  
+        // Stub the formatter so we don't need a full hostmap payload in tests
+        sinon.stub(services, '_formatReceivedHostmap').callsFake(() => [
+          {name: 'hydra', defaultUrl: 'https://api.ciscospark.com/v1', hosts: []},
+        ]);
+      });
+  
+      afterEach(() => {
+        services._formatReceivedHostmap.restore();
+        global.window.localStorage = localStorageBackup;
+      });
+  
+      it('warms catalog from localStorage on load and short-circuits updateServices()', async () => {
+        const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
+        const cached = {
+          orgId: 'urn:EXAMPLE:org',
+          cachedAt: Date.now(), // fresh
+          preauth: {serviceLinks: {}, hostCatalog: {}},
+          postauth: {serviceLinks: {}, hostCatalog: {}},
+        };
+  
+        window.localStorage.setItem(CATALOG_CACHE_KEY_V1, JSON.stringify(cached));
+  
+        // warm from cache
+        const warmed = await services._loadCatalogFromCache();
+        assert.isTrue(warmed, 'expected cache warm to succeed');
+  
+        // both groups become ready via updateServiceUrls
+        assert.isTrue(catalog.status.preauth.ready);
+        assert.isTrue(catalog.status.postauth.ready);
+  
+        // ensure updateServices short-circuits when ready && !forceRefresh
+        const fetchSpy = sinon.spy(services, '_fetchNewServiceHostmap');
+  
+        await services.updateServices({from: 'limited'});
+        await services.updateServices(); // postauth path
+  
+        assert.isFalse(fetchSpy.called, 'should not fetch when catalog group is ready');
+        fetchSpy.restore();
+      });
+  
+      it('expires cached catalog after TTL and clears the entry', async () => {
+        const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
+        const staleCached = {
+          orgId: 'urn:EXAMPLE:org',
+          cachedAt: Date.now() - (24 * 60 * 60 * 1000 + 1000), // past TTL
+          preauth: {serviceLinks: {}, hostCatalog: {}},
+          postauth: {serviceLinks: {}, hostCatalog: {}},
+        };
+  
+        window.localStorage.setItem(CATALOG_CACHE_KEY_V1, JSON.stringify(staleCached));
+  
+        const warmed = await services._loadCatalogFromCache();
+  
+        assert.isFalse(warmed, 'stale cache must not warm');
+        assert.isNull(window.localStorage.getItem(CATALOG_CACHE_KEY_V1), 'expired cache must be cleared');
+        assert.isFalse(catalog.status.preauth.ready);
+        assert.isFalse(catalog.status.postauth.ready);
+      });
+  
+      it('clearCatalogCache() removes the cached entry', async () => {
+        const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
+        window.localStorage.setItem(CATALOG_CACHE_KEY_V1, JSON.stringify({cachedAt: Date.now()}));
+  
+        await services.clearCatalogCache();
+  
+        assert.isNull(window.localStorage.getItem(CATALOG_CACHE_KEY_V1), 'cache should be cleared');
+      });
+  
+      it('still fetches when forceRefresh=true even if ready', async () => {
+        const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V1,
+          JSON.stringify({
+            orgId: 'urn:EXAMPLE:org',
+            cachedAt: Date.now(),
+            preauth: {serviceLinks: {}, hostCatalog: {}},
+            postauth: {serviceLinks: {}, hostCatalog: {}},
+          })
+        );
+  
+        // warm from cache
+        const warmed = await services._loadCatalogFromCache();
+        assert.isTrue(warmed);
+        assert.isTrue(catalog.status.preauth.ready);
+        assert.isTrue(catalog.status.postauth.ready);
+  
+        const fetchSpy = sinon.spy(services, '_fetchNewServiceHostmap');
+  
+        // with forceRefresh we should fetch despite ready=true
+        await services.updateServices({from: 'limited', forceRefresh: true});
+        await services.updateServices({forceRefresh: true});
+  
+        assert.isTrue(fetchSpy.called, 'forceRefresh should bypass cache short-circuit');
+        fetchSpy.restore();
+      });
+    });
   });
 });
 /* eslint-enable no-underscore-dangle */

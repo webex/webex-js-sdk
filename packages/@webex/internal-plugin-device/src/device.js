@@ -667,6 +667,8 @@ const Device = WebexPlugin.extend({
     const {services} = this.webex.internal;
 
     // Wait for the postauth catalog to populate.
+    console.log('pkesari_canRegister invoking waitForCatalog for postauth');
+
     return services.waitForCatalog('postauth', this.config.canRegisterWaitDuration).then(() =>
       // Validate that the service exists after waiting for the catalog.
       services.get('wdm')

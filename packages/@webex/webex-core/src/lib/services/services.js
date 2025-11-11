@@ -20,6 +20,8 @@ export const DEFAULT_CLUSTER_SERVICE = 'identityLookup';
 const CLUSTER_SERVICE = process.env.WEBEX_CONVERSATION_CLUSTER_SERVICE || DEFAULT_CLUSTER_SERVICE;
 const DEFAULT_CLUSTER_IDENTIFIER =
   process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER || `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
+const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
+const CATALOG_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /* eslint-disable no-underscore-dangle */
 /**
@@ -191,7 +193,7 @@ const Services = WebexPlugin.extend({
    * @param {string} [param.token] - used for signin catalog
    * @returns {Promise<object>}
    */
-  updateServices({from, query, token, forceRefresh} = {}) {
+  async updateServices({from, query, token, forceRefresh} = {}) {
     const catalog = this._getCatalog();
     let formattedQuery;
     let serviceGroup;
@@ -245,7 +247,9 @@ const Services = WebexPlugin.extend({
       forceRefresh,
     })
       .then((serviceHostMap) => {
-        catalog.updateServiceUrls(serviceGroup, serviceHostMap);
+        const formattedServiceHostMap = this._formatReceivedHostmap(serviceHostMap);
+        this._cacheCatalog(serviceGroup, serviceHostMap);
+        catalog.updateServiceUrls(serviceGroup, formattedServiceHostMap);
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
       })
@@ -958,7 +962,129 @@ const Services = WebexPlugin.extend({
 
     return this.webex.internal.newMetrics.callDiagnosticLatencies
       .measureLatency(() => this.request(requestObject), 'internal.get.u2c.time')
-      .then(({body}) => this._formatReceivedHostmap(body));
+      .then(({body}) => body);
+  },
+
+  /**
+   * Cache the catalog in the bounded storage.
+   * @param {string} serviceGroup - preauth, signin, postauth
+   * @param {object} hostMap - The hostmap to cache
+   * @returns {Promise<void>}
+   *
+   */
+  async _cacheCatalog(serviceGroup, hostMap) {
+    try {
+      // Persist to localStorage to survive browser refresh
+      let current = {};
+      try {
+        const raw =
+          typeof window !== 'undefined' && window.localStorage
+            ? window.localStorage.getItem(CATALOG_CACHE_KEY_V1)
+            : null;
+        current = raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        current = {};
+      }
+      let orgId;
+      try {
+        const {credentials} = this.webex;
+        orgId = credentials.getOrgId();
+      } catch (e) {
+        orgId = current.orgId;
+      }
+
+      const updated = {
+        ...current,
+        orgId: orgId || current.orgId,
+        [serviceGroup]: hostMap,
+        cachedAt: Date.now(),
+      };
+
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(CATALOG_CACHE_KEY_V1, JSON.stringify(updated));
+      }
+      console.log('pkesari_cacheCatalog cached catalog: ', updated);
+    } catch (error) {
+      // ignore storage errors
+    }
+  },
+
+  /**
+   * Load the catalog from cache and hydrate the in-memory ServiceCatalog.
+   * @returns {Promise<boolean>} true if cache was loaded, false otherwise
+   */
+  async _loadCatalogFromCache() {
+    console.log('pkesari_loadCatalogFromCache loading catalog from cache');
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) {
+        return false;
+      }
+      const raw = window.localStorage.getItem(CATALOG_CACHE_KEY_V1);
+      const cached = raw ? JSON.parse(raw) : undefined;
+      console.log('pkesari_loadCatalogFromCache cached catalog found: ', cached);
+      if (!cached) {
+        return false;
+      }
+      // TTL enforcement: clear if older than 24 hours
+      const cachedAt = Number(cached.cachedAt) || 0;
+      if (!cachedAt || Date.now() - cachedAt > CATALOG_TTL_MS) {
+        try {
+          this.clearCatalogCache();
+        } catch (e) {
+          // ignore
+        }
+
+        return false;
+      }
+
+      // If authorized, ensure cached org matches
+      try {
+        if (this.webex.credentials?.canAuthorize) {
+          const {credentials} = this.webex;
+          const currentOrgId = credentials.getOrgId();
+          if (cached.orgId && cached.orgId !== currentOrgId) {
+            return false;
+          }
+        }
+      } catch (e) {
+        // ignore orgId check errors
+      }
+
+      const catalog = this._getCatalog();
+
+      // Apply any cached groups
+      const groups = ['preauth', 'signin', 'postauth'];
+      groups.forEach((g) => {
+        if (cached[g]) {
+          const formatted = this._formatReceivedHostmap(cached[g]);
+          console.log('pkesari_loadCatalogFromCache updating service urls for group: ', g);
+          catalog.updateServiceUrls(g, formatted);
+        }
+      });
+
+      // Align credentials against warmed catalog
+      this.updateCredentialsConfig();
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  /**
+   * Clear the catalog cache from the bounded storage.
+   * @returns {Promise<void>}
+   */
+  clearCatalogCache() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(CATALOG_CACHE_KEY_V1);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    return Promise.resolve();
   },
 
   /**
@@ -1038,6 +1164,7 @@ const Services = WebexPlugin.extend({
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
             // Attempt to collect the postauth catalog.
+
             return this.updateServices().catch(() => {
               this.initFailed = true;
               this.logger.warn('services: cannot retrieve postauth catalog');
@@ -1073,7 +1200,14 @@ const Services = WebexPlugin.extend({
 
     // wait for webex instance to be ready before attempting
     // to update the service catalogs
-    this.listenToOnce(this.webex, 'ready', () => {
+    this.listenToOnce(this.webex, 'ready', async () => {
+      const cachedCatalog = await this._loadCatalogFromCache();
+      if (cachedCatalog) {
+        catalog.isReady = true;
+
+        return; // skip initServiceCatalogs() on reload when cache exists
+      }
+
       const {supertoken} = this.webex.credentials;
       // Validate if the supertoken exists.
       if (supertoken && supertoken.access_token) {
