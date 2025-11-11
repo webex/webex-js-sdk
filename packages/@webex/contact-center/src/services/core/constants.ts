@@ -71,7 +71,7 @@ export const CLOSE_SOCKET_TIMEOUT = 16000;
 export const PARTICIPANT_TYPES = {
   /** Participant type for Entry Point Dial Number */
   EP_DN: 'EpDn',
-  /** Destination type for dial number */
+  /** Participant type for dial number */
   DN: 'dn',
   /** Participant type for Agent */
   AGENT: 'Agent',
