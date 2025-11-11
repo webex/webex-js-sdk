@@ -137,6 +137,7 @@ export interface WebexSDK {
         mobius: string;
       };
       get: (service: string) => string;
+      getMobiusClusters: () => ServiceHost[];
       fetchClientRegionInfo: () => Promise<ClientRegionInfo>;
     };
     metrics: {

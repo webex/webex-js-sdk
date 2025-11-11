@@ -151,9 +151,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
-    // Use unified helper to fetch all mobius hosts from catalog (legacy or v2)
-    // Returns an array of ServiceHost-like entries: {host, priority, id, ttl}
-    // @ts-ignore - services may be v1 or v2, both expose getMobiusClusters()
     this.mobiusClusters = this.webex.internal.services.getMobiusClusters();
     this.mobiusHost = '';
 
@@ -385,9 +382,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       const clientRegionInfo = response.body as ClientRegionInfo;
 
-      regionInfo.clientRegion = clientRegionInfo?.clientRegion ? clientRegionInfo.clientRegion : '';
+      regionInfo.clientRegion = clientRegionInfo?.clientRegion || '';
 
-      regionInfo.countryCode = clientRegionInfo?.countryCode ? clientRegionInfo.countryCode : '';
+      regionInfo.countryCode = clientRegionInfo?.clientRegion || '';
 
       log.log(
         `Successfully fetched Client region info: ${regionInfo.clientRegion}, countryCode: ${regionInfo.countryCode}, and response trackingid: ${response?.headers?.trackingid}`,

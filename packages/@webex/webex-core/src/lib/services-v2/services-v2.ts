@@ -14,6 +14,7 @@ import {
   Service,
   ServiceHostmap,
   ServiceGroup,
+  ServiceHost,
 } from './types';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
@@ -104,40 +105,34 @@ const Services = WebexPlugin.extend({
     return catalog.markFailedServiceUrl(url);
   },
 
-  /*
-   *  Get all Mobius cluster host entries from the v2 services list.
+  /**
+   * Get all Mobius cluster host entries from the v2 services list.
+   * @returns {Array<ServiceHost>} - An array of `ServiceHost` objects.
    */
-  getMobiusClusters(): Array<{
-    host: string;
-    ttl: number;
-    priority: number;
-    id: string;
-    homeCluster?: boolean;
-  }> {
-    const clusters: Array<{
-      host: string;
-      ttl: number;
-      priority: number;
-      id: string;
-      homeCluster?: boolean;
-    }> = [];
+  getMobiusClusters(): Array<ServiceHost> {
+    const clusters: Array<ServiceHost> = [];
     const services: Array<Service> = this._services || [];
 
-    services.forEach((service) => {
-      if (service?.serviceName === 'mobius' && Array.isArray(service.serviceUrls)) {
+    services
+      .filter(
+        (service) =>
+          service?.serviceName === 'mobius' &&
+          Array.isArray(service.serviceUrls) &&
+          service.serviceUrls.length > 0
+      )
+      .forEach((service) => {
         service.serviceUrls.forEach((serviceUrl) => {
-          if (!clusters.find((c) => c && c.host === serviceUrl.baseUrl)) {
-            serviceUrl.baseUrl = serviceUrl.baseUrl.replace('https://', '').replace('/api/v1', '');
+          const modifiedHost = serviceUrl.baseUrl.replace('https://', '').replace('/api/v1', '');
+          if (!clusters.find((c) => c && c.host === modifiedHost)) {
             clusters.push({
-              host: serviceUrl.baseUrl,
+              host: modifiedHost,
               priority: serviceUrl.priority,
               id: service.id,
               ttl: 0,
             });
           }
         });
-      }
-    });
+      });
 
     return clusters;
   },
