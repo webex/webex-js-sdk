@@ -126,6 +126,7 @@ export type {
   AgentContact,
   /** Task interface */
   ITask,
+  Interaction,
   TaskData,
   /** Task response */
   TaskResponse,
