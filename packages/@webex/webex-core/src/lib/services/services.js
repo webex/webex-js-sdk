@@ -107,20 +107,20 @@ const Services = WebexPlugin.extend({
   get(name, priorityHost, serviceGroup) {
     const catalog = this._getCatalog();
 
-    // Prefer active cluster selection when available (e.g., in-region WDM)
-    const clusterId = this._activeServices && this._activeServices[name];
+    // // Prefer active cluster selection when available (e.g., in-region WDM)
+    // const clusterId = this._activeServices && this._activeServices[name];
 
-    if (clusterId) {
-      const service = catalog.findServiceFromClusterId({
-        clusterId,
-        priorityHost,
-        serviceGroup,
-      });
+    // if (clusterId) {
+    //   const service = catalog.findServiceFromClusterId({
+    //     clusterId,
+    //     priorityHost,
+    //     serviceGroup,
+    //   });
 
-      if (service && service.url) {
-        return service.url;
-      }
-    }
+    //   if (service && service.url) {
+    //     return service.url;
+    //   }
+    // }
 
     return catalog.get(name, priorityHost, serviceGroup);
   },
@@ -551,29 +551,29 @@ const Services = WebexPlugin.extend({
     );
   },
 
-  /**
-   * Update cluster id via mercury/service update. Allows selecting in-region URLs (e.g., WDM).
-   * If a provided clusterId cannot be resolved to a service, it will be ignored.
-   * @param {Record<string,string>} newActiveClusters - e.g. { wdm: 'urn:TEAM:ap-southeast-2_m:wdm' }
-   * @returns {Promise<void>}
-   */
-  switchActiveClusterIds(newActiveClusters) {
-    this.logger.info('services: switching active cluster ids');
+  // /**
+  //  * Update cluster id via mercury/service update. Allows selecting in-region URLs (e.g., WDM).
+  //  * If a provided clusterId cannot be resolved to a service, it will be ignored.
+  //  * @param {Record<string,string>} newActiveClusters - e.g. { wdm: 'urn:TEAM:ap-southeast-2_m:wdm' }
+  //  * @returns {Promise<void>}
+  //  */
+  // switchActiveClusterIds(newActiveClusters) {
+  //   this.logger.info('services: switching active cluster ids');
 
-    if (!newActiveClusters || typeof newActiveClusters !== 'object') {
-      this.logger.warn('services: invalid newActiveClusters provided to switchActiveClusterIds');
+  //   if (!newActiveClusters || typeof newActiveClusters !== 'object') {
+  //     this.logger.warn('services: invalid newActiveClusters provided to switchActiveClusterIds');
 
-      return Promise.resolve();
-    }
+  //     return Promise.resolve();
+  //   }
 
-    // Do not validate against current catalog readiness; persist desired mapping immediately.
-    // When catalogs are ready, `get()` will resolve URLs via clusterId.
-    this._updateActiveServices(newActiveClusters);
+  //   // Do not validate against current catalog readiness; persist desired mapping immediately.
+  //   // When catalogs are ready, `get()` will resolve URLs via clusterId.
+  //   this._updateActiveServices(newActiveClusters);
 
-    this.logger.info('services: active cluster ids updated successfully');
+  //   this.logger.info('services: active cluster ids updated successfully');
 
-    return Promise.resolve();
-  },
+  //   return Promise.resolve();
+  // },
 
   /**
    * Updates a given service group i.e. preauth, signin, postauth with a new hostmap.
