@@ -384,7 +384,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       regionInfo.clientRegion = clientRegionInfo?.clientRegion || '';
 
-      regionInfo.countryCode = clientRegionInfo?.clientRegion || '';
+      regionInfo.countryCode = clientRegionInfo?.countryCode || '';
 
       log.log(
         `Successfully fetched Client region info: ${regionInfo.clientRegion}, countryCode: ${regionInfo.countryCode}, and response trackingid: ${response?.headers?.trackingid}`,
