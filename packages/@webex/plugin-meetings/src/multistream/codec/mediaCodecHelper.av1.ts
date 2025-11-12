@@ -2,25 +2,13 @@
 import {
   AV1Codec,
   getRecommendedMaxBitrateForPicSize,
+  getFrameSizeForPicSize,
   CodecInfo as WcmeCodecInfo,
 } from '@webex/internal-media-core';
 import {AV1_CODEC_PARAMETERS, CODEC_DEFAULTS, PANE_SIZE_TO_RESOLUTION} from './constants';
 import {MediaCodecHelper, AV1CodecInfo, SupportedResolution} from './types';
 import {MediaRequest, RemoteVideoResolution} from '../types';
 import LoggerProxy from '../../common/logs/logger-proxy';
-
-/**
- * Converts pixels to macroblocks.
- * Pixels are rounded up to the nearest 16x16 macroblock unit.
- *
- * @param {number} pixels - The number of pixels.
- * @returns {number} The macroblocks.
- */
-const pixelsToMacroblocks = (pixels: number): number => {
-  const round16 = (n: number) => Math.ceil(n / 16) * 16;
-
-  return round16(pixels);
-};
 
 /**
  * Class for AV1 media codec info
@@ -65,7 +53,7 @@ export default class MediaCodecHelperAV1 implements MediaCodecHelper {
     // we only consider sources with "live" state
     const slotsWithLiveSource = mr.receiveSlots.filter((rs) => rs.sourceState === 'live');
 
-    return pixelsToMacroblocks(mr.codecInfo.maxPicSize) * slotsWithLiveSource.length;
+    return getFrameSizeForPicSize(mr.codecInfo.maxPicSize) * slotsWithLiveSource.length;
   }
 
   /**

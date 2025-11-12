@@ -1,10 +1,6 @@
 import MediaCodecHelperAV1 from './mediaCodecHelper.av1';
 import MediaCodecHelperH264 from './mediaCodecHelper.h264';
 
-export type MediaCodecHelperOptions = {
-  codec: 'h264' | 'av1';
-};
-
 const MediaCodecHelper = {
   AV1: new MediaCodecHelperAV1(),
   H264: new MediaCodecHelperH264(),

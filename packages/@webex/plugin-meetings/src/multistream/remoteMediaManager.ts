@@ -377,15 +377,10 @@ export class RemoteMediaManager extends EventsScope {
    * Updates the preferred codec
    */
   private async updatePreferredCodec() {
-    const isAV1CodecAvailable = WebCapabilities.isCapableOfReceivingVideoCodec('video/AV1');
-    switch (true) {
-      case isAV1CodecAvailable === CapabilityState.CAPABLE:
-        this.preferredCodec = 'av1';
-        break;
-      default:
-        this.preferredCodec = 'h264';
-        break;
-    }
+    this.preferredCodec =
+      WebCapabilities.isCapableOfReceivingVideoCodec('video/AV1') === CapabilityState.CAPABLE
+        ? 'av1'
+        : 'h264';
   }
 
   /**
