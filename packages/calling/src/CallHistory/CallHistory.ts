@@ -125,7 +125,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       2. Calculating the fromDate by deducting the NUMBER_OF_DAYS with the current date
      */
     const date = new Date();
-
+    const callingBackend = getCallingBackEnd(this.webex);
     date.setDate(date.getDate() - days);
     this.fromDate = date.toISOString();
     const sortByParam = Object.values(SORT_BY).includes(sortBy) ? sortBy : SORT_BY.DEFAULT;
@@ -138,7 +138,13 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
     log.info(`Janus API URL: ${this.janusUrl}`, this.loggerContext);
     log.info(`Call history from date : ${this.fromDate}`, this.loggerContext);
-    const url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}`;
+
+    let url: string;
+    if (callingBackend === CALLING_BACKEND.WXC) {
+      url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}&includeSharedSessions=true`;
+    } else {
+      url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}`;
+    }
 
     try {
       const janusResponse = <WebexRequestPayload>await this.webex.request({
@@ -166,7 +172,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         }
       }
       // Check the calling backend
-      const callingBackend = getCallingBackEnd(this.webex);
       if (callingBackend === CALLING_BACKEND.UCM) {
         // Check if userSessions exist and the length is greater than 0
         if (this.userSessions[USER_SESSIONS] && this.userSessions[USER_SESSIONS].length > 0) {
