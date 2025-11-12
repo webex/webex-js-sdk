@@ -1003,7 +1003,6 @@ const Services = WebexPlugin.extend({
       if (typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.setItem(CATALOG_CACHE_KEY_V1, JSON.stringify(updated));
       }
-      console.log('pkesari_cacheCatalog cached catalog: ', updated);
     } catch (error) {
       // ignore storage errors
     }
@@ -1014,14 +1013,12 @@ const Services = WebexPlugin.extend({
    * @returns {Promise<boolean>} true if cache was loaded, false otherwise
    */
   async _loadCatalogFromCache() {
-    console.log('pkesari_loadCatalogFromCache loading catalog from cache');
     try {
       if (typeof window === 'undefined' || !window.localStorage) {
         return false;
       }
       const raw = window.localStorage.getItem(CATALOG_CACHE_KEY_V1);
       const cached = raw ? JSON.parse(raw) : undefined;
-      console.log('pkesari_loadCatalogFromCache cached catalog found: ', cached);
       if (!cached) {
         return false;
       }
@@ -1057,7 +1054,6 @@ const Services = WebexPlugin.extend({
       groups.forEach((g) => {
         if (cached[g]) {
           const formatted = this._formatReceivedHostmap(cached[g]);
-          console.log('pkesari_loadCatalogFromCache updating service urls for group: ', g);
           catalog.updateServiceUrls(g, formatted);
         }
       });

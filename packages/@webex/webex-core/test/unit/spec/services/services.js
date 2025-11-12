@@ -845,8 +845,8 @@ describe('webex-core', () => {
       let services;
       let catalog;
       let localStorageBackup;
+      let windowBackup;
   
-      // simple in-memory localStorage shim
       const makeLocalStorageShim = () => {
         const store = new Map();
         return {
@@ -858,13 +858,14 @@ describe('webex-core', () => {
       };
   
       beforeEach(() => {
-        // build a fresh webex instance
-        // use the standard helper you use elsewhere in this file to construct WebexCore if available
-        webex = new WebexCore({config: {credentials: {federation: true}}});
+        // Build a fresh webex instance
+        webex = new MockWebex({children: {services: Services}, config: {credentials: {federation: true}}});
         services = webex.internal.services;
         catalog = services._getCatalog();
   
         // stub window.localStorage
+        windowBackup = global.window;
+        if (!global.window) global.window = {};
         localStorageBackup = global.window.localStorage;
         global.window.localStorage = makeLocalStorageShim();
   
@@ -875,39 +876,88 @@ describe('webex-core', () => {
       });
   
       afterEach(() => {
-        services._formatReceivedHostmap.restore();
-        global.window.localStorage = localStorageBackup;
+        global.window.localStorage = localStorageBackup || undefined;
+        if (!windowBackup) {
+          delete global.window;
+        } else {
+          global.window = windowBackup;
+        }
       });
   
-      it('warms catalog from localStorage on load and short-circuits updateServices()', async () => {
+      it('invokes initServiceCatalogs on ready, caches catalog, and stores in localStorage', async () => {
+        // Arrange: authenticated credentials and spies
+        services.webex.credentials = {
+          getOrgId: sinon.stub().returns('urn:EXAMPLE:org'),
+          canAuthorize: true,
+          supertoken: {access_token: 'token'},
+        };
+        const initSpy = sinon.spy(services, 'initServiceCatalogs');
+        const cacheSpy = sinon.spy(services, '_cacheCatalog');
+        const setItemSpy = sinon.spy(global.window.localStorage, 'setItem');
+        // Make fetch return a hostmap object and allow formatter to reduce it
+        sinon.stub(services, 'request').resolves({body: {services: [], activeServices: {}, timestamp: Date.now().toString(), orgId: 'urn:EXAMPLE:org', format: 'U2CV2'}});
+        // Cause ready callback to run immediately
+        services.listenToOnce = sinon.stub().callsFake((ctx, event, cb) => {
+          if (event === 'ready') cb();
+        });
+
+        // Act
+        services.initialize();
+        await waitForAsync();
+
+        // Assert: initServiceCatalogs was called because there was no cache
+        assert.isTrue(initSpy.called, 'expected initServiceCatalogs to be invoked on ready');
+        // _cacheCatalog is called at least once (preauth/postauth flows)
+        assert.isTrue(cacheSpy.called, 'expected _cacheCatalog to be called');
+        assert.isTrue(setItemSpy.called, 'expected localStorage.setItem to be called');
+
+        // Cleanup spies
+        services.request.restore();
+        initSpy.restore();
+        cacheSpy.restore();
+        setItemSpy.restore();
+      });
+
+      it('does not invoke initServiceCatalogs on ready when cache exists and uses cached catalog', async () => {
+        // Arrange: put a valid cache
         const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
         const cached = {
           orgId: 'urn:EXAMPLE:org',
-          cachedAt: Date.now(), // fresh
+          cachedAt: Date.now(),
           preauth: {serviceLinks: {}, hostCatalog: {}},
           postauth: {serviceLinks: {}, hostCatalog: {}},
         };
-  
-        window.localStorage.setItem(CATALOG_CACHE_KEY_V1, JSON.stringify(cached));
-  
-        // warm from cache
-        const warmed = await services._loadCatalogFromCache();
-        assert.isTrue(warmed, 'expected cache warm to succeed');
-  
-        // both groups become ready via updateServiceUrls
-        assert.isTrue(catalog.status.preauth.ready);
-        assert.isTrue(catalog.status.postauth.ready);
-  
-        // ensure updateServices short-circuits when ready && !forceRefresh
-        const fetchSpy = sinon.spy(services, '_fetchNewServiceHostmap');
-  
-        await services.updateServices({from: 'limited'});
-        await services.updateServices(); // postauth path
-  
-        assert.isFalse(fetchSpy.called, 'should not fetch when catalog group is ready');
-        fetchSpy.restore();
+        global.window.localStorage.setItem(CATALOG_CACHE_KEY_V1, JSON.stringify(cached));
+
+        // authenticated credentials
+        services.webex.credentials = {
+          getOrgId: sinon.stub().returns('urn:EXAMPLE:org'),
+          canAuthorize: true,
+          supertoken: {access_token: 'token'},
+        };
+
+        const initSpy = sinon.spy(services, 'initServiceCatalogs');
+        const cacheSpy = sinon.spy(services, '_cacheCatalog');
+        // Cause ready callback to run immediately
+        services.listenToOnce = sinon.stub().callsFake((ctx, event, cb) => {
+          if (event === 'ready') cb();
+        });
+
+        // Act
+        services.initialize();
+        await waitForAsync();
+
+        // Assert: ready path found cache and skipped initServiceCatalogs
+        assert.isFalse(initSpy.called, 'expected initServiceCatalogs to be skipped with cache present');
+        assert.isTrue(services._getCatalog().status.preauth.ready, 'preauth should be ready from cache');
+        assert.isTrue(services._getCatalog().status.postauth.ready, 'postauth should be ready from cache');
+        assert.isFalse(cacheSpy.called, 'should not write cache during warm-up-only path');
+
+        // Cleanup
+        initSpy.restore();
+        cacheSpy.restore();
       });
-  
+
       it('expires cached catalog after TTL and clears the entry', async () => {
         const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
         const staleCached = {
@@ -957,7 +1007,7 @@ describe('webex-core', () => {
         const fetchSpy = sinon.spy(services, '_fetchNewServiceHostmap');
   
         // with forceRefresh we should fetch despite ready=true
-        await services.updateServices({from: 'limited', forceRefresh: true});
+        await services.updateServices({from: 'limited', query:{orgId:'urn:EXAMPLE:org'}, forceRefresh: true});
         await services.updateServices({forceRefresh: true});
   
         assert.isTrue(fetchSpy.called, 'forceRefresh should bypass cache short-circuit');
