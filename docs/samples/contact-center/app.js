@@ -1128,12 +1128,12 @@ function getConsultStatus(task) {
   const participant = Object.values(participants).find(p => p.pType === 'Agent' && p.id === agentId);
   
   if (state === 'consult') {
-    if (participant && participant.isConsulted) {
+    if ((participant && participant.isConsulted )|| isSecondaryEpDnAgent(task)) {
       return 'beingConsulted';
     }
     return 'consultInitiated';
   } else if (state === 'consulting') {
-    if (participant && participant.isConsulted) {
+    if ((participant && participant.isConsulted) || isSecondaryEpDnAgent(task)) {
       return 'beingConsultedAccepted';
     }
     return 'consultAccepted';

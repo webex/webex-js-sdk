@@ -1823,7 +1823,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     const message = event.data as RoapMessage;
 
     /* istanbul ignore else */
-    if (message) {
+    if (message && message.messageType === 'ERROR') {
       try {
         const res = await this.postMedia(message);
 

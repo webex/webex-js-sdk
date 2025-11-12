@@ -490,6 +490,30 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_PARTICIPANT_LEFT_FAILED = 'task:participantLeftFailed',
+
+  /**
+   * Triggered when a contact is merged
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_MERGED, (task: ITask) => {
+   *   console.log('Contact merged:', task.data.interactionId);
+   *   // Handle contact merge
+   * });
+   * ```
+   */
+  TASK_MERGED = 'task:merged',
+
+  /**
+   * Triggered when a participant enters post-call activity state
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, (task: ITask) => {
+   *   console.log('Participant in post-call activity:', task.data.interactionId);
+   *   // Handle post-call activity
+   * });
+   * ```
+   */
+  TASK_POST_CALL_ACTIVITY = 'task:postCallActivity',
 }
 
 /**
@@ -757,6 +781,8 @@ export type TaskData = {
   isWebCallMute?: boolean;
   /** Identifier for reservation interaction */
   reservationInteractionId?: string;
+  /** Identifier for the reserved agent channel (used for campaign tasks) */
+  reservedAgentChannelId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
 };
@@ -1003,19 +1029,6 @@ export type ConsultConferenceData = {
   to: string | undefined;
   /** Type of destination (e.g., 'agent', 'queue') */
   destinationType: string;
-};
-
-/**
- * Legacy consultation conference data type matching Agent Desktop
- * @public
- */
-export type consultConferencePayloadData = {
-  /** Identifier of the agent initiating consult/conference */
-  agentId: string;
-  /** Type of destination (e.g., 'agent', 'queue') */
-  destinationType: string;
-  /** Identifier of the destination agent */
-  destAgentId: string;
 };
 
 /**
