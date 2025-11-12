@@ -394,10 +394,7 @@ export class RemoteMediaManager extends EventsScope {
     }
     this.started = true;
 
-    // TODO: Look for better place to check for preferred codec
-    // TODO: Check if this is slowing down the start of the meeting, if not, it's good place
     await this.updatePreferredCodec();
-
     await this.createAudioMedia();
 
     await this.createScreenShareReceiveSlots();

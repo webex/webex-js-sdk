@@ -237,8 +237,8 @@ export class RemoteMediaGroup {
           remoteMedia.getUnderlyingReceiveSlot()
         ) as ReceiveSlot[],
         codecInfo: mediaCodecHelper.getCodecInfo({
-          maxFs: this.getEffectiveMaxFs(),
-          maxPicSize: this.getEffectiveMaxPicSize(),
+          getMaxFs: () => this.getEffectiveMaxFs(),
+          getMaxPicSize: () => this.getEffectiveMaxPicSize(),
         }),
       },
       commit

@@ -20,12 +20,12 @@ export default class MediaCodecHelperAV1 implements MediaCodecHelper {
    * @param {Object} options - The options for the AV1 codec info
    * @returns {AV1CodecInfo} The AV1 codec info
    */
-  getCodecInfo(options: {maxPicSize?: number}): AV1CodecInfo {
-    if (!options.maxPicSize) {
+  getCodecInfo(options: {getMaxPicSize?: () => number}): AV1CodecInfo {
+    if (!options.getMaxPicSize) {
       return undefined;
     }
 
-    return this.getParameters(options.maxPicSize);
+    return this.getParameters(options.getMaxPicSize());
   }
 
   /**

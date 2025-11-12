@@ -25,7 +25,10 @@ export interface AV1CodecInfo {
 export type CodecInfo = H264CodecInfo | AV1CodecInfo;
 
 export interface MediaCodecHelper {
-  getCodecInfo(options: {maxFs?: number; maxPicSize?: number}): CodecInfo | undefined;
+  getCodecInfo(options: {
+    getMaxFs?: () => number;
+    getMaxPicSize?: () => number;
+  }): CodecInfo | undefined;
   getWCMECodecInfos(mediaRequest: MediaRequest): WcmeCodecInfo[];
   degradeMediaRequest(mediaRequest: MediaRequest, resolution: SupportedResolution): number;
   getMaxPayloadBitsPerSecond(mediaRequest: MediaRequest): number;

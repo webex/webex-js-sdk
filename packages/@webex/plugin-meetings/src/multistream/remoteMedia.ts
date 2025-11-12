@@ -215,8 +215,8 @@ export class RemoteMedia extends EventsScope {
         },
         receiveSlots: [this.receiveSlot],
         codecInfo: mediaCodecHelper.getCodecInfo({
-          maxFs: this.getEffectiveMaxFs(),
-          maxPicSize: this.getEffectiveMaxPicSize(),
+          getMaxFs: () => this.getEffectiveMaxFs(),
+          getMaxPicSize: () => this.getEffectiveMaxPicSize(),
         }),
       },
       commit

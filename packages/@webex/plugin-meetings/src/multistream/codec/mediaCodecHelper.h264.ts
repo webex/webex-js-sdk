@@ -20,14 +20,14 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper {
    * @param {number} options.maxFs - The maximum frame size
    * @returns {H264CodecInfo} The H264 codec info
    */
-  getCodecInfo(options: {maxFs?: number}): H264CodecInfo | undefined {
-    if (!options.maxFs) {
+  getCodecInfo(options: {getMaxFs?: () => number}): H264CodecInfo | undefined {
+    if (!options.getMaxFs) {
       return undefined;
     }
 
     return {
       codec: 'h264',
-      maxFs: options.maxFs,
+      maxFs: options.getMaxFs(),
     };
   }
 
