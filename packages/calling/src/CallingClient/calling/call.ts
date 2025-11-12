@@ -1558,7 +1558,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           clearInterval(this.sessionTimer);
         }
 
-        handleCallErrors(
+        const abort = await handleCallErrors(
           (callError: CallError) => {
             this.emit(CALL_EVENT_KEYS.CALL_ERROR, callError);
             this.submitCallErrorMetric(callError);
@@ -1576,9 +1576,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.getCorrelationId(),
           error,
           'handleCallEstablished',
-          CALL_FILE,
-          this.end
+          CALL_FILE
         );
+
+        if (abort) {
+          this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
+          this.callKeepaliveRetryCount = 0;
+
+          return;
+        }
 
         await uploadLogs({
           correlationId: this.correlationId,

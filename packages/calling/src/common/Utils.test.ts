@@ -126,7 +126,6 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
 
   it('401 during keepalive emits token error and ends call', async () => {
     let emitted = false;
-    const endSpy = jest.fn();
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
@@ -135,7 +134,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       body: {device: {deviceId: 'd'}, errorCode: 0},
     });
 
-    await handleCallErrors(
+    const abort = await handleCallErrors(
       () => {
         emitted = true;
       },
@@ -144,18 +143,16 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       dummyCorrelationId,
       payload,
       'handleCallEstablished',
-      logObj.file,
-      endSpy
+      logObj.file
     );
 
     expect(emitted).toBe(true);
-    expect(endSpy).toHaveBeenCalled();
+    expect(abort).toBe(true);
     expect(retrySpy).not.toHaveBeenCalled();
   });
 
   it('403 during keepalive ends call without emitting', async () => {
     let emitted = false;
-    const endSpy = jest.fn();
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
@@ -164,7 +161,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       body: {device: {deviceId: 'd'}, errorCode: 0},
     });
 
-    await handleCallErrors(
+    const abort = await handleCallErrors(
       () => {
         emitted = true;
       },
@@ -173,12 +170,11 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       dummyCorrelationId,
       payload,
       'handleCallEstablished',
-      logObj.file,
-      endSpy
+      logObj.file
     );
 
     expect(emitted).toBe(false);
-    expect(endSpy).toHaveBeenCalled();
+    expect(abort).toBe(true);
     expect(retrySpy).not.toHaveBeenCalled();
   });
 
@@ -242,7 +238,6 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
 
   it('404 during keepalive emits not found and ends call (no retry)', async () => {
     let emitted = false;
-    const endSpy = jest.fn();
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
@@ -251,7 +246,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       body: {device: {deviceId: 'd'}},
     });
 
-    await handleCallErrors(
+    const abort = await handleCallErrors(
       () => {
         emitted = true;
       },
@@ -260,12 +255,11 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       dummyCorrelationId,
       payload,
       'handleCallEstablished',
-      logObj.file,
-      endSpy
+      logObj.file
     );
 
     expect(emitted).toBe(true);
-    expect(endSpy).toHaveBeenCalled();
+    expect(abort).toBe(true);
     expect(retrySpy).not.toHaveBeenCalled();
   });
 

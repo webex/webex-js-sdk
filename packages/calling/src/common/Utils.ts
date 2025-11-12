@@ -566,6 +566,8 @@ export async function handleCallingClientErrors(
  * @param err - Error Response.
  * @param caller - Caller function.
  * @param file - File name.
+ *
+ * @returns boolean - whether to abort the call or not.
  */
 export async function handleCallErrors(
   emitterCb: CallErrorEmitterCallBack,
@@ -574,9 +576,10 @@ export async function handleCallErrors(
   correlationId: CorrelationId,
   err: WebexRequestPayload,
   caller: string,
-  file: string,
-  endCall?: () => void
-) {
+  file: string
+): Promise<boolean> {
+  let abort = false;
+
   const loggerContext = {
     file,
     method: caller,
@@ -603,18 +606,19 @@ export async function handleCallErrors(
 
       emitterCb(callError);
 
-      if (isKeepalive && endCall) {
-        endCall();
+      if (isKeepalive) {
+        abort = true;
       }
 
       break;
     }
 
     case ERROR_CODE.FORBIDDEN:
-      if (isKeepalive && endCall) {
-        endCall();
+      if (isKeepalive) {
+        abort = true;
         break;
       }
+
     /* follow through as both 403 and 503 can have similar error codes */
 
     case ERROR_CODE.SERVICE_UNAVAILABLE: {
@@ -633,7 +637,7 @@ export async function handleCallErrors(
         );
         emitterCb(callError);
 
-        return;
+        return abort;
       }
 
       /* Handle retry-after cases */
@@ -645,7 +649,7 @@ export async function handleCallErrors(
         log.warn(`Retry Interval received: ${retryInterval}`, loggerContext);
         retryCb(retryInterval);
 
-        return;
+        return abort;
       }
       if (isKeepalive) {
         retryCb(DEFAULT_KEEPALIVE_INTERVAL); // This is applicable only for the keepalive scenario
@@ -732,8 +736,8 @@ export async function handleCallErrors(
 
       emitterCb(callError);
 
-      if (isKeepalive && endCall) {
-        endCall();
+      if (isKeepalive) {
+        abort = true;
       }
 
       break;
@@ -772,6 +776,8 @@ export async function handleCallErrors(
       }
     }
   }
+
+  return abort;
 }
 
 /**

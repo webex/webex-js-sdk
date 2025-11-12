@@ -986,7 +986,7 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
     jest.spyOn(global, 'clearInterval');
 
-    const endSpy = jest.spyOn(call as any, 'end');
+    const emitSpy = jest.spyOn(call, 'emit');
 
     call.on(CALL_EVENT_KEYS.CALL_ERROR, (errObj) => {
       expect(errObj.type).toStrictEqual(ERROR_TYPE.TOKEN_ERROR);
@@ -1005,7 +1005,7 @@ describe('State Machine handler tests', () => {
 
     expect(clearInterval).toHaveBeenCalled();
     expect(funcSpy).toBeCalledTimes(1);
-    expect(endSpy).toHaveBeenCalled();
+    expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
   });
 
   it('session refresh 403 ends the call without emitting error', async () => {
@@ -1016,7 +1016,7 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
     jest.spyOn(global, 'clearInterval');
 
-    const endSpy = jest.spyOn(call as any, 'end');
+    const emitSpy = jest.spyOn(call, 'emit');
     const errorListener = jest.fn();
     call.on(CALL_EVENT_KEYS.CALL_ERROR, errorListener);
 
@@ -1033,7 +1033,7 @@ describe('State Machine handler tests', () => {
 
     expect(clearInterval).toHaveBeenCalled();
     expect(funcSpy).toBeCalledTimes(1);
-    expect(endSpy).toHaveBeenCalled();
+    expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
     expect(errorListener).not.toHaveBeenCalled();
   });
 
