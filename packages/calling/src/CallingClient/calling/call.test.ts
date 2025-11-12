@@ -1070,7 +1070,7 @@ describe('State Machine handler tests', () => {
 
   it('keepalive ends after reaching max retry count', async () => {
     jest.spyOn(global, 'clearInterval');
-    const endSpy = jest.spyOn(call as any, 'end');
+    const emitSpy = jest.spyOn(call, 'emit');
 
     call['sessionTimer'] = setInterval(() => {}, 1000);
 
@@ -1080,7 +1080,7 @@ describe('State Machine handler tests', () => {
     call['handleCallEstablished']({} as CallEvent);
     call['handleCallEstablished']({} as CallEvent);
 
-    expect(endSpy).toHaveBeenCalled();
+    expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
     expect(call['callKeepaliveRetryCount']).toBe(0);
   });
 
