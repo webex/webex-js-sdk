@@ -452,19 +452,12 @@ const Mercury = WebexPlugin.extend({
 
     this._attachSocketEventListeners(socket, sessionId);
 
-    /// ///////////////////////
-    const backoffCall = this.backoffCalls.get(sessionId);
-    if (!backoffCall) {
-      const msg = `${this.namespace}: prevent socket open when backoffCall no longer defined for ${sessionId}`;
-
-      this.logger.info(msg);
-
-      return Promise.reject(new Error(msg));
-    }
-    /// /////////////////////////
+    const backoffCall = isShutdownSwitchover
+      ? this._shutdownSwitchoverBackoffCalls.get(sessionId)
+      : this.backoffCalls.get(sessionId);
 
     // Check appropriate backoff call based on connection type
-    if (isShutdownSwitchover && !this._shutdownSwitchoverBackoffCalls.get(sessionId)) {
+    if (isShutdownSwitchover && !backoffCall) {
       const msg = `${this.namespace}: prevent socket open when switchover backoff call no longer defined for ${sessionId}`;
       const err = new Error(msg);
 
