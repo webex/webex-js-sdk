@@ -139,12 +139,9 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     log.info(`Janus API URL: ${this.janusUrl}`, this.loggerContext);
     log.info(`Call history from date : ${this.fromDate}`, this.loggerContext);
 
-    let url: string;
-    if (callingBackend === CALLING_BACKEND.WXC) {
-      url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}&includeSharedSessions=true`;
-    } else {
-      url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}`;
-    }
+    const sharedSessionsParam =
+      callingBackend === CALLING_BACKEND.WXC ? '&includeSharedSessions=true' : '';
+    const url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}${sharedSessionsParam}`;
 
     try {
       const janusResponse = <WebexRequestPayload>await this.webex.request({
