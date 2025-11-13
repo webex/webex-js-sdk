@@ -657,10 +657,12 @@ const Mercury = WebexPlugin.extend({
           this.backoffCalls.delete(sid);
         }
         if (err) {
+          const msg = isShutdownSwitchover
+            ? `[shutdown] switchover failed after ${call.getNumRetries()} retries`
+            : `failed to connect after ${call.getNumRetries()} retries`;
+
           this.logger.info(
-            `${
-              this.namespace
-            }: failed to connect ${sid} after ${call.getNumRetries()} retries; log statement about next retry was inaccurate; ${err}`
+            `${this.namespace}: ${msg}; log statement about next retry was inaccurate; ${err}`
           );
 
           return reject(err);
@@ -671,23 +673,26 @@ const Mercury = WebexPlugin.extend({
           sessionSocket.connecting = false;
           sessionSocket.connected = true;
         }
-        // @ts-ignore
-        this.connecting = this.hasConnectingSockets();
-        this.connected = this.hasConnectedSockets();
-        this.hasEverConnected = true;
-        const suffix = sid === this.defaultSessionId ? '' : `:${sid}`;
-        this._emit(`online${suffix}`, {sessionId: sid});
-        this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
+        // Default success handling for normal connections
+        if (!isShutdownSwitchover) {
+          this.connecting = this.hasConnectingSockets();
+          this.connected = this.hasConnectedSockets();
+          this.hasEverConnected = true;
+          const suffix = sid === this.defaultSessionId ? '' : `:${sid}`;
+          this._emit(`online${suffix}`, {sessionId: sid});
+          this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
+        }
 
         return resolve();
       };
       // eslint-disable-next-line prefer-reflect
       call = backoff.call(
         (callback) => {
+          const attemptNum = call.getNumRetries();
+          const logPrefix = isShutdownSwitchover ? '[shutdown] switchover' : 'connection';
+
           this.logger.info(
-            `${
-              this.namespace
-            }: executing connection attempt ${call.getNumRetries()} for ${sessionId}`
+            `${this.namespace}: executing ${logPrefix} attempt ${attemptNum} for ${sessionId}`
           );
           this._attemptConnection(webSocketUrl, sessionId, callback, attemptOptions);
         },
@@ -701,7 +706,11 @@ const Mercury = WebexPlugin.extend({
         })
       );
 
-      if (this.config.initialConnectionMaxRetries && !this.hasEverConnected) {
+      if (
+        this.config.initialConnectionMaxRetries &&
+        !this.hasEverConnected &&
+        !isShutdownSwitchover
+      ) {
         call.failAfter(this.config.initialConnectionMaxRetries);
       } else if (this.config.maxRetries) {
         call.failAfter(this.config.maxRetries);
@@ -716,8 +725,10 @@ const Mercury = WebexPlugin.extend({
       }
 
       call.on('abort', () => {
-        this.logger.info(`${this.namespace}: connection aborted for ${sessionId}`);
-        reject(new Error(`Mercury Connection Aborted for ${sessionId}`));
+        const msg = isShutdownSwitchover ? 'Shutdown Switchover' : 'Connection';
+
+        this.logger.info(`${this.namespace}: ${msg} aborted for ${sessionId}`);
+        reject(new Error(`Mercury ${msg} Aborted for ${sessionId}`));
       });
 
       call.on('callback', (err) => {
@@ -725,10 +736,12 @@ const Mercury = WebexPlugin.extend({
           const number = call.getNumRetries();
           const delay = Math.min(call.strategy_.nextBackoffDelay_, this.config.backoffTimeMax);
 
+          const logPrefix = isShutdownSwitchover ? '[shutdown] switchover' : '';
+
           this.logger.info(
-            `${this.namespace}: failed to connect ${sessionId}; attempting retry ${
+            `${this.namespace}: ${logPrefix} failed to connect; attempting retry ${
               number + 1
-            } in ${delay} ms`
+            } in ${delay} ms for ${sessionId}`
           );
           /* istanbul ignore if */
           if (process.env.NODE_ENV === 'development') {
@@ -798,27 +811,34 @@ const Mercury = WebexPlugin.extend({
       event.sessionId = sessionId;
 
       const isActiveSocket = sourceSocket === sessionSocket;
-      if (isActiveSocket && this.socket) {
-        // Active socket closed - get URL from current socket reference
-        socketUrl = sessionSocket?.url;
-      } else if (sessionSocket) {
-        // Old socket closed - get URL from the closed socket
+      if (sourceSocket) {
         socketUrl = sourceSocket.url;
       }
       this.sockets.delete(sessionId);
 
-      if (sessionSocket) {
-        sessionSocket.removeAllListeners();
-        sessionSocket = null;
-        this._emit(`offline${suffix}`, event);
-      }
+      if (isActiveSocket) {
+        // Only tear down state if the currently active socket closed
+        if (sessionSocket) {
+          sessionSocket.removeAllListeners();
+          sessionSocket = null;
+          this._emit(`offline${suffix}`, event);
+        }
+        // Update overall connected status
+        this.connecting = this.hasConnectingSockets();
+        this.connected = this.hasConnectedSockets();
 
-      // Update overall connected status
-      this.connecting = this.hasConnectingSockets();
-      this.connected = this.hasConnectedSockets();
-
-      if (!this.connected) {
-        this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
+        if (!this.connected) {
+          this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
+        }
+      } else {
+        // Old socket closed; do not flip connection state
+        this.logger.info(
+          `${this.namespace}: [shutdown] non-active socket closed, code=${event.code} for ${sessionId}`
+        );
+        // Clean up listeners from old socket now that it's closed
+        if (sourceSocket) {
+          sourceSocket.removeAllListeners();
+        }
       }
 
       switch (event.code) {
@@ -827,20 +847,44 @@ const Mercury = WebexPlugin.extend({
           this.logger.info(
             `${this.namespace}: Mercury service rejected last message for ${sessionId}; will not reconnect: ${event.reason}`
           );
-          this._emit(`offline.permanent${suffix}`, event);
+          if (isActiveSocket) this._emit(`offline.permanent${suffix}`, event);
           break;
         case 4000:
           // metric: disconnect
           this.logger.info(`${this.namespace}: socket ${sessionId} replaced; will not reconnect`);
-          this._emit(`offline.replaced${suffix}`, event);
+          if (isActiveSocket) this._emit(`offline.replaced${suffix}`, event);
+          // If not active, nothing to do
+          break;
+        case 4001:
+          // replaced during shutdown
+          if (isActiveSocket) {
+            // Server closed active socket with 4001, meaning it expected this connection
+            // to be replaced, but the switchover in _handleImminentShutdown failed.
+            // This is a permanent failure - do not reconnect.
+            this.logger.warn(
+              `${this.namespace}: active socket closed with 4001; shutdown switchover failed for ${sessionId}`
+            );
+            this._emit(`offline.permanent${suffix}`, event);
+          } else {
+            // Expected: old socket closed after successful switchover
+            this.logger.info(
+              `${this.namespace}: old socket closed with 4001 (replaced during shutdown); no reconnect needed for ${sessionId}`
+            );
+            this._emit(`offline.replaced${suffix}`, event);
+          }
           break;
         case 1001:
         case 1005:
         case 1006:
         case 1011:
           this.logger.info(`${this.namespace}: socket ${sessionId} disconnected; reconnecting`);
-          this._emit(`offline.transient${suffix}`, event);
-          this._reconnect(socketUrl, sessionId);
+          if (isActiveSocket) {
+            this._emit(`offline.transient${suffix}`, event);
+            this.logger.info(
+              `${this.namespace}: [shutdown] reconnecting active socket to recover for ${sessionId}`
+            );
+            this._reconnect(socketUrl, sessionId);
+          }
           // metric: disconnect
           // if (code == 1011 && reason !== ping error) metric: unexpected disconnect
           break;
@@ -848,15 +892,20 @@ const Mercury = WebexPlugin.extend({
         case 3050: // 3050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
           if (normalReconnectReasons.includes(reason)) {
             this.logger.info(`${this.namespace}: socket ${sessionId} disconnected; reconnecting`);
-            this._emit(`offline.transient${suffix}`, event);
-            this._reconnect(socketUrl, sessionId);
+            if (isActiveSocket) {
+              this._emit(`offline.transient${suffix}`, event);
+              this.logger.info(
+                `${this.namespace}: [shutdown] reconnecting due to normal close for ${sessionId}`
+              );
+              this._reconnect(socketUrl, sessionId);
+            }
             // metric: disconnect
             // if (reason === done forced) metric: force closure
           } else {
             this.logger.info(
               `${this.namespace}: socket ${sessionId} disconnected; will not reconnect: ${event.reason}`
             );
-            this._emit(`offline.permanent${suffix}`, event);
+            if (isActiveSocket) this._emit(`offline.permanent${suffix}`, event);
           }
           break;
         default:
@@ -864,7 +913,7 @@ const Mercury = WebexPlugin.extend({
             `${this.namespace}: socket ${sessionId} disconnected unexpectedly; will not reconnect`
           );
           // unexpected disconnect
-          this._emit(`offline.permanent${suffix}`, event);
+          if (isActiveSocket) this._emit(`offline.permanent${suffix}`, event);
       }
     } catch (error) {
       this.logger.error(
