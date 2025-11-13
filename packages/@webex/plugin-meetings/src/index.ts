@@ -18,6 +18,7 @@ import {
 import Meeting from './meeting';
 import MeetingInfoUtil from './meeting-info/utilv2';
 import JoinMeetingError from './common/errors/join-meeting';
+import {SdpResponseTimeoutError} from './common/errors/webex-errors';
 
 registerPlugin('meetings', Meetings, {
   config,
@@ -73,6 +74,7 @@ export {
   Meeting,
   MeetingInfoUtil,
   JoinWebinarError,
+  SdpResponseTimeoutError,
 };
 
 export {RemoteMedia} from './multistream/remoteMedia';

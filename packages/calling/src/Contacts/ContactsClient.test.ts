@@ -488,7 +488,7 @@ describe('ContactClient Tests', () => {
     expect(errorSpy).toBeCalledTimes(1);
     expect(errorSpy).toHaveBeenNthCalledWith(
       1,
-      Error(`Unable to create contact group: ${failureResponsePayload}`),
+      `Unable to create contact group: ${JSON.stringify(failureResponsePayload)}`,
       loggerContext
     );
 
@@ -528,9 +528,9 @@ describe('ContactClient Tests', () => {
     expect(uploadLogsSpy).toBeCalledTimes(1);
     expect(errorSpy).toHaveBeenNthCalledWith(
       1,
-      Error(
-        `Unable to delete contact group ${mockGroupResponse.groupId}: ${failureResponsePayload}`
-      ),
+      `Unable to delete contact group ${mockGroupResponse.groupId}: ${JSON.stringify(
+        failureResponsePayload
+      )}`,
       loggerContext
     );
     expect(warnSpy).toHaveBeenNthCalledWith(
@@ -842,10 +842,13 @@ describe('ContactClient Tests', () => {
       file: CONTACTS_CLIENT,
       method: METHODS.CREATE_CONTACT,
     });
-    expect(log.error).toBeCalledWith(Error(`Failed to create contact: ${failureResponsePayload}`), {
-      file: CONTACTS_CLIENT,
-      method: METHODS.CREATE_CONTACT,
-    });
+    expect(log.error).toBeCalledWith(
+      `Failed to create contact: ${JSON.stringify(failureResponsePayload)}`,
+      {
+        file: CONTACTS_CLIENT,
+        method: METHODS.CREATE_CONTACT,
+      }
+    );
   });
 
   it('successful deletion of contacts', async () => {

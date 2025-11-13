@@ -185,7 +185,10 @@ describe('Call Settings Client Tests for WxCallBackendConnector', () => {
         file: WEBEX_CALLING_CONNECTOR_FILE,
         method: 'getCallWaitingSetting',
       });
-      expect(errorSpy).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith(`Failed to get call waiting setting: {}`, {
+        file: 'WxCallBackendConnector',
+        method: 'getCallWaitingSetting',
+      });
       expect(logSpy).not.toHaveBeenCalled();
     });
 

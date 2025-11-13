@@ -780,6 +780,7 @@ function leaveMeeting(meetingId) {
       publishShareBtn.disabled = true;
       unpublishShareBtn.disabled = true;
       enableMeetingDependentButtons(false);
+      clearSipCalloutFields();
     });
 }
 
@@ -1296,6 +1297,115 @@ function sendDtmfTones() {
   }
 }
 
+// SIP Call-Out Functions --------------------------------------------------
+
+function validateSipCalloutFields() {
+  const sipAddress = document.getElementById('gc-sip-address').value.trim();
+  const displayName = document.getElementById('gc-sip-display-name').value.trim();
+  const button = document.getElementById('gc-sip-callout');
+  const statusElm = document.getElementById('gc-sip-callout-status');
+  
+  const shouldEnable = sipAddress && displayName;
+  button.disabled = !shouldEnable;
+  
+  // Update status message
+  if (statusElm) {
+    if (!sipAddress || !displayName) {
+      statusElm.innerText = 'Please fill in all required fields.';
+      statusElm.style.color = 'orange';
+    } else {
+      statusElm.innerText = 'Ready to call out.';
+      statusElm.style.color = 'green';
+    }
+  }
+}
+
+
+function validateCancelSipFields() {
+  const participantId = document.getElementById('gc-sip-participant-id').value.trim();
+  const button = document.getElementById('gc-sip-cancel-callout');
+  const shouldEnable = !!participantId;
+  button.disabled = !shouldEnable;
+}
+
+function clearSipCalloutFields() {
+  document.getElementById('gc-sip-address').value = '';
+  document.getElementById('gc-sip-display-name').value = '';
+  document.getElementById('gc-sip-participant-id').value = '';
+  // Reset button states
+  validateSipCalloutFields();
+  validateCancelSipFields();
+  // Clear status messages
+  document.getElementById('gc-sip-callout-status').innerText = '';
+  document.getElementById('gc-sip-cancel-callout-status').innerText = '';
+}
+
+function callOutSipParticipant() {
+  const meeting = getCurrentMeeting();
+  
+  if (!meeting) {
+    const statusElm = document.getElementById('gc-sip-callout-status');
+    statusElm.innerText = 'Error: No active meeting. Please join a meeting first.';
+    statusElm.style.color = 'red';
+    return;
+  }
+  // Get user input fields
+  const sipAddress = document.getElementById('gc-sip-address').value.trim();
+  const displayName = document.getElementById('gc-sip-display-name').value.trim();
+  const statusElm = document.getElementById('gc-sip-callout-status');
+  const button = document.getElementById('gc-sip-callout');
+  button.disabled = true;
+  statusElm.innerText = 'Calling out...';
+  statusElm.style.color = 'blue';
+  meeting.sipCallOut(sipAddress, displayName)
+    .then((data) => {
+      statusElm.innerText = 'SIP call-out successful!';
+      statusElm.style.color = 'green';
+      console.log('MeetingControls#callOutSipParticipant() :: success!', data);
+      document.getElementById('gc-sip-address').value = '';
+      document.getElementById('gc-sip-display-name').value = '';
+      button.disabled = false;
+      validateSipCalloutFields();
+    })
+    .catch((error) => {
+      statusElm.innerText = `Error: ${error.message || 'See console'}`;
+      statusElm.style.color = 'red';
+      console.error('MeetingControls#callOutSipParticipant() :: error', error);
+      button.disabled = false;
+    });
+}
+
+function cancelSipCallOut() {
+  const participantId = document.getElementById('gc-sip-participant-id').value.trim();
+  const statusElm = document.getElementById('gc-sip-cancel-status');
+  const button = document.getElementById('gc-sip-cancel-callout');
+  
+  if (!participantId) {
+    statusElm.innerText = 'Please enter a participant ID.';
+    statusElm.style.color = 'red';
+    return;
+  }  
+  button.disabled = true;
+  statusElm.innerText = 'Cancelling...';
+  statusElm.style.color = 'blue';
+  meeting.cancelSipCallOut(
+    participantId,
+  )
+    .then((data) => {
+      statusElm.innerText = 'SIP call-out cancelled!';
+      statusElm.style.color = 'green';
+      console.log('MeetingControls#cancelSipCallOut() :: success!', data);
+      document.getElementById('gc-sip-participant-id').value = '';
+      button.disabled = false;
+      validateCancelSipFields();
+    })
+    .catch((error) => {
+      statusElm.innerText = `Error: ${error.message || 'See console'}`;
+      statusElm.style.color = 'red';
+      console.error('MeetingControls#cancelSipCallOut() :: error', error);
+      button.disabled = false;
+    });
+  }
 const localVideoQuality = {
   '360p': '360p',
   '480p': '480p',
@@ -4084,6 +4194,10 @@ function enableMeetingDependentButtons(enable) {
   meetingDependentButtons.forEach((button) => {
     button.disabled = !enable;
   });
+  
+  // Update SIP call-out button states when meeting state changes
+  validateSipCalloutFields();
+  validateCancelSipFields();
 }
 
 enableMeetingDependentButtons(false);
