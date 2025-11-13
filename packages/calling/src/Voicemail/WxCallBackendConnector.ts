@@ -1,6 +1,5 @@
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
-import ExtendedError from '../Errors/catalog/ExtendedError';
 import SDKConnector from '../SDKConnector';
 import {
   RAW_REQUEST,
@@ -211,11 +210,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
         storeVoicemailList(this.context, messageinfo);
       } catch (err: unknown) {
-        const errorInfo = err as WebexRequestPayload;
-        const extendedError = new Error(`Failed to get voicemail list: ${err}`) as ExtendedError;
-        log.error(extendedError, loggerContext);
+        log.error(`Failed to get voicemail list: ${JSON.stringify(err)}`, loggerContext);
         await uploadLogs();
-        const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+        const errorStatus = serviceErrorCodeHandler(err as WebexRequestPayload, loggerContext);
 
         return errorStatus;
       }
@@ -288,11 +285,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(`Failed to get voicemail content: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to get voicemail content: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
-      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      const errorStatus = serviceErrorCodeHandler(err as WebexRequestPayload, loggerContext);
 
       return errorStatus;
     }
@@ -347,11 +342,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(`Failed to get voicemail summary: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to get voicemail summary: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
-      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      const errorStatus = serviceErrorCodeHandler(err as WebexRequestPayload, loggerContext);
 
       return errorStatus;
     }
@@ -390,11 +383,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(`Failed to mark voicemail as read: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to mark voicemail as read: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
-      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      const errorStatus = serviceErrorCodeHandler(err as WebexRequestPayload, loggerContext);
 
       return errorStatus;
     }
@@ -433,13 +424,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(
-        `Failed to mark voicemail as unread: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to mark voicemail as unread: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
-      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      const errorStatus = serviceErrorCodeHandler(err as WebexRequestPayload, loggerContext);
 
       return errorStatus;
     }
@@ -479,11 +466,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(`Failed to delete voicemail: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to delete voicemail: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
-      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      const errorStatus = serviceErrorCodeHandler(err as WebexRequestPayload, loggerContext);
 
       return errorStatus;
     }
@@ -530,13 +515,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(
-        `Failed to get voicemail transcript: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to get voicemail transcript: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
-      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      const errorStatus = serviceErrorCodeHandler(err as WebexRequestPayload, loggerContext);
 
       return errorStatus;
     }

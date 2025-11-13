@@ -22,8 +22,6 @@ import {
 
 const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
 
-// @ts-ignore
-// @ts-ignore
 const Mercury = WebexPlugin.extend({
   namespace: 'Mercury',
   lastError: undefined,

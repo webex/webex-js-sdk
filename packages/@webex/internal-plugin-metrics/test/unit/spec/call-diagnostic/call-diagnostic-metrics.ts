@@ -3906,7 +3906,7 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(webexLoggerLogCalls[0].args, [
           'CallDiagnosticMetrics: @setDeviceInfo called',
-          device,
+          {userId: 'userId', deviceId: 'deviceUrl', orgId: 'orgId'},
         ]);
 
         assert.deepEqual(cd.device, device);

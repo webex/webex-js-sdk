@@ -63,8 +63,6 @@ export const CC_TASK_EVENTS = {
   AGENT_CONFERENCE_TRANSFERRED: 'AgentConferenceTransferred',
   /** Event emitted when conference transfer fails */
   AGENT_CONFERENCE_TRANSFER_FAILED: 'AgentConferenceTransferFailed',
-  /** Event emitted when consulted participant is moving/being transferred */
-  CONSULTED_PARTICIPANT_MOVING: 'ConsultedParticipantMoving',
   /** Event emitted for post-call activity by participant */
   PARTICIPANT_POST_CALL_ACTIVITY: 'ParticipantPostCallActivity',
   /** Event emitted when contact is blind transferred */
@@ -91,6 +89,8 @@ export const CC_TASK_EVENTS = {
   CONTACT_RECORDING_RESUME_FAILED: 'ContactRecordingResumeFailed',
   /** Event emitted when contact ends */
   CONTACT_ENDED: 'ContactEnded',
+  /** Event emitted when contact is merged */
+  CONTACT_MERGED: 'ContactMerged',
   /** Event emitted when ending contact fails */
   AGENT_CONTACT_END_FAILED: 'AgentContactEndFailed',
   /** Event emitted when agent enters wrap-up state */

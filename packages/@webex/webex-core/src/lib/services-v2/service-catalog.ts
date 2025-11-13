@@ -319,7 +319,13 @@ const ServiceCatalog = AmpState.extend({
 
     serviceDetails.forEach((serviceObj) => {
       const serviceDetail = this._getServiceDetail(serviceObj.id, serviceGroup);
+      serviceObj?.serviceUrls?.sort((a, b) => {
+        if (a.priority < 0 && b.priority < 0) return 0;
+        if (a.priority < 0) return 1;
+        if (b.priority < 0) return -1;
 
+        return a.priority - b.priority;
+      });
       if (serviceDetail) {
         serviceDetail.serviceUrls = serviceObj.serviceUrls || [];
       } else {

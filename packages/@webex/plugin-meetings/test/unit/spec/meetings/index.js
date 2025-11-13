@@ -690,11 +690,9 @@ describe('plugin-meetings', () => {
           assert.deepEqual(result.options, {
             mode: 'BLUR',
             blurStrength: 'STRONG',
-            generator: 'worker',
             quality: 'LOW',
             authToken: 'fake_token',
             mirror: false,
-            canvasResolutionScaling: 1,
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
