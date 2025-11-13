@@ -30,6 +30,7 @@ import {
   NetworkQualityMonitor,
   StatsMonitor,
   StatsMonitorEventNames,
+  InboundAudioIssueSubTypes,
 } from '@webex/internal-media-core';
 
 import {
@@ -57,6 +58,7 @@ import {
   NoMediaEstablishedYetError,
   UserNotJoinedError,
   AddMediaFailed,
+  SdpResponseTimeoutError,
 } from '../common/errors/webex-errors';
 
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -7451,7 +7453,7 @@ export default class Meeting extends StatelessWebexPlugin {
         } seconds`
       );
 
-      const error = new Error('Timed out waiting for REMOTE SDP ANSWER');
+      const error = new SdpResponseTimeoutError();
 
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
