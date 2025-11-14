@@ -105,6 +105,22 @@ const Mercury = WebexPlugin.extend({
   },
 
   /**
+   * Attach event listeners to a socket.
+   * @param {Socket} socket - The socket to attach listeners to
+   * @param {sessionId} sessionId - The socket related session ID
+   * @returns {void}
+   */
+  _attachSocketEventListeners(socket, sessionId) {
+    const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
+
+    socket.on('close', (event) => this._onclose(sessionId, event, socket));
+    socket.on('message', (...args) => this._onmessage(sessionId, ...args));
+    socket.on('pong', (...args) => this._setTimeOffset(sessionId, ...args));
+    socket.on('sequence-mismatch', (...args) => this._emit(`sequence-mismatch${suffix}`, ...args));
+    socket.on('ping-pong-latency', (...args) => this._emit(`ping-pong-latency${suffix}`, ...args));
+  },
+
+  /**
    * Get the last error.
    * @returns {any} The last error.
    */
@@ -351,53 +367,25 @@ const Mercury = WebexPlugin.extend({
     let attemptWSUrl;
     const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
 
-    socket.on('close', (...args) => this._onclose(sessionId, ...args));
-    socket.on('message', (...args) => this._onmessage(sessionId, ...args));
-    socket.on('pong', (...args) => this._setTimeOffset(sessionId, ...args));
-    socket.on('sequence-mismatch', (...args) => this._emit(`sequence-mismatch${suffix}`, ...args));
-    socket.on('ping-pong-latency', (...args) => this._emit(`ping-pong-latency${suffix}`, ...args));
+    this._attachSocketEventListeners(socket, sessionId);
+    const backoffCall = this.backoffCalls.get(sessionId);
+    if (!backoffCall) {
+      const msg = `${this.namespace}: prevent socket open when backoffCall no longer defined for ${sessionId}`;
 
-    Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()])
-      .then(([webSocketUrl, token]) => {
-        const backoffCall = this.backoffCalls.get(sessionId);
-        if (!backoffCall) {
-          const msg = `${this.namespace}: prevent socket open when backoffCall no longer defined for ${sessionId}`;
+      this.logger.info(msg);
 
-          this.logger.info(msg);
+      return Promise.reject(new Error(msg));
+    }
 
-          return Promise.reject(new Error(msg));
-        }
-
+    return this._prepareAndOpenSocket(socket, socketUrl, sessionId)
+      .then((webSocketUrl) => {
         attemptWSUrl = webSocketUrl;
 
-        let options = {
-          forceCloseDelay: this.config.forceCloseDelay,
-          pingInterval: this.config.pingInterval,
-          pongTimeout: this.config.pongTimeout,
-          token: token.toString(),
-          trackingId: `${this.webex.sessionId}_${sessionId}_${Date.now()}`,
-          logger: this.logger,
-        };
-
-        // if the consumer has supplied request options use them
-        if (this.webex.config.defaultMercuryOptions) {
-          this.logger.info(`${this.namespace}: setting custom options for ${sessionId}`);
-          options = {...options, ...this.webex.config.defaultMercuryOptions};
-        }
-
-        // Set the socket before opening it. This allows a disconnect() to close
-        // the socket if it is in the process of being opened.
-        this.sockets.set(sessionId, socket);
-        this.socket = this.sockets.get(this.defaultSessionId) || socket;
-
-        this.logger.info(`${this.namespace} connection url for ${sessionId}: ${webSocketUrl}`);
-
-        return socket.open(webSocketUrl, options);
-      })
-      .then(() => {
         this.logger.info(
           `${this.namespace}: connected to mercury, success, action: connected, sessionId: ${sessionId}, url: ${attemptWSUrl}`
         );
+
+        // Default behavior for normal connection
         callback();
 
         return this.webex.internal.feature
@@ -413,7 +401,6 @@ const Mercury = WebexPlugin.extend({
       .catch((reason) => {
         this.lastError = reason; // remember the last error
 
-        const backoffCall = this.backoffCalls.get(sessionId);
         // Suppress connection errors that appear to be network related. This
         // may end up suppressing metrics during outages, but we might not care
         // (especially since many of our outages happen in a way that client
@@ -488,6 +475,36 @@ const Mercury = WebexPlugin.extend({
         );
         callback(reason);
       });
+  },
+
+  _prepareAndOpenSocket(socket, socketUrl, sessionId) {
+    return Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()]).then(
+      ([webSocketUrl, token]) => {
+        let options = {
+          forceCloseDelay: this.config.forceCloseDelay,
+          pingInterval: this.config.pingInterval,
+          pongTimeout: this.config.pongTimeout,
+          token: token.toString(),
+          trackingId: `${this.webex.sessionId}_${sessionId}_${Date.now()}`,
+          logger: this.logger,
+        };
+
+        // if the consumer has supplied request options use them
+        if (this.webex.config.defaultMercuryOptions) {
+          this.logger.info(`${this.namespace}: setting custom options for ${sessionId}`);
+          options = {...options, ...this.webex.config.defaultMercuryOptions};
+        }
+
+        // Set the socket before opening it. This allows a disconnect() to close
+        // the socket if it is in the process of being opened.
+        this.sockets.set(sessionId, socket);
+        this.socket = this.sockets.get(this.defaultSessionId) || socket;
+
+        this.logger.info(`${this.namespace} connection url for ${sessionId}: ${webSocketUrl}`);
+
+        return socket.open(webSocketUrl, options).then(() => webSocketUrl);
+      }
+    );
   },
 
   _connectWithBackoff(webSocketUrl, sessionId) {
@@ -710,6 +727,20 @@ const Mercury = WebexPlugin.extend({
     }
 
     envelope.sessionId = sessionId;
+    const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
+
+    // Handle shutdown message shape: { type: 'shutdown' }
+    if (envelope && envelope.type === 'shutdown') {
+      this.logger.info(
+        `${this.namespace}: [shutdown] imminent shutdown message received for ${sessionId}`
+      );
+      this._emit(`event:mercury_shutdown_imminent${suffix}`, envelope);
+
+      this._handleImminentShutdown(sessionId);
+
+      return Promise.resolve();
+    }
+
     const {data} = envelope;
 
     this._applyOverrides(data);
@@ -732,8 +763,6 @@ const Mercury = WebexPlugin.extend({
         Promise.resolve()
       )
       .then(() => {
-        const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
-
         this._emit(`event${suffix}`, envelope);
         const [namespace] = data.eventType.split('.');
 
