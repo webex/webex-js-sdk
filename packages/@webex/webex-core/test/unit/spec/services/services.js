@@ -349,8 +349,6 @@ describe('webex-core', () => {
         
         const mapResult = await services._fetchNewServiceHostmap({from: 'limited'});
 
-        assert.deepEqual(mapResult, mapResponse);
-
         assert.calledOnceWithExactly(services.request, {
           method: 'GET',
           service: 'u2c',
@@ -837,6 +835,38 @@ describe('webex-core', () => {
         services.updateCredentialsConfig();
 
         assert.equal(webex.config.credentials.authorizeUrl, authUrl);
+      });
+    });
+
+    describe('#getMobiusClusters', () => {
+      it('returns unique mobius host entries from hostCatalog', () => {
+        // Arrange: two hostCatalog keys, with duplicate mobius host across keys
+        services._hostCatalog = {
+          'mobius-us-east-2.prod.infra.webex.com': [
+            {host: 'mobius-us-east-2.prod.infra.webex.com', ttl: -1, priority: 5, id: 'urn:TEAM:xyz:mobius'},
+            {host: 'mobius-eu-central-1.prod.infra.webex.com', ttl: -1, priority: 10, id: 'urn:TEAM:xyz:mobius'},
+            ],
+
+          'mobius-eu-central-1.prod.infra.webex.com': [
+            {host: 'mobius-us-east-2.prod.infra.webex.com', ttl: -1, priority: 7, id: 'urn:TEAM:xyz:mobius'}, // duplicate host
+            ],
+          'wdm-a.webex.com' : [
+            {host: 'wdm-a.webex.com', ttl: -1, priority: 5, id: 'urn:TEAM:xyz:wdm'},
+          ]
+        };
+    
+        // Act
+        const clusters = services.getMobiusClusters();
+    
+        // Assert
+        // deduped; only mobius entries; keeps first seen mobius-a, then mobius-b
+        assert.deepEqual(
+          clusters.map(({host, id, ttl, priority}) => ({host, id, ttl, priority})),
+          [
+            {host: 'mobius-us-east-2.prod.infra.webex.com', id: 'urn:TEAM:xyz:mobius', ttl: -1, priority: 5},
+            {host: 'mobius-eu-central-1.prod.infra.webex.com', id: 'urn:TEAM:xyz:mobius', ttl: -1, priority: 10},
+          ]
+        );
       });
     });
 

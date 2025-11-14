@@ -63,6 +63,9 @@ const Services = WebexPlugin.extend({
 
   _hostCatalog: null,
 
+  // Map of active cluster ids per service, e.g. { wdm: 'urn:TEAM:ap-southeast-2_m:wdm' }
+  _activeServices: {},
+
   /**
    * Get the registry associated with this webex instance.
    *
@@ -160,6 +163,40 @@ const Services = WebexPlugin.extend({
     const catalog = this._getCatalog();
 
     return catalog.markFailedUrl(url, noPriorityHosts);
+  },
+
+  /**
+   * Get all Mobius cluster host entries from the legacy host catalog.
+   * @returns {Array<{host: string, id: string, ttl: number, priority: number}>}
+   */
+  getMobiusClusters() {
+    this.logger.info('services: fetching mobius clusters');
+    const clusters = [];
+    const hostCatalog = this._hostCatalog || {};
+
+    Object.entries(hostCatalog).forEach(([host, entries]) => {
+      (entries || []).forEach((entry) => {
+        if (typeof entry?.id === 'string' && entry.id.endsWith(':mobius')) {
+          // Ensure host is included; prefer entry.host if present, else use the map key
+          const withHost = entry.host ? entry.host : host;
+          // Skip duplicates for the same host
+          if (!clusters.find((c) => c && c.host === withHost)) {
+            clusters.push({...entry, host: withHost});
+          }
+        }
+      });
+    });
+
+    return clusters;
+  },
+
+  /**
+   * Merge provided active cluster mappings into current state.
+   * @param {Record<string,string>} activeServices
+   * @returns {void}
+   */
+  _updateActiveServices(activeServices) {
+    this._activeServices = {...this._activeServices, ...activeServices};
   },
 
   /**
@@ -1004,7 +1041,7 @@ const Services = WebexPlugin.extend({
         window.localStorage.setItem(CATALOG_CACHE_KEY_V1, JSON.stringify(updated));
       }
     } catch (error) {
-      // ignore storage errors
+      this.logger.warn('services: error caching catalog', error);
     }
   },
 
@@ -1028,7 +1065,7 @@ const Services = WebexPlugin.extend({
         try {
           this.clearCatalogCache();
         } catch (e) {
-          // ignore
+          this.logger.warn('services: error clearing catalog cache', e);
         }
 
         return false;
@@ -1063,6 +1100,8 @@ const Services = WebexPlugin.extend({
 
       return true;
     } catch (e) {
+      this.logger.warn('services: error loading catalog from cache', e);
+
       return false;
     }
   },

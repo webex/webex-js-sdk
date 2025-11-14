@@ -412,12 +412,6 @@ const ServiceCatalog = AmpState.extend({
       }
     });
 
-    console.log(
-      'pkesari_status before updating the ready status for service group',
-      serviceGroup,
-      this.status[serviceGroup]
-    );
-    console.log('pkesari_updating the ready status to true for service group: ', serviceGroup);
     this.status[serviceGroup].ready = true;
     this.trigger(serviceGroup);
 
