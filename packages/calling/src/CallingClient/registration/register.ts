@@ -55,6 +55,7 @@ import {
   REGISTRATION_UTIL,
   METHODS,
   URL_ENDPOINT,
+  RECONNECT_ON_FAILURE_UTIL,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -899,7 +900,7 @@ export class Registration implements IRegistration {
 
                 if (!abort) {
                   /* In case of non-final error, re-attempt registration */
-                  await this.reconnectOnFailure(KEEPALIVE_UTIL);
+                  await this.reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL);
                 } else if (error.statusCode === 404) {
                   this.handle404KeepaliveFailure(KEEPALIVE_UTIL);
                 }
