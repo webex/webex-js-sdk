@@ -18,6 +18,7 @@ import {
   isParticipantInMainInteraction,
   isPrimary,
   isSecondaryEpDnAgent,
+  shouldAutoAnswerTask,
 } from './TaskUtils';
 
 /** @internal */
@@ -190,6 +191,18 @@ export default class TaskManager extends EventEmitter {
               this.emit(TASK_EVENTS.TASK_INCOMING, task);
             }
             break;
+          case CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION:
+            task = this.updateTaskData(task, payload.data);
+            LoggerProxy.log(`Agent offer campaign reservation received for task`, {
+              module: TASK_MANAGER_FILE,
+              method: METHODS.REGISTER_TASK_LISTENERS,
+              interactionId: payload.data?.interactionId,
+            });
+            this.emit(TASK_EVENTS.TASK_OFFER_CAMPAIGN_RESERVATION, task);
+
+            // Handle auto-answer for campaign reservation
+            this.handleAutoAnswer(task);
+            break;
           case CC_EVENTS.AGENT_OFFER_CONTACT:
             // We don't have to emit any event here since this will be result of promise.
             task = this.updateTaskData(task, payload.data);
@@ -199,6 +212,9 @@ export default class TaskManager extends EventEmitter {
               interactionId: payload.data?.interactionId,
             });
             this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, task);
+
+            // Handle auto-answer for offer contact
+            this.handleAutoAnswer(task);
             break;
           case CC_EVENTS.AGENT_OUTBOUND_FAILED:
             // We don't have to emit any event here since this will be result of promise.
@@ -301,6 +317,9 @@ export default class TaskManager extends EventEmitter {
               isConsulted: true, // This ensures that the task is marked as us being requested for a consult
             });
             task.emit(TASK_EVENTS.TASK_OFFER_CONSULT, task);
+
+            // Handle auto-answer for consult offer
+            this.handleAutoAnswer(task);
             break;
           case CC_EVENTS.AGENT_CONSULTING:
             // Received when agent is in an active consult state
@@ -535,6 +554,52 @@ export default class TaskManager extends EventEmitter {
         method: METHODS.REMOVE_TASK_FROM_COLLECTION,
         interactionId: task.data.interactionId,
       });
+    }
+  }
+
+  /**
+   * Handles auto-answer logic for incoming tasks
+   * Automatically accepts tasks when certain conditions are met:
+   * 1. WebRTC calls with auto-answer enabled in agent profile
+   * 2. Agent-initiated WebRTC outdial calls
+   * 3. Agent-initiated digital outbound (Email/SMS) without previous transfers
+   *
+   * @param task - The task to evaluate for auto-answer
+   * @private
+   */
+  private async handleAutoAnswer(task: ITask): Promise<void> {
+    if (!task || !task.data) {
+      return;
+    }
+
+    const shouldAutoAnswer = shouldAutoAnswerTask(
+      task.data,
+      this.agentId,
+      this.webCallingService.loginOption
+    );
+
+    if (shouldAutoAnswer) {
+      LoggerProxy.info(`Auto-answering task`, {
+        module: TASK_MANAGER_FILE,
+        method: 'handleAutoAnswer',
+        interactionId: task.data.interactionId,
+      });
+
+      try {
+        await task.accept();
+        LoggerProxy.info(`Task auto-answered successfully`, {
+          module: TASK_MANAGER_FILE,
+          method: 'handleAutoAnswer',
+          interactionId: task.data.interactionId,
+        });
+      } catch (error) {
+        LoggerProxy.error(`Failed to auto-answer task`, {
+          module: TASK_MANAGER_FILE,
+          method: 'handleAutoAnswer',
+          interactionId: task.data.interactionId,
+          error,
+        });
+      }
     }
   }
 

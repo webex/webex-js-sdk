@@ -111,3 +111,97 @@ export const isSecondaryEpDnAgent = (interaction: Interaction): boolean => {
 
   return interaction.mediaType === 'telephony' && isSecondaryAgent(interaction);
 };
+
+/**
+ * Checks if auto-answer is enabled for the agent participant
+ * @param interaction - The interaction object
+ * @param agentId - Current agent ID
+ * @returns true if auto-answer is enabled, false otherwise
+ */
+export const isAutoAnswerEnabled = (interaction: Interaction, agentId: string): boolean => {
+  return interaction.participants?.[agentId]?.autoAnswerEnabled === true;
+};
+
+/**
+ * Checks if the interaction is a WebRTC call eligible for auto-answer
+ * @param interaction - The interaction object
+ * @param loginOption - The agent's login option (BROWSER, AGENT_DN, etc.)
+ * @returns true if this is a WebRTC call, false otherwise
+ */
+export const isWebRTCCall = (interaction: Interaction, loginOption: string): boolean => {
+  return loginOption === 'BROWSER' && interaction.mediaType === 'telephony';
+};
+
+/**
+ * Checks if the interaction is a digital outbound (Email/SMS)
+ * @param interaction - The interaction object
+ * @returns true if this is a digital outbound, false otherwise
+ */
+export const isDigitalOutbound = (interaction: Interaction): boolean => {
+  return (
+    interaction.contactDirection?.type === 'OUTBOUND' &&
+    interaction.outboundType === 'OUTDIAL' &&
+    (interaction.mediaChannel === 'email' || interaction.mediaChannel === 'sms')
+  );
+};
+
+/**
+ * Checks if the outdial was initiated by the current agent
+ * @param interaction - The interaction object
+ * @param agentId - Current agent ID
+ * @returns true if agent initiated the outdial, false otherwise
+ */
+export const isAgentInitiatedOutdial = (interaction: Interaction, agentId: string): boolean => {
+  return (
+    interaction.contactDirection?.type === 'OUTBOUND' &&
+    interaction.outboundType === 'OUTDIAL' &&
+    interaction.callProcessingDetails?.outdialAgentId === agentId &&
+    interaction.owner === agentId &&
+    !interaction.callProcessingDetails?.BLIND_TRANSFER_IN_PROGRESS
+  );
+};
+
+/**
+ * Determines if a task should be auto-answered based on interaction data
+ * Auto-answer logic handles:
+ * 1. WebRTC calls with auto-answer enabled in agent profile
+ * 2. Agent-initiated WebRTC outdial calls
+ * 3. Agent-initiated digital outbound (Email/SMS) without previous transfers
+ *
+ * @param taskData - The task data
+ * @param agentId - Current agent ID
+ * @param loginOption - Agent's login option
+ * @returns true if task should be auto-answered, false otherwise
+ */
+export const shouldAutoAnswerTask = (
+  taskData: TaskData,
+  agentId: string,
+  loginOption: string
+): boolean => {
+  const {interaction} = taskData;
+
+  if (!interaction || !agentId) {
+    return false;
+  }
+
+  // Check if auto-answer is enabled for this agent
+  const autoAnswerEnabled = isAutoAnswerEnabled(interaction, agentId);
+
+  // Check if this is an agent-initiated outdial
+  const agentInitiatedOutdial = isAgentInitiatedOutdial(interaction, agentId);
+
+  // WebRTC telephony calls
+  if (isWebRTCCall(interaction, loginOption)) {
+    return autoAnswerEnabled || agentInitiatedOutdial;
+  }
+
+  // Digital outbound (Email/SMS)
+  if (isDigitalOutbound(interaction) && agentInitiatedOutdial) {
+    // Don't auto-answer if task has been transferred (has previous vteams)
+    const hasPreviousVteams = interaction.previousVTeams && interaction.previousVTeams.length > 0;
+
+    return !hasPreviousVteams;
+  }
+
+  return false;
+};

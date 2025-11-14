@@ -1000,6 +1000,8 @@ function registerTaskListeners(task) {
 
   task.on('task:offerConsult', updateTaskList);
 
+  task.on('task:offerCampaignReservation', updateTaskList);
+
   task.on('task:consultAccepted', updateTaskList);
 
   task.on('task:consulting', updateTaskList);

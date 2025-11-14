@@ -105,6 +105,8 @@ export const CC_TASK_EVENTS = {
   AGENT_CONTACT: 'AgentContact',
   /** Event emitted when contact is offered to agent */
   AGENT_OFFER_CONTACT: 'AgentOfferContact',
+  /** Event emitted when campaign reservation is offered to agent */
+  AGENT_OFFER_CAMPAIGN_RESERVATION: 'AgentOfferCampaignReservation',
   /** Event emitted when contact is assigned to agent */
   AGENT_CONTACT_ASSIGNED: 'AgentContactAssigned',
   /** Event emitted when contact is unassigned from agent */

@@ -2105,5 +2105,36 @@ describe('TaskManager', () => {
       );
     });
   });
+
+  describe('Auto-Answer Functionality', () => {
+    // Note: The auto-answer helper functions are thoroughly tested in TaskUtils.ts
+
+    it('should handle AGENT_OFFER_CAMPAIGN_RESERVATION event', () => {
+      const campaignPayload = {
+        data: {
+          ...initalPayload.data,
+          type: CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION,
+        },
+      };
+
+      // Create initial task
+      webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+      
+      const managerEmitSpy = jest.spyOn(taskManager, 'emit');
+
+      // Emit campaign reservation event
+      webSocketManagerMock.emit('message', JSON.stringify(campaignPayload));
+
+      // Verify the manager emitted the new TASK_OFFER_CAMPAIGN_RESERVATION event
+      expect(managerEmitSpy).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_OFFER_CAMPAIGN_RESERVATION,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            interactionId: taskId
+          })
+        })
+      );
+    });
+  });
 });
 
