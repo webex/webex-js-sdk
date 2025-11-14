@@ -35,7 +35,6 @@ import HashTreeParser, {
   DataSet,
   HashTreeMessage,
   HashTreeObject,
-  HtMeta,
   isSelf,
   LocusInfoUpdateType,
 } from '../hashTree/hashTreeParser';

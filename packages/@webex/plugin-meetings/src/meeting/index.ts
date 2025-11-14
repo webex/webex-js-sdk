@@ -70,7 +70,7 @@ import Media, {type BundlePolicy} from '../media';
 import MediaProperties from '../media/properties';
 import MeetingStateMachine from './state';
 import {createMuteState} from './muteState';
-import LocusInfo, {LocusDTO, LocusLLMEvent} from '../locus-info';
+import LocusInfo, {LocusLLMEvent} from '../locus-info';
 import Metrics from '../metrics';
 import ReconnectionManager from '../reconnection-manager';
 import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
@@ -174,6 +174,7 @@ import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 import {Invitee} from './type';
 import {DataSet} from '../hashTree/hashTreeParser';
+import {LocusDTO} from '../locus-info/types';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';

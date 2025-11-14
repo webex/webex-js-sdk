@@ -1,3 +1,5 @@
+import {HtMeta} from '../hashTree/types';
+
 export type LocusDTO = {
   controls?: any;
   fullState?: {

@@ -9,3 +9,12 @@ export const ObjectType = {
 } as const;
 
 export type ObjectType = Enum<typeof ObjectType>;
+
+export interface HtMeta {
+  elementId: {
+    type: ObjectType;
+    id: number;
+    version: number;
+  };
+  dataSetNames: string[];
+}

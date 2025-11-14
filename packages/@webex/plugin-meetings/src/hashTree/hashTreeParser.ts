@@ -3,7 +3,7 @@ import HashTree, {LeafDataItem} from './hashTree';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {Enum, HTTP_VERBS} from '../constants';
 import {DataSetNames, EMPTY_HASH} from './constants';
-import {ObjectType} from './types';
+import {ObjectType, HtMeta} from './types';
 import {LocusDTO} from '../locus-info/types';
 
 export interface DataSet {
@@ -19,14 +19,6 @@ export interface DataSet {
   };
 }
 
-export interface HtMeta {
-  elementId: {
-    type: ObjectType;
-    id: number;
-    version: number;
-  };
-  dataSetNames: string[];
-}
 export interface HashTreeObject {
   htMeta: HtMeta;
   data: Record<string, any>;
