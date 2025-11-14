@@ -1604,7 +1604,7 @@ describe('Registration Tests', () => {
       );
     });
 
-    it('ensure retryAfter is set (line 291) when 429 occurs during failover retry', async () => {
+    it('ensure retryAfter is set when 429 occurs during failover retry', async () => {
       await beforeEachSetupForKeepalive();
       // Simulate loss of registration so failover path attempts a new registration
       reg.clearKeepaliveTimer();
