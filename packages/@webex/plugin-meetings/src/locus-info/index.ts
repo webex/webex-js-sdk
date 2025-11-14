@@ -462,7 +462,7 @@ export default class LocusInfo extends EventsScope {
         this.onFullLocus(data.locus, undefined, data.dataSets);
         break;
       case 'get-loci-response':
-        if (data.locus?.links?.resources?.dataSets?.url) {
+        if (data.locus?.links?.resources?.visibleDataSets?.url) {
           if (this.webex.config.meetings.experimental.locusHashTrees) {
             LoggerProxy.logger.info(
               'Locus-info:index#initialSetup --> creating HashTreeParser from get-loci-response'

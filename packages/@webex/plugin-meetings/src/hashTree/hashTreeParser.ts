@@ -29,7 +29,7 @@ export interface RootHashMessage {
 }
 export interface HashTreeMessage {
   dataSets: Array<DataSet>;
-  dataSetsUrl: string; // url from which we can get more info about all data sets
+  visibleDataSetsUrl: string; // url from which we can get more info about all data sets - now it seems to be visibleDataSetsUrl
   locusStateElements?: Array<HashTreeObject>;
   locusSessionId?: string;
   locusUrl: string;
@@ -73,7 +73,7 @@ export function isSelf(object: HashTreeObject) {
  */
 class HashTreeParser {
   dataSets: Record<string, InternalDataSet> = {};
-  dataSetsUrl: string; // url from which we can get info about all data sets
+  visibleDataSetsUrl: string; // url from which we can get info about all data sets
   webexRequest: WebexRequestMethod;
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
   visibleDataSets: string[];
@@ -224,7 +224,7 @@ class HashTreeParser {
    * @returns {Promise}
    */
   async initializeFromMessage(message: HashTreeMessage) {
-    const dataSets = await this.getAllDataSetsMetadata(message.dataSetsUrl);
+    const dataSets = await this.getAllDataSetsMetadata(message.visibleDataSetsUrl);
 
     console.log('marcin: initializeFromMessage: ', message, dataSets);
     await this.initializeDataSets(dataSets, 'initialization from message');
@@ -240,15 +240,15 @@ class HashTreeParser {
    * @returns {Promise}
    */
   async initializeFromGetLociResponse(locus: LocusDTO) {
-    if (!locus?.links?.resources?.dataSets?.url) {
+    if (!locus?.links?.resources?.visibleDataSets?.url) {
       LoggerProxy.logger.warn(
-        `HashTreeParser#initializeFromGetLociResponse --> ${this.debugId} missing dataSets url in GET Loci response, cannot initialize hash trees`
+        `HashTreeParser#initializeFromGetLociResponse --> ${this.debugId} missing visibleDataSets url in GET Loci response, cannot initialize hash trees`
       );
 
       return;
     }
 
-    const dataSets = await this.getAllDataSetsMetadata(locus.links.resources.dataSets.url);
+    const dataSets = await this.getAllDataSetsMetadata(locus.links.resources.visibleDataSets.url);
 
     console.log('marcin: initializeFromGetLociResponse: ', locus, dataSets);
     await this.initializeDataSets(dataSets, 'initialization from GET /loci response');
@@ -626,7 +626,7 @@ class HashTreeParser {
     message: HashTreeMessage,
     addedDataSets: string[]
   ): Promise<void> {
-    const allDataSets = await this.getAllDataSetsMetadata(message.dataSetsUrl);
+    const allDataSets = await this.getAllDataSetsMetadata(message.visibleDataSetsUrl);
 
     for (const ds of addedDataSets) {
       const dataSetInfo = allDataSets.find((d) => d.name === ds);
@@ -637,7 +637,7 @@ class HashTreeParser {
 
       if (!dataSetInfo) {
         LoggerProxy.logger.warn(
-          `HashTreeParser#handleHashTreeMessage --> ${this.debugId} missing info about data set "${ds}" in Locus response from dataSetsUrl`
+          `HashTreeParser#handleHashTreeMessage --> ${this.debugId} missing info about data set "${ds}" in Locus response from visibleDataSetsUrl`
         );
       } else {
         // we're awaiting in a loop, because in practice there will be only one new data set at a time,
@@ -661,7 +661,7 @@ class HashTreeParser {
     message: HashTreeMessage,
     debugText?: string
   ): Promise<{updateType: LocusInfoUpdateType; updatedObjects?: HashTreeObject[]}> {
-    const {dataSets, dataSetsUrl} = message;
+    const {dataSets, visibleDataSetsUrl} = message;
 
     LoggerProxy.logger.info(
       `HashTreeParser#parseMessage --> ${this.debugId} received message ${debugText || ''}:`,
@@ -673,7 +673,7 @@ class HashTreeParser {
     }
 
     // first, update our metadata about the datasets with info from the message
-    this.dataSetsUrl = dataSetsUrl;
+    this.visibleDataSetsUrl = visibleDataSetsUrl;
     dataSets.forEach((dataSet) => this.updateDataSetInfo(dataSet));
 
     if (this.isEndMessage(message)) {
