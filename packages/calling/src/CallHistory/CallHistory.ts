@@ -139,8 +139,17 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     log.info(`Janus API URL: ${this.janusUrl}`, this.loggerContext);
     log.info(`Call history from date : ${this.fromDate}`, this.loggerContext);
 
+    /* For MS Teams Cisco call app multiline support, WXC backend needs includeSharedSessions=true
+    to fetch calls with sessionType "WEBEXCALLING_SHARED" */
     const sharedSessionsParam =
       callingBackend === CALLING_BACKEND.WXC ? '&includeSharedSessions=true' : '';
+    // Log backend and whether shared sessions are included
+    log.info(
+      `Fetching call history for ${callingBackend} backend${
+        callingBackend === CALLING_BACKEND.WXC ? ' with shared sessions' : ''
+      }`,
+      this.loggerContext
+    );
     const url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}${sharedSessionsParam}`;
 
     try {
