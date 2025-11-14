@@ -790,7 +790,7 @@ const Services = WebexPlugin.extend({
   _formatReceivedHostmap({services, activeServices, timestamp, orgId, format}) {
     const formattedHostmap: ServiceHostmap = {
       activeServices,
-      services: services.map((service) => this._formatHostMapEntry(service)),
+      services: services?.map((service) => this._formatHostMapEntry(service)),
       timestamp,
       orgId,
       format,
