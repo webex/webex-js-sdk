@@ -10,6 +10,7 @@ import {
   shouldAutoAnswerTask,
 } from '../../../../../src/services/task/TaskUtils';
 import {ITask, Interaction, TaskData} from '../../../../../src/services/task/types';
+import {LoginOption} from '../../../../../src/types';
 
 describe('TaskUtils', () => {
   let mockTask: ITask;
@@ -213,24 +214,24 @@ describe('TaskUtils', () => {
 
     describe('isWebRTCCall', () => {
       it('should return true for BROWSER login with telephony media type and webRTC enabled', () => {
-        expect(isWebRTCCall(mockInteraction, 'BROWSER', true)).toBe(true);
+        expect(isWebRTCCall(mockInteraction, LoginOption.BROWSER, true)).toBe(true);
       });
 
       it('should return false when webRTC is disabled', () => {
-        expect(isWebRTCCall(mockInteraction, 'BROWSER', false)).toBe(false);
+        expect(isWebRTCCall(mockInteraction, LoginOption.BROWSER, false)).toBe(false);
       });
 
       it('should return false for AGENT_DN login', () => {
-        expect(isWebRTCCall(mockInteraction, 'AGENT_DN', true)).toBe(false);
+        expect(isWebRTCCall(mockInteraction, LoginOption.AGENT_DN, true)).toBe(false);
       });
 
       it('should return false for EXTENSION login', () => {
-        expect(isWebRTCCall(mockInteraction, 'EXTENSION', true)).toBe(false);
+        expect(isWebRTCCall(mockInteraction, LoginOption.EXTENSION, true)).toBe(false);
       });
 
       it('should return false for BROWSER login with non-telephony media type', () => {
         mockInteraction.mediaType = 'email';
-        expect(isWebRTCCall(mockInteraction, 'BROWSER', true)).toBe(false);
+        expect(isWebRTCCall(mockInteraction, LoginOption.BROWSER, true)).toBe(false);
       });
     });
 
@@ -327,7 +328,9 @@ describe('TaskUtils', () => {
 
         it('should return true when auto-answer is enabled for WebRTC call', () => {
           mockInteraction.participants[mockAgentId].autoAnswerEnabled = true;
-          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, 'BROWSER', true)).toBe(true);
+          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, LoginOption.BROWSER, true)).toBe(
+            true
+          );
         });
 
         it('should return true for agent-initiated WebRTC outdial', () => {
@@ -336,22 +339,30 @@ describe('TaskUtils', () => {
           mockInteraction.owner = mockAgentId;
           mockInteraction.callProcessingDetails.outdialAgentId = mockAgentId;
           mockInteraction.callProcessingDetails.BLIND_TRANSFER_IN_PROGRESS = false;
-          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, 'BROWSER', true)).toBe(true);
+          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, LoginOption.BROWSER, true)).toBe(
+            true
+          );
         });
 
         it('should return false for WebRTC call without auto-answer or outdial', () => {
           mockInteraction.participants[mockAgentId].autoAnswerEnabled = false;
-          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, 'BROWSER', true)).toBe(false);
+          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, LoginOption.BROWSER, true)).toBe(
+            false
+          );
         });
 
         it('should return false when webRTC is disabled', () => {
           mockInteraction.participants[mockAgentId].autoAnswerEnabled = true;
-          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, 'BROWSER', false)).toBe(false);
+          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, LoginOption.BROWSER, false)).toBe(
+            false
+          );
         });
 
         it('should return false for non-BROWSER login', () => {
           mockInteraction.participants[mockAgentId].autoAnswerEnabled = true;
-          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, 'AGENT_DN', true)).toBe(false);
+          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, LoginOption.AGENT_DN, true)).toBe(
+            false
+          );
         });
       });
 
@@ -367,42 +378,54 @@ describe('TaskUtils', () => {
         it('should return true for agent-initiated email outdial', () => {
           mockInteraction.mediaType = 'email';
           mockInteraction.mediaChannel = 'email';
-          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, 'BROWSER', true)).toBe(true);
+          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, LoginOption.BROWSER, true)).toBe(
+            true
+          );
         });
 
         it('should return true for agent-initiated SMS outdial', () => {
           mockInteraction.mediaType = 'sms';
           mockInteraction.mediaChannel = 'sms';
-          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, 'BROWSER', true)).toBe(true);
+          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, LoginOption.BROWSER, true)).toBe(
+            true
+          );
         });
 
         it('should return false when digital outbound has previous vteams', () => {
           mockInteraction.mediaType = 'email';
           mockInteraction.mediaChannel = 'email';
           mockInteraction.previousVTeams = ['vteam-1'];
-          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, 'BROWSER', true)).toBe(false);
+          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, LoginOption.BROWSER, true)).toBe(
+            false
+          );
         });
 
         it('should return false when digital outbound is not agent-initiated', () => {
           mockInteraction.mediaType = 'email';
           mockInteraction.mediaChannel = 'email';
           mockInteraction.owner = mockOtherAgentId;
-          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, 'BROWSER', true)).toBe(false);
+          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, LoginOption.BROWSER, true)).toBe(
+            false
+          );
         });
       });
 
       describe('Edge cases', () => {
         it('should return false when interaction is null', () => {
           mockTaskData.interaction = null as any;
-          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, 'BROWSER', true)).toBe(false);
+          expect(shouldAutoAnswerTask(mockTaskData, mockAgentId, LoginOption.BROWSER, true)).toBe(
+            false
+          );
         });
 
         it('should return false when agentId is null', () => {
-          expect(shouldAutoAnswerTask(mockTaskData, null as any, 'BROWSER', true)).toBe(false);
+          expect(shouldAutoAnswerTask(mockTaskData, null as any, LoginOption.BROWSER, true)).toBe(
+            false
+          );
         });
 
         it('should return false when agentId is empty string', () => {
-          expect(shouldAutoAnswerTask(mockTaskData, '', 'BROWSER', true)).toBe(false);
+          expect(shouldAutoAnswerTask(mockTaskData, '', LoginOption.BROWSER, true)).toBe(false);
         });
       });
     });

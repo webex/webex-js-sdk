@@ -1,5 +1,7 @@
 /* eslint-disable import/prefer-default-export */
-import {Interaction, ITask, TaskData} from './types';
+import {Interaction, ITask, TaskData, MEDIA_CHANNEL} from './types';
+import {OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE, OUTBOUND_TYPE} from '../../constants';
+import {LoginOption} from '../../types';
 
 /**
  * Determines if the given agent is the primary agent (owner) of the task
@@ -134,7 +136,11 @@ export const isWebRTCCall = (
   loginOption: string,
   webRtcEnabled: boolean
 ): boolean => {
-  return webRtcEnabled && loginOption === 'BROWSER' && interaction.mediaType === 'telephony';
+  return (
+    webRtcEnabled &&
+    loginOption === LoginOption.BROWSER &&
+    interaction.mediaType === OUTDIAL_MEDIA_TYPE
+  );
 };
 
 /**
@@ -144,9 +150,10 @@ export const isWebRTCCall = (
  */
 export const isDigitalOutbound = (interaction: Interaction): boolean => {
   return (
-    interaction.contactDirection?.type === 'OUTBOUND' &&
-    interaction.outboundType === 'OUTDIAL' &&
-    (interaction.mediaChannel === 'email' || interaction.mediaChannel === 'sms')
+    interaction.contactDirection?.type === OUTDIAL_DIRECTION &&
+    interaction.outboundType === OUTBOUND_TYPE &&
+    (interaction.mediaChannel === MEDIA_CHANNEL.EMAIL ||
+      interaction.mediaChannel === MEDIA_CHANNEL.SMS)
   );
 };
 
@@ -158,8 +165,8 @@ export const isDigitalOutbound = (interaction: Interaction): boolean => {
  */
 export const isAgentInitiatedOutdial = (interaction: Interaction, agentId: string): boolean => {
   return (
-    interaction.contactDirection?.type === 'OUTBOUND' &&
-    interaction.outboundType === 'OUTDIAL' &&
+    interaction.contactDirection?.type === OUTDIAL_DIRECTION &&
+    interaction.outboundType === OUTBOUND_TYPE &&
     interaction.callProcessingDetails?.outdialAgentId === agentId &&
     interaction.owner === agentId &&
     !interaction.callProcessingDetails?.BLIND_TRANSFER_IN_PROGRESS
