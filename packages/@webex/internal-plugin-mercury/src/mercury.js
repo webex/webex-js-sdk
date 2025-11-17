@@ -485,7 +485,7 @@ const Mercury = WebexPlugin.extend({
       this.sockets.set(sessionId, socket);
     }
 
-    return this._prepareAndOpenSocket(socket, socketUrl, isShutdownSwitchover)
+    return this._prepareAndOpenSocket(socket, socketUrl, sessionId, isShutdownSwitchover)
       .then((webSocketUrl) => {
         newWSUrl = webSocketUrl;
 
