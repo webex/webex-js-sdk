@@ -1,6 +1,6 @@
 import 'jsdom-global/register';
 import sinon from 'sinon';
-import {cloneDeep, forEach} from 'lodash';
+import {cloneDeep, forEach, set} from 'lodash';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
@@ -3358,6 +3358,7 @@ describe('plugin-meetings', () => {
       let clock;
 
       beforeEach(() => {
+        set(webex, 'config.meetings.experimental.locusHashTrees', true);
 
         sinon.stub(Math, 'random').returns(0.5); // to make sure the backoff timer is predictable
 
@@ -3483,7 +3484,7 @@ describe('plugin-meetings', () => {
       }
 
       it('initializes hash trees correctly from initial full locus', () => {
-        locusInfo.initialSetup(mockFullLocus.locus, mockFullLocus.dataSets);
+        locusInfo.initialSetup({trigger: 'join-response', locus: mockFullLocus.locus, dataSets: mockFullLocus.dataSets});
 
         // check that the hash tree parser is initialized correctly
         assert.isDefined(locusInfo.hashTreeParser);
@@ -3497,60 +3498,64 @@ describe('plugin-meetings', () => {
       });
 
       it('handles hash tree messages correctly', async () => {
-        locusInfo.initialSetup(mockFullLocus.locus, mockFullLocus.dataSets);
+        locusInfo.initialSetup({
+          trigger: 'join-response', locus: mockFullLocus.locus, dataSets: mockFullLocus.dataSets});
 
         // simulate a hash tree message for a participant
         locusInfo.parse(mockMeeting, {
-          "locusUrl" : "https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2",
-          "locusSessionId" : "fe3d019c-08ca-0f21-919f-f2cc646030ae",
-          "dataSets" : [ {
-            "url" : "https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2/session/fe3d019c-08ca-0f21-919f-f2cc646030ae/datasets/attendees",
-            "name" : "attendees",
-            "root" : "7cfc14bdae7909e6fe7acd37bebf66db",
-            "version" : 4739733700975,
-            "leafCount" : 16,
-            "idleMs" : 5000,
-            "backoff" : {
-              "maxMs" : 500,
-              "exponent" : 0.5
-            }
-          }, {
-            "url" : "https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2/session/fe3d019c-08ca-0f21-919f-f2cc646030ae/datasets/atd-active",
-            "name" : "atd-unmuted",
-            "root" : "178bff6e3344f551a811712c57a9eac3",
-            "version" : 5738696122316,
-            "leafCount" : 4,
-            "idleMs" : 5000,
-            "backoff" : {
-              "maxMs" : 500,
-              "exponent" : 0.5
-            }
-          } ],
-          "locusStateElements" : [ {
-            "htMeta" : {
-              "elementId" : {
-                "type" : "PARTICIPANT",
-                "id" : 2,
-                "version" : 5679
+          eventType: 'locus.state_message',
+          stateElementsMessage: {
+            locusUrl : "https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2",
+            locusSessionId : "fe3d019c-08ca-0f21-919f-f2cc646030ae",
+            dataSets : [ {
+              url : "https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2/session/fe3d019c-08ca-0f21-919f-f2cc646030ae/datasets/attendees",
+              name : "attendees",
+              root : "7cfc14bdae7909e6fe7acd37bebf66db",
+              version : 4739733700975,
+              leafCount : 16,
+              idleMs : 5000,
+              backoff : {
+          maxMs : 500,
+          exponent : 0.5
+              }
+            }, {
+              url : "https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2/session/fe3d019c-08ca-0f21-919f-f2cc646030ae/datasets/atd-active",
+              name : "atd-unmuted",
+              root : "178bff6e3344f551a811712c57a9eac3",
+              version : 5738696122316,
+              leafCount : 4,
+              idleMs : 5000,
+              backoff : {
+          maxMs : 500,
+          exponent : 0.5
+              }
+            } ],
+            locusStateElements : [ {
+              htMeta : {
+          elementId : {
+            type : "PARTICIPANT",
+            id : 2,
+            version : 5679
+          },
+          dataSetNames : [ "attendees", "atd-unmuted" ]
               },
-              "dataSetNames" : [ "attendees", "atd-unmuted" ]
-            },
-            "data" : "{\"isCreator\":false,\"url\":\"https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2/participant/18ef210c-234a-49ac-83d6-1803bc401bc9\",\"id\":\"18ef210c-234a-49ac-83d6-1803bc401bc9\",\"guest\":false,\"resourceGuest\":false,\"moderator\":false,\"panelist\":false}"
-          }, {
-            "htMeta" : {
-              "elementId" : {
-                "type" : "PARTICIPANT",
-                "id" : 3,
-                "version" : 999999
+              data : "{\"isCreator\":false,\"url\":\"https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2/participant/18ef210c-234a-49ac-83d6-1803bc401bc9\",\"id\":\"18ef210c-234a-49ac-83d6-1803bc401bc9\",\"guest\":false,\"resourceGuest\":false,\"moderator\":false,\"panelist\":false}"
+            }, {
+              htMeta : {
+          elementId : {
+            type : "PARTICIPANT",
+            id : 3,
+            version : 999999
+          },
+          dataSetNames : [ "attendees" ]
               },
-              "dataSetNames" : [ "attendees" ]
-            },
-            "data" : "{\"isCreator\":false,\"url\":\"https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2/participant/29c0751a-7ada-40a1-94a4-eb5f5c80c863\",\"id\":\"29c0751a-7ada-40a1-94a4-eb5f5c80c863\",\"guest\":false,\"resourceGuest\":false,\"moderator\":false,\"panelist\":false}"
-          } ]
+              data : "{\"isCreator\":false,\"url\":\"https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2/participant/29c0751a-7ada-40a1-94a4-eb5f5c80c863\",\"id\":\"29c0751a-7ada-40a1-94a4-eb5f5c80c863\",\"guest\":false,\"resourceGuest\":false,\"moderator\":false,\"panelist\":false}"
+            } ]
+          }
         });
 
         // main and self should be unchanged
-        assert.deepEqual(Object.keys(locusInfo.hashTreeParser.dataSets), ['main', 'self', 'atd-unmuted']);
+        assert.deepEqual(Object.keys(locusInfo.hashTreeParser.dataSets), ['main', 'self', 'atd-unmuted', 'attendees']);
         assert.deepEqual(locusInfo.hashTreeParser.dataSets['main'].hashTree.getLeafData(0), [ { type: 'LOCUS', id: 0, version: 5678 } ]);
         assert.deepEqual(locusInfo.hashTreeParser.dataSets['self'].hashTree.getLeafData(0), [ { type: 'SELF', id: 4, version: 5678 } ]);
 
@@ -3562,47 +3567,69 @@ describe('plugin-meetings', () => {
         assert.notCalled(webex.request);
       });
 
-      it('does a sync if hashes don\'t match after a timer fires', async () => {
+      it("does a sync if hashes don't match after a timer fires", async () => {
         const atdUnmutedDataSetUrl = mockFullLocus.dataSets[2].url;
 
-        locusInfo.initialSetup(mockFullLocus.locus, mockFullLocus.dataSets);
+        locusInfo.initialSetup({
+          trigger: 'join-response',
+          locus: mockFullLocus.locus,
+          dataSets: mockFullLocus.dataSets,
+        });
 
         // simulate a hash tree message for a participant
         locusInfo.parse(mockMeeting, {
-          "locusUrl" : "https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2",
-          "locusSessionId" : "fe3d019c-08ca-0f21-919f-f2cc646030ae",
-          "dataSets" : [ {
-            "url" : atdUnmutedDataSetUrl,
-            "name" : "atd-unmuted",
-            "root" : "deadbeef", // wrong to trigger a sync
-            "version" : 5738696122316,
-            "leafCount" : 4,
-            "idleMs" : 25000,
-            "backoff" : {
-              "maxMs" : 500,
-              "exponent" : 0.5
-            }
-          } ],
-          "locusStateElements" : [ {
-            "htMeta" : {
-              "elementId" : {
-                "type" : "PARTICIPANT",
-                "id" : 2,
-                "version" : 5679
+          eventType: 'locus.state_message',
+          stateElementsMessage: {
+            locusUrl:
+              'https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2',
+            locusSessionId: 'fe3d019c-08ca-0f21-919f-f2cc646030ae',
+            dataSets: [
+              {
+                url: atdUnmutedDataSetUrl,
+                name: 'atd-unmuted',
+                root: 'deadbeef', // wrong to trigger a sync
+                version: 5738696122316,
+                leafCount: 4,
+                idleMs: 25000,
+                backoff: {
+                  maxMs: 500,
+                  exponent: 0.5,
+                },
               },
-              "dataSetNames" : [ "attendees", "atd-unmuted" ]
-            },
-            "data" : "{\"isCreator\":false,\"url\":\"https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2/participant/18ef210c-234a-49ac-83d6-1803bc401bc9\",\"id\":\"18ef210c-234a-49ac-83d6-1803bc401bc9\",\"guest\":false,\"resourceGuest\":false,\"moderator\":false,\"panelist\":false}"
-          }]
+            ],
+            locusStateElements: [
+              {
+                htMeta: {
+                  elementId: {
+                    type: 'PARTICIPANT',
+                    id: 2,
+                    version: 5679,
+                  },
+                  dataSetNames: ['attendees', 'atd-unmuted'],
+                },
+                data: '{"isCreator":false,"url":"https://locus.wbx2.com/locus/api/v1/loci/dbe6eeb9-49c7-4727-bdb1-1c59fa6e56d2/participant/18ef210c-234a-49ac-83d6-1803bc401bc9","id":"18ef210c-234a-49ac-83d6-1803bc401bc9","guest":false,"resourceGuest":false,"moderator":false,"panelist":false}',
+              },
+            ],
+          },
         });
 
         // main and self should be unchanged
-        assert.deepEqual(Object.keys(locusInfo.hashTreeParser.dataSets), ['main', 'self', 'atd-unmuted']);
-        assert.deepEqual(locusInfo.hashTreeParser.dataSets['main'].hashTree.getLeafData(0), [ { type: 'LOCUS', id: 0, version: 5678 } ]);
-        assert.deepEqual(locusInfo.hashTreeParser.dataSets['self'].hashTree.getLeafData(0), [ { type: 'SELF', id: 4, version: 5678 } ]);
+        assert.deepEqual(Object.keys(locusInfo.hashTreeParser.dataSets), [
+          'main',
+          'self',
+          'atd-unmuted',
+        ]);
+        assert.deepEqual(locusInfo.hashTreeParser.dataSets['main'].hashTree.getLeafData(0), [
+          {type: 'LOCUS', id: 0, version: 5678},
+        ]);
+        assert.deepEqual(locusInfo.hashTreeParser.dataSets['self'].hashTree.getLeafData(0), [
+          {type: 'SELF', id: 4, version: 5678},
+        ]);
 
         // participant should be updated
-        assert.deepEqual(locusInfo.hashTreeParser.dataSets['atd-unmuted'].hashTree.getLeafData(2), [ { type: 'PARTICIPANT', id: 2, version: 5679 } ]);
+        assert.deepEqual(locusInfo.hashTreeParser.dataSets['atd-unmuted'].hashTree.getLeafData(2), [
+          {type: 'PARTICIPANT', id: 2, version: 5679},
+        ]);
 
         await testUtils.flushPromises();
 
@@ -3613,6 +3640,11 @@ describe('plugin-meetings', () => {
           if (options?.method === 'GET' && options?.uri?.endsWith('/hashtree')) {
             return {
               body: {
+                dataSet: {
+                  name: 'atd-unmuted',
+                  leafCount: 4,
+                  root: '178bff6e3344f551a811712c57a9eac3',
+                },
                 hashes: [
                   '178bff6e3344f551a811712c57a9eac3',
                   'b113a76304e3a7121afecfe1606ee1c1',
@@ -3620,9 +3652,9 @@ describe('plugin-meetings', () => {
                   '99aa06d3014798d86001c324468d497f',
                   '99aa06d3014798d86001c324468d497f',
                   'deadbeef', // wrong hash that should cause the participant with id=2 to be deemed out of sync
-                  '99aa06d3014798d86001c324468d497f'
-                ]
-              }
+                  '99aa06d3014798d86001c324468d497f',
+                ],
+              },
             };
           } else if (options?.method === 'POST' && options?.uri?.endsWith('/sync')) {
             return {
@@ -3636,31 +3668,35 @@ describe('plugin-meetings', () => {
         // only after timeout there should be requests to get hashes and sync sent to Locus
         await waitForMaxPossibleBackoffTime(locusInfo.hashTreeParser.dataSets);
         assert.calledTwice(webex.request);
-        
+
         const firstCallArgs = webex.request.getCall(0).args[0];
         const secondCallArgs = webex.request.getCall(1).args[0];
 
         assert.deepEqual(firstCallArgs, {method: 'GET', uri: `${atdUnmutedDataSetUrl}/hashtree`});
 
-        assert.deepEqual(secondCallArgs, {method: 'POST', uri: `${atdUnmutedDataSetUrl}/sync`,
+        assert.deepEqual(secondCallArgs, {
+          method: 'POST',
+          uri: `${atdUnmutedDataSetUrl}/sync`,
           body: {
             dataSet: {
               name: 'atd-unmuted',
               leafCount: 16,
               root: '178bff6e3344f551a811712c57a9eac3',
             },
-            leafDataEntries: [{
-              leafIndex: 2,
-              elementIds: [
-                {
-                  id: 2,
-                  type: "PARTICIPANT",
-                  version: 5679
-                }
-              ],
-            }]
-          }
-        });        
+            leafDataEntries: [
+              {
+                leafIndex: 2,
+                elementIds: [
+                  {
+                    id: 2,
+                    type: 'PARTICIPANT',
+                    version: 5679,
+                  },
+                ],
+              },
+            ],
+          },
+        });
       });
 
       it('handles end meeting message correctly', async () => {

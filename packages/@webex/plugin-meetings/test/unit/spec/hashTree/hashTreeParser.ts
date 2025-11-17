@@ -146,11 +146,9 @@ describe('HashTreeParser', () => {
     expect(atdUnmutedTree.leaves).to.deep.equal(expectedAtdUnmutedEmptyLeaves);
     expect(atdUnmutedTree.numLeaves).to.equal(16); // leafCount from dataSet definition
 
-    // 'empty-set' was added to dataSets but has no metadata in locus
-    const emptySetTree = parser.dataSets['empty-set'].hashTree;
-    expect(emptySetTree).to.be.instanceOf(HashTree);
-    const expectedEmptySetLeaves = new Array(4).fill(null).map(() => ({})); // leafCount is 4
-    expect(emptySetTree.leaves).to.deep.equal(expectedEmptySetLeaves);
-    expect(emptySetTree.numLeaves).to.equal(4);
+    // 'empty-set' was added to dataSets but has no metadata in locus and is not among visibleDataSets
+    // so an entry for it should exist, but hashTree shouldn't be created
+    const emptySet = parser.dataSets['empty-set'];
+    expect(emptySet.hashTree).to.be.undefined;
   });
 });

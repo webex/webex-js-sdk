@@ -4555,13 +4555,15 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Set the locus info the class instance
-   * @param {Object} locus
-   * @param {Array} locus.mediaConnections
-   * @param {String} locus.locusUrl
-   * @param {String} locus.locusId
-   * @param {String} locus.mediaId
-   * @param {Object} locus.host
+   * Set the locus info the class instance. Should be called with the parsed locus
+   * we got in the join response.
+   *
+   * @param {Object} data
+   * @param {Array} data.mediaConnections
+   * @param {String} data.locusUrl
+   * @param {String} data.locusId
+   * @param {String} data.mediaId
+   * @param {Object} data.host
    * @todo change name to genertic parser
    * @returns {undefined}
    * @private
