@@ -21,6 +21,7 @@ import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import {expect} from 'chai';
 import {RemoteMedia} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
+import { CapabilityState, WebCapabilities } from '@webex/web-capabilities';
 
 class FakeSlot extends EventEmitter {
   public mediaType: MediaType;
@@ -129,6 +130,7 @@ describe('RemoteMediaManager', () => {
   let fakeVideoSlot;
   let fakeScreenShareAudioSlot;
   let fakeScreenShareVideoSlot;
+  let isCapableOfReceivingVideoCodecStub;
 
   const logger = {
     log: sinon.fake(),
@@ -141,11 +143,16 @@ describe('RemoteMediaManager', () => {
   afterEach(() => {
     LoggerConfig.set({enable: false});
     LoggerProxy.set();
+    if (isCapableOfReceivingVideoCodecStub) {
+      isCapableOfReceivingVideoCodecStub.restore();
+    }
   });
 
   beforeEach(() => {
     LoggerConfig.set({enable: true});
     LoggerProxy.set(logger);
+
+    isCapableOfReceivingVideoCodecStub = sinon.stub(WebCapabilities, 'isCapableOfReceivingVideoCodec').returns(CapabilityState.NOT_CAPABLE);
 
     fakeAudioSlot = new FakeSlot(MediaType.AudioMain, 'fake audio slot');
     fakeVideoSlot = new FakeSlot(MediaType.VideoMain, 'fake video slot');
@@ -660,6 +667,230 @@ describe('RemoteMediaManager', () => {
 
       // we don't expect any audio and for video there should be no VideoSlides, so all the calls should be just for VideoMain
       assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.VideoMain);
+    });
+
+    describe('preferred codec', () => {
+      it('sets preferred codec to h264 when AV1 is not capable', async () => {
+        isCapableOfReceivingVideoCodecStub.returns(CapabilityState.NOT_CAPABLE);
+
+        await remoteMediaManager.start();
+
+        // verify that the stub was called with the correct argument
+        assert.calledWith(isCapableOfReceivingVideoCodecStub, 'video/AV1');
+
+        // verify that h264 is used in receiver-selected media requests by switching to Stage layout
+        await remoteMediaManager.setLayout('Stage');
+
+        // check that media requests for receiver-selected panes use h264
+        const receiverSelectedCalls = fakeMediaRequestManagers.video.addRequest
+          .getCalls()
+          .filter((call) => call.args[0].policyInfo.policy === 'receiver-selected');
+
+        receiverSelectedCalls.forEach((call) => {
+          assert.strictEqual(call.args[0].codecInfo.codec, 'h264');
+        });
+      });
+
+      it('sets preferred codec to av1 when AV1 is capable', async () => {
+        isCapableOfReceivingVideoCodecStub.returns(CapabilityState.CAPABLE);
+
+        await remoteMediaManager.start();
+
+        // verify that the stub was called with the correct argument
+        assert.calledWith(isCapableOfReceivingVideoCodecStub, 'video/AV1');
+
+        // verify that av1 is used in receiver-selected media requests by switching to Stage layout
+        await remoteMediaManager.setLayout('Stage');
+
+        // check that media requests for receiver-selected panes use av1
+        const receiverSelectedCalls = fakeMediaRequestManagers.video.addRequest
+          .getCalls()
+          .filter((call) => call.args[0].policyInfo.policy === 'receiver-selected');
+
+        receiverSelectedCalls.forEach((call) => {
+          assert.strictEqual(call.args[0].codecInfo.codec, 'av1');
+        });
+      });
+
+      it('uses h264 for receiver-selected video panes when AV1 is not capable', async () => {
+        isCapableOfReceivingVideoCodecStub.returns(CapabilityState.NOT_CAPABLE);
+
+        const config = cloneDeep(DefaultTestConfiguration);
+        config.video.layouts.Stage.memberVideoPanes = [
+          {id: 'stage-1', size: 'medium', csi: 11111},
+          {id: 'stage-2', size: 'medium', csi: 22222},
+        ];
+
+        remoteMediaManager = new RemoteMediaManager(
+          fakeReceiveSlotManager,
+          fakeMediaRequestManagers,
+          config
+        );
+
+        await remoteMediaManager.start();
+        resetHistory();
+
+        await remoteMediaManager.setLayout('Stage');
+
+        // verify that receiver-selected media requests use h264 codec
+        const receiverSelectedCalls = fakeMediaRequestManagers.video.addRequest
+          .getCalls()
+          .filter((call) => call.args[0].policyInfo.policy === 'receiver-selected');
+
+        assert.isTrue(receiverSelectedCalls.length > 0);
+        receiverSelectedCalls.forEach((call) => {
+          assert.calledWith(
+            fakeMediaRequestManagers.video.addRequest,
+            sinon.match({
+              policyInfo: sinon.match({policy: 'receiver-selected'}),
+              codecInfo: sinon.match({codec: 'h264'}),
+            })
+          );
+        });
+      });
+
+      it('uses av1 for receiver-selected video panes when AV1 is capable', async () => {
+        isCapableOfReceivingVideoCodecStub.returns(CapabilityState.CAPABLE);
+
+        const config = cloneDeep(DefaultTestConfiguration);
+        config.video.layouts.Stage.memberVideoPanes = [
+          {id: 'stage-1', size: 'medium', csi: 11111},
+          {id: 'stage-2', size: 'medium', csi: 22222},
+        ];
+
+        remoteMediaManager = new RemoteMediaManager(
+          fakeReceiveSlotManager,
+          fakeMediaRequestManagers,
+          config
+        );
+
+        await remoteMediaManager.start();
+        resetHistory();
+
+        await remoteMediaManager.setLayout('Stage');
+
+        // verify that receiver-selected media requests use av1 codec
+        const receiverSelectedCalls = fakeMediaRequestManagers.video.addRequest
+          .getCalls()
+          .filter((call) => call.args[0].policyInfo.policy === 'receiver-selected');
+
+        assert.isTrue(receiverSelectedCalls.length > 0);
+        receiverSelectedCalls.forEach((call) => {
+          assert.calledWith(
+            fakeMediaRequestManagers.video.addRequest,
+            sinon.match({
+              policyInfo: sinon.match({policy: 'receiver-selected'}),
+              codecInfo: sinon.match({codec: 'av1'}),
+            })
+          );
+        });
+      });
+
+      it('uses h264 for screen share video when AV1 is not capable', async () => {
+        isCapableOfReceivingVideoCodecStub.returns(CapabilityState.NOT_CAPABLE);
+
+        await remoteMediaManager.start();
+        resetHistory();
+
+        // switch to a layout that contains screen share
+        await remoteMediaManager.setLayout('ScreenShareView');
+
+        // verify that screen share media request uses h264 codec
+        assert.calledOnce(fakeMediaRequestManagers.screenShareVideo.addRequest);
+        assert.calledWith(
+          fakeMediaRequestManagers.screenShareVideo.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({policy: 'active-speaker'}),
+            codecInfo: sinon.match({codec: 'h264'}),
+          })
+        );
+      });
+
+      it('uses av1 for screen share video when AV1 is capable', async () => {
+        isCapableOfReceivingVideoCodecStub.returns(CapabilityState.CAPABLE);
+
+        await remoteMediaManager.start();
+        resetHistory();
+
+        // switch to a layout that contains screen share
+        await remoteMediaManager.setLayout('ScreenShareView');
+
+        // verify that screen share media request uses av1 codec
+        assert.calledOnce(fakeMediaRequestManagers.screenShareVideo.addRequest);
+        assert.calledWith(
+          fakeMediaRequestManagers.screenShareVideo.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({policy: 'active-speaker'}),
+            codecInfo: sinon.match({codec: 'av1'}),
+          })
+        );
+      });
+
+      it('uses h264 for addMemberVideoPane when AV1 is not capable', async () => {
+        isCapableOfReceivingVideoCodecStub.returns(CapabilityState.NOT_CAPABLE);
+
+        await remoteMediaManager.start();
+        await remoteMediaManager.setLayout('Stage');
+
+        resetHistory();
+
+        await remoteMediaManager.addMemberVideoPane({id: 'newPane', size: 'best', csi: 54321});
+
+        // verify that the media request uses h264 codec
+        assert.calledOnce(fakeMediaRequestManagers.video.addRequest);
+        assert.calledWith(
+          fakeMediaRequestManagers.video.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({policy: 'receiver-selected', csi: 54321}),
+            codecInfo: sinon.match({codec: 'h264'}),
+          })
+        );
+      });
+
+      it('uses av1 for addMemberVideoPane when AV1 is capable', async () => {
+        isCapableOfReceivingVideoCodecStub.returns(CapabilityState.CAPABLE);
+
+        await remoteMediaManager.start();
+        await remoteMediaManager.setLayout('Stage');
+
+        resetHistory();
+
+        await remoteMediaManager.addMemberVideoPane({id: 'newPane', size: 'best', csi: 54321});
+
+        // verify that the media request uses av1 codec
+        assert.calledOnce(fakeMediaRequestManagers.video.addRequest);
+        assert.calledWith(
+          fakeMediaRequestManagers.video.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({policy: 'receiver-selected', csi: 54321}),
+            codecInfo: sinon.match({codec: 'av1'}),
+          })
+        );
+      });
+
+      it('does not change preferred codec after start() is called', async () => {
+        isCapableOfReceivingVideoCodecStub.returns(CapabilityState.NOT_CAPABLE);
+
+        await remoteMediaManager.start();
+
+        // change the stub to return CAPABLE, but it shouldn't affect already started manager
+        isCapableOfReceivingVideoCodecStub.returns(CapabilityState.CAPABLE);
+
+        resetHistory();
+
+        await remoteMediaManager.setLayout('Stage');
+
+        // verify that h264 is still used (since that's what was detected at start time)
+        const receiverSelectedCalls = fakeMediaRequestManagers.video.addRequest
+          .getCalls()
+          .filter((call) => call.args[0].policyInfo.policy === 'receiver-selected');
+
+        if (receiverSelectedCalls.length > 0) {
+          receiverSelectedCalls.forEach((call) => {
+            assert.strictEqual(call.args[0].codecInfo.codec, 'h264');
+          });
+        }
+      });
     });
   });
 
@@ -2398,520 +2629,6 @@ describe('RemoteMediaManager', () => {
         assert.calledOnce(unpinStub);
         assert.calledWith(unpinStub, remoteVideo);
       }
-    });
-  });
-
-  describe('preferredCodec', () => {
-    let isAV1AvailableStub: sinon.SinonStub;
-
-    afterEach(() => {
-      if (isAV1AvailableStub) {
-        isAV1AvailableStub.restore();
-      }
-    });
-
-    it('uses h264 codec when AV1 is not available', async () => {
-      // Mock MeetingsUtil to return false for AV1 availability
-      isAV1AvailableStub = sinon.stub(MeetingsUtil, 'isAV1CodecAvailable').resolves(false);
-
-      const config: Configuration = {
-        audio: {
-          numOfActiveSpeakerStreams: 0,
-          numOfScreenShareStreams: 0,
-        },
-        video: {
-          preferLiveVideo: true,
-          initialLayoutId: 'Single',
-          layouts: {
-            Single: {
-              activeSpeakerVideoPaneGroups: [
-                {
-                  id: 'main',
-                  numPanes: 1,
-                  size: 'medium',
-                  priority: 255,
-                },
-              ],
-            },
-          },
-        },
-      };
-
-      remoteMediaManager = new RemoteMediaManager(
-        fakeReceiveSlotManager,
-        fakeMediaRequestManagers,
-        config
-      );
-
-      await remoteMediaManager.start();
-
-      // Verify that the video request uses h264 codec
-      assert.called(fakeMediaRequestManagers.video.addRequest);
-
-      const videoAddRequestCalls = fakeMediaRequestManagers.video.addRequest.getCalls();
-      const hasH264Codec = videoAddRequestCalls.some(call =>
-        call.args[0].codecInfo?.codec === 'h264'
-      );
-
-      assert.isTrue(hasH264Codec, 'Expected at least one video request with h264 codec');
-    });
-
-    it('preferredCodec is set to av1 when AV1 is available', async () => {
-      // Mock MeetingsUtil to return true for AV1 availability
-      isAV1AvailableStub = sinon.stub(MeetingsUtil, 'isAV1CodecAvailable').resolves(true);
-
-      const config: Configuration = {
-        audio: {
-          numOfActiveSpeakerStreams: 0,
-          numOfScreenShareStreams: 0,
-        },
-        video: {
-          preferLiveVideo: true,
-          initialLayoutId: 'MemberPane',
-          layouts: {
-            MemberPane: {
-              memberVideoPanes: [
-                { id: 'member-1', size: 'medium', csi: 1001 },
-              ],
-            },
-          },
-        },
-      };
-
-      remoteMediaManager = new RemoteMediaManager(
-        fakeReceiveSlotManager,
-        fakeMediaRequestManagers,
-        config
-      );
-
-      await remoteMediaManager.start();
-
-      // Verify that member pane video requests use av1 codec
-      assert.called(fakeMediaRequestManagers.video.addRequest);
-
-      const videoAddRequestCalls = fakeMediaRequestManagers.video.addRequest.getCalls();
-      const hasAV1Codec = videoAddRequestCalls.some(call =>
-        call.args[0].codecInfo?.codec === 'av1'
-      );
-
-      assert.isTrue(hasAV1Codec, 'Expected at least one video request with av1 codec');
-    });
-
-    it('uses av1 codec for screen share video when AV1 is available', async () => {
-      // Mock MeetingsUtil to return true for AV1 availability
-      isAV1AvailableStub = sinon.stub(MeetingsUtil, 'isAV1CodecAvailable').resolves(true);
-
-      const config: Configuration = {
-        audio: {
-          numOfActiveSpeakerStreams: 0,
-          numOfScreenShareStreams: 1,
-        },
-        video: {
-          preferLiveVideo: true,
-          initialLayoutId: 'ScreenShareLayout',
-          layouts: {
-            ScreenShareLayout: {
-              screenShareVideo: {
-                size: 'large',
-              },
-            },
-          },
-        },
-      };
-
-      remoteMediaManager = new RemoteMediaManager(
-        fakeReceiveSlotManager,
-        fakeMediaRequestManagers,
-        config
-      );
-
-      await remoteMediaManager.start();
-
-      // Verify that the screen share video request uses av1 codec
-      assert.called(fakeMediaRequestManagers.screenShareVideo.addRequest);
-
-      const screenShareVideoAddRequestCalls = fakeMediaRequestManagers.screenShareVideo.addRequest.getCalls();
-      const hasAV1Codec = screenShareVideoAddRequestCalls.some(call =>
-        call.args[0].codecInfo?.codec === 'av1'
-      );
-
-      assert.isTrue(hasAV1Codec, 'Expected screen share video request with av1 codec');
-    });
-
-    it('uses h264 codec for screen share video when AV1 is not available', async () => {
-      // Mock MeetingsUtil to return false for AV1 availability
-      isAV1AvailableStub = sinon.stub(MeetingsUtil, 'isAV1CodecAvailable').resolves(false);
-
-      const config: Configuration = {
-        audio: {
-          numOfActiveSpeakerStreams: 0,
-          numOfScreenShareStreams: 1,
-        },
-        video: {
-          preferLiveVideo: true,
-          initialLayoutId: 'ScreenShareLayout',
-          layouts: {
-            ScreenShareLayout: {
-              screenShareVideo: {
-                size: 'large',
-              },
-            },
-          },
-        },
-      };
-
-      remoteMediaManager = new RemoteMediaManager(
-        fakeReceiveSlotManager,
-        fakeMediaRequestManagers,
-        config
-      );
-
-      await remoteMediaManager.start();
-
-      // Verify that the screen share video request uses h264 codec
-      assert.called(fakeMediaRequestManagers.screenShareVideo.addRequest);
-
-      const screenShareVideoAddRequestCalls = fakeMediaRequestManagers.screenShareVideo.addRequest.getCalls();
-      const hasH264Codec = screenShareVideoAddRequestCalls.some(call =>
-        call.args[0].codecInfo?.codec === 'h264'
-      );
-
-      assert.isTrue(hasH264Codec, 'Expected screen share video request with h264 codec');
-    });
-
-    it('pinned video panes inherit codec from their source group (h264 for active speaker groups)', async () => {
-      // Mock MeetingsUtil to return true for AV1 availability
-      isAV1AvailableStub = sinon.stub(MeetingsUtil, 'isAV1CodecAvailable').resolves(true);
-
-      const config: Configuration = {
-        audio: {
-          numOfActiveSpeakerStreams: 0,
-          numOfScreenShareStreams: 0,
-        },
-        video: {
-          preferLiveVideo: true,
-          initialLayoutId: 'AllEqual',
-          layouts: {
-            AllEqual: {
-              activeSpeakerVideoPaneGroups: [
-                {
-                  id: 'main',
-                  numPanes: 3,
-                  size: 'medium',
-                  priority: 255,
-                },
-              ],
-            },
-          },
-        },
-      };
-
-      remoteMediaManager = new RemoteMediaManager(
-        fakeReceiveSlotManager,
-        fakeMediaRequestManagers,
-        config
-      );
-
-      let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
-
-      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
-        currentLayoutInfo = layoutInfo;
-      });
-
-      await remoteMediaManager.start();
-
-      assert.isNotNull(currentLayoutInfo);
-
-      if (currentLayoutInfo) {
-        const remoteVideo = currentLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia()[0];
-
-        // Pin a video pane
-        remoteMediaManager.pinActiveSpeakerVideoPane(remoteVideo, 12345);
-
-        // Check that the pinned video uses the same codec as the active speaker group (h264)
-        // Note: Active speaker groups currently have h264 hardcoded, so pinned panes inherit that
-        const videoAddRequestCalls = fakeMediaRequestManagers.video.addRequest.getCalls();
-        const pinnedRequests = videoAddRequestCalls.filter(call =>
-          call.args[0].policyInfo?.policy === 'receiver-selected'
-        );
-
-        const hasH264Codec = pinnedRequests.some(call =>
-          call.args[0].codecInfo?.codec === 'h264'
-        );
-
-        assert.isTrue(hasH264Codec, 'Expected pinned video request to inherit h264 codec from active speaker group');
-      }
-    });
-
-    it('uses h264 codec for pinned video panes when AV1 is not available', async () => {
-      // Mock MeetingsUtil to return false for AV1 availability
-      isAV1AvailableStub = sinon.stub(MeetingsUtil, 'isAV1CodecAvailable').resolves(false);
-
-      const config: Configuration = {
-        audio: {
-          numOfActiveSpeakerStreams: 0,
-          numOfScreenShareStreams: 0,
-        },
-        video: {
-          preferLiveVideo: true,
-          initialLayoutId: 'AllEqual',
-          layouts: {
-            AllEqual: {
-              activeSpeakerVideoPaneGroups: [
-                {
-                  id: 'main',
-                  numPanes: 3,
-                  size: 'medium',
-                  priority: 255,
-                },
-              ],
-            },
-          },
-        },
-      };
-
-      remoteMediaManager = new RemoteMediaManager(
-        fakeReceiveSlotManager,
-        fakeMediaRequestManagers,
-        config
-      );
-
-      let currentLayoutInfo: VideoLayoutChangedEventData | null = null;
-
-      remoteMediaManager.on(Event.VideoLayoutChanged, (layoutInfo: VideoLayoutChangedEventData) => {
-        currentLayoutInfo = layoutInfo;
-      });
-
-      await remoteMediaManager.start();
-
-      assert.isNotNull(currentLayoutInfo);
-
-      if (currentLayoutInfo) {
-        const remoteVideo = currentLayoutInfo.activeSpeakerVideoPanes.main.getRemoteMedia()[0];
-
-        // Pin a video pane
-        remoteMediaManager.pinActiveSpeakerVideoPane(remoteVideo, 12345);
-
-        // Check that the pinned video uses h264 codec
-        const videoAddRequestCalls = fakeMediaRequestManagers.video.addRequest.getCalls();
-        const pinnedRequests = videoAddRequestCalls.filter(call =>
-          call.args[0].policyInfo?.policy === 'receiver-selected'
-        );
-
-        const hasH264Codec = pinnedRequests.some(call =>
-          call.args[0].codecInfo?.codec === 'h264'
-        );
-
-        assert.isTrue(hasH264Codec, 'Expected pinned video request with h264 codec');
-      }
-    });
-
-    it('uses av1 codec for member video panes when AV1 is available', async () => {
-      // Mock MeetingsUtil to return true for AV1 availability
-      isAV1AvailableStub = sinon.stub(MeetingsUtil, 'isAV1CodecAvailable').resolves(true);
-
-      const config: Configuration = {
-        audio: {
-          numOfActiveSpeakerStreams: 0,
-          numOfScreenShareStreams: 0,
-        },
-        video: {
-          preferLiveVideo: true,
-          initialLayoutId: 'StageLayout',
-          layouts: {
-            StageLayout: {
-              memberVideoPanes: [
-                { id: 'stage-1', size: 'medium', csi: 1001 },
-                { id: 'stage-2', size: 'medium', csi: 1002 },
-              ],
-            },
-          },
-        },
-      };
-
-      remoteMediaManager = new RemoteMediaManager(
-        fakeReceiveSlotManager,
-        fakeMediaRequestManagers,
-        config
-      );
-
-      await remoteMediaManager.start();
-
-      // Verify that member video panes use av1 codec
-      assert.called(fakeMediaRequestManagers.video.addRequest);
-
-      const videoAddRequestCalls = fakeMediaRequestManagers.video.addRequest.getCalls();
-      const memberPaneRequests = videoAddRequestCalls.filter(call =>
-        call.args[0].policyInfo?.policy === 'receiver-selected'
-      );
-
-      const hasAV1Codec = memberPaneRequests.some(call =>
-        call.args[0].codecInfo?.codec === 'av1'
-      );
-
-      assert.isTrue(hasAV1Codec, 'Expected member video pane requests with av1 codec');
-    });
-
-    it('active speaker video (video-main) uses h264 even when AV1 is available', async () => {
-      // Mock MeetingsUtil to return true for AV1 availability
-      isAV1AvailableStub = sinon.stub(MeetingsUtil, 'isAV1CodecAvailable').resolves(true);
-
-      const config: Configuration = {
-        audio: {
-          numOfActiveSpeakerStreams: 0,
-          numOfScreenShareStreams: 0,
-        },
-        video: {
-          preferLiveVideo: true,
-          initialLayoutId: 'AllEqual',
-          layouts: {
-            AllEqual: {
-              activeSpeakerVideoPaneGroups: [
-                {
-                  id: 'main',
-                  numPanes: 5,
-                  size: 'medium',
-                  priority: 255,
-                },
-              ],
-            },
-          },
-        },
-      };
-
-      remoteMediaManager = new RemoteMediaManager(
-        fakeReceiveSlotManager,
-        fakeMediaRequestManagers,
-        config
-      );
-
-      await remoteMediaManager.start();
-
-      // Verify that active speaker video requests use h264 (not av1)
-      // Note: video-main currently has h264 hardcoded and does not use av1
-      assert.called(fakeMediaRequestManagers.video.addRequest);
-
-      const videoAddRequestCalls = fakeMediaRequestManagers.video.addRequest.getCalls();
-      const activeSpeakerRequests = videoAddRequestCalls.filter(call =>
-        call.args[0].policyInfo?.policy === 'active-speaker'
-      );
-
-      // All active speaker requests should use h264
-      const allH264 = activeSpeakerRequests.every(call =>
-        call.args[0].codecInfo?.codec === 'h264'
-      );
-
-      // None should use av1
-      const hasAV1 = activeSpeakerRequests.some(call =>
-        call.args[0].codecInfo?.codec === 'av1'
-      );
-
-      assert.isTrue(allH264, 'Expected all active speaker video requests to use h264');
-      assert.isFalse(hasAV1, 'Expected no active speaker video requests to use av1');
-    });
-
-    it('screen share video uses av1 by default when AV1 is available', async () => {
-      // Mock MeetingsUtil to return true for AV1 availability
-      isAV1AvailableStub = sinon.stub(MeetingsUtil, 'isAV1CodecAvailable').resolves(true);
-
-      const config: Configuration = {
-        audio: {
-          numOfActiveSpeakerStreams: 0,
-          numOfScreenShareStreams: 1,
-        },
-        video: {
-          preferLiveVideo: true,
-          initialLayoutId: 'ScreenShareWithThumbnails',
-          layouts: {
-            ScreenShareWithThumbnails: {
-              screenShareVideo: {
-                size: 'best',
-              },
-              activeSpeakerVideoPaneGroups: [
-                {
-                  id: 'thumbnails',
-                  numPanes: 4,
-                  size: 'thumbnail',
-                  priority: 255,
-                },
-              ],
-            },
-          },
-        },
-      };
-
-      remoteMediaManager = new RemoteMediaManager(
-        fakeReceiveSlotManager,
-        fakeMediaRequestManagers,
-        config
-      );
-
-      await remoteMediaManager.start();
-
-      // Verify that screen share video uses av1 by default
-      assert.called(fakeMediaRequestManagers.screenShareVideo.addRequest);
-
-      const screenShareVideoAddRequestCalls = fakeMediaRequestManagers.screenShareVideo.addRequest.getCalls();
-
-      assert.isAtLeast(screenShareVideoAddRequestCalls.length, 1, 'Expected at least one screen share video request');
-
-      const allAV1 = screenShareVideoAddRequestCalls.every(call =>
-        call.args[0].codecInfo?.codec === 'av1'
-      );
-
-      assert.isTrue(allAV1, 'Expected all screen share video requests to use av1 by default when available');
-    });
-
-    it('screen share video uses h264 by default when AV1 is not available', async () => {
-      // Mock MeetingsUtil to return false for AV1 availability
-      isAV1AvailableStub = sinon.stub(MeetingsUtil, 'isAV1CodecAvailable').resolves(false);
-
-      const config: Configuration = {
-        audio: {
-          numOfActiveSpeakerStreams: 0,
-          numOfScreenShareStreams: 1,
-        },
-        video: {
-          preferLiveVideo: true,
-          initialLayoutId: 'ScreenShareWithThumbnails',
-          layouts: {
-            ScreenShareWithThumbnails: {
-              screenShareVideo: {
-                size: 'best',
-              },
-              activeSpeakerVideoPaneGroups: [
-                {
-                  id: 'thumbnails',
-                  numPanes: 4,
-                  size: 'thumbnail',
-                  priority: 255,
-                },
-              ],
-            },
-          },
-        },
-      };
-
-      remoteMediaManager = new RemoteMediaManager(
-        fakeReceiveSlotManager,
-        fakeMediaRequestManagers,
-        config
-      );
-
-      await remoteMediaManager.start();
-
-      // Verify that screen share video falls back to h264 when av1 is not available
-      assert.called(fakeMediaRequestManagers.screenShareVideo.addRequest);
-
-      const screenShareVideoAddRequestCalls = fakeMediaRequestManagers.screenShareVideo.addRequest.getCalls();
-
-      assert.isAtLeast(screenShareVideoAddRequestCalls.length, 1, 'Expected at least one screen share video request');
-
-      const allH264 = screenShareVideoAddRequestCalls.every(call =>
-        call.args[0].codecInfo?.codec === 'h264'
-      );
-
-      assert.isTrue(allH264, 'Expected all screen share video requests to use h264 by default when av1 is not available');
     });
   });
 });

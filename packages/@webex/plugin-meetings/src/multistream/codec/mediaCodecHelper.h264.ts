@@ -114,4 +114,40 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper {
 
     return H264_CODEC_PARAMETERS[resolution].maxFs;
   }
+
+  /**
+   * Gets the max fs for the given width and height
+   *
+   * @param {number} width - The width of the video element
+   * @param {number} height - The height of the video element
+   * @returns {number | undefined} The max fs for the given width and height, or undefined if the width or height is 0
+   */
+  getSizeHintMaxFs(width: number, height: number): number | undefined {
+    if (width === 0 || height === 0) {
+      return undefined;
+    }
+
+    // we switch to the next resolution level when the height is 10% more than the current resolution height
+    // except for 1080p - we switch to it immediately when the height is more than 720p
+    const threshold = 1.1;
+    const getThresholdHeight = (h: number) => Math.round(h * threshold);
+
+    if (height < getThresholdHeight(90)) {
+      return H264_CODEC_PARAMETERS['90p'].maxFs;
+    }
+    if (height < getThresholdHeight(180)) {
+      return H264_CODEC_PARAMETERS['180p'].maxFs;
+    }
+    if (height < getThresholdHeight(360)) {
+      return H264_CODEC_PARAMETERS['360p'].maxFs;
+    }
+    if (height < getThresholdHeight(540)) {
+      return H264_CODEC_PARAMETERS['540p'].maxFs;
+    }
+    if (height <= 720) {
+      return H264_CODEC_PARAMETERS['720p'].maxFs;
+    }
+
+    return H264_CODEC_PARAMETERS['1080p'].maxFs;
+  }
 }

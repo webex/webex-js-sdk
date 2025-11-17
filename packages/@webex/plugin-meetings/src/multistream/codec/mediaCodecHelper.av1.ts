@@ -136,4 +136,40 @@ export default class MediaCodecHelperAV1 implements MediaCodecHelper {
 
     return AV1_CODEC_PARAMETERS[resolution].maxPicSize;
   }
+
+  /**
+   * Gets the max pic size for the given width and height
+   *
+   * @param {number} width - The width of the video element
+   * @param {number} height - The height of the video element
+   * @returns {number | undefined} The max pic size for the given width and height, or undefined if the width or height is 0
+   */
+  getSizeHintMaxPicSize(width: number, height: number): number | undefined {
+    if (width === 0 || height === 0) {
+      return undefined;
+    }
+
+    // we switch to the next resolution level when the height is 10% more than the current resolution height
+    // except for 1080p - we switch to it immediately when the height is more than 720p
+    const threshold = 1.1;
+    const getThresholdHeight = (h: number) => Math.round(h * threshold);
+
+    if (height < getThresholdHeight(90)) {
+      return AV1_CODEC_PARAMETERS['90p'].maxPicSize;
+    }
+    if (height < getThresholdHeight(180)) {
+      return AV1_CODEC_PARAMETERS['180p'].maxPicSize;
+    }
+    if (height < getThresholdHeight(360)) {
+      return AV1_CODEC_PARAMETERS['360p'].maxPicSize;
+    }
+    if (height < getThresholdHeight(540)) {
+      return AV1_CODEC_PARAMETERS['540p'].maxPicSize;
+    }
+    if (height <= 720) {
+      return AV1_CODEC_PARAMETERS['720p'].maxPicSize;
+    }
+
+    return AV1_CODEC_PARAMETERS['1080p'].maxPicSize;
+  }
 }

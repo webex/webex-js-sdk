@@ -24,6 +24,7 @@ describe('RemoteMedia', () => {
     fakeReceiveSlot.sourceState = 'avatar';
     fakeReceiveSlot.stream = fakeStream;
     fakeReceiveSlot.setMaxFs = sinon.stub();
+    fakeReceiveSlot.setMaxPicSize = sinon.stub();
 
     fakeMediaRequestManager = {
       addRequest: sinon.stub(),
@@ -289,7 +290,7 @@ describe('RemoteMedia', () => {
       // remoteMedia was created with {resolution: 'medium'} in beforeEach
 
       const result = remoteMedia.getEffectiveMaxFs();
-      
+
       // 'medium' resolution should map to 720p which is 3600
       assert.strictEqual(result, 3600);
     });
@@ -299,9 +300,9 @@ describe('RemoteMedia', () => {
 
       // Create a new RemoteMedia without resolution option
       const remoteMediaWithoutResolution = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager);
-      
+
       const result = remoteMediaWithoutResolution.getEffectiveMaxFs();
-      
+
       assert.strictEqual(result, undefined);
     });
 
@@ -310,7 +311,7 @@ describe('RemoteMedia', () => {
       // remoteMedia was created with {resolution: 'medium'} in beforeEach
 
       const result = remoteMedia.getEffectiveMaxFs();
-      
+
       // Should return maxFrameSize (500) instead of resolution-based value (3600)
       assert.strictEqual(result, 920);
     });
@@ -330,7 +331,69 @@ describe('RemoteMedia', () => {
         testRemoteMedia.setSizeHint(0, 0); // Ensure maxFrameSize doesn't interfere
 
         const result = testRemoteMedia.getEffectiveMaxFs();
-        
+
+        assert.strictEqual(result, expected, `Failed for resolution: ${resolution}`);
+      });
+    });
+  });
+
+  describe('getEffectiveMaxPicSize()', () => {
+    it('returns maxPicSize when it is greater than 0', () => {
+      remoteMedia.setSizeHint(960, 540);
+
+      const result = remoteMedia.getEffectiveMaxPicSize();
+
+      assert.strictEqual(result, 665_856);
+    });
+
+    it('returns getMaxPicSize result when maxPicSize is 0 and resolution is provided', () => {
+      remoteMedia.setSizeHint(0, 0);
+
+      // remoteMedia was created with {resolution: 'medium'} in beforeEach
+
+      const result = remoteMedia.getEffectiveMaxPicSize();
+
+      // 'medium' resolution should map to 720p which is 1_065_024
+      assert.strictEqual(result, 1_065_024);
+    });
+
+    it('returns undefined when maxPicSize is 0 and no resolution is provided', () => {
+      remoteMedia.setSizeHint(0, 0);
+
+      // Create a new RemoteMedia without resolution option
+      const remoteMediaWithoutResolution = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager);
+
+      const result = remoteMediaWithoutResolution.getEffectiveMaxPicSize();
+
+      assert.strictEqual(result, undefined);
+    });
+
+    it('prioritizes maxPicSize over resolution option', () => {
+      remoteMedia.setSizeHint(640, 360);
+      // remoteMedia was created with {resolution: 'medium'} in beforeEach
+
+      const result = remoteMedia.getEffectiveMaxPicSize();
+
+      // Should return maxPicSize (278_784) instead of resolution-based value (1_065_024)
+      assert.strictEqual(result, 278_784);
+    });
+
+    it('works correctly with different resolution options', () => {
+      const testCases: Array<{ resolution: RemoteVideoResolution; expected: number }> = [
+        { resolution: 'thumbnail', expected: 147_456 },
+        { resolution: 'very small', expected: 147_456 },
+        { resolution: 'small', expected: 278_784 },
+        { resolution: 'medium', expected: 1_065_024 },
+        { resolution: 'large', expected: 2_359_296 },
+        { resolution: 'best', expected: 2_359_296 },
+      ];
+
+      testCases.forEach(({ resolution, expected }) => {
+        const testRemoteMedia = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager, { resolution });
+        testRemoteMedia.setSizeHint(0, 0); // Ensure maxPicSize doesn't interfere
+
+        const result = testRemoteMedia.getEffectiveMaxPicSize();
+
         assert.strictEqual(result, expected, `Failed for resolution: ${resolution}`);
       });
     });

@@ -107,29 +107,8 @@ export class RemoteMedia extends EventsScope {
       return;
     }
 
-    // we switch to the next resolution level when the height is 10% more than the current resolution height
-    // except for 1080p - we switch to it immediately when the height is more than 720p
-    const threshold = 1.1;
-    const getThresholdHeight = (h: number) => Math.round(h * threshold);
-
-    let resolution: RemoteVideoResolution;
-
-    if (height < getThresholdHeight(90)) {
-      resolution = 'thumbnail';
-    } else if (height < getThresholdHeight(180)) {
-      resolution = 'very small';
-    } else if (height < getThresholdHeight(360)) {
-      resolution = 'small';
-    } else if (height < getThresholdHeight(540)) {
-      resolution = 'medium';
-    } else if (height <= 720) {
-      resolution = 'large';
-    } else {
-      resolution = 'best';
-    }
-
-    this.maxFrameSize = MediaCodecHelper.H264.getMaxFs(resolution);
-    this.maxPicSize = MediaCodecHelper.AV1.getMaxPicSize(resolution);
+    this.maxFrameSize = MediaCodecHelper.H264.getSizeHintMaxFs(width, height);
+    this.maxPicSize = MediaCodecHelper.AV1.getSizeHintMaxPicSize(width, height);
     this.receiveSlot?.setMaxFs(this.maxFrameSize);
     this.receiveSlot?.setMaxPicSize(this.maxPicSize);
   }

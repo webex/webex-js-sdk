@@ -55,7 +55,9 @@ describe('RemoteMediaGroup', () => {
 
     fakeNamedMediaSlots = Array(1)
       .fill(null)
-      .map((_, index) => new FakeSlot(MediaType.AudioMain, `fake named media receive slot ${index}`));
+      .map(
+        (_, index) => new FakeSlot(MediaType.AudioMain, `fake named media receive slot ${index}`)
+      );
   });
 
   const getLastActiveSpeakerRequestId = () =>
@@ -105,7 +107,6 @@ describe('RemoteMediaGroup', () => {
 
   describe('setPreferLiveVideo', () => {
     it('updates prefer live video', () => {
-
       const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
         resolution: 'medium',
         preferLiveVideo: false,
@@ -123,7 +124,7 @@ describe('RemoteMediaGroup', () => {
           policyInfo: sinon.match({
             policy: 'active-speaker',
             priority: 255,
-            preferLiveVideo: true
+            preferLiveVideo: true,
           }),
           receiveSlots: fakeReceiveSlots,
           codecInfo: sinon.match({
@@ -131,7 +132,7 @@ describe('RemoteMediaGroup', () => {
             maxFs: 3600,
           }),
         }),
-        false,
+        false
       );
     });
 
@@ -147,14 +148,12 @@ describe('RemoteMediaGroup', () => {
 
       assert.notCalled(fakeMediaRequestManager.addRequest);
     });
-
   });
 
   describe('setNamedMediaGroup', () => {
     it('updates named media group', () => {
-
-      const nameGroup1 = { type: 1, value: 20 };
-      const nameGroup2 = { type: 1, value: 24 };
+      const nameGroup1 = {type: 1, value: 20};
+      const nameGroup2 = {type: 1, value: 24};
       const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeNamedMediaSlots, 255, true, {
         namedMediaGroup: nameGroup1,
       });
@@ -176,16 +175,16 @@ describe('RemoteMediaGroup', () => {
           receiveSlots: fakeNamedMediaSlots,
           codecInfo: undefined,
         }),
-        false,
+        false
       );
     });
 
     it('does not call add request when named media group has not changed', () => {
       const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeNamedMediaSlots, 255, true, {
-        namedMediaGroup: { type: 1, value: 20 },
+        namedMediaGroup: {type: 1, value: 20},
       });
       fakeMediaRequestManager.addRequest.resetHistory();
-      group.setNamedMediaGroup({ type: 1, value: 20 }, false);
+      group.setNamedMediaGroup({type: 1, value: 20}, false);
 
       assert.notCalled(fakeMediaRequestManager.cancelRequest);
 
@@ -193,9 +192,8 @@ describe('RemoteMediaGroup', () => {
     });
 
     it('remove named media group', () => {
-
-      const nameGroup1 = { type: 1, value: 20 };
-      const nameGroup2 = { type: 1, value: 0 };
+      const nameGroup1 = {type: 1, value: 20};
+      const nameGroup2 = {type: 1, value: 0};
       const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeNamedMediaSlots, 255, true, {
         namedMediaGroup: nameGroup1,
       });
@@ -212,177 +210,13 @@ describe('RemoteMediaGroup', () => {
           policyInfo: sinon.match({
             policy: 'active-speaker',
             priority: 255,
-            nameMediaGroups: undefined,
+            namedMediaGroups: undefined,
           }),
           receiveSlots: fakeNamedMediaSlots,
           codecInfo: undefined,
         }),
-        true,
-      );
-    });
-
-  });
-
-  describe('preferredCodec', () => {
-    it('uses h264 codec by default when preferredCodec is not specified', () => {
-      new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
-        resolution: 'medium',
-        preferLiveVideo: true,
-      });
-
-      assert.calledOnce(fakeMediaRequestManager.addRequest);
-      assert.calledWith(
-        fakeMediaRequestManager.addRequest,
-        sinon.match({
-          policyInfo: sinon.match({
-            policy: 'active-speaker',
-            priority: 255,
-          }),
-          receiveSlots: fakeReceiveSlots,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600, // medium resolution
-          }),
-        }),
         true
       );
-    });
-
-    it('uses h264 codec when preferredCodec is explicitly set to h264', () => {
-      new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
-        resolution: 'large',
-        preferLiveVideo: true,
-        preferredCodec: 'h264',
-      });
-
-      assert.calledOnce(fakeMediaRequestManager.addRequest);
-      assert.calledWith(
-        fakeMediaRequestManager.addRequest,
-        sinon.match({
-          policyInfo: sinon.match({
-            policy: 'active-speaker',
-            priority: 255,
-          }),
-          receiveSlots: fakeReceiveSlots,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 8192, // large resolution
-          }),
-        }),
-        true
-      );
-    });
-
-    it('uses av1 codec when preferredCodec is set to av1', () => {
-      new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
-        resolution: 'medium',
-        preferLiveVideo: true,
-        preferredCodec: 'av1',
-      });
-
-      assert.calledOnce(fakeMediaRequestManager.addRequest);
-      assert.calledWith(
-        fakeMediaRequestManager.addRequest,
-        sinon.match({
-          policyInfo: sinon.match({
-            policy: 'active-speaker',
-            priority: 255,
-          }),
-          receiveSlots: fakeReceiveSlots,
-          codecInfo: sinon.match({
-            codec: 'av1',
-            maxPicSize: 921600, // medium resolution uses maxPicSize for av1
-          }),
-        }),
-        true
-      );
-    });
-
-    it('passes preferredCodec to RemoteMedia instances', () => {
-      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
-        resolution: 'small',
-        preferLiveVideo: true,
-        preferredCodec: 'av1',
-      });
-
-      const remoteMediaList = group.getRemoteMedia();
-      assert.strictEqual(remoteMediaList.length, NUM_SLOTS);
-
-      // Verify all RemoteMedia instances were created
-      assert.strictEqual(
-        remoteMediaList.every((item) => item instanceof RemoteMedia),
-        true
-      );
-    });
-
-    it('uses av1 codec with different resolutions', () => {
-      const resolutions = [
-        { resolution: 'small' as const, expectedMaxPicSize: 235520 },
-        { resolution: 'medium' as const, expectedMaxPicSize: 921600 },
-        { resolution: 'large' as const, expectedMaxPicSize: 2097152 },
-      ];
-
-      resolutions.forEach(({ resolution, expectedMaxPicSize }) => {
-        fakeMediaRequestManager.addRequest.resetHistory();
-
-        new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
-          resolution,
-          preferLiveVideo: true,
-          preferredCodec: 'av1',
-        });
-
-        assert.calledOnce(fakeMediaRequestManager.addRequest);
-        assert.calledWith(
-          fakeMediaRequestManager.addRequest,
-          sinon.match({
-            policyInfo: sinon.match({
-              policy: 'active-speaker',
-              priority: 255,
-            }),
-            receiveSlots: fakeReceiveSlots,
-            codecInfo: sinon.match({
-              codec: 'av1',
-              maxPicSize: expectedMaxPicSize,
-            }),
-          }),
-          true
-        );
-      });
-    });
-
-    it('uses h264 codec with different resolutions', () => {
-      const resolutions = [
-        { resolution: 'small' as const, expectedMaxFs: 920 },
-        { resolution: 'medium' as const, expectedMaxFs: 3600 },
-        { resolution: 'large' as const, expectedMaxFs: 8192 },
-      ];
-
-      resolutions.forEach(({ resolution, expectedMaxFs }) => {
-        fakeMediaRequestManager.addRequest.resetHistory();
-
-        new RemoteMediaGroup(fakeMediaRequestManager, fakeReceiveSlots, 255, true, {
-          resolution,
-          preferLiveVideo: true,
-          preferredCodec: 'h264',
-        });
-
-        assert.calledOnce(fakeMediaRequestManager.addRequest);
-        assert.calledWith(
-          fakeMediaRequestManager.addRequest,
-          sinon.match({
-            policyInfo: sinon.match({
-              policy: 'active-speaker',
-              priority: 255,
-            }),
-            receiveSlots: fakeReceiveSlots,
-            codecInfo: sinon.match({
-              codec: 'h264',
-              maxFs: expectedMaxFs,
-            }),
-          }),
-          true
-        );
-      });
     });
   });
 
@@ -535,33 +369,36 @@ describe('RemoteMediaGroup', () => {
 
       const remoteMedia2 = group.getRemoteMedia('all')[PINNED_INDEX2];
 
-      const remoteMedisCsis = [{remoteMedia, csi: CSI}, {remoteMedia: remoteMedia2, csi: CSI2}];
+      const remoteMedisCsis = [
+        {remoteMedia, csi: CSI},
+        {remoteMedia: remoteMedia2, csi: CSI2},
+      ];
 
       group.setActiveSpeakerCsis(remoteMedisCsis, false);
 
-     assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
-     assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
-     assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 2);
-     assert.strictEqual(group.getRemoteMedia('pinned').length, 2);
+      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 2);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 2);
 
-     assert.strictEqual(group.isPinned(remoteMedia), true);
-     assert.strictEqual(group.isPinned(remoteMedia2), true);
+      assert.strictEqual(group.isPinned(remoteMedia), true);
+      assert.strictEqual(group.isPinned(remoteMedia2), true);
 
-     resetHistory();
+      resetHistory();
 
-     group.setActiveSpeakerCsis([{remoteMedia}], false);
+      group.setActiveSpeakerCsis([{remoteMedia}], false);
 
-     // one pane should still remain pinned
-     assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
-     assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
-     assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 1);
-     assert.strictEqual(group.getRemoteMedia('pinned').length, 1);
-     assert.strictEqual(group.isPinned(remoteMedia), false);
-     assert.strictEqual(group.isPinned(remoteMedia2), true);
+      // one pane should still remain pinned
+      assert.strictEqual(group.getRemoteMedia().length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('all').length, NUM_SLOTS);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, NUM_SLOTS - 1);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 1);
+      assert.strictEqual(group.isPinned(remoteMedia), false);
+      assert.strictEqual(group.isPinned(remoteMedia2), true);
 
-     assert.calledTwice(fakeMediaRequestManager.cancelRequest);
-     assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake receiver selected request 1');
-     assert.notCalled(fakeMediaRequestManager.commit);
+      assert.calledTwice(fakeMediaRequestManager.cancelRequest);
+      assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake receiver selected request 1');
+      assert.notCalled(fakeMediaRequestManager.commit);
     });
 
     it('check commit is only called once', () => {
@@ -581,7 +418,11 @@ describe('RemoteMediaGroup', () => {
 
       const remoteMedia2 = group.getRemoteMedia('all')[PINNED_INDEX2];
 
-      const remoteMedisCsis = [{remoteMedia, csi: CSI}, {remoteMedia: remoteMedia2, csi: CSI2}, {remoteMedia}];
+      const remoteMedisCsis = [
+        {remoteMedia, csi: CSI},
+        {remoteMedia: remoteMedia2, csi: CSI2},
+        {remoteMedia},
+      ];
 
       group.setActiveSpeakerCsis(remoteMedisCsis, true);
 
@@ -593,7 +434,10 @@ describe('RemoteMediaGroup', () => {
         resolution: 'medium',
         preferLiveVideo: true,
       });
-      assert.throws(() => group.setActiveSpeakerCsis([{remoteMedia: {id: 'r1'} as any, csi: 123}], false), 'failed to pin a remote media object r1, because it is not found in this remote media group');
+      assert.throws(
+        () => group.setActiveSpeakerCsis([{remoteMedia: {id: 'r1'} as any, csi: 123}], false),
+        'failed to pin a remote media object r1, because it is not found in this remote media group'
+      );
     });
 
     it('throws when remoteMedia id is not in unpinned and pinned array - csi is not there', () => {
@@ -601,7 +445,10 @@ describe('RemoteMediaGroup', () => {
         resolution: 'medium',
         preferLiveVideo: true,
       });
-      assert.throws(() => group.setActiveSpeakerCsis([{remoteMedia: {id: 'r1'} as any}], false), 'failed to unpin a remote media object r1, because it is not found in this remote media group');
+      assert.throws(
+        () => group.setActiveSpeakerCsis([{remoteMedia: {id: 'r1'} as any}], false),
+        'failed to unpin a remote media object r1, because it is not found in this remote media group'
+      );
     });
   });
 

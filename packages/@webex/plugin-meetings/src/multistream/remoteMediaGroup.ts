@@ -221,6 +221,12 @@ export class RemoteMediaGroup {
     this.cancelActiveSpeakerMediaRequest(false);
 
     const mediaCodecHelper = MediaCodecHelper.get(this.options.preferredCodec);
+
+    const shouldIncludeCodecInfo =
+      this.options.preferredCodec === 'h264'
+        ? this.getEffectiveMaxFs() !== undefined
+        : this.getEffectiveMaxPicSize() !== undefined;
+
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -236,10 +242,12 @@ export class RemoteMediaGroup {
         receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
           remoteMedia.getUnderlyingReceiveSlot()
         ) as ReceiveSlot[],
-        codecInfo: mediaCodecHelper.getCodecInfo({
-          getMaxFs: () => this.getEffectiveMaxFs(),
-          getMaxPicSize: () => this.getEffectiveMaxPicSize(),
-        }),
+        codecInfo: shouldIncludeCodecInfo
+          ? mediaCodecHelper.getCodecInfo({
+              getMaxFs: () => this.getEffectiveMaxFs(),
+              getMaxPicSize: () => this.getEffectiveMaxPicSize(),
+            })
+          : undefined,
       },
       commit
     );

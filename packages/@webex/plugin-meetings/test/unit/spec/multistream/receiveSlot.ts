@@ -152,11 +152,30 @@ describe('ReceiveSlot', () => {
         receiveSlot.emit,
         {
           file: 'meeting/receiveSlot',
-          function: 'findMemberId',
+          function: 'setMaxFs',
         },
         ReceiveSlotEvents.MaxFsUpdate,
         {
           maxFs: 100,
+        }
+      );
+    })
+  });
+
+  describe('setMaxPicSize()', () => {
+    it('emits the correct event', () => {
+      sinon.stub(receiveSlot, 'emit');
+      receiveSlot.setMaxPicSize(100);
+
+      assert.calledOnceWithExactly(
+        receiveSlot.emit,
+        {
+          file: 'meeting/receiveSlot',
+          function: 'setMaxPicSize',
+        },
+        ReceiveSlotEvents.MaxPicSizeUpdate,
+        {
+          maxPicSize: 100,
         }
       );
     })
