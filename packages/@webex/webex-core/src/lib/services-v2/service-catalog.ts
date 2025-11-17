@@ -119,7 +119,7 @@ const ServiceCatalog = AmpState.extend({
     // declare namespaces outside of loop
     let existingService: IServiceDetail | undefined;
 
-    serviceDetails.forEach((service) => {
+    serviceDetails?.forEach((service) => {
       existingService = this._getServiceDetail(service.id, serviceGroup);
 
       if (existingService) {
