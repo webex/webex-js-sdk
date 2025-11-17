@@ -37,6 +37,7 @@ export default class TaskManager extends EventEmitter {
   private static taskManager;
   private wrapupData: WrapupData;
   private agentId: string;
+  private webRtcEnabled: boolean;
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
@@ -72,6 +73,10 @@ export default class TaskManager extends EventEmitter {
    */
   public getAgentId(): string {
     return this.agentId;
+  }
+
+  public setWebRtcEnabled(webRtcEnabled: boolean) {
+    this.webRtcEnabled = webRtcEnabled;
   }
 
   private handleIncomingWebCall = (call: ICall) => {
@@ -575,7 +580,8 @@ export default class TaskManager extends EventEmitter {
     const shouldAutoAnswer = shouldAutoAnswerTask(
       task.data,
       this.agentId,
-      this.webCallingService.loginOption
+      this.webCallingService.loginOption,
+      this.webRtcEnabled
     );
 
     if (shouldAutoAnswer) {

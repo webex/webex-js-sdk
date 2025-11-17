@@ -126,10 +126,15 @@ export const isAutoAnswerEnabled = (interaction: Interaction, agentId: string): 
  * Checks if the interaction is a WebRTC call eligible for auto-answer
  * @param interaction - The interaction object
  * @param loginOption - The agent's login option (BROWSER, AGENT_DN, etc.)
+ * @param webRtcEnabled - Whether WebRTC is enabled for the agent
  * @returns true if this is a WebRTC call, false otherwise
  */
-export const isWebRTCCall = (interaction: Interaction, loginOption: string): boolean => {
-  return loginOption === 'BROWSER' && interaction.mediaType === 'telephony';
+export const isWebRTCCall = (
+  interaction: Interaction,
+  loginOption: string,
+  webRtcEnabled: boolean
+): boolean => {
+  return webRtcEnabled && loginOption === 'BROWSER' && interaction.mediaType === 'telephony';
 };
 
 /**
@@ -171,12 +176,14 @@ export const isAgentInitiatedOutdial = (interaction: Interaction, agentId: strin
  * @param taskData - The task data
  * @param agentId - Current agent ID
  * @param loginOption - Agent's login option
+ * @param webRtcEnabled - Whether WebRTC is enabled for the agent
  * @returns true if task should be auto-answered, false otherwise
  */
 export const shouldAutoAnswerTask = (
   taskData: TaskData,
   agentId: string,
-  loginOption: string
+  loginOption: string,
+  webRtcEnabled: boolean
 ): boolean => {
   const {interaction} = taskData;
 
@@ -191,7 +198,7 @@ export const shouldAutoAnswerTask = (
   const agentInitiatedOutdial = isAgentInitiatedOutdial(interaction, agentId);
 
   // WebRTC telephony calls
-  if (isWebRTCCall(interaction, loginOption)) {
+  if (isWebRTCCall(interaction, loginOption, webRtcEnabled)) {
     return autoAnswerEnabled || agentInitiatedOutdial;
   }
 
