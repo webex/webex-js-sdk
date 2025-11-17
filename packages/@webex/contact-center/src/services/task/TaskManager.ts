@@ -12,6 +12,13 @@ import LoggerProxy from '../../logger-proxy';
 import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
+import {
+  checkParticipantNotInInteraction,
+  getIsConferenceInProgress,
+  isParticipantInMainInteraction,
+  isPrimary,
+  isSecondaryEpDnAgent,
+} from './TaskUtils';
 
 /** @internal */
 export default class TaskManager extends EventEmitter {
@@ -122,14 +129,15 @@ export default class TaskManager extends EventEmitter {
                 method: METHODS.REGISTER_TASK_LISTENERS,
                 interactionId: payload.data.interactionId,
               });
+
               task = new Task(
                 this.contact,
                 this.webCallingService,
                 {
                   ...payload.data,
                   wrapUpRequired:
-                    payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp ||
-                    false,
+                    payload.data.interaction?.participants?.[this.agentId]?.isWrapUp || false,
+                  isConferenceInProgress: getIsConferenceInProgress(payload.data),
                 },
                 this.wrapupData,
                 this.agentId
@@ -160,6 +168,7 @@ export default class TaskManager extends EventEmitter {
               }
             }
             break;
+
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
             task = new Task(
               this.contact,
@@ -239,13 +248,22 @@ export default class TaskManager extends EventEmitter {
             break;
           }
           case CC_EVENTS.CONTACT_ENDED:
+            // Update task data
             task = this.updateTaskData(task, {
               ...payload.data,
-              wrapUpRequired: payload.data.interaction.state !== 'new',
+              wrapUpRequired:
+                payload.data.interaction.state !== 'new' &&
+                !isSecondaryEpDnAgent(payload.data.interaction),
             });
-            this.handleTaskCleanup(task);
-            task.emit(TASK_EVENTS.TASK_END, task);
 
+            // Handle cleanup based on whether task should be deleted
+            this.handleTaskCleanup(task);
+
+            task?.emit(TASK_EVENTS.TASK_END, task);
+
+            break;
+          case CC_EVENTS.CONTACT_MERGED:
+            task = this.handleContactMerged(task, payload.data);
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
             // As soon as the main interaction is held, we need to emit TASK_HOLD
@@ -358,18 +376,45 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED:
             // Conference ended - update task state and emit event
             task = this.updateTaskData(task, payload.data);
+            if (
+              !task ||
+              isPrimary(task, this.agentId) ||
+              isParticipantInMainInteraction(task, this.agentId)
+            ) {
+              LoggerProxy.log('Primary or main interaction participant leaving conference');
+            } else {
+              this.removeTaskFromCollection(task);
+            }
             task.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
             break;
-          case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
-            // Participant joined conference - update task state with participant information and emit event
-            task = this.updateTaskData(task, payload.data);
+          case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE: {
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferenceInProgress: getIsConferenceInProgress(payload.data),
+            });
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
             break;
-          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
+          }
+          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE: {
             // Conference ended - update task state and emit event
-            task = this.updateTaskData(task, payload.data);
+
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferenceInProgress: getIsConferenceInProgress(payload.data),
+            });
+            if (checkParticipantNotInInteraction(task, this.agentId)) {
+              if (
+                isParticipantInMainInteraction(task, this.agentId) ||
+                isPrimary(task, this.agentId)
+              ) {
+                LoggerProxy.log('Primary or main interaction participant leaving conference');
+              } else {
+                this.removeTaskFromCollection(task);
+              }
+            }
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
             break;
+          }
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED:
             // Conference exit failed - update task state and emit failure event
             task = this.updateTaskData(task, payload.data);
@@ -391,13 +436,10 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED, task);
             break;
-          case CC_EVENTS.CONSULTED_PARTICIPANT_MOVING:
-            // Participant is being moved/transferred - update task state with movement info
-            task = this.updateTaskData(task, payload.data);
-            break;
           case CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY:
             // Post-call activity for participant - update task state with activity details
             task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
             break;
           default:
             break;
@@ -437,6 +479,54 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
+  /**
+   * Handles CONTACT_MERGED event logic
+   * @param task - The task to process
+   * @param taskData - The task data from the event payload
+   * @returns Updated or newly created task
+   * @private
+   */
+  private handleContactMerged(task: ITask, taskData: TaskData): ITask {
+    if (taskData.childInteractionId) {
+      // remove the child task from collection
+      this.removeTaskFromCollection(this.taskCollection[taskData.childInteractionId]);
+    }
+
+    if (this.taskCollection[taskData.interactionId]) {
+      LoggerProxy.log(`Got CONTACT_MERGED: Task already exists in collection`, {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.REGISTER_TASK_LISTENERS,
+        interactionId: taskData.interactionId,
+      });
+      // update the task data
+      task = this.updateTaskData(task, taskData);
+    } else {
+      // Case2 : Task is not present in taskCollection
+      LoggerProxy.log(`Got CONTACT_MERGED : Creating new task in taskManager`, {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.REGISTER_TASK_LISTENERS,
+        interactionId: taskData.interactionId,
+      });
+
+      task = new Task(
+        this.contact,
+        this.webCallingService,
+        {
+          ...taskData,
+          wrapUpRequired: taskData.interaction?.participants?.[this.agentId]?.isWrapUp || false,
+          isConferenceInProgress: getIsConferenceInProgress(taskData),
+        },
+        this.wrapupData,
+        this.agentId
+      );
+      this.taskCollection[taskData.interactionId] = task;
+    }
+
+    this.emit(TASK_EVENTS.TASK_MERGED, task);
+
+    return task;
+  }
+
   private removeTaskFromCollection(task: ITask) {
     if (task?.data?.interactionId) {
       delete this.taskCollection[task.data.interactionId];
@@ -448,7 +538,13 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
+  /**
+   * Handles cleanup of task resources including Desktop/WebRTC call cleanup and task removal
+   * @param task - The task to clean up
+   * @private
+   */
   private handleTaskCleanup(task: ITask) {
+    // Clean up Desktop/WebRTC calling resources for browser-based telephony tasks
     if (
       this.webCallingService.loginOption === LoginOption.BROWSER &&
       task.data.interaction.mediaType === 'telephony'
@@ -456,8 +552,9 @@ export default class TaskManager extends EventEmitter {
       task.unregisterWebCallListeners();
       this.webCallingService.cleanUpCall();
     }
-    if (task.data.interaction.state === 'new') {
-      // Only remove tasks in 'new' state immediately. For other states,
+
+    if (task.data.interaction.state === 'new' || isSecondaryEpDnAgent(task.data.interaction)) {
+      // Only remove tasks in 'new' state or isSecondaryEpDnAgent immediately. For other states,
       // retain tasks until they complete wrap-up, unless the task disconnected before being answered.
       this.removeTaskFromCollection(task);
     }

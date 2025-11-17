@@ -1807,15 +1807,10 @@ describe('uploadLogs', () => {
       expect(true).toBe(false); // This will fail the test if no exception is thrown
     } catch (error) {
       expect(error).toBe(mockError);
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Failed to upload Logs'),
-        }),
-        {
-          file: UTILS_FILE,
-          method: 'uploadLogs',
-        }
-      );
+      expect(logSpy).toHaveBeenCalledWith(`Failed to upload Logs ${JSON.stringify(error)}`, {
+        file: UTILS_FILE,
+        method: 'uploadLogs',
+      });
       expect(mockSubmitRegistrationMetric).toHaveBeenCalledWith(
         'web-calling-sdk-upload-logs-failed',
         {
@@ -1828,7 +1823,7 @@ describe('uploadLogs', () => {
             tracking_id: undefined,
             feedback_id: 'mocked-uuid-12345',
             call_id: undefined,
-            error: 'Failed to upload Logs Error: Upload failed',
+            error: `Failed to upload Logs ${JSON.stringify(error)}`,
           },
           tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
           type: 'behavioral',
@@ -1852,15 +1847,10 @@ describe('uploadLogs', () => {
     const result = await uploadLogs(mockMetaData, false);
     expect(result).toBeUndefined();
 
-    expect(logSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: expect.stringContaining('Failed to upload Logs'),
-      }),
-      {
-        file: UTILS_FILE,
-        method: 'uploadLogs',
-      }
-    );
+    expect(logSpy).toHaveBeenCalledWith(`Failed to upload Logs ${JSON.stringify(mockError)}`, {
+      file: UTILS_FILE,
+      method: 'uploadLogs',
+    });
     expect(mockSubmitRegistrationMetric).toHaveBeenCalledWith(
       'web-calling-sdk-upload-logs-failed',
       {
@@ -1873,7 +1863,7 @@ describe('uploadLogs', () => {
           tracking_id: undefined,
           feedback_id: 'mocked-uuid-12345',
           call_id: undefined,
-          error: 'Failed to upload Logs Error: Upload failed',
+          error: `Failed to upload Logs ${JSON.stringify(mockError)}`,
         },
         tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
         type: 'behavioral',
