@@ -120,6 +120,7 @@ import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
 import {createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
 import JoinForbiddenError from '../../../../src/common/errors/join-forbidden-error';
 import {EventEmitter} from 'stream';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -214,8 +215,10 @@ describe('plugin-meetings', () => {
   let correlationId;
   let isoLocalClientMeetingJoinTime;
   let uploadEvent;
+  let isCapableOfReceivingVideoCodecStub;
 
   beforeEach(() => {
+    isCapableOfReceivingVideoCodecStub = sinon.stub(WebCapabilities, 'isCapableOfReceivingVideoCodec').returns(CapabilityState.NOT_CAPABLE);
     webex = new MockWebex({
       children: {
         meetings: Meetings,

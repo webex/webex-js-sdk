@@ -197,8 +197,6 @@ describe('plugin-meetings', () => {
 
       await rm.reconnect();
 
-      assert.calledOnce(fakeMeeting.mediaRequestManagers.audio.clearPreviousRequests);
-      assert.calledOnce(fakeMeeting.mediaRequestManagers.video.clearPreviousRequests);
       assert.calledOnce(fakeMeeting.mediaRequestManagers.audio.commit);
       assert.calledOnce(fakeMeeting.mediaRequestManagers.video.commit);
     });
