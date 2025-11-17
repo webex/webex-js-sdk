@@ -1,4 +1,3 @@
-import ExtendedError from 'Errors/catalog/ExtendedError';
 import log from '../Logger';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
@@ -201,6 +200,8 @@ export class UcmBackendConnector implements IUcmBackendConnector {
           method: HTTP_METHODS.GET,
         });
 
+        log.log(`Response code: ${resp.statusCode}`, loggerContext);
+
         const {callForwarding} = resp.body as CallForwardingSettingsUCM;
         const cfa = callForwarding.always.find(
           (item) => item.dn.endsWith(directoryNumber) || item.e164Number.endsWith(directoryNumber)
@@ -246,10 +247,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       return response;
     } catch (err: unknown) {
       const errorInfo = err as WebexRequestPayload;
-      const extendedError = new Error(
-        `Failed to get call forward always setting: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to get call forward always setting: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 

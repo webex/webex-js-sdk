@@ -19,6 +19,7 @@ import {
   formattedServiceHostmapEntryConv,
   serviceHostmapV2,
 } from '../../../fixtures/host-catalog-v2';
+import {cloneDeep} from 'lodash';
 
 describe('webex-core', () => {
   describe('ServiceCatalogV2', () => {
@@ -394,13 +395,13 @@ describe('webex-core', () => {
         );
 
         it('resolves to an authed u2c hostmap when no params specified', () => {
-          assert.typeOf(fullRemoteHM, 'array');
-          assert.isAbove(fullRemoteHM.length, 0);
+          assert.typeOf(fullRemoteHM.services, 'array');
+          assert.isAbove(fullRemoteHM.services.length, 0);
         });
 
         it('resolves to a limited u2c hostmap when params specified', () => {
-          assert.typeOf(limitedRemoteHM, 'array');
-          assert.isAbove(limitedRemoteHM.length, 0);
+          assert.typeOf(limitedRemoteHM.services, 'array');
+          assert.isAbove(limitedRemoteHM.services.length, 0);
         });
 
         it('rejects if the params provided are invalid', () =>
@@ -449,7 +450,7 @@ describe('webex-core', () => {
         catalog
           .waitForCatalog('postauth', 1)
           .then(() => assert(true, 'promise resolved'))
-          .finally(() => catalog.updateServiceGroups('postauth', formattedHM));
+          .finally(() => catalog.updateServiceGroups('postauth', formattedHM.services));
       });
     });
 
@@ -463,7 +464,7 @@ describe('webex-core', () => {
       });
 
       it('removes any unused urls from current services', () => {
-        catalog.updateServiceGroups('preauth', formattedHM);
+        catalog.updateServiceGroups('preauth', formattedHM.services);
 
         const originalLength = catalog.serviceGroups.preauth.length;
 
@@ -473,9 +474,9 @@ describe('webex-core', () => {
       });
 
       it('updates the target catalog to contain the provided hosts', () => {
-        catalog.updateServiceGroups('preauth', formattedHM);
+        catalog.updateServiceGroups('preauth', formattedHM.services);
 
-        assert.equal(catalog.serviceGroups.preauth.length, formattedHM.length);
+        assert.equal(catalog.serviceGroups.preauth.length, formattedHM.services.length);
       });
 
       it('updates any existing ServiceUrls', () => {
@@ -601,21 +602,21 @@ describe('webex-core', () => {
           format: 'U2Cv2',
         };
 
-        catalog.updateServiceGroups('preauth', formattedHM);
+        catalog.updateServiceGroups('preauth', formattedHM.services);
 
         const oldServiceDetails = catalog._getAllServiceDetails('preauth');
 
         const newFormattedHM = services._formatReceivedHostmap(newServiceHM);
 
-        catalog.updateServiceGroups('preauth', newFormattedHM);
+        catalog.updateServiceGroups('preauth', newFormattedHM.services);
 
         oldServiceDetails.forEach((serviceDetail) =>
-          assert.isTrue(!!formattedHM.find((service) => service.id === serviceDetail.id))
+          assert.isTrue(!!formattedHM.services.find((service) => service.id === serviceDetail.id))
         );
 
         const newServiceDetails = catalog._getAllServiceDetails('preauth');
 
-        formattedHM.forEach((oldServiceDetail) =>
+        formattedHM.services.forEach((oldServiceDetail) =>
           assert.notEqual(
             oldServiceDetail.serviceUrls[0].baseUrl,
             newServiceDetails.find((service) => service.id === oldServiceDetail.id).get()
@@ -624,7 +625,7 @@ describe('webex-core', () => {
       });
 
       it('creates an array of equal length of active services', () => {
-        assert.equal(serviceHostmap.services.length, formattedHM.length);
+        assert.equal(serviceHostmap.services.length, formattedHM.services.length);
       });
 
       it('creates an array with matching host data', () => {
@@ -646,7 +647,7 @@ describe('webex-core', () => {
           done();
         });
 
-        catalog.updateServiceGroups('preauth', formattedHM);
+        catalog.updateServiceGroups('preauth', formattedHM.services);
       });
 
       it('updates the services list', (done) => {
@@ -657,7 +658,42 @@ describe('webex-core', () => {
           done();
         });
 
-        catalog.updateServiceGroups('preauth', formattedHM);
+        catalog.updateServiceGroups('preauth', formattedHM.services);
+      });
+      it('make sure the serviceUrls is in Priority order', (done) => {
+        const notInOrderServiceHM = {
+          activeServices: {
+            conversation: 'urn:TEAM:us-east-2_a:conversation',
+            idbroker: 'urn:TEAM:us-east-2_a:idbroker',
+            locus: 'urn:TEAM:us-east-2_a:locus',
+            mercury: 'urn:TEAM:us-east-2_a:mercury',
+          },
+          services: [
+            {
+              id: 'urn:TEAM:us-east-2_a:conversation',
+              serviceName: 'conversation',
+              serviceUrls: [
+                {
+                  baseUrl: 'https://example-1.svc.webex.com/conversation/api/v1',
+                  priority: 2,
+                },
+                {
+                  baseUrl: 'https://conv-a.wbx2.com/conversation/api/v1',
+                  priority: 1,
+                },
+              ],
+            },
+          ],
+          orgId: '3e0e410f-f83f-4ee4-ac32-12692e99355c',
+          timestamp: '1745533341',
+          format: 'U2Cv2',
+        };
+        const notInOrderFormattedHM = services._formatReceivedHostmap(notInOrderServiceHM);
+        const checkFormattedHM = cloneDeep(notInOrderFormattedHM);
+        catalog.updateServiceGroups('preauth', notInOrderFormattedHM.services);
+        assert.deepEqual(catalog._getServiceDetail('urn:TEAM:us-east-2_a:conversation')?.serviceUrls[0], checkFormattedHM.services[0].serviceUrls[1])
+        assert.equal( catalog.get('urn:TEAM:us-east-2_a:conversation'), 'https://conv-a.wbx2.com/conversation/api/v1')
+        done();
       });
     });
   });

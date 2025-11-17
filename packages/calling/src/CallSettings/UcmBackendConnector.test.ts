@@ -212,7 +212,7 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         method: 'getCallForwardAlwaysSetting',
       });
       expect(log.error).toHaveBeenCalledWith(
-        new Error('Failed to get call forward always setting: [object Object]'),
+        `Failed to get call forward always setting: ${JSON.stringify(responsePayload)}`,
         {
           file: UCM_CONNECTOR_FILE,
           method: 'getCallForwardAlwaysSetting',

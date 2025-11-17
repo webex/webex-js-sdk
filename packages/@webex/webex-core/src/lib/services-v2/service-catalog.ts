@@ -49,6 +49,7 @@ const ServiceCatalog = AmpState.extend({
       }),
     ],
     isReady: ['boolean', false, false],
+    timestamp: ['string', false, ''],
     allowedDomains: ['array', false, () => []],
   },
 
@@ -300,9 +301,14 @@ const ServiceCatalog = AmpState.extend({
    * @emits ServiceCatalog#postauthorized
    * @param {ServiceGroup} serviceGroup
    * @param {Array<IServiceDetail>} serviceDetails
+   * @param {timestamp<string>} timestamp of the catalog
    * @returns {void}
    */
-  updateServiceGroups(serviceGroup: ServiceGroup, serviceDetails: Array<IServiceDetail>) {
+  updateServiceGroups(
+    serviceGroup: ServiceGroup,
+    serviceDetails: Array<IServiceDetail>,
+    timestamp?: string
+  ) {
     const currentServiceDetails = this.serviceGroups[serviceGroup];
 
     const unusedServicesDetails = currentServiceDetails.filter((serviceDetail) =>
@@ -313,7 +319,13 @@ const ServiceCatalog = AmpState.extend({
 
     serviceDetails.forEach((serviceObj) => {
       const serviceDetail = this._getServiceDetail(serviceObj.id, serviceGroup);
+      serviceObj?.serviceUrls?.sort((a, b) => {
+        if (a.priority < 0 && b.priority < 0) return 0;
+        if (a.priority < 0) return 1;
+        if (b.priority < 0) return -1;
 
+        return a.priority - b.priority;
+      });
       if (serviceDetail) {
         serviceDetail.serviceUrls = serviceObj.serviceUrls || [];
       } else {
@@ -321,6 +333,7 @@ const ServiceCatalog = AmpState.extend({
       }
     });
 
+    this.timestamp = timestamp;
     this.status[serviceGroup].ready = true;
     this.trigger(serviceGroup);
   },

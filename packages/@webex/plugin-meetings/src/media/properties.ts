@@ -9,9 +9,12 @@ import {
 
 import {parse} from '@webex/ts-sdp';
 import {ClientEvent} from '@webex/internal-plugin-metrics';
+import {throttle} from 'lodash';
+import Metrics from '../metrics';
 import {MEETINGS, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 import MediaConnectionAwaiter from './MediaConnectionAwaiter';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 
 export type MediaDirection = {
   sendAudio: boolean;
@@ -41,6 +44,8 @@ export default class MediaProperties {
   videoDeviceId: any;
   videoStream?: LocalCameraStream;
   namespace = MEETINGS;
+  mediaIssueCounters: {[key: string]: number} = {};
+  throttledSendMediaIssueMetric: ReturnType<typeof throttle>;
 
   /**
    * @param {Object} [options] -- to auto construct
@@ -66,6 +71,15 @@ export default class MediaProperties {
     this.remoteQualityLevel = QUALITY_LEVELS.HIGH;
     this.mediaSettings = {};
     this.videoDeviceId = null;
+
+    this.throttledSendMediaIssueMetric = throttle((eventPayload) => {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEDIA_ISSUE_DETECTED, {
+        ...eventPayload,
+      });
+      Object.keys(this.mediaIssueCounters).forEach((key) => {
+        this.mediaIssueCounters[key] = 0;
+      });
+    }, 1000 * 60 * 5); // at most once every 5 minutes
   }
 
   /**
@@ -139,8 +153,14 @@ export default class MediaProperties {
     this.videoDeviceId = deviceId;
   }
 
+  /**
+   * Clears the webrtcMediaConnection. This method should be called after
+   * peer connection is closed and no longer needed.
+   * @returns {void}
+   */
   unsetPeerConnection() {
     this.webrtcMediaConnection = null;
+    this.throttledSendMediaIssueMetric.flush();
   }
 
   /**
@@ -423,5 +443,28 @@ export default class MediaProperties {
         numTransports: 0,
       };
     }
+  }
+
+  /**
+   * Sends a metric about a media issue. Metrics are throttled so that we don't
+   * send too many of them, but include a count so that we know how many issues
+   * were detected.
+   *
+   * @param {string} issueType
+   * @param {string} issueSubType
+   * @param {string} correlationId
+   * @returns {void}
+   */
+  public sendMediaIssueMetric(issueType: string, issueSubType: string, correlationId) {
+    const key = `${issueType}_${issueSubType}`;
+
+    const count = (this.mediaIssueCounters[key] || 0) + 1;
+
+    this.mediaIssueCounters[key] = count;
+
+    this.throttledSendMediaIssueMetric({
+      correlationId,
+      ...this.mediaIssueCounters,
+    });
   }
 }

@@ -3,10 +3,6 @@
  */
 import 'jsdom-global/register';
 
-// Polyfill for crypto: https://github.com/jsdom/jsdom/issues/1612#issuecomment-663210638
-import {Crypto} from '@peculiar/webcrypto';
-global.crypto = new Crypto();
-
 import Device from '@webex/internal-plugin-device';
 import {CatalogDetails} from '@webex/internal-plugin-device';
 import Mercury from '@webex/internal-plugin-mercury';
@@ -694,11 +690,9 @@ describe('plugin-meetings', () => {
           assert.deepEqual(result.options, {
             mode: 'BLUR',
             blurStrength: 'STRONG',
-            generator: 'worker',
             quality: 'LOW',
             authToken: 'fake_token',
             mirror: false,
-            canvasResolutionScaling: 1,
           });
           assert.exists(result.enable);
           assert.exists(result.disable);

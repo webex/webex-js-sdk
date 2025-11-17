@@ -184,6 +184,7 @@
             <button onclick="answer()" disabled="" id="answer" class="btn--green">Answer</button>
             <button onclick="decline()" disabled="" id="decline" class="btn--red">Decline</button>
           </div>
+          <div id="participant-list"></div>
         </fieldset>
         <fieldset>
           <legend>Remote Audio</legend>
@@ -271,6 +272,12 @@
         <fieldset>
           <legend>Outdial Call</legend>
           <div class="keypad">
+            <div style="margin-bottom: 10px;">
+              <label for="outdialAniSelect">Caller ID (ANI):</label>
+              <select id="outdialAniSelect" style="width: 100%; margin-bottom: 10px;">
+                <option value="">Select Outdial Ani...</option>
+              </select>
+            </div>
             <input id="outBoundDialNumber" placeholder="Enter number to dial">
             <div class="keys">
               <div class="key" onclick="pressKey('1')">1</div>

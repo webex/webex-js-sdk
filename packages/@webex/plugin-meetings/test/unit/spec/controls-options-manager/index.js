@@ -133,6 +133,7 @@ describe('plugin-meetings', () => {
 
                 manager.set({
                   locusUrl: 'test/id',
+                  mainLocusUrl: '',
                   displayHints: [],
                 });
               });
@@ -201,6 +202,38 @@ describe('plugin-meetings', () => {
                     Util.canUpdate = restorable;
                   });
               });
+
+              it('should call request with mainLocusUrl and locusUrl as authorizingLocusUrl if mainLocusUrl is exist and not same with locusUrl', () => {
+                const restorable = Util.canUpdate;
+                Util.canUpdate = sinon.stub().returns(true);
+                manager.mainLocusUrl = 'test/main';
+
+                const audio = {scope: 'audio', properties: {a: 1, b: 2}};
+                const reactions = {scope: 'reactions', properties: {c: 3, d: 4}};
+
+                return manager.update(audio, reactions)
+                  .then(() => {
+                    assert.calledWith(request.request, {
+                      uri: 'test/main/controls',
+                      body: {
+                        audio: audio.properties,
+                        authorizingLocusUrl: 'test/id'
+                      },
+                      method: HTTP_VERBS.PATCH,
+                    });
+
+                    assert.calledWith(request.request, {
+                      uri: 'test/main/controls',
+                      body: {
+                        reactions: reactions.properties,
+                        authorizingLocusUrl: 'test/id'
+                      },
+                      method: HTTP_VERBS.PATCH,
+                    });
+
+                    Util.canUpdate = restorable;
+                  });
+              });
             });
 
             describe('Mute/Unmute All', () => {
@@ -214,6 +247,7 @@ describe('plugin-meetings', () => {
 
                 manager.set({
                   locusUrl: 'test/id',
+                  mainLocusUrl: '',
                   displayHints: [],
                 })
               });
@@ -301,6 +335,19 @@ describe('plugin-meetings', () => {
 
                 assert.calledWith(request.request, {  uri: 'test/id/controls',
                   body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['attendee'] } },
+                  method: HTTP_VERBS.PATCH});
+
+                assert.deepEqual(result, request.request.firstCall.returnValue);
+              });
+
+              it('request with mainLocusUrl and make locusUrl as authorizingLocusUrl if mainLocusUrl is exist and not same with locusUrl', () => {
+                manager.setDisplayHints(['MUTE_ALL', 'DISABLE_HARD_MUTE', 'DISABLE_MUTE_ON_ENTRY']);
+                manager.mainLocusUrl = `test/main`;
+
+                const result = manager.setMuteAll(true, true, true, ['attendee']);
+
+                assert.calledWith(request.request, {  uri: 'test/main/controls',
+                  body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['attendee'] }, authorizingLocusUrl: 'test/id' },
                   method: HTTP_VERBS.PATCH});
 
                 assert.deepEqual(result, request.request.firstCall.returnValue);

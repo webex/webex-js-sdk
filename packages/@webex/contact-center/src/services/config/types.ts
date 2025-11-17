@@ -63,8 +63,6 @@ export const CC_TASK_EVENTS = {
   AGENT_CONFERENCE_TRANSFERRED: 'AgentConferenceTransferred',
   /** Event emitted when conference transfer fails */
   AGENT_CONFERENCE_TRANSFER_FAILED: 'AgentConferenceTransferFailed',
-  /** Event emitted when consulted participant is moving/being transferred */
-  CONSULTED_PARTICIPANT_MOVING: 'ConsultedParticipantMoving',
   /** Event emitted for post-call activity by participant */
   PARTICIPANT_POST_CALL_ACTIVITY: 'ParticipantPostCallActivity',
   /** Event emitted when contact is blind transferred */
@@ -91,6 +89,8 @@ export const CC_TASK_EVENTS = {
   CONTACT_RECORDING_RESUME_FAILED: 'ContactRecordingResumeFailed',
   /** Event emitted when contact ends */
   CONTACT_ENDED: 'ContactEnded',
+  /** Event emitted when contact is merged */
+  CONTACT_MERGED: 'ContactMerged',
   /** Event emitted when ending contact fails */
   AGENT_CONTACT_END_FAILED: 'AgentContactEndFailed',
   /** Event emitted when agent enters wrap-up state */
@@ -1071,4 +1071,48 @@ export type CallDistributionGroup = {
   order: number;
   /** Distribution time duration in seconds */
   duration: number;
+};
+
+/**
+ * Represents a single outdial ANI (Automatic Number Identification) entry
+ * @public
+ */
+export type OutdialAniEntry = {
+  /** Unique identifier for the ANI entry */
+  id: string;
+  /** Display name for the ANI entry */
+  name: string;
+  /** Phone number associated with this ANI entry */
+  number: string;
+  /** Related links for this ANI entry */
+  links: string[];
+  /** Timestamp when this entry was created (Unix timestamp in milliseconds) */
+  createdTime: number;
+  /** Timestamp when this entry was last updated (Unix timestamp in milliseconds) */
+  lastUpdatedTime: number;
+};
+
+/**
+ * Response structure for outdial ANI entries API call
+ * @public
+ */
+export type OutdialAniEntriesResponse = OutdialAniEntry[];
+
+/**
+ * Parameters for fetching outdial ANI entries
+ * @public
+ */
+export type OutdialAniParams = {
+  /** Outdial ANI ID from agent profile */
+  outdialANI: string;
+  /** Page number for pagination (optional) */
+  page?: number;
+  /** Number of entries per page (optional) */
+  pageSize?: number;
+  /** Search string to filter entries (optional) */
+  search?: string;
+  /** Filter expression for advanced filtering (optional) */
+  filter?: string;
+  /** Comma-separated list of attributes to include in response (optional) */
+  attributes?: string;
 };

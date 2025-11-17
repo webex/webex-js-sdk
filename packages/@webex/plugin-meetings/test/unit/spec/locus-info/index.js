@@ -3020,6 +3020,45 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#updateLocusUrl', () => {
+      it('trigger LOCUS_INFO_UPDATE_URL event with isMainLocus is true as default', () => {
+        const fakeUrl = "https://fake.com/locus";
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateLocusUrl(fakeUrl);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateLocusUrl',
+          },
+          EVENTS.LOCUS_INFO_UPDATE_URL,
+          {
+            url: fakeUrl,
+            isMainLocus: true
+          },
+        );
+      });
+      it('trigger LOCUS_INFO_UPDATE_URL event with isMainLocus is false', () => {
+        const fakeUrl = "https://fake.com/locus";
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateLocusUrl(fakeUrl, false);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateLocusUrl',
+          },
+          EVENTS.LOCUS_INFO_UPDATE_URL,
+          {
+            url: fakeUrl,
+            isMainLocus: false
+          },
+        );
+      });
+    });
+
     // semi-integration tests that use real LocusInfo with real Parser
     // and test various scenarios related to handling out-of-order Locus delta events
     describe('handling of out-of-order Locus delta events', () => {

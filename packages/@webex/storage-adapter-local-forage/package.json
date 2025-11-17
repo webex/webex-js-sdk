@@ -11,7 +11,7 @@
     "directory": "packages/@webex/storage-adapter-local-forage"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browserify": {
     "transform": [

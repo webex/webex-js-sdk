@@ -66,7 +66,7 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      
+
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching user data using CI', {
         module: CONFIG_FILE_NAME,
         method: 'getUserUsingCI',
@@ -124,7 +124,7 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      
+
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching desktop profile', {
         module: CONFIG_FILE_NAME,
         method: 'getDesktopProfileById',
@@ -175,12 +175,7 @@ describe('AgentConfigService', () => {
       };
       (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getListOfTeams(
-        mockOrgId,
-        page,
-        pageSize,
-        filter
-      );
+      const result = await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter);
 
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
@@ -188,7 +183,7 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      
+
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching list of teams', {
         module: CONFIG_FILE_NAME,
         method: 'getListOfTeams',
@@ -272,7 +267,7 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      
+
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching list of aux codes', {
         module: CONFIG_FILE_NAME,
         method: 'getListOfAuxCodes',
@@ -723,7 +718,7 @@ describe('AgentConfigService', () => {
       const mockOrgInfo = {
         tenantId: 'tenant123',
         timezone: 'GMT',
-      }
+      };
 
       const mockOrgSettings = {
         campaignManagerEnabled: true,
@@ -732,10 +727,10 @@ describe('AgentConfigService', () => {
       };
 
       const mockSiteInfo = {
-        id: "c6a5451f-5ba7-49a1-aee8-fbef70c19ece",
-        name: "Site-1",
-        multimediaProfileId: "c5888e6f-5661-4871-9936-cbcec7658d41",
-      }
+        id: 'c6a5451f-5ba7-49a1-aee8-fbef70c19ece',
+        name: 'Site-1',
+        multimediaProfileId: 'c5888e6f-5661-4871-9936-cbcec7658d41',
+      };
 
       const mockTenantData = {
         timeoutDesktopInactivityEnabled: false,
@@ -774,10 +769,13 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith(`Fetched user data, userId: ${mockUserConfig.ciUserId}`, {
-        module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
-      });
+      expect(LoggerProxy.info).toHaveBeenCalledWith(
+        `Fetched user data, userId: ${mockUserConfig.ciUserId}`,
+        {
+          module: CONFIG_FILE_NAME,
+          method: 'getAgentConfig',
+        }
+      );
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched all required data', {
         module: CONFIG_FILE_NAME,
         method: 'getAgentConfig',
@@ -802,7 +800,7 @@ describe('AgentConfigService', () => {
         agentProfileData: mockAgentProfile,
         dialPlanData: mockDialPlanData,
         urlMapping: mockURLMapping,
-        multimediaProfileId: mockSiteInfo.multimediaProfileId
+        multimediaProfileId: mockSiteInfo.multimediaProfileId,
       });
     });
 
@@ -868,10 +866,10 @@ describe('AgentConfigService', () => {
       };
 
       const mockSiteInfo = {
-        id: "c6a5451f-5ba7-49a1-aee8-fbef70c19ece",
-        name: "Site-1",
-        multimediaProfileId: "c5888e6f-5661-4871-9936-cbcec7658d41",
-      }
+        id: 'c6a5451f-5ba7-49a1-aee8-fbef70c19ece',
+        name: 'Site-1',
+        multimediaProfileId: 'c5888e6f-5661-4871-9936-cbcec7658d41',
+      };
 
       const mockTenantData = {
         timeoutDesktopInactivityEnabled: true,
@@ -911,10 +909,13 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith(`Fetched user data, userId: ${mockUserConfig.ciUserId}`, {
-        module: CONFIG_FILE_NAME,
-        method: 'getAgentConfig',
-      });
+      expect(LoggerProxy.info).toHaveBeenCalledWith(
+        `Fetched user data, userId: ${mockUserConfig.ciUserId}`,
+        {
+          module: CONFIG_FILE_NAME,
+          method: 'getAgentConfig',
+        }
+      );
       expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched all required data', {
         module: CONFIG_FILE_NAME,
         method: 'getAgentConfig',
@@ -939,7 +940,7 @@ describe('AgentConfigService', () => {
         agentProfileData: mockAgentProfile,
         dialPlanData: mockDialPlanData,
         urlMapping: mockURLMapping,
-        multimediaProfileId: mockSiteInfo.multimediaProfileId
+        multimediaProfileId: mockSiteInfo.multimediaProfileId,
       });
     });
 
@@ -959,6 +960,290 @@ describe('AgentConfigService', () => {
       await expect(agentConfigService.getAgentConfig(mockOrgId, mockAgentId)).rejects.toThrow(
         'API call failed'
       );
+    });
+  });
+
+  describe('getOutdialAniEntries', () => {
+    const mockOutdialANI = 'ani-123-456';
+    const mockError = new Error('API call failed');
+
+    it('should return outdial ANI entries on success with minimal parameters', async () => {
+      const mockResponse = {
+        statusCode: 200,
+        body: {
+          data: [
+            {
+              id: '142fba3c-8502-4446-bf6e-584fd657553a',
+              name: 'Second Entry',
+              number: '+19403016307',
+              links: [],
+              createdTime: 1759227334000,
+              lastUpdatedTime: 1759227334000,
+            },
+            {
+              id: '6f53000b-e04a-4418-9de9-ba511d2367cb',
+              name: 'Sandbox OutDial -entry-iycx',
+              number: '+19403016307',
+              links: [],
+              createdTime: 1755185421000,
+              lastUpdatedTime: 1759227334000,
+            },
+          ],
+        },
+      };
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getOutdialAniEntries(mockOrgId, {
+        outdialANI: mockOutdialANI,
+      });
+
+      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/outdial-ani/${mockOutdialANI}/entry`,
+        method: 'GET',
+      });
+      expect(result).toEqual(mockResponse.body.data);
+
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching outdial ANI entries', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOutdialAniEntries',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getOutdialAniEntries API success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOutdialAniEntries',
+      });
+    });
+
+    it('should return outdial ANI entries on success with all parameters', async () => {
+      const page = 1;
+      const pageSize = 50;
+      const search = 'test';
+      const filter = 'active=true';
+      const attributes = 'number,name,id';
+
+      const mockResponse = {
+        statusCode: 200,
+        body: {
+          data: [
+            {
+              id: '142fba3c-8502-4446-bf6e-584fd657553a',
+              name: 'Test Entry',
+              number: '+19403016307',
+            },
+          ],
+        },
+      };
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getOutdialAniEntries(mockOrgId, {
+        outdialANI: mockOutdialANI,
+        page,
+        pageSize,
+        search,
+        filter,
+        attributes,
+      });
+
+      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/outdial-ani/${mockOutdialANI}/entry?page=${page}&pageSize=${pageSize}&search=${search}&filter=${filter}&attributes=${attributes}`,
+        method: 'GET',
+      });
+      expect(result).toEqual(mockResponse.body.data);
+
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching outdial ANI entries', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOutdialAniEntries',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getOutdialAniEntries API success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOutdialAniEntries',
+      });
+    });
+
+    it('should return outdial ANI entries with partial parameters', async () => {
+      const page = 0;
+      const pageSize = 25;
+      const attributes = 'number,name';
+
+      const mockResponse = {
+        statusCode: 200,
+        body: {
+          data: [
+            {
+              id: '142fba3c-8502-4446-bf6e-584fd657553a',
+              name: 'Partial Entry',
+              number: '+19403016307',
+            },
+          ],
+        },
+      };
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getOutdialAniEntries(mockOrgId, {
+        outdialANI: mockOutdialANI,
+        page,
+        pageSize,
+        attributes,
+      });
+
+      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/outdial-ani/${mockOutdialANI}/entry?page=${page}&pageSize=${pageSize}&attributes=${attributes}`,
+        method: 'GET',
+      });
+      expect(result).toEqual(mockResponse.body.data);
+    });
+
+    it('should return empty array when no ANI entries found', async () => {
+      const mockResponse = {
+        statusCode: 200,
+        body: {
+          data: [],
+        },
+      };
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getOutdialAniEntries(mockOrgId, {
+        outdialANI: mockOutdialANI,
+      });
+
+      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/outdial-ani/${mockOutdialANI}/entry`,
+        method: 'GET',
+      });
+      expect(result).toEqual([]);
+
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching outdial ANI entries', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOutdialAniEntries',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getOutdialAniEntries API success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOutdialAniEntries',
+      });
+    });
+
+    it('should throw an error if the API call fails', async () => {
+      (mockWebexRequest.request as jest.Mock).mockRejectedValue(mockError);
+
+      await expect(
+        agentConfigService.getOutdialAniEntries(mockOrgId, {outdialANI: mockOutdialANI})
+      ).rejects.toThrow('API call failed');
+
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getOutdialAniEntries API call failed with Error: API call failed',
+        {module: CONFIG_FILE_NAME, method: 'getOutdialAniEntries'}
+      );
+      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/outdial-ani/${mockOutdialANI}/entry`,
+        method: 'GET',
+      });
+    });
+
+    it('should return undefined when API call returns a non-200 status code', async () => {
+      const mockResponse = {statusCode: 404};
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getOutdialAniEntries(mockOrgId, {
+        outdialANI: mockOutdialANI,
+      });
+
+      expect(result).toBeUndefined();
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getOutdialAniEntries API success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOutdialAniEntries',
+      });
+      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/outdial-ani/${mockOutdialANI}/entry`,
+        method: 'GET',
+      });
+    });
+
+    it('should return undefined when API call returns a 500 status code', async () => {
+      const mockResponse = {statusCode: 500};
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getOutdialAniEntries(mockOrgId, {
+        outdialANI: mockOutdialANI,
+      });
+
+      expect(result).toBeUndefined();
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getOutdialAniEntries API success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOutdialAniEntries',
+      });
+      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/outdial-ani/${mockOutdialANI}/entry`,
+        method: 'GET',
+      });
+    });
+
+    it('should handle undefined response body gracefully', async () => {
+      const mockResponse = {
+        statusCode: 200,
+        body: undefined,
+      };
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getOutdialAniEntries(mockOrgId, {
+        outdialANI: mockOutdialANI,
+      });
+
+      expect(result).toBeUndefined();
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getOutdialAniEntries API success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOutdialAniEntries',
+      });
+    });
+
+    it('should handle response body without data property', async () => {
+      const mockResponse = {
+        statusCode: 200,
+        body: {
+          message: 'No data available',
+        },
+      };
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getOutdialAniEntries(mockOrgId, {
+        outdialANI: mockOutdialANI,
+      });
+
+      expect(result).toBeUndefined();
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getOutdialAniEntries API success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOutdialAniEntries',
+      });
+    });
+
+    it('should properly encode special characters in parameters', async () => {
+      const search = 'test search with spaces';
+      const filter = 'name=contains("test & special")';
+
+      const mockResponse = {
+        statusCode: 200,
+        body: {data: []},
+      };
+      (mockWebexRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await agentConfigService.getOutdialAniEntries(mockOrgId, {
+        outdialANI: mockOutdialANI,
+        page: 0,
+        pageSize: 10,
+        search,
+        filter,
+      });
+
+      expect(mockWebexRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/outdial-ani/${mockOutdialANI}/entry?page=0&pageSize=10&search=${search}&filter=${filter}`,
+        method: 'GET',
+      });
     });
   });
 });

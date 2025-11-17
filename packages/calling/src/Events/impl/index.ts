@@ -23,7 +23,7 @@ export class Eventing<T extends EventMap> extends (EventEmitter as {
     Logger.info(
       `${timestamp} ${
         LOG_PREFIX.EVENT
-      }: ${event.toString()} - event emitted with parameters -> ${args} = `,
+      }: ${event.toString()} - event emitted with parameters -> ${args}`,
       {
         file: 'Events/impl/index.ts',
         method: 'emit',

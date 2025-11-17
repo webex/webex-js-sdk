@@ -194,6 +194,12 @@ Media.createMediaConnection = (
       config.stopIceGatheringAfterFirstRelayCandidate = stopIceGatheringAfterFirstRelayCandidate;
     }
 
+    if (BrowserInfo.isEdge() || BrowserInfo.isChrome()) {
+      // we need this for getting inbound audio metadata
+      // but the audioLevel that we use is only available on Chromium based browsers
+      config.enableInboundAudioLevelMonitoring = true;
+    }
+
     return new MultistreamRoapMediaConnection(
       config,
       meetingId,

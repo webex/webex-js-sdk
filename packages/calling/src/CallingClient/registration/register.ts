@@ -73,7 +73,7 @@ export class Registration implements IRegistration {
 
   private failback429RetryAttempts: number;
   private registrationStatus: RegistrationStatus;
-  private failbackTimer?: NodeJS.Timer;
+  private failbackTimer?: NodeJS.Timeout;
   private activeMobiusUrl!: string;
 
   private rehomingIntervalMin: number;
@@ -164,10 +164,12 @@ export class Registration implements IRegistration {
         },
       });
     } catch (error) {
-      log.warn(`Delete failed with Mobius ${error}`, {
+      log.warn(`Delete failed with Mobius: ${JSON.stringify(error)}`, {
         file: REGISTRATION_FILE,
-        method: METHODS.DEREGISTER,
+        method: METHODS.DELETE_REGISTRATION,
       });
+
+      await uploadLogs();
     }
 
     this.setStatus(RegistrationStatus.INACTIVE);
@@ -214,7 +216,20 @@ export class Registration implements IRegistration {
   }
 
   /**
-   *
+   * Callback for handling 404 response from the server for register keepalive
+   */
+  private async handle404KeepaliveFailure(caller: string): Promise<void> {
+    if (caller === KEEPALIVE_UTIL) {
+      const abort = await this.attemptRegistrationWithServers(caller);
+
+      if (!abort && !this.isDeviceRegistered()) {
+        await this.startFailoverTimer();
+      }
+    }
+  }
+
+  /**
+   * Callback for handling 429 retry response from the server
    */
   private async handle429Retry(retryAfter: number, caller: string): Promise<void> {
     if (caller === FAILBACK_UTIL) {
@@ -237,6 +252,21 @@ export class Registration implements IRegistration {
       if (!abort && !this.isDeviceRegistered()) {
         await this.restartRegistration(REG_429_RETRY_UTIL);
       }
+    } else if (caller === KEEPALIVE_UTIL) {
+      this.clearKeepaliveTimer();
+      setTimeout(async () => {
+        log.log(`Resuming keepalive after ${retryAfter} seconds`, {
+          file: REGISTRATION_FILE,
+          method: REG_429_RETRY_UTIL,
+        });
+
+        // Resume the keepalive after waiting for the retry after period
+        await this.startKeepaliveTimer(
+          this.deviceInfo.device?.uri as string,
+          this.deviceInfo.keepaliveInterval as number,
+          'UNKNOWN'
+        );
+      }, retryAfter * 1000);
     } else {
       this.retryAfter = retryAfter;
     }
@@ -377,10 +407,13 @@ export class Registration implements IRegistration {
           break;
         }
       } catch (error) {
-        log.warn(`Ping failed for primary Mobius: ${mobiusUrl} with error: ${error}`, {
-          file: REGISTRATION_FILE,
-          method: FAILBACK_UTIL,
-        });
+        log.warn(
+          `Ping failed for primary Mobius: ${mobiusUrl} with error: ${JSON.stringify(error)}`,
+          {
+            file: REGISTRATION_FILE,
+            method: FAILBACK_UTIL,
+          }
+        );
         status = 'down';
       }
     }
@@ -563,9 +596,9 @@ export class Registration implements IRegistration {
     await this.mutex.runExclusive(async () => {
       /* Check retry once again to see if another timer thread has not finished the job already. */
       if (retry) {
-        log.log('Mercury connection is up again, re-registering with Webex Calling if needed', {
+        log.log('Network is up again, re-registering with Webex Calling if needed', {
           file: REGISTRATION_FILE,
-          method: this.handleConnectionRestoration.name,
+          method: METHODS.HANDLE_CONNECTION_RESTORATION,
         });
         this.clearKeepaliveTimer();
         if (this.isDeviceRegistered()) {
@@ -586,11 +619,11 @@ export class Registration implements IRegistration {
            * it back to primary.
            */
           const abort = await this.restorePreviousRegistration(
-            this.handleConnectionRestoration.name
+            METHODS.HANDLE_CONNECTION_RESTORATION
           );
 
           if (!abort && !this.isDeviceRegistered()) {
-            await this.restartRegistration(this.handleConnectionRestoration.name);
+            await this.restartRegistration(METHODS.HANDLE_CONNECTION_RESTORATION);
           }
         }
         retry = false;
@@ -696,7 +729,7 @@ export class Registration implements IRegistration {
         this.setActiveMobiusUrl(url);
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
         log.log(
-          `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId}`,
+          `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId} responseTrackingId: ${resp.headers?.trackingid}`,
           {
             file: REGISTRATION_FILE,
             method: METHODS.REGISTER,
@@ -759,6 +792,9 @@ export class Registration implements IRegistration {
         }
         if (abort) {
           this.setStatus(RegistrationStatus.INACTIVE);
+          // eslint-disable-next-line no-await-in-loop
+          await uploadLogs();
+
           break;
         }
       }
@@ -797,7 +833,7 @@ export class Registration implements IRegistration {
           this.webWorker.onmessage = async (event: MessageEvent) => {
             const logContext = {
               file: REGISTRATION_FILE,
-              method: this.startKeepaliveTimer.name,
+              method: KEEPALIVE_UTIL,
             };
             if (event.data.type === WorkerMessageType.KEEPALIVE_SUCCESS) {
               log.info(`Sent Keepalive, status: ${event.data.statusCode}`, logContext);
@@ -819,7 +855,7 @@ export class Registration implements IRegistration {
                   }
 
                   this.metricManager.submitRegistrationMetric(
-                    METRIC_EVENT.REGISTRATION,
+                    METRIC_EVENT.KEEPALIVE_ERROR,
                     REG_ACTION.KEEPALIVE_FAILURE,
                     METRIC_TYPE.BEHAVIORAL,
                     KEEPALIVE_UTIL,
@@ -829,7 +865,9 @@ export class Registration implements IRegistration {
                     clientError
                   );
                 },
-                {method: KEEPALIVE_UTIL, file: REGISTRATION_FILE}
+                {method: KEEPALIVE_UTIL, file: REGISTRATION_FILE},
+                (retryAfter: number, retryCaller: string) =>
+                  this.handle429Retry(retryAfter, retryCaller)
               );
 
               if (abort || event.data.keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
@@ -838,10 +876,13 @@ export class Registration implements IRegistration {
                 this.clearKeepaliveTimer();
                 this.clearFailbackTimer();
                 this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+                await uploadLogs();
 
                 if (!abort) {
                   /* In case of non-final error, re-attempt registration */
                   await this.reconnectOnFailure(KEEPALIVE_UTIL);
+                } else if (error.statusCode === 404) {
+                  this.handle404KeepaliveFailure(KEEPALIVE_UTIL);
                 }
               } else {
                 this.lineEmitter(LINE_EVENTS.RECONNECTING);
@@ -880,7 +921,7 @@ export class Registration implements IRegistration {
         method: METHODS.DEREGISTER,
       });
     } catch (err) {
-      log.warn(`Delete failed with Mobius: ${err}`, {
+      log.warn(`Delete failed with Mobius: ${JSON.stringify(err)}`, {
         file: REGISTRATION_FILE,
         method: METHODS.DEREGISTER,
       });

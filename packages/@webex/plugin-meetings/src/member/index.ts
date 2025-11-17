@@ -42,6 +42,7 @@ export default class Member {
   status: any;
   supportsBreakouts: boolean;
   supportsInterpretation: boolean;
+  supportsSingleUserAutoEndMeeting: boolean;
   supportLiveAnnotation: boolean;
   type: any;
   namespace = MEETINGS;
@@ -130,6 +131,13 @@ export default class Member {
      * @memberof Member
      */
     this.supportsBreakouts = null;
+    /**
+     * @instance
+     * @type {Boolean}
+     * @public
+     * @memberof Member
+     */
+    this.supportsSingleUserAutoEndMeeting = null;
     /**
      * @instance
      * @type {Boolean}
@@ -339,6 +347,8 @@ export default class Member {
       this.isVideoMuted = MemberUtil.isVideoMuted(participant);
       this.isHandRaised = MemberUtil.isHandRaised(participant);
       this.supportsBreakouts = MemberUtil.isBreakoutsSupported(participant);
+      this.supportsSingleUserAutoEndMeeting =
+        MemberUtil.isSupportsSingleUserAutoEndMeeting(participant);
       this.supportsInterpretation = MemberUtil.isInterpretationSupported(participant);
       this.supportLiveAnnotation = MemberUtil.isLiveAnnotationSupported(participant);
       this.isGuest = MemberUtil.isGuest(participant);

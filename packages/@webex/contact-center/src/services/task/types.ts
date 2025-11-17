@@ -490,6 +490,30 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_PARTICIPANT_LEFT_FAILED = 'task:participantLeftFailed',
+
+  /**
+   * Triggered when a contact is merged
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_MERGED, (task: ITask) => {
+   *   console.log('Contact merged:', task.data.interactionId);
+   *   // Handle contact merge
+   * });
+   * ```
+   */
+  TASK_MERGED = 'task:merged',
+
+  /**
+   * Triggered when a participant enters post-call activity state
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, (task: ITask) => {
+   *   console.log('Participant in post-call activity:', task.data.interactionId);
+   *   // Handle post-call activity
+   * });
+   * ```
+   */
+  TASK_POST_CALL_ACTIVITY = 'task:postCallActivity',
 }
 
 /**
@@ -733,6 +757,8 @@ export type TaskData = {
   isConsulted?: boolean;
   /** Indicates if the task is in conference state */
   isConferencing: boolean;
+  /** Indicates if a conference is currently in progress (2+ active agents) */
+  isConferenceInProgress?: boolean;
   /** Identifier of agent who last updated the task */
   updatedBy?: string;
   /** Type of destination for transfer/consult */
@@ -755,6 +781,8 @@ export type TaskData = {
   isWebCallMute?: boolean;
   /** Identifier for reservation interaction */
   reservationInteractionId?: string;
+  /** Identifier for the reserved agent channel (used for campaign tasks) */
+  reservedAgentChannelId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
 };
@@ -1004,19 +1032,6 @@ export type ConsultConferenceData = {
 };
 
 /**
- * Legacy consultation conference data type matching Agent Desktop
- * @public
- */
-export type consultConferencePayloadData = {
-  /** Identifier of the agent initiating consult/conference */
-  agentId: string;
-  /** Type of destination (e.g., 'agent', 'queue') */
-  destinationType: string;
-  /** Identifier of the destination agent */
-  destAgentId: string;
-};
-
-/**
  * Parameters required for cancelling a consult to queue operation
  * @public
  */
@@ -1064,6 +1079,8 @@ export type DialerPayload = {
   mediaType: 'telephony' | 'chat' | 'social' | 'email';
   /** The outbound type for the task */
   outboundType: 'OUTDIAL' | 'CALLBACK' | 'EXECUTE_FLOW';
+  /** The Outdial ANI number that will be used while making a call to the customer.  */
+  origin: string;
 };
 
 /**
@@ -1133,16 +1150,16 @@ export interface ITask extends EventEmitter {
   autoWrapup?: AutoWrapup;
 
   /**
-   * cancels the auto-wrapup timer for the task
-   * This method stops the auto-wrapup process if it is currently active
+   * Cancels the auto-wrapup timer for the task.
+   * This method stops the auto-wrapup process if it is currently active.
    * Note: This is supported only in single session mode. Not supported in multi-session mode.
    * @returns void
    */
   cancelAutoWrapupTimer(): void;
 
   /**
-   * Deregisters all web call event listeners
-   * Used when cleaning up task resources
+   * Deregisters all web call event listeners.
+   * Used when cleaning up task resources.
    * @ignore
    */
   unregisterWebCallListeners(): void;
@@ -1162,7 +1179,7 @@ export interface ITask extends EventEmitter {
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.accept();
+   * await task.accept();
    * ```
    */
   accept(): Promise<TaskResponse>;
@@ -1172,48 +1189,58 @@ export interface ITask extends EventEmitter {
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.decline();
+   * await task.decline();
    * ```
    */
   decline(): Promise<TaskResponse>;
 
   /**
-   * Places the current task on hold
+   * Places the current task on hold.
+   * @param mediaResourceId - Optional media resource ID to use for the hold operation. If not provided, uses the task's current mediaResourceId
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.hold();
+   * // Hold with default mediaResourceId
+   * await task.hold();
+   *
+   * // Hold with custom mediaResourceId
+   * await task.hold('custom-media-resource-id');
    * ```
    */
-  hold(): Promise<TaskResponse>;
+  hold(mediaResourceId?: string): Promise<TaskResponse>;
 
   /**
-   * Resumes a task that was previously on hold
+   * Resumes a task that was previously on hold.
+   * @param mediaResourceId - Optional media resource ID to use for the resume operation. If not provided, uses the task's current mediaResourceId from interaction media
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.resume();
+   * // Resume with default mediaResourceId
+   * await task.resume();
+   *
+   * // Resume with custom mediaResourceId
+   * await task.resume('custom-media-resource-id');
    * ```
    */
-  resume(): Promise<TaskResponse>;
+  resume(mediaResourceId?: string): Promise<TaskResponse>;
 
   /**
-   * Ends/terminates the current task
+   * Ends/terminates the current task.
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.end();
+   * await task.end();
    * ```
    */
   end(): Promise<TaskResponse>;
 
   /**
-   * Initiates wrap-up process for the task with specified details
+   * Initiates wrap-up process for the task with specified details.
    * @param wrapupPayload - Wrap-up details including reason and auxiliary code
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.wrapup({
+   * await task.wrapup({
    *   wrapUpReason: "Customer issue resolved",
    *   auxCodeId: "RESOLVED"
    * });
@@ -1222,25 +1249,109 @@ export interface ITask extends EventEmitter {
   wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse>;
 
   /**
-   * Pauses the recording for current task
+   * Pauses the recording for current task.
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.pauseRecording();
+   * await task.pauseRecording();
    * ```
    */
   pauseRecording(): Promise<TaskResponse>;
 
   /**
-   * Resumes a previously paused recording
+   * Resumes a previously paused recording.
    * @param resumeRecordingPayload - Parameters for resuming the recording
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
-   * task.resumeRecording({
+   * await task.resumeRecording({
    *   autoResumed: false
    * });
    * ```
    */
   resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse>;
+
+  /**
+   * Initiates a consultation with another agent or queue.
+   * @param consultPayload - Consultation details including destination and type
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.consult({ to: "agentId", destinationType: "agent" });
+   * ```
+   */
+  consult(consultPayload: ConsultPayload): Promise<TaskResponse>;
+
+  /**
+   * Ends an ongoing consultation.
+   * @param consultEndPayload - Details for ending the consultation
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.endConsult({ isConsult: true, taskId: "taskId" });
+   * ```
+   */
+  endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse>;
+
+  /**
+   * Transfers the task to another agent or queue.
+   * @param transferPayload - Transfer details including destination and type
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.transfer({ to: "queueId", destinationType: "queue" });
+   * ```
+   */
+  transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>;
+
+  /**
+   * Transfers the task after consultation.
+   * @param consultTransferPayload - Details for consult transfer (optional)
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.consultTransfer({ to: "agentId", destinationType: "agent" });
+   * ```
+   */
+  consultTransfer(consultTransferPayload?: ConsultTransferPayLoad): Promise<TaskResponse>;
+
+  /**
+   * Initiates a consult conference (merge consult call with main call).
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.consultConference();
+   * ```
+   */
+  consultConference(): Promise<TaskResponse>;
+
+  /**
+   * Exits from an ongoing conference.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.exitConference();
+   * ```
+   */
+  exitConference(): Promise<TaskResponse>;
+
+  /**
+   * Transfers the conference to another participant.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.transferConference();
+   * ```
+   */
+  transferConference(): Promise<TaskResponse>;
+
+  /**
+   * Toggles mute/unmute for the local audio stream during a WebRTC task.
+   * @returns Promise<void>
+   * @example
+   * ```typescript
+   * await task.toggleMute();
+   * ```
+   */
+  toggleMute(): Promise<void>;
 }

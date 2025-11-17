@@ -1,4 +1,3 @@
-import ExtendedError from 'Errors/catalog/ExtendedError';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
@@ -110,6 +109,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         /* Throw error code if any the exception error */
         throw new Error(`${response.status}`);
       }
+
+      log.log(`Response trackingId: ${response.headers?.get('trackingid')}`, loggerContext);
+
       const xmlData = await response.text();
       const parser = new DOMParser();
       const xmlDOM = parser.parseFromString(xmlData, XML_TYPE);
@@ -131,10 +133,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(
-        `Failed to get call waiting setting: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to get call waiting setting: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorInfo = {
@@ -162,6 +161,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         uri: `${this.hydraEndpoint}/${PEOPLE_ENDPOINT}/${this.personId}/${DND_ENDPOINT}?${ORG_ENDPOINT}=${this.orgId}`,
         method: HTTP_METHODS.GET,
       });
+
+      log.log(`Response trackingId: ${resp?.headers?.trackingid}`, loggerContext);
+
       const dndSettingResponse = resp.body as ToggleSetting;
       const responseDetails: CallSettingResponse = {
         statusCode: Number(resp[STATUS_CODE]),
@@ -178,10 +180,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(
-        `Failed to get DoNotDisturb setting: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to get DoNotDisturb setting: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
@@ -214,6 +213,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         body: dndRequestBody,
       });
 
+      log.log(`Response trackingId: ${resp?.headers?.trackingid}`, loggerContext);
+
       const responseDetails: CallSettingResponse = {
         statusCode: Number(resp[STATUS_CODE]),
         data: {
@@ -229,10 +230,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(
-        `Failed to set DoNotDisturb setting: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to set DoNotDisturb setting: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
@@ -258,6 +256,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         uri: `${this.hydraEndpoint}/${PEOPLE_ENDPOINT}/${this.personId}/${CF_ENDPOINT}?${ORG_ENDPOINT}=${this.orgId}`,
         method: HTTP_METHODS.GET,
       });
+
+      log.log(`Response trackingId: ${resp?.headers?.trackingid}`, loggerContext);
+
       const cfResponse = resp.body as CallForwardSetting;
       const responseDetails: CallSettingResponse = {
         statusCode: Number(resp[STATUS_CODE]),
@@ -271,10 +272,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(
-        `Failed to get Call Forward setting: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to get Call Forward setting: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
@@ -304,6 +302,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         body: callForwardingRequest,
       });
 
+      log.log(`Response trackingId: ${resp?.headers?.trackingid}`, loggerContext);
+
       const responseDetails: CallSettingResponse = {
         statusCode: Number(resp[STATUS_CODE]),
         data: {
@@ -316,10 +316,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(
-        `Failed to set Call Forward setting: ${err}`
-      ) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to set Call Forward setting: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
@@ -345,6 +342,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         uri: `${this.hydraEndpoint}/${PEOPLE_ENDPOINT}/${this.personId}/${VM_ENDPOINT}?${ORG_ENDPOINT}=${this.orgId}`,
         method: HTTP_METHODS.GET,
       });
+
+      log.log(`Response trackingId: ${resp?.headers?.trackingid}`, loggerContext);
+
       const vmResponse = resp.body as VoicemailSetting;
       const responseDetails: CallSettingResponse = {
         statusCode: Number(resp[STATUS_CODE]),
@@ -358,8 +358,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to get Voicemail setting: ${err}`) as ExtendedError;
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to get Voicemail setting: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;
@@ -389,6 +388,8 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         body: voicemailRequest,
       });
 
+      log.log(`Response trackingId: ${resp?.headers?.trackingid}`, loggerContext);
+
       const responseDetails: CallSettingResponse = {
         statusCode: Number(resp[STATUS_CODE]),
         data: {
@@ -401,9 +402,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
 
       return responseDetails;
     } catch (err: unknown) {
-      const extendedError = new Error(`Failed to set Voicemail setting: ${err}`) as ExtendedError;
-
-      log.error(extendedError, loggerContext);
+      log.error(`Failed to set Voicemail setting: ${JSON.stringify(err)}`, loggerContext);
       await uploadLogs();
 
       const errorInfo = err as WebexRequestPayload;

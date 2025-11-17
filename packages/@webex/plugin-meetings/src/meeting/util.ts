@@ -634,10 +634,19 @@ const MeetingUtil = {
   isLocalRecordingPaused: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.LOCAL_RECORDING_STATUS_PAUSED),
 
+  isLocalStreamingStarted: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.STREAMING_STATUS_STARTED),
+
+  isLocalStreamingStopped: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.STREAMING_STATUS_STOPPED),
+
   canStopManualCaption: (displayHints) => displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STOP),
 
   isManualCaptionActive: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STATUS_ACTIVE),
+
+  isSpokenLanguageAutoDetectionEnabled: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.SPOKEN_LANGUAGE_AUTO_DETECTION_ENABLED),
 
   isWebexAssistantActive: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.WEBEX_ASSISTANT_STATUS_ACTIVE),
@@ -651,6 +660,9 @@ const MeetingUtil = {
     displayHints.includes(DISPLAY_HINTS.DISPLAY_NON_ENGLISH_ASR),
 
   waitingForOthersToJoin: (displayHints) => displayHints.includes(DISPLAY_HINTS.WAITING_FOR_OTHERS),
+
+  showAutoEndMeetingWarning: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.SHOW_AUTO_END_MEETING_WARNING),
 
   canSendReactions: (originalValue, displayHints) => {
     if (displayHints.includes(DISPLAY_HINTS.REACTIONS_ACTIVE)) {
