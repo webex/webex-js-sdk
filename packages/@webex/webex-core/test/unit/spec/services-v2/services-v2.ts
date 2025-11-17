@@ -268,12 +268,58 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#switchActiveClusterIds', () => {
+      let serviceHostmap;
+      let formattedHM;
+
+      beforeEach(() => {
+        serviceHostmap = serviceHostmapV2;
+        formattedHM = services._formatReceivedHostmap(serviceHostmap);
+
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+        services.webex.credentials = {
+          getOrgId: sinon.stub().returns('')
+        };
+        catalog.status = {};
+      });
+
+      it('switches properly when id exists', async () => {
+        services._updateActiveServices = sinon.stub().callsFake((data) => {
+          Object.assign(services._activeServices, data);
+        });
+
+        await services.switchActiveClusterIds({
+          conversation: 'urn:TEAM:me-central-1_d:conversation',
+        });
+
+        assert.notCalled(services.initServiceCatalogs);
+
+        assert.calledWith(services._updateActiveServices, {
+          conversation: 'urn:TEAM:me-central-1_d:conversation',
+        });
+
+        assert.equal(services._activeServices.conversation, 'urn:TEAM:me-central-1_d:conversation');
+      });
+
+      it('makes request to fetch when id does not exist', async () => {
+        services._updateActiveServices = sinon.stub().callsFake((data) => {
+          Object.assign(services._activeServices, data);
+        });
+
+        await services.switchActiveClusterIds({
+          conversation: 'urn:TEAM:me-central-1_asdf:conversation',
+        });
+
+        assert.calledOnce(services.initServiceCatalogs);
+      });
+    });
+
     describe('#updateCatalog', () => {
       it('updates the catalog', async () => {
         const serviceGroup = 'postauth';
-        const hostmap = [{hostmap: 'hostmap'}];
+        const hostmap = {services: [{hostmap: 'hostmap'}]};
 
-        services._formatReceivedHostmap = sinon.stub().returns([{some: 'hostmap'}]);
+        services._formatReceivedHostmap = sinon.stub().returns({services : [{some: 'hostmap'}]});
 
         catalog.updateServiceGroups = sinon.stub().returns(Promise.resolve([{some: 'value'}]));
 
@@ -401,7 +447,7 @@ describe('webex-core', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         assert(
-          serviceHostmap.services.length >= formattedHM.length,
+          serviceHostmap.services.length >= formattedHM.services.length,
           'length is not equal or less than'
         );
       });
@@ -409,7 +455,7 @@ describe('webex-core', () => {
       it('has all keys in host map hosts', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        formattedHM.forEach((service) => {
+        formattedHM.services.forEach((service) => {
           assert.hasAllKeys(
             service,
             ['id', 'serviceName', 'serviceUrls'],
@@ -428,7 +474,7 @@ describe('webex-core', () => {
       it('creates a formmated host map containing all received host map service entries', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        formattedHM.forEach((service) => {
+        formattedHM.services.forEach((service) => {
           const foundServiceKey = Object.keys(serviceHostmap.activeServices).find(
             (key) => service.serviceName === key
           );
@@ -440,7 +486,7 @@ describe('webex-core', () => {
       it('creates the expected formatted host map', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
-        assert.deepEqual(formattedHM, formattedServiceHostmapV2);
+        assert.deepEqual(formattedHM.services, formattedServiceHostmapV2);
       });
 
       it('has hostCatalog updated', () => {
@@ -510,6 +556,198 @@ describe('webex-core', () => {
         services.updateCredentialsConfig();
 
         assert.equal(webex.config.credentials.authorizeUrl, authUrl);
+      });
+    });
+
+    describe('#invalidateCache', () => {
+      beforeEach( () => {
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+        services.webex.credentials = {
+          getOrgId: sinon.stub().returns('')
+        };
+        catalog.status = {};
+      })
+      it('should log the timestamp parameter', async () => {
+        const timestamp = '1234567890';
+        services.logger.info = sinon.stub();
+        services._getCatalog = sinon.stub().returns({timestamp: '1234567880'});
+
+        await services.invalidateCache(timestamp);
+
+        assert.calledWith(services.logger.info, 'services: invalidate cache, timestamp:', timestamp);
+      });
+
+      it('should call initServiceCatalogs when invalidate timestamp is newer than catalog timestamp', async () => {
+        const newTimestamp = '1234567890';
+        const oldTimestamp = '1234567880';
+        services.logger.info = sinon.stub();
+        services._getCatalog = sinon.stub().returns({timestamp: oldTimestamp});
+
+        await services.invalidateCache(newTimestamp);
+
+        assert.calledOnce(services.initServiceCatalogs);
+        assert.calledWith(services.logger.info, 'services: invalidateCache, refresh services');
+      });
+
+      it('should not call initServiceCatalogs when invalidate timestamp is older than catalog timestamp', async () => {
+        const oldTimestamp = '1234567880';
+        const newTimestamp = '1234567890';
+        services._getCatalog = sinon.stub().returns({timestamp: newTimestamp});
+        await services.invalidateCache(oldTimestamp);
+
+        assert.notCalled(services.initServiceCatalogs);
+      });
+
+      it('should not call initServiceCatalogs when invalidate timestamp equals catalog timestamp', async () => {
+        const timestamp = '1234567890';
+        services._getCatalog = sinon.stub().returns({timestamp: timestamp});
+
+        await services.invalidateCache(timestamp);
+
+        assert.notCalled(services.initServiceCatalogs);
+      });
+
+      it('should handle numeric timestamp strings correctly', async () => {
+        const newTimestamp = '1700000000';
+        const oldTimestamp = '1600000000';
+        services._getCatalog = sinon.stub().returns({timestamp: oldTimestamp});
+
+        await services.invalidateCache(newTimestamp);
+
+        assert.calledOnce(services.initServiceCatalogs);
+      });
+
+      it('should handle undefined catalog gracefully', async () => {
+        const timestamp = '1234567890';
+        services._getCatalog = sinon.stub().returns(undefined);
+
+        await services.invalidateCache(timestamp);
+
+        assert.calledOnce(services.initServiceCatalogs);
+      });
+
+      it('should handle catalog without timestamp gracefully', async () => {
+        const timestamp = '1234567890';
+        services._getCatalog = sinon.stub().returns({});
+
+        await services.invalidateCache(timestamp);
+
+        assert.calledOnce(services.initServiceCatalogs);
+      });
+
+      it('should handle null catalog timestamp gracefully', async () => {
+        const timestamp = '1234567890';
+        services._getCatalog = sinon.stub().returns({timestamp: null});
+
+        await services.invalidateCache(timestamp);
+
+        assert.calledOnce(services.initServiceCatalogs);
+      });
+
+      it('should handle undefined timestamp parameter gracefully', async () => {
+        services._getCatalog = sinon.stub().returns({timestamp: '1234567890'});
+
+        await services.invalidateCache(undefined);
+
+        assert.notCalled(services.initServiceCatalogs);
+      });
+
+      it('should handle null timestamp parameter gracefully', async () => {
+        services._getCatalog = sinon.stub().returns({timestamp: '1234567890'});
+
+        await services.invalidateCache(null);
+
+        assert.notCalled(services.initServiceCatalogs);
+      });
+
+      it('should handle empty string timestamp parameter gracefully', async () => {
+        services._getCatalog = sinon.stub().returns({timestamp: '1234567890'});
+
+        await services.invalidateCache('');
+
+        assert.notCalled(services.initServiceCatalogs);
+      });
+
+      it('should handle non-numeric timestamp strings gracefully', async () => {
+        const invalidTimestamp = 'not-a-number';
+        services._getCatalog = sinon.stub().returns({timestamp: '1234567890'});
+
+        await services.invalidateCache(invalidTimestamp);
+
+        assert.notCalled(services.initServiceCatalogs);
+      });
+
+      it('should handle non-numeric catalog timestamp gracefully', async () => {
+        const timestamp = '1234567890';
+        services._getCatalog = sinon.stub().returns({timestamp: 'not-a-number'});
+
+        await services.invalidateCache(timestamp);
+
+        assert.calledOnce(services.initServiceCatalogs);
+      });
+
+      it('should return a resolved Promise', async () => {
+        const timestamp = '1234567890';
+        services._getCatalog = sinon.stub().returns({timestamp: '1234567880'});
+
+        const result = await services.invalidateCache(timestamp);
+
+        assert.isUndefined(result);
+      });
+    });
+
+    describe('#getMobiusClusters', () => {
+      it('returns unique mobius entries derived from serviceUrls baseUrl', () => {
+        // Arrange: seed internal _services with mobius (including duplicate baseUrl)
+        services._services = [
+          {
+            "id": "urn:TEAM:us-east-2_a:mobius",
+            "serviceName": 'mobius',
+            "serviceUrls": [
+              {"baseUrl": 'https://mobius-us-east-2.prod.infra.webex.com/api/v1', "priority": 5},
+              {"baseUrl": 'https://mobius-eu-central-1.prod.infra.webex.com/api/v1', "priority": 10},
+              {"baseUrl": 'https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1', "priority": 15}, // duplicate
+            ],
+          },
+          {
+            "id": "urn:TEAM:ap-southeast-2_m:mobius",
+            "serviceName": "mobius",
+            "serviceUrls": [
+                {
+                    "baseUrl": "https://mobius-me-central-1.prod.infra.webex.com/api/v1",
+                    "priority": 5
+                },
+                {
+                    "baseUrl": "https://mobius-eu-central-1.prod.infra.webex.com/api/v1",
+                    "priority": 10
+                },
+                {
+                    "baseUrl": "https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1",
+                    "priority": 15
+                },
+            ],
+          },
+          // Non-mobius service should be ignored by getMobiusClusters
+          {
+            id: 'urn:TEAM:us-east-2_a:wdm',
+            serviceName: 'wdm',
+            serviceUrls: [{baseUrl: 'https://wdm-a.webex.com/api/v1', priority: 5}],
+          },
+        ];
+
+        // Act
+        const clusters = services.getMobiusClusters();
+
+        // Assert (v2 currently pushes baseUrl into host field and dedups by baseUrl)
+        assert.deepEqual(
+          clusters.map(({host, id, ttl, priority}) => ({host, id, ttl, priority})),
+          [
+            {host: 'mobius-us-east-2.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 5},
+            {host: 'mobius-eu-central-1.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 10},
+            {host: 'mobius-ap-southeast-2.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 15},
+            {host: 'mobius-me-central-1.prod.infra.webex.com', id: 'urn:TEAM:ap-southeast-2_m:mobius', ttl: 0, priority: 5},
+          ]
+        );
       });
     });
   });

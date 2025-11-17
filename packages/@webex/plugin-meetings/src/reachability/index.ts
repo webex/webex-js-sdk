@@ -923,10 +923,10 @@ export default class Reachability extends EventsScope {
 
       // update expected results counters to include this cluster
       this.expectedResultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'].udp +=
-        cluster.udp.length;
+        cluster.udp.length > 0 ? 1 : 0;
       if (!cluster.isVideoMesh) {
-        this.expectedResultsCount.public.tcp += cluster.tcp.length;
-        this.expectedResultsCount.public.xtls += cluster.xtls.length;
+        this.expectedResultsCount.public.tcp += cluster.tcp.length > 0 ? 1 : 0;
+        this.expectedResultsCount.public.xtls += cluster.xtls.length > 0 ? 1 : 0;
       }
     });
 

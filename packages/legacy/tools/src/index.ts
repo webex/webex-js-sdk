@@ -8,7 +8,7 @@ import { build, runTests } from './commands';
 import { Package, PackageFile } from './models';
 import {
   Jest, Karma, Mocha, startServer,
-  stopServer,
+  stopServer, findWorkspaceRoot, getServerPath,
 } from './utils';
 
 export type {
@@ -30,4 +30,6 @@ export {
   PackageFile,
   startServer,
   stopServer,
+  findWorkspaceRoot,
+  getServerPath,
 };

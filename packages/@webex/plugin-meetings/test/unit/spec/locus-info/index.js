@@ -772,7 +772,7 @@ describe('plugin-meetings', () => {
           },
         };
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateParticipants({});
+        locusInfo.updateParticipants({}, []);
 
         // if this assertion fails, double-check the attributes used in
         // the updateParticipants function in locus-info/index.js
@@ -790,6 +790,7 @@ describe('plugin-meetings', () => {
             selfId: '2',
             hostId: '3',
             isReplace: undefined,
+            removedParticipantIds: [],
           }
         );
         // note: in a real use case, recordingId, selfId, and hostId would all be the same
@@ -814,7 +815,7 @@ describe('plugin-meetings', () => {
         };
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateParticipants({}, true);
+        locusInfo.updateParticipants({}, [], true);
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -830,43 +831,11 @@ describe('plugin-meetings', () => {
             selfId: '2',
             hostId: '3',
             isReplace: true,
+            removedParticipantIds: [],
           }
         );
       });
 
-      it('should update the deltaParticipants object', () => {
-        const prev = locusInfo.deltaParticipants;
-
-        locusInfo.updateParticipantDeltas(newParticipants);
-
-        assert.notEqual(locusInfo.deltaParticipants, prev);
-      });
-
-      it('should update the delta property on all changed states', () => {
-        locusInfo.updateParticipantDeltas(newParticipants);
-
-        const [exampleParticipant] = locusInfo.deltaParticipants;
-
-        assert.isTrue(exampleParticipant.delta.audioStatus);
-        assert.isTrue(exampleParticipant.delta.videoSlidesStatus);
-        assert.isTrue(exampleParticipant.delta.videoStatus);
-      });
-
-      it('should include the person details of the changed participant', () => {
-        locusInfo.updateParticipantDeltas(newParticipants);
-
-        const [exampleParticipant] = locusInfo.deltaParticipants;
-
-        assert.equal(exampleParticipant.person, newParticipants[0].person);
-      });
-
-      it('should clear deltaParticipants when no changes occured', () => {
-        locusInfo.participants = [...newParticipants];
-
-        locusInfo.updateParticipantDeltas(locusInfo.participants);
-
-        assert.isTrue(locusInfo.deltaParticipants.length === 0);
-      });
 
       it('should call with participant display name', () => {
         const failureParticipant = [
@@ -880,7 +849,7 @@ describe('plugin-meetings', () => {
         ];
 
         locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateParticipants(failureParticipant);
+        locusInfo.updateParticipants(failureParticipant, []);
         assert.calledWith(
           locusInfo.emitScoped,
           {
@@ -1674,6 +1643,28 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should trigger MEETING_INFO_UPDATED even if the roles array is empty', () => {
+        const initialInfo = cloneDeep(meetingInfo);
+
+        const updateSelf = cloneDeep(self);
+        updateSelf.controls.role.roles = [];
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateMeetingInfo(initialInfo, updateSelf);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateMeetingInfo',
+          },
+          LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
+          {
+            isInitializing: !self,
+          }
+          );
+        });
+
       const checkMeetingInfoUpdatedCalled = (expected, payload) => {
         const expectedArgs = [
           locusInfo.emitScoped,
@@ -2049,6 +2040,18 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#handleLocusAPIResponse', () => {
+      it('calls handleLocusDelta', () => {
+        const fakeLocus = {eventType: LOCUSEVENT.DIFFERENCE};
+
+        sinon.stub(locusInfo, 'handleLocusDelta');
+
+        locusInfo.handleLocusAPIResponse(mockMeeting, {locus: fakeLocus});
+
+        assert.calledWith(locusInfo.handleLocusDelta, fakeLocus, mockMeeting);
+      });
+    });
+
     describe('#LocusDeltaEvents', () => {
       const fakeMeeting = 'fakeMeeting';
       let sandbox = null;
@@ -2061,7 +2064,7 @@ describe('plugin-meetings', () => {
 
         fakeLocus = {
           meeting: true,
-          participants: true,
+          participants: [],
           url: 'newLocusUrl',
           syncUrl: 'newSyncUrl',
         };
@@ -2196,7 +2199,6 @@ describe('plugin-meetings', () => {
       it('onFullLocus() updates the working-copy of locus parser', () => {
         const eventType = 'fakeEvent';
 
-        sandbox.stub(locusInfo, 'updateParticipantDeltas');
         sandbox.stub(locusInfo, 'updateLocusInfo');
         sandbox.stub(locusInfo, 'updateParticipants');
         sandbox.stub(locusInfo, 'isMeetingActive');
@@ -2216,7 +2218,6 @@ describe('plugin-meetings', () => {
         const oldWorkingCopy = locusParser.workingCopy;
 
         const spies = [
-          sandbox.stub(locusInfo, 'updateParticipantDeltas'),
           sandbox.stub(locusInfo, 'updateLocusInfo'),
           sandbox.stub(locusInfo, 'updateParticipants'),
           sandbox.stub(locusInfo, 'isMeetingActive'),
@@ -2382,23 +2383,23 @@ describe('plugin-meetings', () => {
 
       it('applyLocusDeltaData handles LOCUS_URL_CHANGED action correctly', () => {
         const {LOCUS_URL_CHANGED} = LocusDeltaParser.loci;
-        const fakeDeltaLocus = {id: 'fake delta locus'};
+        const fakeFullLocus = {
+          url: 'new full loci url',
+        };
         const meeting = {
           meetingRequest: {
-            getLocusDTO: sandbox.stub().resolves({body: fakeDeltaLocus}),
+            getLocusDTO: sandbox.stub().resolves({body: fakeFullLocus}),
           },
           locusInfo: {
             handleLocusDelta: sandbox.stub(),
           },
-          locusUrl: 'current locus url',
+          locusUrl: 'current BO session locus url',
         };
 
-        locusInfo.locusParser.workingCopy = {
-          syncUrl: 'current sync url',
-        };
+        locusInfo.locusParser.workingCopy = null;
 
         locusInfo.applyLocusDeltaData(LOCUS_URL_CHANGED, fakeLocus, meeting);
-        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'current sync url'});
+        assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: fakeLocus.url});
       });
 
       describe('edge cases for sync failing', () => {
@@ -2538,7 +2539,7 @@ describe('plugin-meetings', () => {
       });
 
       it('onDeltaLocus handle delta data', () => {
-        fakeLocus.participants = {};
+        fakeLocus.participants = [];
         const fakeBreakout = {
           sessionId: 'sessionId',
           groupId: 'groupId',
@@ -2555,11 +2556,11 @@ describe('plugin-meetings', () => {
         };
         locusInfo.updateParticipants = sinon.stub();
         locusInfo.onDeltaLocus(fakeLocus);
-        assert.calledWith(locusInfo.updateParticipants, {}, false);
+        assert.calledWith(locusInfo.updateParticipants, [], undefined, false);
 
         fakeLocus.controls.breakout.sessionId = 'sessionId2';
         locusInfo.onDeltaLocus(fakeLocus);
-        assert.calledWith(locusInfo.updateParticipants, {}, true);
+        assert.calledWith(locusInfo.updateParticipants, [], undefined, true);
       });
 
       it('onDeltaLocus merges delta participants with existing participants', () => {
@@ -2576,7 +2577,7 @@ describe('plugin-meetings', () => {
           existingParticipants,
           FAKE_DELTA_PARTICIPANTS
         );
-        assert.calledWith(locusInfo.updateParticipants, FAKE_DELTA_PARTICIPANTS, false);
+        assert.calledWith(locusInfo.updateParticipants, FAKE_DELTA_PARTICIPANTS, undefined, false);
       });
 
       [true, false].forEach((isDelta) =>
@@ -3019,6 +3020,45 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#updateLocusUrl', () => {
+      it('trigger LOCUS_INFO_UPDATE_URL event with isMainLocus is true as default', () => {
+        const fakeUrl = "https://fake.com/locus";
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateLocusUrl(fakeUrl);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateLocusUrl',
+          },
+          EVENTS.LOCUS_INFO_UPDATE_URL,
+          {
+            url: fakeUrl,
+            isMainLocus: true
+          },
+        );
+      });
+      it('trigger LOCUS_INFO_UPDATE_URL event with isMainLocus is false', () => {
+        const fakeUrl = "https://fake.com/locus";
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateLocusUrl(fakeUrl, false);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateLocusUrl',
+          },
+          EVENTS.LOCUS_INFO_UPDATE_URL,
+          {
+            url: fakeUrl,
+            isMainLocus: false
+          },
+        );
+      });
+    });
+
     // semi-integration tests that use real LocusInfo with real Parser
     // and test various scenarios related to handling out-of-order Locus delta events
     describe('handling of out-of-order Locus delta events', () => {
@@ -3064,7 +3104,6 @@ describe('plugin-meetings', () => {
       beforeEach(() => {
         clock = sinon.useFakeTimers();
 
-        sinon.stub(locusInfo, 'updateParticipantDeltas');
         sinon.stub(locusInfo, 'updateParticipants');
         sinon.stub(locusInfo, 'isMeetingActive');
           sinon.stub(locusInfo, 'handleOneOnOneEvent');
@@ -3088,6 +3127,7 @@ describe('plugin-meetings', () => {
               id: 'test person id',
             },
           },
+          participants: [],
         });
 
         updateLocusInfoStub.resetHistory();

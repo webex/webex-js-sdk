@@ -215,6 +215,9 @@ export class RemoteMediaGroup {
   private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 
+    // Calculate the effective maxFs based on all unpinned RemoteMedia instances
+    const effectiveMaxFs = this.getEffectiveMaxFsForActiveSpeaker();
+
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -230,9 +233,9 @@ export class RemoteMediaGroup {
         receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
           remoteMedia.getUnderlyingReceiveSlot()
         ) as ReceiveSlot[],
-        codecInfo: this.options.resolution && {
+        codecInfo: effectiveMaxFs && {
           codec: 'h264',
-          maxFs: getMaxFs(this.options.resolution),
+          maxFs: effectiveMaxFs,
         },
       },
       commit
@@ -299,5 +302,37 @@ export class RemoteMediaGroup {
     return (
       this.unpinnedRemoteMedia.includes(remoteMedia) || this.pinnedRemoteMedia.includes(remoteMedia)
     );
+  }
+
+  /**
+   * Calculate the effective maxFs for the active speaker media request based on unpinned RemoteMedia instances
+   * @returns {number | undefined} The calculated maxFs value, or undefined if no constraints
+   * @private
+   */
+  private getEffectiveMaxFsForActiveSpeaker(): number | undefined {
+    // Get all effective maxFs values from unpinned RemoteMedia instances
+    const maxFsValues = this.unpinnedRemoteMedia
+      .map((remoteMedia) => remoteMedia.getEffectiveMaxFs())
+      .filter((maxFs) => maxFs !== undefined);
+
+    // Use the highest maxFs value to ensure we don't under-request resolution for any instance
+    if (maxFsValues.length > 0) {
+      return Math.max(...maxFsValues);
+    }
+
+    // Fall back to group's resolution option
+    if (this.options.resolution) {
+      return getMaxFs(this.options.resolution);
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Get the current effective maxFs that would be used for the active speaker media request
+   * @returns {number | undefined} The effective maxFs value
+   */
+  public getEffectiveMaxFs(): number | undefined {
+    return this.getEffectiveMaxFsForActiveSpeaker();
   }
 }

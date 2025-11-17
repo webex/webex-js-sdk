@@ -40,6 +40,17 @@ export default class MembersCollection {
   }
 
   /**
+   * Removes a member from the collection
+   * @param {String} id
+   * @returns {void}
+   */
+  remove(id: string) {
+    if (this.members[id]) {
+      delete this.members[id];
+    }
+  }
+
+  /**
    * @returns {void}
    * reset members
    */

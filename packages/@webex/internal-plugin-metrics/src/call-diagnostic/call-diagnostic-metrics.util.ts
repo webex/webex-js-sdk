@@ -239,6 +239,20 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
 
   // Set upgradeChannel to 'gold' if buildType is 'prod', otherwise to the buildType value
   const upgradeChannel = buildType === 'prod' ? 'gold' : buildType;
+  if (webex.devicemanager) {
+    const pairedDevice = webex.devicemanager.getPairedDevice();
+    if (pairedDevice) {
+      const devicePayload = {
+        deviceId: pairedDevice.deviceInfo?.id,
+        devicePairingType: webex.devicemanager.getPairedMethod(),
+        deviceURL: pairedDevice.url,
+        isPersonalDevice: pairedDevice.mode === 'personal',
+        productName: pairedDevice.devices[0]?.productName,
+      };
+      item.eventPayload.event.pairingState = 'paired';
+      item.eventPayload.event.pairedDevice = devicePayload;
+    }
+  }
 
   const origin: Partial<Event['origin']> = {
     buildType,

@@ -17,7 +17,7 @@ describe('internal-plugin-metrics', () => {
     let webex;
     let clock;
     let now;
-
+    const deviceManagerStub = {getPairedDevice: sinon.stub()};
     const preLoginId = 'my_prelogin_id';
 
     beforeEach(() => {
@@ -30,6 +30,7 @@ describe('internal-plugin-metrics', () => {
           newMetrics: NewMetrics,
         },
       });
+      webex.devicemanager = deviceManagerStub;
 
       webex.request = (options) =>
         Promise.resolve({body: {items: []}, waitForServiceTimeout: 15, options});
@@ -217,9 +218,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         assert.deepEqual(calls.args[0].type, ['diagnostic-event']);
-
         const prepareDiagnosticMetricItemCalls = prepareDiagnosticMetricItemSpy.getCalls();
-
         // second argument (item) also gets assigned a delay property but the key is a Symbol and haven't been able to test that..
         assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[0], webex);
         assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[1].eventPayload, {
@@ -231,6 +230,75 @@ describe('internal-plugin-metrics', () => {
           },
         });
         assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[1].type, ['diagnostic-event']);
+      });
+      it('adds the paired device to the metric payload if paired', async () => {
+        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.prepareRequest = (
+          q
+        ) => Promise.resolve(q);
+        webex.devicemanager.getPairedDevice = sinon.stub().returns({
+          deviceInfo: {
+            id: 'my_device_id',
+          },
+          url: 'my_url',
+          mode: 'personal',
+          devices: [{productName: 'my_product_name'}],
+        });
+        webex.devicemanager.getPairedMethod = sinon.stub().returns("Manual");
+
+        const prepareItemSpy = sinon.spy(
+          webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher,
+          'prepareItem'
+        );
+        const prepareDiagnosticMetricItemSpy = sinon.spy(
+          CallDiagnosticUtils,
+          'prepareDiagnosticMetricItem'
+        );
+
+        const promise =
+          webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnosticsPreLogin(
+            {
+              event: {name: 'client.interstitial-window.launched'},
+            },
+            preLoginId
+          );
+
+        await flushPromises();
+
+        clock.tick(config.metrics.batcherWait);
+
+        await promise;
+
+        const calls = prepareItemSpy.getCalls()[0];
+
+        assert.deepEqual(calls.args[0].eventPayload, {
+            event: {
+              joinTimes: {
+                meetingInfoReqResp: undefined,
+                clickToInterstitial: undefined,
+                clickToInterstitialWithUserDelay: undefined,
+                refreshCaptchaServiceReqResp: undefined,
+                downloadIntelligenceModelsReqResp: undefined,
+              },
+              name: 'client.interstitial-window.launched',
+              pairedDevice: {
+                deviceId: 'my_device_id',
+                deviceURL: 'my_url',
+                devicePairingType: 'Manual',
+                productName: 'my_product_name',
+                isPersonalDevice: true,
+              },
+              pairingState: 'paired',
+            },
+            origin: {
+              buildType: 'test',
+              networkType: 'unknown',
+              upgradeChannel: 'test',
+            },
+        });
+
+        assert.deepEqual(calls.args[0].type, ['diagnostic-event']);
+        assert.calledOnce(webex.devicemanager.getPairedDevice);
+       
       });
     });
 

@@ -19,17 +19,18 @@ export type RemoteVideoResolution =
   | 'large' // 1080p or less
   | 'best'; // highest possible resolution
 
-const MAX_FS_VALUES = {
+export const MAX_FS_VALUES = {
   '90p': 60,
   '180p': 240,
   '360p': 920,
+  '540p': 2040,
   '720p': 3600,
   '1080p': 8192,
 };
 
 /**
  * Converts pane size into h264 maxFs
- * @param {PaneSize} paneSize
+ * @param {RemoteVideoResolution} paneSize
  * @returns {number}
  */
 export function getMaxFs(paneSize: RemoteVideoResolution): number {
@@ -90,6 +91,13 @@ export class RemoteMedia extends EventsScope {
   public readonly id: RemoteMediaId;
 
   /**
+   * The max frame size of the media request, used for logging and media requests.
+   * Set by setSizeHint() based on video element dimensions.
+   * When > 0, this value takes precedence over options.resolution in sendMediaRequest().
+   */
+  private maxFrameSize = 0;
+
+  /**
    * Constructs RemoteMedia instance
    *
    * @param receiveSlot
@@ -136,13 +144,32 @@ export class RemoteMedia extends EventsScope {
       fs = MAX_FS_VALUES['180p'];
     } else if (height < getThresholdHeight(360)) {
       fs = MAX_FS_VALUES['360p'];
+    } else if (height < getThresholdHeight(540)) {
+      fs = MAX_FS_VALUES['540p'];
     } else if (height <= 720) {
       fs = MAX_FS_VALUES['720p'];
     } else {
       fs = MAX_FS_VALUES['1080p'];
     }
 
+    this.maxFrameSize = fs;
     this.receiveSlot?.setMaxFs(fs);
+  }
+
+  /**
+   * Get the current effective maxFs value that would be used in media requests
+   * @returns {number | undefined} The maxFs value, or undefined if no constraints
+   */
+  public getEffectiveMaxFs(): number | undefined {
+    if (this.maxFrameSize > 0) {
+      return this.maxFrameSize;
+    }
+
+    if (this.options.resolution) {
+      return getMaxFs(this.options.resolution);
+    }
+
+    return undefined;
   }
 
   /**
@@ -185,6 +212,9 @@ export class RemoteMedia extends EventsScope {
       throw new Error('sendMediaRequest() called on an invalidated RemoteMedia instance');
     }
 
+    // Use maxFrameSize from setSizeHint if available, otherwise fallback to options.resolution
+    const maxFs = this.getEffectiveMaxFs();
+
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -192,9 +222,9 @@ export class RemoteMedia extends EventsScope {
           csi,
         },
         receiveSlots: [this.receiveSlot],
-        codecInfo: this.options.resolution && {
+        codecInfo: maxFs && {
           codec: 'h264',
-          maxFs: getMaxFs(this.options.resolution),
+          maxFs,
         },
       },
       commit

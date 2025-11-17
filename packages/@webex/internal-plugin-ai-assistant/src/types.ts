@@ -22,6 +22,7 @@ export interface RequestOptions {
   foundPath?: string;
   notFoundPath?: string;
   params?: Record<string, unknown>;
+  requestId?: string;
 }
 
 export interface ContextResource {
@@ -37,9 +38,10 @@ export interface SummarizeMeetingOptions {
   sessionId: string;
   encryptionKeyUrl: string;
   lastMinutes?: number;
+  requestId?: string;
 }
 
-export interface MakeMeetingRequestOptions {
+export interface AiAssistantRequestOptions {
   sessionId: string;
   encryptionKeyUrl: string;
   contextResources: ContextResource[];
@@ -48,4 +50,5 @@ export interface MakeMeetingRequestOptions {
   parameters?: any;
   assistant?: string;
   locale?: string;
+  requestId?: string;
 }

@@ -129,7 +129,32 @@ describe('plugin-meetings', () => {
       });
     });
     describe('#generateEditDisplayNameMemberOptions', () => {
-      it('returns the correct options', () => {
+      it('returns the correct options with suffix when suffix is there', () => {
+        const locusUrl = 'urlTest1';
+        const memberId = 'test1';
+        const requestingParticipantId = 'test2';
+        const alias = 'alias';
+        const suffix = 'suffix';
+
+        assert.deepEqual(
+          MembersUtil.generateEditDisplayNameMemberOptions(
+            memberId,
+            requestingParticipantId,
+            alias,
+            locusUrl,
+            suffix
+          ),
+          {
+            memberId,
+            requestingParticipantId,
+            alias,
+            locusUrl,
+            suffix,
+          }
+        );
+      });
+
+      it('returns the correct options without suffix when suffix is not there', () => {
         const locusUrl = 'urlTest1';
         const memberId = 'test1';
         const requestingParticipantId = 'test2';
@@ -147,6 +172,7 @@ describe('plugin-meetings', () => {
             requestingParticipantId,
             alias,
             locusUrl,
+            suffix: undefined,
           }
         );
       });
@@ -306,7 +332,7 @@ describe('plugin-meetings', () => {
         const options = {
           invitee: {
             phoneNumber: '1234567890',
-            isInternalNumber: false
+            isInternalNumber: false,
           },
           alertIfActive: false,
         };
@@ -315,7 +341,7 @@ describe('plugin-meetings', () => {
           invitees: [
             {
               address: '1234567890',
-              isInternalNumber: false
+              isInternalNumber: false,
             },
           ],
           alertIfActive: false,
@@ -417,16 +443,10 @@ describe('plugin-meetings', () => {
         const memberId = 'test';
         const invitee = {memberId, isInternalNumber: false};
 
-        assert.deepEqual(
-          MembersUtil.cancelInviteByMemberIdOptions(
-            invitee,
-            locusUrl
-          ),
-          {
-            invitee,
-            locusUrl,
-          }
-        );
+        assert.deepEqual(MembersUtil.cancelInviteByMemberIdOptions(invitee, locusUrl), {
+          invitee,
+          locusUrl,
+        });
       });
     });
 
@@ -436,7 +456,7 @@ describe('plugin-meetings', () => {
         const memberId = 'test';
         const options = {
           locusUrl,
-          invitee: {memberId, isInternalNumber: false}
+          invitee: {memberId, isInternalNumber: false},
         };
         const body = {
           actionType: 'REMOVE',
@@ -449,6 +469,88 @@ describe('plugin-meetings', () => {
           method: HTTP_VERBS.PUT,
           uri,
           body,
+        });
+      });
+    });
+
+    describe('#editDisplayNameMemberRequestParams', () => {
+      it('returns the correct params when suffix is available', () => {
+        const locusUrl = 'TestLocusUrl1';
+        const memberId = 'test1';
+        const alias = 'alias1';
+        const requestingParticipantId = '23131';
+        const suffix = 'suffix1';
+        const options = {
+          locusUrl: locusUrl,
+          memberId,
+          alias,
+          requestingParticipantId,
+          suffix,
+        };
+
+        const uri = `${locusUrl}/participant/${memberId}/alias`;
+
+        assert.deepEqual(MembersUtil.editDisplayNameMemberRequestParams(options), {
+          method: HTTP_VERBS.POST,
+          uri,
+          body: {
+            aliasValue: alias,
+            requestingParticipantId,
+            suffixValue: suffix,
+          },
+        });
+      });
+
+      it('returns the correct params when suffix is not available', () => {
+        const locusUrl = 'TestLocusUrl2';
+        const memberId = 'test2';
+        const alias = 'alias2';
+        const requestingParticipantId = '12345';
+
+        const options = {
+          locusUrl: locusUrl,
+          memberId,
+          alias,
+          requestingParticipantId,
+        };
+
+        const uri = `${locusUrl}/participant/${memberId}/alias`;
+
+        assert.deepEqual(MembersUtil.editDisplayNameMemberRequestParams(options), {
+          method: HTTP_VERBS.POST,
+          uri,
+          body: {
+            aliasValue: alias,
+            requestingParticipantId,
+          },
+        });
+      });
+
+      it('returns the correct params when suffix is empty string', () => {
+        const locusUrl = 'TestLocusUrl3';
+        const memberId = 'test3';
+        const alias = 'alias3';
+        const requestingParticipantId = '322424';
+        const suffix = '';
+
+        const options = {
+          locusUrl: locusUrl,
+          memberId,
+          alias,
+          suffix,
+          requestingParticipantId,
+        };
+
+        const uri = `${locusUrl}/participant/${memberId}/alias`;
+
+        assert.deepEqual(MembersUtil.editDisplayNameMemberRequestParams(options), {
+          method: HTTP_VERBS.POST,
+          uri,
+          body: {
+            aliasValue: alias,
+            requestingParticipantId,
+            suffixValue: suffix,
+          },
         });
       });
     });

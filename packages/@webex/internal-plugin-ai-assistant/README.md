@@ -22,7 +22,7 @@ npm install --save @webex/internal-plugin-ai-assistant
 
 ## Usage
 
-The responses from the AI assistant service are delivered asynchronously via mercury. The methods in this plugin return a stream ID which can then be used to listen to the updates for a given request. The service will return preliminary versions of a response. The latest response for a given request should be used.
+The responses from the AI assistant service are delivered asynchronously via mercury. The methods in this plugin return a stream ID which can then be used to listen to the updates for a given request. The service will respond in chunks. The latest response for a given request will contain the full response.
 
 The data used for the arguments to the methods in this plugin is obtained from either Locus or the Meeting Container.
 ```js
@@ -123,7 +123,50 @@ webex.internal.aiAssistant.askMeAnything({
     }
   });
 });
+
+// Advanced: Use the common makeAiAssistantRequest method for custom requests
+webex.internal.aiAssistant.makeAiAssistantRequest({
+  sessionId: '<session-id>', // Optional for first request
+  encryptionKeyUrl: '<encryption-key-url>',
+  contextResources: [{
+    id: '<meeting-instance-id>',
+    type: 'meeting',
+    url: 'company.webex.com'
+  }],
+  contentType: 'message', // 'action' or 'message'
+  contentValue: 'What were the key takeaways?',
+  requestId: 'custom-id', // Optional
+  locale: 'en_US', // Optional
+  assistant: 'meeting-assistant' // Optional
+}).then((response) => {
+  const { requestId, sessionId, streamEventName } = response;
+  
+  // Listen for streaming responses
+  webex.internal.aiAssistant.on(streamEventName, (data) => {
+    console.log('Custom AI Response:', data.message);
+  });
+});
 ```
+
+### Optional Parameters
+
+All AI Assistant methods support an optional `requestId` parameter that allows you to specify a custom request identifier:
+
+```js
+// Example with custom requestId
+webex.internal.aiAssistant.summarizeMeeting({
+  meetingInstanceId: '<meeting-instance-id>',
+  meetingSite: 'company.webex.com',
+  sessionId: '<session-id>',
+  encryptionKeyUrl: '<encryption-key-url>',
+  requestId: 'my-custom-request-id' // Optional: specify your own request ID
+}).then((response) => {
+  // The response will contain your custom requestId
+  console.log('Request ID:', response.requestId); // 'my-custom-request-id'
+});
+```
+
+If `requestId` is not provided, a new UUID will be automatically generated for each request.
 
 ### Response Format
 

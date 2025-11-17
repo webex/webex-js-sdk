@@ -371,11 +371,21 @@ const DSS = WebexPlugin.extend({
    * @param {SearchType[]} options.requestedTypes an array of search types from: PERSON, CALLING_SERVICE, EXTERNAL_CALLING, ROOM, ROBOT
    * @param {string[]} options.queryString A query string that will be transformed into a Directory search filter query. It is used to search the following fields: username, givenName, familyName, displayName and email
    * @param {number} options.resultSize The maximum number of results returned from each provider
+   * @param {boolean} options.includePersonalDevices If true, includes personal devices associated with users in the search results.
+   * @param {boolean} options.includeCommonAreaPhones If true, includes common area phones in the search results.
+   * @param {boolean} options.includeOnlyPairableDevices If true, include the devices that are pairable in the search results.
    * @returns {Promise} Resolves with an array of entities found
    * @throws {DssTimeoutError} when server does not respond in the specified timeframe
    */
   search(options: SearchOptions) {
-    const {requestedTypes, resultSize, queryString} = options;
+    const {
+      requestedTypes,
+      resultSize,
+      queryString,
+      includeCommonAreaPhones,
+      includeOnlyPairableDevices,
+      includePersonalDevices,
+    } = options;
 
     return this._request({
       dataPath: SEARCH_DATA_PATH,
@@ -384,6 +394,9 @@ const DSS = WebexPlugin.extend({
         queryString,
         resultSize,
         requestedTypes,
+        includeCommonAreaPhones,
+        includeOnlyPairableDevices,
+        includePersonalDevices,
       },
     }).then(({resultArray}) => resultArray);
   },

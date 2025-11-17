@@ -2,6 +2,14 @@ type ServiceName = string;
 type ClusterId = string;
 export type ServiceGroup = 'discovery' | 'override' | 'preauth' | 'postauth' | 'signin';
 
+export type ServiceHost = {
+  host: string;
+  ttl: number;
+  priority: number;
+  id: string;
+  homeCluster?: boolean;
+};
+
 export type ServiceUrl = {
   baseUrl: string;
   host: string;
@@ -25,7 +33,7 @@ export type QueryOptions = {
 export interface ServiceHostmap {
   activeServices: ActiveServices;
   services: Array<Service>;
-  timeStamp: string;
+  timestamp: string;
   orgId: string;
   format: string;
 }
