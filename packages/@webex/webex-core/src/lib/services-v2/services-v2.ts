@@ -1097,6 +1097,9 @@ const Services = WebexPlugin.extend({
           );
         });
       }
+      this.webex.internal.metrics.submitClientMetrics(METRICS.SERVICE_V2_INITIALIZED, {
+        fields: {initialized_status: this.initFailed ? 'failed' : 'succeeded'},
+      });
     });
   },
 });
