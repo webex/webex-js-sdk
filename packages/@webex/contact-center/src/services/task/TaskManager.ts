@@ -196,18 +196,6 @@ export default class TaskManager extends EventEmitter {
               this.emit(TASK_EVENTS.TASK_INCOMING, task);
             }
             break;
-          case CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION:
-            task = this.updateTaskData(task, payload.data);
-            LoggerProxy.log(`Agent offer campaign reservation received for task`, {
-              module: TASK_MANAGER_FILE,
-              method: METHODS.REGISTER_TASK_LISTENERS,
-              interactionId: payload.data?.interactionId,
-            });
-            this.emit(TASK_EVENTS.TASK_OFFER_CAMPAIGN_RESERVATION, task);
-
-            // Handle auto-answer for campaign reservation
-            this.handleAutoAnswer(task);
-            break;
           case CC_EVENTS.AGENT_OFFER_CONTACT:
             // We don't have to emit any event here since this will be result of promise.
             task = this.updateTaskData(task, payload.data);

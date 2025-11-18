@@ -372,18 +372,6 @@ export enum TASK_EVENTS {
   TASK_OFFER_CONTACT = 'task:offerContact',
 
   /**
-   * Triggered when a campaign reservation is offered to agent
-   * @example
-   * ```typescript
-   * task.on(TASK_EVENTS.TASK_OFFER_CAMPAIGN_RESERVATION, (task: ITask) => {
-   *   console.log('Campaign reservation offered:', task.data.interactionId);
-   *   // Handle campaign reservation offer
-   * });
-   * ```
-   */
-  TASK_OFFER_CAMPAIGN_RESERVATION = 'task:offerCampaignReservation',
-
-  /**
    * Triggered when a conference is being established
    * @example
    * ```typescript
