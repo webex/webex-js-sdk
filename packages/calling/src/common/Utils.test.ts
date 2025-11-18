@@ -209,7 +209,6 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
 
   it('500 during keepalive without retry-after triggers retryCb without args', async () => {
     let emitted = false;
-    const endSpy = jest.fn();
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
@@ -218,7 +217,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       body: {device: {deviceId: 'd'}, errorCode: 0},
     });
 
-    await handleCallErrors(
+    const abort = await handleCallErrors(
       () => {
         emitted = true;
       },
@@ -227,12 +226,11 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       dummyCorrelationId,
       payload,
       'handleCallEstablished',
-      logObj.file,
-      endSpy
+      logObj.file
     );
 
+    expect(abort).toBe(false);
     expect(emitted).toBe(true);
-    expect(endSpy).not.toHaveBeenCalled();
     expect(retrySpy).toHaveBeenCalledWith(DEFAULT_KEEPALIVE_INTERVAL);
   });
 
@@ -263,9 +261,8 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
     expect(retrySpy).not.toHaveBeenCalled();
   });
 
-  it('503 during keepalive with retry-after does not emit and retries with interval', async () => {
+  it('503 during keepalive with retry-after does not invoke emitterCb and retries with interval', async () => {
     let emitted = false;
-    const endSpy = jest.fn();
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
@@ -274,7 +271,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       body: {device: {deviceId: 'd'}, errorCode: 0},
     });
 
-    await handleCallErrors(
+    const abort = await handleCallErrors(
       () => {
         emitted = true;
       },
@@ -283,18 +280,16 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       dummyCorrelationId,
       payload,
       'handleCallEstablished',
-      logObj.file,
-      endSpy
+      logObj.file
     );
 
+    expect(abort).toBe(false);
     expect(emitted).toBe(false);
-    expect(endSpy).not.toHaveBeenCalled();
     expect(retrySpy).toHaveBeenCalledWith(7);
   });
 
-  it('503 during keepalive without retry-after emits and triggers retryCb without args', async () => {
+  it('503 during keepalive without retry-after invokes emitterCb and triggers retryCb without args', async () => {
     let emitted = false;
-    const endSpy = jest.fn();
     const retrySpy = jest.fn();
 
     const payload = <WebexRequestPayload>(<unknown>{
@@ -303,7 +298,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       body: {device: {deviceId: 'd'}, errorCode: 111},
     });
 
-    await handleCallErrors(
+    const abort = await handleCallErrors(
       () => {
         emitted = true;
       },
@@ -312,12 +307,11 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       dummyCorrelationId,
       payload,
       'handleCallEstablished',
-      logObj.file,
-      endSpy
+      logObj.file
     );
 
+    expect(abort).toBe(false);
     expect(emitted).toBe(true);
-    expect(endSpy).not.toHaveBeenCalled();
     expect(retrySpy).toHaveBeenCalledWith(DEFAULT_KEEPALIVE_INTERVAL);
   });
 });

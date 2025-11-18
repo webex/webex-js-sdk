@@ -1072,6 +1072,11 @@ describe('State Machine handler tests', () => {
   });
 
   it('keepalive ends after reaching max retry count', async () => {
+    const resolvePromise = async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    };
+
     const errorPayload = <WebexRequestPayload>(<unknown>{
       statusCode: 500,
       headers: {
@@ -1081,18 +1086,29 @@ describe('State Machine handler tests', () => {
 
     jest.spyOn(global, 'clearInterval');
     const warnSpy = jest.spyOn(log, 'warn');
-    jest.spyOn(call, 'postStatus').mockRejectedValue(errorPayload);
+    const postStatusSpy = jest.spyOn(call, 'postStatus').mockRejectedValue(errorPayload);
 
-    // Manually set the retry count to 3 so it becomes 4 after increment
-    call['callKeepaliveRetryCount'] = 3;
+    // Put the call in the S_CALL_ESTABLISHED state and set it as connected
+    call['callStateMachine'].state.value = 'S_CALL_ESTABLISHED';
+    call['connected'] = true;
 
     // Call handleCallEstablished which will setup interval
     call['handleCallEstablished']({} as CallEvent);
 
-    // Advance timer to trigger the failure
+    // Advance timer to trigger the first failure (uses DEFAULT_SESSION_TIMER)
     jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
-    await Promise.resolve();
-    await Promise.resolve();
+    await resolvePromise();
+
+    // Now advance by 1 second for each of the 3 more retry attempts (retry-after: 1 second each)
+    // Need to do this separately to allow state machine to process and create new intervals
+    jest.advanceTimersByTime(1000);
+    await resolvePromise();
+
+    jest.advanceTimersByTime(1000);
+    await resolvePromise();
+
+    jest.advanceTimersByTime(1000);
+    await resolvePromise();
 
     // The error handler should detect we're at max retry count and stop
     expect(warnSpy).toHaveBeenCalledWith(
@@ -1102,6 +1118,7 @@ describe('State Machine handler tests', () => {
         method: 'handleCallEstablished',
       }
     );
+    expect(postStatusSpy).toHaveBeenCalledTimes(4);
     expect(call['callKeepaliveRetryCount']).toBe(0);
     expect(call['sessionTimer']).toBeUndefined();
   });

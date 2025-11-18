@@ -1586,8 +1586,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
           this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
           this.callKeepaliveRetryCount = 0;
-
-          return;
+          this.callKeepaliveInterval = undefined;
         }
 
         await uploadLogs({
