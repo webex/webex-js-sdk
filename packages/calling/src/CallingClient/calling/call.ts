@@ -1382,7 +1382,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private async handleIncomingCallDisconnect(event: CallEvent) {
     log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+      method: METHODS.HANDLE_INCOMING_CALL_DISCONNECT,
     });
 
     this.emit(CALL_EVENT_KEYS.DISCONNECT, this.correlationId);
@@ -1394,12 +1394,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       log.log(`Response code: ${response.statusCode}`, {
         file: CALL_FILE,
-        method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+        method: METHODS.HANDLE_INCOMING_CALL_DISCONNECT,
       });
     } catch (e) {
       log.warn(`Failed to delete the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
-        method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+        method: METHODS.HANDLE_INCOMING_CALL_DISCONNECT,
       });
 
       uploadLogs({
