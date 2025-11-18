@@ -668,11 +668,8 @@ export default class LocusInfo extends EventsScope {
 
       return;
     }
-    if (message.locusStateElements === undefined) {
-      this.hashTreeParser.handleRootHashHeartBeatMessage(message);
-    } else {
-      this.hashTreeParser.handleMessage(message);
-    }
+
+    this.hashTreeParser.handleMessage(message);
   }
 
   /**

@@ -168,7 +168,7 @@ class HashTreeParser {
    * @param {string} debugText - text to include in logs
    * @returns {Promise}
    */
-  sendInitializationSyncRequestToLocus(
+  private sendInitializationSyncRequestToLocus(
     datasetName: string,
     debugText: string
   ): Promise<{updateType: LocusInfoUpdateType; updatedObjects?: HashTreeObject[]}> {
@@ -208,7 +208,7 @@ class HashTreeParser {
    * @param {string} url - url from which we can get info about all data sets
    * @returns {Promise}
    */
-  getAllDataSetsMetadata(url) {
+  private getAllDataSetsMetadata(url) {
     return this.webexRequest({
       method: HTTP_VERBS.GET,
       uri: url,
@@ -261,7 +261,7 @@ class HashTreeParser {
    * @param {string} debugText Text to include in logs for debugging purposes
    * @returns {Promise}
    */
-  async initializeDataSets(dataSets: Array<DataSet>, debugText: string) {
+  private async initializeDataSets(dataSets: Array<DataSet>, debugText: string) {
     const updatedObjects: HashTreeObject[] = [];
 
     for (const dataSet of dataSets) {
@@ -385,7 +385,7 @@ class HashTreeParser {
    * @param {RootHashMessage} message - The root hash heartbeat message
    * @returns {void}
    */
-  handleRootHashHeartBeatMessage(message: RootHashMessage): void {
+  private handleRootHashHeartBeatMessage(message: RootHashMessage): void {
     const {dataSets} = message;
 
     LoggerProxy.logger.info(
@@ -452,7 +452,7 @@ class HashTreeParser {
    * @param {DataSet} receivedDataSet - The latest data set information received from Locus to update the internal state.
    * @returns {void}
    */
-  updateDataSetInfo(receivedDataSet: DataSet) {
+  private updateDataSetInfo(receivedDataSet: DataSet) {
     if (!this.dataSets[receivedDataSet.name]) {
       this.dataSets[receivedDataSet.name] = {
         ...receivedDataSet,
@@ -622,7 +622,7 @@ class HashTreeParser {
    * @param {string[]} addedDataSets - The list of added data sets.
    * @returns {Promise<void>}
    */
-  async initializeNewVisibleDataSets(
+  private async initializeNewVisibleDataSets(
     message: HashTreeMessage,
     addedDataSets: string[]
   ): Promise<void> {
@@ -657,7 +657,7 @@ class HashTreeParser {
    * @param {string} [debugText] - Optional debug text to include in logs
    * @returns {Promise}
    */
-  async parseMessage(
+  private async parseMessage(
     message: HashTreeMessage,
     debugText?: string
   ): Promise<{updateType: LocusInfoUpdateType; updatedObjects?: HashTreeObject[]}> {
@@ -805,9 +805,13 @@ class HashTreeParser {
    * @returns {void}
    */
   async handleMessage(message: HashTreeMessage, debugText?: string): Promise<void> {
-    const updates = await this.parseMessage(message, debugText);
+    if (message.locusStateElements === undefined) {
+      this.handleRootHashHeartBeatMessage(message);
+    } else {
+      const updates = await this.parseMessage(message, debugText);
 
-    this.callLocusInfoUpdateCallback(updates);
+      this.callLocusInfoUpdateCallback(updates);
+    }
   }
 
   /**
@@ -816,7 +820,7 @@ class HashTreeParser {
    * @param {Object} updates parsed from a Locus message
    * @returns {void}
    */
-  callLocusInfoUpdateCallback(updates: {
+  private callLocusInfoUpdateCallback(updates: {
     updateType: LocusInfoUpdateType;
     updatedObjects?: HashTreeObject[];
   }) {
@@ -969,7 +973,7 @@ class HashTreeParser {
    * Stops all timers for the data sets to prevent any further sync attempts.
    * @returns {void}
    */
-  stopAllTimers() {
+  private stopAllTimers() {
     Object.values(this.dataSets).forEach((dataSet) => {
       if (dataSet.timer) {
         clearTimeout(dataSet.timer);
