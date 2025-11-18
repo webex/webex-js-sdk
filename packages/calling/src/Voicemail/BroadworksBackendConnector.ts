@@ -167,9 +167,14 @@ export class BroadworksBackendConnector implements IBroadworksCallBackendConnect
     };
 
     log.info(METHOD_START_MESSAGE, loggerContext);
+    const broadworksIdpProxyUrl =
+      this.webex.internal.services._serviceUrls?.broadworksIdpProxy ||
+      this.webex.internal.services.get(
+        this.webex.internal.services._activeServices.broadworksIdpProxy
+      );
     try {
       const bwTokenResponse = await (<WebexRequestPayload>this.webex.request({
-        uri: `${this.webex.internal.services._serviceUrls.broadworksIdpProxy}${BW_TOKEN_FETCH_ENDPOINT}`,
+        uri: `${broadworksIdpProxyUrl}${BW_TOKEN_FETCH_ENDPOINT}`,
         method: HTTP_METHODS.GET,
       }));
 

@@ -839,6 +839,35 @@ describe('webex-core', () => {
         assert.equal(webex.config.credentials.authorizeUrl, authUrl);
       });
     });
+    
+    describe('#getMobiusClusters', () => {
+      it('returns unique mobius host entries from hostCatalog', () => {
+        // Arrange: two hostCatalog keys, with duplicate mobius host across keys
+        services._hostCatalog = {
+          'mobius-a.webex.com': [
+            {host: 'mobius-a.webex.com', ttl: -1, priority: 5, id: 'urn:TEAM:xyz:mobius'},
+            {host: 'mobius-b.webex.com', ttl: -1, priority: 10, id: 'urn:TEAM:xyz:mobius'},
+            {host: 'ignore.webex.com', ttl: -1, priority: 1, id: 'urn:TEAM:abc:wdm'}, // not mobius
+          ],
+          'dup-entry-key': [
+            {host: 'mobius-a.webex.com', ttl: -1, priority: 7, id: 'urn:TEAM:xyz:mobius'}, // duplicate host
+          ],
+        };
+    
+        // Act
+        const clusters = services.getMobiusClusters();
+    
+        // Assert
+        // deduped; only mobius entries; keeps first seen mobius-a, then mobius-b
+        assert.deepEqual(
+          clusters.map(({host, id, ttl, priority}) => ({host, id, ttl, priority})),
+          [
+            {host: 'mobius-a.webex.com', id: 'urn:TEAM:xyz:mobius', ttl: -1, priority: 5},
+            {host: 'mobius-b.webex.com', id: 'urn:TEAM:xyz:mobius', ttl: -1, priority: 10},
+          ]
+        );
+      });
+    });
   });
 });
 /* eslint-enable no-underscore-dangle */
