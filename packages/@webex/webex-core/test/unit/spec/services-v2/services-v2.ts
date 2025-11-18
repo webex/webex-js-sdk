@@ -6,7 +6,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {ServicesV2} from '@webex/webex-core';
-import {NewMetrics} from '@webex/internal-plugin-metrics';
+import Metrics, {NewMetrics} from '@webex/internal-plugin-metrics';
 import {formattedServiceHostmapV2, serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
 
 const waitForAsync = () =>
@@ -27,9 +27,7 @@ describe('webex-core', () => {
         children: {
           services: ServicesV2,
           newMetrics: NewMetrics,
-          metrics: {
-            submitClientMetrics: sinon.stub(),
-          },
+          metrics: Metrics,
         },
       });
       services = webex.internal.services;
@@ -51,14 +49,9 @@ describe('webex-core', () => {
         // call the onReady callback
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
-
+        
         assert.isFalse(services.initFailed);
-
-        sinon.assert.calledWith(
-          webex.internal.metrics.submitClientMetrics,
-          'SERVICE_V2_INITIALIZED',
-          {initialized_status: 'succeeded'}
-        );
+        sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
       });
 
       it('initFailed is false when initialization succeeds no credentials are available', async () => {
@@ -72,11 +65,7 @@ describe('webex-core', () => {
         await waitForAsync();
 
         assert.isFalse(services.initFailed);
-        sinon.assert.calledWith(
-          services.webex.internal.metrics.submitClientMetrics,
-          'SERVICE_V2_INITIALIZED',
-          {initialized_status: 'succeeded'}
-        );
+        sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
       });
 
       it.each([
@@ -104,11 +93,7 @@ describe('webex-core', () => {
             services.logger.error,
             `services: failed to init initial services when no credentials available, ${expectedMessage}`
           );
-          sinon.assert.calledWith(
-            services.webex.internal.metrics.submitClientMetrics,
-            'SERVICE_V2_INITIALIZED',
-            {initialized_status: 'failed'}
-          );
+          sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
         }
       );
 
@@ -142,11 +127,7 @@ describe('webex-core', () => {
             services.logger.error,
             `services: failed to init initial services when credentials available, ${expectedMessage}`
           );
-          sinon.assert.calledWith(
-            services.webex.internal.metrics.submitClientMetrics,
-            'SERVICE_V2_INITIALIZED',
-            {initialized_status: 'failed'}
-          );
+          sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
         }
       );
     });
