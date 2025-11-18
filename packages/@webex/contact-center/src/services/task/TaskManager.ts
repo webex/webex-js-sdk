@@ -136,6 +136,14 @@ export default class TaskManager extends EventEmitter {
                 interactionId: payload.data.interactionId,
               });
 
+              // Check if auto-answer should happen for this task
+              const shouldAutoAnswer = shouldAutoAnswerTask(
+                payload.data,
+                this.agentId,
+                this.webCallingService.loginOption,
+                this.webRtcEnabled
+              );
+
               task = new Task(
                 this.contact,
                 this.webCallingService,
@@ -144,6 +152,7 @@ export default class TaskManager extends EventEmitter {
                   wrapUpRequired:
                     payload.data.interaction?.participants?.[this.agentId]?.isWrapUp || false,
                   isConferenceInProgress: getIsConferenceInProgress(payload.data),
+                  isAutoAnswering: shouldAutoAnswer, // Set flag before emitting
                 },
                 this.wrapupData,
                 this.agentId
@@ -175,13 +184,22 @@ export default class TaskManager extends EventEmitter {
             }
             break;
 
-          case CC_EVENTS.AGENT_CONTACT_RESERVED:
+          case CC_EVENTS.AGENT_CONTACT_RESERVED: {
+            // Check if auto-answer should happen for this task
+            const shouldAutoAnswerReserved = shouldAutoAnswerTask(
+              payload.data,
+              this.agentId,
+              this.webCallingService.loginOption,
+              this.webRtcEnabled
+            );
+
             task = new Task(
               this.contact,
               this.webCallingService,
               {
                 ...payload.data,
                 isConsulted: false,
+                isAutoAnswering: shouldAutoAnswerReserved, // Set flag before emitting
               },
               this.wrapupData,
               this.agentId
@@ -196,6 +214,7 @@ export default class TaskManager extends EventEmitter {
               this.emit(TASK_EVENTS.TASK_INCOMING, task);
             }
             break;
+          }
           case CC_EVENTS.AGENT_OFFER_CONTACT:
             // We don't have to emit any event here since this will be result of promise.
             task = this.updateTaskData(task, payload.data);
@@ -552,48 +571,42 @@ export default class TaskManager extends EventEmitter {
 
   /**
    * Handles auto-answer logic for incoming tasks
-   * Automatically accepts tasks when certain conditions are met:
+   * Automatically accepts tasks when isAutoAnswering flag is set
+   * The flag is set during task creation based on:
    * 1. WebRTC calls with auto-answer enabled in agent profile
    * 2. Agent-initiated WebRTC outdial calls
    * 3. Agent-initiated digital outbound (Email/SMS) without previous transfers
    *
-   * @param task - The task to evaluate for auto-answer
+   * @param task - The task to auto-answer
    * @private
    */
   private async handleAutoAnswer(task: ITask): Promise<void> {
-    if (!task || !task.data) {
+    if (!task || !task.data || !task.data.isAutoAnswering) {
       return;
     }
 
-    const shouldAutoAnswer = shouldAutoAnswerTask(
-      task.data,
-      this.agentId,
-      this.webCallingService.loginOption,
-      this.webRtcEnabled
-    );
+    LoggerProxy.info(`Auto-answering task`, {
+      module: TASK_MANAGER_FILE,
+      method: 'handleAutoAnswer',
+      interactionId: task.data.interactionId,
+    });
 
-    if (shouldAutoAnswer) {
-      LoggerProxy.info(`Auto-answering task`, {
+    try {
+      await task.accept();
+      LoggerProxy.info(`Task auto-answered successfully`, {
         module: TASK_MANAGER_FILE,
         method: 'handleAutoAnswer',
         interactionId: task.data.interactionId,
       });
-
-      try {
-        await task.accept();
-        LoggerProxy.info(`Task auto-answered successfully`, {
-          module: TASK_MANAGER_FILE,
-          method: 'handleAutoAnswer',
-          interactionId: task.data.interactionId,
-        });
-      } catch (error) {
-        LoggerProxy.error(`Failed to auto-answer task`, {
-          module: TASK_MANAGER_FILE,
-          method: 'handleAutoAnswer',
-          interactionId: task.data.interactionId,
-          error,
-        });
-      }
+    } catch (error) {
+      // Reset isAutoAnswering flag on failure
+      task.updateTaskData({...task.data, isAutoAnswering: false});
+      LoggerProxy.error(`Failed to auto-answer task`, {
+        module: TASK_MANAGER_FILE,
+        method: 'handleAutoAnswer',
+        interactionId: task.data.interactionId,
+        error,
+      });
     }
   }
 

@@ -787,6 +787,8 @@ export type TaskData = {
   reservedAgentChannelId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
+  /** Indicates if auto-answer is in progress for this task */
+  isAutoAnswering?: boolean;
 };
 
 /**
