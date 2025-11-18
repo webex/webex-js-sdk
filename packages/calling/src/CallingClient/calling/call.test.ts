@@ -2222,6 +2222,19 @@ describe('State Machine handler tests', () => {
     );
   });
 
+  it('emits DISCONNECT before mobius delete request is invoked', async () => {
+    const emitSpy = jest.spyOn(call, 'emit');
+    const deleteSpy = jest.spyOn(call as any, 'delete').mockResolvedValue({statusCode: 200});
+
+    call.sendCallStateMachineEvt({type: 'E_RECV_CALL_DISCONNECT'} as CallEvent);
+
+    await flushPromises(1);
+
+    expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
+    expect(deleteSpy).toHaveBeenCalled();
+    expect(emitSpy.mock.invocationCallOrder[0]).toBeLessThan(deleteSpy.mock.invocationCallOrder[0]);
+  });
+
   describe('Call event timers tests', () => {
     let callManager;
     beforeEach(() => {
