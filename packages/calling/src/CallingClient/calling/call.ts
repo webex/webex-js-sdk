@@ -1531,6 +1531,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       try {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const res = await this.postStatus();
+        this.callKeepaliveRetryCount = 0;
+        this.callKeepaliveInterval = undefined;
 
         log.info(`Session refresh successful`, loggerContext);
       } catch (err: unknown) {
