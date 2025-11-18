@@ -1385,6 +1385,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
     });
 
+    this.emit(CALL_EVENT_KEYS.DISCONNECT, this.correlationId);
+
     this.setDisconnectReason();
 
     try {
@@ -1428,8 +1430,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.sendMediaStateMachineEvt({type: 'E_ROAP_TEARDOWN'});
     this.sendCallStateMachineEvt({type: 'E_CALL_CLEARED'});
-
-    this.emit(CALL_EVENT_KEYS.DISCONNECT, this.correlationId);
   }
 
   /**
