@@ -994,21 +994,19 @@ describe('State Machine handler tests', () => {
 
     const funcSpy = jest.spyOn(call, 'postStatus').mockRejectedValue(statusPayload);
 
-    if (call['sessionTimer'] === undefined) {
-      call['handleCallEstablished']({} as CallEvent);
-    }
     call['handleCallEstablished']({} as CallEvent);
 
     jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(clearInterval).toHaveBeenCalled();
+    expect(clearInterval).toHaveBeenCalledTimes(1);
     expect(funcSpy).toBeCalledTimes(1);
     expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
   });
 
-  it('session refresh 403 ends the call without emitting error', async () => {
+  it('session refresh failure', async () => {
+    expect.assertions(4);
     const statusPayload = <WebexRequestPayload>(<unknown>{
       statusCode: 403,
     });
@@ -1016,25 +1014,33 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
     jest.spyOn(global, 'clearInterval');
 
-    const emitSpy = jest.spyOn(call, 'emit');
-    const errorListener = jest.fn();
-    call.on(CALL_EVENT_KEYS.CALL_ERROR, errorListener);
+    call.on(CALL_EVENT_KEYS.CALL_ERROR, (errObj) => {
+      expect(errObj.type).toStrictEqual(ERROR_TYPE.FORBIDDEN_ERROR);
+      expect(errObj.message).toStrictEqual(
+        'An unauthorized action has been received. This action has been blocked. Please contact the administrator if this persists.'
+      );
+    });
 
     const funcSpy = jest.spyOn(call, 'postStatus').mockRejectedValue(statusPayload);
 
     if (call['sessionTimer'] === undefined) {
+      /* In cases where this test is run independently/alone, there is no sessionTimer initiated
+      Thus we will check and initialize the timer when not present by calling handleCallEstablish() */
       call['handleCallEstablished']({} as CallEvent);
     }
     call['handleCallEstablished']({} as CallEvent);
 
     jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
+
+    /* This is to flush all the promises from the Promise queue so that
+     * Jest.fakeTimers can advance time and also clear the promise Queue
+     */
+
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(clearInterval).toHaveBeenCalled();
+    expect(clearInterval).toHaveBeenCalledTimes(2); // check this
     expect(funcSpy).toBeCalledTimes(1);
-    expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
-    expect(errorListener).not.toHaveBeenCalled();
   });
 
   it('session refresh 500 schedules retry via retry-after or default interval', async () => {
@@ -1047,7 +1053,6 @@ describe('State Machine handler tests', () => {
 
     const okPayload = <WebexRequestPayload>(<unknown>{statusCode: 200, body: {}});
 
-    jest.spyOn(global, 'setTimeout');
     const sendEvtSpy = jest.spyOn(call as any, 'sendCallStateMachineEvt');
     const postStatusSpy = jest
       .spyOn(call as any, 'postStatus')
@@ -1060,28 +1065,45 @@ describe('State Machine handler tests', () => {
 
     jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
     await Promise.resolve();
+    await Promise.resolve();
 
-    jest.advanceTimersByTime(1005);
-
-    expect(setTimeout).toHaveBeenCalled();
-    expect(postStatusSpy).toHaveBeenCalledTimes(2);
+    expect(postStatusSpy).toHaveBeenCalledTimes(1);
     expect(sendEvtSpy).toHaveBeenCalledWith({type: 'E_CALL_ESTABLISHED'});
   });
 
   it('keepalive ends after reaching max retry count', async () => {
+    const errorPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 500,
+      headers: {
+        'retry-after': 1,
+      },
+    });
+
     jest.spyOn(global, 'clearInterval');
-    const emitSpy = jest.spyOn(call, 'emit');
+    const warnSpy = jest.spyOn(log, 'warn');
+    jest.spyOn(call, 'postStatus').mockRejectedValue(errorPayload);
 
-    call['sessionTimer'] = setInterval(() => {}, 1000);
+    // Manually set the retry count to 3 so it becomes 4 after increment
+    call['callKeepaliveRetryCount'] = 3;
 
-    call['handleCallEstablished']({} as CallEvent);
-    call['handleCallEstablished']({} as CallEvent);
-    call['handleCallEstablished']({} as CallEvent);
-    call['handleCallEstablished']({} as CallEvent);
+    // Call handleCallEstablished which will setup interval
     call['handleCallEstablished']({} as CallEvent);
 
-    expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
+    // Advance timer to trigger the failure
+    jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // The error handler should detect we're at max retry count and stop
+    expect(warnSpy).toHaveBeenCalledWith(
+      `Max call keepalive retry attempts reached for call: ${call.getCorrelationId()}`,
+      {
+        file: 'call',
+        method: 'handleCallEstablished',
+      }
+    );
     expect(call['callKeepaliveRetryCount']).toBe(0);
+    expect(call['sessionTimer']).toBeUndefined();
   });
 
   it('state changes during successful incoming call', async () => {

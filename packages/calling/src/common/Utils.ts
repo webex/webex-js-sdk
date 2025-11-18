@@ -616,6 +616,15 @@ export async function handleCallErrors(
     case ERROR_CODE.FORBIDDEN:
       if (isKeepalive) {
         abort = true;
+
+        updateCallErrorContext(
+          loggerContext,
+          ERROR_TYPE.FORBIDDEN_ERROR,
+          'An unauthorized action has been received. This action has been blocked. Please contact the administrator if this persists.',
+          correlationId,
+          callError
+        );
+        emitterCb(callError);
         break;
       }
 
@@ -770,10 +779,6 @@ export async function handleCallErrors(
 
     default: {
       log.warn(`Unknown Error`, loggerContext);
-
-      if (isKeepalive && retryCb) {
-        retryCb(DEFAULT_KEEPALIVE_INTERVAL);
-      }
     }
   }
 

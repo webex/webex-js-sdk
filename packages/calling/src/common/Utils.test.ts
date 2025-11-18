@@ -151,7 +151,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
     expect(retrySpy).not.toHaveBeenCalled();
   });
 
-  it('403 during keepalive ends call without emitting', async () => {
+  it('403 during keepalive emits error and ends call', async () => {
     let emitted = false;
     const retrySpy = jest.fn();
 
@@ -173,7 +173,7 @@ describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
       logObj.file
     );
 
-    expect(emitted).toBe(false);
+    expect(emitted).toBe(true);
     expect(abort).toBe(true);
     expect(retrySpy).not.toHaveBeenCalled();
   });

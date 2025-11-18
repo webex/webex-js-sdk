@@ -45,6 +45,7 @@ import {
   HOLD_ENDPOINT,
   ICE_CANDIDATES_TIMEOUT,
   INITIAL_SEQ_NUMBER,
+  MAX_CALL_KEEPALIVE_RETRY_COUNT,
   MEDIA_ENDPOINT_RESOURCE,
   METHODS,
   NOISE_REDUCTION_EFFECT,
@@ -95,8 +96,6 @@ import {createCallerId} from './CallerId';
 import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_ACTION} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
 import {METHOD_START_MESSAGE, SERVICES_ENDPOINT} from '../../common/constants';
-
-const MAX_CALL_KEEPALIVE_RETRY_COUNT = 4;
 
 /**
  *
@@ -172,6 +171,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private rtcMetrics: RtcMetrics;
 
   private callKeepaliveRetryCount = 0;
+
+  private callKeepaliveInterval?: number;
 
   /**
    * Getter to check if the call is muted or not.
@@ -1003,7 +1004,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         ERROR_LAYER.CALL_CONTROL,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        /* istanbul ignore next */ (interval?: number) => undefined,
+        /* istanbul ignore next */ (interval: number) => undefined,
         this.getCorrelationId(),
         errData,
         METHODS.HANDLE_OUTGOING_CALL_SETUP,
@@ -1078,7 +1079,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         ERROR_LAYER.CALL_CONTROL,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        /* istanbul ignore next */ (interval?: number) => undefined,
+        /* istanbul ignore next */ (interval: number) => undefined,
         this.getCorrelationId(),
         errData,
         METHODS.HANDLE_CALL_HOLD,
@@ -1153,7 +1154,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         ERROR_LAYER.CALL_CONTROL,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        /* istanbul ignore next */ (interval?: number) => undefined,
+        /* istanbul ignore next */ (interval: number) => undefined,
         this.getCorrelationId(),
         errData,
         METHODS.HANDLE_CALL_RESUME,
@@ -1277,7 +1278,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         ERROR_LAYER.CALL_CONTROL,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        /* istanbul ignore next */ (interval?: number) => undefined,
+        /* istanbul ignore next */ (interval: number) => undefined,
         this.getCorrelationId(),
         errData,
         METHODS.HANDLE_OUTGOING_CALL_ALERTING,
@@ -1362,7 +1363,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         ERROR_LAYER.CALL_CONTROL,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        /* istanbul ignore next */ (interval?: number) => undefined,
+        /* istanbul ignore next */ (interval: number) => undefined,
         this.getCorrelationId(),
         errData,
         METHODS.HANDLE_OUTGOING_CALL_CONNECT,
@@ -1505,10 +1506,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleCallEstablished(event: CallEvent) {
-    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
+    const loggerContext = {
       file: CALL_FILE,
       method: METHODS.HANDLE_CALL_ESTABLISHED,
-    });
+    };
+
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, loggerContext);
 
     this.emit(CALL_EVENT_KEYS.ESTABLISHED, this.correlationId);
 
@@ -1519,21 +1522,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     /* Session timers need to be reset at all offer/answer exchanges */
     if (this.sessionTimer) {
-      log.log('Resetting session timer', {
-        file: CALL_FILE,
-        method: METHODS.HANDLE_CALL_ESTABLISHED,
-      });
+      log.log('Resetting session timer', loggerContext);
+
       clearInterval(this.sessionTimer);
-
-      // If we have reached the max retry count, do not attempt to refresh the session
-      if (this.callKeepaliveRetryCount === MAX_CALL_KEEPALIVE_RETRY_COUNT) {
-        this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
-        this.callKeepaliveRetryCount = 0;
-
-        return;
-      }
-
-      this.callKeepaliveRetryCount += 1;
     }
 
     this.sessionTimer = setInterval(async () => {
@@ -1541,10 +1532,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const res = await this.postStatus();
 
-        log.info(`Session refresh successful`, {
-          file: CALL_FILE,
-          method: METHODS.HANDLE_CALL_ESTABLISHED,
-        });
+        log.info(`Session refresh successful`, loggerContext);
       } catch (err: unknown) {
         const error = <WebexRequestPayload>err;
 
@@ -1565,13 +1553,26 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           },
           ERROR_LAYER.CALL_CONTROL,
           (interval: number) => {
-            setTimeout(() => {
-              /* We first post the status and then recursively call the handler which
-               * starts the timer again
-               */
-              this.postStatus();
-              this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
-            }, interval * 1000);
+            this.callKeepaliveRetryCount += 1;
+            this.callKeepaliveInterval = interval * 1000;
+
+            // If we have reached the max retry count, do not attempt to refresh the session
+            if (this.callKeepaliveRetryCount === MAX_CALL_KEEPALIVE_RETRY_COUNT) {
+              this.callKeepaliveRetryCount = 0;
+              clearInterval(this.sessionTimer);
+              this.sessionTimer = undefined;
+              this.callKeepaliveInterval = undefined;
+
+              log.warn(
+                `Max call keepalive retry attempts reached for call: ${this.getCorrelationId()}`,
+                loggerContext
+              );
+
+              return;
+            }
+
+            // Scheduling next keepalive attempt - calling handleCallEstablished
+            this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
           },
           this.getCorrelationId(),
           error,
@@ -1580,6 +1581,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         );
 
         if (abort) {
+          this.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
           this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
           this.callKeepaliveRetryCount = 0;
 
@@ -1592,7 +1594,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           broadworksCorrelationInfo: this.broadworksCorrelationInfo,
         });
       }
-    }, DEFAULT_SESSION_TIMER);
+    }, this.callKeepaliveInterval || DEFAULT_SESSION_TIMER);
   }
 
   /**
@@ -1851,7 +1853,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           },
           ERROR_LAYER.MEDIA,
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          /* istanbul ignore next */ (interval?: number) => undefined,
+          /* istanbul ignore next */ (interval: number) => undefined,
           this.getCorrelationId(),
           errData,
           this.handleRoapError.name,
@@ -2501,7 +2503,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           },
           ERROR_LAYER.CALL_CONTROL,
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          /* istanbul ignore next */ (interval?: number) => undefined,
+          /* istanbul ignore next */ (interval: number) => undefined,
           this.getCorrelationId(),
           errData,
           METHODS.COMPLETE_TRANSFER,
@@ -2558,7 +2560,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           },
           ERROR_LAYER.CALL_CONTROL,
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          /* istanbul ignore next */ (interval?: number) => undefined,
+          /* istanbul ignore next */ (interval: number) => undefined,
           this.getCorrelationId(),
           errData,
           METHODS.COMPLETE_TRANSFER,
