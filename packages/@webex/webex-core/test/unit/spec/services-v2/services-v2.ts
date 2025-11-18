@@ -54,7 +54,7 @@ describe('webex-core', () => {
 
         assert.isFalse(services.initFailed);
 
-        assert.calledWith(
+        sinon.assert.calledWith(
           webex.internal.metrics.submitClientMetrics,
           'SERVICE_V2_INITIALIZED',
           {initialized_status: 'succeeded'}
