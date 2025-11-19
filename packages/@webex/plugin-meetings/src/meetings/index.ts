@@ -495,11 +495,7 @@ export default class Meetings extends WebexPlugin {
         return;
       }
     }
-    console.log(
-      `marcin: handleLocusEvent: ${
-        meeting ? `found existing meeting: ${meeting.id}` : 'creating meeting'
-      }`
-    );
+
     if (!meeting) {
       // TODO: create meeting when we get a meeting object
       // const checkForEnded = (locus) => {

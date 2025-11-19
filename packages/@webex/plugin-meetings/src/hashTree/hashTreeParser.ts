@@ -224,9 +224,11 @@ class HashTreeParser {
    * @returns {Promise}
    */
   async initializeFromMessage(message: HashTreeMessage) {
+    LoggerProxy.logger.info(
+      `HashTreeParser#initializeFromMessage --> ${this.debugId} visibleDataSetsUrl=${message.visibleDataSetsUrl}`
+    );
     const dataSets = await this.getAllDataSetsMetadata(message.visibleDataSetsUrl);
 
-    console.log('marcin: initializeFromMessage: ', message, dataSets);
     await this.initializeDataSets(dataSets, 'initialization from message');
   }
 
@@ -248,9 +250,12 @@ class HashTreeParser {
       return;
     }
 
+    LoggerProxy.logger.info(
+      `HashTreeParser#initializeFromGetLociResponse --> ${this.debugId} visibleDataSets url: ${locus.links.resources.visibleDataSets.url}`
+    );
+
     const dataSets = await this.getAllDataSetsMetadata(locus.links.resources.visibleDataSets.url);
 
-    console.log('marcin: initializeFromGetLociResponse: ', locus, dataSets);
     await this.initializeDataSets(dataSets, 'initialization from GET /loci response');
   }
 
@@ -275,6 +280,10 @@ class HashTreeParser {
         this.dataSets[name] = {
           ...dataSet,
         };
+      } else {
+        LoggerProxy.logger.info(
+          `HashTreeParser#initializeDataSets --> ${this.debugId} dataset "${name}" already exists (${debugText})`
+        );
       }
 
       if (this.visibleDataSets.includes(name) && !this.dataSets[name].hashTree) {
@@ -668,7 +677,9 @@ class HashTreeParser {
       message
     );
     if (message.locusStateElements?.length === 0) {
-      console.log('marcin: !!!!!!!!!! got empty locusStateElements !!!!!!!!!!!!!!!!');
+      LoggerProxy.logger.warn(
+        `HashTreeParser#parseMessage --> ${this.debugId} got empty locusStateElements!!!`
+      );
       // todo: send a metric
     }
 
@@ -1074,7 +1085,6 @@ class HashTreeParser {
           `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sync request succeeded for "${dataSet.name}"`
         );
 
-        console.log('marcin2: resp.body', resp.body);
         if (!resp.body || isEmpty(resp.body)) {
           LoggerProxy.logger.info(
             `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Got ${resp.statusCode} with empty body for sync request for data set "${dataSet.name}", data should arrive via messages`
