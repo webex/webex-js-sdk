@@ -227,6 +227,7 @@ export class Registration implements IRegistration {
           // If we are using backup and got 429, restart registration
           this.restartRegistration(caller);
         }
+        this.retryAfter = undefined;
 
         return true;
       }
