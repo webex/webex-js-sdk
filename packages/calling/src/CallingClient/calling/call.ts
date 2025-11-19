@@ -1524,15 +1524,19 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     if (this.sessionTimer) {
       log.log('Resetting session timer', loggerContext);
 
-      clearInterval(this.sessionTimer);
+      clearTimeout(this.sessionTimer);
     }
 
-    this.sessionTimer = setInterval(async () => {
+    this.sessionTimer = setTimeout(async () => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const res = await this.postStatus();
+
+        // Starting the interval again with the DEFAULT_SESSION_TIMER
+        clearTimeout(this.sessionTimer);
         this.callKeepaliveRetryCount = 0;
         this.callKeepaliveInterval = undefined;
+        this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
 
         log.info(`Session refresh successful`, loggerContext);
       } catch (err: unknown) {
@@ -1545,7 +1549,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
          */
         /* istanbul ignore next */
         if (this.sessionTimer) {
-          clearInterval(this.sessionTimer);
+          clearTimeout(this.sessionTimer);
         }
 
         const abort = await handleCallErrors(
@@ -1561,7 +1565,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             // If we have reached the max retry count, do not attempt to refresh the session
             if (this.callKeepaliveRetryCount === MAX_CALL_KEEPALIVE_RETRY_COUNT) {
               this.callKeepaliveRetryCount = 0;
-              clearInterval(this.sessionTimer);
+              clearTimeout(this.sessionTimer);
               this.sessionTimer = undefined;
               this.callKeepaliveInterval = undefined;
 

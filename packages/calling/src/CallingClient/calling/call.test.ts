@@ -948,7 +948,7 @@ describe('State Machine handler tests', () => {
     call['callStateMachine'].state.value = 'S_SEND_CALL_CONNECT';
 
     webex.request.mockReturnValue(statusPayload);
-    jest.spyOn(global, 'setInterval');
+    jest.spyOn(global, 'setTimeout');
 
     const funcSpy = jest.spyOn(call, 'postStatus').mockResolvedValue(statusPayload);
     const logSpy = jest.spyOn(log, 'info');
@@ -962,7 +962,8 @@ describe('State Machine handler tests', () => {
      */
     await flushPromises(3);
 
-    expect(setInterval).toHaveBeenCalledTimes(1);
+    expect(setTimeout).toHaveBeenCalledTimes(2);
+    expect(setTimeout).toHaveBeenLastCalledWith(expect.any(Function), DEFAULT_SESSION_TIMER);
     expect(funcSpy).toBeCalledTimes(1);
     expect(logSpy).toBeCalledWith('Session refresh successful', {
       file: 'call',
@@ -984,7 +985,7 @@ describe('State Machine handler tests', () => {
     });
 
     webex.request.mockReturnValue(statusPayload);
-    jest.spyOn(global, 'clearInterval');
+    jest.spyOn(global, 'clearTimeout');
 
     const emitSpy = jest.spyOn(call, 'emit');
 
@@ -1000,7 +1001,7 @@ describe('State Machine handler tests', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(clearInterval).toHaveBeenCalledTimes(1);
+    expect(clearTimeout).toHaveBeenCalledTimes(1);
     expect(funcSpy).toBeCalledTimes(1);
     expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
   });
@@ -1012,7 +1013,7 @@ describe('State Machine handler tests', () => {
     });
 
     webex.request.mockReturnValue(statusPayload);
-    jest.spyOn(global, 'clearInterval');
+    jest.spyOn(global, 'clearTimeout');
 
     call.on(CALL_EVENT_KEYS.CALL_ERROR, (errObj) => {
       expect(errObj.type).toStrictEqual(ERROR_TYPE.FORBIDDEN_ERROR);
@@ -1039,7 +1040,7 @@ describe('State Machine handler tests', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(clearInterval).toHaveBeenCalledTimes(2); // check this
+    expect(clearTimeout).toHaveBeenCalledTimes(2);
     expect(funcSpy).toBeCalledTimes(1);
   });
 
