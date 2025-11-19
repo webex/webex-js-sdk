@@ -7,7 +7,6 @@
  * NOTE: These actions are meant to be used within XState assign() or as standalone action functions.
  * Event emission and UI control updates will be handled by the Task/Voice classes that use this state machine.
  *
- * TODO: Timer implementations (startRonaTimer, startAutoWrapupTimer) will be added to Task/Voice classes later.
  * TODO: Event emission logic will be integrated with existing Task EventEmitter pattern.
  * TODO: Resource cleanup logic will be added to handle WebRTC and other resources.
  */
@@ -31,9 +30,6 @@ export function createInitialContext(): TaskContext {
     participants: [], // DEPRECATED: Use conferenceParticipants instead
     recordingActive: false,
     recordingPaused: false,
-    wrapUpRequired: false,
-    autoWrapupTimer: null,
-    ronaTimer: null,
   };
 }
 
@@ -240,62 +236,6 @@ export const actions = {
     consultDestination: null,
     consultDestinationAgentJoined: false,
   }),
-
-  /**
-   * Stop RONA timer
-   */
-  stopRonaTimer: assign<TaskContext, TaskEventPayload>({
-    ronaTimer: null,
-  }),
-
-  /**
-   * Stop auto-wrapup timer
-   */
-  stopAutoWrapupTimer: assign<TaskContext, TaskEventPayload>({
-    autoWrapupTimer: null,
-  }),
-};
-
-/**
- * Side-effect action creators
- * These are functions that will be called by the state machine to perform side effects.
- * They don't modify context directly, but trigger external effects like:
- * - Starting timers
- * - Logging
- * - Emitting events (handled by Task/Voice class)
- * - Cleaning up resources
- */
-export const sideEffects = {
-  /**
-   * Start RONA (Ring On No Answer) timer
-   * This should be implemented by the caller to start an actual timer that sends RONA event after timeout
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  startRonaTimer: (context: TaskContext, event: TaskEventPayload) => {
-    // Implementation will be provided by Task/Voice class
-    // The class will start a timer and send RONA event when it expires
-  },
-
-  /**
-   * Start auto-wrapup timer
-   * Implementation provided by Task/Voice class
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  startAutoWrapupTimer: (context: TaskContext, event: TaskEventPayload) => {
-    // Implementation will be provided by Task/Voice class
-  },
-
-  /**
-   * Cleanup resources on task end
-   * Implementation provided by Task/Voice class to:
-   * - Stop timers
-   * - Release WebRTC resources
-   * - Clean up event listeners
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  cleanupResources: (context: TaskContext, event: TaskEventPayload) => {
-    // Implementation will be provided by Task/Voice class
-  },
 };
 
 /**
@@ -315,10 +255,6 @@ export interface ActionCallbacks {
   onTaskConferenceEnded?: (taskData: any) => void;
   onTaskEnd?: (taskData: any) => void;
   onTaskWrappedup?: (taskData: any) => void;
-  onStartRonaTimer?: (timeout: number) => number | null;
-  onStopRonaTimer?: (timerId: number | null) => void;
-  onStartAutoWrapupTimer?: (timeout: number) => number | null;
-  onStopAutoWrapupTimer?: (timerId: number | null) => void;
   onCleanupResources?: () => void;
 }
 
@@ -361,39 +297,6 @@ export function createActionsWithCallbacks(callbacks: ActionCallbacks) {
     },
     emitTaskWrappedup: (context: TaskContext) => {
       callbacks.onTaskWrappedup?.(context.taskData);
-    },
-
-    // Timer actions
-    startRonaTimer: () => {
-      if (callbacks.onStartRonaTimer) {
-        const timerId = callbacks.onStartRonaTimer(30000); // 30 seconds default
-        if (timerId !== null) {
-          // Store timer ID in context via assign action
-          return assign<TaskContext>({ronaTimer: timerId});
-        }
-      }
-
-      return undefined;
-    },
-    stopRonaTimer: (context: TaskContext) => {
-      if (callbacks.onStopRonaTimer && context.ronaTimer) {
-        callbacks.onStopRonaTimer(context.ronaTimer);
-      }
-    },
-    startAutoWrapupTimer: () => {
-      if (callbacks.onStartAutoWrapupTimer) {
-        const timerId = callbacks.onStartAutoWrapupTimer(60000); // 60 seconds default
-        if (timerId !== null) {
-          return assign<TaskContext>({autoWrapupTimer: timerId});
-        }
-      }
-
-      return undefined;
-    },
-    stopAutoWrapupTimer: (context: TaskContext) => {
-      if (callbacks.onStopAutoWrapupTimer && context.autoWrapupTimer) {
-        callbacks.onStopAutoWrapupTimer(context.autoWrapupTimer);
-      }
     },
 
     // Cleanup action

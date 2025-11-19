@@ -15,12 +15,20 @@ export enum TaskState {
   OFFERED = 'OFFERED',
   OFFERED_CONSULT = 'OFFERED_CONSULT',
   CONNECTED = 'CONNECTED',
+
+  // Intermediate states for async operations
+  HOLD_INITIATING = 'HOLD_INITIATING',
   HELD = 'HELD',
+  RESUME_INITIATING = 'RESUME_INITIATING',
+
+  CONSULT_INITIATING = 'CONSULT_INITIATING',
   CONSULTING = 'CONSULTING',
+
   CONFERENCING = 'CONFERENCING',
   WRAPPING_UP = 'WRAPPING_UP',
   COMPLETED = 'COMPLETED',
   TERMINATED = 'TERMINATED',
+
   // NOT IMPLEMENTED: MPC (Multi-Party Conference) states
   CONSULT_INITIATED = 'CONSULT_INITIATED',
   CONSULT_COMPLETED = 'CONSULT_COMPLETED',
@@ -47,10 +55,15 @@ export enum TaskEvent {
 
   // Hold/Resume events
   HOLD = 'HOLD',
+  HOLD_SUCCESS = 'HOLD_SUCCESS',
+  HOLD_FAILED = 'HOLD_FAILED',
   UNHOLD = 'UNHOLD',
+  UNHOLD_SUCCESS = 'UNHOLD_SUCCESS',
+  UNHOLD_FAILED = 'UNHOLD_FAILED',
 
   // Consult events
   CONSULT = 'CONSULT',
+  CONSULT_SUCCESS = 'CONSULT_SUCCESS',
   CONSULT_CREATED = 'CONSULT_CREATED',
   CONSULTING_ACTIVE = 'CONSULTING_ACTIVE',
   CONSULT_END = 'CONSULT_END',
@@ -149,13 +162,6 @@ export interface TaskContext {
   // Recording tracking
   recordingActive: boolean;
   recordingPaused: boolean;
-
-  // Wrapup tracking
-  wrapUpRequired: boolean;
-  autoWrapupTimer: number | null;
-
-  // RONA tracking
-  ronaTimer: number | null;
 }
 
 /**
@@ -168,12 +174,17 @@ export type TaskEventPayload =
   | {type: TaskEvent.DECLINE}
   | {type: TaskEvent.ASSIGN; taskData: TaskData}
   | {type: TaskEvent.HOLD; mediaResourceId: string}
+  | {type: TaskEvent.HOLD_SUCCESS; mediaResourceId: string}
+  | {type: TaskEvent.HOLD_FAILED; reason?: string; mediaResourceId: string}
   | {type: TaskEvent.UNHOLD; mediaResourceId: string}
+  | {type: TaskEvent.UNHOLD_SUCCESS; mediaResourceId: string}
+  | {type: TaskEvent.UNHOLD_FAILED; reason?: string; mediaResourceId: string}
   | {
       type: TaskEvent.CONSULT;
       destination: string;
       destinationType: 'agent' | 'queue' | 'entryPoint';
     }
+  | {type: TaskEvent.CONSULT_SUCCESS; taskData?: TaskData}
   | {type: TaskEvent.CONSULT_CREATED; taskData: TaskData}
   | {type: TaskEvent.CONSULTING_ACTIVE; consultDestinationAgentJoined: boolean}
   | {type: TaskEvent.CONSULT_END}
@@ -247,8 +258,6 @@ export interface TaskStateMachineConfig {
 export enum TaskAction {
   // Entry/Exit actions
   INITIALIZE_TASK = 'initializeTask',
-  START_RONA_TIMER = 'startRonaTimer',
-  STOP_RONA_TIMER = 'stopRonaTimer',
   EMIT_TASK_INCOMING = 'emitTaskIncoming',
   EMIT_TASK_ASSIGNED = 'emitTaskAssigned',
   EMIT_TASK_HOLD = 'emitTaskHold',
@@ -260,8 +269,6 @@ export enum TaskAction {
   EMIT_TASK_CONFERENCE_ENDED = 'emitTaskConferenceEnded',
   EMIT_TASK_END = 'emitTaskEnd',
   EMIT_TASK_WRAPPEDUP = 'emitTaskWrappedup',
-  START_AUTO_WRAPUP_TIMER = 'startAutoWrapupTimer',
-  STOP_AUTO_WRAPUP_TIMER = 'stopAutoWrapupTimer',
   CLEANUP_RESOURCES = 'cleanupResources',
 
   // Context updates
@@ -274,26 +281,4 @@ export enum TaskAction {
   SET_HOLD_STATE = 'setHoldState',
   SET_RECORDING_STATE = 'setRecordingState',
   UPDATE_TIMESTAMP = 'updateTimestamp',
-}
-
-/**
- * Guard condition types
- */
-export enum TaskGuard {
-  CAN_ACCEPT = 'canAccept',
-  CAN_HOLD = 'canHold',
-  CAN_RESUME = 'canResume',
-  CAN_CONSULT = 'canConsult',
-  CAN_START_CONFERENCE = 'canStartConference',
-  CAN_MERGE_TO_CONFERENCE = 'canMergeConsultToConference',
-  CAN_ADD_TO_CONFERENCE = 'canAddToConference',
-  CAN_TRANSFER = 'canTransfer',
-  CAN_EXIT_CONFERENCE = 'canExitConference',
-  CAN_TRANSFER_CONFERENCE = 'canTransferConference',
-  SHOULD_END_CONFERENCE = 'shouldEndConference',
-  CAN_WRAPUP = 'canWrapup',
-  IS_CONSULTED = 'isConsulted',
-  IS_CONFERENCE_ENDING = 'isConferenceEnding',
-  RECORDING_ACTIVE = 'recordingActive',
-  RECORDING_PAUSED = 'recordingPaused',
 }

@@ -17,8 +17,9 @@ export type {TaskContext, TaskEventPayload, TaskStateMachineConfig, UIControls} 
 
 // Guards
 export {guards} from './guards';
-export type {TaskAction, TaskGuard} from './types';
+export type {GuardParams, GuardFunction} from './guards';
+export type {TaskAction} from './types';
 
 // Actions
-export {actions, createInitialContext, sideEffects, createActionsWithCallbacks} from './actions';
+export {actions, createInitialContext, createActionsWithCallbacks} from './actions';
 export type {ActionCallbacks} from './actions';

@@ -7,7 +7,6 @@
 
 import {createMachine, StateMachine} from 'xstate';
 import {TaskContext, TaskState, TaskEvent, TaskEventPayload} from './types';
-import {guards} from './guards';
 import {actions, createInitialContext} from './actions';
 
 /**
@@ -33,8 +32,6 @@ export const taskStateMachineConfig = {
     },
 
     [TaskState.OFFERED]: {
-      entry: ['startRonaTimer'],
-      exit: ['stopRonaTimer'],
       on: {
         [TaskEvent.ACCEPT]: {
           target: TaskState.CONNECTED,
@@ -56,8 +53,6 @@ export const taskStateMachineConfig = {
     },
 
     [TaskState.OFFERED_CONSULT]: {
-      entry: ['startRonaTimer'],
-      exit: ['stopRonaTimer'],
       on: {
         [TaskEvent.ACCEPT]: {
           target: TaskState.CONSULTING,
@@ -77,13 +72,11 @@ export const taskStateMachineConfig = {
     [TaskState.CONNECTED]: {
       on: {
         [TaskEvent.HOLD]: {
-          target: TaskState.HELD,
-          cond: 'canHold',
-          actions: ['setHoldState', 'updateState'],
+          target: TaskState.HOLD_INITIATING,
+          actions: ['updateState'],
         },
         [TaskEvent.CONSULT]: {
-          target: TaskState.CONSULTING,
-          cond: 'canConsult',
+          target: TaskState.CONSULT_INITIATING,
           actions: ['setConsultInitiator', 'setConsultDestination', 'updateState'],
         },
         [TaskEvent.CONSULT_CREATED]: {
@@ -92,24 +85,16 @@ export const taskStateMachineConfig = {
         },
         [TaskEvent.TRANSFER]: {
           target: TaskState.WRAPPING_UP,
-          cond: 'canTransfer',
           actions: ['updateState'],
         },
         [TaskEvent.END]: {
           target: TaskState.WRAPPING_UP,
           actions: ['markEnded', 'updateState'],
         },
-        [TaskEvent.CONTACT_ENDED]: [
-          {
-            target: TaskState.WRAPPING_UP,
-            cond: 'wrapupRequired',
-            actions: ['markEnded', 'updateState'],
-          },
-          {
-            target: TaskState.COMPLETED,
-            actions: ['markEnded', 'updateState'],
-          },
-        ],
+        [TaskEvent.CONTACT_ENDED]: {
+          target: TaskState.WRAPPING_UP,
+          actions: ['markEnded', 'updateState'],
+        },
         [TaskEvent.PAUSE_RECORDING]: {
           actions: ['setRecordingState'],
         },
@@ -119,26 +104,62 @@ export const taskStateMachineConfig = {
       },
     },
 
+    [TaskState.HOLD_INITIATING]: {
+      on: {
+        [TaskEvent.HOLD_SUCCESS]: {
+          target: TaskState.HELD,
+          actions: ['setHoldState', 'updateState'],
+        },
+        [TaskEvent.HOLD_FAILED]: {
+          target: TaskState.CONNECTED,
+          actions: ['updateState'],
+        },
+      },
+    },
+
     [TaskState.HELD]: {
       on: {
         [TaskEvent.UNHOLD]: {
-          target: TaskState.CONNECTED,
-          cond: 'canResume',
-          actions: ['setHoldState', 'updateState'],
+          target: TaskState.RESUME_INITIATING,
+          actions: ['updateState'],
         },
         [TaskEvent.CONSULT]: {
-          target: TaskState.CONSULTING,
-          cond: 'canConsult',
+          target: TaskState.CONSULT_INITIATING,
           actions: ['setConsultInitiator', 'setConsultDestination', 'updateState'],
         },
         [TaskEvent.TRANSFER]: {
           target: TaskState.WRAPPING_UP,
-          cond: 'canTransfer',
           actions: ['updateState'],
         },
         [TaskEvent.END]: {
           target: TaskState.WRAPPING_UP,
           actions: ['markEnded', 'updateState'],
+        },
+      },
+    },
+
+    [TaskState.RESUME_INITIATING]: {
+      on: {
+        [TaskEvent.UNHOLD_SUCCESS]: {
+          target: TaskState.CONNECTED,
+          actions: ['setHoldState', 'updateState'],
+        },
+        [TaskEvent.UNHOLD_FAILED]: {
+          target: TaskState.HELD,
+          actions: ['updateState'],
+        },
+      },
+    },
+
+    [TaskState.CONSULT_INITIATING]: {
+      on: {
+        [TaskEvent.CONSULT_SUCCESS]: {
+          target: TaskState.CONSULTING,
+          actions: ['updateState'],
+        },
+        [TaskEvent.CONSULT_FAILED]: {
+          target: TaskState.CONNECTED,
+          actions: ['updateState'],
         },
       },
     },
@@ -150,17 +171,14 @@ export const taskStateMachineConfig = {
         },
         [TaskEvent.START_CONFERENCE]: {
           target: TaskState.CONFERENCING,
-          cond: 'canStartConference',
           actions: ['initializeConference', 'updateState'],
         },
         [TaskEvent.MERGE_TO_CONFERENCE]: {
           target: TaskState.CONFERENCING,
-          cond: 'canMergeConsultToConference',
           actions: ['initializeConference', 'updateState'],
         },
         [TaskEvent.CONFERENCE_START]: {
           target: TaskState.CONFERENCING,
-          cond: 'canStartConference',
           actions: ['setConferencing', 'updateState'],
         },
         [TaskEvent.CONSULT_END]: {
@@ -173,31 +191,22 @@ export const taskStateMachineConfig = {
         },
         [TaskEvent.TRANSFER]: {
           target: TaskState.WRAPPING_UP,
-          cond: 'canTransfer',
           actions: ['updateState'],
         },
         [TaskEvent.END]: {
           target: TaskState.WRAPPING_UP,
           actions: ['markEnded', 'clearConsultState', 'updateState'],
         },
-        [TaskEvent.CONTACT_ENDED]: [
-          {
-            target: TaskState.WRAPPING_UP,
-            cond: 'wrapupRequired',
-            actions: ['markEnded', 'clearConsultState', 'updateState'],
-          },
-          {
-            target: TaskState.COMPLETED,
-            actions: ['markEnded', 'clearConsultState', 'updateState'],
-          },
-        ],
+        [TaskEvent.CONTACT_ENDED]: {
+          target: TaskState.WRAPPING_UP,
+          actions: ['markEnded', 'clearConsultState', 'updateState'],
+        },
       },
     },
 
     [TaskState.CONFERENCING]: {
       on: {
         [TaskEvent.PARTICIPANT_JOIN]: {
-          cond: 'canAddToConference',
           actions: ['addParticipant'],
         },
         [TaskEvent.PARTICIPANT_LEAVE]: {
@@ -205,50 +214,31 @@ export const taskStateMachineConfig = {
         },
         [TaskEvent.EXIT_CONFERENCE]: {
           target: TaskState.WRAPPING_UP,
-          cond: 'canExitConference',
           actions: ['clearConferencing', 'markEnded', 'updateState'],
         },
         [TaskEvent.TRANSFER_CONFERENCE]: {
           target: TaskState.WRAPPING_UP,
-          cond: 'canTransferConference',
           actions: ['clearConferencing', 'updateState'],
         },
-        [TaskEvent.CONFERENCE_END]: [
-          {
-            target: TaskState.CONNECTED,
-            cond: 'shouldEndConference',
-            actions: ['clearConferencing', 'updateState'],
-          },
-          {
-            target: TaskState.WRAPPING_UP,
-            actions: ['clearConferencing', 'markEnded', 'updateState'],
-          },
-        ],
+        [TaskEvent.CONFERENCE_END]: {
+          target: TaskState.WRAPPING_UP,
+          actions: ['clearConferencing', 'markEnded', 'updateState'],
+        },
         [TaskEvent.END]: {
           target: TaskState.WRAPPING_UP,
           actions: ['markEnded', 'clearConferencing', 'updateState'],
         },
-        [TaskEvent.CONTACT_ENDED]: [
-          {
-            target: TaskState.WRAPPING_UP,
-            cond: 'wrapupRequired',
-            actions: ['markEnded', 'clearConferencing', 'updateState'],
-          },
-          {
-            target: TaskState.COMPLETED,
-            actions: ['markEnded', 'clearConferencing', 'updateState'],
-          },
-        ],
+        [TaskEvent.CONTACT_ENDED]: {
+          target: TaskState.WRAPPING_UP,
+          actions: ['markEnded', 'clearConferencing', 'updateState'],
+        },
       },
     },
 
     [TaskState.WRAPPING_UP]: {
-      entry: ['startAutoWrapupTimer'],
-      exit: ['stopAutoWrapupTimer'],
       on: {
         [TaskEvent.WRAPUP]: {
           target: TaskState.COMPLETED,
-          cond: 'canWrapup',
           actions: ['updateState'],
         },
         [TaskEvent.AUTO_WRAPUP]: {
@@ -284,7 +274,6 @@ export function createTaskStateMachine(): StateMachine<
   any
 > {
   return createMachine(taskStateMachineConfig, {
-    guards,
     actions,
   });
 }
@@ -299,7 +288,6 @@ export function createTaskStateMachineWithActions(
   customActions: Record<string, any>
 ): StateMachine<TaskContext, any, TaskEventPayload, any, any, any, any> {
   return createMachine(taskStateMachineConfig, {
-    guards,
     actions: {
       ...actions,
       ...customActions,

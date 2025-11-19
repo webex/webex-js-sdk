@@ -16,7 +16,7 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, guards} from '../state-machine';
+import {TaskState, TaskEvent, guards} from '../state-machine';
 
 export default class Voice extends Task implements IVoice {
   private isEndCallEnabled: boolean;
@@ -241,6 +241,15 @@ export default class Voice extends Task implements IVoice {
       }
     }
 
+    // Send initiating event to transition to intermediate state
+    if (this.stateMachineService) {
+      const initiatingEvent = shouldHold ? TaskEvent.HOLD : TaskEvent.UNHOLD;
+      this.stateMachineService.send({
+        type: initiatingEvent,
+        mediaResourceId: this.data.mediaResourceId,
+      });
+    }
+
     LoggerProxy.info(`${shouldHold ? 'Holding' : 'Resuming'} task`, {
       module: CC_FILE,
       method: METHODS.HOLD_RESUME,
@@ -259,6 +268,15 @@ export default class Voice extends Task implements IVoice {
           interactionId: this.data.interactionId,
           data: {mediaResourceId: this.data.mediaResourceId},
         });
+
+        // Send success event to complete the transition
+        if (this.stateMachineService) {
+          this.stateMachineService.send({
+            type: TaskEvent.HOLD_SUCCESS,
+            mediaResourceId: this.data.mediaResourceId,
+          });
+        }
+
         this.metricsManager.trackEvent(
           successEvt,
           {
@@ -280,6 +298,15 @@ export default class Voice extends Task implements IVoice {
           interactionId: this.data.interactionId,
           data: {mediaResourceId: this.data.mediaResourceId},
         });
+
+        // Send success event to complete the transition
+        if (this.stateMachineService) {
+          this.stateMachineService.send({
+            type: TaskEvent.UNHOLD_SUCCESS,
+            mediaResourceId: this.data.mediaResourceId,
+          });
+        }
+
         this.metricsManager.trackEvent(
           successEvt,
           {
@@ -300,6 +327,16 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
+      // Send failure event to transition back to previous state
+      if (this.stateMachineService) {
+        const failureEvent = shouldHold ? TaskEvent.HOLD_FAILED : TaskEvent.UNHOLD_FAILED;
+        this.stateMachineService.send({
+          type: failureEvent,
+          reason: error.toString(),
+          mediaResourceId: this.data.mediaResourceId,
+        });
+      }
+
       const {error: detailedError} = getErrorDetails(error, 'holdResume', CC_FILE);
       this.metricsManager.trackEvent(
         failedEvt,
@@ -332,8 +369,8 @@ export default class Voice extends Task implements IVoice {
    */
   public async pauseRecording(): Promise<TaskResponse> {
     // Validate recording is active
-    const context = this.stateMachineService?.state?.context;
-    if (context && !guards.recordingActive(context)) {
+    const state = this.stateMachineService?.state;
+    if (state && !guards.recordingActive({context: state.context})) {
       const error = new Error('Recording is not active or already paused');
       LoggerProxy.error('Pause recording operation not allowed', {
         module: CC_FILE,
@@ -399,8 +436,8 @@ export default class Voice extends Task implements IVoice {
     resumeRecordingPayload?: ResumeRecordingPayload
   ): Promise<TaskResponse> {
     // Validate recording is paused
-    const context = this.stateMachineService?.state?.context;
-    if (context && !guards.recordingPaused(context)) {
+    const state = this.stateMachineService?.state;
+    if (state && !guards.recordingPaused({context: state.context})) {
       const error = new Error('Recording is not paused');
       LoggerProxy.error('Resume recording operation not allowed', {
         module: CC_FILE,
@@ -488,6 +525,15 @@ export default class Voice extends Task implements IVoice {
       throw error;
     }
 
+    // Send initiating event to transition to CONSULT_INITIATING state
+    if (this.stateMachineService) {
+      this.stateMachineService.send({
+        type: TaskEvent.CONSULT,
+        destination: consultPayload.to,
+        destinationType: consultPayload.destinationType as 'queue' | 'agent' | 'entryPoint',
+      });
+    }
+
     try {
       LoggerProxy.info(`Starting consult`, {
         module: CC_FILE,
@@ -502,6 +548,15 @@ export default class Voice extends Task implements IVoice {
         interactionId: this.data.interactionId,
         data: consultPayload,
       });
+
+      // Send success event to transition to CONSULTING state
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.CONSULT_SUCCESS,
+          taskData: result.data,
+        });
+      }
+
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
         {
@@ -521,6 +576,14 @@ export default class Voice extends Task implements IVoice {
 
       return result;
     } catch (error) {
+      // Send failure event to transition back to previous state
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.CONSULT_FAILED,
+          reason: error.toString(),
+        });
+      }
+
       const {error: detailedError} = getErrorDetails(error, 'consult', CC_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,

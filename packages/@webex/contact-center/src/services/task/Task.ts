@@ -168,6 +168,22 @@ export default abstract class Task extends EventEmitter implements ITask {
     });
   }
 
+  /**
+   * Cancel any in-progress auto wrap-up timer.
+   * Base implementation just clears the timer reference so subclasses inherit the behavior.
+   */
+  public cancelAutoWrapupTimer(): void {
+    if (this.autoWrapup) {
+      this.autoWrapup.clear();
+      this.autoWrapup = undefined;
+      LoggerProxy.log('Auto wrap-up timer cancelled', {
+        module: CC_FILE,
+        method: 'cancelAutoWrapupTimer',
+        interactionId: this.data?.interactionId,
+      });
+    }
+  }
+
   // Voice tasks use holdResume(), but provide separate methods for interface compliance
   public async hold(): Promise<TaskResponse> {
     this.unsupportedMethodError('hold');
@@ -229,8 +245,6 @@ export default abstract class Task extends EventEmitter implements ITask {
           interactionId: taskData.interactionId,
         });
       },
-      onStopRonaTimer: () => {},
-      onStopAutoWrapupTimer: () => {},
       onCleanupResources: () => {},
     };
 
