@@ -1,12 +1,7 @@
 import EventEmitter from 'events';
 import {CALL_EVENT_KEYS, LocalMicrophoneStream} from '@webex/calling';
 import {CallId} from '@webex/calling/dist/types/common/types';
-import {
-  generateTaskErrorObject,
-  deriveConsultTransferDestinationType,
-  getDestinationAgentId,
-  buildConsultConferenceParamData,
-} from '../core/Utils';
+import {generateTaskErrorObject, calculateDestAgentId, calculateDestType} from '../core/Utils';
 import {Failure} from '../core/GlobalTypes';
 import {LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
@@ -1447,35 +1442,31 @@ export default class Task extends EventEmitter implements ITask {
   public async consultTransfer(
     consultTransferPayload?: ConsultTransferPayLoad
   ): Promise<TaskResponse> {
-    try {
-      // Get the destination agent ID using custom logic from participants data
-      const destAgentId = getDestinationAgentId(
-        this.data.interaction?.participants,
-        this.data.agentId
-      );
+    // Get the destination agent ID using custom logic from participants data
+    const destAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
 
-      // Resolve the target id (queue consult transfers go to the accepted agent)
-      if (!destAgentId) {
-        throw new Error('No agent has accepted this queue consult yet');
+    // Resolve the target id (queue consult transfers go to the accepted agent)
+    if (!destAgentId) {
+      throw new Error('No agent has accepted this queue consult yet');
+    }
+
+    LoggerProxy.info(
+      `Initiating consult transfer to ${consultTransferPayload?.to || destAgentId}`,
+      {
+        module: TASK_FILE,
+        method: METHODS.CONSULT_TRANSFER,
+        interactionId: this.data.interactionId,
       }
+    );
 
-      LoggerProxy.info(
-        `Initiating consult transfer to ${consultTransferPayload?.to || destAgentId}`,
-        {
-          module: TASK_FILE,
-          method: METHODS.CONSULT_TRANSFER,
-          interactionId: this.data.interactionId,
-        }
-      );
-      // Obtain payload based on desktop logic using TaskData
-      const finalDestinationType = deriveConsultTransferDestinationType(this.data);
-
-      // By default we always use the computed destAgentId as the target id
-      const consultTransferRequest: ConsultTransferPayLoad = {
-        to: destAgentId,
-        destinationType: finalDestinationType,
-      };
-
+    // Derive destination type from the participant's type property
+    const destType = calculateDestType(this.data.interaction, this.agentId);
+    // By default we always use the computed destAgentId as the target id
+    const consultTransferRequest: ConsultTransferPayLoad = {
+      to: destAgentId,
+      destinationType: destType,
+    };
+    try {
       const result = await this.contact.consultTransfer({
         interactionId: this.data.interactionId,
         data: consultTransferRequest,
@@ -1513,17 +1504,12 @@ export default class Task extends EventEmitter implements ITask {
         errorData: err.data?.errorData,
         reasonCode: err.data?.reasonCode,
       };
-      const failedDestinationType = deriveConsultTransferDestinationType(this.data);
-      const failedDestAgentId = getDestinationAgentId(
-        this.data.interaction?.participants,
-        this.data.agentId
-      );
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
           taskId: this.data.interactionId,
-          destination: failedDestAgentId || '',
-          destinationType: failedDestinationType,
+          destination: destAgentId || '',
+          destinationType: destType,
           isConsultTransfer: true,
           error: error.toString(),
           ...taskErrorProps,
@@ -1556,38 +1542,36 @@ export default class Task extends EventEmitter implements ITask {
    * ```
    */
   public async consultConference(): Promise<TaskResponse> {
+    // Get the destination agent ID dynamically from participants
+    // This handles multi-party conference scenarios, CBT (Capacity Based Team), and EP-DN cases
+    const destAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
+
+    // Validate that we have a destination agent (for queue consult scenarios)
+    if (!destAgentId) {
+      throw new Error('No agent has accepted this queue consult yet');
+    }
+
+    // Get the destination agent ID for fetching destination type
+    // This helps determine the correct participant type for CBT (Capacity Based Team) and EP-DN scenarios
+    const destAgentType = calculateDestType(this.data.interaction, this.agentId);
+
+    // Extract consultation conference data from task data (used in both try and catch)
+    const consultationData = {
+      agentId: this.agentId,
+      to: destAgentId,
+      destinationType: destAgentType || this.data.destinationType || 'agent',
+    };
+
     try {
-      // Get the destination agent ID using custom logic from participants data (same as consultTransfer)
-      const destAgentId = getDestinationAgentId(
-        this.data.interaction?.participants,
-        this.data.agentId
-      );
-
-      // Validate that we have a destination agent (for queue consult scenarios)
-      if (!destAgentId) {
-        throw new Error('No agent has accepted this queue consult yet');
-      }
-      // Extract consultation conference data from task data (used in both try and catch)
-      const consultationData = {
-        agentId: this.agentId,
-        destAgentId,
-        destinationType: this.data.destinationType || 'agent',
-      };
-
-      LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
+      LoggerProxy.info(`Initiating consult conference to ${destAgentId}`, {
         module: TASK_FILE,
         method: METHODS.CONSULT_CONFERENCE,
         interactionId: this.data.interactionId,
       });
 
-      const paramsDataForConferenceV2 = buildConsultConferenceParamData(
-        consultationData,
-        this.data.interactionId
-      );
-
       const response = await this.contact.consultConference({
-        interactionId: paramsDataForConferenceV2.interactionId,
-        data: paramsDataForConferenceV2.data,
+        interactionId: this.data.interactionId,
+        data: consultationData,
       });
 
       // Track success metrics (following consultTransfer pattern)
@@ -1595,9 +1579,9 @@ export default class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS,
         {
           taskId: this.data.interactionId,
-          destination: paramsDataForConferenceV2.data.to,
-          destinationType: paramsDataForConferenceV2.data.destinationType,
-          agentId: paramsDataForConferenceV2.data.agentId,
+          destination: consultationData.to,
+          destinationType: consultationData.destinationType,
+          agentId: consultationData.agentId,
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
         },
         ['operational', 'behavioral', 'business']
@@ -1620,32 +1604,13 @@ export default class Task extends EventEmitter implements ITask {
         reasonCode: err.data?.reasonCode,
       };
 
-      // Track failure metrics (following consultTransfer pattern)
-      // Recalculate destination info for error tracking
-      const failedDestAgentId = getDestinationAgentId(
-        this.data.interaction?.participants,
-        this.data.agentId
-      );
-
-      // Build conference data for error tracking using recalculated data
-      const failedConsultationData = {
-        agentId: this.agentId,
-        destAgentId: failedDestAgentId,
-        destinationType: this.data.destinationType || 'agent',
-      };
-
-      const failedParamsData = buildConsultConferenceParamData(
-        failedConsultationData,
-        this.data.interactionId
-      );
-
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED,
         {
           taskId: this.data.interactionId,
-          destination: failedParamsData.data.to,
-          destinationType: failedParamsData.data.destinationType,
-          agentId: failedParamsData.data.agentId,
+          destination: consultationData.to,
+          destinationType: consultationData.destinationType,
+          agentId: consultationData.agentId,
           error: error.toString(),
           ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),

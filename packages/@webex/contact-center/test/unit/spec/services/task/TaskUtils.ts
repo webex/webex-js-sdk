@@ -98,34 +98,34 @@ describe('TaskUtils', () => {
     });
 
     it('should return true when there are 2 or more active agents', () => {
-      expect(getIsConferenceInProgress(mockTask)).toBe(true);
+      expect(getIsConferenceInProgress(mockTask.data)).toBe(true);
     });
 
     it('should return false when there is only 1 active agent', () => {
       mockTask.data.interaction.participants[mockOtherAgentId].hasLeft = true;
-      expect(getIsConferenceInProgress(mockTask)).toBe(false);
+      expect(getIsConferenceInProgress(mockTask.data)).toBe(false);
     });
 
     it('should exclude customers from agent count', () => {
       // Remove one agent, should still be false with only 1 agent + customer
       delete mockTask.data.interaction.participants[mockOtherAgentId];
       mockTask.data.interaction.media[mockTask.data.interactionId].participants = [mockAgentId, 'customer-123'];
-      expect(getIsConferenceInProgress(mockTask)).toBe(false);
+      expect(getIsConferenceInProgress(mockTask.data)).toBe(false);
     });
 
     it('should exclude supervisors from agent count', () => {
       mockTask.data.interaction.participants[mockOtherAgentId].pType = 'Supervisor';
-      expect(getIsConferenceInProgress(mockTask)).toBe(false);
+      expect(getIsConferenceInProgress(mockTask.data)).toBe(false);
     });
 
     it('should exclude VVA from agent count', () => {
       mockTask.data.interaction.participants[mockOtherAgentId].pType = 'VVA';
-      expect(getIsConferenceInProgress(mockTask)).toBe(false);
+      expect(getIsConferenceInProgress(mockTask.data)).toBe(false);
     });
 
     it('should return false when no main call media exists', () => {
       mockTask.data.interaction.media = {};
-      expect(getIsConferenceInProgress(mockTask)).toBe(false);
+      expect(getIsConferenceInProgress(mockTask.data)).toBe(false);
     });
   });
 });

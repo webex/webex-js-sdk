@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import EventEmitter from 'events';
 import TypedEmitter, {EventMap} from 'typed-emitter'; // eslint-disable-line import/no-extraneous-dependencies
-import {stringify} from 'flatted';
 import Logger from '../../Logger';
 import {LOG_PREFIX} from '../../Logger/types';
 
@@ -24,7 +23,7 @@ export class Eventing<T extends EventMap> extends (EventEmitter as {
     Logger.info(
       `${timestamp} ${
         LOG_PREFIX.EVENT
-      }: ${event.toString()} - event emitted with parameters -> ${stringify(args)}`,
+      }: ${event.toString()} - event emitted with parameters -> ${args}`,
       {
         file: 'Events/impl/index.ts',
         method: 'emit',
