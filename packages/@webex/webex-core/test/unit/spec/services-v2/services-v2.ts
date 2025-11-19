@@ -5,7 +5,7 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {ServicesV2} from '@webex/webex-core';
+import {ServicesV2, Credentials} from '@webex/webex-core';
 import Metrics, {NewMetrics} from '@webex/internal-plugin-metrics';
 import {formattedServiceHostmapV2, serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
 
@@ -28,6 +28,7 @@ describe('webex-core', () => {
           services: ServicesV2,
           newMetrics: NewMetrics,
           metrics: Metrics,
+          credentials: Credentials,
         },
       });
       services = webex.internal.services;
