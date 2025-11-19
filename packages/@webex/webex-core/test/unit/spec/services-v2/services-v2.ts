@@ -57,7 +57,6 @@ describe('webex-core', () => {
       it('initFailed is false when initialization succeeds no credentials are available', async () => {
         services.listenToOnce = sinon.stub();
         services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
-
         services.initialize();
 
         // call the onReady callback
