@@ -89,6 +89,8 @@ import {
   TYPE,
   URL_ENDPOINT,
   UTILS_FILE,
+  METHODS,
+  DEFAULT_KEEPALIVE_INTERVAL,
 } from '../CallingClient/constants';
 import {
   DeleteCallHistoryRecordsResponse,
@@ -564,6 +566,8 @@ export async function handleCallingClientErrors(
  * @param err - Error Response.
  * @param caller - Caller function.
  * @param file - File name.
+ *
+ * @returns boolean - whether to abort the call or not.
  */
 export async function handleCallErrors(
   emitterCb: CallErrorEmitterCallBack,
@@ -573,7 +577,9 @@ export async function handleCallErrors(
   err: WebexRequestPayload,
   caller: string,
   file: string
-) {
+): Promise<boolean> {
+  let abort = false;
+
   const loggerContext = {
     file,
     method: caller,
@@ -583,6 +589,8 @@ export async function handleCallErrors(
   const errorCode = Number(err.statusCode);
 
   log.warn(`Status code: ->${errorCode}`, loggerContext);
+
+  const isKeepalive = caller === METHODS.HANDLE_CALL_ESTABLISHED;
 
   switch (errorCode) {
     case ERROR_CODE.UNAUTHORIZED: {
@@ -597,10 +605,29 @@ export async function handleCallErrors(
       );
 
       emitterCb(callError);
+
+      if (isKeepalive) {
+        abort = true;
+      }
+
       break;
     }
 
     case ERROR_CODE.FORBIDDEN:
+      if (isKeepalive) {
+        abort = true;
+
+        updateCallErrorContext(
+          loggerContext,
+          ERROR_TYPE.FORBIDDEN_ERROR,
+          'An unauthorized action has been received. This action has been blocked. Please contact the administrator if this persists.',
+          correlationId,
+          callError
+        );
+        emitterCb(callError);
+        break;
+      }
+
     /* follow through as both 403 and 503 can have similar error codes */
 
     case ERROR_CODE.SERVICE_UNAVAILABLE: {
@@ -619,18 +646,22 @@ export async function handleCallErrors(
         );
         emitterCb(callError);
 
-        return;
+        return abort;
       }
 
       /* Handle retry-after cases */
 
+      // Common for keepalive and normal scenarios
       if (err.headers && 'retry-after' in err.headers && retryCb) {
         const retryInterval = Number(err.headers['retry-after'] as unknown);
 
         log.warn(`Retry Interval received: ${retryInterval}`, loggerContext);
         retryCb(retryInterval);
 
-        return;
+        return abort;
+      }
+      if (isKeepalive) {
+        retryCb(DEFAULT_KEEPALIVE_INTERVAL); // This is applicable only for the keepalive scenario
       }
 
       /* Handling various Error codes */
@@ -713,6 +744,11 @@ export async function handleCallErrors(
       );
 
       emitterCb(callError);
+
+      if (isKeepalive) {
+        abort = true;
+      }
+
       break;
     }
 
@@ -728,6 +764,16 @@ export async function handleCallErrors(
       );
 
       emitterCb(callError);
+
+      if (isKeepalive && retryCb) {
+        const retryInterval =
+          err.headers && 'retry-after' in err.headers
+            ? Number(err.headers['retry-after'] as unknown)
+            : DEFAULT_KEEPALIVE_INTERVAL;
+
+        retryCb(retryInterval);
+      }
+
       break;
     }
 
@@ -735,6 +781,8 @@ export async function handleCallErrors(
       log.warn(`Unknown Error`, loggerContext);
     }
   }
+
+  return abort;
 }
 
 /**
