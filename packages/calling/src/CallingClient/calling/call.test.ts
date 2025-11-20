@@ -948,7 +948,7 @@ describe('State Machine handler tests', () => {
     call['callStateMachine'].state.value = 'S_SEND_CALL_CONNECT';
 
     webex.request.mockReturnValue(statusPayload);
-    jest.spyOn(global, 'setTimeout');
+    jest.spyOn(global, 'setInterval');
 
     const funcSpy = jest.spyOn(call, 'postStatus').mockResolvedValue(statusPayload);
     const logSpy = jest.spyOn(log, 'info');
@@ -962,12 +962,12 @@ describe('State Machine handler tests', () => {
      */
     await flushPromises(3);
 
-    expect(setTimeout).toHaveBeenCalledTimes(2);
-    expect(setTimeout).toHaveBeenLastCalledWith(expect.any(Function), DEFAULT_SESSION_TIMER);
+    expect(setInterval).toHaveBeenCalledTimes(1);
+    expect(setInterval).toHaveBeenCalledWith(expect.any(Function), DEFAULT_SESSION_TIMER);
     expect(funcSpy).toBeCalledTimes(1);
     expect(logSpy).toBeCalledWith('Session refresh successful', {
       file: 'call',
-      method: 'handleCallEstablished',
+      method: 'scheduleCallKeepaliveInterval',
     });
     expect(logSpy).toHaveBeenCalledWith(
       `${METHOD_START_MESSAGE} with: ${call.getCorrelationId()}`,
@@ -985,7 +985,7 @@ describe('State Machine handler tests', () => {
     });
 
     webex.request.mockReturnValue(statusPayload);
-    jest.spyOn(global, 'clearTimeout');
+    jest.spyOn(global, 'clearInterval');
 
     const emitSpy = jest.spyOn(call, 'emit');
 
@@ -1001,7 +1001,7 @@ describe('State Machine handler tests', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(clearTimeout).toHaveBeenCalledTimes(1);
+    expect(clearInterval).toHaveBeenCalledTimes(1);
     expect(funcSpy).toBeCalledTimes(1);
     expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
   });
@@ -1013,7 +1013,7 @@ describe('State Machine handler tests', () => {
     });
 
     webex.request.mockReturnValue(statusPayload);
-    jest.spyOn(global, 'clearTimeout');
+    jest.spyOn(global, 'clearInterval');
 
     call.on(CALL_EVENT_KEYS.CALL_ERROR, (errObj) => {
       expect(errObj.type).toStrictEqual(ERROR_TYPE.FORBIDDEN_ERROR);
@@ -1040,7 +1040,7 @@ describe('State Machine handler tests', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(clearTimeout).toHaveBeenCalledTimes(2);
+    expect(clearInterval).toHaveBeenCalledTimes(1);
     expect(funcSpy).toBeCalledTimes(1);
   });
 
@@ -1054,7 +1054,7 @@ describe('State Machine handler tests', () => {
 
     const okPayload = <WebexRequestPayload>(<unknown>{statusCode: 200, body: {}});
 
-    const sendEvtSpy = jest.spyOn(call as any, 'sendCallStateMachineEvt');
+    const scheduleKeepaliveSpy = jest.spyOn(call as any, 'scheduleCallKeepaliveInterval');
     const postStatusSpy = jest
       .spyOn(call as any, 'postStatus')
       .mockRejectedValueOnce(errorPayload)
@@ -1069,7 +1069,14 @@ describe('State Machine handler tests', () => {
     await Promise.resolve();
 
     expect(postStatusSpy).toHaveBeenCalledTimes(1);
-    expect(sendEvtSpy).toHaveBeenCalledWith({type: 'E_CALL_ESTABLISHED'});
+
+    // Now advance by 1 second for the retry-after interval
+    jest.advanceTimersByTime(1000);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(postStatusSpy).toHaveBeenCalledTimes(2);
+    expect(scheduleKeepaliveSpy).toHaveBeenCalled();
   });
 
   it('keepalive ends after reaching max retry count', async () => {
@@ -1100,8 +1107,11 @@ describe('State Machine handler tests', () => {
     jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
     await resolvePromise();
 
-    // Now advance by 1 second for each of the 3 more retry attempts (retry-after: 1 second each)
+    // Now advance by 1 second for each of the 4 retry attempts (retry-after: 1 second each)
     // Need to do this separately to allow state machine to process and create new intervals
+    jest.advanceTimersByTime(1000);
+    await resolvePromise();
+
     jest.advanceTimersByTime(1000);
     await resolvePromise();
 
@@ -1113,15 +1123,14 @@ describe('State Machine handler tests', () => {
 
     // The error handler should detect we're at max retry count and stop
     expect(warnSpy).toHaveBeenCalledWith(
-      `Max call keepalive retry attempts reached for call: ${call.getCorrelationId()}`,
+      `Max keepalive retry attempts reached. Aborting call keepalive for callId: ${call.getCallId()}`,
       {
         file: 'call',
-        method: 'handleCallEstablished',
+        method: 'keepaliveRetryCallback',
       }
     );
-    expect(postStatusSpy).toHaveBeenCalledTimes(4);
-    expect(call['callKeepaliveRetryCount']).toBe(0);
-    expect(call['sessionTimer']).toBeUndefined();
+    expect(postStatusSpy).toHaveBeenCalledTimes(5);
+    expect(call['callKeepaliveRetryCount']).toBe(4);
   });
 
   it('state changes during successful incoming call', async () => {
