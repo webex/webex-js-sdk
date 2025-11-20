@@ -159,7 +159,7 @@ const Mercury = WebexPlugin.extend({
             );
 
             // Atomically switch active socket reference
-            this.socket = this.sockets.get(this.defaultSessionId) || newSocket;
+            this.socket = this.sockets.get(this.defaultSessionId);
             this.connected = this.hasConnectedSockets(); // remain connected throughout
 
             this._emit(sessionId, 'event:mercury_shutdown_switchover_complete', {
@@ -227,10 +227,9 @@ const Mercury = WebexPlugin.extend({
    * @returns {boolean} True if at least one socket is connected
    */
   hasConnectedSockets() {
-    for (const socket of this.sockets.values()) {
-      if (socket && socket.connected) {
-        return true;
-      }
+    const socket = this.sockets.get(this.defaultSessionId);
+    if (socket && socket.connected) {
+      return true;
     }
 
     return false;
@@ -241,10 +240,9 @@ const Mercury = WebexPlugin.extend({
    * @returns {boolean} True if at least one socket is connected
    */
   hasConnectingSockets() {
-    for (const socket of this.sockets.values()) {
-      if (socket && socket.connecting) {
-        return true;
-      }
+    const socket = this.sockets.get(this.defaultSessionId);
+    if (socket && socket.connecting) {
+      return true;
     }
 
     return false;
@@ -321,10 +319,10 @@ const Mercury = WebexPlugin.extend({
         backoffCall.abort();
         this.backoffCalls.delete(sessionId);
       }
-      const shutdownSwitchoverBackoffCalls = this._shutdownSwitchoverBackoffCalls.get(sessionId);
-      if (shutdownSwitchoverBackoffCalls) {
+      const shutdownSwitchoverBackoffCall = this._shutdownSwitchoverBackoffCalls.get(sessionId);
+      if (shutdownSwitchoverBackoffCall) {
         this.logger.info(`${this.namespace}: aborting shutdown switchover connection ${sessionId}`);
-        shutdownSwitchoverBackoffCalls.abort();
+        shutdownSwitchoverBackoffCall.abort();
         this._shutdownSwitchoverBackoffCalls.delete(sessionId);
       }
       // Clean up any pending connection promises
@@ -634,7 +632,7 @@ const Mercury = WebexPlugin.extend({
         // Set the socket before opening it. This allows a disconnect() to close
         // the socket if it is in the process of being opened.
         this.sockets.set(sessionId, socket);
-        this.socket = this.sockets.get(this.defaultSessionId) || socket;
+        this.socket = this.sockets.get(this.defaultSessionId);
 
         this.logger.info(`${this.namespace} ${logPrefix} url for ${sessionId}: ${webSocketUrl}`);
 
@@ -678,8 +676,10 @@ const Mercury = WebexPlugin.extend({
           this.connecting = this.hasConnectingSockets();
           this.connected = this.hasConnectedSockets();
           this.hasEverConnected = true;
-          this._emit(sid, 'online', {sessionId: sid});
-          this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
+          this._emit(sid, 'online');
+          if (this.connected) {
+            this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
+          }
         }
 
         return resolve();
@@ -824,7 +824,7 @@ const Mercury = WebexPlugin.extend({
 
     try {
       const reason = event.reason && event.reason.toLowerCase();
-      let sessionSocket = this.sockets.get(sessionId);
+      const sessionSocket = this.sockets.get(sessionId);
       let socketUrl;
       event.sessionId = sessionId;
 
@@ -838,7 +838,7 @@ const Mercury = WebexPlugin.extend({
         // Only tear down state if the currently active socket closed
         if (sessionSocket) {
           sessionSocket.removeAllListeners();
-          sessionSocket = null;
+          if (sessionId === this.defaultSessionId) this.unset('socket');
           this._emit(sessionId, 'offline', event);
         }
         // Update overall connected status
