@@ -530,6 +530,7 @@ const Mercury = WebexPlugin.extend({
         // Normal connection error handling (existing complex logic)
         this.lastError = reason; // remember the last error
 
+        const backoffCall = this.backoffCalls.get(sessionId);
         // Suppress connection errors that appear to be network related. This
         // may end up suppressing metrics during outages, but we might not care
         // (especially since many of our outages happen in a way that client
@@ -963,6 +964,7 @@ const Mercury = WebexPlugin.extend({
       return Promise.resolve();
     }
 
+    envelope.sessionId = sessionId;
     const {data} = envelope;
 
     this._applyOverrides(data);
