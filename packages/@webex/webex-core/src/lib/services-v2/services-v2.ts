@@ -281,7 +281,6 @@ const Services = WebexPlugin.extend({
     if (!email) {
       return Promise.reject(new Error('`email` is required'));
     }
-
     // Destructure the credentials object.
     const {canAuthorize} = this.webex.credentials;
 
@@ -1086,6 +1085,14 @@ const Services = WebexPlugin.extend({
             this.logger.error(
               `services: failed to init initial services when credentials available, ${error?.message}`
             );
+          })
+          .finally(() => {
+            this.webex.internal.metrics.submitClientMetrics(METRICS.SERVICE_V2_INITIALIZED, {
+              fields: {
+                type: 'behavioral',
+                initialized_status: this.initFailed ? 'failed' : 'succeeded',
+              },
+            });
           });
       } else {
         const {email} = this.webex.config;
@@ -1097,9 +1104,6 @@ const Services = WebexPlugin.extend({
           );
         });
       }
-      this.webex.internal.metrics.submitClientMetrics(METRICS.SERVICE_V2_INITIALIZED, {
-        fields: {initialized_status: this.initFailed ? 'failed' : 'succeeded'},
-      });
     });
   },
 });
