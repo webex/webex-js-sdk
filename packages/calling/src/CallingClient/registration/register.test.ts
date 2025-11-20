@@ -752,8 +752,6 @@ describe('Registration Tests', () => {
       });
       webex.request
         .mockRejectedValueOnce(failurePayload429Small)
-        .mockResolvedValueOnce(successPayload)
-        .mockRejectedValueOnce(failurePayload429Small)
         .mockResolvedValueOnce(successPayload);
 
       await reg.reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL); // This call is being used to set the retry-after value
@@ -782,8 +780,6 @@ describe('Registration Tests', () => {
       });
       webex.request
         .mockRejectedValueOnce(failurePayload429Small)
-        .mockResolvedValueOnce(successPayload)
-        .mockRejectedValueOnce(failurePayload429Small)
         .mockResolvedValueOnce(successPayload);
 
       await reg.reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL); // This call is being used to trigger the retry
@@ -807,6 +803,7 @@ describe('Registration Tests', () => {
       );
       expect(restartSpy).not.toHaveBeenCalledTimes(1);
       expect(restartSpy).not.toHaveBeenCalledWith(RECONNECT_ON_FAILURE_UTIL);
+      expect(reg.retryAfter).toEqual(undefined); // Clear retryAfter after 429 retry
     });
     it('should restart registration with primary if we get 429 while on backup', async () => {
       // Setup: Register successfully with primary first
