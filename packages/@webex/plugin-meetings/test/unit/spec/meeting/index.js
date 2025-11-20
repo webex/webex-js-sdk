@@ -4749,6 +4749,7 @@ describe('plugin-meetings', () => {
               id: 'fake locus from mocked join request',
               locusUrl: 'fake locus url',
               mediaId: 'fake media id',
+              locus: {fullState: {}},
             });
             sinon.stub(meeting.meetingRequest, 'joinMeeting').resolves({
               headers: {
@@ -12291,15 +12292,25 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.disconnectLLM);
           assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a datachannel url');
           assert.equal(result, 'something');
-          assert.calledOnceWithExactly(
+          assert.calledWithExactly(
             meeting.webex.internal.llm.off,
             'event:relay.event',
             meeting.processRelayEvent
           );
-          assert.calledOnceWithExactly(
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(
             meeting.webex.internal.llm.on,
             'event:relay.event',
             meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
           );
         });
 
@@ -12328,15 +12339,25 @@ describe('plugin-meetings', () => {
             'event:relay.event',
             meeting.processRelayEvent
           );
-          assert.calledTwice(meeting.webex.internal.llm.off);
-          assert.calledOnceWithExactly(
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
+          assert.callCount(meeting.webex.internal.llm.off, 4);
+          assert.calledWithExactly(
             meeting.webex.internal.llm.on,
             'event:relay.event',
             meeting.processRelayEvent
           );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
         });
 
-        it('disconnects if first if the data channel url has changed', async () => {
+        it('disconnects it first if the data channel url has changed', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           webex.internal.llm.isConnected.returns(true);
           webex.internal.llm.getLocusUrl.returns('a url');
@@ -12361,11 +12382,20 @@ describe('plugin-meetings', () => {
             'event:relay.event',
             meeting.processRelayEvent
           );
-          assert.calledTwice(meeting.webex.internal.llm.off);
-          assert.calledOnceWithExactly(
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(
             meeting.webex.internal.llm.on,
             'event:relay.event',
             meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
           );
         });
 
@@ -12381,10 +12411,15 @@ describe('plugin-meetings', () => {
           assert.calledWith(webex.internal.llm.disconnectLLM, undefined);
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.equal(result, undefined);
-          assert.calledOnceWithExactly(
+          assert.calledWithExactly(
             meeting.webex.internal.llm.off,
             'event:relay.event',
             meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
           );
         });
 
@@ -12411,22 +12446,22 @@ describe('plugin-meetings', () => {
         });
 
         it('should read the locus object, set on the meeting and return null', () => {
+          const dataSets = {someFakeStuff: 'dataSet'};
+
           meeting.setLocus({
             mediaConnections: [test1],
             locusUrl: url1,
             locusId: uuid1,
             selfId: uuid2,
             mediaId: uuid3,
-            host: {id: uuid4},
+            locus: {host: {id: uuid4}},
+            dataSets,
           });
           assert.calledOnce(meeting.locusInfo.initialSetup);
           assert.calledWith(meeting.locusInfo.initialSetup, {
-            mediaConnections: [test1],
-            locusUrl: url1,
-            locusId: uuid1,
-            selfId: uuid2,
-            mediaId: uuid3,
-            host: {id: uuid4},
+            trigger: 'join-response',
+            locus: {host: {id: uuid4}},
+            dataSets,
           });
           assert.equal(meeting.mediaConnections, test1);
           assert.equal(meeting.locusUrl, url1);
