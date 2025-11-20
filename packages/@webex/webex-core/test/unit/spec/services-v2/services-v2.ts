@@ -45,7 +45,7 @@ describe('webex-core', () => {
             access_token: 'token',
           },
         };
-        
+
         services.initialize();
 
         // call the onReady callback
@@ -100,14 +100,6 @@ describe('webex-core', () => {
             services.logger.error,
             `services: failed to init initial services when no credentials available, ${expectedMessage}`
           );
-          // // submitClientMetrics is called before async error handling, so status is 'succeeded'
-          // sinon.assert.calledWith(
-          //   webex.internal.metrics.submitClientMetrics,
-          //   'SERVICE_V2_INITIALIZED',
-          //   {
-          //     fields: {initialized_status: 'failed'},
-          //   }
-          // );
         }
       );
 
@@ -141,14 +133,6 @@ describe('webex-core', () => {
             services.logger.error,
             `services: failed to init initial services when credentials available, ${expectedMessage}`
           );
-          // // submitClientMetrics is called before async error handling, so status is 'succeeded'
-          // sinon.assert.calledWith(
-          //   webex.internal.metrics.submitClientMetrics,
-          //   'SERVICE_V2_INITIALIZED',
-          //   {
-          //     fields: {initialized_status: 'failed'},
-          //   }
-          // );
         }
       );
     });
