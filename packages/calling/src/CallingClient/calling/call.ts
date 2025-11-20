@@ -1600,13 +1600,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.connected = true;
 
-    /* Session timers need to be reset at all offer/answer exchanges */
-    if (this.sessionTimer) {
-      log.log('Resetting session timer', loggerContext);
-
-      clearTimeout(this.sessionTimer);
-    }
-
     this.scheduleCallKeepaliveInterval();
   }
 

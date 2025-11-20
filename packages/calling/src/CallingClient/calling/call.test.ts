@@ -1024,11 +1024,6 @@ describe('State Machine handler tests', () => {
 
     const funcSpy = jest.spyOn(call, 'postStatus').mockRejectedValue(statusPayload);
 
-    if (call['sessionTimer'] === undefined) {
-      /* In cases where this test is run independently/alone, there is no sessionTimer initiated
-      Thus we will check and initialize the timer when not present by calling handleCallEstablish() */
-      call['handleCallEstablished']({} as CallEvent);
-    }
     call['handleCallEstablished']({} as CallEvent);
 
     jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
@@ -1036,9 +1031,7 @@ describe('State Machine handler tests', () => {
     /* This is to flush all the promises from the Promise queue so that
      * Jest.fakeTimers can advance time and also clear the promise Queue
      */
-
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises(2);
 
     expect(clearInterval).toHaveBeenCalledTimes(1);
     expect(funcSpy).toBeCalledTimes(1);
@@ -1065,26 +1058,19 @@ describe('State Machine handler tests', () => {
     }
 
     jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises(2);
 
     expect(postStatusSpy).toHaveBeenCalledTimes(1);
 
     // Now advance by 1 second for the retry-after interval
     jest.advanceTimersByTime(1000);
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises(2);
 
     expect(postStatusSpy).toHaveBeenCalledTimes(2);
-    expect(scheduleKeepaliveSpy).toHaveBeenCalled();
+    expect(scheduleKeepaliveSpy).toHaveBeenCalledTimes(2);
   });
 
   it('keepalive ends after reaching max retry count', async () => {
-    const resolvePromise = async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    };
-
     const errorPayload = <WebexRequestPayload>(<unknown>{
       statusCode: 500,
       headers: {
@@ -1105,21 +1091,21 @@ describe('State Machine handler tests', () => {
 
     // Advance timer to trigger the first failure (uses DEFAULT_SESSION_TIMER)
     jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
-    await resolvePromise();
+    await flushPromises(2);
 
     // Now advance by 1 second for each of the 4 retry attempts (retry-after: 1 second each)
     // Need to do this separately to allow state machine to process and create new intervals
     jest.advanceTimersByTime(1000);
-    await resolvePromise();
+    await flushPromises(2);
 
     jest.advanceTimersByTime(1000);
-    await resolvePromise();
+    await flushPromises(2);
 
     jest.advanceTimersByTime(1000);
-    await resolvePromise();
+    await flushPromises(2);
 
     jest.advanceTimersByTime(1000);
-    await resolvePromise();
+    await flushPromises(2);
 
     // The error handler should detect we're at max retry count and stop
     expect(warnSpy).toHaveBeenCalledWith(
