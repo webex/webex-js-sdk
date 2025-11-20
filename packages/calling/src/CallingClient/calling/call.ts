@@ -1527,79 +1527,83 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       clearTimeout(this.sessionTimer);
     }
 
-    this.sessionTimer = setTimeout(async () => {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const res = await this.postStatus();
+    const handleTimer = () => {
+      this.sessionTimer = setTimeout(async () => {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const res = await this.postStatus();
 
-        // Starting the interval again with the DEFAULT_SESSION_TIMER
-        clearTimeout(this.sessionTimer);
-        this.callKeepaliveRetryCount = 0;
-        this.callKeepaliveInterval = undefined;
-        this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
-
-        log.info(`Session refresh successful`, loggerContext);
-      } catch (err: unknown) {
-        const error = <WebexRequestPayload>err;
-
-        /* We are clearing the timer here as all are error scenarios. Only scenario where
-         * timer reset won't be required is 503 with retry after. But that case will
-         * be handled automatically as Mobius will also reset timer when we post status
-         * in retry-after scenario.
-         */
-        /* istanbul ignore next */
-        if (this.sessionTimer) {
+          // Starting the interval again with the DEFAULT_SESSION_TIMER
           clearTimeout(this.sessionTimer);
-        }
-
-        const abort = await handleCallErrors(
-          (callError: CallError) => {
-            this.emit(CALL_EVENT_KEYS.CALL_ERROR, callError);
-            this.submitCallErrorMetric(callError);
-          },
-          ERROR_LAYER.CALL_CONTROL,
-          (interval: number) => {
-            this.callKeepaliveRetryCount += 1;
-            this.callKeepaliveInterval = interval * 1000;
-
-            // If we have reached the max retry count, do not attempt to refresh the session
-            if (this.callKeepaliveRetryCount === MAX_CALL_KEEPALIVE_RETRY_COUNT) {
-              this.callKeepaliveRetryCount = 0;
-              clearTimeout(this.sessionTimer);
-              this.sessionTimer = undefined;
-              this.callKeepaliveInterval = undefined;
-
-              log.warn(
-                `Max call keepalive retry attempts reached for call: ${this.getCorrelationId()}`,
-                loggerContext
-              );
-
-              return;
-            }
-
-            // Scheduling next keepalive attempt - calling handleCallEstablished
-            this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
-          },
-          this.getCorrelationId(),
-          error,
-          'handleCallEstablished',
-          CALL_FILE
-        );
-
-        if (abort) {
-          this.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
-          this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
           this.callKeepaliveRetryCount = 0;
           this.callKeepaliveInterval = undefined;
-        }
+          handleTimer();
 
-        await uploadLogs({
-          correlationId: this.correlationId,
-          callId: this.callId,
-          broadworksCorrelationInfo: this.broadworksCorrelationInfo,
-        });
-      }
-    }, this.callKeepaliveInterval || DEFAULT_SESSION_TIMER);
+          log.info(`Session refresh successful`, loggerContext);
+        } catch (err: unknown) {
+          const error = <WebexRequestPayload>err;
+
+          /* We are clearing the timer here as all are error scenarios. Only scenario where
+           * timer reset won't be required is 503 with retry after. But that case will
+           * be handled automatically as Mobius will also reset timer when we post status
+           * in retry-after scenario.
+           */
+          /* istanbul ignore next */
+          if (this.sessionTimer) {
+            clearTimeout(this.sessionTimer);
+          }
+
+          const abort = await handleCallErrors(
+            (callError: CallError) => {
+              this.emit(CALL_EVENT_KEYS.CALL_ERROR, callError);
+              this.submitCallErrorMetric(callError);
+            },
+            ERROR_LAYER.CALL_CONTROL,
+            (interval: number) => {
+              this.callKeepaliveRetryCount += 1;
+              this.callKeepaliveInterval = interval * 1000;
+
+              // If we have reached the max retry count, do not attempt to refresh the session
+              if (this.callKeepaliveRetryCount === MAX_CALL_KEEPALIVE_RETRY_COUNT) {
+                this.callKeepaliveRetryCount = 0;
+                clearTimeout(this.sessionTimer);
+                this.sessionTimer = undefined;
+                this.callKeepaliveInterval = undefined;
+
+                log.warn(
+                  `Max call keepalive retry attempts reached for call: ${this.getCorrelationId()}`,
+                  loggerContext
+                );
+
+                return;
+              }
+
+              // Scheduling next keepalive attempt - calling handleCallEstablished
+              this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
+            },
+            this.getCorrelationId(),
+            error,
+            'handleCallEstablished',
+            CALL_FILE
+          );
+
+          if (abort) {
+            this.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
+            this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
+            this.callKeepaliveRetryCount = 0;
+            this.callKeepaliveInterval = undefined;
+          }
+
+          await uploadLogs({
+            correlationId: this.correlationId,
+            callId: this.callId,
+            broadworksCorrelationInfo: this.broadworksCorrelationInfo,
+          });
+        }
+      }, this.callKeepaliveInterval || DEFAULT_SESSION_TIMER);
+    };
+
+    handleTimer();
   }
 
   /**
