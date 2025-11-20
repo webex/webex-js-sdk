@@ -797,6 +797,8 @@ export const LOCUSEVENT = {
   HASH_TREE_DATA_UPDATED: 'locus.state_message',
 } as const;
 
+export type LOCUSEVENT = Enum<typeof LOCUSEVENT>;
+
 // HASH_TREE_DATA_UPDATED event can come over Mercury (so it's listed above with other Mercury events),
 // but also over LLM as an event like this:
 export const LOCUS_LLM_EVENT = `event:${LOCUSEVENT.HASH_TREE_DATA_UPDATED}`;

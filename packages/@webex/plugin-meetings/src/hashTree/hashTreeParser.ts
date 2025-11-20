@@ -428,7 +428,7 @@ class HashTreeParser {
 
     if (!dataSets) {
       LoggerProxy.logger.warn(
-        `HashTreeParser#handleLocusUpdate --> ${this.debugId} received hash tree update without dataSets, ignoring`
+        `HashTreeParser#handleLocusUpdate --> ${this.debugId} received hash tree update without dataSets`
       );
     }
 

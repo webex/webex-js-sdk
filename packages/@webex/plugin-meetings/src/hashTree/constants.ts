@@ -1,6 +1,3 @@
-// TODO: Consider moving these to the main meetings constants file at some point
-// Only worth doing so if they are used outside of the hash tree
-
 export const EMPTY_HASH = '99aa06d3014798d86001c324468d497f';
 
 export const DataSetNames = {

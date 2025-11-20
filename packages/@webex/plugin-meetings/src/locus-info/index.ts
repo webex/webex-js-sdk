@@ -69,13 +69,6 @@ export type LocusApiResponseBody = {
   locus: LocusDTO; // this LocusDTO here might not be the full one (for example it won't have all the participants, but it should have self)
 };
 
-const LocusInfoSetupTrigger = {
-  JOIN: 'join', // LocusInfo is set up as a result of a join - the initial data comes from the join response
-  CREATION: 'creation', // LocusInfo is set up as a result of a meeting object creation - the initial data comes from a Mercury event
-} as const;
-
-export type LocusInfoSetupTrigger = Enum<typeof LocusInfoSetupTrigger>;
-
 const LocusObjectStateAfterUpdates = {
   unchanged: 'unchanged',
   removed: 'removed',
@@ -124,6 +117,7 @@ export default class LocusInfo extends EventsScope {
   self: any;
   hashTreeParser?: HashTreeParser;
   hashTreeObjectId2ParticipantId: Map<number, string>; // mapping of hash tree object ids to participant ids
+  classicVsHashTreeMismatchMetricCounter = 0;
 
   /**
    * Constructor
@@ -390,8 +384,7 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {Object} data - data to initialize locus info with. It may be from a join response or from a Mercury event that triggers a creation of meeting object
-   * @param {DataSet[]} [dataSets=[]] - Array of data sets
+   * @param {Object} data - data to initialize locus info with. It may be from a join or GET /loci response or from a Mercury event that triggers a creation of meeting object
    * @returns {undefined}
    * @memberof LocusInfo
    */
@@ -405,7 +398,7 @@ export default class LocusInfo extends EventsScope {
       | {
           trigger: 'locus-message';
           locus?: LocusDTO;
-          hashTreeMessage: HashTreeMessage;
+          hashTreeMessage?: HashTreeMessage;
         }
       | {
           trigger: 'get-loci-response';
@@ -484,21 +477,27 @@ export default class LocusInfo extends EventsScope {
    * @returns {void}
    */
   handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
-    if (responseBody.dataSets) {
-      if (!this.hashTreeParser) {
-        LoggerProxy.logger.warn(
-          `Locus-info:index#handleLocusAPIResponse --> received response with hash tree info from Locus API, but we don't have the hashTreeParser created`
+    if (this.hashTreeParser) {
+      if (!responseBody.dataSets) {
+        this.sendClassicVsHashTreeMismatchMetric(
+          meeting,
+          `expected hash tree dataSets in API response but they are missing`
         );
 
-        return;
+        // continuing as we can still manage without responseBody.dataSets, but this is very suspicious
       }
-      // Locus is using the new hash tree mechanism
-      // so update our data in the hash tree parser
+      // update the data in our hash trees
       this.hashTreeParser.handleLocusUpdate(responseBody);
 
-      // but the Locus object we receive in this case looks same like classic delta, so we can use existing delta method to process it
+      // the Locus object we receive in this case looks same like classic delta, so we can use existing delta method to process it
       this.onDeltaLocus(responseBody.locus);
     } else {
+      if (responseBody.dataSets) {
+        this.sendClassicVsHashTreeMismatchMetric(
+          meeting,
+          `unexpected hash tree dataSets in API response`
+        );
+      }
       // classic Locus delta
       this.handleLocusDelta(responseBody.locus, meeting);
     }
@@ -619,16 +618,40 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Sends a metric when we receive something from Locus that uses hash trees while we
+   * expect classic deltas or the other way around.
+   * @param {Meeting} meeting
+   * @param {string} message
+   * @returns {void}
+   */
+  sendClassicVsHashTreeMismatchMetric(meeting: any, message: string) {
+    LoggerProxy.logger.warn(
+      `Locus-info:index#sendClassicVsHashTreeMismatchMetric --> classic vs hash tree mismatch! ${message}`
+    );
+
+    // we don't want to flood the metrics system
+    if (this.classicVsHashTreeMismatchMetricCounter < 5) {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_CLASSIC_VS_HASH_TREE_MISMATCH, {
+        correlationId: meeting.correlationId,
+        message,
+      });
+      this.classicVsHashTreeMismatchMetricCounter += 1;
+    }
+  }
+
+  /**
    * Handles a hash tree message received from Locus.
    *
    * @param {Meeting} meeting - The meeting object
+   * @param {eventType} eventType - The event type
    * @param {HashTreeMessage} message incoming hash tree message
    * @returns {void}
    */
-  private handleHashTreeMessage(meeting: any, message: HashTreeMessage) {
-    if (!this.hashTreeParser) {
-      LoggerProxy.logger.warn(
-        `Locus-info:index#handleHashTreeMessage --> received hash tree message, but we don't have the hashTreeParser`
+  private handleHashTreeMessage(meeting: any, eventType: LOCUSEVENT, message: HashTreeMessage) {
+    if (eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+      this.sendClassicVsHashTreeMismatchMetric(
+        meeting,
+        `got ${eventType}, expected ${LOCUSEVENT.HASH_TREE_DATA_UPDATED}`
       );
 
       return;
@@ -638,6 +661,7 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Callback registered with HashTreeParser to receive locus info updates.
    * Updates our locus info based on the data parsed by the hash tree parser.
    *
    * @param {LocusInfoUpdateType} updateType - The type of update received.
@@ -730,9 +754,12 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   parse(meeting: any, data: any) {
-    if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
-      // this is the new hashmap Locus message format (only applicable to webinars for now)
-      this.handleHashTreeMessage(meeting, data.stateElementsMessage as HashTreeMessage);
+    if (this.hashTreeParser) {
+      this.handleHashTreeMessage(
+        meeting,
+        data.eventType,
+        data.stateElementsMessage as HashTreeMessage
+      );
     } else {
       // eslint-disable-next-line @typescript-eslint/no-shadow
       const {eventType} = data;
@@ -761,6 +788,12 @@ export default class LocusInfo extends EventsScope {
         case LOCUSEVENT.DIFFERENCE:
           this.handleLocusDelta(locus, meeting);
           break;
+        case LOCUSEVENT.HASH_TREE_DATA_UPDATED:
+          this.sendClassicVsHashTreeMismatchMetric(
+            meeting,
+            `got ${eventType}, expected classic events`
+          );
+          break;
 
         default:
           // Why will there be a event with no eventType ????
@@ -782,9 +815,59 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Function for handling full locus when it's using hash trees (so not the "classic" one).
+   *
+   * @param {object} locus locus object
+   * @param {string} eventType locus event
+   * @param {DataSet[]} dataSets
+   * @returns {void}
+   */
+  private onFullLocusWithHashTrees(locus: any, eventType?: string, dataSets?: Array<DataSet>) {
+    if (!this.hashTreeParser) {
+      LoggerProxy.logger.info(`Locus-info:index#onFullLocus --> creating hash tree parser`);
+      LoggerProxy.logger.info(
+        'Locus-info:index#onFullLocus --> dataSets:',
+        dataSets,
+        ' and locus:',
+        locus
+      );
+      this.hashTreeParser = this.createHashTreeParser({
+        initialLocus: {locus, dataSets},
+      });
+      this.onFullLocusCommon(locus, eventType);
+    } else {
+      // in this case the Locus we're getting is not necessarily the full one
+      // so treat it like if we just got it in any api response
+
+      LoggerProxy.logger.info(
+        'Locus-info:index#onFullLocus --> hash tree parser already exists, handling it like a normal API response'
+      );
+      this.handleLocusAPIResponse(undefined, {dataSets, locus});
+    }
+  }
+
+  /**
+   * Function for handling full locus when it's the "classic" one (not hash trees)
+   *
+   * @param {object} locus locus object
+   * @param {string} eventType locus event
+   * @returns {void}
+   */
+  private onFullLocusClassic(locus: any, eventType?: string) {
+    if (!this.locusParser.isNewFullLocus(locus)) {
+      LoggerProxy.logger.info(
+        `Locus-info:index#onFullLocus --> ignoring old full locus DTO, eventType=${eventType}`
+      );
+
+      return;
+    }
+    this.onFullLocusCommon(locus, eventType);
+  }
+
+  /**
    * updates the locus with full locus object
    * @param {object} locus locus object
-   * @param {string} eventType particulat locus event
+   * @param {string} eventType locus event
    * @param {DataSet[]} dataSets
    * @returns {object} null
    * @memberof LocusInfo
@@ -798,36 +881,19 @@ export default class LocusInfo extends EventsScope {
 
     if (dataSets) {
       // this is the new hashmap Locus DTO format (only applicable to webinars for now)
-      if (!this.hashTreeParser) {
-        LoggerProxy.logger.info(`Locus-info:index#onFullLocus --> creating hash tree parser`);
-        LoggerProxy.logger.info(
-          'Locus-info:index#onFullLocus --> dataSets:',
-          dataSets,
-          ' and locus:',
-          locus
-        );
-        this.hashTreeParser = this.createHashTreeParser({
-          initialLocus: {locus, dataSets},
-        });
-      } else {
-        // in this case the Locus we're getting is not necessarily the full one
-        // so treat it like if we just got it in any api response
-
-        LoggerProxy.logger.info(
-          'Locus-info:index#onFullLocus --> hash tree parser already exists, handling it like a normal API response'
-        );
-        this.handleLocusAPIResponse(undefined, {dataSets, locus});
-
-        return;
-      }
-    } else if (!this.locusParser.isNewFullLocus(locus)) {
-      LoggerProxy.logger.info(
-        `Locus-info:index#onFullLocus --> ignoring old full locus DTO, eventType=${eventType}`
-      );
-
-      return;
+      this.onFullLocusWithHashTrees(locus, eventType, dataSets);
+    } else {
+      this.onFullLocusClassic(locus, eventType);
     }
+  }
 
+  /**
+   * Common part of handling full locus, used by both classic and hash tree based locus handling
+   * @param {object} locus locus object
+   * @param {string} eventType locus event
+   * @returns {void}
+   */
+  private onFullLocusCommon(locus: any, eventType?: string) {
     this.scheduledMeeting = locus.meeting || null;
     this.participants = locus.participants;
     this.participants?.forEach((participant) => {
