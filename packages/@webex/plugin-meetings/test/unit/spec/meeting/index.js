@@ -1849,7 +1849,7 @@ describe('plugin-meetings', () => {
           setCorrelationIdSpy = sinon.spy(meeting, 'setCorrelationId');
           meeting.setLocus = sinon.stub().returns(true);
           webex.meetings.registered = true;
-          meeting.updateLLMConnection = sinon.stub().returns(Promise.resolve());
+          sinon.stub(meeting, 'updateLLMConnection').returns(Promise.resolve());
         });
 
         describe('successful', () => {
@@ -2040,7 +2040,7 @@ describe('plugin-meetings', () => {
               const defer = new Defer();
 
               meeting.config.enableAutomaticLLM = true;
-              meeting.updateLLMConnection = sinon.stub().returns(defer.promise);
+              meeting.updateLLMConnection.returns(defer.promise);
 
               const result = await meeting.join();
 
@@ -2051,7 +2051,7 @@ describe('plugin-meetings', () => {
 
             it('should call updateLLMConnection as part of joining if config value is set', async () => {
               meeting.config.enableAutomaticLLM = true;
-              meeting.updateLLMConnection = sinon.stub().resolves();
+              meeting.updateLLMConnection.resolves();
 
               await meeting.join();
 
@@ -2059,7 +2059,7 @@ describe('plugin-meetings', () => {
             });
 
             it('should not call updateLLMConnection as part of joining if config value is not set', async () => {
-              meeting.updateLLMConnection = sinon.stub().resolves();
+              meeting.updateLLMConnection.resolves();
               await meeting.join();
 
               assert.notCalled(meeting.updateLLMConnection);
@@ -2069,7 +2069,7 @@ describe('plugin-meetings', () => {
               const defer = new Defer();
 
               meeting.config.enableAutomaticLLM = true;
-              meeting.updateLLMConnection = sinon.stub().returns(defer.promise);
+              meeting.updateLLMConnection.returns(defer.promise);
 
               const result = await meeting.join();
 
@@ -2094,6 +2094,42 @@ describe('plugin-meetings', () => {
                   },
                 ]);
               }
+            });
+
+            it('handles Locus LLM events', async () => {
+              const locusInfoParseStub = sinon.stub(meeting.locusInfo, 'parse');
+              sinon.stub(meeting, 'isJoined').returns(true);
+
+              // Set up llm.on stub to capture the registered listener when updateLLMConnection is called
+              let locusLLMEventListener;
+              meeting.webex.internal.llm.on = sinon.stub().callsFake((eventName, callback) => {
+                if (eventName === 'event:locus.state_message') {
+                  locusLLMEventListener = callback;
+                }
+              });
+              meeting.webex.internal.llm.off = sinon.stub();
+
+              // we need the real meeting.updateLLMConnection not the mock
+              meeting.updateLLMConnection.restore();
+
+              // Call updateLLMConnection to register the listener
+              await meeting.updateLLMConnection();
+
+              // Verify the listener was registered and we captured it
+              assert.isDefined(locusLLMEventListener, 'LLM event listener should be registered');
+
+              // Now trigger the event
+              const eventData = {
+                eventType: 'locus.state_message',
+                stateElementsMessage: {
+                  header: {messageId: 'msg-1'},
+                  elements: [],
+                },
+              };
+
+              locusLLMEventListener({data: eventData});
+
+              assert.calledOnceWithExactly(locusInfoParseStub, meeting, eventData);
             });
           });
 

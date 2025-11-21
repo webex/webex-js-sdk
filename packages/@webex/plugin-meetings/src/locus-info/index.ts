@@ -61,6 +61,7 @@ const LocusDtoTopLevelKeys = [
   'sequence',
   'syncUrl',
   'url',
+  'htMeta', // only exists when hash trees are used
 ];
 
 export type LocusApiResponseBody = {
@@ -532,7 +533,6 @@ export default class LocusInfo extends EventsScope {
         delete locusObjectFromData.mediaShares;
 
         locus = {...locus, ...locusObjectFromData};
-        locus.htMeta = object.htMeta;
         LoggerProxy.logger.info(
           `Locus-info:index#updateLocusFromHashTreeObject --> LOCUS object updated`
         );
@@ -687,8 +687,18 @@ export default class LocusInfo extends EventsScope {
             if (locusObjectStateAfterUpdates === LocusObjectStateAfterUpdates.updated) {
               // this code doesn't supported it right now,
               // cases for "updated" followed by "removed", or multiple "updated" would need more handling
+              // but these should never happen
               LoggerProxy.logger.warn(
                 `Locus-info:index#updateFromHashTree --> received multiple LOCUS objects in one update, this is unexpected!`
+              );
+              Metrics.sendBehavioralMetric(
+                BEHAVIORAL_METRICS.LOCUS_HASH_TREE_UNSUPPORTED_OPERATION,
+                {
+                  locusUrl: object.data?.url || this.url,
+                  message: object.data
+                    ? 'multiple LOCUS object updates'
+                    : 'LOCUS object update followed by removal',
+                }
               );
             }
             if (object.data) {
