@@ -47,6 +47,8 @@ export type LocusLLMEvent = {
   };
 };
 
+// list of top level keys in Locus DTO relevant for Hash Tree DTOs processing
+// it does not contain fields specific to classic Locus DTOs like sequence or baseSequence
 const LocusDtoTopLevelKeys = [
   'controls',
   'fullState',

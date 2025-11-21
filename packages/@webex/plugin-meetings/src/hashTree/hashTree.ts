@@ -1,8 +1,9 @@
-import {XXHash128} from 'xxhash-addon';
+import {XXH3_128} from 'xxh3-ts';
 import {EMPTY_HASH} from './constants';
+import {ObjectType} from './types';
 
-type LeafDataItem = {
-  type: string;
+export type LeafDataItem = {
+  type: ObjectType;
   id: number;
   version: number;
 };
@@ -193,6 +194,44 @@ class HashTree {
   }
 
   /**
+   * Updates multiple items in the hash tree.
+   * This method can handle both adding and removing items based on the `operation` flag.
+   *
+   * @param {object[]} itemUpdates An array of objects containing `operation` flag and the `item` to update.
+   * @returns {boolean[]} An array of booleans indicating success for each operation.
+   */
+  updateItems(itemUpdates: {operation: 'update' | 'remove'; item: LeafDataItem}[]): boolean[] {
+    if (this.numLeaves === 0 && itemUpdates.length > 0) {
+      return itemUpdates.map(() => false);
+    }
+
+    const results: boolean[] = [];
+    const changedLeafIndexes = new Set<number>();
+
+    itemUpdates.forEach(({operation, item}) => {
+      if (operation === 'remove') {
+        const {removed, index} = this._removeItemInternal(item);
+        results.push(removed);
+        if (removed && index !== null) {
+          changedLeafIndexes.add(index);
+        }
+      } else {
+        const {put, index} = this._putItemInternal(item);
+        results.push(put);
+        if (put && index !== null) {
+          changedLeafIndexes.add(index);
+        }
+      }
+    });
+
+    changedLeafIndexes.forEach((index) => {
+      this.computeLeafHash(index);
+    });
+
+    return results;
+  }
+
+  /**
    * Computes the hash for a specific leaf.
    * The hash is based on the sorted items within the leaf.
    * @param {number} index The index of the leaf to compute the hash for.
@@ -201,8 +240,12 @@ class HashTree {
   computeLeafHash(index: number) {
     const leafContent = this.leaves[index];
 
-    // create a hasher
-    const hasher = new XXHash128(Buffer.from([0, 0, 0, 0]));
+    const totalItemsCount = Object.keys(leafContent).reduce((count, type) => {
+      return count + Object.keys(leafContent[type]).length;
+    }, 0);
+    const buffer = Buffer.alloc(totalItemsCount * 16);
+
+    let offset = 0;
 
     // iterate through the item types lexicographically
     const itemTypes = Object.keys(leafContent).sort();
@@ -214,18 +257,14 @@ class HashTree {
 
       // add all the items id and version to the hasher
       items.forEach((item: LeafDataItem) => {
-        const idBuffer = Buffer.alloc(8);
-        idBuffer.writeBigInt64LE(BigInt(item.id));
+        buffer.writeBigInt64LE(BigInt(item.id), offset);
+        buffer.writeBigInt64LE(BigInt(item.version), offset + 8);
 
-        const versionBuffer = Buffer.alloc(8);
-        versionBuffer.writeBigInt64LE(BigInt(item.version));
-
-        hasher.update(idBuffer);
-        hasher.update(versionBuffer);
+        offset += 16;
       });
     });
 
-    this.leafHashes[index] = hasher.digest().toString('hex');
+    this.leafHashes[index] = XXH3_128(buffer, BigInt(0)).toString(16).padStart(32, '0');
   }
 
   /**
@@ -248,8 +287,6 @@ class HashTree {
         const leftHash = currentLevelHashes[i];
         const rightHash = i + 1 < currentLevelHashes.length ? currentLevelHashes[i + 1] : leftHash;
 
-        const hasher = new XXHash128(Buffer.from([0, 0, 0, 0]));
-
         const input = Buffer.concat([
           Buffer.from(leftHash, 'hex').subarray(0, 8).reverse(),
           Buffer.from(leftHash, 'hex').subarray(8, 16).reverse(),
@@ -257,9 +294,7 @@ class HashTree {
           Buffer.from(rightHash, 'hex').subarray(8, 16).reverse(),
         ]);
 
-        hasher.update(input);
-
-        nextLevelHashes.push(hasher.digest().toString('hex'));
+        nextLevelHashes.push(XXH3_128(input, BigInt(0)).toString(16).padStart(32, '0'));
       }
       currentLevelHashes = nextLevelHashes;
       allHashes.unshift(...currentLevelHashes);

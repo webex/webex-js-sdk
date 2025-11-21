@@ -34,9 +34,9 @@ describe('HashTree', () => {
   it('number of leaves must be 0 or a power of 2', () => {
     const leafData: LeafDataItem[] = [];
     const numLeaves = 3; // Not a power of 2
-    expect(() => new HashTree(leafData, numLeaves)).to.throw('Number of leaves must be 0 or a power of 2');
+    expect(() => new HashTree(leafData, numLeaves)).to.throw('Number of leaves must be a power of 2, saw 3');
     const numLeavesNegative = -1;
-    expect(() => new HashTree(leafData, numLeavesNegative)).to.throw('Number of leaves must be 0 or a power of 2');
+    expect(() => new HashTree(leafData, numLeavesNegative)).to.throw('Number of leaves must be a power of 2, saw -1');
   });
 
   it('should have the correct hashes after putting ObjectIds using constructor', () => {
@@ -389,6 +389,61 @@ describe('HashTree', () => {
 
       const diff2_1 = tree2.diffHashes(tree1Hashes);
       expect(diff2_1).to.deep.equal([1]);
+    });
+  });
+
+  describe('computeTreeHashes', () => {
+    it('should compute correct hashes for a known set of leaf hashes', () => {
+      const leafHashes = [
+        'aefa055a9b82c4c4ae10ac8ed1f61a30',
+        '99aa06d3014798d86001c324468d497f',
+        '99aa06d3014798d86001c324468d497f',
+        'c770ab632efcea7569a6e35c2f7cf5da',
+        'eedafc8238926775cee1fbb5cee030ff',
+        'dae3c2ec206d7d5967bfae01913c4a76',
+        '5301845214af2e8b70c7b54a72565dcf',
+        '99aa06d3014798d86001c324468d497f',
+      ];
+
+      const expectedAllHashes = [
+        'ba1be9f757eae740753f887d76b7c405',
+        '0e027dc86d522c9cb61e3e20b33e0cb7',
+        'f6df8f800fac269c448b7725021a9dbb',
+        '803dde85957d497718837fb7e36342f8',
+        '55ed9b63802480f79698432a84a4e5f8',
+        'fa25dc2d64096c3b92f6701572060569',
+        'def77631d182a9b74523b218f0de771f',
+        'aefa055a9b82c4c4ae10ac8ed1f61a30', // - leaves start here
+        '99aa06d3014798d86001c324468d497f',
+        '99aa06d3014798d86001c324468d497f',
+        'c770ab632efcea7569a6e35c2f7cf5da',
+        'eedafc8238926775cee1fbb5cee030ff',
+        'dae3c2ec206d7d5967bfae01913c4a76',
+        '5301845214af2e8b70c7b54a72565dcf',
+        '99aa06d3014798d86001c324468d497f',
+      ];
+
+      const hashTree = new HashTree([], leafHashes.length);
+
+      hashTree.leafHashes = leafHashes;
+
+      const computedHashes = hashTree.computeTreeHashes();
+      expect(computedHashes).to.deep.equal(expectedAllHashes);
+    });
+  });
+
+  describe('computeLeafHash', () => {
+    it('should compute the correct hash when the hash starts with a zero', () => {
+      const item: LeafDataItem = {type: 'self', id: 74, version: 1}; // Chosen to produce a hash starting with zero
+      const hashTree = new HashTree([], 2);
+
+      hashTree.putItem(item);
+      hashTree.computeLeafHash(0);
+
+      const leafHash = hashTree.leafHashes[0];
+
+      expect(leafHash.startsWith('0')).to.be.true;
+      expect(leafHash).equal('0525d6616d0f20119293c0bf2c818e8a');
     });
   });
 });
