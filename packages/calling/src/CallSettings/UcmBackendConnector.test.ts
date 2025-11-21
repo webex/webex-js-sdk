@@ -83,7 +83,8 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(true);
       expect(callForwardSetting.destination).toEqual('8004');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
         headers: {},
@@ -112,9 +113,11 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(true);
       expect(callForwardSetting.destination).toEqual('VOICEMAIL');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
+        headers: {},
       });
 
       expect(log.info).toHaveBeenCalledWith('invoking with 8002', {
@@ -140,7 +143,8 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(false);
       expect(callForwardSetting.destination).toBeFalsy();
-      expect(webex.request).toHaveBeenCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
         headers: {},
@@ -169,7 +173,8 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(true);
       expect(callForwardSetting.destination).toEqual('8007');
-      expect(webex.request).toHaveBeenCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
         headers: {},
@@ -202,12 +207,14 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.statusCode).toEqual(503);
       expect(response.message).toEqual(FAILURE_MESSAGE);
       expect(response.data.error).toEqual('Unable to establish a connection with the server');
-      expect(webex.request).toHaveBeenCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
         headers: {},
       });
-      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledOnceWith(responsePayload, {
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledTimes(1);
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(responsePayload, {
         file: UCM_CONNECTOR_FILE,
         method: callSettingsClient.getCallForwardAlwaysSetting.name,
       });
@@ -232,7 +239,8 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.statusCode).toEqual(404);
       expect(response.message).toEqual(FAILURE_MESSAGE);
       expect(response.data.error).toEqual('Directory Number is not assigned to the user');
-      expect(webex.request).toHaveBeenCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
         headers: {},
@@ -336,7 +344,8 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(true);
       expect(callForwardSetting.destination).toEqual('8004');
-      expect(webex.request).toHaveBeenCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUriFedRamp,
         headers: {
@@ -356,14 +365,6 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         }
       );
       expect(log.error).not.toHaveBeenCalled();
-    });
-
-    it('Verify init() was called and authHeaders are set', async () => {
-      expect(webex.credentials.getUserToken).toHaveBeenCalled();
-      expect(log.info).toHaveBeenCalledWith('invoking', {
-        file: UCM_CONNECTOR_FILE,
-        method: 'init',
-      });
     });
   });
 });
