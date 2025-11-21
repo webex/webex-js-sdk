@@ -22,7 +22,13 @@ import {
   RegistrationStatus,
 } from './types';
 import log from '../Logger';
-import {CALL_FILE, DUMMY_METRICS, UTILS_FILE, REGISTER_UTIL} from '../CallingClient/constants';
+import {
+  CALL_FILE,
+  DUMMY_METRICS,
+  UTILS_FILE,
+  REGISTER_UTIL,
+  DEFAULT_KEEPALIVE_INTERVAL,
+} from '../CallingClient/constants';
 import {
   CALL_ERROR_CODE,
   ERROR_CODE,
@@ -103,6 +109,210 @@ describe('Mobius service discovery tests', () => {
     expect(filteredUris.primary[0]).toBe(defaultMobiusUrl + callingContext);
 
     expect(filteredUris.backup.length).toBe(0);
+  });
+});
+
+describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
+  const logObj = {
+    file: CALL_FILE,
+    method: 'handleCallErrors',
+  };
+
+  const dummyCorrelationId = '8a67806f-fc4d-446b-a131-31e71ea5b010';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('401 during keepalive emits token error and ends call', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 401,
+      headers: {trackingid: 't'},
+      body: {device: {deviceId: 'd'}, errorCode: 0},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(emitted).toBe(true);
+    expect(abort).toBe(true);
+    expect(retrySpy).not.toHaveBeenCalled();
+  });
+
+  it('403 during keepalive emits error and ends call', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 403,
+      headers: {trackingid: 't'},
+      body: {device: {deviceId: 'd'}, errorCode: 0},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(emitted).toBe(true);
+    expect(abort).toBe(true);
+    expect(retrySpy).not.toHaveBeenCalled();
+  });
+
+  it('500 during keepalive with retry-after triggers retryCb with interval', async () => {
+    let emitted = false;
+    const endSpy = jest.fn();
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 500,
+      headers: {trackingid: 't', 'retry-after': 2},
+      body: {device: {deviceId: 'd'}, errorCode: 0},
+    });
+
+    await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file,
+      endSpy
+    );
+
+    expect(emitted).toBe(true);
+    expect(endSpy).not.toHaveBeenCalled();
+    expect(retrySpy).toHaveBeenCalledWith(2);
+  });
+
+  it('500 during keepalive without retry-after triggers retryCb without args', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 500,
+      headers: {trackingid: 't'},
+      body: {device: {deviceId: 'd'}, errorCode: 0},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(abort).toBe(false);
+    expect(emitted).toBe(true);
+    expect(retrySpy).toHaveBeenCalledWith(DEFAULT_KEEPALIVE_INTERVAL);
+  });
+
+  it('404 during keepalive emits not found and ends call (no retry)', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 404,
+      headers: {trackingid: 't'},
+      body: {device: {deviceId: 'd'}},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(emitted).toBe(true);
+    expect(abort).toBe(true);
+    expect(retrySpy).not.toHaveBeenCalled();
+  });
+
+  it('503 during keepalive with retry-after does not invoke emitterCb and retries with interval', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 503,
+      headers: {trackingid: 't', 'retry-after': 7},
+      body: {device: {deviceId: 'd'}, errorCode: 0},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(abort).toBe(false);
+    expect(emitted).toBe(false);
+    expect(retrySpy).toHaveBeenCalledWith(7);
+  });
+
+  it('503 during keepalive without retry-after invokes emitterCb and triggers retryCb without args', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 503,
+      headers: {trackingid: 't'},
+      body: {device: {deviceId: 'd'}, errorCode: 111},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(abort).toBe(false);
+    expect(emitted).toBe(true);
+    expect(retrySpy).toHaveBeenCalledWith(DEFAULT_KEEPALIVE_INTERVAL);
   });
 });
 
