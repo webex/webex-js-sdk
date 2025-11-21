@@ -12,12 +12,6 @@ import LoggerProxy from '../../logger-proxy';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import TaskFactory from './TaskFactory';
-import {
-  checkParticipantNotInInteraction,
-  getIsConferenceInProgress,
-  isParticipantInMainInteraction,
-  isPrimary,
-} from './TaskUtils';
 import WebRTC from './voice/WebRTC';
 import {TaskEvent, type TaskEventPayload} from './state-machine';
 /** @internal */
@@ -156,9 +150,6 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.CTQ_CANCEL};
 
       case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
-      case CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED:
-        return {type: TaskEvent.TRANSFER};
-
       case CC_EVENTS.AGENT_WRAPUP:
       case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
         return {type: TaskEvent.WRAPUP_START};
@@ -177,33 +168,6 @@ export default class TaskManager extends EventEmitter {
 
       case CC_EVENTS.CONTACT_RECORDING_RESUMED:
         return {type: TaskEvent.RESUME_RECORDING};
-
-      case CC_EVENTS.AGENT_CONSULT_CONFERENCING:
-        return {type: TaskEvent.START_CONFERENCE};
-
-      case CC_EVENTS.AGENT_CONSULT_CONFERENCED:
-        return {type: TaskEvent.CONFERENCE_START, participants: []};
-
-      case CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED:
-        return {type: TaskEvent.CONFERENCE_END};
-
-      case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
-        return {
-          type: TaskEvent.PARTICIPANT_JOIN,
-          participant: {
-            id: payload.data?.participantId || '',
-            type: 'AGENT',
-            joinedAt: new Date(),
-            isInitiator: false,
-            canBeRemoved: true,
-          },
-        };
-
-      case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
-        return {
-          type: TaskEvent.PARTICIPANT_LEAVE,
-          participantId: payload.data?.participantId || '',
-        };
 
       default:
         // Not all events need state machine mapping
@@ -443,94 +407,6 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.CONTACT_RECORDING_RESUME_FAILED:
             this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, task);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_CONFERENCING:
-            // Conference is being established - update task state and emit establishing event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_ESTABLISHING, task);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_CONFERENCED:
-            // Conference started successfully - update task state and emit event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_STARTED, task);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_CONFERENCE_FAILED:
-            // Conference failed - update task state and emit failure event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_FAILED, task);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED:
-            // Conference ended - update task state and emit event
-            this.updateTaskData(task, payload.data);
-            if (
-              !task ||
-              isPrimary(task, this.agentId) ||
-              isParticipantInMainInteraction(task, this.agentId)
-            ) {
-              LoggerProxy.log('Primary or main interaction participant leaving conference');
-            } else {
-              this.removeTaskFromCollection(task);
-            }
-            task?.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
-            break;
-          case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE: {
-            // Participant joined conference - update task state with participant information and emit event
-            // Pre-calculate isConferenceInProgress with updated data to avoid double update
-            const simulatedTaskForJoin = {
-              ...task,
-              data: {...task.data, ...payload.data},
-            };
-            this.updateTaskData(task, {
-              ...payload.data,
-              isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForJoin),
-            });
-            task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
-            break;
-          }
-          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE: {
-            // Conference ended - update task state and emit event
-            // Pre-calculate isConferenceInProgress with updated data to avoid double update
-            const simulatedTaskForLeft = {
-              ...task,
-              data: {...task.data, ...payload.data},
-            };
-            this.updateTaskData(task, {
-              ...payload.data,
-              isConferenceInProgress: getIsConferenceInProgress(simulatedTaskForLeft),
-            });
-            if (checkParticipantNotInInteraction(task, this.agentId)) {
-              if (
-                isParticipantInMainInteraction(task, this.agentId) ||
-                isPrimary(task, this.agentId)
-              ) {
-                LoggerProxy.log('Primary or main interaction participant leaving conference');
-              } else {
-                this.removeTaskFromCollection(task);
-              }
-            }
-            task.emit(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
-            break;
-          }
-          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED:
-            // Conference exit failed - update task state and emit failure event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_PARTICIPANT_LEFT_FAILED, task);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_CONFERENCE_END_FAILED:
-            // Conference end failed - update task state with error details and emit failure event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_END_FAILED, task);
-            break;
-          case CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED:
-            // Conference was transferred - update task state and emit transfer success event
-            // Note: Backend should provide hasLeft and wrapUpRequired status
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_TRANSFERRED, task);
-            break;
-          case CC_EVENTS.AGENT_CONFERENCE_TRANSFER_FAILED:
-            // Conference transfer failed - update task state with error details and emit failure event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED, task);
             break;
           case CC_EVENTS.CONSULTED_PARTICIPANT_MOVING:
             // Participant is being moved/transferred - update task state with movement info

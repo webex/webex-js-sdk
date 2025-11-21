@@ -54,7 +54,7 @@
     "@webex/webex-core": "workspace:*",
     "jest-html-reporters": "3.0.11",
     "lodash": "^4.17.21",
-    "xstate": "^4.38.0"
+    "xstate": "5.24.0"
   },
   "devDependencies": {
     "@babel/core": "^7.22.11",
@@ -80,6 +80,6 @@
     "jest-junit": "13.0.0",
     "prettier": "2.5.1",
     "typedoc": "^0.25.0",
-    "typescript": "4.9.5"
+    "typescript": "5.4.5"
   }
 }

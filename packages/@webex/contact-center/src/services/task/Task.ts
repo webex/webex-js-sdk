@@ -1,6 +1,7 @@
 import {EventEmitter} from 'events';
 import {CallId} from '@webex/calling/dist/types/common/types';
-import {interpret, Interpreter} from 'xstate';
+import {createActor} from 'xstate';
+import type {ActorRefFrom} from 'xstate';
 import {
   ITask,
   TaskData,
@@ -8,9 +9,9 @@ import {
   WrapupPayLoad,
   TaskId,
   TransferPayLoad,
-  TaskButtonControl,
-  TaskUIActions,
   DESTINATION_TYPE,
+  TASK_EVENTS,
+  TaskUIControls,
 } from './types';
 import {CC_FILE} from '../../constants';
 import {getErrorDetails} from '../core/Utils';
@@ -22,11 +23,18 @@ import {
   createTaskStateMachineWithActions,
   createActionsWithCallbacks,
   TaskState,
-  TaskContext,
   TaskEventPayload,
+  type TaskStateMachine,
   type ActionCallbacks,
+  type UIControlConfig,
+  type TaskContext,
 } from './state-machine';
 import AutoWrapup from './AutoWrapup';
+import {
+  computeUIControls,
+  getDefaultUIControls,
+  haveUIControlsChanged,
+} from './state-machine/uiControlsComputer';
 
 /**
  * Participant information for UI display
@@ -38,39 +46,6 @@ export type Participant = {
 };
 
 /**
- * UI control state for a single task action button.
- * Represents visibility and enabled state for UI components.
- */
-export interface UIControlState {
-  /** Whether the button should be displayed */
-  visible: boolean;
-  /** Whether the button should be clickable (only applies if visible) */
-  enabled: boolean;
-}
-
-/**
- * UI controls for all task actions.
- * Computed from state machine state and context.
- */
-export interface TaskUIControls {
-  accept: UIControlState;
-  decline: UIControlState;
-  hold: UIControlState;
-  mute: UIControlState;
-  end: UIControlState;
-  transfer: UIControlState;
-  consult: UIControlState;
-  consultTransfer: UIControlState;
-  endConsult: UIControlState;
-  recording: UIControlState;
-  conference: UIControlState;
-  wrapup: UIControlState;
-  exitConference: UIControlState;
-  transferConference: UIControlState;
-  mergeToConference: UIControlState;
-}
-
-/**
  * @deprecated Use Participant instead
  */
 export type TaskAccessorParticipant = Participant;
@@ -78,86 +53,75 @@ export type TaskAccessorParticipant = Participant;
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
   protected metricsManager: MetricsManager;
-  public stateMachineService?: Interpreter<TaskContext, any, TaskEventPayload>;
+  public stateMachineService?: ActorRefFrom<TaskStateMachine>;
   public data: TaskData;
   public webCallMap: Record<TaskId, CallId>;
   public state: any;
+  private lastState: TaskState | null = null;
+  protected currentUiControls: TaskUIControls;
+  protected uiControlConfig: UIControlConfig;
 
-  constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
+  constructor(
+    contact: ReturnType<typeof routingContact>,
+    data: TaskData,
+    uiControlConfig: UIControlConfig
+  ) {
     super();
     this.contact = contact;
     this.data = data;
+    this.uiControlConfig = uiControlConfig;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
+    this.currentUiControls = getDefaultUIControls();
     this.initializeStateMachine();
   }
 
   // Properties from ITask interface
   public autoWrapup?: AutoWrapup;
 
-  // Abstract method that all child classes must implement
+  // Abstract methods that all child classes must implement
   public abstract accept(): Promise<TaskResponse>;
 
   // Voice-specific methods with default implementations that throw errors
   // Voice class will override these with actual implementations
   public async decline(): Promise<TaskResponse> {
     this.unsupportedMethodError('decline');
-
-    return Promise.reject(new Error('decline not supported for this channel type'));
   }
 
   public async pauseRecording(): Promise<TaskResponse> {
     this.unsupportedMethodError('pauseRecording');
-
-    return Promise.reject(new Error('pauseRecording not supported for this channel type'));
   }
 
   public async resumeRecording(): Promise<TaskResponse> {
     this.unsupportedMethodError('resumeRecording');
-
-    return Promise.reject(new Error('resumeRecording not supported for this channel type'));
   }
 
   public async consult(): Promise<TaskResponse> {
     this.unsupportedMethodError('consult');
-
-    return Promise.reject(new Error('consult not supported for this channel type'));
   }
 
   public async endConsult(): Promise<TaskResponse> {
     this.unsupportedMethodError('endConsult');
-
-    return Promise.reject(new Error('endConsult not supported for this channel type'));
   }
 
   public async consultTransfer(): Promise<TaskResponse> {
     this.unsupportedMethodError('consultTransfer');
-
-    return Promise.reject(new Error('consultTransfer not supported for this channel type'));
   }
 
   public async consultConference(): Promise<TaskResponse> {
     this.unsupportedMethodError('consultConference');
-
-    return Promise.reject(new Error('consultConference not supported for this channel type'));
   }
 
   public async exitConference(): Promise<TaskResponse> {
     this.unsupportedMethodError('exitConference');
-
-    return Promise.reject(new Error('exitConference not supported for this channel type'));
   }
 
   public async transferConference(): Promise<TaskResponse> {
     this.unsupportedMethodError('transferConference');
-
-    return Promise.reject(new Error('transferConference not supported for this channel type'));
   }
 
   public async toggleMute(): Promise<void> {
     this.unsupportedMethodError('toggleMute');
-
-    return Promise.reject(new Error('toggleMute not supported for this channel type'));
   }
 
   public unregisterWebCallListeners(): void {
@@ -187,43 +151,31 @@ export default abstract class Task extends EventEmitter implements ITask {
   // Voice tasks use holdResume(), but provide separate methods for interface compliance
   public async hold(): Promise<TaskResponse> {
     this.unsupportedMethodError('hold');
-
-    return Promise.reject(new Error('hold not supported for this channel type'));
   }
 
   public async resume(): Promise<TaskResponse> {
     this.unsupportedMethodError('resume');
-
-    return Promise.reject(new Error('resume not supported for this channel type'));
   }
 
   public async holdResume(): Promise<TaskResponse> {
     this.unsupportedMethodError('holdResume');
-
-    return Promise.reject(new Error('holdResume not supported for this channel type'));
   }
 
   /**
-   * Get UI controls for task actions.
-   * Computed from state machine state and context.
-   *
-   * @example
-   * ```typescript
-   * const visible = task.taskUiControls.hold.visible;
-   * const enabled = task.taskUiControls.hold.enabled;
-   * ```
+   * Latest UI controls derived from state machine state and context.
    */
-  public get taskUiControls(): TaskUIActions {
-    // Convert computed UI controls to TaskActionControl objects for backward compatibility
-    const controls = this.computeUIControls();
-    const result: any = {};
+  public get uiControls(): TaskUIControls {
+    return this.currentUiControls;
+  }
 
-    Object.keys(controls).forEach((key) => {
-      const control = controls[key as keyof TaskUIControls];
-      result[key] = new TaskButtonControl(control.visible, control.enabled);
-    });
+  protected updateUiControls(forceEmit = false): void {
+    const nextControls = this.computeUIControls();
+    const shouldEmit = forceEmit || haveUIControlsChanged(this.currentUiControls, nextControls);
+    this.currentUiControls = nextControls;
 
-    return result as TaskUIActions;
+    if (shouldEmit) {
+      this.emit(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, this.currentUiControls);
+    }
   }
 
   /**
@@ -248,24 +200,32 @@ export default abstract class Task extends EventEmitter implements ITask {
       onCleanupResources: () => {},
     };
 
-    const customActions = createActionsWithCallbacks(callbacks);
-    const machine = createTaskStateMachineWithActions(customActions);
+    // Create custom actions with callbacks for event emission
+    const eventActions = createActionsWithCallbacks(callbacks);
 
-    this.stateMachineService = interpret(machine)
-      .onTransition((state) => {
-        LoggerProxy.log(
-          `State machine transition: ${state.context.previousState || 'N/A'} -> ${state.value}`,
-          {
-            module: CC_FILE,
-            method: 'onTransition',
-          }
-        );
-        this.state = state;
+    const machine: TaskStateMachine = createTaskStateMachineWithActions(
+      this.uiControlConfig,
+      eventActions
+    );
 
-        // Update UI controls based on current state
-        this.computeUIControls();
-      })
-      .start();
+    this.stateMachineService = createActor(machine);
+
+    this.stateMachineService.subscribe((snapshot) => {
+      const previousState = this.lastState;
+      const currentState = snapshot.value as TaskState;
+      LoggerProxy.log(`State machine transition: ${previousState || 'N/A'} -> ${currentState}`, {
+        module: CC_FILE,
+        method: 'onTransition',
+      });
+      this.lastState = currentState;
+      this.state = snapshot;
+
+      // Update UI controls based on current state
+      this.updateUiControls();
+    });
+
+    this.stateMachineService.start();
+    this.updateUiControls(true);
   }
 
   /**
@@ -281,36 +241,25 @@ export default abstract class Task extends EventEmitter implements ITask {
    * Get the current state machine state
    */
   protected getCurrentState(): TaskState | undefined {
-    return this.stateMachineService?.state?.value as TaskState;
+    return this.stateMachineService?.getSnapshot()?.value as TaskState;
   }
 
   /**
    * Compute UI controls based on current state machine state.
-   * This method should be overridden by child classes (Voice, Digital)
-   * to provide channel-specific UI control logic.
    *
    * @returns UI control states for all task actions
    */
   protected computeUIControls(): TaskUIControls {
-    // Default implementation - all controls hidden
-    // Child classes should override this method
-    return {
-      accept: {visible: false, enabled: false},
-      decline: {visible: false, enabled: false},
-      hold: {visible: false, enabled: false},
-      mute: {visible: false, enabled: false},
-      end: {visible: false, enabled: false},
-      transfer: {visible: false, enabled: false},
-      consult: {visible: false, enabled: false},
-      consultTransfer: {visible: false, enabled: false},
-      endConsult: {visible: false, enabled: false},
-      recording: {visible: false, enabled: false},
-      conference: {visible: false, enabled: false},
-      wrapup: {visible: false, enabled: false},
-      exitConference: {visible: false, enabled: false},
-      transferConference: {visible: false, enabled: false},
-      mergeToConference: {visible: false, enabled: false},
-    };
+    const snapshot = this.stateMachineService?.getSnapshot?.();
+
+    if (!snapshot) {
+      return getDefaultUIControls();
+    }
+
+    const currentState = snapshot.value as TaskState;
+    const context = snapshot.context as TaskContext;
+
+    return computeUIControls(currentState, context, this.data);
   }
 
   /**
@@ -361,7 +310,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   public updateTaskData(updatedData: TaskData, shouldOverwrite = false): ITask {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
 
-    this.computeUIControls();
+    this.updateUiControls();
 
     return this;
   }

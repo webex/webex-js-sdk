@@ -6,14 +6,21 @@
 
 // Main state machine
 export {
-  taskStateMachineConfig,
+  getTaskStateMachineConfig,
   createTaskStateMachine,
   createTaskStateMachineWithActions,
 } from './TaskStateMachine';
+export type {TaskStateMachine} from './TaskStateMachine';
 
 // Types
 export {TaskState, TaskEvent, isEventOfType} from './types';
-export type {TaskContext, TaskEventPayload, TaskStateMachineConfig, UIControls} from './types';
+export type {
+  TaskContext,
+  TaskEventPayload,
+  TaskStateMachineConfig,
+  UIControls,
+  UIControlConfig,
+} from './types';
 
 // Guards
 export {guards} from './guards';

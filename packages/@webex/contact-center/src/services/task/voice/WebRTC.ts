@@ -3,9 +3,8 @@ import {CC_FILE} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import routingContact from '../contact';
 import {TaskData, TaskResponse, TASK_EVENTS, IWebRTC} from '../types';
-import Voice from './Voice';
+import Voice, {VoiceUIControlOptions} from './Voice';
 import WebCallingService from '../../WebCallingService';
-import {TaskState} from '../state-machine';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import LoggerProxy from '../../../logger-proxy';
@@ -18,9 +17,9 @@ export default class WebRTC extends Voice implements IWebRTC {
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    callOptions: {isEndCallEnabled?: boolean; isEndConsultEnabled?: boolean} = {}
+    callOptions: VoiceUIControlOptions = {}
   ) {
-    super(contact, data, callOptions);
+    super(contact, data, {...callOptions, voiceVariant: 'webrtc'});
     this.webCallingService = webCallingService;
     this.registerWebCallListeners();
   }
@@ -32,81 +31,6 @@ export default class WebRTC extends Voice implements IWebRTC {
   private handleRemoteMedia = (track: MediaStreamTrack) => {
     this.emit(TASK_EVENTS.TASK_MEDIA, track);
   };
-
-  /**
-   * Compute UI controls for WebRTC tasks.
-   * Extends Voice UI controls with WebRTC-specific behavior:
-   *
-   * 1. Accept/Decline buttons:
-   *    - Visible when task is offered (OFFERED or OFFERED_CONSULT states)
-   *    - Hidden when consulted and in consulting state
-   *    - Hidden when call is terminated
-   *
-   * 2. Mute button:
-   *    - Visible when connected or when consulting (if this agent is consulted)
-   *    - Disabled when call is held (can't mute a held call)
-   *    - Hidden during wrapup
-   *
-   * WebRTC handles audio client-side, so these controls differ from telephony tasks.
-   *
-   * @returns UI control states for all task actions
-   */
-  protected computeUIControls(): import('../Task').TaskUIControls {
-    // Get base controls from Voice class
-    const controls = super.computeUIControls();
-
-    const state = this.stateMachineService?.state;
-    if (!state) {
-      return controls;
-    }
-
-    // Determine current state
-    const isOffered = state.matches(TaskState.OFFERED) || state.matches(TaskState.OFFERED_CONSULT);
-    const isConnected = state.matches(TaskState.CONNECTED);
-    const isHeld = state.matches(TaskState.HELD);
-    const isConsulting = state.matches(TaskState.CONSULTING);
-    const isWrappingUp = state.matches(TaskState.WRAPPING_UP);
-
-    // Check if this agent is the consulted party
-    const isConsultedAgent = this.data.isConsulted ?? false;
-
-    // Check if call is terminated (ended externally while still offered)
-    const isTerminated = this.data.interaction?.isTerminated ?? false;
-
-    // WebRTC-specific accept/decline logic
-    // Accept and decline should be visible when:
-    // - Task is offered (OFFERED or OFFERED_CONSULT state)
-    // - AND not terminated
-    // - AND (not consulting OR not the consulted agent)
-    const showAcceptDecline = isOffered && !isTerminated && (!isConsulting || !isConsultedAgent);
-
-    controls.accept = {
-      visible: showAcceptDecline,
-      enabled: showAcceptDecline,
-    };
-
-    controls.decline = {
-      visible: showAcceptDecline,
-      enabled: showAcceptDecline,
-    };
-
-    // WebRTC-specific mute button logic
-    // Mute should be visible when:
-    // - Call is connected (active) OR
-    // - Call is consulting AND this agent is the consulted one
-    const showMute = isConnected || (isConsulting && isConsultedAgent);
-
-    // Mute should be enabled when:
-    // - Visible AND not held AND not wrapping up
-    const enableMute = showMute && !isHeld && !isWrappingUp;
-
-    controls.mute = {
-      visible: showMute,
-      enabled: enableMute,
-    };
-
-    return controls;
-  }
 
   /**
    * This method is used to unregister the web call listeners.

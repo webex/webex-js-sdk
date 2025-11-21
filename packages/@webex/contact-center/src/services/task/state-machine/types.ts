@@ -5,7 +5,7 @@
  * These types define states, events, context, and schemas for task lifecycle management.
  */
 
-import {TaskData} from '../types';
+import {TaskData, TaskUIControls} from '../types';
 
 /**
  * All possible states in the task state machine
@@ -125,6 +125,20 @@ export interface ConferenceParticipant {
 }
 
 /**
+ * UI Control configuration for the task
+ */
+export interface UIControlConfig {
+  /** Whether end call button is enabled (config option) */
+  isEndCallEnabled: boolean;
+  /** Whether end consult button is enabled (config option) */
+  isEndConsultEnabled: boolean;
+  /** Channel type determines which controls are available */
+  channelType: 'voice' | 'digital';
+  /** Optional voice channel variant to toggle WebRTC-specific controls */
+  voiceVariant?: 'pstn' | 'webrtc';
+}
+
+/**
  * Context data maintained by the state machine
  *
  * IMPORTANT: This context should only store data that CANNOT be derived from the state machine's current state.
@@ -145,23 +159,20 @@ export interface TaskContext {
   // Task data
   taskData: TaskData | null;
 
-  // State tracking
-  previousState: TaskState | null;
-
   // Consult tracking
   consultInitiator: boolean;
   consultDestination: string | null;
   consultDestinationAgentJoined: boolean;
 
-  // Conference tracking
-  conferenceInitiatorId: string | null;
-  conferenceParticipants: ConferenceParticipant[];
-  maxConferenceParticipants: number;
-  participants: string[]; // DEPRECATED: Use conferenceParticipants instead
-
   // Recording tracking
   recordingActive: boolean;
   recordingPaused: boolean;
+
+  // UI Control configuration (set at task creation)
+  uiControlConfig: UIControlConfig;
+
+  // Computed UI controls (derived from state + context + config)
+  uiControls: TaskUIControls;
 }
 
 /**
@@ -216,30 +227,30 @@ export type TaskEventPayload =
  * Type guard to check event type
  */
 export function isEventOfType<T extends TaskEvent>(
-  event: TaskEventPayload,
+  event: TaskEventPayload | undefined,
   type: T
 ): event is Extract<TaskEventPayload, {type: T}> {
-  return event.type === type;
+  return Boolean(event && event.type === type);
 }
 
 /**
  * UI Control states derived from state machine
  */
 export interface UIControls {
-  accept: {visible: boolean; enabled: boolean};
-  decline: {visible: boolean; enabled: boolean};
-  hold: {visible: boolean; enabled: boolean; label: 'Hold' | 'Resume'};
-  transfer: {visible: boolean; enabled: boolean};
-  consult: {visible: boolean; enabled: boolean};
-  end: {visible: boolean; enabled: boolean};
-  recording: {visible: boolean; enabled: boolean};
-  mute: {visible: boolean; enabled: boolean};
-  consultTransfer: {visible: boolean; enabled: boolean};
-  endConsult: {visible: boolean; enabled: boolean};
-  conference: {visible: boolean; enabled: boolean};
-  exitConference: {visible: boolean; enabled: boolean};
-  transferConference: {visible: boolean; enabled: boolean};
-  wrapup: {visible: boolean; enabled: boolean};
+  accept: {isVisible: boolean; isEnabled: boolean};
+  decline: {isVisible: boolean; isEnabled: boolean};
+  hold: {isVisible: boolean; isEnabled: boolean; label: 'Hold' | 'Resume'};
+  transfer: {isVisible: boolean; isEnabled: boolean};
+  consult: {isVisible: boolean; isEnabled: boolean};
+  end: {isVisible: boolean; isEnabled: boolean};
+  recording: {isVisible: boolean; isEnabled: boolean};
+  mute: {isVisible: boolean; isEnabled: boolean};
+  consultTransfer: {isVisible: boolean; isEnabled: boolean};
+  endConsult: {isVisible: boolean; isEnabled: boolean};
+  conference: {isVisible: boolean; isEnabled: boolean};
+  exitConference: {isVisible: boolean; isEnabled: boolean};
+  transferConference: {isVisible: boolean; isEnabled: boolean};
+  wrapup: {isVisible: boolean; isEnabled: boolean};
 }
 
 /**
@@ -265,8 +276,6 @@ export enum TaskAction {
   EMIT_TASK_CONSULT_CREATED = 'emitTaskConsultCreated',
   EMIT_TASK_CONSULTING = 'emitTaskConsulting',
   EMIT_TASK_CONSULT_END = 'emitTaskConsultEnd',
-  EMIT_TASK_CONFERENCE_STARTED = 'emitTaskConferenceStarted',
-  EMIT_TASK_CONFERENCE_ENDED = 'emitTaskConferenceEnded',
   EMIT_TASK_END = 'emitTaskEnd',
   EMIT_TASK_WRAPPEDUP = 'emitTaskWrappedup',
   CLEANUP_RESOURCES = 'cleanupResources',
@@ -276,8 +285,6 @@ export enum TaskAction {
   SET_CONSULT_INITIATOR = 'setConsultInitiator',
   SET_CONSULT_DESTINATION = 'setConsultDestination',
   SET_CONSULT_AGENT_JOINED = 'setConsultAgentJoined',
-  SET_CONFERENCING = 'setConferencing',
-  UPDATE_PARTICIPANTS = 'updateParticipants',
   SET_HOLD_STATE = 'setHoldState',
   SET_RECORDING_STATE = 'setRecordingState',
   UPDATE_TIMESTAMP = 'updateTimestamp',

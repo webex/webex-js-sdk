@@ -2,10 +2,9 @@
 // eslint-disable-next-line import/no-unresolved
 import {CallId} from '@webex/calling/dist/types/common/types';
 import EventEmitter from 'events';
-import {Interpreter} from 'xstate';
+import type {AnyActorRef} from 'xstate';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
-import {TaskContext, TaskEventPayload} from './state-machine/types';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -208,6 +207,11 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_CONSULT_QUEUE_FAILED = 'task:consultQueueFailed',
+
+  /**
+   * Triggered whenever task UI controls are recalculated
+   */
+  TASK_UI_CONTROLS_UPDATED = 'task:ui-controls-updated',
 
   /**
    * Triggered when a consultation request is accepted
@@ -818,75 +822,39 @@ export type TaskData = {
 };
 
 /**
+ * Control state for a single UI action.
+ */
+export interface TaskUIControlState {
+  isVisible: boolean;
+  isEnabled: boolean;
+}
+
+/**
+ * UI control configuration for task operations.
+ */
+export interface TaskUIControls {
+  accept: TaskUIControlState;
+  decline: TaskUIControlState;
+  hold: TaskUIControlState;
+  mute: TaskUIControlState;
+  end: TaskUIControlState;
+  transfer: TaskUIControlState;
+  consult: TaskUIControlState;
+  consultTransfer: TaskUIControlState;
+  endConsult: TaskUIControlState;
+  recording: TaskUIControlState;
+  conference: TaskUIControlState;
+  wrapup: TaskUIControlState;
+  exitConference: TaskUIControlState;
+  transferConference: TaskUIControlState;
+  mergeToConference: TaskUIControlState;
+}
+
+/**
  * Helper class for managing task action control state
  * Tracks visibility and enabled state for task actions that can be executed
  * @public
  */
-export class TaskActionControl {
-  public visible: boolean;
-  private enabled: boolean;
-
-  constructor(visible: boolean, enabled: boolean) {
-    this.visible = visible;
-    this.enabled = enabled;
-  }
-
-  setVisiblity(visible: boolean): void {
-    this.visible = visible;
-  }
-
-  setEnabled(enabled: boolean): void {
-    this.enabled = enabled;
-  }
-
-  isVisible(): boolean {
-    return this.visible;
-  }
-
-  isEnabled(): boolean {
-    return this.enabled;
-  }
-}
-
-/**
- * UI actions configuration for task operations
- * Maps each available action to its control state
- * This is used by the UI to determine which actions can be performed
- * @public
- */
-export type TaskUIActions = {
-  accept: TaskActionControl;
-  decline: TaskActionControl;
-  hold: TaskActionControl;
-  mute: TaskActionControl;
-  end: TaskActionControl;
-  transfer: TaskActionControl;
-  consult: TaskActionControl;
-  consultTransfer: TaskActionControl;
-  endConsult: TaskActionControl;
-  recording: TaskActionControl;
-  conference: TaskActionControl;
-  wrapup: TaskActionControl;
-  /** NEW: Agent exits from an ongoing conference */
-  exitConference?: TaskActionControl;
-  /** NEW: Transfer entire conference to another destination */
-  transferConference?: TaskActionControl;
-  /** NEW: Merge consultation to conference */
-  mergeToConference?: TaskActionControl;
-};
-
-/**
- * @deprecated Use TaskActionControl instead
- * @public
- */
-export const TaskButtonControl = TaskActionControl;
-
-/**
- * @deprecated Use TaskUIActions instead
- * @public
- */
-export type TaskUIControls = TaskUIActions;
-
 /**
  * Type representing an agent contact message within the contact center system
  * Contains comprehensive interaction and task related details for agent operations
@@ -1275,7 +1243,7 @@ export interface ITask extends EventEmitter {
    * @see createTaskStateMachine
    * @internal
    */
-  stateMachineService?: Interpreter<TaskContext, any, TaskEventPayload>;
+  stateMachineService?: AnyActorRef;
   state?: any;
 
   /**
@@ -1485,7 +1453,7 @@ export interface IDigital extends Omit<ITask, 'updateTaskData'> {
   /**
    * UI controls configuration
    */
-  taskUiControls: TaskUIActions;
+  uiControls: TaskUIControls;
 
   /**
    * Updates the task data

@@ -12,25 +12,56 @@
  */
 
 import {assign} from 'xstate';
-import {TaskContext, TaskEventPayload, isEventOfType, TaskEvent} from './types';
+import {
+  TaskContext,
+  TaskEventPayload,
+  isEventOfType,
+  TaskEvent,
+  UIControlConfig,
+  TaskState,
+} from './types';
+import {TaskData} from '../types';
+import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
 
 /**
  * Create initial context for a new task
+ *
+ * @param uiControlConfig - UI control configuration
+ * @param initialState - Initial state for computing UI controls
+ * @returns Initial context with UI controls
  */
-export function createInitialContext(): TaskContext {
-  return {
+export function createInitialContext(
+  uiControlConfig: UIControlConfig,
+  initialState: TaskState = TaskState.IDLE
+): TaskContext {
+  const baseContext: TaskContext = {
     taskData: null,
-    previousState: null,
     consultInitiator: false,
     consultDestination: null,
     consultDestinationAgentJoined: false,
-    conferenceInitiatorId: null,
-    conferenceParticipants: [],
-    maxConferenceParticipants: 10,
-    participants: [], // DEPRECATED: Use conferenceParticipants instead
     recordingActive: false,
     recordingPaused: false,
+    uiControlConfig,
+    uiControls: getDefaultUIControls(),
   };
+
+  // Compute initial UI controls
+  baseContext.uiControls = computeUIControls(initialState, baseContext);
+
+  return baseContext;
+}
+
+/**
+ * Helper to update UI controls after context changes
+ * This should be called after any action that modifies context
+ *
+ * @param currentState - Current state machine state
+ * @returns Assign action that updates UI controls
+ */
+export function updateUIControls(currentState: TaskState) {
+  return assign((context: TaskContext) => ({
+    uiControls: computeUIControls(currentState, context),
+  }));
 }
 
 /**
@@ -41,10 +72,11 @@ export const actions = {
   /**
    * Initialize task with offer data
    */
-  initializeTask: assign<TaskContext, TaskEventPayload>((context, event) => {
+  initializeTask: assign((context: TaskContext, event: TaskEventPayload) => {
     if (isEventOfType(event, TaskEvent.OFFER) || isEventOfType(event, TaskEvent.OFFER_CONSULT)) {
       return {
         taskData: event.taskData,
+        ...deriveRecordingState(event.taskData),
       };
     }
 
@@ -54,15 +86,17 @@ export const actions = {
   /**
    * Update task data from ASSIGN event
    */
-  updateTaskData: assign<TaskContext, TaskEventPayload>((context, event) => {
+  updateTaskData: assign((context: TaskContext, event: TaskEventPayload) => {
     if (isEventOfType(event, TaskEvent.ASSIGN)) {
       return {
         taskData: event.taskData,
+        ...deriveRecordingState(event.taskData),
       };
     }
     if (isEventOfType(event, TaskEvent.CONSULT_CREATED)) {
       return {
         taskData: event.taskData,
+        ...deriveRecordingState(event.taskData),
       };
     }
 
@@ -72,14 +106,14 @@ export const actions = {
   /**
    * Set consult initiator flag
    */
-  setConsultInitiator: assign<TaskContext, TaskEventPayload>({
+  setConsultInitiator: assign({
     consultInitiator: true,
   }),
 
   /**
    * Set consult destination details
    */
-  setConsultDestination: assign<TaskContext, TaskEventPayload>((context, event) => {
+  setConsultDestination: assign((context: TaskContext, event: TaskEventPayload) => {
     if (isEventOfType(event, TaskEvent.CONSULT)) {
       return {
         consultDestination: event.destination,
@@ -92,7 +126,7 @@ export const actions = {
   /**
    * Mark that consult destination agent has joined
    */
-  setConsultAgentJoined: assign<TaskContext, TaskEventPayload>((context, event) => {
+  setConsultAgentJoined: assign((context: TaskContext, event: TaskEventPayload) => {
     if (isEventOfType(event, TaskEvent.CONSULTING_ACTIVE)) {
       return {
         consultDestinationAgentJoined: event.consultDestinationAgentJoined,
@@ -103,118 +137,9 @@ export const actions = {
   }),
 
   /**
-   * Set conferencing state (legacy - kept for backward compatibility)
-   */
-  setConferencing: assign<TaskContext, TaskEventPayload>((context, event) => {
-    if (isEventOfType(event, TaskEvent.CONFERENCE_START)) {
-      const participantIds = event.participants?.map((p) => p.id) || [];
-
-      return {
-        conferenceParticipants: event.participants || [],
-        participants: participantIds,
-      };
-    }
-
-    return {};
-  }),
-
-  /**
-   * Initialize conference with participants from consult
-   */
-  initializeConference: assign<TaskContext, TaskEventPayload>((context) => {
-    const agentId = context.taskData?.agentId;
-    const consultAgent = context.consultDestination;
-
-    if (!agentId || !consultAgent) {
-      return {};
-    }
-
-    return {
-      conferenceInitiatorId: agentId,
-      conferenceParticipants: [
-        {
-          id: agentId,
-          type: 'AGENT' as const,
-          joinedAt: new Date(),
-          isInitiator: true,
-          canBeRemoved: false,
-        },
-        {
-          id: consultAgent,
-          type: 'AGENT' as const,
-          joinedAt: new Date(),
-          isInitiator: false,
-          canBeRemoved: true,
-        },
-      ],
-      consultDestination: null,
-      consultDestinationAgentJoined: false,
-    };
-  }),
-
-  /**
-   * Add a participant to conference
-   */
-  addParticipant: assign<TaskContext, TaskEventPayload>((context, event) => {
-    if (isEventOfType(event, TaskEvent.PARTICIPANT_JOIN)) {
-      return {
-        conferenceParticipants: [...context.conferenceParticipants, event.participant],
-      };
-    }
-
-    return {};
-  }),
-
-  /**
-   * Remove a participant from conference
-   */
-  removeParticipant: assign<TaskContext, TaskEventPayload>((context, event) => {
-    if (isEventOfType(event, TaskEvent.PARTICIPANT_LEAVE)) {
-      return {
-        conferenceParticipants: context.conferenceParticipants.filter(
-          (p) => p.id !== event.participantId
-        ),
-      };
-    }
-
-    return {};
-  }),
-
-  /**
-   * Update conference participants (handles both JOIN and LEAVE)
-   */
-  updateParticipants: assign<TaskContext, TaskEventPayload>((context, event) => {
-    if (isEventOfType(event, TaskEvent.PARTICIPANT_JOIN)) {
-      return {
-        conferenceParticipants: [...context.conferenceParticipants, event.participant],
-        participants: [...context.participants, event.participant.id],
-      };
-    }
-    if (isEventOfType(event, TaskEvent.PARTICIPANT_LEAVE)) {
-      return {
-        conferenceParticipants: context.conferenceParticipants.filter(
-          (p) => p.id !== event.participantId
-        ),
-        participants: context.participants.filter((id) => id !== event.participantId),
-      };
-    }
-
-    return {};
-  }),
-
-  /**
-   * Clear conferencing state
-   */
-  clearConferencing: assign<TaskContext, TaskEventPayload>({
-    conferenceInitiatorId: null,
-    conferenceParticipants: [],
-    participants: [],
-  }),
-
-  /**
    * Set recording state
    */
-  setRecordingState: assign<TaskContext, TaskEventPayload>((context, event) => {
+  setRecordingState: assign((context: TaskContext, event: TaskEventPayload) => {
     if (isEventOfType(event, TaskEvent.PAUSE_RECORDING)) {
       return {
         recordingPaused: true,
@@ -232,10 +157,117 @@ export const actions = {
   /**
    * Clear consult state
    */
-  clearConsultState: assign<TaskContext, TaskEventPayload>({
+  clearConsultState: assign({
     consultDestination: null,
     consultDestinationAgentJoined: false,
   }),
+
+  /**
+   * Track hold state updates (currently no-op placeholder)
+   */
+  setHoldState: assign((context: TaskContext, event: TaskEventPayload) => {
+    if (
+      isEventOfType(event, TaskEvent.HOLD_SUCCESS) ||
+      isEventOfType(event, TaskEvent.UNHOLD_SUCCESS)
+    ) {
+      const mediaResourceId = event.mediaResourceId;
+      const interaction = context.taskData?.interaction;
+      const mediaEntry = interaction?.media?.[mediaResourceId];
+
+      if (!interaction || !mediaEntry) {
+        return {};
+      }
+
+      const updatedMedia = {
+        ...interaction.media,
+        [mediaResourceId]: {
+          ...mediaEntry,
+          isHold: isEventOfType(event, TaskEvent.HOLD_SUCCESS),
+        },
+      };
+
+      return {
+        taskData: {
+          ...(context.taskData as TaskData),
+          interaction: {
+            ...interaction,
+            media: updatedMedia,
+          },
+        },
+      };
+    }
+
+    return {};
+  }),
+
+  /**
+   * Mark task as ended (currently no-op placeholder)
+   */
+  markEnded: assign(() => ({
+    recordingActive: false,
+    recordingPaused: false,
+  })),
+
+  /**
+   * Cleanup resources on task completion (placeholder)
+   */
+  cleanupResources: () => {
+    return undefined;
+  },
+};
+
+type RecordingStateUpdate = Partial<Pick<TaskContext, 'recordingActive' | 'recordingPaused'>>;
+
+const parseBooleanFlag = (value?: string | boolean | null): boolean | undefined => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.toLowerCase();
+
+    if (normalized === 'true') {
+      return true;
+    }
+    if (normalized === 'false') {
+      return false;
+    }
+  }
+
+  return undefined;
+};
+
+const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate => {
+  const callProcessingDetails = taskData?.interaction?.callProcessingDetails;
+
+  if (!callProcessingDetails) {
+    return {};
+  }
+
+  const update: RecordingStateUpdate = {};
+  const recordInProgress = parseBooleanFlag(
+    callProcessingDetails.recordInProgress ?? callProcessingDetails.recordingStarted
+  );
+  const isPaused = parseBooleanFlag(callProcessingDetails.isPaused);
+
+  if (typeof recordInProgress !== 'undefined') {
+    update.recordingActive = recordInProgress;
+    if (!recordInProgress) {
+      update.recordingPaused = false;
+    } else if (typeof isPaused === 'undefined') {
+      update.recordingPaused = false;
+    }
+  }
+
+  if (typeof isPaused !== 'undefined') {
+    update.recordingPaused = isPaused;
+
+    if (isPaused) {
+      update.recordingActive = true;
+    }
+  }
+
+  return update;
 };
 
 /**
@@ -251,8 +283,6 @@ export interface ActionCallbacks {
   onTaskConsultCreated?: (taskData: any) => void;
   onTaskConsulting?: (taskData: any) => void;
   onTaskConsultEnd?: (taskData: any) => void;
-  onTaskConferenceStarted?: (taskData: any) => void;
-  onTaskConferenceEnded?: (taskData: any) => void;
   onTaskEnd?: (taskData: any) => void;
   onTaskWrappedup?: (taskData: any) => void;
   onCleanupResources?: () => void;
@@ -285,12 +315,6 @@ export function createActionsWithCallbacks(callbacks: ActionCallbacks) {
     },
     emitTaskConsultEnd: (context: TaskContext) => {
       callbacks.onTaskConsultEnd?.(context.taskData);
-    },
-    emitTaskConferenceStarted: (context: TaskContext) => {
-      callbacks.onTaskConferenceStarted?.(context.taskData);
-    },
-    emitTaskConferenceEnded: (context: TaskContext) => {
-      callbacks.onTaskConferenceEnded?.(context.taskData);
     },
     emitTaskEnd: (context: TaskContext) => {
       callbacks.onTaskEnd?.(context.taskData);

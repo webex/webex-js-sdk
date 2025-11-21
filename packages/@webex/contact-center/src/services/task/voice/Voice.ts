@@ -18,139 +18,24 @@ import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import {TaskState, TaskEvent, guards} from '../state-machine';
 
-export default class Voice extends Task implements IVoice {
-  private isEndCallEnabled: boolean;
-  private isEndConsultEnabled: boolean;
+export type VoiceUIControlOptions = {
+  isEndCallEnabled?: boolean;
+  isEndConsultEnabled?: boolean;
+  voiceVariant?: 'pstn' | 'webrtc';
+};
 
+export default class Voice extends Task implements IVoice {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
-    callOptions: {isEndCallEnabled?: boolean; isEndConsultEnabled?: boolean} = {}
+    callOptions: VoiceUIControlOptions = {}
   ) {
-    super(contact, data);
-    // apply defaults when no explicit setting provided
-    this.isEndCallEnabled = callOptions.isEndCallEnabled ?? true;
-    this.isEndConsultEnabled = callOptions.isEndConsultEnabled ?? true;
-  }
-
-  /**
-   * Compute UI controls based on state machine state.
-   * This replaces the old updateUIControlsFromState() method.
-   * Returns plain objects instead of mutating taskUiControls.
-   */
-  protected computeUIControls(): import('../Task').TaskUIControls {
-    const state = this.stateMachineService?.state;
-
-    if (!state) {
-      // Fallback if state machine not initialized
-      return super.computeUIControls();
-    }
-
-    // Determine UI control states based on current state and context
-    const isOffered = state.matches(TaskState.OFFERED) || state.matches(TaskState.OFFERED_CONSULT);
-    const isConnected = state.matches(TaskState.CONNECTED);
-    const isHeld = state.matches(TaskState.HELD);
-    const isConsulting = state.matches(TaskState.CONSULTING);
-    const isConferencing = state.matches(TaskState.CONFERENCING);
-    const isWrappingUp = state.matches(TaskState.WRAPPING_UP);
-
-    const context = state.context;
-
-    // Return computed UI controls based on state machine state
-    return {
-      // Accept button: visible when offered, always enabled
-      accept: {
-        visible: isOffered,
-        enabled: true,
-      },
-
-      // Decline button: visible when offered, always enabled
-      decline: {
-        visible: isOffered,
-        enabled: true,
-      },
-
-      // Hold button: visible when connected or held
-      // Enabled based on current state (hold when connected, resume when held)
-      hold: {
-        visible: isConnected || isHeld,
-        enabled: isConnected || isHeld,
-      },
-
-      // Mute button: visible when active call, disabled during wrapup
-      mute: {
-        visible: isConnected || isHeld,
-        enabled: !isWrappingUp,
-      },
-
-      // End button: conditional based on config, disabled when held or wrapping up
-      end: {
-        visible: this.isEndCallEnabled,
-        enabled: !isHeld && !isWrappingUp,
-      },
-
-      // Transfer button: visible in connected/held/consulting states
-      transfer: {
-        visible: isConnected || isHeld || isConsulting,
-        enabled: true,
-      },
-
-      // Consult button: visible when connected or held
-      // Enabled when in connected or held states (not consulting/conferencing)
-      consult: {
-        visible: isConnected || isHeld,
-        enabled: isConnected || isHeld,
-      },
-
-      // Consult transfer: visible during consulting
-      consultTransfer: {
-        visible: isConsulting,
-        enabled: true,
-      },
-
-      // End consult button: visible during consulting state
-      endConsult: {
-        visible: isConsulting,
-        enabled: this.isEndConsultEnabled,
-      },
-
-      // Recording controls: based on recording state
-      recording: {
-        visible: isConnected || isHeld,
-        enabled: !context.recordingPaused,
-      },
-
-      // Conference button: visible during consulting
-      // Enabled only if consulted agent has joined
-      conference: {
-        visible: isConsulting,
-        enabled: context.consultDestinationAgentJoined,
-      },
-
-      // Wrapup button: visible during wrapup state
-      wrapup: {
-        visible: isWrappingUp,
-        enabled: true,
-      },
-
-      // Exit conference button: visible during conference
-      exitConference: {
-        visible: isConferencing,
-        enabled: true,
-      },
-
-      // Transfer conference: visible during conference
-      transferConference: {
-        visible: isConferencing,
-        enabled: true,
-      },
-
-      // Merge to conference: visible during consulting (alias for conference)
-      mergeToConference: {
-        visible: isConsulting,
-        enabled: context.consultDestinationAgentJoined,
-      },
-    };
+    super(contact, data, {
+      channelType: 'voice',
+      isEndCallEnabled: callOptions.isEndCallEnabled ?? true,
+      isEndConsultEnabled: callOptions.isEndConsultEnabled ?? true,
+      voiceVariant: callOptions.voiceVariant ?? 'pstn',
+    });
   }
 
   /**
@@ -217,7 +102,7 @@ export default class Voice extends Task implements IVoice {
     const shouldHold = !this.data.interaction.media[this.data.mediaResourceId].isHold;
 
     // Validate operation is allowed in current state
-    const state = this.stateMachineService?.state;
+    const state = this.stateMachineService?.getSnapshot?.();
     if (state) {
       const currentState = state.value as TaskState;
       if (shouldHold) {
@@ -369,7 +254,7 @@ export default class Voice extends Task implements IVoice {
    */
   public async pauseRecording(): Promise<TaskResponse> {
     // Validate recording is active
-    const state = this.stateMachineService?.state;
+    const state = this.stateMachineService?.getSnapshot?.();
     if (state && !guards.recordingActive({context: state.context})) {
       const error = new Error('Recording is not active or already paused');
       LoggerProxy.error('Pause recording operation not allowed', {
@@ -436,7 +321,7 @@ export default class Voice extends Task implements IVoice {
     resumeRecordingPayload?: ResumeRecordingPayload
   ): Promise<TaskResponse> {
     // Validate recording is paused
-    const state = this.stateMachineService?.state;
+    const state = this.stateMachineService?.getSnapshot?.();
     if (state && !guards.recordingPaused({context: state.context})) {
       const error = new Error('Recording is not paused');
       LoggerProxy.error('Resume recording operation not allowed', {
@@ -510,7 +395,7 @@ export default class Voice extends Task implements IVoice {
    * */
   public async consult(consultPayload?: ConsultPayload): Promise<TaskResponse> {
     // Validate consult is allowed
-    const state = this.stateMachineService?.state;
+    const state = this.stateMachineService?.getSnapshot?.();
     const canConsult =
       state && (state.matches(TaskState.CONNECTED) || state.matches(TaskState.HELD));
 
