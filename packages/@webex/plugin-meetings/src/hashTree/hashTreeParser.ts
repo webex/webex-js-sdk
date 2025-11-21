@@ -705,7 +705,7 @@ class HashTreeParser {
 
     // first find out if there are any visible data set changes - they're signalled in SELF object updates
     const selfUpdates = (message.locusStateElements || []).filter((object) =>
-      // todo: once Locus supports it, we will filter for "Metadata" type here instead of "self"
+      // todo: SPARK-744859 once Locus supports it, we will filter for "Metadata" type here instead of "self"
       isSelf(object)
     );
 
