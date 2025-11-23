@@ -276,6 +276,31 @@ export type AgentResponse = {
  */
 export type DesktopProfileResponse = {
   /**
+   * Unique identifier of the agent profile configuration.
+   */
+  id: string;
+
+  /**
+   * Display name for the agent profile.
+   */
+  name: string;
+
+  /**
+   * Description of the agent profile.
+   */
+  description: string;
+
+  /**
+   * Parent entity type for the profile (for example ORGANIZATION).
+   */
+  parentType: string;
+
+  /**
+   * Indicates whether screen pop is enabled.
+   */
+  screenPopup: boolean;
+
+  /**
    * Represents the voice options of an agent.
    */
   loginVoiceOptions: LoginOption[];
@@ -316,6 +341,11 @@ export type DesktopProfileResponse = {
   autoWrapUp: boolean;
 
   /**
+   * Whether the agent personal greeting is enabled.
+   */
+  agentPersonalGreeting: boolean;
+
+  /**
    * Auto answer allowed.
    */
   autoAnswer: boolean;
@@ -334,6 +364,36 @@ export type DesktopProfileResponse = {
    * Allow auto wrap-up extension.
    */
   allowAutoWrapUpExtension: boolean;
+
+  /**
+   * Access control for queues assigned to the agent (ALL or SPECIFIC).
+   */
+  accessQueue: string;
+
+  /**
+   * Queue identifiers available to the agent when access is SPECIFIC.
+   */
+  queues: string[];
+
+  /**
+   * Access control for entry points assigned to the agent.
+   */
+  accessEntryPoint: string;
+
+  /**
+   * Entry point identifiers available to the agent when access is SPECIFIC.
+   */
+  entryPoints: string[];
+
+  /**
+   * Access control for buddy teams assigned to the agent.
+   */
+  accessBuddyTeam: string;
+
+  /**
+   * Buddy team identifiers available to the agent when access is SPECIFIC.
+   */
+  buddyTeams: string[];
 
   /**
    * Outdial enabled for the agent.
@@ -379,6 +439,11 @@ export type DesktopProfileResponse = {
   agentDNValidation: string;
 
   /**
+   * Additional DN validation criteria configured for the agent.
+   */
+  agentDNValidationCriterions: string[];
+
+  /**
    * Dial plans of the agent.
    */
   dialPlans: string[];
@@ -412,6 +477,31 @@ export type DesktopProfileResponse = {
    * State synchronization in Webex enabled or not.
    */
   stateSynchronizationWebex: boolean;
+
+  /**
+   * Threshold rules configured for the agent profile.
+   */
+  thresholdRules: Array<Record<string, unknown>>;
+
+  /**
+   * Whether the agent profile is currently active.
+   */
+  active: boolean;
+
+  /**
+   * Whether this profile is the system default.
+   */
+  systemDefault: boolean;
+
+  /**
+   * Timestamp when the profile was created.
+   */
+  createdTime: number;
+
+  /**
+   * Timestamp when the profile was last updated.
+   */
+  lastUpdatedTime: number;
 };
 
 /**

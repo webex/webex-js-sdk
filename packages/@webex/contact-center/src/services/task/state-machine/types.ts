@@ -136,6 +136,8 @@ export interface UIControlConfig {
   channelType: 'voice' | 'digital';
   /** Optional voice channel variant to toggle WebRTC-specific controls */
   voiceVariant?: 'pstn' | 'webrtc';
+  /** Whether recording controls should be shown for this task */
+  isRecordingEnabled: boolean;
 }
 
 /**
@@ -164,9 +166,9 @@ export interface TaskContext {
   consultDestination: string | null;
   consultDestinationAgentJoined: boolean;
 
-  // Recording tracking
-  recordingActive: boolean;
-  recordingPaused: boolean;
+  // Recording tracking derived from task data
+  recordingControlsAvailable: boolean;
+  recordingInProgress: boolean;
 
   // UI Control configuration (set at task creation)
   uiControlConfig: UIControlConfig;

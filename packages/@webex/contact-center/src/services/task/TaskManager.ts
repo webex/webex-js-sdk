@@ -14,6 +14,7 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
 import {TaskEvent, type TaskEventPayload} from './state-machine';
+import {normalizeTaskData} from './taskDataNormalizer';
 /** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -205,6 +206,12 @@ export default class TaskManager extends EventEmitter {
   private registerTaskListeners() {
     this.webSocketManager.on('message', (event) => {
       const payload = JSON.parse(event);
+      if (payload?.keepalive === 'true' || payload?.keepalive === true) {
+        return;
+      }
+      if (payload?.data?.interaction) {
+        payload.data = normalizeTaskData(payload.data);
+      }
       // Re-emit the task events to the task object
       let task: ITask;
       if (payload.data?.type) {

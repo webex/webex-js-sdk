@@ -507,6 +507,125 @@ export enum TASK_EVENTS {
  * Contains comprehensive details about an ongoing customer interaction
  * @public
  */
+export interface CallAssociatedDatum {
+  /** Whether the field can be edited by the agent */
+  agentEditable: boolean;
+  /** Whether the field is visible to the agent */
+  agentViewable: boolean;
+  /** Display name for the field */
+  displayName: string;
+  /** Whether the field is global */
+  global: boolean;
+  /** Whether the field is secure */
+  isSecure: boolean;
+  /** Internal field name */
+  name: string;
+  /** Whether the field is reportable */
+  reportable: boolean;
+  /** Secure key identifier */
+  secureKeyId: string;
+  /** Secure key version */
+  secureKeyVersion: number;
+  /** Data type of the field */
+  type: string;
+  /** Field value */
+  value: string;
+}
+
+export type CallAssociatedData = Record<string, CallAssociatedDatum>;
+
+export type CallAssociatedDetails = Record<string, string>;
+
+export interface FlowParameter {
+  /** Parameter name */
+  name?: string;
+  /** Additional qualifier */
+  qualifier?: string;
+  /** Description of the parameter */
+  description?: string;
+  /** Data type of the value */
+  valueDataType?: string;
+  /** Value associated with the parameter */
+  value?: string;
+}
+
+export interface InteractionParticipant {
+  /** Unique participant identifier */
+  id: string;
+  /** Participant type label used by backend */
+  pType: string;
+  /** Friendly participant type */
+  type: string;
+  /** Whether the participant has joined */
+  hasJoined: boolean;
+  /** Whether the participant has left */
+  hasLeft: boolean;
+  /** Whether the participant is still in pre-dial */
+  isInPredial: boolean;
+  /** Optional caller identifier */
+  callerId?: string | null;
+  /** Whether auto-answer is enabled */
+  autoAnswerEnabled?: boolean;
+  /** Backchannel/bnr details */
+  bnrDetails?: unknown;
+  /** Channel identifier for the participant */
+  channelId?: string;
+  /** Current consult state */
+  consultState?: string | null;
+  /** Timestamp when consult started */
+  consultTimestamp?: number | null;
+  /** Current participant state */
+  currentState?: string | null;
+  /** Timestamp of the current state */
+  currentStateTimestamp?: number | null;
+  /** Device call identifier */
+  deviceCallId?: string | null;
+  /** Device identifier */
+  deviceId?: string | null;
+  /** Device type (AGENT_DN, BROWSER, etc.) */
+  deviceType?: string | null;
+  /** Dial number associated with participant */
+  dn?: string | null;
+  /** Whether participant is currently consulted */
+  isConsulted?: boolean;
+  /** Whether participant offer is active */
+  isOffered?: boolean;
+  /** Whether participant is in wrap-up */
+  isWrapUp?: boolean;
+  /** Whether participant completed wrap-up */
+  isWrappedUp?: boolean;
+  /** Timestamp of when participant joined */
+  joinTimestamp?: number | null;
+  /** Last updated timestamp */
+  lastUpdated?: number | null;
+  /** Friendly name of participant */
+  name?: string | null;
+  /** Queue identifier associated with participant */
+  queueId?: string;
+  /** Queue manager identifier */
+  queueMgrId?: string;
+  /** Session identifier */
+  sessionId?: string;
+  /** Site identifier */
+  siteId?: string;
+  /** Skill identifier */
+  skillId?: string | null;
+  /** Skill name */
+  skillName?: string | null;
+  /** Skill list for participant */
+  skills?: string[];
+  /** Team identifier */
+  teamId?: string;
+  /** Team name */
+  teamName?: string;
+  /** Timestamp for wrap-up */
+  wrapUpTimestamp?: number | null;
+  /** Additional metadata */
+  [key: string]: unknown;
+}
+
+export type InteractionParticipants = Record<string, InteractionParticipant>;
+
 export type Interaction = {
   /** Indicates if the interaction is managed by Flow Control */
   isFcManaged: boolean;
@@ -521,7 +640,11 @@ export type Interaction = {
   /** Current virtual team handling the interaction */
   currentVTeam: string;
   /** List of participants in the interaction */
-  participants: any; // TODO: Define specific participant type
+  participants: InteractionParticipants;
+  /** Detailed call associated data */
+  callAssociatedData?: CallAssociatedData;
+  /** Simplified call associated key/value pairs */
+  callAssociatedDetails?: CallAssociatedDetails;
   /** Unique identifier for the interaction */
   interactionId: string;
   /** Organization identifier */
@@ -530,7 +653,18 @@ export type Interaction = {
   createdTimestamp?: number;
   /** Indicates if wrap-up assistance is enabled */
   isWrapUpAssist?: boolean;
-  /** Detailed call processing information and metadata */
+  /** Identifier of parent interaction if applicable */
+  parentInteractionId?: string;
+  /** Indicates if media is forked for this interaction */
+  isMediaForked?: boolean;
+  /** Retroactive flow properties returned by backend */
+  flowProperties?: Record<string, unknown> | null;
+  /** Media specific properties returned by backend */
+  mediaProperties?: Record<string, unknown> | null;
+  /**
+   * Detailed call processing information and metadata.
+   * Mirrors the callProcessingDetails section described in Webex Contact Center Agent Contact payloads.
+   */
   callProcessingDetails: {
     /** Name of the Queue Manager handling this interaction */
     QMgrName: string;
@@ -548,20 +682,24 @@ export type Interaction = {
     QueueId: string;
     /** Virtual team identifier */
     vteamId: string;
-    /** Indicates if pause/resume functionality is enabled */
-    pauseResumeEnabled?: string;
+    /** Agent capability for pause/resume on this interaction */
+    pauseResumeEnabled?: boolean;
     /** Duration of pause in seconds */
     pauseDuration?: string;
-    /** Indicates if the interaction is currently paused */
-    isPaused?: string;
-    /** Indicates if recording is in progress */
-    recordInProgress?: string;
-    /** Indicates if recording has started */
-    recordingStarted?: string;
+    /** Legacy pause indicator (recordInProgress=false is the active pause signal) */
+    isPaused?: boolean;
+    /** Recording is actively capturing audio right now */
+    recordInProgress?: boolean;
+    /** Recording was started for this interaction (may be paused) */
+    recordingStarted?: boolean;
+    /** Customer geographic region */
+    customerRegion?: string;
+    /** Flow tag identifier */
+    flowTagId?: string;
     /** Indicates if Consult to Queue is in progress */
-    ctqInProgress?: string;
+    ctqInProgress?: boolean;
     /** Indicates if outdial transfer to queue is enabled */
-    outdialTransferToQueueEnabled?: string;
+    outdialTransferToQueueEnabled?: boolean;
     /** IVR conversation transcript */
     convIvrTranscript?: string;
     /** Customer's name */
@@ -649,6 +787,8 @@ export type Interaction = {
   };
   /** Main interaction identifier for related interactions */
   mainInteractionId?: string;
+  /** Timestamp when interaction entered queue */
+  queuedTimestamp?: number | null;
   /** Media-specific information for the interaction */
   media: Record<
     string,
@@ -672,38 +812,27 @@ export type Interaction = {
   /** Owner of the interaction */
   owner: string;
   /** Primary media channel for the interaction */
-  mediaChannel: MEDIA_CHANNEL;
+  mediaChannel: string;
   /** Direction information for the contact */
   contactDirection: {type: string};
   /** Type of outbound interaction */
   outboundType?: string;
+  /** Optional workflow manager identifier */
+  workflowManager?: string | null;
   /** Parameters passed through the call flow */
-  callFlowParams: Record<
-    string,
-    {
-      /** Name of the parameter */
-      name: string;
-      /** Qualifier for the parameter */
-      qualifier: string;
-      /** Description of the parameter */
-      description: string;
-      /** Data type of the parameter value */
-      valueDataType: string;
-      /** Value of the parameter */
-      value: string;
-    }
-  >;
+  callFlowParams?: Record<string, FlowParameter>;
 };
 
 /**
- * Task payload containing detailed information about a contact center task
- * This structure encapsulates all relevant data for task management
+ * Task payload mirroring the Agent Contact event payload from Webex Contact Center
+ * (developer.webex.com). Arrives on AGENT_* websocket events and is the source of truth
+ * for UI/state machine updates.
  * @public
  */
 export type TaskData = {
-  /** Unique identifier for the media resource handling this task */
+  /** Primary media resource identifier for the active leg (matches interaction.media[].mediaResourceId) */
   mediaResourceId: string;
-  /** Type of event that triggered this task data */
+  /** Agent event name from the websocket stream (e.g., AGENT_CONTACT_ASSIGNED) */
   eventType: string;
   /** Timestamp when the event occurred */
   eventTime?: number;
@@ -713,7 +842,7 @@ export type TaskData = {
   destAgentId: string;
   /** Unique tracking identifier for the task */
   trackingId: string;
-  /** Media resource identifier for consultation operations */
+  /** Media resource identifier for consultation leg when present */
   consultMediaResourceId: string;
   /** Detailed interaction information */
   interaction: Interaction;
@@ -725,7 +854,7 @@ export type TaskData = {
   toOwner?: boolean;
   /** Identifier for child interaction in consult/transfer scenarios */
   childInteractionId?: string;
-  /** Unique identifier for the interaction */
+  /** Interaction/contact identifier from backend (same as interaction.interactionId) */
   interactionId: string;
   /** Organization identifier */
   orgId: string;
@@ -735,7 +864,7 @@ export type TaskData = {
   queueMgr: string;
   /** Name of the queue where task is queued */
   queueName?: string;
-  /** Type of the task */
+  /** Task/interaction type returned by the platform (routing/monitoring/etc.) */
   type: string;
   /** Timeout value for RONA (Redirection on No Answer) in seconds */
   ronaTimeout?: number;

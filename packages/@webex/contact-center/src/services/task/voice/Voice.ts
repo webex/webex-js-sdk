@@ -22,6 +22,7 @@ export type VoiceUIControlOptions = {
   isEndCallEnabled?: boolean;
   isEndConsultEnabled?: boolean;
   voiceVariant?: 'pstn' | 'webrtc';
+  isRecordingEnabled?: boolean;
 };
 
 export default class Voice extends Task implements IVoice {
@@ -35,6 +36,7 @@ export default class Voice extends Task implements IVoice {
       isEndCallEnabled: callOptions.isEndCallEnabled ?? true,
       isEndConsultEnabled: callOptions.isEndConsultEnabled ?? true,
       voiceVariant: callOptions.voiceVariant ?? 'pstn',
+      isRecordingEnabled: callOptions.isRecordingEnabled ?? true,
     });
   }
 

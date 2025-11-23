@@ -13,6 +13,7 @@ export default class Digital extends Task implements IDigital {
       channelType: 'digital',
       isEndCallEnabled: true,
       isEndConsultEnabled: false,
+      isRecordingEnabled: false,
     });
   }
 

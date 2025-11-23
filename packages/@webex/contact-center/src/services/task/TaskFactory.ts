@@ -19,17 +19,20 @@ export default class TaskFactory {
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
     const {isEndCallEnabled, isEndConsultEnabled} = configFlags;
+    const recordingEnabled = data?.interaction?.callProcessingDetails?.pauseResumeEnabled ?? true;
+    const voiceControlOptions = {
+      isEndCallEnabled,
+      isEndConsultEnabled,
+      isRecordingEnabled: recordingEnabled,
+    };
 
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:
         if (webCallingService.loginOption === 'BROWSER') {
-          return new WebRTC(contact, webCallingService, data);
+          return new WebRTC(contact, webCallingService, data, voiceControlOptions);
         }
 
-        return new Voice(contact, data, {
-          isEndCallEnabled,
-          isEndConsultEnabled,
-        });
+        return new Voice(contact, data, voiceControlOptions);
 
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:

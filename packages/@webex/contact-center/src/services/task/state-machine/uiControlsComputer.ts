@@ -10,6 +10,18 @@
 import {TaskData, TaskUIControls} from '../types';
 import {TaskState, TaskContext, UIControlConfig} from './types';
 
+type RecordingControlState = {
+  available: boolean;
+  inProgress: boolean;
+};
+
+function getRecordingControlState(context: TaskContext): RecordingControlState {
+  return {
+    available: Boolean(context.recordingControlsAvailable),
+    inProgress: Boolean(context.recordingInProgress),
+  };
+}
+
 /**
  * Get default UI controls (all hidden/disabled)
  */
@@ -53,6 +65,9 @@ function computeVoiceUIControls(
   const taskData = context.taskData ?? fallbackTaskData ?? null;
   const isConsultedAgent = Boolean(taskData?.isConsulted);
   const isTerminated = taskData?.interaction?.isTerminated ?? false;
+  const {available: recordingAvailable, inProgress: recordingInProgress} =
+    getRecordingControlState(context);
+  const recordingFeatureEnabled = config.channelType === 'voice' && config.isRecordingEnabled;
   const shouldShowAcceptDecline = isWebrtc
     ? isOffered && !isTerminated && (!isConsulting || !isConsultedAgent)
     : isOffered;
@@ -120,8 +135,8 @@ function computeVoiceUIControls(
 
     // Recording controls: based on recording state
     recording: {
-      isVisible: isConnected || isHeld,
-      isEnabled: !context.recordingPaused,
+      isVisible: recordingAvailable && recordingFeatureEnabled && (isConnected || isHeld),
+      isEnabled: recordingAvailable && recordingFeatureEnabled && recordingInProgress,
     },
 
     // Conference button: visible during consulting

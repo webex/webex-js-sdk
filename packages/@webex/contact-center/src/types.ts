@@ -574,6 +574,11 @@ export type ConfigFlags = {
   isEndConsultEnabled: boolean;
   webRtcEnabled: boolean;
   autoWrapup: boolean;
+  /**
+   * Optional toggle to globally enable/disable recording controls.
+   * Falls back to backend hints when omitted.
+   */
+  isRecordingEnabled?: boolean;
 };
 
 /**

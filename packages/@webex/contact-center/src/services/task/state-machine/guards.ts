@@ -37,13 +37,13 @@ export const guards = {
    * Check if recording is active
    */
   recordingActive: ({context}: GuardParams): boolean => {
-    return context.recordingActive && !context.recordingPaused;
+    return context.recordingControlsAvailable && context.recordingInProgress;
   },
 
   /**
    * Check if recording is paused
    */
   recordingPaused: ({context}: GuardParams): boolean => {
-    return context.recordingActive && context.recordingPaused;
+    return context.recordingControlsAvailable && !context.recordingInProgress;
   },
 };

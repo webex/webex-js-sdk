@@ -39,8 +39,8 @@ export function createInitialContext(
     consultInitiator: false,
     consultDestination: null,
     consultDestinationAgentJoined: false,
-    recordingActive: false,
-    recordingPaused: false,
+    recordingControlsAvailable: false,
+    recordingInProgress: false,
     uiControlConfig,
     uiControls: getDefaultUIControls(),
   };
@@ -74,10 +74,7 @@ export const actions = {
    */
   initializeTask: assign((context: TaskContext, event: TaskEventPayload) => {
     if (isEventOfType(event, TaskEvent.OFFER) || isEventOfType(event, TaskEvent.OFFER_CONSULT)) {
-      return {
-        taskData: event.taskData,
-        ...deriveRecordingState(event.taskData),
-      };
+      return deriveTaskDataUpdates(context, event.taskData);
     }
 
     return {};
@@ -88,16 +85,10 @@ export const actions = {
    */
   updateTaskData: assign((context: TaskContext, event: TaskEventPayload) => {
     if (isEventOfType(event, TaskEvent.ASSIGN)) {
-      return {
-        taskData: event.taskData,
-        ...deriveRecordingState(event.taskData),
-      };
+      return deriveTaskDataUpdates(context, event.taskData);
     }
     if (isEventOfType(event, TaskEvent.CONSULT_CREATED)) {
-      return {
-        taskData: event.taskData,
-        ...deriveRecordingState(event.taskData),
-      };
+      return deriveTaskDataUpdates(context, event.taskData);
     }
 
     return {};
@@ -142,12 +133,14 @@ export const actions = {
   setRecordingState: assign((context: TaskContext, event: TaskEventPayload) => {
     if (isEventOfType(event, TaskEvent.PAUSE_RECORDING)) {
       return {
-        recordingPaused: true,
+        recordingControlsAvailable: true,
+        recordingInProgress: false,
       };
     }
     if (isEventOfType(event, TaskEvent.RESUME_RECORDING)) {
       return {
-        recordingPaused: false,
+        recordingControlsAvailable: true,
+        recordingInProgress: true,
       };
     }
 
@@ -204,8 +197,8 @@ export const actions = {
    * Mark task as ended (currently no-op placeholder)
    */
   markEnded: assign(() => ({
-    recordingActive: false,
-    recordingPaused: false,
+    recordingControlsAvailable: false,
+    recordingInProgress: false,
   })),
 
   /**
@@ -216,26 +209,9 @@ export const actions = {
   },
 };
 
-type RecordingStateUpdate = Partial<Pick<TaskContext, 'recordingActive' | 'recordingPaused'>>;
-
-const parseBooleanFlag = (value?: string | boolean | null): boolean | undefined => {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.toLowerCase();
-
-    if (normalized === 'true') {
-      return true;
-    }
-    if (normalized === 'false') {
-      return false;
-    }
-  }
-
-  return undefined;
-};
+type RecordingStateUpdate = Partial<
+  Pick<TaskContext, 'recordingControlsAvailable' | 'recordingInProgress'>
+>;
 
 const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate => {
   const callProcessingDetails = taskData?.interaction?.callProcessingDetails;
@@ -245,30 +221,36 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
   }
 
   const update: RecordingStateUpdate = {};
-  const recordInProgress = parseBooleanFlag(
-    callProcessingDetails.recordInProgress ?? callProcessingDetails.recordingStarted
-  );
-  const isPaused = parseBooleanFlag(callProcessingDetails.isPaused);
+  const {recordingStarted, recordInProgress} = callProcessingDetails;
 
-  if (typeof recordInProgress !== 'undefined') {
-    update.recordingActive = recordInProgress;
-    if (!recordInProgress) {
-      update.recordingPaused = false;
-    } else if (typeof isPaused === 'undefined') {
-      update.recordingPaused = false;
+  if (recordingStarted !== undefined) {
+    update.recordingControlsAvailable = recordingStarted;
+    if (!recordingStarted) {
+      update.recordingInProgress = false;
     }
   }
 
-  if (typeof isPaused !== 'undefined') {
-    update.recordingPaused = isPaused;
+  if (recordInProgress !== undefined) {
+    update.recordingControlsAvailable = recordInProgress || recordingStarted || false;
+    update.recordingInProgress = recordInProgress;
+  }
 
-    if (isPaused) {
-      update.recordingActive = true;
-    }
+  if (
+    update.recordingControlsAvailable === undefined &&
+    update.recordingInProgress === undefined &&
+    recordingStarted
+  ) {
+    update.recordingControlsAvailable = true;
+    update.recordingInProgress = true;
   }
 
   return update;
 };
+
+const deriveTaskDataUpdates = (_context: TaskContext, taskData: TaskData) => ({
+  taskData,
+  ...deriveRecordingState(taskData),
+});
 
 /**
  * Helper to create action implementations that will be used by Task/Voice classes
