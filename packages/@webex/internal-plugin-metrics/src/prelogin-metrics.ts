@@ -1,34 +1,6 @@
 import GenericMetrics from './generic-metrics';
-import {EventPayload, Table} from './metrics.types';
+import {BusinessEvent, EventPayload} from './metrics.types';
 import PreLoginMetricsBatcher from './prelogin-metrics-batcher';
-
-/**
- * Builds a formatted event object for metrics submission.
- * @param {string} name - Metric name
- * @param {string} preLoginId - Pre-login user identifier
- * @param {EventPayload} payload - Metric payload data
- * @param {EventPayload} metadata - Additional metadata to include in the event
- * @returns {object} Formatted metrics event object with type, eventPayload, and timestamp
- */
-function buildEvent(
-  name: string,
-  preLoginId: string,
-  payload: EventPayload,
-  metadata: EventPayload
-) {
-  const payloadWithPreLoginId = {...payload, preLoginId};
-
-  return {
-    type: ['business'],
-    eventPayload: {
-      key: name,
-      client_timestamp: new Date().toISOString(),
-      preLoginId,
-      ...metadata,
-      value: payloadWithPreLoginId,
-    },
-  };
-}
 
 /**
  * @description Util class to handle PreLogin Metrics
@@ -36,20 +8,22 @@ function buildEvent(
  * @class PreLoginMetrics
  */
 export default class PreLoginMetrics extends GenericMetrics {
-  // @ts-ignore
-  private preLoginMetricsBatcher: PreLoginMetricsBatcher;
+  private preLoginMetricsBatcher: typeof PreLoginMetricsBatcher;
 
   /**
    * Constructor
-   * @param {any[]} args - Constructor arguments
+   * @param {PreLoginMetricsBatcher} preLoginMetricsBatcher - Pre-login metrics batcher
+   * @param {any} attrs - Attributes
+   * @param {any} options - Options
    * @constructor
    */
-  constructor(...args) {
-    super(...args);
-    // @ts-ignore
-    this.logger = this.webex.logger;
-    // @ts-ignore
-    this.preLoginMetricsBatcher = new PreLoginMetricsBatcher({}, {parent: this.webex});
+  constructor(
+    preLoginMetricsBatcher: typeof PreLoginMetricsBatcher,
+    attrs: any = {},
+    options: {parent?: any} = {}
+  ) {
+    super(attrs, options);
+    this.preLoginMetricsBatcher = preLoginMetricsBatcher;
   }
 
   /**
@@ -81,10 +55,40 @@ export default class PreLoginMetrics extends GenericMetrics {
       metadata.appType = 'Web Client';
     }
 
-    const finalEvent = buildEvent(name, preLoginId, payload, metadata);
+    const finalEvent = this.buildEvent(name, preLoginId, payload, metadata);
 
     this.preLoginMetricsBatcher.savePreLoginId(preLoginId);
 
     return this.preLoginMetricsBatcher.request(finalEvent);
+  }
+
+  /**
+   * Builds a formatted event object for metrics submission.
+   * @param {string} metricName - Metric name
+   * @param {string} preLoginId - Pre-login user identifier
+   * @param {EventPayload} payload - Metric payload data
+   * @param {EventPayload} metadata - Additional metadata to include in the event
+   * @returns {object} Formatted metrics event object with type, eventPayload, and timestamp
+   */
+  private buildEvent(
+    metricName: string,
+    preLoginId: string,
+    payload: EventPayload,
+    metadata: EventPayload
+  ): BusinessEvent {
+    return {
+      type: ['business'],
+      eventPayload: {
+        metricName,
+        browserDetails: this.getBrowserDetails(),
+        context: this.getContext(),
+        timestamp: new Date().getTime(),
+        value: {
+          preLoginId,
+          ...metadata,
+          ...payload,
+        },
+      },
+    };
   }
 }

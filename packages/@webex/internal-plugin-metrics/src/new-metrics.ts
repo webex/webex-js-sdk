@@ -10,6 +10,7 @@ import BehavioralMetrics from './behavioral-metrics';
 import OperationalMetrics from './operational-metrics';
 import BusinessMetrics from './business-metrics';
 import PreLoginMetrics from './prelogin-metrics';
+import PreLoginMetricsBatcher from './prelogin-metrics-batcher';
 import {
   RecursivePartial,
   MetricEventProduct,
@@ -89,8 +90,13 @@ class Metrics extends WebexPlugin {
     this.webex.once('ready', () => {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
-      // @ts-ignore
-      this.preLoginMetrics = new PreLoginMetrics({}, {parent: this.webex});
+      this.preLoginMetrics = new PreLoginMetrics(
+        // @ts-ignore
+        new PreLoginMetricsBatcher({}, {parent: this.webex}),
+        {},
+        // @ts-ignore
+        {parent: this.webex}
+      );
       this.isReady = true;
       this.setDelaySubmitClientEvents({
         shouldDelay: this.delaySubmitClientEvents,
@@ -259,7 +265,7 @@ class Metrics extends WebexPlugin {
    * Call Analyzer: Pre-Login Event
    * @param args
    */
-  SubmitPreLoginEvent({
+  submitPreLoginEvent({
     name,
     preLoginId,
     payload,
