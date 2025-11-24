@@ -216,7 +216,7 @@ export default class TaskManager extends EventEmitter {
               method: METHODS.REGISTER_TASK_LISTENERS,
               interactionId: payload.data.interactionId,
             });
-            task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason ?? 'UNKNOWN_REASON');
+            task.emit(TASK_EVENTS.TASK_OUTDIAL_FAILED, payload.data.reason ?? 'UNKNOWN_REASON');
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
             task = this.updateTaskData(task, payload.data);

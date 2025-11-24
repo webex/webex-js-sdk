@@ -721,6 +721,21 @@ describe('TaskManager', () => {
     expect(removeTaskSpy).not.toHaveBeenCalled();
   });
 
+  it('should emit TASK_OUTDIAL_FAILED event on AGENT_OUTBOUND_FAILED', () => {
+    const task = taskManager.getTask(taskId);
+    task.updateTaskData = jest.fn().mockReturnValue(task);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const payload = {
+      data: {
+        type: CC_EVENTS.AGENT_OUTBOUND_FAILED,
+        interactionId: taskId,
+        reason: 'CUSTOMER_BUSY',
+      },
+    };
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_OUTDIAL_FAILED, 'CUSTOMER_BUSY');
+  });
+
   it('should remove OUTDIAL task from taskCollection on AGENT_CONTACT_ASSIGN_FAILED when NOT terminated (user-declined)', () => {
     const task = taskManager.getTask(taskId);
     task.updateTaskData = jest.fn().mockImplementation((newData) => {
