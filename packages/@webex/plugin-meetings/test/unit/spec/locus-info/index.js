@@ -2578,7 +2578,7 @@ describe('plugin-meetings', () => {
 
         assert.calledWith(locusInfo.handleLocusDelta, fakeLocus, mockMeeting);
       });
-      it('calls hash tree parser when we are using hash trees', () => {
+      it('does nothing when we are using hash trees', () => {
         const fakeLocus = {eventType: LOCUSEVENT.DIFFERENCE};
         const fakeDataSets = [{name: 'dataset1', url: 'http://test.com'}];
         const responseBody = {locus: fakeLocus, dataSets: fakeDataSets};
@@ -2593,8 +2593,8 @@ describe('plugin-meetings', () => {
 
         locusInfo.handleLocusAPIResponse(mockMeeting, responseBody);
 
-        assert.calledOnceWithExactly(mockHashTreeParser.handleLocusUpdate, responseBody);
-        assert.calledOnceWithExactly(locusInfo.onDeltaLocus, fakeLocus);
+        assert.notCalled(mockHashTreeParser.handleLocusUpdate);
+        assert.notCalled(locusInfo.onDeltaLocus);
       });
     });
 
