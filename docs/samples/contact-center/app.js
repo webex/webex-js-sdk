@@ -1013,6 +1013,12 @@ function registerTaskListeners(task) {
     showAgentStatePopup(reason);
   });
 
+  task.on('task:outdialFailed', (reason) => {
+    updateTaskList();
+    console.info('Outdial failed with reason:', reason);
+    showOutdialFailedPopup(reason);
+  });
+
   task.on('task:wrappedup', updateTaskList); // Update the task list UI to have latest tasks
 
   // Conference event listeners - Simplified approach
@@ -1817,6 +1823,31 @@ function showAgentStatePopup(reason) {
   }
 
   popup.classList.remove('hidden');
+}
+
+function showOutdialFailedPopup(reason) {
+  const outdialFailedReasonText = document.getElementById('outdialFailedReasonText');
+  
+  // Set the reason text based on the reason
+  if (reason === 'CUSTOMER_BUSY') {
+    outdialFailedReasonText.innerText = 'Customer is busy';
+  } else if (reason === 'NO_ANSWER') {
+    outdialFailedReasonText.innerText = 'No answer from customer';
+  } else if (reason === 'CALL_FAILED') {
+    outdialFailedReasonText.innerText = 'Call failed';
+  } else if (reason === 'INVALID_NUMBER') {
+    outdialFailedReasonText.innerText = 'Invalid phone number';
+  } else {
+    outdialFailedReasonText.innerText = `Outdial failed: ${reason}`;
+  }
+
+  const outdialFailedPopup = document.getElementById('outdialFailedPopup');
+  outdialFailedPopup.classList.remove('hidden');
+}
+
+function closeOutdialFailedPopup() {
+  const outdialFailedPopup = document.getElementById('outdialFailedPopup');
+  outdialFailedPopup.classList.add('hidden');
 }
 
 async function renderBuddyAgents() {
