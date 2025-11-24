@@ -214,9 +214,9 @@ export default class TaskManager extends EventEmitter {
             LoggerProxy.log(`Agent outbound failed for task`, {
               module: TASK_MANAGER_FILE,
               method: METHODS.REGISTER_TASK_LISTENERS,
-              interactionId: payload.data?.interactionId,
+              interactionId: payload.data.interactionId,
             });
-            task.emit(TASK_EVENTS.TASK_REJECT, payload?.data?.reason);
+            task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason ?? 'UNKNOWN_REASON');
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
             task = this.updateTaskData(task, payload.data);
@@ -560,9 +560,9 @@ export default class TaskManager extends EventEmitter {
       this.webCallingService.cleanUpCall();
     }
 
-    const isOutdial = task?.data?.interaction?.outboundType === 'OUTDIAL';
-    const isNew = task?.data?.interaction?.state === 'new';
-    const isTerminated = task?.data?.interaction?.isTerminated;
+    const isOutdial = task.data.interaction.outboundType === 'OUTDIAL';
+    const isNew = task.data.interaction.state === 'new';
+    const isTerminated = task.data.interaction.isTerminated;
 
     // For OUTDIAL: only remove if NOT terminated (user-declined, no wrap-up follows)
     // If terminated, keep task for wrap-up flow (CONTACT_ENDED → AGENT_WRAPUP)
