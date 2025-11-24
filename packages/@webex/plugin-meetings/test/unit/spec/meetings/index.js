@@ -1440,7 +1440,7 @@ describe('plugin-meetings', () => {
               hashTreeMessage: undefined
             });
           });
-          it('should setup the meeting by from a hash tree event', async () => {
+          it('should setup the meeting from a hash tree event', async () => {
             const locus = {
               id: uuid1,
               self: {},

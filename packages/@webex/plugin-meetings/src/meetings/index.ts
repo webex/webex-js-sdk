@@ -96,9 +96,6 @@ class MediaLogger {
   }
 }
 
-// ideally this type should be defined as a union for classic vs hash tree locus events, but existing code for classic locus events
-// is so messed up in terms of types that it's too much effort to fix it right now, so instead I've put comments to explain
-// which fields are for which type of locus event
 export type LocusEvent = {
   eventType: string;
 
