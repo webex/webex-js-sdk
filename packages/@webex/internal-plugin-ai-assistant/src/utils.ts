@@ -54,6 +54,7 @@ export const decryptScheduleMeeting = async (data, webex) => {
     decryptInPlace(data, 'value.results.data.title', 'encryptionKeyUrl', webex),
     decryptInPlace(data, 'value.results.data.inScopeReply', 'encryptionKeyUrl', webex),
     decryptInPlace(data, 'value.results.data.meetingLink', 'encryptionKeyUrl', webex),
+    decryptInPlace(data, 'value.results.data.description', 'encryptionKeyUrl', webex),
   ]);
 };
 

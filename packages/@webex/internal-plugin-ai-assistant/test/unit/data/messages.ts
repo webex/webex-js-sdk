@@ -702,6 +702,7 @@ export const scheduleMeetingResponse = [
               startTime: '2025-11-26T09:00:00Z',
               duration: '1800000',
               title: 'schedule_meeting_encrypted_title',
+              description: 'schedule_meeting_encrypted_description',
               timeZone: 'Europe/London',
               inScopeReply: 'schedule_meeting_encrypted_inScopeReply',
               meetingLink: 'schedule_meeting_encrypted_meetingLink',

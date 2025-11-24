@@ -639,6 +639,8 @@ describe('plugin-ai-assistant', () => {
           'decrypted-with-kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630-schedule_meeting_encrypted_email_1';
         expectedResult.response.content.value.results.data.title = 
           'decrypted-with-kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630-schedule_meeting_encrypted_title';
+        expectedResult.response.content.value.results.data.description = 
+          'decrypted-with-kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630-schedule_meeting_encrypted_description';
         expectedResult.response.content.value.results.data.inScopeReply = 
           'decrypted-with-kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630-schedule_meeting_encrypted_inScopeReply';
         expectedResult.response.content.value.results.data.meetingLink = 
