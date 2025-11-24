@@ -32,6 +32,7 @@ const OAUTH2_CODE_VERIFIER = 'oauth2-code-verifier';
  * Authorization plugin events
  */
 export const Events = {
+  login: 'login',
   /**
    * QR code login events
    */
@@ -262,6 +263,14 @@ const Authorization = WebexPlugin.extend({
    * @returns {Promise}
    */
   initiateLogin(options = {}) {
+    this.eventEmitter.emit(Events.login, {
+      eventType: 'initiateLogin',
+      data: {
+        hasEmail: !!options.email,
+        hasState: !!options.state
+      },
+    });
+
     options = cloneDeep(options);
 
     // Optionally compute heuristic email hash for preauth usage
@@ -304,6 +313,11 @@ const Authorization = WebexPlugin.extend({
     const loginUrl = this.webex.credentials.buildLoginUrl(
       Object.assign({response_type: 'code'}, options)
     );
+
+    this.eventEmitter.emit(Events.login, {
+      eventType: 'redirectToLoginUrl',
+      data: { loginUrl },
+    });
 
     if (options?.separateWindow) {
       // If a separate popup window is requested, combine user supplied window features
