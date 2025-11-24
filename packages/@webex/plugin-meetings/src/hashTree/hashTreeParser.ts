@@ -109,9 +109,9 @@ class HashTreeParser {
     const leafData = this.analyzeLocusHtMeta(locus);
 
     LoggerProxy.logger.info(
-      `HashTreeParser#constructor --> creating HashTreeParser for datasets: ${JSON.stringify(
-        dataSets.map((ds) => ds.name)
-      )}`
+      `HashTreeParser#constructor --> ${
+        this.debugId
+      } creating HashTreeParser for datasets: ${JSON.stringify(dataSets.map((ds) => ds.name))}`
     );
 
     for (const dataSet of dataSets) {
