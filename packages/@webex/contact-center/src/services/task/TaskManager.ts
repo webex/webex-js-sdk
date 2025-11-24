@@ -598,6 +598,17 @@ export default class TaskManager extends EventEmitter {
         method: 'handleAutoAnswer',
         interactionId: task.data.interactionId,
       });
+
+      // Track successful auto-answer
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_SUCCESS,
+        {
+          taskId: task.data.interactionId,
+          mediaType: task.data.interaction.mediaType,
+          isAutoAnswered: true,
+        },
+        ['behavioral', 'operational']
+      );
     } catch (error) {
       // Reset isAutoAnswering flag on failure
       task.updateTaskData({...task.data, isAutoAnswering: false});
@@ -607,6 +618,18 @@ export default class TaskManager extends EventEmitter {
         interactionId: task.data.interactionId,
         error,
       });
+
+      // Track auto-answer failure
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_FAILED,
+        {
+          taskId: task.data.interactionId,
+          mediaType: task.data.interaction.mediaType,
+          error: error?.message || 'Unknown error',
+          isAutoAnswered: false,
+        },
+        ['behavioral', 'operational']
+      );
     }
   }
 

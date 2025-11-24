@@ -6,7 +6,7 @@ import {
   isAutoAnswerEnabled,
   isWebRTCCall,
   isDigitalOutbound,
-  isAgentInitiatedOutdial,
+  hasAgentInitiatedOutdial,
   shouldAutoAnswerTask,
 } from '../../../../../src/services/task/TaskUtils';
 import {ITask, Interaction, TaskData} from '../../../../../src/services/task/types';
@@ -271,7 +271,7 @@ describe('TaskUtils', () => {
       });
     });
 
-    describe('isAgentInitiatedOutdial', () => {
+    describe('hasAgentInitiatedOutdial', () => {
       beforeEach(() => {
         mockInteraction.contactDirection = {type: 'OUTBOUND'};
         mockInteraction.outboundType = 'OUTDIAL';
@@ -281,32 +281,32 @@ describe('TaskUtils', () => {
       });
 
       it('should return true for agent-initiated outdial', () => {
-        expect(isAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(true);
+        expect(hasAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(true);
       });
 
       it('should return false when not outbound', () => {
         mockInteraction.contactDirection = {type: 'INBOUND'};
-        expect(isAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(false);
+        expect(hasAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(false);
       });
 
       it('should return false when not OUTDIAL type', () => {
         mockInteraction.outboundType = 'CALLBACK';
-        expect(isAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(false);
+        expect(hasAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(false);
       });
 
       it('should return false when outdialAgentId does not match', () => {
         mockInteraction.callProcessingDetails.outdialAgentId = mockOtherAgentId;
-        expect(isAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(false);
+        expect(hasAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(false);
       });
 
       it('should return false when owner does not match', () => {
         mockInteraction.owner = mockOtherAgentId;
-        expect(isAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(false);
+        expect(hasAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(false);
       });
 
       it('should return false when blind transfer is in progress', () => {
         mockInteraction.callProcessingDetails.BLIND_TRANSFER_IN_PROGRESS = true;
-        expect(isAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(false);
+        expect(hasAgentInitiatedOutdial(mockInteraction, mockAgentId)).toBe(false);
       });
     });
 

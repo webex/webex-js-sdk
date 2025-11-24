@@ -163,7 +163,7 @@ export const isDigitalOutbound = (interaction: Interaction): boolean => {
  * @param agentId - Current agent ID
  * @returns true if agent initiated the outdial, false otherwise
  */
-export const isAgentInitiatedOutdial = (interaction: Interaction, agentId: string): boolean => {
+export const hasAgentInitiatedOutdial = (interaction: Interaction, agentId: string): boolean => {
   return (
     interaction.contactDirection?.type === OUTDIAL_DIRECTION &&
     interaction.outboundType === OUTBOUND_TYPE &&
@@ -202,7 +202,7 @@ export const shouldAutoAnswerTask = (
   const autoAnswerEnabled = isAutoAnswerEnabled(interaction, agentId);
 
   // Check if this is an agent-initiated outdial
-  const agentInitiatedOutdial = isAgentInitiatedOutdial(interaction, agentId);
+  const agentInitiatedOutdial = hasAgentInitiatedOutdial(interaction, agentId);
 
   // WebRTC telephony calls
   if (isWebRTCCall(interaction, loginOption, webRtcEnabled)) {
