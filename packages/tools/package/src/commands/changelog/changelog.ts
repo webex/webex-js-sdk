@@ -15,7 +15,7 @@ import { createOrUpdateChangelog } from './changelog.utils';
  */
 const changelog: CommandsCommand<Options> = {
   /**
-   * Configuration Object for this changelog Command configuration.
+   * Configuration Object for this changelog Command configuration
    */
   config: CONSTANTS.CONFIG,
 
