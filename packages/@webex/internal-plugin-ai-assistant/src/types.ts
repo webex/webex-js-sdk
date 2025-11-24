@@ -51,4 +51,5 @@ export interface AiAssistantRequestOptions {
   assistant?: string;
   locale?: string;
   requestId?: string;
+  entryPoint?: string;
 }

@@ -113,6 +113,7 @@ export const REGISTRATION_UTIL = 'triggerRegistration';
 export const REGISTER_UTIL = 'attemptRegistrationWithServers';
 export const GET_MOBIUS_SERVERS_UTIL = 'getMobiusServers';
 export const KEEPALIVE_UTIL = 'startKeepaliveTimer';
+export const RECONNECT_ON_FAILURE_UTIL = 'reconnectOnFailure';
 export const FAILBACK_UTIL = 'executeFailback';
 export const REG_429_RETRY_UTIL = 'handle429Retry';
 export const FAILOVER_UTIL = 'startFailoverTimer';
