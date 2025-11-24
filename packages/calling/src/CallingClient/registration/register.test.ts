@@ -31,6 +31,8 @@ import {
   REG_429_RETRY_UTIL,
   REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
   SEC_TO_MSEC_MFACTOR,
+  RECONNECT_ON_FAILURE_UTIL,
+  METHODS,
 } from '../constants';
 import {ICall} from '../calling/types';
 import {LINE_EVENTS} from '../line/types';
@@ -727,6 +729,203 @@ describe('Registration Tests', () => {
     });
   });
 
+  describe('restorePreviousRegistration 429 handling tests', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.clearAllMocks();
+      jest.useRealTimers();
+    });
+
+    it('should schedule retry when 429 with retry-after < 60 seconds during reconnect', async () => {
+      restartSpy = jest.spyOn(reg, 'restartRegistration');
+      reg.setActiveMobiusUrl(mobiusUris.primary[0]);
+      const failurePayload429Small = <WebexRequestPayload>(<unknown>{
+        statusCode: 429,
+        body: RECONNECT_ON_FAILURE_UTIL,
+        headers: {
+          'retry-after': 30,
+        },
+      });
+      webex.request
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL); // This call is being used to set the retry-after value
+      // Verify restore is invoked first and retry-after captured before scheduling
+      expect(restoreSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
+      expect(restartSpy).not.toBeCalled();
+      expect(reg.retryAfter).toEqual(undefined); // Clear retryAfter after 429 retry
+
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(restartSpy).toHaveBeenCalledTimes(1);
+      expect(restartSpy).toHaveBeenCalledWith(RECONNECT_ON_FAILURE_UTIL);
+    });
+
+    it('should try backup servers when 429 with retry-after >= 60 seconds on primary during reconnect', async () => {
+      // Setup: Register successfully with primary first
+      const attemptRegistrationWithServersSpy = jest.spyOn(reg, 'attemptRegistrationWithServers');
+      reg.setActiveMobiusUrl(mobiusUris.primary[0]);
+      const failurePayload429Small = <WebexRequestPayload>(<unknown>{
+        statusCode: 429,
+        body: RECONNECT_ON_FAILURE_UTIL,
+        headers: {
+          'retry-after': 100,
+        },
+      });
+      webex.request
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL); // This call is being used to trigger the retry
+      // Verify restore gets invoked, 429 with retry-after is observed and captured
+      expect(restoreSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
+      expect(retry429Spy).toBeCalledOnceWith(100, RECONNECT_ON_FAILURE_UTIL);
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(attemptRegistrationWithServersSpy).toHaveBeenCalledTimes(2);
+      expect(attemptRegistrationWithServersSpy).toHaveBeenNthCalledWith(
+        1,
+        RECONNECT_ON_FAILURE_UTIL,
+        [mobiusUris.primary[0]]
+      );
+      // Immediately try backup servers when retry-after >= 60 seconds on primary
+      expect(attemptRegistrationWithServersSpy).toHaveBeenNthCalledWith(
+        2,
+        RECONNECT_ON_FAILURE_UTIL,
+        mobiusUris.backup
+      );
+      expect(restartSpy).not.toHaveBeenCalledTimes(1);
+      expect(restartSpy).not.toHaveBeenCalledWith(RECONNECT_ON_FAILURE_UTIL);
+      expect(reg.retryAfter).toEqual(undefined); // Clear retryAfter after 429 retry
+    });
+    it('should restart registration with primary if we get 429 while on backup', async () => {
+      // Setup: Register successfully with primary first
+      restartSpy = jest.spyOn(reg, 'restartRegistration');
+      const attemptRegistrationWithServersSpy = jest.spyOn(reg, 'attemptRegistrationWithServers');
+      reg.setActiveMobiusUrl(mobiusUris.backup[0]);
+      const failurePayload429Small = <WebexRequestPayload>(<unknown>{
+        statusCode: 429,
+        body: RECONNECT_ON_FAILURE_UTIL,
+        headers: {
+          'retry-after': 100,
+        },
+      });
+      webex.request
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload)
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL); // This call is being used to trigger the retry
+      // Verify restore path taken first and 429 handling captured
+      expect(restoreSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
+      expect(retry429Spy).toBeCalledOnceWith(100, RECONNECT_ON_FAILURE_UTIL);
+      // No failover scheduling expected in this path
+      expect(failoverSpy).not.toBeCalled();
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(attemptRegistrationWithServersSpy).toHaveBeenCalledTimes(2);
+      expect(attemptRegistrationWithServersSpy).toHaveBeenNthCalledWith(
+        1,
+        RECONNECT_ON_FAILURE_UTIL,
+        [mobiusUris.backup[0]]
+      );
+      // Immediately try primary servers when retry-after >= 60 seconds on backup
+      expect(restartSpy).toHaveBeenCalledTimes(1);
+      expect(restartSpy).toHaveBeenCalledWith(RECONNECT_ON_FAILURE_UTIL);
+      expect(attemptRegistrationWithServersSpy).toHaveBeenNthCalledWith(
+        2,
+        RECONNECT_ON_FAILURE_UTIL,
+        [mobiusUris.primary[0]]
+      );
+    });
+  });
+
+  describe('handleConnectionRestoration 429 handling tests', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.clearAllMocks();
+      jest.useRealTimers();
+    });
+
+    it('should schedule retry when 429 with retry-after < 60 seconds during handleConnectionRestoration', async () => {
+      reg.setActiveMobiusUrl(mobiusUris.primary[0]);
+      const failurePayload429Small = <WebexRequestPayload>(<unknown>{
+        statusCode: 429,
+        body: RECONNECT_ON_FAILURE_UTIL,
+        headers: {
+          'retry-after': 30,
+        },
+      });
+      webex.request
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload)
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.handleConnectionRestoration(true);
+      expect(restoreSpy).toBeCalledOnceWith(METHODS.HANDLE_CONNECTION_RESTORATION);
+      expect(restartSpy).not.toBeCalled();
+      expect(reg.retryAfter).toEqual(undefined); // Clear retryAfter after 429 retry
+
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(restartSpy).toHaveBeenCalledTimes(1);
+      expect(restartSpy).toHaveBeenCalledWith(METHODS.HANDLE_CONNECTION_RESTORATION);
+    });
+
+    it('should try backup servers when 429 with retry-after >= 60 seconds on primary during handleConnectionRestoration', async () => {
+      const attemptRegistrationWithServersSpy = jest.spyOn(reg, 'attemptRegistrationWithServers');
+      reg.setActiveMobiusUrl(mobiusUris.primary[0]);
+      const failurePayload429Small = <WebexRequestPayload>(<unknown>{
+        statusCode: 429,
+        body: RECONNECT_ON_FAILURE_UTIL,
+        headers: {
+          'retry-after': 100,
+        },
+      });
+      webex.request
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload)
+        .mockRejectedValueOnce(failurePayload429Small)
+        .mockResolvedValueOnce(successPayload);
+
+      await reg.handleConnectionRestoration(true);
+      expect(restoreSpy).toBeCalledOnceWith(METHODS.HANDLE_CONNECTION_RESTORATION);
+      expect(retry429Spy).toBeCalledOnceWith(100, METHODS.HANDLE_CONNECTION_RESTORATION);
+      jest.advanceTimersByTime(40 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(attemptRegistrationWithServersSpy).toHaveBeenCalledTimes(2);
+      expect(attemptRegistrationWithServersSpy).toHaveBeenNthCalledWith(
+        1,
+        METHODS.HANDLE_CONNECTION_RESTORATION,
+        [mobiusUris.primary[0]]
+      );
+      // Immediately try backup servers when retry-after >= 60 seconds on primary
+      expect(attemptRegistrationWithServersSpy).toHaveBeenNthCalledWith(
+        2,
+        METHODS.HANDLE_CONNECTION_RESTORATION,
+        mobiusUris.backup
+      );
+      expect(restartSpy).not.toHaveBeenCalledTimes(1);
+      expect(restartSpy).not.toHaveBeenCalledWith(METHODS.HANDLE_CONNECTION_RESTORATION);
+    });
+  });
+
   describe('Registration failover tests', () => {
     it('verify unreachable primary with reachable backup servers', async () => {
       jest.useFakeTimers();
@@ -872,7 +1071,10 @@ describe('Registration Tests', () => {
       // delete should be successful
       global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
 
-      postRegistrationSpy.mockRejectedValue(failurePayload429Two);
+      // Mock to fail twice with 429 (once for executeFailback, once for restorePreviousRegistration)
+      postRegistrationSpy
+        .mockRejectedValueOnce(failurePayload429Two)
+        .mockRejectedValueOnce(failurePayload429Two);
 
       /* Wait for failback to be triggered. */
       jest.advanceTimersByTime(
@@ -892,11 +1094,14 @@ describe('Registration Tests', () => {
         failurePayload429Two.headers['retry-after'],
         'executeFailback'
       );
-      expect(reg.failback429RetryAttempts).toBe(0);
+      // After handling 429 during failback, the counter is incremented to 1
+      expect(reg.failback429RetryAttempts).toBe(1);
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(restoreSpy).toBeCalledOnceWith(REG_429_RETRY_UTIL);
-      expect(restartSpy).toBeCalledOnceWith(REG_429_RETRY_UTIL);
-      expect(reg.failbackTimer).toBe(undefined);
+      // restartRegistration is not called immediately because 429 with retry-after < 60
+      // schedules a delayed retry instead
+      expect(restartSpy).not.toBeCalled();
+      expect(reg.failbackTimer).not.toBe(undefined); // Timer is set in handle429Retry
       expect(reg.rehomingIntervalMin).toBe(DEFAULT_REHOMING_INTERVAL_MIN);
       expect(reg.rehomingIntervalMax).toBe(DEFAULT_REHOMING_INTERVAL_MAX);
     });
@@ -1154,9 +1359,9 @@ describe('Registration Tests', () => {
 
       expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
       expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
-      expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
-      expect(restoreSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
-      expect(restartRegSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(reconnectSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
+      expect(restoreSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
+      expect(restartRegSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
 
       jest.useRealTimers();
 
@@ -1188,7 +1393,7 @@ describe('Registration Tests', () => {
       await flushPromises();
 
       expect(reg.webWorker).toBeUndefined();
-      expect(reconnectSpy).toBeCalledOnceWith(reg.startKeepaliveTimer.name);
+      expect(reconnectSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
 
       webex.request.mockResolvedValueOnce(successPayload);
       await reg.triggerRegistration();
@@ -1206,8 +1411,8 @@ describe('Registration Tests', () => {
       expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
       // reconnectSpy should have been called only once.
       expect(reconnectSpy).toBeCalledTimes(1);
-      expect(restoreSpy).toBeCalledOnceWith(reg.startKeepaliveTimer.name);
-      expect(restartSpy).toBeCalledOnceWith(reg.startKeepaliveTimer.name);
+      expect(restoreSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
+      expect(restartSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
       // Active Mobius URL should remain unchanged.
       expect(reg.getActiveMobiusUrl()).toStrictEqual(url);
     });
@@ -1299,7 +1504,7 @@ describe('Registration Tests', () => {
 
       // Verify that the keepalive timer was cleared and reconnectOnFailure was triggered
       expect(clearKeepaliveSpy).toHaveBeenCalled();
-      expect(reconnectSpy).toHaveBeenCalledWith(reg.startKeepaliveTimer.name);
+      expect(reconnectSpy).toHaveBeenCalledWith(RECONNECT_ON_FAILURE_UTIL);
 
       // Verify that the active Mobius URL has been updated to the backup server and registration is active
       expect(reg.getActiveMobiusUrl()).toEqual(mobiusUris.backup[0]);
@@ -1339,7 +1544,7 @@ describe('Registration Tests', () => {
       expect(lineEmitter).lastCalledWith(LINE_EVENTS.UNREGISTERED);
       expect(reg.keepaliveTimer).toStrictEqual(undefined);
       expect(reg.failbackTimer).toStrictEqual(undefined);
-      expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(reconnectSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
       expect(restoreSpy).not.toBeCalled();
       expect(restartRegSpy).not.toBeCalled();
       expect(reg.reconnectPending).toStrictEqual(true);
@@ -1478,6 +1683,58 @@ describe('Registration Tests', () => {
           url: expect.any(String),
         })
       );
+    });
+
+    it('ensure retryAfter is set when 429 occurs during failover retry', async () => {
+      await beforeEachSetupForKeepalive();
+      // Simulate loss of registration so failover path attempts a new registration
+      reg.clearKeepaliveTimer();
+      reg.setStatus(RegistrationStatus.INACTIVE);
+      const retry429Spy = jest.spyOn(reg, 'handle429Retry');
+      // Make the failover interval deterministic and simulate 429 on the failover attempt
+      jest.spyOn(reg as any, 'getRegRetryInterval').mockReturnValueOnce(33);
+      webex.request.mockRejectedValueOnce(failurePayload429One);
+
+      // Directly schedule the failover attempt
+      await (reg as any).startFailoverTimer();
+
+      jest.advanceTimersByTime(33 * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(retry429Spy).toBeCalledWith(
+        failurePayload429One.headers['retry-after'],
+        'startFailoverTimer'
+      );
+      expect((reg as any).retryAfter).toEqual(failurePayload429One.headers['retry-after']);
+
+      jest.useRealTimers();
+    });
+
+    it('sets retryAfter when reconnectOnFailure caller receives 429 after keepalive threshold miss', async () => {
+      await beforeEachSetupForKeepalive();
+      const retry429Spy = jest.spyOn(reg, 'handle429Retry');
+      // On reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL) first restore attempt, make registration respond with 429 (retry-after: 20)
+      webex.request.mockRejectedValueOnce({
+        statusCode: 429,
+        body: mockPostResponse,
+        headers: {'retry-after': 20},
+      });
+
+      // Trigger the keepalive failure at threshold to route to reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL)
+      const threshold = reg.isCCFlow ? 4 : 5;
+      reg.webWorker.onmessage({
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 503},
+          keepAliveRetryCount: threshold,
+        },
+      } as MessageEvent);
+
+      await flushPromises();
+
+      // handle429Retry is called with caller 'reconnectOnFailure' → else branch executes and sets retryAfter
+      expect(retry429Spy).toBeCalledOnceWith(20, RECONNECT_ON_FAILURE_UTIL);
+      expect(reg.retryAfter).toEqual(undefined); // Clear retryAfter after 429 retry
     });
   });
 

@@ -55,6 +55,7 @@ import {
   REGISTRATION_UTIL,
   METHODS,
   URL_ENDPOINT,
+  RECONNECT_ON_FAILURE_UTIL,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -210,6 +211,26 @@ export class Registration implements IRegistration {
 
     if (this.activeMobiusUrl) {
       abort = await this.attemptRegistrationWithServers(caller, [this.activeMobiusUrl]);
+      if (this.retryAfter) {
+        if (this.retryAfter < RETRY_TIMER_UPPER_LIMIT) {
+          // If retry-after is less than threshold, honor it and schedule retry
+          setTimeout(async () => {
+            await this.restartRegistration(caller);
+          }, this.retryAfter * 1000);
+        } else if (
+          this.primaryMobiusUris.includes(this.activeMobiusUrl) &&
+          this.backupMobiusUris.length > 0
+        ) {
+          // If we are using primary and got 429, switch to backup
+          abort = await this.attemptRegistrationWithServers(caller, this.backupMobiusUris);
+        } else {
+          // If we are using backup and got 429, restart registration
+          this.restartRegistration(caller);
+        }
+        this.retryAfter = undefined;
+
+        return true;
+      }
     }
 
     return abort;
@@ -880,7 +901,7 @@ export class Registration implements IRegistration {
 
                 if (!abort) {
                   /* In case of non-final error, re-attempt registration */
-                  await this.reconnectOnFailure(KEEPALIVE_UTIL);
+                  await this.reconnectOnFailure(RECONNECT_ON_FAILURE_UTIL);
                 } else if (error.statusCode === 404) {
                   this.handle404KeepaliveFailure(KEEPALIVE_UTIL);
                 }
