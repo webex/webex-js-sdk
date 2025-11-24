@@ -16,7 +16,7 @@ import {
   AI_ASSISTANT_ERROR_CODES,
   AI_ASSISTANT_ERRORS,
 } from '@webex/internal-plugin-ai-assistant/src/constants';
-import {jsonResponse, messageResponse, workspaceResponse} from '../data/messages';
+import {jsonResponse, messageResponse, workspaceResponse, scheduleMeetingResponse} from '../data/messages';
 
 const waitForAsync = () =>
   new Promise<void>((resolve) =>
@@ -606,6 +606,49 @@ describe('plugin-ai-assistant', () => {
         expect(triggerSpy.getCall(2).args[1]).to.deep.equal(expectedResult);
       });      
 
+      it('handles a schedule meeting response', async () => {
+        const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
+        webex.internal.encryption.decryptText.callsFake(async (keyUrl, value) => {
+          return `decrypted-with-${keyUrl}-${value}`;
+        });
+
+        await webex.internal.aiAssistant._request({
+          resource: 'test-resource',
+          params: {param1: 'value1'},
+        });
+
+        // Handle schedule meeting event with encrypted fields
+        const event = cloneDeep(scheduleMeetingResponse[0]);
+        event.clientRequestId = 'test-request-id';
+        
+        await webex.internal.aiAssistant._handleEvent(event);
+
+        expect(triggerSpy.getCall(0).args[0]).to.equal(
+          `aiassistant:result:test-request-id`
+        );
+
+        await waitForAsync();
+
+        // Verify all encrypted fields were decrypted
+        const expectedResult = cloneDeep(event);
+        expectedResult.response.content.parameters.commentary = 
+          'decrypted-with-kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630-schedule_meeting_encrypted_commentary';
+        expectedResult.response.content.value.results.data.attendees[0].email = 
+          'decrypted-with-kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630-schedule_meeting_encrypted_email_0';
+        expectedResult.response.content.value.results.data.attendees[1].email = 
+          'decrypted-with-kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630-schedule_meeting_encrypted_email_1';
+        expectedResult.response.content.value.results.data.title = 
+          'decrypted-with-kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630-schedule_meeting_encrypted_title';
+        expectedResult.response.content.value.results.data.description = 
+          'decrypted-with-kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630-schedule_meeting_encrypted_description';
+        expectedResult.response.content.value.results.data.inScopeReply = 
+          'decrypted-with-kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630-schedule_meeting_encrypted_inScopeReply';
+        expectedResult.response.content.value.results.data.meetingLink = 
+          'decrypted-with-kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630-schedule_meeting_encrypted_meetingLink';
+
+        expect(triggerSpy.getCall(0).args[1]).to.deep.equal(expectedResult);
+      });
+
       it('decrypts and emits data when receiving event data', async () => {
         const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
 
@@ -978,6 +1021,37 @@ describe('plugin-ai-assistant', () => {
 
         const requestArgs = webex.request.getCall(0).args[0];
         expect(requestArgs.body.assistant).to.be.undefined;
+      });
+
+      it('includes entryPoint in request when provided', async () => {
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'test_action',
+          entryPoint: 'custom-entry-point',
+        };
+
+        await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        const requestArgs = webex.request.getCall(0).args[0];
+        expect(requestArgs.body.entryPoint).to.equal('custom-entry-point');
+      });
+
+      it('does not include entryPoint in request when not provided', async () => {
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'test_action',
+        };
+
+        await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        const requestArgs = webex.request.getCall(0).args[0];
+        expect(requestArgs.body.entryPoint).to.be.undefined;
       });
 
       it('handles request rejection', async () => {
