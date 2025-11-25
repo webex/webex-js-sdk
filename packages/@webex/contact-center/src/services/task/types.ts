@@ -348,6 +348,18 @@ export enum TASK_EVENTS {
   TASK_REJECT = 'task:rejected',
 
   /**
+   * Triggered when an outdial call fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_OUTDIAL_FAILED, (reason: string) => {
+   *   console.log('Outdial failed:', reason);
+   *   // Handle outdial failure
+   * });
+   * ```
+   */
+  TASK_OUTDIAL_FAILED = 'task:outdialFailed',
+
+  /**
    * Triggered when a task is populated with data
    * @example
    * ```typescript

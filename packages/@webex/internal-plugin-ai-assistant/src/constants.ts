@@ -43,4 +43,5 @@ export enum RESPONSE_NAMES {
   MESSAGE = 'message',
   TOOL_RESULT = 'tool_result',
   WORKSPACE = 'workspace',
+  SCHEDULE_MEETING = 'schedule_meeting',
 }
