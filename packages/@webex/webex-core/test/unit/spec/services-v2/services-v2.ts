@@ -331,6 +331,20 @@ describe('webex-core', () => {
 
         assert.deepEqual(result, [{some: 'value'}]);
       });
+      it('updates the catalog with empty hostmap', async () => {
+        const serviceGroup = 'postauth';
+        const hostmap = {};
+
+        services._formatReceivedHostmap = sinon.stub().returns({services : undefined});
+
+        catalog.updateServiceGroups = sinon.stub().returns(Promise.resolve([{some: 'value'}]));
+
+        const result = await services.updateCatalog(serviceGroup, hostmap);
+
+        assert.calledWith(services._formatReceivedHostmap, hostmap);
+
+        assert.calledWith(catalog.updateServiceGroups, serviceGroup, undefined);
+      });
     });
 
     describe('#_fetchNewServiceHostmap()', () => {

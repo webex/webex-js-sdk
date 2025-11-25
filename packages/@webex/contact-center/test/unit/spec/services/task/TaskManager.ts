@@ -673,14 +673,36 @@ describe('TaskManager', () => {
     expect(taskUpdateTaskDataSpy).toHaveBeenCalledWith(payload.data);
   });
 
-  it('should remove currentTask from taskCollection on AGENT_OUTBOUND_FAILED event', () => {
+  it('should NOT remove OUTDIAL task from taskCollection on AGENT_OUTBOUND_FAILED when terminated (wrap-up flow)', () => {
+    const task = taskManager.getTask(taskId);
+    task.updateTaskData = jest.fn().mockImplementation((newData) => {
+      task.data = {
+        ...task.data,
+        ...newData,
+        interaction: {
+          ...task.data.interaction,
+          ...newData.interaction,
+          outboundType: 'OUTDIAL',
+          state: 'new',
+          isTerminated: true,
+        },
+      };
+      return task;
+    });
+    task.unregisterWebCallListeners = jest.fn();
+    const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
     const payload = {
       data: {
         type: CC_EVENTS.AGENT_OUTBOUND_FAILED,
         agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
         eventTime: 1733211616959,
         eventType: 'RoutingMessage',
-        interaction: {},
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'new',
+          isTerminated: true,
+        },
         interactionId: taskId,
         orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
         trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
@@ -688,14 +710,78 @@ describe('TaskManager', () => {
         destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
         owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
         queueMgr: 'aqm',
+        reason: 'CUSTOMER_BUSY',
+        reasonCode: 1022,
       },
     };
 
-    taskManager.taskCollection[taskId] = taskManager.getTask(taskId);
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(taskManager.getTask(taskId)).toBeDefined();
+    expect(removeTaskSpy).not.toHaveBeenCalled();
+  });
+
+  it('should emit TASK_OUTDIAL_FAILED event on AGENT_OUTBOUND_FAILED', () => {
+    const task = taskManager.getTask(taskId);
+    task.updateTaskData = jest.fn().mockReturnValue(task);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const payload = {
+      data: {
+        type: CC_EVENTS.AGENT_OUTBOUND_FAILED,
+        interactionId: taskId,
+        reason: 'CUSTOMER_BUSY',
+      },
+    };
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_OUTDIAL_FAILED, 'CUSTOMER_BUSY');
+  });
+
+  it('should remove OUTDIAL task from taskCollection on AGENT_CONTACT_ASSIGN_FAILED when NOT terminated (user-declined)', () => {
+    const task = taskManager.getTask(taskId);
+    task.updateTaskData = jest.fn().mockImplementation((newData) => {
+      task.data = {
+        ...task.data,
+        ...newData,
+        interaction: {
+          ...task.data.interaction,
+          ...newData.interaction,
+          outboundType: 'OUTDIAL',
+          state: 'new',
+          isTerminated: false,
+        },
+      };
+      return task;
+    });
+    task.unregisterWebCallListeners = jest.fn();
+    const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED,
+        agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        eventTime: 1733211616959,
+        eventType: 'RoutingMessage',
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'new',
+          isTerminated: false,
+        },
+        interactionId: taskId,
+        orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
+        trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
+        reason: 'USER_DECLINED',
+        reasonCode: 156,
+      },
+    };
 
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
     expect(taskManager.getTask(taskId)).toBeUndefined();
+    expect(removeTaskSpy).toHaveBeenCalled();
   });
 
   it('handle AGENT_OFFER_CONSULT event', () => {
