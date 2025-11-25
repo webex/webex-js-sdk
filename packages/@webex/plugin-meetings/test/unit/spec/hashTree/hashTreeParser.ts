@@ -482,15 +482,14 @@ describe('HashTreeParser', () => {
     it('updates hash trees based on provided new locus', () => {
       const parser = createHashTreeParser();
 
-      // Stub the putItems method on the hash trees
-      const mainPutItemsStub = sinon.stub(parser.dataSets.main.hashTree, 'putItems');
-      const selfPutItemsStub = sinon.stub(parser.dataSets.self.hashTree, 'putItems');
-      const atdUnmutedPutItemsStub = sinon.stub(
-        parser.dataSets['atd-unmuted'].hashTree,
-        'putItems'
-      );
+      const mainPutItemsSpy = sinon
+        .spy(parser.dataSets.main.hashTree, 'putItems');
+      const selfPutItemsSpy = sinon
+        .spy(parser.dataSets.self.hashTree, 'putItems');
+      const atdUnmutedPutItemsSpy = sinon
+        .spy(parser.dataSets['atd-unmuted'].hashTree, 'putItems');
 
-      // Create a locus update with new htMeta information
+      // Create a locus update with new htMeta information for some things
       const locusUpdate = {
         dataSets: [
           createDataSet('main', 16, 1100),
@@ -541,7 +540,7 @@ describe('HashTreeParser', () => {
               elementId: {
                 type: 'self',
                 id: 4,
-                version: 110, // incremented version
+                version: 100, // same version
               },
               dataSetNames: ['self'],
             },
@@ -553,23 +552,94 @@ describe('HashTreeParser', () => {
       parser.handleLocusUpdate(locusUpdate);
 
       // Verify putItems was called on main hash tree with correct data
-      assert.calledOnceWithExactly(mainPutItemsStub, [{type: 'locus', id: 0, version: 210}]);
+      assert.calledOnceWithExactly(mainPutItemsSpy, [{type: 'locus', id: 0, version: 210}]);
 
       // Verify putItems was called on self hash tree with correct data
-      assert.calledOnceWithExactly(selfPutItemsStub, [{type: 'self', id: 4, version: 110}]);
+      assert.calledOnceWithExactly(selfPutItemsSpy, [{type: 'self', id: 4, version: 100}]);
 
       // Verify putItems was called on atd-unmuted hash tree with correct data (2 participants)
-      assert.calledOnceWithExactly(atdUnmutedPutItemsStub, [
+      assert.calledOnceWithExactly(atdUnmutedPutItemsSpy, [
         {type: 'participant', id: 14, version: 310},
         {type: 'participant', id: 15, version: 311},
       ]);
+
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          {
+            htMeta: {
+              elementId: {
+                type: 'locus',
+                id: 0,
+                version: 210,
+              },
+              dataSetNames: ['main'],
+            },
+            data: {
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f',
+              htMeta: {
+                elementId: {
+                  type: 'locus',
+                  id: 0,
+                  version: 210,
+                },
+                dataSetNames: ['main'],
+              },
+              participants: [],
+            },
+          },
+          {
+            htMeta: {
+              elementId: {
+                type: 'participant',
+                id: 14,
+                version: 310,
+              },
+              dataSetNames: ['atd-unmuted'],
+            },
+            data: {
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/11941033',
+              person: {},
+              htMeta: {
+                elementId: {
+                  type: 'participant',
+                  id: 14,
+                  version: 310,
+                },
+                dataSetNames: ['atd-unmuted'],
+              },
+            },
+          },
+          {
+            htMeta: {
+              elementId: {
+                type: 'participant',
+                id: 15,
+                version: 311,
+              },
+              dataSetNames: ['atd-unmuted'],
+            },
+            data: {
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/22222222',
+              person: {},
+              htMeta: {
+                elementId: {
+                  type: 'participant',
+                  id: 15,
+                  version: 311,
+                },
+                dataSetNames: ['atd-unmuted'],
+              },
+            },
+          },
+          // self missing, because it had the same version, so no update
+        ],
+      });
     });
 
     it('handles unknown datasets gracefully', () => {
       const parser = createHashTreeParser();
 
-      // Stub the putItems methods
-      const mainPutItemsStub = sinon.stub(parser.dataSets.main.hashTree, 'putItems');
+      const mainPutItemsSpy = sinon.spy(parser.dataSets.main.hashTree, 'putItems');
 
       // Create a locus update with data for an unknown dataset
       const locusUpdate = {
@@ -578,11 +648,12 @@ describe('HashTreeParser', () => {
           htMeta: {
             elementId: {
               type: 'locus',
-              id: 1,
+              id: 0,
               version: 201,
             },
             dataSetNames: ['main'],
           },
+          someNewData: 'value',
           unknownData: {
             htMeta: {
               elementId: {
@@ -600,7 +671,34 @@ describe('HashTreeParser', () => {
       parser.handleLocusUpdate(locusUpdate);
 
       // Verify putItems was still called for known dataset
-      assert.calledOnceWithExactly(mainPutItemsStub, [{type: 'locus', id: 1, version: 201}]);
+      assert.calledOnceWithExactly(mainPutItemsSpy, [{type: 'locus', id: 0, version: 201}]);
+
+      // Verify callback was called only for known dataset
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          {
+            htMeta: {
+              elementId: {
+                type: 'locus',
+                id: 0,
+                version: 201,
+              },
+              dataSetNames: ['main'],
+            },
+            data: {
+              someNewData: 'value',
+              htMeta: {
+                elementId: {
+                  type: 'locus',
+                  id: 0,
+                  version: 201,
+                },
+                dataSetNames: ['main'],
+              },
+            },
+          },
+        ],
+      });
     });
   });
 

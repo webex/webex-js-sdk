@@ -480,12 +480,19 @@ export default class LocusInfo extends EventsScope {
    */
   handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
     if (this.hashTreeParser) {
-      // API responses with hash tree are a bit problematic and not fully confirmed how they will look like
-      // we don't really need them, because all updates are guaranteed to come via Mercury or LLM messages anyway
-      // so it's OK to skip them for now
+      if (!responseBody.dataSets) {
+        this.sendClassicVsHashTreeMismatchMetric(
+          meeting,
+          `expected hash tree dataSets in API response but they are missing`
+        );
+        // continuing as we can still manage without responseBody.dataSets, but this is very suspicious
+      }
       LoggerProxy.logger.info(
-        'Locus-info:index#handleLocusAPIResponse: skipping handling of API http response with hashTreeParser'
+        'Locus-info:index#handleLocusAPIResponse --> passing Locus API response to HashTreeParser: ',
+        responseBody
       );
+      // update the data in our hash trees
+      this.hashTreeParser.handleLocusUpdate(responseBody);
     } else {
       if (responseBody.dataSets) {
         this.sendClassicVsHashTreeMismatchMetric(

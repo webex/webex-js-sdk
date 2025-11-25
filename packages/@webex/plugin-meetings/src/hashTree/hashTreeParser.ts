@@ -1,10 +1,11 @@
-import {isEmpty, zip} from 'lodash';
+import {cloneDeep, isEmpty, zip} from 'lodash';
 import HashTree, {LeafDataItem} from './hashTree';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {Enum, HTTP_VERBS} from '../constants';
 import {DataSetNames, EMPTY_HASH} from './constants';
 import {ObjectType, HtMeta} from './types';
 import {LocusDTO} from '../locus-info/types';
+import {deleteNestedObjectsWithHtMeta} from './utils';
 
 export interface DataSet {
   url: string;
@@ -322,11 +323,17 @@ class HashTreeParser {
    * create an object with the type, id and version and add it to the appropriate leafData array
    *
    * @param {any} locus - The current part of the locus being processed
+   * @param {Object} [options]
+   * @param {boolean} [options.copyData=false] - Whether to copy the data for each leaf into returned result
    * @returns {any} - An object mapping dataset names to arrays of leaf data
    */
-  private analyzeLocusHtMeta(locus: any) {
+  private analyzeLocusHtMeta(locus: any, options?: {copyData?: boolean}) {
+    const {copyData = false} = options || {};
     // object mapping dataset names to arrays of leaf data
-    const leafData: Record<string, Array<{type: ObjectType; id: number; version: number}>> = {};
+    const leafInfo: Record<
+      string,
+      Array<{type: ObjectType; id: number; version: number; data?: any}>
+    > = {};
 
     const findAndStoreMetaData = (currentLocusPart: any) => {
       if (typeof currentLocusPart !== 'object' || currentLocusPart === null) {
@@ -336,13 +343,24 @@ class HashTreeParser {
       if (currentLocusPart.htMeta && currentLocusPart.htMeta.dataSetNames) {
         const {type, id, version} = currentLocusPart.htMeta.elementId;
         const {dataSetNames} = currentLocusPart.htMeta;
-        const leafInfo = {type, id, version};
+        const newLeafInfo: {type: ObjectType; id: number; version: number; data?: any} = {
+          type,
+          id,
+          version,
+        };
+
+        if (copyData) {
+          newLeafInfo.data = cloneDeep(currentLocusPart);
+
+          // remove any nested other objects that have their own htMeta
+          deleteNestedObjectsWithHtMeta(newLeafInfo.data);
+        }
 
         for (const dataSetName of dataSetNames) {
-          if (!leafData[dataSetName]) {
-            leafData[dataSetName] = [];
+          if (!leafInfo[dataSetName]) {
+            leafInfo[dataSetName] = [];
           }
-          leafData[dataSetName].push(leafInfo);
+          leafInfo[dataSetName].push(newLeafInfo);
         }
       }
 
@@ -361,7 +379,7 @@ class HashTreeParser {
 
     findAndStoreMetaData(locus);
 
-    return leafData;
+    return leafInfo;
   }
 
   /**
@@ -431,13 +449,38 @@ class HashTreeParser {
         `HashTreeParser#handleLocusUpdate --> ${this.debugId} received hash tree update without dataSets`
       );
     }
+    const updatedObjects: HashTreeObject[] = [];
 
-    const leafData = this.analyzeLocusHtMeta(locus);
+    // first, analyze the locus object to extract the hash tree objects' htMeta and data from it
+    const leafInfo = this.analyzeLocusHtMeta(locus, {copyData: true});
 
-    Object.keys(leafData).forEach((dataSetName) => {
+    // then process the data in hash trees, if it is a new version, then add it to updatedObjects
+    Object.keys(leafInfo).forEach((dataSetName) => {
       if (this.dataSets[dataSetName]) {
         if (this.dataSets[dataSetName].hashTree) {
-          this.dataSets[dataSetName].hashTree.putItems(leafData[dataSetName]);
+          const appliedChangesList = this.dataSets[dataSetName].hashTree.putItems(
+            leafInfo[dataSetName].map((leaf) => ({
+              id: leaf.id,
+              type: leaf.type,
+              version: leaf.version,
+            }))
+          );
+
+          zip(appliedChangesList, leafInfo[dataSetName]).forEach(([changeApplied, leaf]) => {
+            if (changeApplied) {
+              updatedObjects.push({
+                htMeta: {
+                  elementId: {
+                    type: leaf.type,
+                    id: leaf.id,
+                    version: leaf.version,
+                  },
+                  dataSetNames: [dataSetName],
+                },
+                data: leaf.data,
+              });
+            }
+          });
         } else {
           // no hash tree means that the data set is not visible
           LoggerProxy.logger.warn(
@@ -450,6 +493,17 @@ class HashTreeParser {
         );
       }
     });
+
+    if (updatedObjects.length === 0) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#handleLocusUpdate --> ${this.debugId} No objects updated as a result of received API response`
+      );
+    } else {
+      this.callLocusInfoUpdateCallback({
+        updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
+        updatedObjects,
+      });
+    }
 
     // todo: once Locus design on how visible data sets will be communicated in subsequent API responses is confirmed,
     // we'll need to check here if visible data sets have changed and update this.visibleDataSets, remove/create hash trees etc
