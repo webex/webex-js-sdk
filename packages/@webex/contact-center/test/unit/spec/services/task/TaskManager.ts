@@ -736,6 +736,148 @@ describe('TaskManager', () => {
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_OUTDIAL_FAILED, 'CUSTOMER_BUSY');
   });
 
+  it('should handle AGENT_OUTBOUND_FAILED gracefully when task is undefined', () => {
+    const payload = {
+      data: {
+        type: CC_EVENTS.AGENT_OUTBOUND_FAILED,
+        interactionId: 'non-existent-task-id',
+        reason: 'CUSTOMER_BUSY',
+      },
+    };
+    // Should not throw error when task doesn't exist
+    expect(() => {
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+    }).not.toThrow();
+  });
+
+  it('should NOT remove OUTDIAL task on CONTACT_ENDED when agentsPendingWrapUp exists', () => {
+    const task = taskManager.getTask(taskId);
+    task.updateTaskData = jest.fn().mockImplementation((newData) => {
+      task.data = {
+        ...task.data,
+        ...newData,
+        interaction: {
+          ...task.data.interaction,
+          outboundType: 'OUTDIAL',
+          state: 'new',
+          mediaType: 'telephony',
+        },
+        agentsPendingWrapUp: ['agent-123'],
+      };
+      return task;
+    });
+    task.unregisterWebCallListeners = jest.fn();
+    const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        interactionId: taskId,
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'new',
+          mediaType: 'telephony',
+        },
+        agentsPendingWrapUp: ['agent-123'],
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(removeTaskSpy).not.toHaveBeenCalled();
+    expect(taskManager.getTask(taskId)).toBeDefined();
+  });
+
+  it('should remove OUTDIAL task on CONTACT_ENDED when agentsPendingWrapUp is empty', () => {
+    const task = taskManager.getTask(taskId);
+    task.updateTaskData = jest.fn().mockImplementation((newData) => {
+      task.data = {
+        ...task.data,
+        ...newData,
+        interaction: {
+          ...task.data.interaction,
+          outboundType: 'OUTDIAL',
+          state: 'new',
+          mediaType: 'telephony',
+        },
+        agentsPendingWrapUp: [],
+      };
+      return task;
+    });
+    task.unregisterWebCallListeners = jest.fn();
+    const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        interactionId: taskId,
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'new',
+          mediaType: 'telephony',
+        },
+        agentsPendingWrapUp: [],
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(removeTaskSpy).toHaveBeenCalled();
+  });
+
+  it('should remove OUTDIAL task on CONTACT_ENDED when agentsPendingWrapUp is undefined', () => {
+    const task = taskManager.getTask(taskId);
+    task.updateTaskData = jest.fn().mockImplementation((newData) => {
+      task.data = {
+        ...task.data,
+        ...newData,
+        interaction: {
+          ...task.data.interaction,
+          outboundType: 'OUTDIAL',
+          state: 'new',
+          mediaType: 'telephony',
+        },
+        // agentsPendingWrapUp is undefined
+      };
+      return task;
+    });
+    task.unregisterWebCallListeners = jest.fn();
+    const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        interactionId: taskId,
+        interaction: {
+          outboundType: 'OUTDIAL',
+          state: 'new',
+          mediaType: 'telephony',
+        },
+        // agentsPendingWrapUp not included
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(removeTaskSpy).toHaveBeenCalled();
+  });
+
+  it('should handle CONTACT_ENDED gracefully when task is undefined', () => {
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        interactionId: 'non-existent-task-id',
+        interaction: {
+          state: 'new',
+        },
+      },
+    };
+    // Should not throw error when task doesn't exist
+    expect(() => {
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+    }).not.toThrow();
+  });
+
   it('should remove OUTDIAL task from taskCollection on AGENT_CONTACT_ASSIGN_FAILED when NOT terminated (user-declined)', () => {
     const task = taskManager.getTask(taskId);
     task.updateTaskData = jest.fn().mockImplementation((newData) => {

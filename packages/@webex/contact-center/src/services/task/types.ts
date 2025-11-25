@@ -801,6 +801,8 @@ export type TaskData = {
   wrapUpRequired?: boolean;
   /** Indicates if auto-answer is in progress for this task */
   isAutoAnswering?: boolean;
+  /** Indicates if wrap-up is required for this task */
+  agentsPendingWrapUp?: string[];
 };
 
 /**

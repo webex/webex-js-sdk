@@ -229,22 +229,24 @@ export default class TaskManager extends EventEmitter {
             this.handleAutoAnswer(task);
             break;
           case CC_EVENTS.AGENT_OUTBOUND_FAILED:
-            task = this.updateTaskData(task, payload.data);
-            this.metricsManager.trackEvent(
-              METRIC_EVENT_NAMES.TASK_OUTDIAL_FAILED,
-              {
-                ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
-                taskId: payload.data.interactionId,
-                reason: payload.data.reasonCode || payload.data.reason,
-              },
-              ['behavioral', 'operational']
-            );
-            LoggerProxy.log(`Agent outbound failed for task`, {
-              module: TASK_MANAGER_FILE,
-              method: METHODS.REGISTER_TASK_LISTENERS,
-              interactionId: payload.data.interactionId,
-            });
-            task.emit(TASK_EVENTS.TASK_OUTDIAL_FAILED, payload.data.reason ?? 'UNKNOWN_REASON');
+            if (task) {
+              task = this.updateTaskData(task, payload.data);
+              this.metricsManager.trackEvent(
+                METRIC_EVENT_NAMES.TASK_OUTDIAL_FAILED,
+                {
+                  ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
+                  taskId: payload.data.interactionId,
+                  reason: payload.data.reasonCode || payload.data.reason,
+                },
+                ['behavioral', 'operational']
+              );
+              LoggerProxy.log(`Agent outbound failed for task`, {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              });
+              task.emit(TASK_EVENTS.TASK_OUTDIAL_FAILED, payload.data.reason ?? 'UNKNOWN_REASON');
+            }
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
             task = this.updateTaskData(task, payload.data);
@@ -284,18 +286,19 @@ export default class TaskManager extends EventEmitter {
           }
           case CC_EVENTS.CONTACT_ENDED:
             // Update task data
-            task = this.updateTaskData(task, {
-              ...payload.data,
-              wrapUpRequired:
-                payload.data.interaction.state !== 'new' &&
-                !isSecondaryEpDnAgent(payload.data.interaction),
-            });
+            if (task) {
+              task = this.updateTaskData(task, {
+                ...payload.data,
+                wrapUpRequired:
+                  payload.data.interaction.state !== 'new' &&
+                  !isSecondaryEpDnAgent(payload.data.interaction),
+              });
 
-            // Handle cleanup based on whether task should be deleted
-            this.handleTaskCleanup(task);
+              // Handle cleanup based on whether task should be deleted
+              this.handleTaskCleanup(task);
 
-            task?.emit(TASK_EVENTS.TASK_END, task);
-
+              task?.emit(TASK_EVENTS.TASK_END, task);
+            }
             break;
           case CC_EVENTS.CONTACT_MERGED:
             task = this.handleContactMerged(task, payload.data);
@@ -657,13 +660,13 @@ export default class TaskManager extends EventEmitter {
 
     const isOutdial = task.data.interaction.outboundType === 'OUTDIAL';
     const isNew = task.data.interaction.state === 'new';
-    const isTerminated = task.data.interaction.isTerminated;
+    const needsWrapUp = task.data.agentsPendingWrapUp?.length > 0;
 
     // For OUTDIAL: only remove if NOT terminated (user-declined, no wrap-up follows)
     // If terminated, keep task for wrap-up flow (CONTACT_ENDED → AGENT_WRAPUP)
     // For non-OUTDIAL: remove if state is 'new'
     // Always remove if secondary EpDn agent
-    if ((isNew && !(isOutdial && isTerminated)) || isSecondaryEpDnAgent(task.data.interaction)) {
+    if ((isNew && !(isOutdial && needsWrapUp)) || isSecondaryEpDnAgent(task.data.interaction)) {
       this.removeTaskFromCollection(task);
     }
   }
