@@ -45,6 +45,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private currentSpokenLanguage?: string;
 
+  private spokenLanguages: string[] = [];
+
   /**
    * @param {Object} e
    * @returns {undefined}
@@ -200,7 +202,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
       case TRANSCRIPTION_TYPE.LANGUAGE_DETECTED:
         // @ts-ignore
-        this.setSpokenLanguage(voiceaPayload.language, LANGUAGE_ASSIGNMENT.AUTO);
+        if (this.spokenLanguages.includes(voiceaPayload.language)) {
+          this.setSpokenLanguage(voiceaPayload.language, LANGUAGE_ASSIGNMENT.AUTO);
+        }
         break;
 
       default:
@@ -239,6 +243,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       currentSpokenLanguage: this.currentSpokenLanguage,
     };
 
+    this.spokenLanguages = voiceaPayload?.ASR?.spoken_languages ?? [];
     // @ts-ignore
     this.trigger(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, voiceaLanguageOptions);
   };
