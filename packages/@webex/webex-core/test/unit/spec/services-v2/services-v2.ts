@@ -58,7 +58,7 @@ describe('webex-core', () => {
           webex.internal.metrics.submitClientMetrics,
           'SERVICE_V2_INITIALIZED',
           {
-            fields: {type: 'behavioral', initialized_status: 'succeeded'},
+            fields: {type: 'operational', initialized_status: 'succeeded'},
           }
         );
       });

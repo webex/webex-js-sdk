@@ -1089,7 +1089,7 @@ const Services = WebexPlugin.extend({
           .finally(() => {
             this.webex.internal.metrics.submitClientMetrics(METRICS.SERVICE_V2_INITIALIZED, {
               fields: {
-                type: 'behavioral',
+                type: 'operational',
                 initialized_status: this.initFailed ? 'failed' : 'succeeded',
               },
             });
