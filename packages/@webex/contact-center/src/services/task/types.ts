@@ -384,6 +384,22 @@ export enum TASK_EVENTS {
   TASK_OFFER_CONTACT = 'task:offerContact',
 
   /**
+   * Triggered when a task has been successfully auto-answered
+   * This event is emitted after the SDK automatically accepts a task due to:
+   * - WebRTC calls with auto-answer enabled
+   * - Agent-initiated outdial calls
+   * - Other auto-answer scenarios
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_AUTO_ANSWERED, (task: ITask) => {
+   *   console.log('Task auto-answered:', task.data.interactionId);
+   *   // Update UI - enable cancel button, etc.
+   * });
+   * ```
+   */
+  TASK_AUTO_ANSWERED = 'task:autoAnswered',
+
+  /**
    * Triggered when a conference is being established
    * @example
    * ```typescript
