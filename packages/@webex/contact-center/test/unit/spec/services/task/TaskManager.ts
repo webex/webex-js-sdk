@@ -674,7 +674,7 @@ describe('TaskManager', () => {
   });
 
   describe('Auto-Answer Functionality', () => {
-    it('should emit both TASK_OFFER_CONTACT and TASK_AUTO_ANSWERED events in correct order', async () => {
+    it('should emit both TASK_OFFER_CONTACT and TASK_AUTO_ANSWERED events when auto-answer succeeds', async () => {
       // Step 1: Create the task first with initial payload
       webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
@@ -708,16 +708,6 @@ describe('TaskManager', () => {
       // Verify BOTH events were emitted
       expect(taskManagerEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_OFFER_CONTACT, task);
       expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_AUTO_ANSWERED, task);
-
-      // Verify the order: TASK_OFFER_CONTACT should be emitted before TASK_AUTO_ANSWERED
-      const offerContactCallIndex = taskManagerEmitSpy.mock.calls.findIndex(
-        (call) => call[0] === TASK_EVENTS.TASK_OFFER_CONTACT
-      );
-      const autoAnsweredCallIndex = taskEmitSpy.mock.calls.findIndex(
-        (call) => call[0] === TASK_EVENTS.TASK_AUTO_ANSWERED
-      );
-      expect(offerContactCallIndex).toBeGreaterThanOrEqual(0);
-      expect(autoAnsweredCallIndex).toBeGreaterThanOrEqual(0);
     });
 
     it('should NOT emit TASK_AUTO_ANSWERED event when auto-answer fails', async () => {
