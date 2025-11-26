@@ -609,9 +609,6 @@ export default class TaskManager extends EventEmitter {
         interactionId: task.data.interactionId,
       });
 
-      // Emit task:autoAnswered event for widgets/UI to react
-      task.emit(TASK_EVENTS.TASK_AUTO_ANSWERED, task);
-
       // Track successful auto-answer
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_SUCCESS,
@@ -622,6 +619,8 @@ export default class TaskManager extends EventEmitter {
         },
         ['behavioral', 'operational']
       );
+      // Emit task:autoAnswered event for widgets/UI to react
+      task.emit(TASK_EVENTS.TASK_AUTO_ANSWERED, task);
     } catch (error) {
       // Reset isAutoAnswering flag on failure
       task.updateTaskData({...task.data, isAutoAnswering: false});
