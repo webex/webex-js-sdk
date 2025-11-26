@@ -795,6 +795,10 @@ export const LOCUSEVENT = {
   SELF_CHANGED: 'locus.self_changed',
 
   HASH_TREE_DATA_UPDATED: 'locus.state_message',
+
+  // events generated internally by SDK
+  SDK_LOCUS_FROM_SYNC_MEETINGS: 'jsSdk.locus_from_sync_meetings', // generated for each meeting from response to GET /loci Locus API call
+  SDK_NO_EVENT: 'jsSdk.no_event', // used in cases where eventType is irrelevant
 } as const;
 
 export type LOCUSEVENT = Enum<typeof LOCUSEVENT>;

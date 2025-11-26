@@ -97,7 +97,7 @@ class MediaLogger {
 }
 
 export type LocusEvent = {
-  eventType: string;
+  eventType: LOCUSEVENT;
 
   // fields populated for "classic" locus events (eventType = 'locus.difference' and others, see LOCUSEVENT)
   locusUrl?: string;
@@ -558,7 +558,7 @@ export default class Meetings extends WebexPlugin {
             // It's a new meeting so initialize the locus data
             await meeting.locusInfo.initialSetup({
               trigger:
-                data.eventType === 'fakeEventFromSyncMeetings'
+                data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS
                   ? 'get-loci-response'
                   : 'locus-message',
               locus: data.locus,
@@ -1786,7 +1786,7 @@ export default class Meetings extends WebexPlugin {
           lociToUpdate.forEach((locus) => {
             activeLocusUrl.push(locus.url);
             this.handleLocusEvent({
-              eventType: 'fakeEventFromSyncMeetings',
+              eventType: LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS,
               locus,
               locusUrl: locus.url,
             });
@@ -1834,7 +1834,7 @@ export default class Meetings extends WebexPlugin {
         (mainLocus) => mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
       );
       const existCorrespondingMeeting = this.getCorrespondingMeetingByLocus({
-        eventType: 'fakeEventFromSortLocusArrayToUpdate',
+        eventType: LOCUSEVENT.SDK_NO_EVENT,
         locus: breakoutLocus,
         locusUrl: breakoutLocus.url,
       });
@@ -1881,7 +1881,7 @@ export default class Meetings extends WebexPlugin {
 
     const associateBreakoutLocus = this.breakoutLocusForHandleLater[existIndex];
     this.handleLocusEvent({
-      eventType: 'fakeEventFromCheckHandleBreakoutLocus',
+      eventType: LOCUSEVENT.SDK_NO_EVENT,
       locus: associateBreakoutLocus,
       locusUrl: associateBreakoutLocus.url,
     });
