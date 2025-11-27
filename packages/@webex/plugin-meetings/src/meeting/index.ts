@@ -2812,7 +2812,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this.transcription.languageOptions.currentSpokenLanguage = spokenLanguage;
           }
           // @ts-ignore
-          this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage, this.id);
+          this.webex.internal.voicea.onSpokenLanguageUpdate(spokenLanguage);
 
           Trigger.trigger(
             this,
@@ -2837,6 +2837,23 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_MANUAL_CAPTION_UPDATED,
         {enable}
       );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED, ({hesiodLlmId}) => {
+      if (hesiodLlmId) {
+        // @ts-ignore
+        this.webex.internal.voicea.onHesiodLLMIdUpdate(hesiodLlmId, this.id);
+
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setupLocusControlsListener',
+          },
+          EVENT_TRIGGERS.MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED,
+          {hesiodLlmId, meetingId: this.id}
+        );
+      }
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_BREAKOUT_UPDATED, ({breakout}) => {

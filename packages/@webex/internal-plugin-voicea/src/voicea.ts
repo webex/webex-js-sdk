@@ -37,6 +37,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private vmcDeviceId?: string;
 
+  private hesiodLLMId?: string;
+
   private announceStatus: string;
 
   private captionStatus: string;
@@ -98,6 +100,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   public deregisterEvents() {
     this.areCaptionsEnabled = false;
     this.vmcDeviceId = undefined;
+    this.hesiodLLMId = undefined;
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
     this.hasSubscribedToEvents = false;
@@ -116,6 +119,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.seqNum = 1;
     this.areCaptionsEnabled = false;
     this.vmcDeviceId = undefined;
+    this.hesiodLLMId = undefined;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
     this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
@@ -263,7 +267,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         // @ts-ignore
         route: this.webex.internal.llm.getBinding(),
       },
-      headers: {},
+      // If hesiodLLMId exists, send it as the 'to' header; otherwise keep headers empty.
+      headers: this.hesiodLLMId ? {to: this.hesiodLLMId} : {},
       data: {
         clientPayload: {
           version: 'v2',
@@ -534,6 +539,15 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode, meetingId});
     this.currentSpokenLanguage = languageCode;
+  };
+
+  /**
+   * In meeting Spoken Language changed event
+   * @param {string} hesiodLLMId
+   * @returns {void}
+   */
+  public onHesiodLLMIdUpdate = (hesiodLLMId: string): void => {
+    this.hesiodLLMId = hesiodLLMId;
   };
 
   /**

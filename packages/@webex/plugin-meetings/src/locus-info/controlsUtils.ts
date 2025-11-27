@@ -212,6 +212,11 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         !isEqual(previous?.manualCaptionControl?.enabled, current?.manualCaptionControl?.enabled) &&
         (previous?.manualCaptionControl?.enabled || current?.manualCaptionControl?.enabled),
 
+      hasHesiodLLMIdChanged:
+        current?.transcribe &&
+        !isEqual(previous?.transcribe?.hesiodLlmId, current?.transcribe?.hesiodLlmId) &&
+        !!(previous?.transcribe?.hesiodLlmId || current?.transcribe?.hesiodLlmId),
+
       hasEntryExitToneChanged: !!(
         newControls.entryExitTone &&
         !isEqual(previous?.entryExitTone, current?.entryExitTone) &&
