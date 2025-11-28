@@ -709,6 +709,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
           this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
           this.taskManager.setAgentId(this.agentConfig.agentId);
+          this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
 
           if (
             this.agentConfig.webRtcEnabled &&
