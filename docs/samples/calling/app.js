@@ -346,6 +346,10 @@ async function initCalling(e) {
 
       if (window.callSettings === undefined) {
         callSettings = window.callSettings = calling.callSettingsClient;
+        if (callSettings) {
+          await callSettings.init();
+          console.log('CallSettings initialized successfully');
+        }
       }
 
       if (window.voicemail === undefined) {
@@ -1529,6 +1533,8 @@ async function toggleDNDSetting() {
 async function getCallForwardAlwaysSetting() {
   if (window.callSettings === undefined) {
     callSettings = window.callSettings = CreateCallSettingsClient(webex, logger, enableProd);
+    await callSettings.init();
+    console.log('CallSettings initialized successfully');
   }
   const directoryNumber = directoryNumberCFA.value;
   const response = await callSettings.getCallForwardAlwaysSetting(directoryNumber);
