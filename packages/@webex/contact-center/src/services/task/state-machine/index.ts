@@ -5,11 +5,7 @@
  */
 
 // Main state machine
-export {
-  getTaskStateMachineConfig,
-  createTaskStateMachine,
-  createTaskStateMachineWithActions,
-} from './TaskStateMachine';
+export {getTaskStateMachineConfig, createTaskStateMachine} from './TaskStateMachine';
 export type {TaskStateMachine} from './TaskStateMachine';
 
 // Types
@@ -28,5 +24,4 @@ export type {GuardParams, GuardFunction} from './guards';
 export type {TaskAction} from './types';
 
 // Actions
-export {actions, createInitialContext, createActionsWithCallbacks} from './actions';
-export type {ActionCallbacks} from './actions';
+export {actions, createInitialContext} from './actions';

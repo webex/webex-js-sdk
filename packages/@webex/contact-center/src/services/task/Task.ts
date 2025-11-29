@@ -1,7 +1,6 @@
 import {EventEmitter} from 'events';
-import {CallId} from '@webex/calling/dist/types/common/types';
 import {createActor} from 'xstate';
-import type {ActorRefFrom} from 'xstate';
+import type {ActorRefFrom, SnapshotFrom} from 'xstate';
 import {
   ITask,
   TaskData,
@@ -20,12 +19,10 @@ import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import LoggerProxy from '../../logger-proxy';
 import {
-  createTaskStateMachineWithActions,
-  createActionsWithCallbacks,
+  createTaskStateMachine,
   TaskState,
   TaskEventPayload,
   type TaskStateMachine,
-  type ActionCallbacks,
   type UIControlConfig,
   type TaskContext,
 } from './state-machine';
@@ -50,13 +47,15 @@ export type Participant = {
  */
 export type TaskAccessorParticipant = Participant;
 
+type CallId = string;
+
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
   protected metricsManager: MetricsManager;
   public stateMachineService?: ActorRefFrom<TaskStateMachine>;
   public data: TaskData;
   public webCallMap: Record<TaskId, CallId>;
-  public state: any;
+  public state?: SnapshotFrom<TaskStateMachine>;
   private lastState: TaskState | null = null;
   protected currentUiControls: TaskUIControls;
   protected uiControlConfig: UIControlConfig;
@@ -129,6 +128,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     LoggerProxy.log('unregisterWebCallListeners called', {
       module: CC_FILE,
       method: 'unregisterWebCallListeners',
+      interactionId: this.data?.interactionId,
     });
   }
 
@@ -179,34 +179,10 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * Initialize the state machine with custom action callbacks
+   * Initialize the state machine
    */
   private initializeStateMachine(): void {
-    const callbacks: ActionCallbacks = {
-      onTaskIncoming: (taskData) => {
-        LoggerProxy.log('State machine: Task incoming', {
-          module: CC_FILE,
-          method: 'onTaskIncoming',
-          interactionId: taskData.interactionId,
-        });
-      },
-      onTaskAssigned: (taskData) => {
-        LoggerProxy.log('State machine: Task assigned', {
-          module: CC_FILE,
-          method: 'onTaskAssigned',
-          interactionId: taskData.interactionId,
-        });
-      },
-      onCleanupResources: () => {},
-    };
-
-    // Create custom actions with callbacks for event emission
-    const eventActions = createActionsWithCallbacks(callbacks);
-
-    const machine: TaskStateMachine = createTaskStateMachineWithActions(
-      this.uiControlConfig,
-      eventActions
-    );
+    const machine: TaskStateMachine = createTaskStateMachine(this.uiControlConfig);
 
     this.stateMachineService = createActor(machine);
 
@@ -293,6 +269,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     LoggerProxy.error(`Unsupported operation`, {
       module: 'TASK',
       method: methodName,
+      interactionId: this.data?.interactionId,
     });
     throw new Error(`Unsupported operation: ${methodName}`);
   }

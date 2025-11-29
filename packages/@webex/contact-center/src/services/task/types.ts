@@ -298,6 +298,17 @@ export enum TASK_EVENTS {
   TASK_WRAPPEDUP = 'task:wrappedup',
 
   /**
+   * Triggered when recording is started
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_RECORDING_STARTED, (task: ITask) => {
+   *   console.log('Recording started:', task.data.interactionId);
+   * });
+   * ```
+   */
+  TASK_RECORDING_STARTED = 'task:recordingStarted',
+
+  /**
    * Triggered when recording is paused
    * @example
    * ```typescript

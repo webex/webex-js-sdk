@@ -12,19 +12,76 @@
  */
 
 import {assign} from 'xstate';
-import {
-  TaskContext,
-  TaskEventPayload,
-  isEventOfType,
-  TaskEvent,
-  UIControlConfig,
-  TaskState,
-} from './types';
+import {TaskContext, TaskEventPayload, TaskEvent, UIControlConfig, TaskState} from './types';
 import {TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
 
+type RecordingStateUpdate = Partial<
+  Pick<TaskContext, 'recordingControlsAvailable' | 'recordingInProgress'>
+>;
+
+const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate => {
+  const callProcessingDetails = taskData?.interaction?.callProcessingDetails;
+
+  if (!callProcessingDetails) {
+    return {};
+  }
+
+  const update: RecordingStateUpdate = {};
+  const {recordingStarted, recordInProgress} = callProcessingDetails;
+
+  if (recordingStarted !== undefined) {
+    update.recordingControlsAvailable = recordingStarted;
+    if (!recordingStarted) {
+      update.recordingInProgress = false;
+    }
+  }
+
+  if (recordInProgress !== undefined) {
+    update.recordingControlsAvailable = recordInProgress || recordingStarted || false;
+    update.recordingInProgress = recordInProgress;
+  }
+
+  if (
+    update.recordingControlsAvailable === undefined &&
+    update.recordingInProgress === undefined &&
+    recordingStarted
+  ) {
+    update.recordingControlsAvailable = true;
+    update.recordingInProgress = true;
+  }
+
+  return update;
+};
+
 /**
- * Create initial context for a new task
+ * Copy latest backend payload into context.
+ *
+ * We intentionally replace the entire taskData reference instead of
+ * merging individual fields so that the context always mirrors the
+ * most recent socket payload (offer, assign, consult, recording, etc.).
+ * Every downstream consumer can therefore rely on taskData being the
+ * single source of truth, while derived values (like recording flags)
+ * are recalculated here via deriveRecordingState.
+ */
+const deriveTaskDataUpdates = (_context: TaskContext, taskData: TaskData) => ({
+  taskData,
+  ...deriveRecordingState(taskData),
+});
+
+/**
+ * Create initial context for a new task.
+ *
+ * Only include data here that CANNOT be derived from the state value itself.
+ * Examples:
+ *   - Latest backend payload (`taskData`) so actions/guards can read raw fields.
+ *   - Flags that track who initiated the consult, destination info, or recording
+ *     availability – these depend on payloads, not just the state enum.
+ *   - The immutable UI control configuration and the last computed UI controls.
+ *
+ * Avoid storing duplicates of the current state (e.g. `isHeld`, `isConnected`),
+ * because the state node already encodes that truth. Treat this context shape as
+ * the contract new states/actions should follow when they need extra data.
  *
  * @param uiControlConfig - UI control configuration
  * @param initialState - Initial state for computing UI controls
@@ -73,25 +130,20 @@ export const actions = {
    * Initialize task with offer data
    */
   initializeTask: assign((context: TaskContext, event: TaskEventPayload) => {
-    if (isEventOfType(event, TaskEvent.OFFER) || isEventOfType(event, TaskEvent.OFFER_CONSULT)) {
-      return deriveTaskDataUpdates(context, event.taskData);
-    }
+    // Guard not needed in this action because the state machine only references
+    // initializeTask from OFFER/OFFER_CONSULT transitions, both of which carry taskData.
+    const {taskData} = event as Extract<TaskEventPayload, {taskData: TaskData}>;
 
-    return {};
+    return deriveTaskDataUpdates(context, taskData);
   }),
 
   /**
    * Update task data from ASSIGN event
    */
   updateTaskData: assign((context: TaskContext, event: TaskEventPayload) => {
-    if (isEventOfType(event, TaskEvent.ASSIGN)) {
-      return deriveTaskDataUpdates(context, event.taskData);
-    }
-    if (isEventOfType(event, TaskEvent.CONSULT_CREATED)) {
-      return deriveTaskDataUpdates(context, event.taskData);
-    }
+    const {taskData} = event as Extract<TaskEventPayload, {taskData: TaskData}>;
 
-    return {};
+    return deriveTaskDataUpdates(context, taskData);
   }),
 
   /**
@@ -105,39 +157,41 @@ export const actions = {
    * Set consult destination details
    */
   setConsultDestination: assign((context: TaskContext, event: TaskEventPayload) => {
-    if (isEventOfType(event, TaskEvent.CONSULT)) {
-      return {
-        consultDestination: event.destination,
-      };
-    }
+    const consultEvent = event as Extract<
+      TaskEventPayload,
+      {type: TaskEvent.CONSULT; destination: string}
+    >;
 
-    return {};
+    return {
+      consultDestination: consultEvent.destination,
+    };
   }),
 
   /**
    * Mark that consult destination agent has joined
    */
   setConsultAgentJoined: assign((context: TaskContext, event: TaskEventPayload) => {
-    if (isEventOfType(event, TaskEvent.CONSULTING_ACTIVE)) {
-      return {
-        consultDestinationAgentJoined: event.consultDestinationAgentJoined,
-      };
-    }
+    const consultingActive = event as Extract<
+      TaskEventPayload,
+      {type: TaskEvent.CONSULTING_ACTIVE; consultDestinationAgentJoined: boolean}
+    >;
 
-    return {};
+    return {
+      consultDestinationAgentJoined: consultingActive.consultDestinationAgentJoined,
+    };
   }),
 
   /**
    * Set recording state
    */
   setRecordingState: assign((context: TaskContext, event: TaskEventPayload) => {
-    if (isEventOfType(event, TaskEvent.PAUSE_RECORDING)) {
+    if (event.type === TaskEvent.PAUSE_RECORDING) {
       return {
         recordingControlsAvailable: true,
         recordingInProgress: false,
       };
     }
-    if (isEventOfType(event, TaskEvent.RESUME_RECORDING)) {
+    if (event.type === TaskEvent.RESUME_RECORDING) {
       return {
         recordingControlsAvailable: true,
         recordingInProgress: true,
@@ -159,38 +213,36 @@ export const actions = {
    * Track hold state updates (currently no-op placeholder)
    */
   setHoldState: assign((context: TaskContext, event: TaskEventPayload) => {
-    if (
-      isEventOfType(event, TaskEvent.HOLD_SUCCESS) ||
-      isEventOfType(event, TaskEvent.UNHOLD_SUCCESS)
-    ) {
-      const mediaResourceId = event.mediaResourceId;
-      const interaction = context.taskData?.interaction;
-      const mediaEntry = interaction?.media?.[mediaResourceId];
+    const holdEvent = event as Extract<
+      TaskEventPayload,
+      | {type: TaskEvent.HOLD_SUCCESS; mediaResourceId: string}
+      | {type: TaskEvent.UNHOLD_SUCCESS; mediaResourceId: string}
+    >;
+    const mediaResourceId = holdEvent.mediaResourceId;
+    const interaction = context.taskData?.interaction;
+    const mediaEntry = interaction?.media?.[mediaResourceId];
 
-      if (!interaction || !mediaEntry) {
-        return {};
-      }
-
-      const updatedMedia = {
-        ...interaction.media,
-        [mediaResourceId]: {
-          ...mediaEntry,
-          isHold: isEventOfType(event, TaskEvent.HOLD_SUCCESS),
-        },
-      };
-
-      return {
-        taskData: {
-          ...(context.taskData as TaskData),
-          interaction: {
-            ...interaction,
-            media: updatedMedia,
-          },
-        },
-      };
+    if (!interaction || !mediaEntry) {
+      return {};
     }
 
-    return {};
+    const updatedMedia = {
+      ...interaction.media,
+      [mediaResourceId]: {
+        ...mediaEntry,
+        isHold: holdEvent.type === TaskEvent.HOLD_SUCCESS,
+      },
+    };
+
+    return {
+      taskData: {
+        ...(context.taskData as TaskData),
+        interaction: {
+          ...interaction,
+          media: updatedMedia,
+        },
+      },
+    };
   }),
 
   /**
@@ -209,105 +261,31 @@ export const actions = {
   },
 };
 
-type RecordingStateUpdate = Partial<
-  Pick<TaskContext, 'recordingControlsAvailable' | 'recordingInProgress'>
->;
-
-const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate => {
-  const callProcessingDetails = taskData?.interaction?.callProcessingDetails;
-
-  if (!callProcessingDetails) {
-    return {};
-  }
-
-  const update: RecordingStateUpdate = {};
-  const {recordingStarted, recordInProgress} = callProcessingDetails;
-
-  if (recordingStarted !== undefined) {
-    update.recordingControlsAvailable = recordingStarted;
-    if (!recordingStarted) {
-      update.recordingInProgress = false;
-    }
-  }
-
-  if (recordInProgress !== undefined) {
-    update.recordingControlsAvailable = recordInProgress || recordingStarted || false;
-    update.recordingInProgress = recordInProgress;
-  }
-
-  if (
-    update.recordingControlsAvailable === undefined &&
-    update.recordingInProgress === undefined &&
-    recordingStarted
-  ) {
-    update.recordingControlsAvailable = true;
-    update.recordingInProgress = true;
-  }
-
-  return update;
-};
-
-const deriveTaskDataUpdates = (_context: TaskContext, taskData: TaskData) => ({
-  taskData,
-  ...deriveRecordingState(taskData),
-});
-
 /**
- * Helper to create action implementations that will be used by Task/Voice classes
- * These factories allow the Task/Voice class to inject their own logic while keeping
- * the state machine pure and testable.
+ * NOTE FOR FUTURE ACTION HOOKS:
+ * Once we emit Task events from the state machine instead of `TaskManager`,
+ * provide custom actions when creating the machine (e.g. wrap
+ * `createTaskStateMachineConfig` yourself). For example:
+ *
+ * ```ts
+ * const customActions = {
+ *   emitTaskAssigned: (context: TaskContext) => {
+ *     task.emit(TASK_EVENTS.TASK_ASSIGNED, {
+ *       interactionId: context.taskData?.interactionId,
+ *       taskData: context.taskData,
+ *     });
+ *   },
+ * };
+ *
+ * const machine = createMachine(getTaskStateMachineConfig(config), {
+ *   actions: {...actions, ...customActions},
+ * });
+ * ```
+ *
+ * Only add such callbacks when the event payload has to be derived from the
+ * latest state-machine context (e.g. wrap-up metadata, derived flags, etc.).
+ * If the payload is ready as soon as the websocket message arrives, continue
+ * emitting from `TaskManager` to avoid duplicating work inside the machine.
+ * Keeping the hooks outside this file ensures the core actions stay pure while
+ * still making it obvious where to place future side effects.
  */
-export interface ActionCallbacks {
-  onTaskIncoming?: (taskData: any) => void;
-  onTaskAssigned?: (taskData: any) => void;
-  onTaskHold?: (taskData: any) => void;
-  onTaskResume?: (taskData: any) => void;
-  onTaskConsultCreated?: (taskData: any) => void;
-  onTaskConsulting?: (taskData: any) => void;
-  onTaskConsultEnd?: (taskData: any) => void;
-  onTaskEnd?: (taskData: any) => void;
-  onTaskWrappedup?: (taskData: any) => void;
-  onCleanupResources?: () => void;
-}
-
-/**
- * Create action implementations with callbacks
- * This allows the Task/Voice class to provide implementation for side effects
- */
-export function createActionsWithCallbacks(callbacks: ActionCallbacks) {
-  return {
-    // Event emission actions
-    emitTaskIncoming: (context: TaskContext) => {
-      callbacks.onTaskIncoming?.(context.taskData);
-    },
-    emitTaskAssigned: (context: TaskContext) => {
-      callbacks.onTaskAssigned?.(context.taskData);
-    },
-    emitTaskHold: (context: TaskContext) => {
-      callbacks.onTaskHold?.(context.taskData);
-    },
-    emitTaskResume: (context: TaskContext) => {
-      callbacks.onTaskResume?.(context.taskData);
-    },
-    emitTaskConsultCreated: (context: TaskContext) => {
-      callbacks.onTaskConsultCreated?.(context.taskData);
-    },
-    emitTaskConsulting: (context: TaskContext) => {
-      callbacks.onTaskConsulting?.(context.taskData);
-    },
-    emitTaskConsultEnd: (context: TaskContext) => {
-      callbacks.onTaskConsultEnd?.(context.taskData);
-    },
-    emitTaskEnd: (context: TaskContext) => {
-      callbacks.onTaskEnd?.(context.taskData);
-    },
-    emitTaskWrappedup: (context: TaskContext) => {
-      callbacks.onTaskWrappedup?.(context.taskData);
-    },
-
-    // Cleanup action
-    cleanupResources: () => {
-      callbacks.onCleanupResources?.();
-    },
-  };
-}

@@ -21,6 +21,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
     id: 'taskStateMachine',
     initial: TaskState.IDLE,
     context: createInitialContext(uiControlConfig, TaskState.IDLE),
+    on: {
+      [TaskEvent.RECORDING_STARTED]: {
+        actions: ['updateTaskData'],
+      },
+    },
     states: {
       [TaskState.IDLE]: {
         on: {
@@ -243,7 +248,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 }
 
 /**
- * Create a task state machine instance
+ * Create a task state machine instance using only the built-in actions.
+ * The resulting machine is ready for most consumers that rely on the default
+ * context mutators declared in actions.ts.
  *
  * @param uiControlConfig - UI control configuration
  * @returns StateMachine instance for task management
@@ -251,26 +258,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 export function createTaskStateMachine(uiControlConfig: UIControlConfig) {
   return createMachine(getTaskStateMachineConfig(uiControlConfig), {
     actions,
-  });
-}
-
-/**
- * Create a task state machine with custom actions
- * This allows the Task/Voice class to inject their own event emission and side effects
- *
- * @param uiControlConfig - UI control configuration
- * @param customActions - Custom action implementations
- * @returns StateMachine instance with custom actions
- */
-export function createTaskStateMachineWithActions(
-  uiControlConfig: UIControlConfig,
-  customActions: Record<string, any>
-) {
-  return createMachine(getTaskStateMachineConfig(uiControlConfig), {
-    actions: {
-      ...actions,
-      ...customActions,
-    },
   });
 }
 

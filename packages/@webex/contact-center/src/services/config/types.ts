@@ -83,6 +83,8 @@ export const CC_TASK_EVENTS = {
   AGENT_CONSULT_TRANSFER_FAILED: 'AgentConsultTransferFailed',
   /** Event emitted when contact recording is paused */
   CONTACT_RECORDING_PAUSED: 'ContactRecordingPaused',
+  /** Event emitted when contact recording is started */
+  CONTACT_RECORDING_STARTED: 'ContactRecordingStarted',
   /** Event emitted when pausing contact recording fails */
   CONTACT_RECORDING_PAUSE_FAILED: 'ContactRecordingPauseFailed',
   /** Event emitted when contact recording is resumed */
@@ -176,6 +178,15 @@ export type WelcomeEvent = {
   /** ID of the agent that connected */
   agentId: string;
 };
+
+/**
+ * Available login options for voice channel access
+ * 'AGENT_DN' - Login using agent's DN
+ * 'EXTENSION' - Login using extension number
+ * 'BROWSER' - Login using browser-based WebRTC
+ * @public
+ */
+export type LoginOption = 'AGENT_DN' | 'EXTENSION' | 'BROWSER';
 
 /**
  * Response type for welcome events which can be either success or error
@@ -945,15 +956,6 @@ export type WrapupData = {
     allowCancelAutoWrapup?: boolean;
   };
 };
-
-/**
- * Available login options for voice channel access
- * 'AGENT_DN' - Login using agent's DN
- * 'EXTENSION' - Login using extension number
- * 'BROWSER' - Login using browser-based WebRTC
- * @public
- */
-export type LoginOption = 'AGENT_DN' | 'EXTENSION' | 'BROWSER';
 
 /**
  * Team configuration information

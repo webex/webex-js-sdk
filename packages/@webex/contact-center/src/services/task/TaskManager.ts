@@ -15,6 +15,17 @@ import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
 import {TaskEvent, type TaskEventPayload} from './state-machine';
 import {normalizeTaskData} from './taskDataNormalizer';
+
+type WebSocketPayload = TaskData & {
+  type: CC_EVENTS | string;
+  mediaResourceId?: string;
+  reason?: string;
+};
+
+type WebSocketMessage = {
+  keepalive?: 'true' | 'false' | boolean;
+  data: WebSocketPayload;
+};
 /** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -107,24 +118,24 @@ export default class TaskManager extends EventEmitter {
    * @param payload - The event payload
    * @returns TaskEventPayload for state machine or null if no mapping
    */
-  private mapWebSocketEventToStateMachineEvent(
+  private static mapEventToTaskStateMachineEvent(
     ccEvent: CC_EVENTS,
-    payload: any
+    payload: WebSocketPayload
   ): TaskEventPayload | null {
     const mediaResourceId =
-      payload.data?.mediaResourceId ||
-      payload.data?.interaction?.media?.[payload.data?.interactionId]?.mediaResourceId;
+      payload.mediaResourceId ||
+      payload.interaction?.media?.[payload.interactionId]?.mediaResourceId;
 
     switch (ccEvent) {
       case CC_EVENTS.AGENT_CONTACT_RESERVED:
       case CC_EVENTS.AGENT_OFFER_CONTACT:
-        return {type: TaskEvent.OFFER, taskData: payload.data};
+        return {type: TaskEvent.OFFER, taskData: payload};
 
       case CC_EVENTS.AGENT_OFFER_CONSULT:
-        return {type: TaskEvent.OFFER_CONSULT, taskData: payload.data};
+        return {type: TaskEvent.OFFER_CONSULT, taskData: payload};
 
       case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-        return {type: TaskEvent.ASSIGN, taskData: payload.data};
+        return {type: TaskEvent.ASSIGN, taskData: payload};
 
       case CC_EVENTS.AGENT_CONTACT_HELD:
         return {type: TaskEvent.HOLD, mediaResourceId: mediaResourceId || ''};
@@ -133,7 +144,7 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.UNHOLD, mediaResourceId: mediaResourceId || ''};
 
       case CC_EVENTS.AGENT_CONSULT_CREATED:
-        return {type: TaskEvent.CONSULT_CREATED, taskData: payload.data};
+        return {type: TaskEvent.CONSULT_CREATED, taskData: payload};
 
       case CC_EVENTS.AGENT_CONSULTING:
         return {
@@ -145,7 +156,7 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.CONSULT_END};
 
       case CC_EVENTS.AGENT_CONSULT_FAILED:
-        return {type: TaskEvent.CONSULT_FAILED, reason: payload.data?.reason};
+        return {type: TaskEvent.CONSULT_FAILED, reason: payload.reason};
 
       case CC_EVENTS.AGENT_CTQ_CANCELLED:
         return {type: TaskEvent.CTQ_CANCEL};
@@ -159,10 +170,13 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.CONTACT_ENDED};
 
       case CC_EVENTS.AGENT_INVITE_FAILED:
-        return {type: TaskEvent.INVITE_FAILED, reason: payload.data?.reason};
+        return {type: TaskEvent.INVITE_FAILED, reason: payload.reason};
 
       case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
         return {type: TaskEvent.RONA};
+
+      case CC_EVENTS.CONTACT_RECORDING_STARTED:
+        return {type: TaskEvent.RECORDING_STARTED, taskData: payload};
 
       case CC_EVENTS.CONTACT_RECORDING_PAUSED:
         return {type: TaskEvent.PAUSE_RECORDING};
@@ -182,20 +196,24 @@ export default class TaskManager extends EventEmitter {
    * @param payload - The event payload
    * @param task - The task instance
    */
-  private sendEventToStateMachine(ccEvent: CC_EVENTS, payload: any, task?: ITask): void {
+  private sendEventToStateMachine(
+    ccEvent: CC_EVENTS,
+    payload: WebSocketPayload,
+    task?: ITask
+  ): void {
     // Check if task has state machine (will be added in Task interface)
     const taskWithStateMachine = task as any;
     if (!taskWithStateMachine?.stateMachineService) {
       return;
     }
 
-    const stateMachineEvent = this.mapWebSocketEventToStateMachineEvent(ccEvent, payload);
+    const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(ccEvent, payload);
 
     if (stateMachineEvent) {
       LoggerProxy.log(`Sending event to state machine: ${ccEvent} -> ${stateMachineEvent.type}`, {
         module: TASK_MANAGER_FILE,
         method: 'sendEventToStateMachine',
-        interactionId: payload.data?.interactionId,
+        interactionId: payload.interactionId,
       });
 
       // Send event to task's state machine
@@ -205,7 +223,7 @@ export default class TaskManager extends EventEmitter {
 
   private registerTaskListeners() {
     this.webSocketManager.on('message', (event) => {
-      const payload = JSON.parse(event);
+      const payload = JSON.parse(event) as WebSocketMessage;
       if (payload?.keepalive === 'true' || payload?.keepalive === true) {
         return;
       }
@@ -399,6 +417,10 @@ export default class TaskManager extends EventEmitter {
             this.removeTaskFromCollection(task);
             task.emit(TASK_EVENTS.TASK_WRAPPEDUP, task);
             break;
+          case CC_EVENTS.CONTACT_RECORDING_STARTED:
+            this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_RECORDING_STARTED, task);
+            break;
           case CC_EVENTS.CONTACT_RECORDING_PAUSED:
             this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_RECORDING_PAUSED, task);
@@ -433,7 +455,7 @@ export default class TaskManager extends EventEmitter {
           task.emit(payload.data.type, payload.data);
 
           // Send event to state machine for all events
-          this.sendEventToStateMachine(payload.data.type, payload, task);
+          this.sendEventToStateMachine(payload.data.type as CC_EVENTS, payload.data, task);
         }
       }
     });

@@ -81,6 +81,7 @@ export enum TaskEvent {
   EXIT_CONFERENCE = 'EXIT_CONFERENCE',
 
   // Recording events
+  RECORDING_STARTED = 'RECORDING_STARTED',
   PAUSE_RECORDING = 'PAUSE_RECORDING',
   RESUME_RECORDING = 'RESUME_RECORDING',
 
@@ -211,6 +212,7 @@ export type TaskEventPayload =
   | {type: TaskEvent.PARTICIPANT_JOIN; participant: ConferenceParticipant}
   | {type: TaskEvent.PARTICIPANT_LEAVE; participantId: string}
   | {type: TaskEvent.EXIT_CONFERENCE; agentId?: string}
+  | {type: TaskEvent.RECORDING_STARTED; taskData: TaskData}
   | {type: TaskEvent.PAUSE_RECORDING}
   | {type: TaskEvent.RESUME_RECORDING}
   | {type: TaskEvent.TRANSFER}

@@ -180,7 +180,7 @@ export default class Voice extends Task implements IVoice {
           interactionId: this.data.interactionId,
         });
       } else {
-        const mainId = this.data.interaction.mainInteractionId!;
+        const mainId = this.data.interaction?.mainInteractionId;
         response = await this.contact.unHold({
           interactionId: this.data.interactionId,
           data: {mediaResourceId: this.data.mediaResourceId},
@@ -214,15 +214,12 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
-      // Send failure event to transition back to previous state
-      if (this.stateMachineService) {
-        const failureEvent = shouldHold ? TaskEvent.HOLD_FAILED : TaskEvent.UNHOLD_FAILED;
-        this.stateMachineService.send({
-          type: failureEvent,
-          reason: error.toString(),
-          mediaResourceId: this.data.mediaResourceId,
-        });
-      }
+      const failureEvent = shouldHold ? TaskEvent.HOLD_FAILED : TaskEvent.UNHOLD_FAILED;
+      this.stateMachineService.send({
+        type: failureEvent,
+        reason: error.toString(),
+        mediaResourceId: this.data.mediaResourceId,
+      });
 
       const {error: detailedError} = getErrorDetails(error, 'holdResume', CC_FILE);
       this.metricsManager.trackEvent(
@@ -463,13 +460,10 @@ export default class Voice extends Task implements IVoice {
 
       return result;
     } catch (error) {
-      // Send failure event to transition back to previous state
-      if (this.stateMachineService) {
-        this.stateMachineService.send({
-          type: TaskEvent.CONSULT_FAILED,
-          reason: error.toString(),
-        });
-      }
+      this.stateMachineService.send({
+        type: TaskEvent.CONSULT_FAILED,
+        reason: error.toString(),
+      });
 
       const {error: detailedError} = getErrorDetails(error, 'consult', CC_FILE);
       this.metricsManager.trackEvent(
