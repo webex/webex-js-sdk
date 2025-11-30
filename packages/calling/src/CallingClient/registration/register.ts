@@ -16,7 +16,7 @@ import {ICallManager} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
 import log from '../../Logger';
-import {IRegistration} from './types';
+import {FailoverCacheState, IRegistration} from './types';
 import SDKConnector from '../../SDKConnector';
 import {
   ALLOWED_SERVICES,
@@ -67,6 +67,8 @@ export class Registration implements IRegistration {
   private sdkConnector: ISDKConnector;
 
   private webex: WebexSDK;
+
+  private static readonly FAILOVER_CACHE_PREFIX = 'webex-calling-failover-state';
 
   private userId = '';
 
@@ -127,6 +129,36 @@ export class Registration implements IRegistration {
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
+  }
+
+  private getFailoverCacheKey(): string {
+    return `${Registration.FAILOVER_CACHE_PREFIX}.${this.userId || 'unknown'}`;
+  }
+
+  private saveFailoverState(failoverState: FailoverCacheState): void {
+    try {
+      localStorage.setItem(this.getFailoverCacheKey(), JSON.stringify(failoverState));
+    } catch (error) {
+      log.warn(`Storing failover state in cache failed with error: ${String(error)}`, {
+        file: REGISTRATION_FILE,
+        method: 'saveFailoverState',
+      });
+    }
+  }
+
+  private clearFailoverState(): void {
+    try {
+      localStorage.removeItem(this.getFailoverCacheKey());
+    } catch {
+      // ignore
+    }
+  }
+
+  private resumeFailover(failoverState: FailoverCacheState): void {
+    const currentTime = Math.floor(Date.now() / 1000);
+    const newElapsed = failoverState.timeElapsed + (currentTime - failoverState.retryScheduledTime);
+
+    this.startFailoverTimer(failoverState.attempt, newElapsed);
   }
 
   public getActiveMobiusUrl(): string {
@@ -346,6 +378,13 @@ export class Registration implements IRegistration {
         interval = Math.max(interval, this.retryAfter);
       }
 
+      this.saveFailoverState({
+        attempt,
+        timeElapsed,
+        retryScheduledTime: scheduledTime,
+        serverType: 'primary',
+      });
+
       setTimeout(async () => {
         await this.mutex.runExclusive(async () => {
           abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL);
@@ -361,9 +400,17 @@ export class Registration implements IRegistration {
         loggerContext
       );
     } else if (this.backupMobiusUris.length) {
+      this.saveFailoverState({
+        attempt,
+        timeElapsed,
+        retryScheduledTime: Math.floor(Date.now() / 1000),
+        serverType: 'backup',
+      });
+
       log.info('Failing over to backup servers.', loggerContext);
       this.failoverImmediately = false;
       abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL, this.backupMobiusUris);
+
       if (!abort && !this.isDeviceRegistered()) {
         interval = this.getRegRetryInterval();
 
@@ -691,6 +738,21 @@ export class Registration implements IRegistration {
    * Registration is attempted with primary and backup until it succeeds or the list is exhausted
    */
   public async triggerRegistration() {
+    // Resume only if a failover was previously scheduled
+    try {
+      const raw = localStorage.getItem(this.getFailoverCacheKey());
+      const failoverState = raw ? (JSON.parse(raw) as FailoverCacheState) : undefined;
+      if (failoverState && !this.isDeviceRegistered()) {
+        this.resumeFailover(failoverState);
+
+        return;
+      }
+    } catch (error) {
+      log.warn(`No failover state found in cache`, {
+        file: REGISTRATION_FILE,
+        method: 'triggerRegistration',
+      });
+    }
     if (this.primaryMobiusUris.length > 0) {
       const abort = await this.attemptRegistrationWithServers(
         REGISTRATION_UTIL,
@@ -774,6 +836,7 @@ export class Registration implements IRegistration {
           serverType
         );
         this.initiateFailback();
+        this.clearFailoverState();
         break;
       } catch (err: unknown) {
         const body = err as WebexRequestPayload;
@@ -950,6 +1013,7 @@ export class Registration implements IRegistration {
 
     this.clearKeepaliveTimer();
     this.setStatus(RegistrationStatus.INACTIVE);
+    this.clearFailoverState();
   }
 
   /**
