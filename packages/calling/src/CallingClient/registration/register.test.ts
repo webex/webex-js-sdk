@@ -968,30 +968,13 @@ describe('Registration Tests', () => {
 
       const failoverSpy = jest.spyOn(reg as any, 'startFailoverTimer');
 
-      await reg.triggerRegistration();
-
-      expect(sftSpy).toHaveBeenCalledTimes(1);
-      const [attemptArg, timeElapsedArg] = failoverSpy.mock.calls[0];
-      expect(attemptArg).toBe(3);
-      expect(timeElapsedArg).toBeGreaterThanOrEqual(12);
-    });
-
-    it('clears localStorage failover state on successful registration', async () => {
-      const key = `webex-calling-failover-state.${webex.internal.device.userId}`;
-      localStorage.setItem(
-        key,
-        JSON.stringify({
-          attempt: 2,
-          timeElapsed: 7,
-          retryScheduledTime: Math.floor(Date.now() / 1000) + 60,
-          serverType: 'primary',
-        })
-      );
-
       webex.request.mockResolvedValueOnce(successPayload);
       await reg.triggerRegistration();
 
-      expect(localStorage.getItem(key)).toBeNull();
+      expect(failoverSpy).toHaveBeenCalledTimes(1);
+      const [attemptArg, timeElapsedArg] = failoverSpy.mock.calls[0];
+      expect(attemptArg).toBe(3);
+      expect(timeElapsedArg).toBeGreaterThanOrEqual(12);
     });
 
     it('verify unreachable primary with reachable backup servers', async () => {

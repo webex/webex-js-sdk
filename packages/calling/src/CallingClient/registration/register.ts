@@ -807,6 +807,7 @@ export class Registration implements IRegistration {
         });
         // eslint-disable-next-line no-await-in-loop
         const resp = await this.postRegistration(url);
+        this.clearFailoverState();
         this.deviceInfo = resp.body as IDeviceInfo;
         this.registrationStatus = RegistrationStatus.ACTIVE;
         this.setActiveMobiusUrl(url);
@@ -836,7 +837,6 @@ export class Registration implements IRegistration {
           serverType
         );
         this.initiateFailback();
-        this.clearFailoverState();
         break;
       } catch (err: unknown) {
         const body = err as WebexRequestPayload;
