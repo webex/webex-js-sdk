@@ -28,6 +28,9 @@ const CLUSTER_SERVICE = process.env.WEBEX_CONVERSATION_CLUSTER_SERVICE || DEFAUL
 const DEFAULT_CLUSTER_IDENTIFIER =
   process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER || `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
 
+const CATALOG_CACHE_KEY_V2 = 'services.v2.u2cHostMap';
+const CATALOG_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 /* eslint-disable no-underscore-dangle */
 /**
  * @class
@@ -234,6 +237,22 @@ const Services = WebexPlugin.extend({
           serviceHostMap?.services,
           serviceHostMap?.timestamp
         );
+        // Build selection metadata for caching discrimination (preauth/signin)
+        let selectionMeta: {selectionType: string; selectionValue: string} | undefined;
+        if (serviceGroup === 'preauth' || serviceGroup === 'signin') {
+          try {
+            const key = formattedQuery && Object.keys(formattedQuery || {})[0];
+            if (key) {
+              selectionMeta = {
+                selectionType: key,
+                selectionValue: (formattedQuery as any)[key],
+              };
+            }
+          } catch {
+            // ignore
+          }
+        }
+        (this as any)._cacheCatalog(serviceGroup, serviceHostMap, selectionMeta);
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
       })
@@ -917,6 +936,236 @@ const Services = WebexPlugin.extend({
 
   /**
    * @private
+   * Cache the catalog in the bounded storage.
+   * @param {ServiceGroup} serviceGroup - preauth, signin, postauth
+   * @param {ServiceHostmap} hostMap - The hostmap to cache
+   * @param {object} [meta] - Optional selection metadata for cache discrimination
+   * @returns {Promise<void>}
+   */
+  async _cacheCatalog(
+    serviceGroup: ServiceGroup,
+    hostMap: ServiceHostmap,
+    meta?: {selectionType: string; selectionValue: string}
+  ): Promise<void> {
+    try {
+      // Respect calling.cacheU2C toggle; if disabled, skip writing cache
+      try {
+        if (
+          (this as any)?.webex?.config?.calling &&
+          (this as any).webex.config.calling.cacheU2C === false
+        ) {
+          return;
+        }
+      } catch {
+        // ignore
+      }
+
+      let current: any = {};
+      try {
+        const raw =
+          typeof window !== 'undefined' && (window as any).localStorage
+            ? (window as any).localStorage.getItem(CATALOG_CACHE_KEY_V2)
+            : null;
+        current = raw ? JSON.parse(raw) : {};
+      } catch {
+        current = {};
+      }
+
+      let orgId: string | undefined;
+      try {
+        const {credentials} = (this as any).webex;
+        orgId = credentials.getOrgId();
+      } catch {
+        orgId = current.orgId;
+      }
+
+      // Capture environment fingerprint to invalidate cache across env changes
+      let env: {fedramp?: boolean; u2cDiscoveryUrl?: string} | undefined;
+      try {
+        const fedramp = !!(this as any)?.webex?.config?.fedramp;
+        const u2cDiscoveryUrl = (this as any)?.webex?.config?.services?.discovery?.u2c;
+        env = {fedramp, u2cDiscoveryUrl};
+      } catch {
+        env = current.env;
+      }
+
+      const updated = {
+        ...current,
+        orgId: orgId || current.orgId,
+        env: env || current.env,
+        // When selection meta is provided, store as an object; otherwise keep legacy shape
+        [serviceGroup]: meta ? {hostMap, meta} : hostMap,
+        cachedAt: Date.now(),
+      };
+
+      if (typeof window !== 'undefined' && (window as any).localStorage) {
+        (window as any).localStorage.setItem(CATALOG_CACHE_KEY_V2, JSON.stringify(updated));
+      }
+    } catch {
+      // ignore cache errors
+    }
+  },
+
+  /**
+   * @private
+   * Load the catalog from cache and hydrate the in-memory ServiceCatalog.
+   * @returns {Promise<boolean>} true if cache was loaded, false otherwise
+   */
+  async _loadCatalogFromCache(): Promise<boolean> {
+    try {
+      // Respect calling.cacheU2C toggle; if disabled, skip using cache
+      try {
+        if (
+          (this as any)?.webex?.config?.calling &&
+          (this as any).webex.config.calling.cacheU2C === false
+        ) {
+          return false;
+        }
+      } catch {
+        // ignore
+      }
+
+      if (typeof window === 'undefined' || !(window as any).localStorage) {
+        return false;
+      }
+      const raw = (window as any).localStorage.getItem(CATALOG_CACHE_KEY_V2);
+      const cached = raw ? JSON.parse(raw) : undefined;
+      if (!cached) {
+        return false;
+      }
+
+      // TTL enforcement
+      const cachedAt = Number(cached.cachedAt) || 0;
+      if (!cachedAt || Date.now() - cachedAt > CATALOG_TTL_MS) {
+        try {
+          (this as any).clearCatalogCache();
+        } catch {
+          // ignore
+        }
+
+        return false;
+      }
+
+      // If authorized, ensure cached org matches
+      try {
+        if ((this as any).webex.credentials?.canAuthorize) {
+          const {credentials} = (this as any).webex;
+          const currentOrgId = credentials.getOrgId();
+          if (cached.orgId && cached.orgId !== currentOrgId) {
+            return false;
+          }
+        }
+      } catch {
+        // ignore orgId check errors
+      }
+
+      // Ensure cached environment matches current environment
+      try {
+        const fedramp = !!(this as any)?.webex?.config?.fedramp;
+        const u2cDiscoveryUrl = (this as any)?.webex?.config?.services?.discovery?.u2c;
+        const currentEnv = {fedramp, u2cDiscoveryUrl};
+        if (cached.env) {
+          const sameEnv =
+            cached.env.fedramp === currentEnv.fedramp &&
+            cached.env.u2cDiscoveryUrl === currentEnv.u2cDiscoveryUrl;
+          if (!sameEnv) {
+            return false;
+          }
+        }
+      } catch {
+        // ignore env check errors
+      }
+
+      const catalog = this._getCatalog();
+      const groups: Array<ServiceGroup> = ['preauth', 'signin', 'postauth'];
+
+      // Helper: compute intended preauth selection based on current context
+      const getIntendedPreauthSelection = () => {
+        try {
+          if ((this as any).webex.credentials?.canAuthorize) {
+            const orgId = (this as any).webex.credentials.getOrgId();
+            if (orgId) {
+              return {selectionType: 'orgId', selectionValue: orgId};
+            }
+          }
+        } catch {
+          // ignore
+        }
+        const emailConfig = (this as any).webex.config && (this as any).webex.config.email;
+        try {
+          if (typeof emailConfig === 'string' && emailConfig.trim()) {
+            return {
+              selectionType: 'emailhash',
+              selectionValue: sha256(emailConfig.toLowerCase()).toString(),
+            };
+          }
+        } catch {
+          // ignore invalid email config, fall through to proximity mode
+        }
+        // fall back to proximity mode when no orgId or email available
+
+        return {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'};
+      };
+
+      groups.forEach((g) => {
+        const cachedGroup = cached[g];
+        if (!cachedGroup) {
+          return;
+        }
+
+        // Support legacy (hostMap) and new ({hostMap, meta}) shapes
+        const hostMap: ServiceHostmap =
+          cachedGroup && cachedGroup.hostMap ? cachedGroup.hostMap : cachedGroup;
+        const meta: {selectionType: string; selectionValue: string} | undefined =
+          cachedGroup && cachedGroup.meta ? cachedGroup.meta : undefined;
+
+        if (g === 'preauth' && meta) {
+          // For proximity-based selection, always fetch fresh to respect IP/region changes
+          if (meta.selectionType === 'mode') {
+            return;
+          }
+
+          const intended = getIntendedPreauthSelection();
+          const matches =
+            intended &&
+            intended.selectionType === meta.selectionType &&
+            intended.selectionValue === meta.selectionValue;
+          if (!matches) {
+            return;
+          }
+        }
+
+        if (hostMap) {
+          catalog.updateServiceGroups(g, hostMap?.services, hostMap?.timestamp);
+        }
+      });
+
+      this.updateCredentialsConfig();
+
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Clear the catalog cache from the bounded storage (v2).
+   * @returns {Promise<void>}
+   */
+  clearCatalogCache(): Promise<void> {
+    try {
+      if (typeof window !== 'undefined' && (window as any).localStorage) {
+        (window as any).localStorage.removeItem(CATALOG_CACHE_KEY_V2);
+      }
+    } catch {
+      // ignore
+    }
+
+    return Promise.resolve();
+  },
+
+  /**
+   * @private
    * Simplified method wrapper for sending a request to get
    * an updated service hostmap.
    * @param {object} [param]
@@ -1074,7 +1323,14 @@ const Services = WebexPlugin.extend({
 
     // wait for webex instance to be ready before attempting
     // to update the service catalogs
-    this.listenToOnce(this.webex, 'ready', () => {
+    this.listenToOnce(this.webex, 'ready', async () => {
+      const warmed = await (this as any)._loadCatalogFromCache();
+      if (warmed) {
+        catalog.isReady = true;
+
+        return;
+      }
+
       const {supertoken} = this.webex.credentials;
       // Validate if the supertoken exists.
       if (supertoken && supertoken.access_token) {

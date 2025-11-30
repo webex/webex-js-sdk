@@ -285,7 +285,22 @@ const Services = WebexPlugin.extend({
     })
       .then((serviceHostMap) => {
         const formattedServiceHostMap = this._formatReceivedHostmap(serviceHostMap);
-        this._cacheCatalog(serviceGroup, serviceHostMap);
+        // Build selection metadata for caching discrimination
+        let selectionMeta;
+        if (serviceGroup === 'preauth' || serviceGroup === 'signin') {
+          try {
+            const key = formattedQuery && Object.keys(formattedQuery || {})[0];
+            if (key) {
+              selectionMeta = {
+                selectionType: key,
+                selectionValue: formattedQuery[key],
+              };
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+        this._cacheCatalog(serviceGroup, serviceHostMap, selectionMeta);
         catalog.updateServiceUrls(serviceGroup, formattedServiceHostMap);
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
@@ -1006,11 +1021,26 @@ const Services = WebexPlugin.extend({
    * Cache the catalog in the bounded storage.
    * @param {string} serviceGroup - preauth, signin, postauth
    * @param {object} hostMap - The hostmap to cache
+   * @param {object} [meta] - Optional selection metadata used to validate cache reuse
    * @returns {Promise<void>}
    *
    */
-  async _cacheCatalog(serviceGroup, hostMap) {
+  async _cacheCatalog(serviceGroup, hostMap, meta) {
     try {
+      // Respect calling.cacheU2C toggle; if disabled, skip writing cache
+      try {
+        if (this?.webex?.config?.calling && this.webex.config.calling.cacheU2C === false) {
+          if (this.logger && this.logger.info) {
+            this.logger.info(
+              `services: skipping cache write for ${serviceGroup} due to config.calling.cacheU2C=false`
+            );
+          }
+
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
       // Persist to localStorage to survive browser refresh
       let current = {};
       try {
@@ -1030,10 +1060,22 @@ const Services = WebexPlugin.extend({
         orgId = current.orgId;
       }
 
+      // Capture environment fingerprint to invalidate cache across env changes
+      let env;
+      try {
+        const fedramp = !!this?.webex?.config?.fedramp;
+        const u2cDiscoveryUrl = this?.webex?.config?.services?.discovery?.u2c;
+        env = {fedramp, u2cDiscoveryUrl};
+      } catch (e) {
+        env = current.env;
+      }
+
       const updated = {
         ...current,
         orgId: orgId || current.orgId,
-        [serviceGroup]: hostMap,
+        env: env || current.env,
+        // When selection meta is provided, store as an object; otherwise keep legacy shape
+        [serviceGroup]: meta ? {hostMap, meta} : hostMap,
         cachedAt: Date.now(),
       };
 
@@ -1051,6 +1093,20 @@ const Services = WebexPlugin.extend({
    */
   async _loadCatalogFromCache() {
     try {
+      // Respect calling.cacheU2C toggle; if disabled, skip using cache
+      try {
+        if (this?.webex?.config?.calling && this.webex.config.calling.cacheU2C === false) {
+          if (this.logger && this.logger.info) {
+            this.logger.info(
+              'services: skipping cache warm-up due to config.calling.cacheU2C=false'
+            );
+          }
+
+          return false;
+        }
+      } catch (e) {
+        // ignore
+      }
       if (typeof window === 'undefined' || !window.localStorage) {
         return false;
       }
@@ -1084,13 +1140,102 @@ const Services = WebexPlugin.extend({
         // ignore orgId check errors
       }
 
+      // Ensure cached environment matches current environment
+      try {
+        const fedramp = !!this?.webex?.config?.fedramp;
+        const u2cDiscoveryUrl = this?.webex?.config?.services?.discovery?.u2c;
+        const currentEnv = {fedramp, u2cDiscoveryUrl};
+        if (cached.env) {
+          const sameEnv =
+            cached.env.fedramp === currentEnv.fedramp &&
+            cached.env.u2cDiscoveryUrl === currentEnv.u2cDiscoveryUrl;
+          if (!sameEnv) {
+            if (this.logger && this.logger.info) {
+              this.logger.info('services: skipping cache warm due to environment mismatch');
+            }
+
+            return false;
+          }
+        }
+      } catch (e) {
+        // ignore env check errors
+      }
+
       const catalog = this._getCatalog();
 
-      // Apply any cached groups
+      // Helper: compute intended preauth selection based on current context
+      const getIntendedPreauthSelection = () => {
+        try {
+          if (this.webex.credentials?.canAuthorize) {
+            const orgId = this.webex.credentials.getOrgId();
+            if (orgId) {
+              return {
+                selectionType: 'orgId',
+                selectionValue: orgId,
+              };
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+        const emailConfig = this.webex.config && this.webex.config.email;
+        try {
+          if (typeof emailConfig === 'string' && emailConfig.trim()) {
+            return {
+              selectionType: 'emailhash',
+              selectionValue: sha256(emailConfig.toLowerCase()).toString(),
+            };
+          }
+        } catch (e) {
+          // ignore invalid email config, fall through to proximity mode
+        }
+
+        // fall back to proximity mode when no orgId or email available
+        return {
+          selectionType: 'mode',
+          selectionValue: 'DEFAULT_BY_PROXIMITY',
+        };
+      };
+
+      // Apply any cached groups (with preauth selection validation if available)
       const groups = ['preauth', 'signin', 'postauth'];
       groups.forEach((g) => {
-        if (cached[g]) {
-          const formatted = this._formatReceivedHostmap(cached[g]);
+        const cachedGroup = cached[g];
+        if (!cachedGroup) {
+          return;
+        }
+
+        // Support legacy (hostMap) and new ({hostMap, meta}) shapes
+        const hostMap = cachedGroup && cachedGroup.hostMap ? cachedGroup.hostMap : cachedGroup;
+        const meta = cachedGroup && cachedGroup.meta ? cachedGroup.meta : undefined;
+
+        if (g === 'preauth' && meta) {
+          // For proximity-based selection, always fetch fresh to respect IP/region changes
+          if (meta.selectionType === 'mode') {
+            if (this.logger && this.logger.info) {
+              this.logger.info('services: skipping preauth cache warm for proximity mode');
+            }
+
+            return;
+          }
+
+          const intended = getIntendedPreauthSelection();
+          const matches =
+            intended &&
+            intended.selectionType === meta.selectionType &&
+            intended.selectionValue === meta.selectionValue;
+
+          if (!matches) {
+            if (this.logger && this.logger.info) {
+              this.logger.info('services: skipping preauth cache warm due to selection mismatch');
+            }
+
+            return;
+          }
+        }
+
+        if (hostMap) {
+          const formatted = this._formatReceivedHostmap(hostMap);
           catalog.updateServiceUrls(g, formatted);
         }
       });
