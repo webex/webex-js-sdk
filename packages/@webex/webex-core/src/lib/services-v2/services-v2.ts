@@ -907,10 +907,6 @@ const Services = WebexPlugin.extend({
   convertUrlToPriorityHostUrl(url = '' as string): string {
     const data = this.getServiceFromUrl(url);
 
-    if (!data) {
-      throw Error(`No service associated with url: [${url}]`);
-    }
-
     return url.replace(data.defaultUrl, data.priorityUrl);
   },
 
