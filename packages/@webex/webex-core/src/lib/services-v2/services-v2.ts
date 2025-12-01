@@ -1051,6 +1051,9 @@ const Services = WebexPlugin.extend({
           // Return a resolved promise for consistent return value.
           return Promise.resolve();
         })
+        .then(() => {
+          this.logger.info('services: completed initializing initial service catalogs');
+        })
     );
   },
 
