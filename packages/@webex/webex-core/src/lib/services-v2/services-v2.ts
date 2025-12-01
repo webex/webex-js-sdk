@@ -1062,6 +1062,8 @@ const Services = WebexPlugin.extend({
    * @memberof Services
    * @returns {Services}
    */
+
+  // it is a test only change for pr
   initialize(): typeof Services {
     const catalog = new ServiceCatalog();
     this._catalogs.set(this.webex, catalog);
