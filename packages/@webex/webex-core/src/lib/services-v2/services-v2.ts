@@ -1053,9 +1053,6 @@ const Services = WebexPlugin.extend({
         })
         .then(() => {
           this.logger.info('services: completed initializing initial service catalogs');
-          if (this.initFailed) {
-            this.initialization();
-          }
         })
     );
   },
