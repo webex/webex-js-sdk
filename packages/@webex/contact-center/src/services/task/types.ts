@@ -384,6 +384,22 @@ export enum TASK_EVENTS {
   TASK_OFFER_CONTACT = 'task:offerContact',
 
   /**
+   * Triggered when a task has been successfully auto-answered
+   * This event is emitted after the SDK automatically accepts a task due to:
+   * - WebRTC calls with auto-answer enabled
+   * - Agent-initiated outdial calls
+   * - Other auto-answer scenarios
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_AUTO_ANSWERED, (task: ITask) => {
+   *   console.log('Task auto-answered:', task.data.interactionId);
+   *   // Update UI - enable cancel button, etc.
+   * });
+   * ```
+   */
+  TASK_AUTO_ANSWERED = 'task:autoAnswered',
+
+  /**
    * Triggered when a conference is being established
    * @example
    * ```typescript
@@ -672,6 +688,8 @@ export type Interaction = {
     BLIND_TRANSFER_IN_PROGRESS?: boolean;
     /** Desktop view configuration for Flow Control */
     fcDesktopView?: string;
+    /** Agent ID who initiated the outdial call */
+    outdialAgentId?: string;
   };
   /** Main interaction identifier for related interactions */
   mainInteractionId?: string;
@@ -797,6 +815,10 @@ export type TaskData = {
   reservedAgentChannelId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
+  /** Indicates if auto-answer is in progress for this task */
+  isAutoAnswering?: boolean;
+  /** Indicates if wrap-up is required for this task */
+  agentsPendingWrapUp?: string[];
 };
 
 /**

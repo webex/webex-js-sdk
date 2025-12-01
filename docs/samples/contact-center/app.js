@@ -2158,6 +2158,7 @@ function renderTaskList(taskList) {
     const isNew = isIncomingTask(task, agentId); 
     const isTelephony = task.data.interaction.mediaType === 'telephony';
     const isBrowserPhone = agentDeviceType === 'BROWSER';
+    const isAutoAnswering = task.data.isAutoAnswering || false;
 
     // Determine which buttons to show
     const showAcceptButton = isNew && (isBrowserPhone || !isTelephony);
@@ -2167,8 +2168,8 @@ function renderTaskList(taskList) {
     taskElement.innerHTML = `
         <div class="task-item-content">
             <p>${callerDisplay}</p>
-            ${showAcceptButton ? `<button class="accept-task" data-task-id="${taskId}">Accept</button>` : ''}
-            ${showDeclineButton ? `<button class="decline-task" data-task-id="${taskId}">Decline</button>` : ''}
+            ${showAcceptButton ? `<button class="accept-task" data-task-id="${taskId}" ${isAutoAnswering ? 'disabled' : ''}>Accept</button>` : ''}
+            ${showDeclineButton ? `<button class="decline-task" data-task-id="${taskId}" ${isAutoAnswering ? 'disabled' : ''}>Decline</button>` : ''}
         </div>
         <hr class="task-separator">
     `;
@@ -2239,24 +2240,40 @@ function renderTaskList(taskList) {
 function enableAnswerDeclineButtons(task) {
   const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani;
   const isNew = isIncomingTask(task, agentId); 
-    const chatAndSocial = ['chat', 'social'];
+  const isAutoAnswering = task.data.isAutoAnswering || false;
+  const chatAndSocial = ['chat', 'social'];
+  
   if (task.data.interaction.mediaType === 'telephony') {
     if (agentDeviceType === 'BROWSER') {
-      answerElm.disabled = !isNew;
-      declineElm.disabled = !isNew;
+      // Disable buttons if auto-answering or not new
+      answerElm.disabled = !isNew || isAutoAnswering;
+      declineElm.disabled = !isNew || isAutoAnswering;
   
       incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
+      
+      // Log auto-answer status for debugging
+      if (isAutoAnswering) {
+        console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
+      }
     } else {
       incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
     }
   } else if (chatAndSocial.includes(task.data.interaction.mediaType)) {
-    answerElm.disabled = !isNew;
+    answerElm.disabled = !isNew || isAutoAnswering;
     declineElm.disabled = true;
     incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
+    
+    if (isAutoAnswering) {
+      console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
+    }
   } else if (task.data.interaction.mediaType === 'email') {
-    answerElm.disabled = !isNew;
+    answerElm.disabled = !isNew || isAutoAnswering;
     declineElm.disabled = true;
     incomingDetailsElm.innerText = `Email from ${callerDisplay}`;
+    
+    if (isAutoAnswering) {
+      console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
+    }
   }
 }
 
