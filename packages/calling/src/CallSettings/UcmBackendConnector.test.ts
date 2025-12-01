@@ -308,11 +308,10 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
 
     const callForwardingUriFedRamp = `${WEBEX_API_CONFIG_FEDRAMP_URL}/${PEOPLE_ENDPOINT}/${userId}/${CF_ENDPOINT.toLowerCase()}?${ORG_ENDPOINT}=${orgId}`;
 
-    beforeAll(async () => {
+    beforeAll(() => {
       webex.config.fedramp = true;
       webex.credentials.getUserToken.mockResolvedValue(MOCK_AUTH_TOKEN);
       callSettingsClient = new UcmBackendConnector(webex, {level: LOGGER.INFO}, true);
-      await callSettingsClient.init();
     });
 
     afterAll(() => {

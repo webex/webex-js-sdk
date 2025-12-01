@@ -280,11 +280,6 @@ export type CallSettingResponse = {
  */
 export interface ICallSettings {
   /**
-   * Initializes the call settings service.
-   */
-  init(): Promise<void>;
-
-  /**
    * This API is used to fetch the call waiting setting.
    *
    * @example

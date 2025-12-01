@@ -10,7 +10,6 @@ export const XSI_VERSION = 'v2.0';
 
 // Method name constants
 export const METHODS = {
-  INIT: 'init',
   INITIALIZE_BACKEND_CONNECTOR: 'initializeBackendConnector',
   GET_CALL_WAITING_SETTING: 'getCallWaitingSetting',
   GET_DO_NOT_DISTURB_SETTING: 'getDoNotDisturbSetting',

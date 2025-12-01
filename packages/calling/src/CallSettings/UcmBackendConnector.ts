@@ -38,8 +38,6 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
   private useProdWebexApis: boolean;
 
-  private authHeaders: Record<string, string> | null = null;
-
   /**
    * @param useProdWebexApis - default value is true
    */
@@ -57,17 +55,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
     this.useProdWebexApis = useProdWebexApis;
   }
 
-  /**
-   * Initialize the connector by setting up auth headers.
-   */
-  public async init() {
-    this.authHeaders = await this.getAuthHeaders();
-    const loggerContext = {
-      file: UCM_CONNECTOR_FILE,
-      method: METHODS.INIT,
-    };
-    log.info(METHOD_START_MESSAGE, loggerContext);
-  }
+  // Removed header caching to align with review: fetch per request instead.
 
   /**
    * Reads call waiting setting at the backend.
@@ -202,6 +190,9 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       loggerContext
     );
 
+    // Fetch auth headers per request (no caching) to ensure freshness.
+    const headers = await this.getAuthHeaders();
+
     let webexApisUrl: string;
     if (this.webex?.config?.fedramp) {
       webexApisUrl = WEBEX_API_CONFIG_FEDRAMP_URL;
@@ -216,7 +207,7 @@ export class UcmBackendConnector implements IUcmBackendConnector {
             this.userId
           }/${CF_ENDPOINT.toLowerCase()}?${ORG_ENDPOINT}=${this.orgId}`,
           method: HTTP_METHODS.GET,
-          headers: {...this.authHeaders},
+          headers,
         };
 
         const resp = <WebexRequestPayload>await this.webex.request(requestOptions);

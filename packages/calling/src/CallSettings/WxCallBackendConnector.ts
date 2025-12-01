@@ -78,14 +78,6 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
   }
 
   /**
-   * Initialize the connector. For WxCall backend, no async initialization is needed.
-   */
-  public async init(): Promise<void> {
-    // No initialization required for WxCall backend
-    return Promise.resolve();
-  }
-
-  /**
    * Reads call waiting setting at the backend.
    */
   public async getCallWaitingSetting(): Promise<CallSettingResponse> {

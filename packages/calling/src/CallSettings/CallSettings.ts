@@ -1,6 +1,6 @@
 /* eslint-disable valid-jsdoc */
 import {METHOD_START_MESSAGE} from '../common/constants';
-import {getCallingBackEnd, uploadLogs} from '../common/Utils';
+import {getCallingBackEnd} from '../common/Utils';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {
@@ -51,32 +51,6 @@ export class CallSettings implements ICallSettings {
     log.setLogger(logger.level, CALL_SETTINGS_FILE);
     this.webex = this.sdkConnector.getWebex();
     this.initializeBackendConnector(logger, useProdWebexApis);
-  }
-
-  /**
-   * Initializes the call settings service.
-   */
-  public async init(): Promise<void> {
-    const loggerContext = {
-      file: CALL_SETTINGS_FILE,
-      method: METHODS.INIT,
-    };
-
-    try {
-      log.info(METHOD_START_MESSAGE, loggerContext);
-
-      const response = await this.backendConnector?.init();
-
-      log.log('Call settings connector initialized successfully', loggerContext);
-
-      return response;
-    } catch (err: unknown) {
-      log.error(`Failed to initialize call settings: ${JSON.stringify(err)}`, loggerContext);
-
-      await uploadLogs();
-
-      throw err;
-    }
   }
 
   /**
