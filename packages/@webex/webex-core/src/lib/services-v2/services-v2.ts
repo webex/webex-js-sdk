@@ -1063,7 +1063,6 @@ const Services = WebexPlugin.extend({
    * @returns {Services}
    */
 
-  // it is a test only change for pr
   initialize(): typeof Services {
     const catalog = new ServiceCatalog();
     this._catalogs.set(this.webex, catalog);
@@ -1102,6 +1101,11 @@ const Services = WebexPlugin.extend({
     });
   },
 });
+// Dummy function for testing purposes.
+function dummyFunction(): string {
+  return 'This is a dummy function';
+}
+
 /* eslint-enable no-underscore-dangle */
 
 export default Services;
