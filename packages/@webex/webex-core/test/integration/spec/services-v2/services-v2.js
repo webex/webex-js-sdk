@@ -27,6 +27,7 @@ import {
 } from '../../../fixtures/host-catalog-v2';
 
 // /* eslint-disable no-underscore-dangle */
+
 describe('webex-core', () => {
   describe('ServicesV2', () => {
     let webexUser;
