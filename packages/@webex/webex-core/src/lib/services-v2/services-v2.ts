@@ -955,6 +955,9 @@ const Services = WebexPlugin.extend({
       requestObject.headers = {authorization: token};
     }
 
+    // eslint-disable-next-line no-console
+    console.log('Fetching new service hostmap from U2C with request:', requestObject);
+
     return this.webex.internal.newMetrics.callDiagnosticLatencies
       .measureLatency(() => this.request(requestObject), 'internal.get.u2c.time')
       .then(({body}) => this._formatReceivedHostmap(body || {}));
@@ -1101,10 +1104,6 @@ const Services = WebexPlugin.extend({
     });
   },
 });
-// Dummy function for testing purposes.
-function dummyFunction(): string {
-  return 'This is a dummy function';
-}
 
 /* eslint-enable no-underscore-dangle */
 
