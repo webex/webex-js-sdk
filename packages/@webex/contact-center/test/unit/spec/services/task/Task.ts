@@ -1,8 +1,21 @@
 import Task from '../../../../../src/services/task/Task';
 import {TaskData, DESTINATION_TYPE} from '../../../../../src/services/task/types';
+import {TaskEvent} from '../../../../../src/services/task/state-machine';
+import LoggerProxy from '../../../../../src/logger-proxy';
+import {createTaskData} from './taskTestUtils';
 
 class DummyTask extends Task {
-  public accept() { return Promise.resolve({} as any); }
+  constructor(contact: any, data: TaskData) {
+    super(contact, data, {
+      channelType: 'voice',
+      isEndCallEnabled: true,
+      isEndConsultEnabled: true,
+    });
+  }
+
+  public accept() {
+    return Promise.resolve({} as any);
+  }
 }
 
 jest.mock('../../../../../src/logger-proxy', () => ({
@@ -50,39 +63,64 @@ describe('Task (base class)', () => {
     expect((task.data as any).foo).toBeUndefined();
   });
 
-  it('getUIControls returns default controls shape', () => {
-    const controls = task.taskUiControls;
-    // all controls should be hidden/disabled
-    expect(controls.accept.visible).toBe(false);
-    expect(controls.accept.enabled).toBe(false);
-    expect(controls.decline.visible).toBe(false);
-    expect(controls.decline.enabled).toBe(false);
-    expect(controls.end.visible).toBe(false);
-    expect(controls.end.enabled).toBe(false);
-    expect(controls.transfer.visible).toBe(false);
-    expect(controls.transfer.enabled).toBe(false);
-    expect(controls.hold.visible).toBe(false);
-    expect(controls.hold.enabled).toBe(false);
-    expect(controls.mute.visible).toBe(false);
-    expect(controls.mute.enabled).toBe(false);
-    expect(controls.consult.visible).toBe(false);
-    expect(controls.consult.enabled).toBe(false);
-    expect(controls.consultTransfer.visible).toBe(false);
-    expect(controls.consultTransfer.enabled).toBe(false);
-    expect(controls.endConsult.visible).toBe(false);
-    expect(controls.endConsult.enabled).toBe(false);
-    expect(controls.recording.visible).toBe(false);
-    expect(controls.recording.enabled).toBe(false);
-    expect(controls.conference.visible).toBe(false);
-    expect(controls.conference.enabled).toBe(false);
-    expect(controls.wrapup.visible).toBe(false);
-    expect(controls.wrapup.enabled).toBe(false);
+  it('getUIControls returns default controls shape for idle voice task', () => {
+    const controls = task.uiControls;
+    // accept/decline hidden because not offered
+    expect(controls.accept.isVisible).toBe(false);
+    expect(controls.accept.isEnabled).toBe(true);
+    expect(controls.decline.isVisible).toBe(false);
+    expect(controls.decline.isEnabled).toBe(true);
+
+    // voice tasks always render end when enabled in config
+    expect(controls.end.isVisible).toBe(true);
+    expect(controls.end.isEnabled).toBe(true);
+
+    expect(controls.transfer.isVisible).toBe(false);
+    expect(controls.transfer.isEnabled).toBe(true);
+    expect(controls.hold.isVisible).toBe(false);
+    expect(controls.hold.isEnabled).toBe(false);
+    expect(controls.mute.isVisible).toBe(false);
+    expect(controls.mute.isEnabled).toBe(true);
+    expect(controls.consult.isVisible).toBe(false);
+    expect(controls.consult.isEnabled).toBe(false);
+    expect(controls.consultTransfer.isVisible).toBe(false);
+    expect(controls.consultTransfer.isEnabled).toBe(true);
+    expect(controls.endConsult.isVisible).toBe(false);
+    expect(controls.endConsult.isEnabled).toBe(true);
+    expect(controls.recording.isVisible).toBe(false);
+    expect(controls.recording.isEnabled).toBe(false);
+    expect(controls.conference.isVisible).toBe(false);
+    expect(controls.conference.isEnabled).toBe(false);
+    expect(controls.wrapup.isVisible).toBe(false);
+    expect(controls.wrapup.isEnabled).toBe(true);
   });
 
-  it('calls setUIControls when updateTaskData is invoked', () => {
-    const spy = jest.spyOn(task as any, 'setUIControls');
+  it('calls updateUiControls when updateTaskData is invoked', () => {
+    const spy = jest.spyOn(task as any, 'updateUiControls');
     task.updateTaskData({foo: 'new'} as TaskData);
     expect(spy).toHaveBeenCalled();
+  });
+
+  it('logs state transitions using locally tracked previous state', () => {
+    const logSpy = jest.spyOn(LoggerProxy, 'log');
+    const statefulData = createTaskData();
+    const transitionTask = new DummyTask(dummyContact, statefulData);
+
+    logSpy.mockClear();
+
+    transitionTask.stateMachineService?.send({type: TaskEvent.OFFER, taskData: statefulData});
+    transitionTask.stateMachineService?.send({type: TaskEvent.ACCEPT});
+
+    const transitionMessages = logSpy.mock.calls
+      .filter(([msg]) => typeof msg === 'string' && (msg as string).startsWith('State machine transition'))
+      .map(([msg]) => msg);
+
+    expect(transitionMessages).toEqual([
+      'State machine transition: IDLE -> OFFERED',
+      'State machine transition: OFFERED -> CONNECTED',
+    ]);
+
+    transitionTask.stateMachineService?.stop();
   });
 
 });

@@ -12,9 +12,20 @@
  */
 
 import {assign} from 'xstate';
+import type {ActionFunctionMap, EventObject} from 'xstate';
 import {TaskContext, TaskEventPayload, TaskEvent, UIControlConfig, TaskState} from './types';
 import {TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
+
+type TaskActionsMap = ActionFunctionMap<
+  TaskContext,
+  TaskEventPayload,
+  never,
+  {type: string; params: undefined},
+  never,
+  never,
+  EventObject
+>;
 
 type RecordingStateUpdate = Partial<
   Pick<TaskContext, 'recordingControlsAvailable' | 'recordingInProgress'>
@@ -28,7 +39,11 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
   }
 
   const update: RecordingStateUpdate = {};
-  const {recordingStarted, recordInProgress} = callProcessingDetails;
+  const {recordingStarted, recordInProgress, isPaused} = callProcessingDetails as {
+    recordingStarted?: boolean;
+    recordInProgress?: boolean;
+    isPaused?: boolean;
+  };
 
   if (recordingStarted !== undefined) {
     update.recordingControlsAvailable = recordingStarted;
@@ -51,6 +66,11 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
     update.recordingInProgress = true;
   }
 
+  if (isPaused !== undefined) {
+    update.recordingControlsAvailable = true;
+    update.recordingInProgress = !isPaused;
+  }
+
   return update;
 };
 
@@ -64,10 +84,16 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
  * single source of truth, while derived values (like recording flags)
  * are recalculated here via deriveRecordingState.
  */
-const deriveTaskDataUpdates = (_context: TaskContext, taskData: TaskData) => ({
-  taskData,
-  ...deriveRecordingState(taskData),
-});
+const deriveTaskDataUpdates = (_context: TaskContext, taskData: TaskData | undefined) =>
+  taskData
+    ? {
+        taskData,
+        ...deriveRecordingState(taskData),
+      }
+    : {};
+
+const getTaskDataFromEvent = (event?: TaskEventPayload): TaskData | undefined =>
+  event && typeof event === 'object' ? (event as any).taskData : undefined;
 
 /**
  * Create initial context for a new task.
@@ -116,7 +142,7 @@ export function createInitialContext(
  * @returns Assign action that updates UI controls
  */
 export function updateUIControls(currentState: TaskState) {
-  return assign((context: TaskContext) => ({
+  return assign(({context}: {context: TaskContext}) => ({
     uiControls: computeUIControls(currentState, context),
   }));
 }
@@ -125,25 +151,19 @@ export function updateUIControls(currentState: TaskState) {
  * Action implementations
  * These return XState assign actions that update the context
  */
-export const actions = {
+export const actions: TaskActionsMap = {
   /**
    * Initialize task with offer data
    */
-  initializeTask: assign((context: TaskContext, event: TaskEventPayload) => {
-    // Guard not needed in this action because the state machine only references
-    // initializeTask from OFFER/OFFER_CONSULT transitions, both of which carry taskData.
-    const {taskData} = event as Extract<TaskEventPayload, {taskData: TaskData}>;
-
-    return deriveTaskDataUpdates(context, taskData);
+  initializeTask: assign(({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+    return deriveTaskDataUpdates(context, getTaskDataFromEvent(event));
   }),
 
   /**
    * Update task data from ASSIGN event
    */
-  updateTaskData: assign((context: TaskContext, event: TaskEventPayload) => {
-    const {taskData} = event as Extract<TaskEventPayload, {taskData: TaskData}>;
-
-    return deriveTaskDataUpdates(context, taskData);
+  updateTaskData: assign(({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+    return deriveTaskDataUpdates(context, getTaskDataFromEvent(event));
   }),
 
   /**
@@ -156,35 +176,42 @@ export const actions = {
   /**
    * Set consult destination details
    */
-  setConsultDestination: assign((context: TaskContext, event: TaskEventPayload) => {
-    const consultEvent = event as Extract<
-      TaskEventPayload,
-      {type: TaskEvent.CONSULT; destination: string}
-    >;
+  setConsultDestination: assign(({event}: {event: TaskEventPayload}) => {
+    if (!event || event.type !== TaskEvent.CONSULT || !('destination' in event)) {
+      return {};
+    }
 
     return {
-      consultDestination: consultEvent.destination,
+      consultDestination: (event as {destination: string}).destination,
     };
   }),
 
   /**
    * Mark that consult destination agent has joined
    */
-  setConsultAgentJoined: assign((context: TaskContext, event: TaskEventPayload) => {
-    const consultingActive = event as Extract<
-      TaskEventPayload,
-      {type: TaskEvent.CONSULTING_ACTIVE; consultDestinationAgentJoined: boolean}
-    >;
+  setConsultAgentJoined: assign(({event}: {event: TaskEventPayload}) => {
+    if (
+      !event ||
+      event.type !== TaskEvent.CONSULTING_ACTIVE ||
+      !('consultDestinationAgentJoined' in event)
+    ) {
+      return {};
+    }
 
     return {
-      consultDestinationAgentJoined: consultingActive.consultDestinationAgentJoined,
+      consultDestinationAgentJoined: (event as {consultDestinationAgentJoined: boolean})
+        .consultDestinationAgentJoined,
     };
   }),
 
   /**
    * Set recording state
    */
-  setRecordingState: assign((context: TaskContext, event: TaskEventPayload) => {
+  setRecordingState: assign(({event}: {event: TaskEventPayload}) => {
+    if (!event || !('type' in event)) {
+      return {};
+    }
+
     if (event.type === TaskEvent.PAUSE_RECORDING) {
       return {
         recordingControlsAvailable: true,
@@ -212,13 +239,23 @@ export const actions = {
   /**
    * Track hold state updates (currently no-op placeholder)
    */
-  setHoldState: assign((context: TaskContext, event: TaskEventPayload) => {
-    const holdEvent = event as Extract<
-      TaskEventPayload,
-      | {type: TaskEvent.HOLD_SUCCESS; mediaResourceId: string}
-      | {type: TaskEvent.UNHOLD_SUCCESS; mediaResourceId: string}
-    >;
-    const mediaResourceId = holdEvent.mediaResourceId;
+  setHoldState: assign(({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+    if (
+      !event ||
+      (event.type !== TaskEvent.HOLD_SUCCESS && event.type !== TaskEvent.UNHOLD_SUCCESS)
+    ) {
+      return {};
+    }
+
+    const mediaResourceId =
+      'mediaResourceId' in event
+        ? (event as {mediaResourceId?: string}).mediaResourceId
+        : undefined;
+
+    if (!mediaResourceId) {
+      return {};
+    }
+
     const interaction = context.taskData?.interaction;
     const mediaEntry = interaction?.media?.[mediaResourceId];
 
@@ -230,7 +267,7 @@ export const actions = {
       ...interaction.media,
       [mediaResourceId]: {
         ...mediaEntry,
-        isHold: holdEvent.type === TaskEvent.HOLD_SUCCESS,
+        isHold: event.type === TaskEvent.HOLD_SUCCESS,
       },
     };
 

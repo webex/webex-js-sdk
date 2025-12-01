@@ -1,6 +1,6 @@
 import Digital from '../../../../../../src/services/task/digital/Digital';
-import { TaskData, TaskResponse } from '../../../../../../src/services/task/types';
-import { CC_EVENTS } from '../../../../../../src/services/config/types';
+import {TaskData, TaskResponse} from '../../../../../../src/services/task/types';
+import {TaskEvent, TaskEventPayload} from '../../../../../../src/services/task/state-machine';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -9,8 +9,20 @@ jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   },
 }));
 
+const sendStateEvents = (task: Digital, events: TaskEventPayload[]) => {
+  events.forEach((event) => {
+    if (!event) {
+      throw new Error('Task event payload is required');
+    }
+    task.stateMachineService?.send(event);
+  });
+};
+
 describe('Digital Task', () => {
-  const dummyData = { interactionId: 'dig1' } as TaskData;
+  const dummyData = {
+    interactionId: 'dig1',
+    interaction: {isTerminated: false},
+  } as TaskData;
   let dummyContact: { accept: jest.Mock<Promise<TaskResponse>> };
 
   beforeEach(() => {
@@ -33,92 +45,61 @@ describe('Digital Task', () => {
     await expect(task.accept()).rejects.toThrow('Error while performing accept');
   });
 
-  it('constructor enables accept by default', () => {
+  it('constructor shows accept when offered', () => {
     const task = new Digital(dummyContact, dummyData);
-    // after constructor, accept visible & enabled
-    expect(task.taskUiControls.accept.visible).toBe(true);
-    expect(task.taskUiControls.accept.enabled).toBe(true);
+    sendStateEvents(task, [{type: TaskEvent.OFFER, taskData: dummyData}]);
+    expect(task.uiControls.accept.isVisible).toBe(true);
+    expect(task.uiControls.accept.isEnabled).toBe(true);
   });
 
-  describe('setUIControls for AGENT_CONTACT events', () => {
-    function make(data: Partial<TaskData> & { type: string }) {
-      const full = {
-        interactionId: 'dig1',
-        interaction: { isTerminated: false, state: 'new' },
-        ...data,
-      } as TaskData;
-      const task = new Digital(dummyContact, full);
-      task.updateTaskData(full);
-      return task.taskUiControls;
-    }
-
-    it('new state shows accept only', () => {
-      const ctrl = make({ type: CC_EVENTS.AGENT_CONTACT, interaction: { isTerminated: false, state: 'new' } } as Partial<TaskData> & { type: string });
-      expect(ctrl.accept.visible).toBe(true);
-      expect(ctrl.transfer.visible).toBe(false);
-      expect(ctrl.end.visible).toBe(false);
-      expect(ctrl.wrapup.visible).toBe(false);
-    });
-
+  describe('UI controls derived from state machine events', () => {
     it('connected state shows transfer and end', () => {
-      const ctrl = make({ type: CC_EVENTS.AGENT_CONTACT, interaction: { isTerminated: false, state: 'connected' } } as Partial<TaskData> & { type: string });
-      expect(ctrl.accept.visible).toBe(false);
-      expect(ctrl.transfer.visible).toBe(true);
-      expect(ctrl.end.visible).toBe(true);
-      expect(ctrl.wrapup.visible).toBe(false);
+      const task = new Digital(dummyContact, dummyData);
+      sendStateEvents(task, [
+        {type: TaskEvent.OFFER, taskData: dummyData},
+        {type: TaskEvent.ASSIGN, taskData: dummyData},
+      ]);
+      expect(task.uiControls.accept.isVisible).toBe(false);
+      expect(task.uiControls.transfer.isVisible).toBe(true);
+      expect(task.uiControls.end.isVisible).toBe(true);
+      expect(task.uiControls.wrapup.isVisible).toBe(false);
     });
 
-    it('terminated shows wrapup only', () => {
-      const ctrl = make({ type: CC_EVENTS.AGENT_CONTACT, interaction: { isTerminated: true, state: 'connected' } } as Partial<TaskData> & { type: string });
-      expect(ctrl.transfer.visible).toBe(false);
-      expect(ctrl.end.visible).toBe(false);
-      expect(ctrl.wrapup.visible).toBe(true);
-      expect(ctrl.wrapup.enabled).toBe(true);
+    it('wrapup state hides transfer/end and shows wrapup button', () => {
+      const task = new Digital(dummyContact, dummyData);
+      sendStateEvents(task, [
+        {type: TaskEvent.OFFER, taskData: dummyData},
+        {type: TaskEvent.ASSIGN, taskData: dummyData},
+        {type: TaskEvent.END},
+      ]);
+      expect(task.uiControls.transfer.isVisible).toBe(false);
+      expect(task.uiControls.end.isVisible).toBe(false);
+      expect(task.uiControls.wrapup.isVisible).toBe(true);
     });
-  });
 
-  describe('other CC_EVENTS paths', () => {
-    function ctrlFor(type: string) {
-      const data = {
+    it('terminated interaction toggles wrapup visibility even before END event', () => {
+      const task = new Digital(dummyContact, dummyData);
+      const terminatedData = {
         ...dummyData,
-        type,
-        interaction: { isTerminated: false, state: 'new' },
+        interaction: {...(dummyData.interaction as any), isTerminated: true},
       } as TaskData;
-      const task = new Digital(dummyContact, data);
-      task.updateTaskData(data);
-      return task.taskUiControls;
-    }
-
-    it('AGENT_OFFER_CONTACT enables accept', () => {
-      const ctrl = ctrlFor(CC_EVENTS.AGENT_OFFER_CONTACT);
-      expect(ctrl.accept.visible).toBe(true);
+      task.updateTaskData(terminatedData);
+      sendStateEvents(task, [
+        {type: TaskEvent.OFFER, taskData: dummyData},
+        {type: TaskEvent.ASSIGN, taskData: terminatedData},
+      ]);
+      expect(task.uiControls.wrapup.isVisible).toBe(true);
     });
 
-    it('AGENT_CONTACT_ASSIGNED shows transfer and end, hides accept', () => {
-      const ctrl = ctrlFor(CC_EVENTS.AGENT_CONTACT_ASSIGNED);
-      expect(ctrl.accept.visible).toBe(false);
-      expect(ctrl.transfer.visible).toBe(true);
-      expect(ctrl.end.visible).toBe(true);
-    });
-
-    it('AGENT_VTEAM_TRANSFERRED enables wrapup only', () => {
-      const ctrl = ctrlFor(CC_EVENTS.AGENT_VTEAM_TRANSFERRED);
-      expect(ctrl.transfer.visible).toBe(false);
-      expect(ctrl.end.visible).toBe(false);
-      expect(ctrl.wrapup.visible).toBe(true);
-    });
-
-    it('AGENT_WRAPUP enables wrapup only', () => {
-      const ctrl = ctrlFor(CC_EVENTS.AGENT_WRAPUP);
-      expect(ctrl.wrapup.visible).toBe(true);
-    });
-
-    it('AGENT_CONTACT_OFFER_RONA disables accept, transfer, end, and wrapup', () => {
-      const ctrl = ctrlFor(CC_EVENTS.AGENT_CONTACT_OFFER_RONA);
-      expect(ctrl.accept.visible).toBe(false);
-      expect(ctrl.transfer.visible).toBe(false);
-      expect(ctrl.end.visible).toBe(false);
-      expect(ctrl.wrapup.visible).toBe(false);
+    it('rona hides accept controls', () => {
+      const task = new Digital(dummyContact, dummyData);
+      sendStateEvents(task, [
+        {type: TaskEvent.OFFER, taskData: dummyData},
+        {type: TaskEvent.RONA},
+      ]);
+      expect(task.uiControls.accept.isVisible).toBe(false);
+      expect(task.uiControls.transfer.isVisible).toBe(false);
+      expect(task.uiControls.end.isVisible).toBe(false);
     });
   });
 });

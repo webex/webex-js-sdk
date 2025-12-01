@@ -5,9 +5,25 @@
  * It orchestrates state transitions, guards, and actions for task lifecycle management.
  */
 
-import {createMachine} from 'xstate';
-import {TaskState, TaskEvent, UIControlConfig} from './types';
+import {setup} from 'xstate';
+import {TaskState, TaskEvent, TaskContext, TaskEventPayload, UIControlConfig} from './types';
 import {actions, createInitialContext} from './actions';
+
+type TaskActionConfigMap = {[K in keyof typeof actions]: undefined};
+
+const taskStateMachineSetup = setup<
+  TaskContext,
+  TaskEventPayload,
+  Record<string, never>,
+  Record<string, never>,
+  TaskActionConfigMap
+>({
+  types: {
+    context: {} as TaskContext,
+    events: {} as TaskEventPayload,
+  },
+  actors: {},
+});
 
 /**
  * Get task state machine configuration with UI control config
@@ -256,9 +272,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
  * @returns StateMachine instance for task management
  */
 export function createTaskStateMachine(uiControlConfig: UIControlConfig) {
-  return createMachine(getTaskStateMachineConfig(uiControlConfig), {
-    actions,
-  });
+  return taskStateMachineSetup
+    .createMachine(getTaskStateMachineConfig(uiControlConfig))
+    .provide({actions});
 }
 
 export type TaskStateMachine = ReturnType<typeof createTaskStateMachine>;

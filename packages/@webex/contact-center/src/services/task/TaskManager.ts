@@ -26,6 +26,10 @@ type WebSocketMessage = {
   keepalive?: 'true' | 'false' | boolean;
   data: WebSocketPayload;
 };
+
+const CC_EVENT_SET = new Set<CC_EVENTS>(Object.values(CC_EVENTS) as CC_EVENTS[]);
+
+const isCcEvent = (value: string): value is CC_EVENTS => CC_EVENT_SET.has(value as CC_EVENTS);
 /** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -196,7 +200,7 @@ export default class TaskManager extends EventEmitter {
    * @param payload - The event payload
    * @param task - The task instance
    */
-  private sendEventToStateMachine(
+  private static sendEventToStateMachine(
     ccEvent: CC_EVENTS,
     payload: WebSocketPayload,
     task?: ITask
@@ -232,16 +236,17 @@ export default class TaskManager extends EventEmitter {
       }
       // Re-emit the task events to the task object
       let task: ITask;
-      if (payload.data?.type) {
-        if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
-          task = this.taskCollection[payload.data.interactionId];
-        }
-        LoggerProxy.info(`Handling task event ${payload.data?.type}`, {
+      const eventType = payload.data?.type;
+
+      if (eventType && isCcEvent(eventType)) {
+        task = this.taskCollection[payload.data.interactionId];
+
+        LoggerProxy.info(`Handling task event ${eventType}`, {
           module: TASK_MANAGER_FILE,
           method: METHODS.REGISTER_TASK_LISTENERS,
           interactionId: payload.data?.interactionId,
         });
-        switch (payload.data.type) {
+        switch (eventType) {
           case CC_EVENTS.AGENT_CONTACT:
             if (!task) {
               // Re-create task if it does not exist
@@ -452,10 +457,13 @@ export default class TaskManager extends EventEmitter {
         // Send all events to state machine after processing
         // Task may have been created in AGENT_CONTACT or AGENT_CONTACT_RESERVED cases
         if (task) {
-          task.emit(payload.data.type, payload.data);
+          // Only emit task-specific events to the task object
+          if (Object.values(CC_TASK_EVENTS).includes(eventType as any)) {
+            task.emit(eventType as any, payload.data);
+          }
 
           // Send event to state machine for all events
-          this.sendEventToStateMachine(payload.data.type as CC_EVENTS, payload.data, task);
+          TaskManager.sendEventToStateMachine(eventType, payload.data, task);
         }
       }
     });
