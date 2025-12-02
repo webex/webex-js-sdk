@@ -14,6 +14,7 @@ import type {
   LookupDetailOptions,
   LookupOptions,
   LookupByEmailOptions,
+  LookupByPhoneNumbersOptions,
   SearchPlaceOptions,
 } from './types';
 import {
@@ -362,6 +363,42 @@ const DSS = WebexPlugin.extend({
       }
 
       return null;
+    });
+  },
+
+  /**
+   * Retrieves basic information about entities by phone numbers
+   * @param {Object} options
+   * @param {string[]} options.phoneNumbers Array of phone numbers to lookup (max 5)
+   * @returns {Promise<RequestResult>} Resolves with {resultArray, foundArray, notFoundArray}
+   * @throws {Error} when more than 5 phone numbers provided
+   * @throws {DssTimeoutError} when server does not respond in the specified timeframe
+   */
+  lookupByPhoneNumbers(options: LookupByPhoneNumbersOptions): Promise<RequestResult> {
+    const {phoneNumbers} = options;
+
+    if (!phoneNumbers || phoneNumbers.length === 0) {
+      return Promise.resolve({resultArray: [], foundArray: [], notFoundArray: []});
+    }
+
+    if (phoneNumbers.length > 5) {
+      return Promise.reject(
+        new Error(
+          `lookupByPhoneNumbers accepts a maximum of 5 phone numbers. Received: ${phoneNumbers.length}. Please batch requests on the client side if needed.`
+        )
+      );
+    }
+
+    const resource = `/lookup/orgid/${this.webex.internal.device.orgId}/phonenumbers`;
+
+    return this._request({
+      dataPath: LOOKUP_DATA_PATH,
+      foundPath: LOOKUP_FOUND_PATH,
+      notFoundPath: LOOKUP_NOT_FOUND_PATH,
+      resource,
+      params: {
+        [LOOKUP_REQUEST_KEY]: phoneNumbers,
+      },
     });
   },
 

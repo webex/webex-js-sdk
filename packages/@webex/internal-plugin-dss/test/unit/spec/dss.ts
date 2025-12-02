@@ -759,6 +759,335 @@ describe('plugin-dss', () => {
       });
     });
 
+    describe('#lookupByPhoneNumbers', () => {
+      it('returns empty arrays for empty input', async () => {
+        const result = await webex.internal.dss.lookupByPhoneNumbers({
+          phoneNumbers: [],
+        });
+
+        expect(result).to.deep.equal({
+          resultArray: [],
+          foundArray: [],
+          notFoundArray: [],
+        });
+      });
+
+      it('rejects when more than 5 phone numbers provided', async () => {
+        const phoneNumbers = [
+          '+15551111111',
+          '+15552222222',
+          '+15553333333',
+          '+15554444444',
+          '+15555555555',
+          '+15556666666',
+        ];
+
+        return assert.isRejected(
+          webex.internal.dss.lookupByPhoneNumbers({phoneNumbers}),
+          Error,
+          'lookupByPhoneNumbers accepts a maximum of 5 phone numbers. Received: 6. Please batch requests on the client side if needed.'
+        );
+      });
+
+      it('calls _request correctly with single phone number', async () => {
+        webex.internal.device.orgId = 'userOrgId';
+        webex.internal.dss._request = sinon.stub().returns(
+          Promise.resolve({
+            resultArray: ['some return value'],
+            foundArray: ['+15551234567'],
+            notFoundArray: [],
+          })
+        );
+
+        const result = await webex.internal.dss.lookupByPhoneNumbers({
+          phoneNumbers: ['+15551234567'],
+        });
+
+        expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
+          {
+            dataPath: 'lookupResult.entities',
+            foundPath: 'lookupResult.entitiesFound',
+            notFoundPath: 'lookupResult.entitiesNotFound',
+            resource: '/lookup/orgid/userOrgId/phonenumbers',
+            params: {
+              lookupValues: ['+15551234567'],
+            },
+          },
+        ]);
+        expect(result).to.deep.equal({
+          resultArray: ['some return value'],
+          foundArray: ['+15551234567'],
+          notFoundArray: [],
+        });
+      });
+
+      it('calls _request correctly with multiple phone numbers', async () => {
+        webex.internal.device.orgId = 'userOrgId';
+        webex.internal.dss._request = sinon.stub().returns(
+          Promise.resolve({
+            resultArray: ['entity1', 'entity2'],
+            foundArray: ['+15551234567', '+442012345678'],
+            notFoundArray: [],
+          })
+        );
+
+        const result = await webex.internal.dss.lookupByPhoneNumbers({
+          phoneNumbers: ['+15551234567', '+442012345678'],
+        });
+
+        expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
+          {
+            dataPath: 'lookupResult.entities',
+            foundPath: 'lookupResult.entitiesFound',
+            notFoundPath: 'lookupResult.entitiesNotFound',
+            resource: '/lookup/orgid/userOrgId/phonenumbers',
+            params: {
+              lookupValues: ['+15551234567', '+442012345678'],
+            },
+          },
+        ]);
+        expect(result).to.deep.equal({
+          resultArray: ['entity1', 'entity2'],
+          foundArray: ['+15551234567', '+442012345678'],
+          notFoundArray: [],
+        });
+      });
+
+      it('works correctly with single phone number found', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: {phoneNumbers: ['+15551234567']},
+          bodyParams: {lookupValues: ['+15551234567']},
+        });
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: [{id: 'user1', displayName: 'John Doe', phoneNumbers: ['+15551234567']}],
+            entitiesFound: ['+15551234567'],
+            entitiesNotFound: [],
+          })
+        );
+        const result = await promise;
+
+        expect(result).to.deep.equal({
+          resultArray: [{id: 'user1', displayName: 'John Doe', phoneNumbers: ['+15551234567']}],
+          foundArray: ['+15551234567'],
+          notFoundArray: [],
+        });
+      });
+
+      it('works correctly with multiple phone numbers, some found', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: {phoneNumbers: ['+15551234567', '+442012345678', '+33123456789']},
+          bodyParams: {lookupValues: ['+15551234567', '+442012345678', '+33123456789']},
+        });
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: [
+              {id: 'user1', displayName: 'John Doe', phoneNumbers: ['+15551234567']},
+              {id: 'user2', displayName: 'Jane Smith', phoneNumbers: ['+442012345678']},
+            ],
+            entitiesFound: ['+15551234567', '+442012345678'],
+            entitiesNotFound: ['+33123456789'],
+          })
+        );
+        const result = await promise;
+
+        expect(result).to.deep.equal({
+          resultArray: [
+            {id: 'user1', displayName: 'John Doe', phoneNumbers: ['+15551234567']},
+            {id: 'user2', displayName: 'Jane Smith', phoneNumbers: ['+442012345678']},
+          ],
+          foundArray: ['+15551234567', '+442012345678'],
+          notFoundArray: ['+33123456789'],
+        });
+      });
+
+      it('works correctly with all phone numbers not found', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: {phoneNumbers: ['+15551234567', '+442012345678']},
+          bodyParams: {lookupValues: ['+15551234567', '+442012345678']},
+        });
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: [],
+            entitiesFound: [],
+            entitiesNotFound: ['+15551234567', '+442012345678'],
+          })
+        );
+        const result = await promise;
+
+        expect(result).to.deep.equal({
+          resultArray: [],
+          foundArray: [],
+          notFoundArray: ['+15551234567', '+442012345678'],
+        });
+      });
+
+      it('works correctly with exactly 5 phone numbers', async () => {
+        const phoneNumbers = [
+          '+15551111111',
+          '+15552222222',
+          '+15553333333',
+          '+15554444444',
+          '+15555555555',
+        ];
+
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: {phoneNumbers},
+          bodyParams: {lookupValues: phoneNumbers},
+        });
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: [
+              {id: 'user1', phoneNumbers: ['+15551111111']},
+              {id: 'user2', phoneNumbers: ['+15552222222']},
+              {id: 'user3', phoneNumbers: ['+15553333333']},
+              {id: 'user4', phoneNumbers: ['+15554444444']},
+              {id: 'user5', phoneNumbers: ['+15555555555']},
+            ],
+            entitiesFound: phoneNumbers,
+            entitiesNotFound: [],
+          })
+        );
+        const result = await promise;
+
+        expect(result.resultArray).to.have.lengthOf(5);
+        expect(result.foundArray).to.deep.equal(phoneNumbers);
+        expect(result.notFoundArray).to.deep.equal([]);
+      });
+
+      it('handles multiple sequences correctly', async () => {
+        const phoneNumbers = ['+15551234567', '+442012345678'];
+
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: {phoneNumbers},
+          bodyParams: {lookupValues: phoneNumbers},
+        });
+
+        // Send sequences out of order
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 1, false, 'lookupResult', {
+            entities: [{id: 'user2', phoneNumbers: ['+442012345678']}],
+            entitiesFound: ['+442012345678'],
+          })
+        );
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 2, true, 'lookupResult', {
+            entities: [],
+            entitiesFound: [],
+            entitiesNotFound: ['+33123456789'],
+          })
+        );
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, false, 'lookupResult', {
+            entities: [{id: 'user1', phoneNumbers: ['+15551234567']}],
+            entitiesFound: ['+15551234567'],
+          })
+        );
+
+        const result = await promise;
+
+        expect(result.resultArray).to.deep.equal([
+          {id: 'user1', phoneNumbers: ['+15551234567']},
+          {id: 'user2', phoneNumbers: ['+442012345678']},
+        ]);
+        expect(result.foundArray).to.deep.equal(['+15551234567', '+442012345678']);
+        expect(result.notFoundArray).to.deep.equal(['+33123456789']);
+      });
+
+      it('fails with default timeout when mercury does not respond', async () => {
+        const {promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: {phoneNumbers: ['+15551234567']},
+          bodyParams: {lookupValues: ['+15551234567']},
+        });
+
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
+        await clock.tickAsync(6000);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 6000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/phonenumbers' +
+            '\n Params: {"lookupValues":["+15551234567"]}'
+        );
+      });
+
+      it('does not fail with timeout when mercury responds in time', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: {phoneNumbers: ['+15551234567']},
+          bodyParams: {lookupValues: ['+15551234567']},
+        });
+
+        await clock.tickAsync(5999);
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: [{id: 'user1', phoneNumbers: ['+15551234567']}],
+            entitiesFound: ['+15551234567'],
+            entitiesNotFound: [],
+          })
+        );
+
+        return assert.isFulfilled(promise);
+      });
+
+      it('fails with timeout when request only partially resolved', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: {phoneNumbers: ['+15551234567', '+442012345678']},
+          bodyParams: {lookupValues: ['+15551234567', '+442012345678']},
+        });
+
+        // Send sequence 2 with finished flag, but missing sequence 1
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 2, true, 'lookupResult', {
+            entities: [{id: 'user3', phoneNumbers: ['+33123456789']}],
+            entitiesFound: ['+33123456789'],
+            entitiesNotFound: [],
+          })
+        );
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, false, 'lookupResult', {
+            entities: [{id: 'user1', phoneNumbers: ['+15551234567']}],
+            entitiesFound: ['+15551234567'],
+          })
+        );
+        // Missing sequence 1
+
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
+        await clock.tickAsync(6000);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 6000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/phonenumbers' +
+            '\n Params: {"lookupValues":["+15551234567","+442012345678"]}'
+        );
+      });
+    });
+
     describe('#search', () => {
       it('calls _request correctly', async () => {
         webex.internal.device.orgId = 'userOrgId';
@@ -1005,7 +1334,7 @@ describe('plugin-dss', () => {
 
       it('handles a request with foundPath correctly', async () => {
         webex.request = sinon.stub();
-        uuid.v4.returns('randomid');
+        uuidStub.returns('randomid');
         const promise = webex.internal.dss._request({
           resource: '/search/orgid/userOrgId/entities',
           params: {some: 'param'},
@@ -1053,7 +1382,7 @@ describe('plugin-dss', () => {
 
       it('handles a request with foundPath and notFoundPath correctly', async () => {
         webex.request = sinon.stub();
-        uuid.v4.returns('randomid');
+        uuidStub.returns('randomid');
         const promise = webex.internal.dss._request({
           resource: '/search/orgid/userOrgId/entities',
           params: {some: 'param'},
@@ -1212,6 +1541,7 @@ describe('plugin-dss', () => {
         expect(result).to.equal(response2);
       });
       // TODO - https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-518037
+      // @ts-ignore - it.skip is valid but not in type definitions
       it.skip('fails fails when mercury does not respond, later batches can still pass ok', async () => {
         // Batch 1
         const {

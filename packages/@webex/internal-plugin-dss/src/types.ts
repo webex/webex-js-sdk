@@ -33,6 +33,10 @@ export interface LookupByEmailOptions {
   email: string;
 }
 
+export interface LookupByPhoneNumbersOptions {
+  phoneNumbers: string[];
+}
+
 // eslint-disable-next-line no-shadow
 export enum SearchType {
   PERSON = 'PERSON',
