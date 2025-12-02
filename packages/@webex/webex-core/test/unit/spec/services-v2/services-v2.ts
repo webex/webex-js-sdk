@@ -49,9 +49,7 @@ describe('webex-core', () => {
         // call the onReady callback
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
-        
         assert.isFalse(services.initFailed);
-        
       });
 
       it('initFailed is false when initialization succeeds no credentials are available', async () => {
