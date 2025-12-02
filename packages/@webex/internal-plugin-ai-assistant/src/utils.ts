@@ -31,6 +31,35 @@ export const decryptCitedAnswer = async (data, webex) => {
 
   await decryptInPlace(data, 'value.value', 'encryptionKeyUrl', webex);
 };
+export const decryptScheduleMeeting = async (data, webex) => {
+  // Decrypt commentary in parameters
+  await decryptInPlace(data, 'parameters.commentary', 'encryptionKeyUrl', webex);
+
+  const meetingData = data.value?.results?.data;
+  if (meetingData) {
+    // Decrypt attendee emails
+    if (meetingData.attendees) {
+      await Promise.all(
+        meetingData.attendees.map((attendee, index) => {
+          return decryptInPlace(
+            data,
+            `value.results.data.attendees.${index}.email`,
+            'encryptionKeyUrl',
+            webex
+          );
+        })
+      );
+    }
+
+    // Decrypt other fields in the meeting data
+    await Promise.all([
+      decryptInPlace(data, 'value.results.data.title', 'encryptionKeyUrl', webex),
+      decryptInPlace(data, 'value.results.data.inScopeReply', 'encryptionKeyUrl', webex),
+      decryptInPlace(data, 'value.results.data.meetingLink', 'encryptionKeyUrl', webex),
+      decryptInPlace(data, 'value.results.data.description', 'encryptionKeyUrl', webex),
+    ]);
+  }
+};
 
 export const decryptMessage = async (data, webex) => {
   await decryptInPlace(data, 'value', 'encryptionKeyUrl', webex);

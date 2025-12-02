@@ -11,6 +11,7 @@ import {
   VOICEMAIL,
   WEBEX_API_CONFIG_INT_URL,
   WEBEX_API_CONFIG_PROD_URL,
+  WEBEX_API_CONFIG_FEDRAMP_URL,
 } from '../common/constants';
 import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
 import {CF_ENDPOINT, METHODS, ORG_ENDPOINT, PEOPLE_ENDPOINT} from './constants';
@@ -53,6 +54,8 @@ export class UcmBackendConnector implements IUcmBackendConnector {
     this.orgId = this.webex.internal.device.orgId;
     this.useProdWebexApis = useProdWebexApis;
   }
+
+  // Removed header caching to align with review: fetch per request instead.
 
   /**
    * Reads call waiting setting at the backend.
@@ -187,18 +190,27 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       loggerContext
     );
 
-    const webexApisUrl = this.useProdWebexApis
-      ? WEBEX_API_CONFIG_PROD_URL
-      : WEBEX_API_CONFIG_INT_URL;
+    // Fetch auth headers per request (no caching) to ensure freshness.
+    const headers = await this.getAuthHeaders();
+
+    let webexApisUrl: string;
+    if (this.webex?.config?.fedramp) {
+      webexApisUrl = WEBEX_API_CONFIG_FEDRAMP_URL;
+    } else {
+      webexApisUrl = this.useProdWebexApis ? WEBEX_API_CONFIG_PROD_URL : WEBEX_API_CONFIG_INT_URL;
+    }
 
     try {
       if (directoryNumber) {
-        const resp = <WebexRequestPayload>await this.webex.request({
+        const requestOptions: WebexRequestPayload = {
           uri: `${webexApisUrl}/${PEOPLE_ENDPOINT}/${
             this.userId
           }/${CF_ENDPOINT.toLowerCase()}?${ORG_ENDPOINT}=${this.orgId}`,
           method: HTTP_METHODS.GET,
-        });
+          headers,
+        };
+
+        const resp = <WebexRequestPayload>await this.webex.request(requestOptions);
 
         log.log(`Response code: ${resp.statusCode}`, loggerContext);
 
@@ -253,5 +265,18 @@ export class UcmBackendConnector implements IUcmBackendConnector {
 
       return errorStatus;
     }
+  }
+
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {};
+
+    // Match behavior from WxCallBackendConnector:
+    // Only add authorization for FedRAMP, else rely on implicit auth/session.
+    // Note: Use lowercase 'authorization' to match SDK's auth interceptor check
+    if (this.webex?.config?.fedramp) {
+      headers.authorization = await this.webex.credentials.getUserToken();
+    }
+
+    return headers;
   }
 }
