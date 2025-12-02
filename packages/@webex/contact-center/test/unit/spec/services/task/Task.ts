@@ -8,7 +8,7 @@ class DummyTask extends Task {
   constructor(contact: any, data: TaskData) {
     super(contact, data, {
       channelType: 'voice',
-      isEndCallEnabled: true,
+      isEndTaskEnabled: true,
       isEndConsultEnabled: true,
     });
   }

@@ -18,13 +18,12 @@ import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import LoggerProxy from '../../logger-proxy';
-import {
-  createTaskStateMachine,
-  TaskState,
+import {createTaskStateMachine, TaskState} from './state-machine';
+import type {
   TaskEventPayload,
-  type TaskStateMachine,
-  type UIControlConfig,
-  type TaskContext,
+  TaskStateMachine,
+  UIControlConfig,
+  TaskContext,
 } from './state-machine';
 import AutoWrapup from './AutoWrapup';
 import {
@@ -32,20 +31,6 @@ import {
   getDefaultUIControls,
   haveUIControlsChanged,
 } from './state-machine/uiControlsComputer';
-
-/**
- * Participant information for UI display
- */
-export type Participant = {
-  id: string;
-  name?: string;
-  pType?: string;
-};
-
-/**
- * @deprecated Use Participant instead
- */
-export type TaskAccessorParticipant = Participant;
 
 type CallId = string;
 
@@ -56,7 +41,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   public data: TaskData;
   public webCallMap: Record<TaskId, CallId>;
   public state?: SnapshotFrom<TaskStateMachine>;
-  private lastState: TaskState | null = null;
+  private lastState?: TaskState;
   protected currentUiControls: TaskUIControls;
   protected uiControlConfig: UIControlConfig;
 

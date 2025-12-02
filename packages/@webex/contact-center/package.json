@@ -54,6 +54,7 @@
     "@webex/webex-core": "workspace:*",
     "jest-html-reporters": "3.0.11",
     "lodash": "^4.17.21",
+    "uuid": "^3.3.2",
     "xstate": "5.24.0"
   },
   "devDependencies": {

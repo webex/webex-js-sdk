@@ -7,13 +7,15 @@
  * NOTE: These actions are meant to be used within XState assign() or as standalone action functions.
  * Event emission and UI control updates will be handled by the Task/Voice classes that use this state machine.
  *
- * TODO: Event emission logic will be integrated with existing Task EventEmitter pattern.
- * TODO: Resource cleanup logic will be added to handle WebRTC and other resources.
+ * Side effects such as emitting Task events or cleaning up WebRTC resources should stay in the
+ * consumer classes (Task/Voice) by extending the action map passed into the machine. Keeping these
+ * core actions pure makes the state machine predictable and easy to reason about.
  */
 
 import {assign} from 'xstate';
 import type {ActionFunctionMap, EventObject} from 'xstate';
-import {TaskContext, TaskEventPayload, TaskEvent, UIControlConfig, TaskState} from './types';
+import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
+import {TaskEvent, TaskState} from './constants';
 import {TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
 
@@ -45,6 +47,7 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
     isPaused?: boolean;
   };
 
+  // Recording availability toggles when backend explicitly tells if the feature is on
   if (recordingStarted !== undefined) {
     update.recordingControlsAvailable = recordingStarted;
     if (!recordingStarted) {

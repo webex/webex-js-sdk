@@ -251,7 +251,7 @@ describe('webex.cc', () => {
       isAgentAvailableAfterOutdial: false,
       isCampaignManagementEnabled: false,
       outDialEp: '',
-      isEndCallEnabled: false,
+      isEndTaskEnabled: false,
       isEndConsultEnabled: false,
       agentDbId: '',
       allowConsultToQueue: false,
@@ -324,13 +324,13 @@ describe('webex.cc', () => {
         method: 'connectWebsocket',
       });
       expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
-        isEndCallEnabled: mockAgentProfile.isEndCallEnabled,
+        isEndTaskEnabled: mockAgentProfile.isEndTaskEnabled,
         isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
         webRtcEnabled: mockAgentProfile.webRtcEnabled,
         autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
       });
       expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
-        isEndCallEnabled: mockAgentProfile.isEndCallEnabled,
+        isEndTaskEnabled: mockAgentProfile.isEndTaskEnabled,
         isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
         webRtcEnabled: mockAgentProfile.webRtcEnabled,
         autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,

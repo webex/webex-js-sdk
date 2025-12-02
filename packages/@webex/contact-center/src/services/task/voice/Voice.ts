@@ -8,22 +8,18 @@ import {
   TaskData,
   TaskResponse,
   IVoice,
+  VoiceUIControlOptions,
   TransferPayLoad,
   ConsultTransferPayLoad,
   CONSULT_TRANSFER_DESTINATION_TYPE,
+  TASK_CHANNEL_TYPE,
+  VOICE_VARIANT,
 } from '../types';
 import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import {TaskState, TaskEvent, guards} from '../state-machine';
-
-export type VoiceUIControlOptions = {
-  isEndCallEnabled?: boolean;
-  isEndConsultEnabled?: boolean;
-  voiceVariant?: 'pstn' | 'webrtc';
-  isRecordingEnabled?: boolean;
-};
 
 export default class Voice extends Task implements IVoice {
   constructor(
@@ -32,10 +28,10 @@ export default class Voice extends Task implements IVoice {
     callOptions: VoiceUIControlOptions = {}
   ) {
     super(contact, data, {
-      channelType: 'voice',
-      isEndCallEnabled: callOptions.isEndCallEnabled ?? true,
+      channelType: TASK_CHANNEL_TYPE.VOICE,
+      isEndTaskEnabled: callOptions.isEndTaskEnabled ?? true,
       isEndConsultEnabled: callOptions.isEndConsultEnabled ?? true,
-      voiceVariant: callOptions.voiceVariant ?? 'pstn',
+      voiceVariant: callOptions.voiceVariant ?? VOICE_VARIANT.PSTN,
       isRecordingEnabled: callOptions.isRecordingEnabled ?? true,
     });
   }
@@ -414,7 +410,7 @@ export default class Voice extends Task implements IVoice {
       this.stateMachineService.send({
         type: TaskEvent.CONSULT,
         destination: consultPayload.to,
-        destinationType: consultPayload.destinationType as 'queue' | 'agent' | 'entryPoint',
+        destinationType: consultPayload.destinationType,
       });
     }
 

@@ -1,7 +1,7 @@
 import {CC_FILE, METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import routingContact from '../contact';
-import {IDigital, TaskResponse, TaskData} from '../types';
+import {IDigital, TaskResponse, TaskData, TASK_CHANNEL_TYPE} from '../types';
 import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
@@ -10,15 +10,15 @@ import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 export default class Digital extends Task implements IDigital {
   constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
     super(contact, data, {
-      channelType: 'digital',
-      isEndCallEnabled: true,
+      channelType: TASK_CHANNEL_TYPE.DIGITAL,
+      isEndTaskEnabled: true,
       isEndConsultEnabled: false,
       isRecordingEnabled: false,
     });
   }
 
   /**
-   * Compute UI controls based on state machine state for digital channels.
+   * Refresh the digital task with the latest backend payload and recompute UI controls.
    */
   public updateTaskData(newData: TaskData, shouldOverwrite = false): IDigital {
     super.updateTaskData(newData, shouldOverwrite);

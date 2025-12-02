@@ -2,8 +2,15 @@ import {LocalMicrophoneStream, CALL_EVENT_KEYS} from '@webex/calling';
 import {CC_FILE} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import routingContact from '../contact';
-import {TaskData, TaskResponse, TASK_EVENTS, IWebRTC} from '../types';
-import Voice, {VoiceUIControlOptions} from './Voice';
+import {
+  TaskData,
+  TaskResponse,
+  TASK_EVENTS,
+  IWebRTC,
+  VoiceUIControlOptions,
+  VOICE_VARIANT,
+} from '../types';
+import Voice from './Voice';
 import WebCallingService from '../../WebCallingService';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
@@ -19,7 +26,7 @@ export default class WebRTC extends Voice implements IWebRTC {
     data: TaskData,
     callOptions: VoiceUIControlOptions = {}
   ) {
-    super(contact, data, {...callOptions, voiceVariant: 'webrtc'});
+    super(contact, data, {...callOptions, voiceVariant: VOICE_VARIANT.WEBRTC});
     this.webCallingService = webCallingService;
     this.registerWebCallListeners();
   }

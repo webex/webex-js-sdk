@@ -8,8 +8,9 @@
 export {getTaskStateMachineConfig, createTaskStateMachine} from './TaskStateMachine';
 export type {TaskStateMachine} from './TaskStateMachine';
 
-// Types
-export {TaskState, TaskEvent, isEventOfType} from './types';
+// Types & enums
+export {TaskState, TaskEvent, TaskAction} from './constants';
+export {isEventOfType} from './types';
 export type {
   TaskContext,
   TaskEventPayload,
@@ -21,7 +22,6 @@ export type {
 // Guards
 export {guards} from './guards';
 export type {GuardParams, GuardFunction} from './guards';
-export type {TaskAction} from './types';
 
 // Actions
 export {actions, createInitialContext} from './actions';

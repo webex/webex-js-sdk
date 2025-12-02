@@ -492,7 +492,7 @@ export type DesktopProfileResponse = {
   /**
    * Threshold rules configured for the agent profile.
    */
-  thresholdRules: Array<Record<string, unknown>>;
+  thresholdRules: Array<Record<string, string | number>>;
 
   /**
    * Whether the agent profile is currently active.
@@ -1076,7 +1076,7 @@ export type Profile = {
   /** Outbound entry point */
   outDialEp: string;
   /** Whether ending calls is enabled */
-  isEndCallEnabled: boolean;
+  isEndTaskEnabled: boolean;
   /** Whether ending consultations is enabled */
   isEndConsultEnabled: boolean;
   /** Optional lifecycle manager URL */

@@ -21,7 +21,7 @@ describe('TaskFactory', () => {
     } as unknown) as WebCallingService;
 
   const configFlags: ConfigFlags = {
-    isEndCallEnabled: true,
+    isEndTaskEnabled: true,
     isEndConsultEnabled: true,
     webRtcEnabled: true,
     autoWrapup: false,

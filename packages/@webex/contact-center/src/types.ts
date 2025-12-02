@@ -570,7 +570,7 @@ export type BuddyAgents = {
  * @internal
  */
 export type ConfigFlags = {
-  isEndCallEnabled: boolean;
+  isEndTaskEnabled: boolean;
   isEndConsultEnabled: boolean;
   webRtcEnabled: boolean;
   autoWrapup: boolean;

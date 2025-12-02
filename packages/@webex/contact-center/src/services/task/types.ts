@@ -94,6 +94,26 @@ export const MEDIA_CHANNEL = {
 export type MEDIA_CHANNEL = Enum<typeof MEDIA_CHANNEL>;
 
 /**
+ * Supported task channel types for UI control configuration
+ */
+export const TASK_CHANNEL_TYPE = {
+  VOICE: 'voice',
+  DIGITAL: 'digital',
+} as const;
+
+export type TaskChannelType = Enum<typeof TASK_CHANNEL_TYPE>;
+
+/**
+ * Voice channel variants that toggle PSTN/WebRTC specific behaviors
+ */
+export const VOICE_VARIANT = {
+  PSTN: 'pstn',
+  WEBRTC: 'webrtc',
+} as const;
+
+export type VoiceVariant = Enum<typeof VOICE_VARIANT>;
+
+/**
  * Enumeration of all task-related events that can occur in the contact center system
  * These events represent different states and actions in the task lifecycle
  * @public
@@ -961,34 +981,49 @@ export type TaskData = {
   mpcState?: string;
 };
 
-/**
- * Control state for a single UI action.
- */
-export interface TaskUIControlState {
-  isVisible: boolean;
-  isEnabled: boolean;
+export interface UIControls {
+  accept: {isVisible: boolean; isEnabled: boolean};
+  decline: {isVisible: boolean; isEnabled: boolean};
+  hold: {isVisible: boolean; isEnabled: boolean; label: 'Hold' | 'Resume'};
+  transfer: {isVisible: boolean; isEnabled: boolean};
+  consult: {isVisible: boolean; isEnabled: boolean};
+  end: {isVisible: boolean; isEnabled: boolean};
+  recording: {isVisible: boolean; isEnabled: boolean};
+  mute: {isVisible: boolean; isEnabled: boolean};
+  consultTransfer: {isVisible: boolean; isEnabled: boolean};
+  endConsult: {isVisible: boolean; isEnabled: boolean};
+  conference: {isVisible: boolean; isEnabled: boolean};
+  exitConference: {isVisible: boolean; isEnabled: boolean};
+  transferConference: {isVisible: boolean; isEnabled: boolean};
+  wrapup: {isVisible: boolean; isEnabled: boolean};
 }
 
+type TaskUIControlState = {
+  isVisible: boolean;
+  isEnabled: boolean;
+};
+
 /**
- * UI control configuration for task operations.
+ * UI control representation surfaced to task consumers.
+ * Mirrors the buttons available in Task.uiControls without extra metadata.
  */
-export interface TaskUIControls {
+export type TaskUIControls = {
   accept: TaskUIControlState;
   decline: TaskUIControlState;
   hold: TaskUIControlState;
-  mute: TaskUIControlState;
-  end: TaskUIControlState;
   transfer: TaskUIControlState;
   consult: TaskUIControlState;
+  end: TaskUIControlState;
+  recording: TaskUIControlState;
+  mute: TaskUIControlState;
   consultTransfer: TaskUIControlState;
   endConsult: TaskUIControlState;
-  recording: TaskUIControlState;
   conference: TaskUIControlState;
-  wrapup: TaskUIControlState;
   exitConference: TaskUIControlState;
   transferConference: TaskUIControlState;
   mergeToConference: TaskUIControlState;
-}
+  wrapup: TaskUIControlState;
+};
 
 /**
  * Helper class for managing task action control state
@@ -1339,6 +1374,41 @@ export type ContactCleanupData = {
 };
 
 /**
+ * Boolean-like fields in callProcessingDetails that may arrive as strings.
+ * Used by taskDataNormalizer to coerce payloads to actual booleans.
+ */
+export type CallProcessingBooleanKey =
+  | 'recordingStarted'
+  | 'recordInProgress'
+  | 'isPaused'
+  | 'pauseResumeEnabled'
+  | 'ctqInProgress'
+  | 'outdialTransferToQueueEnabled'
+  | 'taskToBeSelfServiced'
+  | 'CONTINUE_RECORDING_ON_TRANSFER'
+  | 'isParked'
+  | 'participantInviteTimeout'
+  | 'checkAgentAvailability';
+
+/**
+ * Interaction-level boolean fields that may arrive as strings from backend payloads.
+ */
+export type InteractionBooleanKey = 'isFcManaged' | 'isMediaForked' | 'isTerminated';
+
+/**
+ * Participant boolean fields that may arrive as strings and need normalization.
+ */
+export type ParticipantBooleanKey =
+  | 'autoAnswerEnabled'
+  | 'hasJoined'
+  | 'hasLeft'
+  | 'isConsulted'
+  | 'isInPredial'
+  | 'isOffered'
+  | 'isWrapUp'
+  | 'isWrappedUp';
+
+/**
  * Response type for task public methods
  * Can be an {@link AgentContact} object containing updated task state,
  * an Error in case of failure, or void for operations that don't return data
@@ -1622,6 +1692,30 @@ export interface IVoice extends ITask {
    */
   holdResume(): Promise<TaskResponse>;
 }
+
+/**
+ * Configuration options for voice task UI controls
+ */
+export type VoiceUIControlOptions = {
+  isEndTaskEnabled?: boolean;
+  isEndConsultEnabled?: boolean;
+  voiceVariant?: VoiceVariant;
+  isRecordingEnabled?: boolean;
+};
+
+/**
+ * Participant information for UI display
+ */
+export type Participant = {
+  id: string;
+  name?: string;
+  pType?: string;
+};
+
+/**
+ * @deprecated Use Participant instead
+ */
+export type TaskAccessorParticipant = Participant;
 
 /**
  * Legacy IOldTask interface for backward compatibility

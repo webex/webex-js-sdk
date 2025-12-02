@@ -8,7 +8,7 @@ import {createTaskData} from '../taskTestUtils';
 
 const createConfig = () => ({
   channelType: 'voice' as const,
-  isEndCallEnabled: true,
+  isEndTaskEnabled: true,
   isEndConsultEnabled: true,
   voiceVariant: 'pstn' as const,
   isRecordingEnabled: true,

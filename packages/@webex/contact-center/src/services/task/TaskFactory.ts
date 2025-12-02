@@ -18,10 +18,10 @@ export default class TaskFactory {
     configFlags: ConfigFlags
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
-    const {isEndCallEnabled, isEndConsultEnabled} = configFlags;
+    const {isEndTaskEnabled, isEndConsultEnabled} = configFlags;
     const recordingEnabled = data?.interaction?.callProcessingDetails?.pauseResumeEnabled ?? true;
     const voiceControlOptions = {
-      isEndCallEnabled,
+      isEndTaskEnabled,
       isEndConsultEnabled,
       isRecordingEnabled: recordingEnabled,
     };

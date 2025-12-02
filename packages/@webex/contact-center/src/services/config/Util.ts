@@ -226,7 +226,7 @@ function parseAgentConfigs(profileData: {
     isAgentAvailableAfterOutdial: agentProfileData.agentAvailableAfterOutdial,
     outDialEp: agentProfileData.outdialEntryPointId,
     isCampaignManagementEnabled: orgSettingsData.campaignManagerEnabled,
-    isEndCallEnabled: tenantData.endCallEnabled,
+    isEndTaskEnabled: tenantData.endCallEnabled,
     isEndConsultEnabled: tenantData.endConsultEnabled,
     callVariablesSuppressed: tenantData.callVariablesSuppressed,
     agentDbId: userData.dbId,

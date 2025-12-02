@@ -1,19 +1,11 @@
-import {TaskData} from './types';
+import {
+  CallProcessingBooleanKey,
+  InteractionBooleanKey,
+  ParticipantBooleanKey,
+  TaskData,
+} from './types';
 
-type BooleanKey =
-  | 'recordingStarted'
-  | 'recordInProgress'
-  | 'isPaused'
-  | 'pauseResumeEnabled'
-  | 'ctqInProgress'
-  | 'outdialTransferToQueueEnabled'
-  | 'taskToBeSelfServiced'
-  | 'CONTINUE_RECORDING_ON_TRANSFER'
-  | 'isParked'
-  | 'participantInviteTimeout'
-  | 'checkAgentAvailability';
-
-const booleanKeys: BooleanKey[] = [
+const booleanKeys: CallProcessingBooleanKey[] = [
   'recordingStarted',
   'recordInProgress',
   'isPaused',
@@ -27,13 +19,13 @@ const booleanKeys: BooleanKey[] = [
   'checkAgentAvailability',
 ];
 
-const interactionBooleanKeys: Array<keyof TaskData['interaction']> = [
+const interactionBooleanKeys: InteractionBooleanKey[] = [
   'isFcManaged',
   'isMediaForked',
   'isTerminated',
 ];
 
-const participantBooleanKeys = [
+const participantBooleanKeys: ParticipantBooleanKey[] = [
   'autoAnswerEnabled',
   'hasJoined',
   'hasLeft',
@@ -50,10 +42,12 @@ const toBoolean = (value: unknown): boolean | undefined => {
   }
 
   if (typeof value === 'string') {
-    if (value.toLowerCase() === 'true') {
+    const normalized = value.toLowerCase();
+
+    if (normalized === 'true') {
       return true;
     }
-    if (value.toLowerCase() === 'false') {
+    if (normalized === 'false') {
       return false;
     }
   }
@@ -101,22 +95,26 @@ export function normalizeTaskData(data: TaskData): TaskData {
   );
 
   let updatedParticipants: typeof interaction.participants | undefined;
-  Object.entries(interaction.participants || {}).forEach(([id, participant]) => {
+  const participants = interaction.participants || {};
+  Object.keys(participants).forEach((id) => {
+    const participant = participants[id];
     const normalized = normalizeFields(participant, participantBooleanKeys);
     if (normalized) {
       if (!updatedParticipants) {
-        updatedParticipants = {...interaction.participants};
+        updatedParticipants = {...participants};
       }
       updatedParticipants[id] = normalized;
     }
   });
 
   let updatedMedia: typeof interaction.media | undefined;
-  Object.entries(interaction.media || {}).forEach(([id, media]) => {
+  const mediaEntries = interaction.media || {};
+  Object.keys(mediaEntries).forEach((id) => {
+    const media = mediaEntries[id];
     const normalized = normalizeFields(media, ['isHold']);
     if (normalized) {
       if (!updatedMedia) {
-        updatedMedia = {...interaction.media};
+        updatedMedia = {...mediaEntries};
       }
       updatedMedia[id] = normalized;
     }

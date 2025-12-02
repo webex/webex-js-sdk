@@ -6,7 +6,8 @@
  */
 
 import {setup} from 'xstate';
-import {TaskState, TaskEvent, TaskContext, TaskEventPayload, UIControlConfig} from './types';
+import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
+import {TaskState, TaskEvent} from './constants';
 import {actions, createInitialContext} from './actions';
 
 type TaskActionConfigMap = {[K in keyof typeof actions]: undefined};

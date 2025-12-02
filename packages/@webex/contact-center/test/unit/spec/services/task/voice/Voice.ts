@@ -62,7 +62,7 @@ describe('Voice Task', () => {
 
   it('hides end and endConsult when disabled', () => {
     const voice = new Voice(dummyContact, createBaseData(), {
-      isEndCallEnabled: false,
+      isEndTaskEnabled: false,
       isEndConsultEnabled: false,
     });
     voice.updateTaskData(createBaseData());
@@ -99,7 +99,7 @@ describe('Voice Task', () => {
   it('pauseRecording() calls contact.pauseRecording', async () => {
     const taskData = createBaseData();
     const voice = new Voice(dummyContact, taskData, {
-      isEndCallEnabled: true,
+      isEndTaskEnabled: true,
       isEndConsultEnabled: true,
     });
     primeConnectedState(voice, taskData);
@@ -110,7 +110,7 @@ describe('Voice Task', () => {
   it('resumeRecording() with no payload defaults to autoResumed false', async () => {
     const taskData = createBaseData();
     const voice = new Voice(dummyContact, taskData, {
-      isEndCallEnabled: true,
+      isEndTaskEnabled: true,
       isEndConsultEnabled: true,
     });
     primeConnectedState(voice, taskData);
@@ -125,7 +125,7 @@ describe('Voice Task', () => {
   it('consult() calls contact.consult with payload', async () => {
     const taskData = createBaseData();
     const voice = new Voice(dummyContact, taskData, {
-      isEndCallEnabled: true,
+      isEndTaskEnabled: true,
       isEndConsultEnabled: true,
     });
     primeConnectedState(voice, taskData);
@@ -146,7 +146,7 @@ describe('Voice Task', () => {
       const voice = new Voice(
         { ...dummyContact, consultTransfer: consultTransferMock },
         dataWithState as any,
-        { isEndCallEnabled: true, isEndConsultEnabled: true }
+        { isEndTaskEnabled: true, isEndConsultEnabled: true }
       );
 
       const result = await voice.transfer({
@@ -166,7 +166,7 @@ describe('Voice Task', () => {
         interaction: {state: 'consulting'} as any,
       });
       const voice = new Voice(dummyContact, dataWithState as any, {
-        isEndCallEnabled: true,
+        isEndTaskEnabled: true,
         isEndConsultEnabled: true,
       });
 
@@ -187,7 +187,7 @@ describe('Voice Task', () => {
       const voice = new Voice(
         { ...dummyContact, consultTransfer: consultTransferMock },
         dataWithDest as any,
-        { isEndCallEnabled: true, isEndConsultEnabled: true }
+        { isEndTaskEnabled: true, isEndConsultEnabled: true }
       );
 
       const result = await voice.transfer({
@@ -211,7 +211,7 @@ describe('Voice Task', () => {
       const voice = new Voice(
         { ...dummyContact, consultEnd: consultEndMock },
         createBaseData(),
-        { isEndCallEnabled: true, isEndConsultEnabled: true }
+        { isEndTaskEnabled: true, isEndConsultEnabled: true }
       );
       const payload = { isConsult: true, queueId: 'q1', taskId: 't1' };
       const result = await voice.endConsult(payload);
@@ -228,7 +228,7 @@ describe('Voice Task', () => {
     it('shows main controls and hides accept/decline on AGENT_CONTACT_ASSIGNED', () => {
       const data: any = { ...createBaseData(), type: CC_EVENTS.AGENT_CONTACT_ASSIGNED };
       const voice = new Voice(dummyContact, data, {
-        isEndCallEnabled: true,
+        isEndTaskEnabled: true,
         isEndConsultEnabled: false,
       });
 

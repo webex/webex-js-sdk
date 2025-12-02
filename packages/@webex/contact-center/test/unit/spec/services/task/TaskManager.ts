@@ -338,7 +338,7 @@ describe('TaskManager', () => {
       contactMock,
       webCallingService,
       taskDataMock,
-      {isEndCallEnabled: true, isEndConsultEnabled: true}
+      {isEndTaskEnabled: true, isEndConsultEnabled: true}
     );
     (taskManager as any).taskCollection[taskId] = webrtcTask;
 

@@ -73,7 +73,7 @@ describe('WebRTC Task', () => {
   beforeEach(() => {
     taskData = createTaskData();
     webRtc = new WebRTC(dummyContact, webCallingService, taskData, {
-      isEndCallEnabled: true,
+      isEndTaskEnabled: true,
       isEndConsultEnabled: true,
     });
   });
@@ -128,7 +128,7 @@ describe('WebRTC Task', () => {
     beforeEach(() => {
       taskData = createTaskData();
       webRtc = new WebRTC(dummyContact, webCallingService, taskData, {
-        isEndCallEnabled: true,
+        isEndTaskEnabled: true,
         isEndConsultEnabled: true,
       });
     });

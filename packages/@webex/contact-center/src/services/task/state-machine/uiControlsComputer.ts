@@ -7,13 +7,14 @@
  * - Configuration
  */
 
-import {TaskData, TaskUIControls} from '../types';
-import {TaskState, TaskContext, UIControlConfig} from './types';
+import {TASK_CHANNEL_TYPE, TaskData, TaskUIControls, VOICE_VARIANT} from '../types';
+import {RecordingControlState, TaskContext, UIControlConfig} from './types';
+import {TaskState} from './constants';
 
-type RecordingControlState = {
-  available: boolean;
-  inProgress: boolean;
-};
+/**
+ * Constant for a disabled/hidden control state
+ */
+const DISABLED_CONTROL = {isVisible: false, isEnabled: false} as const;
 
 function getRecordingControlState(context: TaskContext): RecordingControlState {
   return {
@@ -27,21 +28,21 @@ function getRecordingControlState(context: TaskContext): RecordingControlState {
  */
 export function getDefaultUIControls(): TaskUIControls {
   return {
-    accept: {isVisible: false, isEnabled: false},
-    decline: {isVisible: false, isEnabled: false},
-    hold: {isVisible: false, isEnabled: false},
-    mute: {isVisible: false, isEnabled: false},
-    end: {isVisible: false, isEnabled: false},
-    transfer: {isVisible: false, isEnabled: false},
-    consult: {isVisible: false, isEnabled: false},
-    consultTransfer: {isVisible: false, isEnabled: false},
-    endConsult: {isVisible: false, isEnabled: false},
-    recording: {isVisible: false, isEnabled: false},
-    conference: {isVisible: false, isEnabled: false},
-    wrapup: {isVisible: false, isEnabled: false},
-    exitConference: {isVisible: false, isEnabled: false},
-    transferConference: {isVisible: false, isEnabled: false},
-    mergeToConference: {isVisible: false, isEnabled: false},
+    accept: DISABLED_CONTROL,
+    decline: DISABLED_CONTROL,
+    hold: DISABLED_CONTROL,
+    mute: DISABLED_CONTROL,
+    end: DISABLED_CONTROL,
+    transfer: DISABLED_CONTROL,
+    consult: DISABLED_CONTROL,
+    consultTransfer: DISABLED_CONTROL,
+    endConsult: DISABLED_CONTROL,
+    recording: DISABLED_CONTROL,
+    conference: DISABLED_CONTROL,
+    wrapup: DISABLED_CONTROL,
+    exitConference: DISABLED_CONTROL,
+    transferConference: DISABLED_CONTROL,
+    mergeToConference: DISABLED_CONTROL,
   };
 }
 
@@ -54,7 +55,7 @@ function computeVoiceUIControls(
   config: UIControlConfig,
   fallbackTaskData?: TaskData
 ): TaskUIControls {
-  const isWebrtc = config.voiceVariant === 'webrtc';
+  const isWebrtc = config.voiceVariant === VOICE_VARIANT.WEBRTC;
   const isOffered =
     currentState === TaskState.OFFERED || currentState === TaskState.OFFERED_CONSULT;
   const isConnected = currentState === TaskState.CONNECTED;
@@ -67,7 +68,8 @@ function computeVoiceUIControls(
   const isTerminated = taskData?.interaction?.isTerminated ?? false;
   const {available: recordingAvailable, inProgress: recordingInProgress} =
     getRecordingControlState(context);
-  const recordingFeatureEnabled = config.channelType === 'voice' && config.isRecordingEnabled;
+  const recordingFeatureEnabled =
+    config.channelType === TASK_CHANNEL_TYPE.VOICE && config.isRecordingEnabled;
   const shouldShowAcceptDecline = isWebrtc
     ? isOffered && !isTerminated && (!isConsulting || !isConsultedAgent)
     : isOffered;
@@ -104,7 +106,7 @@ function computeVoiceUIControls(
 
     // End button: conditional based on config, disabled when held or wrapping up
     end: {
-      isVisible: config.isEndCallEnabled,
+      isVisible: config.isEndTaskEnabled,
       isEnabled: !isHeld && !isWrappingUp,
     },
 
@@ -296,16 +298,14 @@ export function computeUIControls(
 ): TaskUIControls {
   const {uiControlConfig} = context;
 
-  // Route to appropriate channel-specific computation
-  if (uiControlConfig.channelType === 'voice') {
-    return computeVoiceUIControls(currentState, context, uiControlConfig, fallbackTaskData);
+  switch (uiControlConfig.channelType) {
+    case TASK_CHANNEL_TYPE.VOICE:
+      return computeVoiceUIControls(currentState, context, uiControlConfig, fallbackTaskData);
+    case TASK_CHANNEL_TYPE.DIGITAL:
+      return computeDigitalUIControls(currentState, context, fallbackTaskData);
+    default:
+      return getDefaultUIControls();
   }
-  if (uiControlConfig.channelType === 'digital') {
-    return computeDigitalUIControls(currentState, context, fallbackTaskData);
-  }
-
-  // Fallback to default (all hidden/disabled)
-  return getDefaultUIControls();
 }
 
 /**
