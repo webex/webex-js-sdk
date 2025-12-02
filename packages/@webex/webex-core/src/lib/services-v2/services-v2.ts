@@ -1040,7 +1040,7 @@ const Services = WebexPlugin.extend({
           this.webex.internal.metrics.submitClientMetrics(METRICS.SERVICE_V2, {
             fields: {
               type: 'operational',
-              status: 'initServiceCatalogs_initializing',
+              status: 'initializing',
             },
           });
 

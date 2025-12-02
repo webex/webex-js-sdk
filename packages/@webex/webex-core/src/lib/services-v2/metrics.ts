@@ -1,5 +1,4 @@
 // Metrics for service catalog
 export default {
   JS_SDK_SERVICE_NOT_FOUND: 'JS_SDK_SERVICE_NOT_FOUND',
-  SERVICE_V2_INITIALIZING: 'SERVICE_V2_INITIALIZING',
 };
