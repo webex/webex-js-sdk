@@ -6,7 +6,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {ServicesV2} from '@webex/webex-core';
-import Metricsfrom '@webex/internal-plugin-metrics';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
 import {formattedServiceHostmapV2, serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
 
 const waitForAsync = () =>
@@ -26,12 +26,11 @@ describe('webex-core', () => {
       webex = MockWebex({
         children: {
           services: ServicesV2,
-          metrics: Metrics,
+          newMetrics: NewMetrics,
         },
       });
       services = webex.internal.services;
       catalog = services._getCatalog();
-      webex.internal.metrics.submitClientMetrics = sinon.stub();
     });
 
     describe('#initialize', () => {

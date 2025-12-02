@@ -281,6 +281,7 @@ const Services = WebexPlugin.extend({
     if (!email) {
       return Promise.reject(new Error('`email` is required'));
     }
+
     // Destructure the credentials object.
     const {canAuthorize} = this.webex.credentials;
 
