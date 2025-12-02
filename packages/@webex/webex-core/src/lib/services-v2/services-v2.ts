@@ -1080,20 +1080,18 @@ const Services = WebexPlugin.extend({
         this.initServiceCatalogs()
           .then(() => {
             catalog.isReady = true;
+            this.webex.internal.metrics.submitClientMetrics(METRICS.SERVICE_V2_INITIALIZED, {
+              fields: {
+                type: 'operational',
+                initialized_status: 'succeeded',
+              },
+            });
           })
           .catch((error) => {
             this.initFailed = true;
             this.logger.error(
               `services: failed to init initial services when credentials available, ${error?.message}`
             );
-          })
-          .finally(() => {
-            this.webex.internal.metrics.submitClientMetrics(METRICS.SERVICE_V2_INITIALIZED, {
-              fields: {
-                type: 'operational',
-                initialized_status: this.initFailed ? 'failed' : 'succeeded',
-              },
-            });
           });
       } else {
         const {email} = this.webex.config;

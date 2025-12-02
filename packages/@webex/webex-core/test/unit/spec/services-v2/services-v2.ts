@@ -42,6 +42,7 @@ describe('webex-core', () => {
             access_token: 'token',
           },
         };
+        webex.internal.metrics.submitClientMetrics = sinon.stub();
 
         services.initialize();
 
