@@ -1036,7 +1036,16 @@ const Services = WebexPlugin.extend({
     return (
       Promise.resolve()
         // Get the user's OrgId.
-        .then(() => credentials.getOrgId())
+        .then(() => {
+          this.webex.internal.metrics.submitClientMetrics(METRICS.SERVICE_V2, {
+            fields: {
+              type: 'operational',
+              status: 'initServiceCatalogs_initializing',
+            },
+          });
+
+          return credentials.getOrgId();
+        })
         // Begin collecting the preauth/limited catalog.
         .then((orgId) => this.collectPreauthCatalog({orgId}, refresh))
         .then(() => {
@@ -1080,12 +1089,6 @@ const Services = WebexPlugin.extend({
         this.initServiceCatalogs()
           .then(() => {
             catalog.isReady = true;
-            this.webex.internal.metrics.submitClientMetrics(METRICS.SERVICE_V2_INITIALIZED, {
-              fields: {
-                type: 'operational',
-                initialized_status: 'succeeded',
-              },
-            });
           })
           .catch((error) => {
             this.initFailed = true;
