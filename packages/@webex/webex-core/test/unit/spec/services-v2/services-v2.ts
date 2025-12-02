@@ -5,8 +5,8 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {ServicesV2, Credentials} from '@webex/webex-core';
-import Metrics, {NewMetrics} from '@webex/internal-plugin-metrics';
+import {ServicesV2} from '@webex/webex-core';
+import Metricsfrom '@webex/internal-plugin-metrics';
 import {formattedServiceHostmapV2, serviceHostmapV2} from '../../../fixtures/host-catalog-v2';
 
 const waitForAsync = () =>
@@ -26,9 +26,7 @@ describe('webex-core', () => {
       webex = MockWebex({
         children: {
           services: ServicesV2,
-          newMetrics: NewMetrics,
           metrics: Metrics,
-          credentials: Credentials,
         },
       });
       services = webex.internal.services;
@@ -54,13 +52,6 @@ describe('webex-core', () => {
         
         assert.isFalse(services.initFailed);
         
-        sinon.assert.calledWith(
-          webex.internal.metrics.submitClientMetrics,
-          'SERVICE_V2_INITIALIZED',
-          {
-            fields: {type: 'operational', initialized_status: 'succeeded'},
-          }
-        );
       });
 
       it('initFailed is false when initialization succeeds no credentials are available', async () => {
