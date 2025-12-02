@@ -8,7 +8,6 @@ import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {EffectEvent, TrackEffect} from '@webex/web-media-effects';
 import {RtcMetrics} from '@webex/internal-plugin-metrics';
-import ExtendedError from '../../Errors/catalog/ExtendedError';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {
   handleCallErrors,
@@ -46,7 +45,9 @@ import {
   HOLD_ENDPOINT,
   ICE_CANDIDATES_TIMEOUT,
   INITIAL_SEQ_NUMBER,
+  MAX_CALL_KEEPALIVE_RETRY_COUNT,
   MEDIA_ENDPOINT_RESOURCE,
+  METHODS,
   NOISE_REDUCTION_EFFECT,
   RESUME_ENDPOINT,
   SPARK_USER_AGENT,
@@ -94,7 +95,7 @@ import {ICallerId} from './CallerId/types';
 import {createCallerId} from './CallerId';
 import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_ACTION} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
-import {SERVICES_ENDPOINT} from '../../common/constants';
+import {METHOD_START_MESSAGE, SERVICES_ENDPOINT} from '../../common/constants';
 
 /**
  *
@@ -146,7 +147,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private callerId: ICallerId;
 
-  private sessionTimer?: NodeJS.Timer;
+  private sessionTimer?: NodeJS.Timeout;
 
   /* Used to wait for final responses for supplementary services */
   private supplementaryServicesTimer?: NodeJS.Timeout;
@@ -168,6 +169,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private localAudioStream?: LocalMicrophoneStream;
 
   private rtcMetrics: RtcMetrics;
+
+  private callKeepaliveRetryCount = 0;
 
   /**
    * Getter to check if the call is muted or not.
@@ -239,7 +242,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     log.info(`Webex Calling Url:- ${this.mobiusUrl}`, {
       file: CALL_FILE,
-      method: 'constructor',
+      method: METHODS.CONSTRUCTOR,
     });
 
     this.seq = INITIAL_SEQ_NUMBER;
@@ -898,10 +901,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.callStateMachine = interpret(callMachine)
       .onTransition((state, event) => {
-        log.log(
-          `Call StateMachine:- state=${state.value}, event=${JSON.stringify(event.type)}`,
-          {}
-        );
+        log.log(`Call StateMachine:- state=${state.value}, event=${JSON.stringify(event.type)}`, {
+          file: CALL_FILE,
+          method: METHODS.CONSTRUCTOR,
+        });
         if (state.value !== 'S_UNKNOWN') {
           this.metricManager.submitCallMetric(
             METRIC_EVENT.CALL,
@@ -917,10 +920,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.mediaStateMachine = interpret(mediaMachine)
       .onTransition((state, event) => {
-        log.log(
-          `Media StateMachine:- state=${state.value}, event=${JSON.stringify(event.type)}`,
-          {}
-        );
+        log.log(`Media StateMachine:- state=${state.value}, event=${JSON.stringify(event.type)}`, {
+          file: CALL_FILE,
+          method: METHODS.CONSTRUCTOR,
+        });
         if (state.value !== 'S_ROAP_ERROR') {
           this.metricManager.submitMediaMetric(
             METRIC_EVENT.MEDIA,
@@ -945,9 +948,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleIncomingCallSetup(event: CallEvent) {
-    log.info(`handleIncomingCallSetup: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleIncomingCallSetup.name,
+      method: METHODS.HANDLE_INCOMING_CALL_SETUP,
     });
 
     this.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'});
@@ -961,29 +964,33 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Call Events.
    */
   private async handleOutgoingCallSetup(event: CallEvent) {
-    log.info(`handleOutgoingCallSetup: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleOutgoingCallSetup.name,
+      method: METHODS.HANDLE_OUTGOING_CALL_SETUP,
     });
 
     const message = event.data as RoapMessage;
 
     try {
       const response = await this.post(message);
-      log.log(`handleOutgoingCallSetup: Response: ${JSON.stringify(response)}`, {
+      log.info(`Response: ${JSON.stringify(response)}`, {
         file: CALL_FILE,
-        method: this.handleOutgoingCallSetup.name,
+        method: METHODS.HANDLE_OUTGOING_CALL_SETUP,
       });
 
-      log.log(`handleOutgoingCallSetup: Response code: ${response.statusCode}`, {
+      log.info(`Response code: ${response.statusCode}`, {
+        file: CALL_FILE,
+        method: METHODS.HANDLE_OUTGOING_CALL_SETUP,
+      });
+      this.setCallId(response.body.callId);
+      log.log(`Call setup successful for callId: ${response.body.callId}`, {
         file: CALL_FILE,
         method: this.handleOutgoingCallSetup.name,
       });
-      this.setCallId(response.body.callId);
     } catch (e) {
-      log.warn('Failed to setup the call', {
+      log.error(`Failed to setup the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
-        method: this.handleOutgoingCallSetup.name,
+        method: METHODS.HANDLE_OUTGOING_CALL_SETUP,
       });
       const errData = e as MobiusCallResponse;
 
@@ -998,13 +1005,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         /* istanbul ignore next */ (interval: number) => undefined,
         this.getCorrelationId(),
         errData,
-        this.handleOutgoingCallSetup.name,
+        METHODS.HANDLE_OUTGOING_CALL_SETUP,
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1016,9 +1024,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleCallHold(event: CallEvent) {
-    log.info(`handleCallHold: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleCallHold.name,
+      method: METHODS.HANDLE_CALL_HOLD,
     });
 
     try {
@@ -1026,7 +1034,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       log.log(`Response code: ${response.statusCode}`, {
         file: CALL_FILE,
-        method: this.handleCallHold.name,
+        method: METHODS.HANDLE_CALL_HOLD,
       });
 
       /*
@@ -1035,11 +1043,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
        */
       if (this.isHeld() === false) {
         this.supplementaryServicesTimer = setTimeout(async () => {
-          const errorContext = {file: CALL_FILE, method: this.handleCallHold.name};
+          const errorContext = {file: CALL_FILE, method: METHODS.HANDLE_CALL_HOLD};
 
           log.warn('Hold response timed out', {
             file: CALL_FILE,
-            method: this.handleCallHold.name,
+            method: METHODS.HANDLE_CALL_HOLD,
           });
 
           const callError = createCallError(
@@ -1055,9 +1063,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
     } catch (e) {
-      log.warn('Failed to put the call on hold', {
+      log.error(`Failed to put the call on hold: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
-        method: this.handleCallHold.name,
+        method: METHODS.HANDLE_CALL_HOLD,
       });
       const errData = e as MobiusCallResponse;
 
@@ -1072,13 +1080,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         /* istanbul ignore next */ (interval: number) => undefined,
         this.getCorrelationId(),
         errData,
-        this.handleOutgoingCallSetup.name,
+        METHODS.HANDLE_CALL_HOLD,
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1090,9 +1099,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleCallResume(event: CallEvent) {
-    log.info(`handleCallResume: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleCallResume.name,
+      method: METHODS.HANDLE_CALL_RESUME,
     });
 
     try {
@@ -1100,7 +1109,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       log.log(`Response code: ${response.statusCode}`, {
         file: CALL_FILE,
-        method: this.handleCallResume.name,
+        method: METHODS.HANDLE_CALL_RESUME,
       });
 
       /*
@@ -1109,11 +1118,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
        */
       if (this.isHeld() === true) {
         this.supplementaryServicesTimer = setTimeout(async () => {
-          const errorContext = {file: CALL_FILE, method: this.handleCallResume.name};
+          const errorContext = {file: CALL_FILE, method: METHODS.HANDLE_CALL_RESUME};
 
           log.warn('Resume response timed out', {
             file: CALL_FILE,
-            method: this.handleCallResume.name,
+            method: METHODS.HANDLE_CALL_RESUME,
           });
 
           const callError = createCallError(
@@ -1129,9 +1138,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
     } catch (e) {
-      log.warn('Failed to resume the call', {
+      log.error(`Failed to resume the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
-        method: this.handleCallResume.name,
+        method: METHODS.HANDLE_CALL_RESUME,
       });
       const errData = e as MobiusCallResponse;
 
@@ -1146,13 +1155,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         /* istanbul ignore next */ (interval: number) => undefined,
         this.getCorrelationId(),
         errData,
-        this.handleOutgoingCallSetup.name,
+        METHODS.HANDLE_CALL_RESUME,
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1163,29 +1173,29 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Call Events.
    */
   private handleIncomingCallProgress(event: CallEvent) {
-    log.info(`handleIncomingCallProgress: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleIncomingCallProgress.name,
+      method: METHODS.HANDLE_INCOMING_CALL_PROGRESS,
     });
     const data = event.data as MobiusCallData;
 
     if (data?.callProgressData?.inbandMedia) {
       log.log('Inband media present. Setting Early Media flag', {
         file: CALL_FILE,
-        method: this.handleIncomingCallProgress.name,
+        method: METHODS.HANDLE_INCOMING_CALL_PROGRESS,
       });
       this.earlyMedia = true;
     } else {
       log.log('Inband media not present.', {
         file: CALL_FILE,
-        method: this.handleIncomingCallProgress.name,
+        method: METHODS.HANDLE_INCOMING_CALL_PROGRESS,
       });
     }
 
     if (data?.callerId) {
       log.info('Processing Caller-Id data', {
         file: CALL_FILE,
-        method: this.handleIncomingCallProgress.name,
+        method: METHODS.HANDLE_INCOMING_CALL_PROGRESS,
       });
       this.startCallerIdResolution(data.callerId);
     }
@@ -1199,29 +1209,29 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private handleIncomingRoapOfferRequest(context: MediaContext, event: RoapEvent) {
-    log.info(`handleIncomingRoapOfferRequest: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleIncomingRoapOfferRequest.name,
+      method: METHODS.HANDLE_INCOMING_ROAP_OFFER_REQUEST,
     });
     const message = event.data as RoapMessage;
 
     if (!this.mediaConnection) {
       log.info('Media connection is not up, buffer the remote Offer Request for later handling', {
         file: CALL_FILE,
-        method: this.handleIncomingRoapOfferRequest.name,
+        method: METHODS.HANDLE_INCOMING_ROAP_OFFER_REQUEST,
       });
 
       this.seq = message.seq;
       log.info(`Setting Sequence No: ${this.seq}`, {
         file: CALL_FILE,
-        method: this.handleIncomingRoapOfferRequest.name,
+        method: METHODS.HANDLE_INCOMING_ROAP_OFFER_REQUEST,
       });
 
       this.remoteRoapMessage = message;
     } else if (this.receivedRoapOKSeq === message.seq - 2) {
       log.info('Waiting for Roap OK, buffer the remote Offer Request for later handling', {
         file: CALL_FILE,
-        method: this.handleIncomingRoapOfferRequest.name,
+        method: METHODS.HANDLE_INCOMING_ROAP_OFFER_REQUEST,
       });
 
       this.remoteRoapMessage = message;
@@ -1239,9 +1249,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallAlerting(event: CallEvent) {
-    log.info(`handleOutgoingCallAlerting: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleOutgoingCallAlerting.name,
+      method: METHODS.HANDLE_OUTGOING_CALL_ALERTING,
     });
 
     try {
@@ -1249,14 +1259,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       log.log(`PATCH response: ${res.statusCode}`, {
         file: CALL_FILE,
-        method: this.handleOutgoingCallAlerting.name,
+        method: METHODS.HANDLE_OUTGOING_CALL_ALERTING,
       });
-    } catch (err) {
-      log.warn('Failed to signal call progression', {
+    } catch (e) {
+      log.error(`Failed to signal call progression: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
-        method: this.handleOutgoingCallAlerting.name,
+        method: METHODS.HANDLE_OUTGOING_CALL_ALERTING,
       });
-      const errData = err as MobiusCallResponse;
+      const errData = e as MobiusCallResponse;
 
       handleCallErrors(
         (error: CallError) => {
@@ -1269,13 +1279,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         /* istanbul ignore next */ (interval: number) => undefined,
         this.getCorrelationId(),
         errData,
-        this.handleOutgoingCallAlerting.name,
+        METHODS.HANDLE_OUTGOING_CALL_ALERTING,
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1287,9 +1298,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleIncomingCallConnect(event: CallEvent) {
-    log.info(`handleIncomingCallConnect: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleIncomingCallConnect.name,
+      method: METHODS.HANDLE_INCOMING_CALL_CONNECT,
     });
     this.emit(CALL_EVENT_KEYS.CONNECT, this.correlationId);
 
@@ -1309,16 +1320,16 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallConnect(event: CallEvent) {
-    log.info(`handleOutgoingCallConnect: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleOutgoingCallConnect.name,
+      method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
     });
 
     /* We should have received an Offer by now */
     if (!this.remoteRoapMessage) {
       log.warn('Offer not yet received from remote end... Exiting', {
         file: CALL_FILE,
-        method: this.handleOutgoingCallConnect.name,
+        method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
       });
 
       return;
@@ -1333,14 +1344,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       log.log(`PATCH response: ${res.statusCode}`, {
         file: CALL_FILE,
-        method: this.handleOutgoingCallConnect.name,
+        method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
       });
-    } catch (err) {
-      log.warn('Failed to connect the call', {
+    } catch (e) {
+      log.error(`Failed to connect the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
-        method: this.handleOutgoingCallConnect.name,
+        method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
       });
-      const errData = err as MobiusCallResponse;
+      const errData = e as MobiusCallResponse;
 
       handleCallErrors(
         (error: CallError) => {
@@ -1353,13 +1364,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         /* istanbul ignore next */ (interval: number) => undefined,
         this.getCorrelationId(),
         errData,
-        this.handleOutgoingCallConnect.name,
+        METHODS.HANDLE_OUTGOING_CALL_CONNECT,
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1371,24 +1383,32 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleIncomingCallDisconnect(event: CallEvent) {
-    log.info(`handleIncomingCallDisconnect: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleIncomingCallDisconnect.name,
+      method: METHODS.HANDLE_INCOMING_CALL_DISCONNECT,
     });
+
+    this.emit(CALL_EVENT_KEYS.DISCONNECT, this.correlationId);
 
     this.setDisconnectReason();
 
     try {
       const response = await this.delete();
 
-      log.log(`handleOutgoingCallDisconnect: Response code: ${response.statusCode}`, {
+      log.log(`Response code: ${response.statusCode}`, {
         file: CALL_FILE,
-        method: this.handleIncomingCallDisconnect.name,
+        method: METHODS.HANDLE_INCOMING_CALL_DISCONNECT,
       });
     } catch (e) {
-      log.warn('Failed to delete the call', {
+      log.warn(`Failed to delete the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
-        method: this.handleIncomingCallDisconnect.name,
+        method: METHODS.HANDLE_INCOMING_CALL_DISCONNECT,
+      });
+
+      uploadLogs({
+        correlationId: this.correlationId,
+        callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
 
@@ -1405,13 +1425,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     /* istanbul ignore else */
     if (this.mediaConnection) {
       this.mediaConnection.close();
-      log.info('Closing media channel', {file: CALL_FILE, method: 'handleIncomingCallDisconnect'});
+      log.info('Closing media channel', {
+        file: CALL_FILE,
+        method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+      });
     }
 
     this.sendMediaStateMachineEvt({type: 'E_ROAP_TEARDOWN'});
     this.sendCallStateMachineEvt({type: 'E_CALL_CLEARED'});
-
-    this.emit(CALL_EVENT_KEYS.DISCONNECT, this.correlationId);
   }
 
   /**
@@ -1421,19 +1442,35 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallDisconnect(event: CallEvent) {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
+      file: CALL_FILE,
+      method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+    });
+
     this.setDisconnectReason();
 
     try {
       const response = await this.delete();
 
-      log.log(`handleOutgoingCallDisconnect: Response code: ${response.statusCode}`, {
+      log.log(`Response code: ${response.statusCode}`, {
         file: CALL_FILE,
-        method: this.handleOutgoingCallDisconnect.name,
+        method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+      });
+
+      log.log(`Call disconnected successfully: ${this.correlationId}`, {
+        file: CALL_FILE,
+        method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
       });
     } catch (e) {
       log.warn('Failed to delete the call', {
         file: CALL_FILE,
-        method: this.handleOutgoingCallDisconnect.name,
+        method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+      });
+
+      uploadLogs({
+        correlationId: this.correlationId,
+        callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
 
@@ -1450,12 +1487,97 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     /* istanbul ignore else */
     if (this.mediaConnection) {
       this.mediaConnection.close();
-      log.info('Closing media channel', {file: CALL_FILE, method: 'handleOutgoingCallDisconnect'});
+      log.info('Closing media channel', {
+        file: CALL_FILE,
+        method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+      });
     }
 
     this.sendMediaStateMachineEvt({type: 'E_ROAP_TEARDOWN'});
     this.sendCallStateMachineEvt({type: 'E_CALL_CLEARED'});
   }
+
+  private callKeepaliveRetryCallback = (interval: number) => {
+    if (this.callKeepaliveRetryCount === MAX_CALL_KEEPALIVE_RETRY_COUNT) {
+      log.warn(
+        `Max keepalive retry attempts reached. Aborting call keepalive for callId: ${this.callId}`,
+        {
+          file: CALL_FILE,
+          method: 'keepaliveRetryCallback',
+        }
+      );
+
+      return;
+    }
+
+    this.callKeepaliveRetryCount += 1;
+
+    setTimeout(async () => {
+      try {
+        await this.postStatus();
+        this.scheduleCallKeepaliveInterval();
+      } catch (err: unknown) {
+        await this.handleCallKeepaliveError(err);
+      }
+    }, interval * 1000);
+  };
+
+  private handleCallKeepaliveError = async (err: unknown) => {
+    const error = <WebexRequestPayload>err;
+
+    /* We are clearing the timer here as all are error scenarios. Only scenario where
+     * timer reset won't be required is 503 with retry after. But that case will
+     * be handled automatically as Mobius will also reset timer when we post status
+     * in retry-after scenario.
+     */
+    /* istanbul ignore next */
+    if (this.sessionTimer) {
+      clearInterval(this.sessionTimer);
+    }
+
+    const abort = await handleCallErrors(
+      (callError: CallError) => {
+        this.emit(CALL_EVENT_KEYS.CALL_ERROR, callError);
+        this.submitCallErrorMetric(callError);
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      this.callKeepaliveRetryCallback,
+      this.getCorrelationId(),
+      error,
+      'handleCallEstablished',
+      CALL_FILE
+    );
+
+    if (abort) {
+      this.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
+      this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
+      this.callKeepaliveRetryCount = 0;
+    }
+
+    await uploadLogs({
+      correlationId: this.correlationId,
+      callId: this.callId,
+      broadworksCorrelationInfo: this.broadworksCorrelationInfo,
+    });
+  };
+
+  private scheduleCallKeepaliveInterval = () => {
+    const loggerContext = {
+      file: CALL_FILE,
+      method: 'scheduleCallKeepaliveInterval',
+    };
+
+    this.sessionTimer = setInterval(async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const res = await this.postStatus();
+
+        log.info(`Session refresh successful`, loggerContext);
+      } catch (err: unknown) {
+        await this.handleCallKeepaliveError(err);
+      }
+    }, DEFAULT_SESSION_TIMER);
+  };
 
   /**
    * Handle Call Established - Roap related negotiations.
@@ -1464,10 +1586,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleCallEstablished(event: CallEvent) {
-    log.info(`handleCallEstablished: ${this.getCorrelationId()}  `, {
+    const loggerContext = {
       file: CALL_FILE,
-      method: this.handleCallEstablished.name,
-    });
+      method: METHODS.HANDLE_CALL_ESTABLISHED,
+    };
+
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, loggerContext);
 
     this.emit(CALL_EVENT_KEYS.ESTABLISHED, this.correlationId);
 
@@ -1476,64 +1600,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.connected = true;
 
-    /* Session timers need to be reset at all offer/answer exchanges */
-    if (this.sessionTimer) {
-      log.log('Resetting session timer', {
-        file: CALL_FILE,
-        method: 'handleCallEstablished',
-      });
-      clearInterval(this.sessionTimer);
-    }
-
-    this.sessionTimer = setInterval(async () => {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const res = await this.postStatus();
-
-        log.info(`Session refresh successful`, {
-          file: CALL_FILE,
-          method: 'handleCallEstablished',
-        });
-      } catch (err: unknown) {
-        const error = <WebexRequestPayload>err;
-
-        /* We are clearing the timer here as all are error scenarios. Only scenario where
-         * timer reset won't be required is 503 with retry after. But that case will
-         * be handled automatically as Mobius will also reset timer when we post status
-         * in retry-after scenario.
-         */
-        /* istanbul ignore next */
-        if (this.sessionTimer) {
-          clearInterval(this.sessionTimer);
-        }
-
-        handleCallErrors(
-          (callError: CallError) => {
-            this.emit(CALL_EVENT_KEYS.CALL_ERROR, callError);
-            this.submitCallErrorMetric(callError);
-          },
-          ERROR_LAYER.CALL_CONTROL,
-          (interval: number) => {
-            setTimeout(() => {
-              /* We first post the status and then recursively call the handler which
-               * starts the timer again
-               */
-              this.postStatus();
-              this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
-            }, interval * 1000);
-          },
-          this.getCorrelationId(),
-          error,
-          this.handleCallEstablished.name,
-          CALL_FILE
-        );
-
-        uploadLogs({
-          correlationId: this.correlationId,
-          callId: this.callId,
-        });
-      }
-    }, DEFAULT_SESSION_TIMER);
+    this.scheduleCallKeepaliveInterval();
   }
 
   /**
@@ -1542,9 +1609,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Call Events.
    */
   private async handleUnknownState(event: CallEvent) {
-    log.info(`handleUnknownState: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleUnknownState.name,
+      method: METHODS.HANDLE_UNKNOWN_STATE,
     });
 
     /* We are handling errors at the source , in this state we just log and
@@ -1556,7 +1623,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     if (!eventData?.media) {
       log.warn('Call failed due to signalling issue', {
         file: CALL_FILE,
-        method: this.handleUnknownState.name,
+        method: METHODS.HANDLE_UNKNOWN_STATE,
       });
     }
 
@@ -1568,14 +1635,20 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.setDisconnectReason();
       const response = await this.delete();
 
-      log.log(`handleOutgoingCallDisconnect: Response code: ${response.statusCode}`, {
+      log.log(`Response code: ${response.statusCode}`, {
         file: CALL_FILE,
-        method: this.handleUnknownState.name,
+        method: METHODS.HANDLE_UNKNOWN_STATE,
       });
     } catch (e) {
       log.warn('Failed to delete the call', {
         file: CALL_FILE,
-        method: this.handleUnknownState.name,
+        method: METHODS.HANDLE_UNKNOWN_STATE,
+      });
+
+      uploadLogs({
+        correlationId: this.correlationId,
+        callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
 
@@ -1589,7 +1662,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.mediaConnection.close();
       log.info('Closing media channel', {
         file: CALL_FILE,
-        method: this.handleUnknownState.name,
+        method: METHODS.HANDLE_UNKNOWN_STATE,
       });
     }
     this.sendMediaStateMachineEvt({type: 'E_ROAP_TEARDOWN'});
@@ -1647,9 +1720,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private async handleRoapEstablished(context: MediaContext, event: RoapEvent) {
-    log.info(`handleRoapEstablished: ${this.getCorrelationId()}  `, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: 'handleRoapEstablished',
+      method: METHODS.HANDLE_ROAP_ESTABLISHED,
     });
 
     const {received, message} = event.data as {received: boolean; message: RoapMessage};
@@ -1659,7 +1732,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     if (!received) {
       log.info('Sending Media Ok to the remote End', {
         file: CALL_FILE,
-        method: 'handleRoapEstablished',
+        method: METHODS.HANDLE_ROAP_ESTABLISHED,
       });
 
       try {
@@ -1671,7 +1744,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             'Media negotiation completed before call connect. Setting media negotiation completed flag.',
             {
               file: CALL_FILE,
-              method: 'handleRoapEstablished',
+              method: METHODS.HANDLE_ROAP_ESTABLISHED,
             }
           );
           this.mediaNegotiationCompleted = true;
@@ -1679,9 +1752,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         message.seq = this.seq;
         const res = await this.postMedia(message);
 
-        log.log(`handleRoapEstablished: Response code: ${res.statusCode}`, {
+        log.log(`Response code: ${res.statusCode}`, {
           file: CALL_FILE,
-          method: 'handleRoapEstablished',
+          method: METHODS.HANDLE_ROAP_ESTABLISHED,
         });
         /* istanbul ignore else */
         if (!this.earlyMedia && !this.mediaNegotiationCompleted) {
@@ -1690,7 +1763,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       } catch (err) {
         log.warn('Failed to process MediaOk request', {
           file: CALL_FILE,
-          method: 'handleRoapEstablished',
+          method: METHODS.HANDLE_ROAP_ESTABLISHED,
         });
         const errData = err as MobiusCallResponse;
 
@@ -1712,15 +1785,16 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs({
+        await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
+          broadworksCorrelationInfo: this.broadworksCorrelationInfo,
         });
       }
     } else {
       log.info('Notifying internal-media-core about ROAP OK message', {
         file: CALL_FILE,
-        method: 'handleRoapEstablished',
+        method: METHODS.HANDLE_ROAP_ESTABLISHED,
       });
       message.seq = this.seq;
 
@@ -1753,9 +1827,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private async handleRoapError(context: MediaContext, event: RoapEvent) {
-    log.info(`handleRoapError: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleRoapError.name,
+      method: METHODS.HANDLE_ROAP_ERROR,
     });
 
     /* if we receive ROAP_ERROR from internal-media-core , we post it to Mobius */
@@ -1763,18 +1837,18 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     const message = event.data as RoapMessage;
 
     /* istanbul ignore else */
-    if (message) {
+    if (message && message.messageType === 'ERROR') {
       try {
         const res = await this.postMedia(message);
 
         log.info(`Response code: ${res.statusCode}`, {
           file: CALL_FILE,
-          method: this.handleRoapError.name,
+          method: METHODS.HANDLE_ROAP_ERROR,
         });
       } catch (err) {
         log.warn('Failed to communicate ROAP error to Webex Calling', {
           file: CALL_FILE,
-          method: this.handleRoapError.name,
+          method: METHODS.HANDLE_ROAP_ERROR,
         });
         const errData = err as MobiusCallResponse;
 
@@ -1792,9 +1866,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs({
+        await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
+          broadworksCorrelationInfo: this.broadworksCorrelationInfo,
         });
       }
     }
@@ -1804,7 +1879,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     if (!this.connected) {
       log.warn('Call failed due to media issue', {
         file: CALL_FILE,
-        method: 'handleRoapError',
+        method: METHODS.HANDLE_ROAP_ERROR,
       });
 
       this.sendCallStateMachineEvt({type: 'E_UNKNOWN', data: {media: true}});
@@ -1818,9 +1893,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private async handleOutgoingRoapOffer(context: MediaContext, event: RoapEvent) {
-    log.info(`handleOutgoingRoapOffer: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleOutgoingRoapOffer.name,
+      method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
     });
 
     const message = event.data as RoapMessage;
@@ -1828,7 +1903,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     if (!message?.sdp) {
       log.info('Initializing Offer...', {
         file: CALL_FILE,
-        method: this.handleOutgoingRoapOffer.name,
+        method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });
       this.mediaConnection.initiateOffer();
 
@@ -1840,14 +1915,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     try {
       const res = await this.postMedia(message);
 
-      log.log(`handleOutgoingRoapOffer: Response code: ${res.statusCode}`, {
+      log.log(`Response code: ${res.statusCode}`, {
         file: CALL_FILE,
-        method: this.handleOutgoingRoapOffer.name,
+        method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });
     } catch (err) {
       log.warn('Failed to process MediaOk request', {
         file: CALL_FILE,
-        method: this.handleOutgoingRoapOffer.name,
+        method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });
       const errData = err as MobiusCallResponse;
 
@@ -1864,13 +1939,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         this.getCorrelationId(),
         errData,
-        this.handleOutgoingRoapOffer.name,
+        METHODS.HANDLE_OUTGOING_ROAP_OFFER,
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1882,9 +1958,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private async handleOutgoingRoapAnswer(context: MediaContext, event: RoapEvent) {
-    log.info(`handleOutgoingRoapAnswer: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleOutgoingRoapAnswer.name,
+      method: METHODS.HANDLE_OUTGOING_ROAP_ANSWER,
     });
 
     const message = event.data as RoapMessage;
@@ -1893,14 +1969,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       message.seq = this.seq;
       const res = await this.postMedia(message);
 
-      log.log(`handleOutgoingRoapAnswer: Response code: ${res.statusCode}`, {
+      log.log(`Response code: ${res.statusCode}`, {
         file: CALL_FILE,
-        method: this.handleOutgoingRoapAnswer.name,
+        method: METHODS.HANDLE_OUTGOING_ROAP_ANSWER,
       });
     } catch (err) {
       log.warn('Failed to send MediaAnswer request', {
         file: CALL_FILE,
-        method: this.handleOutgoingRoapAnswer.name,
+        method: METHODS.HANDLE_OUTGOING_ROAP_ANSWER,
       });
       const errData = err as MobiusCallResponse;
 
@@ -1917,13 +1993,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         this.getCorrelationId(),
         errData,
-        this.handleOutgoingRoapAnswer.name,
+        METHODS.HANDLE_OUTGOING_ROAP_ANSWER,
         CALL_FILE
       );
 
-      uploadLogs({
+      await uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
       });
     }
   }
@@ -1935,9 +2012,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private handleIncomingRoapOffer(context: MediaContext, event: RoapEvent) {
-    log.info(`handleIncomingRoapOffer: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleIncomingRoapOffer.name,
+      method: METHODS.HANDLE_INCOMING_ROAP_OFFER,
     });
 
     const message = event.data as RoapMessage;
@@ -1946,24 +2023,24 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     if (!this.mediaConnection) {
       log.info('Media connection is not up, buffer the remote offer for later handling', {
         file: CALL_FILE,
-        method: this.handleIncomingRoapOffer.name,
+        method: METHODS.HANDLE_INCOMING_ROAP_OFFER,
       });
       this.seq = message.seq;
       log.info(`Setting Sequence No: ${this.seq}`, {
         file: CALL_FILE,
-        method: this.handleIncomingRoapOffer.name,
+        method: METHODS.HANDLE_INCOMING_ROAP_OFFER,
       });
     } else if (this.receivedRoapOKSeq === message.seq - 2) {
       log.info('Waiting for Roap OK, buffer the remote offer for later handling', {
         file: CALL_FILE,
-        method: this.handleIncomingRoapOffer.name,
+        method: METHODS.HANDLE_INCOMING_ROAP_OFFER,
       });
 
       this.remoteRoapMessage = message;
     } else {
       log.info('Handling new offer...', {
         file: CALL_FILE,
-        method: this.handleIncomingRoapOffer.name,
+        method: METHODS.HANDLE_INCOMING_ROAP_OFFER,
       });
       this.seq = message.seq;
       /* istanbul ignore else */
@@ -1980,9 +2057,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Roap Events.
    */
   private handleIncomingRoapAnswer(context: MediaContext, event: RoapEvent) {
-    log.info(`handleIncomingRoapAnswer: ${this.getCorrelationId()}`, {
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: this.handleIncomingRoapAnswer.name,
+      method: METHODS.HANDLE_INCOMING_ROAP_ANSWER,
     });
     const message = event.data as RoapMessage;
 
@@ -2003,7 +2080,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private forceSendStatsReport = async ({callFrom}: {callFrom?: string}) => {
     const loggerContext = {
       file: CALL_FILE,
-      method: this.forceSendStatsReport.name,
+      method: METHODS.FORCE_SEND_STATS_REPORT,
     };
 
     try {
@@ -2012,12 +2089,18 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       log.info(`callFrom: ${callFrom}`, loggerContext);
     } catch (error) {
       const errorInfo = error as WebexRequestPayload;
-      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
-      const errorLog = new Error(
-        `Failed to upload webrtc telemetry statistics. ${errorStatus}`
-      ) as ExtendedError;
+      const errorStatus = await serviceErrorCodeHandler(errorInfo, loggerContext);
 
-      log.error(errorLog, loggerContext);
+      log.error(
+        `Failed to upload webrtc telemetry statistics. ${JSON.stringify(errorStatus)}`,
+        loggerContext
+      );
+
+      await uploadLogs({
+        correlationId: this.correlationId,
+        callId: this.callId,
+        broadworksCorrelationInfo: this.broadworksCorrelationInfo,
+      });
     }
   };
 
@@ -2100,8 +2183,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     log.info(`Setting callId : ${this.callId} for correlationId: ${this.correlationId}`, {
       file: CALL_FILE,
-      method: this.setCallId.name,
+      method: METHODS.SET_CALL_ID,
     });
+
+    this.callId = callId;
+    this.rtcMetrics.updateCallId(callId);
   };
 
   /**
@@ -2136,13 +2222,18 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioStream - The local audio stream for the call.
    */
   public async answer(localAudioStream: LocalMicrophoneStream) {
+    log.info(`${METHOD_START_MESSAGE} with stream`, {
+      file: CALL_FILE,
+      method: METHODS.ANSWER,
+    });
+
     this.localAudioStream = localAudioStream;
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
 
     if (!localAudioTrack) {
       log.warn(`Did not find a local track while answering the call ${this.getCorrelationId()}`, {
         file: CALL_FILE,
-        method: 'answer',
+        method: METHODS.ANSWER,
       });
       this.mediaInactivity = true;
       this.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
@@ -2164,7 +2255,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     } else {
       log.warn(
         `Call cannot be answered because the state is : ${this.callStateMachine.state.value}`,
-        {file: CALL_FILE, method: 'answer'}
+        {file: CALL_FILE, method: METHODS.ANSWER}
       );
     }
   }
@@ -2174,13 +2265,18 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.localAudioTrack
    */
   public async dial(localAudioStream: LocalMicrophoneStream) {
+    log.info(`${METHOD_START_MESSAGE} with stream`, {
+      file: CALL_FILE,
+      method: METHODS.DIAL,
+    });
+
     this.localAudioStream = localAudioStream;
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
 
     if (!localAudioTrack) {
       log.warn(`Did not find a local track while dialing the call ${this.getCorrelationId()}`, {
         file: CALL_FILE,
-        method: 'dial',
+        method: METHODS.DIAL,
       });
 
       this.deleteCb(this.getCorrelationId());
@@ -2202,7 +2298,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     } else {
       log.warn(
         `Call cannot be dialed because the state is already : ${this.mediaStateMachine.state.value}`,
-        {file: CALL_FILE, method: 'dial'}
+        {file: CALL_FILE, method: METHODS.DIAL}
       );
     }
   }
@@ -2252,7 +2348,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private async patch(state: MobiusCallState): Promise<PatchResponse> {
     log.info(`Send a PATCH for ${state} to Webex Calling`, {
       file: CALL_FILE,
-      method: this.patch.name,
+      method: 'patch',
     });
 
     return this.webex.request({
@@ -2326,7 +2422,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       default: {
         log.warn(`Unknown type for PUT request: ${type}`, {
           file: CALL_FILE,
-          method: this.postSSRequest.name,
+          method: METHODS.POST_SS_REQUEST,
         });
       }
     }
@@ -2374,7 +2470,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       log.info(`Initiating Blind transfer with : ${transferTarget}`, {
         file: CALL_FILE,
-        method: this.completeTransfer.name,
+        method: METHODS.COMPLETE_TRANSFER,
       });
 
       const context: TransferContext = {
@@ -2384,6 +2480,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       try {
         await this.postSSRequest(context, SUPPLEMENTARY_SERVICES.TRANSFER);
+
+        log.info(`Blind Transfer completed for correlationId ${this.getCorrelationId()}`, {
+          file: CALL_FILE,
+          method: METHODS.COMPLETE_TRANSFER,
+        });
+
         this.metricManager.submitCallMetric(
           METRIC_EVENT.CALL,
           TRANSFER_ACTION.BLIND,
@@ -2395,7 +2497,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       } catch (e) {
         log.warn(`Blind Transfer failed for correlationId ${this.getCorrelationId()}`, {
           file: CALL_FILE,
-          method: this.completeTransfer.name,
+          method: METHODS.COMPLETE_TRANSFER,
         });
 
         const errData = e as MobiusCallResponse;
@@ -2410,13 +2512,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           /* istanbul ignore next */ (interval: number) => undefined,
           this.getCorrelationId(),
           errData,
-          this.completeTransfer.name,
+          METHODS.COMPLETE_TRANSFER,
           CALL_FILE
         );
 
-        uploadLogs({
+        await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
+          broadworksCorrelationInfo: this.broadworksCorrelationInfo,
         });
       }
     } else if (transferType === TransferType.CONSULT && transferCallId) {
@@ -2424,7 +2527,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       log.info(`Initiating Consult transfer between : ${this.callId} and ${transferCallId}`, {
         file: CALL_FILE,
-        method: this.completeTransfer.name,
+        method: METHODS.COMPLETE_TRANSFER,
       });
 
       const context: TransferContext = {
@@ -2434,6 +2537,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       try {
         await this.postSSRequest(context, SUPPLEMENTARY_SERVICES.TRANSFER);
+
+        log.info(`Consult Transfer completed for correlationId ${this.getCorrelationId()}`, {
+          file: CALL_FILE,
+          method: METHODS.COMPLETE_TRANSFER,
+        });
+
         this.metricManager.submitCallMetric(
           METRIC_EVENT.CALL,
           TRANSFER_ACTION.CONSULT,
@@ -2445,7 +2554,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       } catch (e) {
         log.warn(`Consult Transfer failed for correlationId ${this.getCorrelationId()}`, {
           file: CALL_FILE,
-          method: this.completeTransfer.name,
+          method: METHODS.COMPLETE_TRANSFER,
         });
 
         const errData = e as MobiusCallResponse;
@@ -2460,13 +2569,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           /* istanbul ignore next */ (interval: number) => undefined,
           this.getCorrelationId(),
           errData,
-          this.completeTransfer.name,
+          METHODS.COMPLETE_TRANSFER,
           CALL_FILE
         );
 
-        uploadLogs({
+        await uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
+          broadworksCorrelationInfo: this.broadworksCorrelationInfo,
         });
       }
     } else {
@@ -2474,7 +2584,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         `Invalid information received, transfer failed for correlationId: ${this.getCorrelationId()}`,
         {
           file: CALL_FILE,
-          method: this.completeTransfer.name,
+          method: METHODS.COMPLETE_TRANSFER,
         }
       );
     }
@@ -2491,7 +2601,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     } catch (err) {
       log.warn('Stats collection failed, using dummy stats', {
         file: CALL_FILE,
-        method: this.getCallStats.name,
+        method: METHODS.GET_CALL_STATS,
       });
     }
 
@@ -2506,7 +2616,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private async postMedia(roapMessage: RoapMessage): Promise<WebexRequestPayload> {
     log.log('Posting message to Webex Calling', {
       file: CALL_FILE,
-      method: this.postMedia.name,
+      method: METHODS.POST_MEDIA,
     });
 
     return this.webex.request({
@@ -2543,12 +2653,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         log.info(
           `ROAP message to send (rcv from MEDIA-SDK) :
           \n type:  ${event.roapMessage?.messageType}, seq: ${event.roapMessage.seq} , version: ${event.roapMessage.version}`,
-          {}
+          {file: CALL_FILE, method: METHODS.MEDIA_ROAP_EVENTS_LISTENER}
         );
 
         log.info(`SDP message to send : \n ${event.roapMessage?.sdp}`, {
           file: CALL_FILE,
-          method: this.mediaRoapEventsListener.name,
+          method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
         });
 
         switch (event.roapMessage.messageType) {
@@ -2567,7 +2677,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             // Check if at least one IPv6 "c=" line is present
             log.info(`before modifying sdp: ${event.roapMessage.sdp}`, {
               file: CALL_FILE,
-              method: this.mediaRoapEventsListener.name,
+              method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
             });
 
             event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
@@ -2579,7 +2689,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
             log.info(`after modification sdp: ${sdpVideoPortZero}`, {
               file: CALL_FILE,
-              method: this.mediaRoapEventsListener.name,
+              method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
             });
 
             event.roapMessage.sdp = sdpVideoPortZero;
@@ -2751,7 +2861,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       case MidCallEventType.CALL_INFO: {
         log.log(`Received Midcall CallInfo Event for correlationId : ${this.correlationId}`, {
           file: CALL_FILE,
-          method: 'handleMidCallEvent',
+          method: METHODS.HANDLE_MID_CALL_EVENT,
         });
 
         const callerData = eventData as MidCallCallerId;
@@ -2764,7 +2874,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       case MidCallEventType.CALL_STATE: {
         log.log(`Received Midcall call event for correlationId : ${this.correlationId}`, {
           file: CALL_FILE,
-          method: 'handleMidCallEvent',
+          method: METHODS.HANDLE_MID_CALL_EVENT,
         });
 
         const data = eventData as SupplementaryServiceState;
@@ -2778,7 +2888,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           case MOBIUS_MIDCALL_STATE.HELD: {
             log.log(`Call is successfully held : ${this.correlationId}`, {
               file: CALL_FILE,
-              method: 'handleMidCallEvent',
+              method: METHODS.HANDLE_MID_CALL_EVENT,
             });
 
             this.emit(CALL_EVENT_KEYS.HELD, this.correlationId);
@@ -2796,7 +2906,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           case MOBIUS_MIDCALL_STATE.CONNECTED: {
             log.log(`Call is successfully resumed : ${this.correlationId}`, {
               file: CALL_FILE,
-              method: 'handleMidCallEvent',
+              method: METHODS.HANDLE_MID_CALL_EVENT,
             });
 
             this.emit(CALL_EVENT_KEYS.RESUMED, this.correlationId);
@@ -2816,7 +2926,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
               `Unknown Supplementary service state: ${data.callState} for correlationId : ${this.correlationId}`,
               {
                 file: CALL_FILE,
-                method: 'handleMidCallEvent',
+                method: METHODS.HANDLE_MID_CALL_EVENT,
               }
             );
           }
@@ -2828,7 +2938,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       default: {
         log.warn(`Unknown Midcall type: ${eventType} for correlationId : ${this.correlationId}`, {
           file: CALL_FILE,
-          method: 'handleMidCallEvent',
+          method: METHODS.HANDLE_MID_CALL_EVENT,
         });
       }
     }
@@ -2843,6 +2953,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    *
    */
   public end = (): void => {
+    log.info(`${METHOD_START_MESSAGE}`, {
+      file: CALL_FILE,
+      method: METHODS.END,
+    });
+
     this.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
   };
 
@@ -2872,18 +2987,18 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param tone - DTMF tones.
    */
   public sendDigit(tone: string) {
+    log.info(`${METHOD_START_MESSAGE} with: ${tone}`, {
+      file: CALL_FILE,
+      method: METHODS.SEND_DIGIT,
+    });
+
     /* istanbul ignore else */
     try {
-      log.info(`Sending digit : ${tone}`, {
-        file: CALL_FILE,
-        method: 'sendDigit',
-      });
-
       this.mediaConnection.insertDTMF(tone);
     } catch (e: any) {
       log.warn(`Unable to send digit on call: ${e.message}`, {
         file: CALL_FILE,
-        method: 'sendDigit',
+        method: METHODS.SEND_DIGIT,
       });
     }
   }
@@ -2900,10 +3015,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * ```
    */
   public mute = (localAudioStream: LocalMicrophoneStream, muteType?: MUTE_TYPE): void => {
+    log.info(`${METHOD_START_MESSAGE} with: ${muteType || 'user mute'}`, {
+      file: CALL_FILE,
+      method: METHODS.MUTE,
+    });
+
     if (!localAudioStream) {
       log.warn(`Did not find a local stream while muting the call ${this.getCorrelationId()}.`, {
         file: CALL_FILE,
-        method: 'mute',
+        method: METHODS.MUTE,
       });
 
       return;
@@ -2914,7 +3034,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       } else {
         log.info(`Call is muted by the user already - ${this.getCorrelationId()}.`, {
           file: CALL_FILE,
-          method: 'mute',
+          method: METHODS.MUTE,
         });
       }
     } else if (!localAudioStream.systemMuted) {
@@ -2923,7 +3043,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     } else {
       log.info(`Call is muted on the system - ${this.getCorrelationId()}.`, {
         file: CALL_FILE,
-        method: 'mute',
+        method: METHODS.MUTE,
       });
     }
   };
@@ -2942,7 +3062,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         `Did not find a local track while updating media for call ${this.getCorrelationId()}. Will not update media`,
         {
           file: CALL_FILE,
-          method: 'updateMedia',
+          method: METHODS.UPDATE_MEDIA,
         }
       );
 
@@ -2960,7 +3080,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     } catch (e: any) {
       log.warn(`Unable to update media on call ${this.getCorrelationId()}. Error: ${e.message}`, {
         file: CALL_FILE,
-        method: 'updateMedia',
+        method: METHODS.UPDATE_MEDIA,
       });
     }
   };
@@ -2996,15 +3116,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private async handleTimeout() {
     log.warn(`Call timed out`, {
       file: CALL_FILE,
-      method: 'handleTimeout',
+      method: METHODS.HANDLE_TIMEOUT,
     });
     this.deleteCb(this.getCorrelationId());
     this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
     const response = await this.delete();
 
-    log.log(`handleTimeout: Response code: ${response.statusCode}`, {
+    log.log(`Response code: ${response.statusCode}`, {
       file: CALL_FILE,
-      method: this.handleTimeout.name,
+      method: METHODS.HANDLE_TIMEOUT,
     });
   }
 }

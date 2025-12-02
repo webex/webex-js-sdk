@@ -6,6 +6,7 @@ import {createContactsClient} from './ContactsClient';
 import {
   FAILURE_MESSAGE,
   IDENTITY_ENDPOINT_RESOURCE,
+  METHOD_START_MESSAGE,
   SCIM_ENDPOINT_RESOURCE,
   SCIM_USER_FILTER,
   SUCCESS_MESSAGE,
@@ -13,13 +14,14 @@ import {
 } from '../common/constants';
 import log from '../Logger';
 import {
-  CONTACTS_FILE,
+  CONTACTS_CLIENT,
   CONTACT_FILTER,
   ENCRYPT_FILTER,
   DEFAULT_GROUP_NAME,
   USERS,
   GROUP_FILTER,
   CONTACTS_SCHEMA,
+  METHODS,
 } from './constants';
 import * as utils from '../common/Utils';
 import {
@@ -64,6 +66,7 @@ describe('ContactClient Tests', () => {
   // eslint-disable-next-line no-underscore-dangle
   const contactServiceGroupUrl = `${webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}`;
   const serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
+  const uploadLogsSpy = jest.spyOn(utils, 'uploadLogs').mockResolvedValue();
   const failureResponsePayload = <WebexRequestPayload>{
     statusCode: 503,
     body: {},
@@ -75,6 +78,12 @@ describe('ContactClient Tests', () => {
 
     expect(contactClient).toBeTruthy();
     expect(contactClient.getSDKConnector().getWebex()).toBeTruthy();
+
+    // Set up log spies for each test
+    jest.spyOn(log, 'info');
+    jest.spyOn(log, 'log');
+    jest.spyOn(log, 'warn');
+    jest.spyOn(log, 'error');
   });
 
   afterEach(() => {
@@ -250,11 +259,31 @@ describe('ContactClient Tests', () => {
           },
         });
       }
+
+      expect(log.info).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
+        file: CONTACTS_CLIENT,
+        method: METHODS.GET_CONTACTS,
+      });
+
+      if (codeObj.payloadData) {
+        expect(log.log).toHaveBeenCalledWith('Successfully fetched contacts and groups', {
+          file: CONTACTS_CLIENT,
+          method: METHODS.GET_CONTACTS,
+        });
+      } else {
+        expect(log.error).toHaveBeenCalled();
+      }
     } else {
       expect(webex.request).toBeCalledOnceWith({
         uri: contactServiceUrl,
         method: HTTP_METHODS.GET,
       });
+
+      expect(log.info).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
+        file: CONTACTS_CLIENT,
+        method: METHODS.GET_CONTACTS,
+      });
+      expect(log.error).toHaveBeenCalled();
     }
 
     expect(contactsResponse).toEqual({
@@ -269,8 +298,8 @@ describe('ContactClient Tests', () => {
       expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
         codeObj.payloadData ? respPayload : expect.any(Error),
         {
-          file: CONTACTS_FILE,
-          method: 'getContacts',
+          file: CONTACTS_CLIENT,
+          method: METHODS.GET_CONTACTS,
         }
       );
     }
@@ -322,9 +351,32 @@ describe('ContactClient Tests', () => {
         schemas: 'urn:cisco:codev:identity:contact:core:1.0',
       },
     });
-
     expect(contactClient['groups'].length).toEqual(2);
     expect(contactClient['groups'][1].displayName).toEqual('Top Contacts');
+
+    expect(log.info).toHaveBeenCalledWith(
+      `${METHOD_START_MESSAGE} with displayName: Top Contacts`,
+      {
+        file: CONTACTS_CLIENT,
+        method: METHODS.CREATE_CONTACT_GROUP,
+      }
+    );
+    expect(log.info).toHaveBeenCalledWith(METHOD_START_MESSAGE, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
+    });
+    expect(log.info).toHaveBeenCalledWith('Requesting kms for a new KRO and key', {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
+    });
+    expect(log.log).toHaveBeenCalledWith(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
+      file: CONTACTS_CLIENT,
+      method: 'fetchEncryptionKeyUrl',
+    });
+    expect(log.log).toHaveBeenCalledWith(`Contact group Top Contacts successfully created`, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_CONTACT_GROUP,
+    });
   });
 
   it('create a contact group with existing key info', async () => {
@@ -337,14 +389,22 @@ describe('ContactClient Tests', () => {
     webex.request.mockResolvedValue(successResponsePayload);
 
     webex.internal.encryption.encryptText.mockResolvedValue('Encrypted Top Contacts');
-    const logInfoSpy = jest.spyOn(log, 'info');
+    const infoSpy = jest.spyOn(log, 'info');
     const contactsResponse = await contactClient.createContactGroup('Top Contacts');
 
     expect(contactsResponse.statusCode).toEqual(201);
     expect(contactsResponse.data.group?.groupId).toBe(mockGroupResponse.groupId);
-    expect(logInfoSpy).not.toBeCalledWith('Requesting kms for a new KRO and key', {
-      file: CONTACTS_FILE,
-      method: 'createNewEncryptionKeyUrl',
+    expect(infoSpy).toBeCalledWith(`${METHOD_START_MESSAGE} with displayName: Top Contacts`, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_CONTACT_GROUP,
+    });
+    expect(log.log).toBeCalledWith(`Contact group Top Contacts successfully created`, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_CONTACT_GROUP,
+    });
+    expect(infoSpy).not.toBeCalledWith(METHOD_START_MESSAGE, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
     });
 
     expect(webex.request).toBeCalledOnceWith({
@@ -374,8 +434,15 @@ describe('ContactClient Tests', () => {
     expect(logSpy).toBeCalledOnceWith(
       `Group name ${mockGroupResponse.displayName} already exists.`,
       {
-        file: CONTACTS_FILE,
-        method: 'createContactGroup',
+        file: CONTACTS_CLIENT,
+        method: METHODS.CREATE_CONTACT_GROUP,
+      }
+    );
+    expect(log.info).toBeCalledWith(
+      `${METHOD_START_MESSAGE} with displayName: ${mockGroupResponse.displayName}`,
+      {
+        file: CONTACTS_CLIENT,
+        method: METHODS.CREATE_CONTACT_GROUP,
       }
     );
     expect(contactClient['groups']).toEqual(mockContactResponseBodyOne.groups);
@@ -383,7 +450,7 @@ describe('ContactClient Tests', () => {
 
   it('create a contact group - service unavailable', async () => {
     const loggerContext = {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: 'createContactGroup',
     };
 
@@ -393,6 +460,8 @@ describe('ContactClient Tests', () => {
     webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
     webex.internal.encryption.encryptText.mockResolvedValueOnce('Encrypted group name');
     const warnSpy = jest.spyOn(log, 'warn');
+    const errorSpy = jest.spyOn(log, 'error');
+
     const contactsResponse = await contactClient.createContactGroup('New group');
 
     expect(contactsResponse.statusCode).toBe(503);
@@ -406,11 +475,20 @@ describe('ContactClient Tests', () => {
         schemas: 'urn:cisco:codev:identity:contact:core:1.0',
       },
     });
-    expect(warnSpy).toBeCalledTimes(2);
-    expect(warnSpy).toHaveBeenNthCalledWith(1, 'Unable to create contact group.', loggerContext);
+    expect(log.info).toBeCalledWith(
+      `${METHOD_START_MESSAGE} with displayName: New group`,
+      loggerContext
+    );
+    expect(warnSpy).toBeCalledTimes(1);
     expect(warnSpy).toHaveBeenNthCalledWith(
-      2,
+      1,
       '503 Unable to establish a connection with the server',
+      loggerContext
+    );
+    expect(errorSpy).toBeCalledTimes(1);
+    expect(errorSpy).toHaveBeenNthCalledWith(
+      1,
+      `Unable to create contact group: ${JSON.stringify(failureResponsePayload)}`,
       loggerContext
     );
 
@@ -420,7 +498,7 @@ describe('ContactClient Tests', () => {
 
   it('delete a contact group - service unavailable', async () => {
     const loggerContext = {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: 'deleteContactGroup',
     };
 
@@ -429,6 +507,7 @@ describe('ContactClient Tests', () => {
     webex.internal.encryption.kms.createUnboundKeys.mockResolvedValue([mockKmsKey]);
     webex.internal.encryption.kms.createResource.mockResolvedValue(mockKmsKey);
     const warnSpy = jest.spyOn(log, 'warn');
+    const errorSpy = jest.spyOn(log, 'error');
     const contactsResponse = await contactClient.deleteContactGroup(mockGroupResponse.groupId);
 
     expect(contactsResponse.statusCode).toBe(503);
@@ -436,14 +515,26 @@ describe('ContactClient Tests', () => {
       method: HTTP_METHODS.DELETE,
       uri: `${contactServiceGroupUrl}/${mockGroupResponse.groupId}`,
     });
-    expect(warnSpy).toBeCalledTimes(2);
-    expect(warnSpy).toHaveBeenNthCalledWith(
+    expect(log.info).toBeCalledWith(
+      `${METHOD_START_MESSAGE} with groupId: ${mockGroupResponse.groupId}`,
+      loggerContext
+    );
+    expect(log.info).toBeCalledWith(
+      `Deleting contact group: ${mockGroupResponse.groupId}`,
+      loggerContext
+    );
+    expect(warnSpy).toBeCalledTimes(1);
+    expect(errorSpy).toBeCalledTimes(1);
+    expect(uploadLogsSpy).toBeCalledTimes(1);
+    expect(errorSpy).toHaveBeenNthCalledWith(
       1,
-      `Unable to delete contact group ${mockGroupResponse.groupId}`,
+      `Unable to delete contact group ${mockGroupResponse.groupId}: ${JSON.stringify(
+        failureResponsePayload
+      )}`,
       loggerContext
     );
     expect(warnSpy).toHaveBeenNthCalledWith(
-      2,
+      1,
       '503 Unable to establish a connection with the server',
       loggerContext
     );
@@ -467,6 +558,21 @@ describe('ContactClient Tests', () => {
       method: HTTP_METHODS.DELETE,
     });
     expect(contactClient['groups']).toEqual([]);
+
+    expect(log.info).toBeCalledWith(
+      `Deleting contact group: ${mockContactGroupListOne[0].groupId}`,
+      {
+        file: CONTACTS_CLIENT,
+        method: 'deleteContactGroup',
+      }
+    );
+    expect(log.log).toBeCalledWith(
+      `Contact group ${mockContactGroupListOne[0].groupId} successfully deleted`,
+      {
+        file: CONTACTS_CLIENT,
+        method: 'deleteContactGroup',
+      }
+    );
   });
 
   it('create a contact with an existing group', async () => {
@@ -478,7 +584,8 @@ describe('ContactClient Tests', () => {
 
     webex.request.mockResolvedValue(successResponsePayload);
     webex.internal.encryption.encryptText.mockResolvedValue('Encrypted contact name');
-    const logSpy = jest.spyOn(log, 'info');
+    const infoSpy = jest.spyOn(log, 'info');
+    const logSpy = jest.spyOn(log, 'log');
 
     contactClient['groups'] = mockContactGroupListOne;
     contactClient['encryptionKeyUrl'] = mockContactGroupListOne[0].encryptionKeyUrl;
@@ -491,17 +598,28 @@ describe('ContactClient Tests', () => {
 
     expect(res.statusCode).toEqual(201);
     expect(res.data.contact?.contactId).toBe(mockContactResponse.contactId);
+    expect(infoSpy).toBeCalledWith(
+      `${METHOD_START_MESSAGE} with contactType: ${contact.contactType}`,
+      {
+        file: CONTACTS_CLIENT,
+        method: METHODS.CREATE_CONTACT,
+      }
+    );
+    expect(logSpy).toBeCalledWith(`Contact successfully created`, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_CONTACT,
+    });
     expect(logSpy).not.toBeCalledWith('Created a KRO and encryptionKeyUrl', {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: 'createNewEncryptionKeyUrl',
     });
 
     expect(logSpy).not.toBeCalledWith('Created a KRO and encryptionKeyUrl', {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: 'createNewEncryptionKeyUrl',
     });
-    expect(logSpy).not.toBeCalledWith(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
-      file: CONTACTS_FILE,
+    expect(infoSpy).not.toBeCalledWith(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
+      file: CONTACTS_CLIENT,
       method: 'fetchEncryptionKeyUrl',
     });
 
@@ -528,7 +646,7 @@ describe('ContactClient Tests', () => {
 
     expect(result.data.contact?.contactId).toBe(mockContactResponse.contactId);
     expect(logSpy).not.toBeCalledWith(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
-      file: CONTACTS_FILE,
+      file: CONTACTS_CLIENT,
       method: 'fetchEncryptionKeyUrl',
     });
   });
@@ -589,6 +707,27 @@ describe('ContactClient Tests', () => {
       keyUris: [mockKmsKey.uri],
     });
     expect(res.data.contact?.contactId).toBe(mockContactResponse.contactId);
+
+    expect(log.info).toBeCalledWith(`${METHOD_START_MESSAGE} with contactType: CUSTOM`, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_CONTACT,
+    });
+    expect(log.info).toBeCalledWith(METHOD_START_MESSAGE, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
+    });
+    expect(log.info).toBeCalledWith('Requesting kms for a new KRO and key', {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_NEW_ENCRYPTION_KEY_URL,
+    });
+    expect(log.log).toBeCalledWith(`Creating a default group: ${DEFAULT_GROUP_NAME}`, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.FETCH_ENCRYPTION_KEY_URL,
+    });
+    expect(log.log).toBeCalledWith(`Contact successfully created`, {
+      file: CONTACTS_CLIENT,
+      method: 'createContact',
+    });
   });
 
   it('create a cloud contact with no existing groups', async () => {
@@ -622,6 +761,10 @@ describe('ContactClient Tests', () => {
 
     expect(res.statusCode).toEqual(400);
     expect(res.data.error).toEqual('contactId is required for contactType:CLOUD.');
+    expect(log.info).toBeCalledWith(`${METHOD_START_MESSAGE} with contactType: CLOUD`, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_CONTACT,
+    });
 
     contact.contactId = mockContactResponse.contactId;
 
@@ -660,6 +803,11 @@ describe('ContactClient Tests', () => {
         'spark-user-agent': 'webex-calling/beta',
       },
     });
+
+    expect(log.log).toBeCalledWith(`Contact successfully created`, {
+      file: CONTACTS_CLIENT,
+      method: 'createContact',
+    });
   });
 
   it('create a contact - service unavailable', async () => {
@@ -685,10 +833,22 @@ describe('ContactClient Tests', () => {
       },
     });
     expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(failureResponsePayload, {
-      file: CONTACTS_FILE,
-      method: 'createContact',
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_CONTACT,
     });
     expect(res.statusCode).toEqual(503);
+
+    expect(log.info).toBeCalledWith(`${METHOD_START_MESSAGE} with contactType: CLOUD`, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.CREATE_CONTACT,
+    });
+    expect(log.error).toBeCalledWith(
+      `Failed to create contact: ${JSON.stringify(failureResponsePayload)}`,
+      {
+        file: CONTACTS_CLIENT,
+        method: METHODS.CREATE_CONTACT,
+      }
+    );
   });
 
   it('successful deletion of contacts', async () => {
@@ -706,6 +866,18 @@ describe('ContactClient Tests', () => {
       method: HTTP_METHODS.DELETE,
     });
     expect(contactClient['contacts']).toEqual([]);
+
+    expect(log.info).toBeCalledWith(
+      `${METHOD_START_MESSAGE} with contactId: ${mockContactListOne[0].contactId}`,
+      {
+        file: CONTACTS_CLIENT,
+        method: METHODS.DELETE_CONTACT,
+      }
+    );
+    expect(log.info).toBeCalledWith(`Deleting contact : ${mockContactListOne[0].contactId}`, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.DELETE_CONTACT,
+    });
   });
 
   it('delete a contact - service unavailable', async () => {
@@ -721,11 +893,23 @@ describe('ContactClient Tests', () => {
     });
 
     expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(failureResponsePayload, {
-      file: CONTACTS_FILE,
-      method: 'deleteContact',
+      file: CONTACTS_CLIENT,
+      method: METHODS.DELETE_CONTACT,
     });
 
     expect(contactClient['contacts']).toEqual(mockContactListOne);
+
+    expect(log.info).toBeCalledWith(
+      `${METHOD_START_MESSAGE} with contactId: ${mockContactListOne[0].contactId}`,
+      {
+        file: CONTACTS_CLIENT,
+        method: METHODS.DELETE_CONTACT,
+      }
+    );
+    expect(log.info).toBeCalledWith(`Deleting contact : ${mockContactListOne[0].contactId}`, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.DELETE_CONTACT,
+    });
   });
 
   it('test resolveContacts function for a minimal contact with few details', () => {
@@ -797,12 +981,18 @@ describe('ContactClient Tests', () => {
   });
 
   it('test resolveContacts function encountering an error', () => {
+    const warnSpy = jest.spyOn(log, 'warn');
+
     const contact = contactClient['resolveCloudContacts'](
       {userId: mockContactMinimum},
       mockSCIMMinListResponse
     );
 
     expect(contact).toEqual(null);
+    expect(warnSpy).toHaveBeenCalledWith('Error occurred while parsing resolved contacts', {
+      file: CONTACTS_CLIENT,
+      method: 'resolveCloudContacts',
+    });
   });
 
   it('logs error for chunk when scimQuery API call fails in the loop for getContacts', async () => {
@@ -822,15 +1012,25 @@ describe('ContactClient Tests', () => {
       webex.internal.encryption.decryptText.mockResolvedValueOnce(text);
     });
 
-    jest.spyOn(log, 'warn');
+    const warnSpy = jest.spyOn(log, 'warn');
+    const infoSpy = jest.spyOn(log, 'info');
+    const logSpy = jest.spyOn(log, 'log');
 
     await contactClient.getContacts();
 
     expect(webex.request).toBeCalledTimes(2);
-    expect(log.warn).toBeCalledTimes(1);
-    expect(log.warn).toBeCalledWith('Error processing contact chunk 0-50', {
-      file: 'Contacts',
-      method: 'getContacts',
+    expect(warnSpy).toBeCalledTimes(1);
+    expect(warnSpy).toBeCalledWith('Error processing contact chunk 0-50', {
+      file: CONTACTS_CLIENT,
+      method: METHODS.GET_CONTACTS,
+    });
+    expect(infoSpy).toBeCalledWith(METHOD_START_MESSAGE, {
+      file: CONTACTS_CLIENT,
+      method: METHODS.GET_CONTACTS,
+    });
+    expect(logSpy).toBeCalledWith('Successfully fetched contacts and groups', {
+      file: CONTACTS_CLIENT,
+      method: METHODS.GET_CONTACTS,
     });
   });
 });

@@ -20,10 +20,10 @@ export class Eventing<T extends EventMap> extends (EventEmitter as {
   emit<E extends keyof T>(event: E, ...args: Parameters<T[E]>): boolean {
     const timestamp = new Date().toUTCString();
 
-    Logger.log(
+    Logger.info(
       `${timestamp} ${
         LOG_PREFIX.EVENT
-      }: ${event.toString()} - event emitted with parameters -> ${args} = `,
+      }: ${event.toString()} - event emitted with parameters -> ${args}`,
       {
         file: 'Events/impl/index.ts',
         method: 'emit',

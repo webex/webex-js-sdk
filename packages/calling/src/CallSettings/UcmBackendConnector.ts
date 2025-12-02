@@ -1,18 +1,20 @@
 import log from '../Logger';
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
-import {serviceErrorCodeHandler} from '../common/Utils';
+import {serviceErrorCodeHandler, uploadLogs} from '../common/Utils';
 import {
   FAILURE_MESSAGE,
+  METHOD_START_MESSAGE,
   STATUS_CODE,
   SUCCESS_MESSAGE,
   UCM_CONNECTOR_FILE,
   VOICEMAIL,
   WEBEX_API_CONFIG_INT_URL,
   WEBEX_API_CONFIG_PROD_URL,
+  WEBEX_API_CONFIG_FEDRAMP_URL,
 } from '../common/constants';
 import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
-import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT} from './constants';
+import {CF_ENDPOINT, METHODS, ORG_ENDPOINT, PEOPLE_ENDPOINT} from './constants';
 import {
   CallForwardAlwaysSetting,
   CallForwardingSettingsUCM,
@@ -53,10 +55,19 @@ export class UcmBackendConnector implements IUcmBackendConnector {
     this.useProdWebexApis = useProdWebexApis;
   }
 
+  // Removed header caching to align with review: fetch per request instead.
+
   /**
    * Reads call waiting setting at the backend.
    */
   public getCallWaitingSetting(): Promise<CallSettingResponse> {
+    const loggerContext = {
+      file: UCM_CONNECTOR_FILE,
+      method: METHODS.GET_CALL_WAITING_SETTING,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     return this.getMethodNotSupportedResponse();
   }
 
@@ -64,6 +75,13 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    * Reads DND setting at the backend.
    */
   public getDoNotDisturbSetting(): Promise<CallSettingResponse> {
+    const loggerContext = {
+      file: UCM_CONNECTOR_FILE,
+      method: METHODS.GET_DO_NOT_DISTURB_SETTING,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     return this.getMethodNotSupportedResponse();
   }
 
@@ -71,6 +89,13 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    * Updates DND setting at the backend.
    */
   public setDoNotDisturbSetting(): Promise<CallSettingResponse> {
+    const loggerContext = {
+      file: UCM_CONNECTOR_FILE,
+      method: METHODS.SET_DO_NOT_DISTURB_SETTING,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     return this.getMethodNotSupportedResponse();
   }
 
@@ -78,6 +103,13 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    * Reads Call Forward setting at the backend.
    */
   public getCallForwardSetting(): Promise<CallSettingResponse> {
+    const loggerContext = {
+      file: UCM_CONNECTOR_FILE,
+      method: METHODS.GET_CALL_FORWARD_SETTING,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     return this.getMethodNotSupportedResponse();
   }
 
@@ -85,6 +117,13 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    * Updates Call Forward setting at the backend.
    */
   public setCallForwardSetting(): Promise<CallSettingResponse> {
+    const loggerContext = {
+      file: UCM_CONNECTOR_FILE,
+      method: METHODS.SET_CALL_FORWARD_SETTING,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     return this.getMethodNotSupportedResponse();
   }
 
@@ -92,6 +131,13 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    * Reads Voicemail setting at the backend.
    */
   public getVoicemailSetting(): Promise<CallSettingResponse> {
+    const loggerContext = {
+      file: UCM_CONNECTOR_FILE,
+      method: METHODS.GET_VOICEMAIL_SETTING,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     return this.getMethodNotSupportedResponse();
   }
 
@@ -99,6 +145,13 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    * Updates Voicemail setting at the backend.
    */
   public setVoicemailSetting(): Promise<CallSettingResponse> {
+    const loggerContext = {
+      file: UCM_CONNECTOR_FILE,
+      method: METHODS.SET_VOICEMAIL_SETTING,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     return this.getMethodNotSupportedResponse();
   }
 
@@ -106,10 +159,14 @@ export class UcmBackendConnector implements IUcmBackendConnector {
    * Returns a default error response for unsupported methods.
    */
   private getMethodNotSupportedResponse(): Promise<CallSettingResponse> {
-    const response = serviceErrorCodeHandler(
-      {statusCode: 501},
-      {file: UCM_CONNECTOR_FILE, method: this.getMethodNotSupportedResponse.name}
-    );
+    const loggerContext = {
+      file: UCM_CONNECTOR_FILE,
+      method: METHODS.GET_METHOD_NOT_SUPPORTED_RESPONSE,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
+    const response = serviceErrorCodeHandler({statusCode: 501}, loggerContext);
 
     return Promise.resolve(response);
   }
@@ -125,21 +182,37 @@ export class UcmBackendConnector implements IUcmBackendConnector {
   public async getCallForwardAlwaysSetting(directoryNumber?: string): Promise<CallSettingResponse> {
     const loggerContext = {
       file: UCM_CONNECTOR_FILE,
-      method: this.getCallForwardAlwaysSetting.name,
+      method: METHODS.GET_CALL_FORWARD_ALWAYS_SETTING,
     };
 
-    const webexApisUrl = this.useProdWebexApis
-      ? WEBEX_API_CONFIG_PROD_URL
-      : WEBEX_API_CONFIG_INT_URL;
+    log.info(
+      directoryNumber ? `${METHOD_START_MESSAGE} with ${directoryNumber}` : METHOD_START_MESSAGE,
+      loggerContext
+    );
+
+    // Fetch auth headers per request (no caching) to ensure freshness.
+    const headers = await this.getAuthHeaders();
+
+    let webexApisUrl: string;
+    if (this.webex?.config?.fedramp) {
+      webexApisUrl = WEBEX_API_CONFIG_FEDRAMP_URL;
+    } else {
+      webexApisUrl = this.useProdWebexApis ? WEBEX_API_CONFIG_PROD_URL : WEBEX_API_CONFIG_INT_URL;
+    }
 
     try {
       if (directoryNumber) {
-        const resp = <WebexRequestPayload>await this.webex.request({
+        const requestOptions: WebexRequestPayload = {
           uri: `${webexApisUrl}/${PEOPLE_ENDPOINT}/${
             this.userId
           }/${CF_ENDPOINT.toLowerCase()}?${ORG_ENDPOINT}=${this.orgId}`,
           method: HTTP_METHODS.GET,
-        });
+          headers,
+        };
+
+        const resp = <WebexRequestPayload>await this.webex.request(requestOptions);
+
+        log.log(`Response code: ${resp.statusCode}`, loggerContext);
 
         const {callForwarding} = resp.body as CallForwardingSettingsUCM;
         const cfa = callForwarding.always.find(
@@ -157,6 +230,11 @@ export class UcmBackendConnector implements IUcmBackendConnector {
               } as CallForwardAlwaysSetting,
             },
           };
+
+          log.log(
+            `Successfully retrieved call forward always setting for directory number: ${directoryNumber}`,
+            loggerContext
+          );
 
           return response;
         }
@@ -181,9 +259,24 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       return response;
     } catch (err: unknown) {
       const errorInfo = err as WebexRequestPayload;
+      log.error(`Failed to get call forward always setting: ${JSON.stringify(err)}`, loggerContext);
+      await uploadLogs();
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;
     }
+  }
+
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {};
+
+    // Match behavior from WxCallBackendConnector:
+    // Only add authorization for FedRAMP, else rely on implicit auth/session.
+    // Note: Use lowercase 'authorization' to match SDK's auth interceptor check
+    if (this.webex?.config?.fedramp) {
+      headers.authorization = await this.webex.credentials.getUserToken();
+    }
+
+    return headers;
   }
 }

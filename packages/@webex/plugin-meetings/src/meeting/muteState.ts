@@ -119,9 +119,11 @@ export class MuteState {
    * @returns {void}
    */
   public enable(meeting: any, enable: boolean) {
-    this.state.client.enabled = enable;
+    if (enable !== this.state.client.enabled) {
+      this.state.client.enabled = enable;
 
-    this.applyClientStateToServer(meeting);
+      this.applyClientStateToServer(meeting);
+    }
   }
 
   /**
@@ -289,18 +291,14 @@ export class MuteState {
     );
 
     return MeetingUtil.remoteUpdateAudioVideo(meeting, audioMuted, videoMuted)
-      .then((locus) => {
+      .then((response) => {
         LoggerProxy.logger.info(
           `Meeting:muteState#sendLocalMuteRequestToServer --> ${this.type}: local mute (audio=${audioMuted}, video=${videoMuted}) applied to server`
         );
 
         this.state.server.localMute = this.type === AUDIO ? audioMuted : videoMuted;
 
-        if (locus) {
-          meeting.locusInfo.handleLocusDelta(locus, meeting);
-        }
-
-        return locus;
+        return MeetingUtil.updateLocusFromApiResponse(meeting, response);
       })
       .catch((remoteUpdateError) => {
         LoggerProxy.logger.warn(

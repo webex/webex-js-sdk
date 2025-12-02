@@ -1,0 +1,37 @@
+{
+  "name": "Contact Center Plugin",
+  "entryPoints": ["src/index.ts"],
+  "readme": "typedoc.md",
+  "entryPointStrategy": "expand",
+  "tsconfig": "tsconfig.json",
+  "out": "../../../docs/wxcc",
+  "excludePrivate": false,
+  "excludeExternals": true,
+  "exclude": ["**/node_modules/**", "**/test/unit/spec/**/*.ts"],
+  "hideGenerator": true,
+  "theme": "default",
+  "cleanOutputDir": true,
+  "includeVersion": true,
+  "disableSources": false,
+  "sourceLinkTemplate": "https://github.com/webex/webex-js-sdk/blob/master/{path}#L{line}",
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": true
+  },
+  "sort": ["kind", "visibility", "alphabetical"],
+  "categorizeByGroup": true,
+  "categoryOrder": ["Core", "Services", "Classes", "Interfaces", "Enum", "Types", "*"],
+  "navigationLinks": {
+    "Home": "/",
+    "NPM": "http://npmjs.com/package/@webex/contact-center",
+    "GitHub": "https://github.com/webex/webex-js-sdk"
+  },
+  "searchInComments": true,
+  "visibilityFilters": {
+    "protected": true,
+    "private": false,
+    "inherited": true,
+    "external": true
+  }
+}

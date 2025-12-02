@@ -6,18 +6,19 @@
 
 This project is designed as a mono-repository for all publicly-provided JavaScript packages from Cisco's Webex Developer Experience team. These packages consist of mostly API-related modules that allow for seamless integration with the collection of services that belong to the Webex platform.
 
-* [Installation](#installation)
-  * [Unified Modules](#unified-modules)
-  * [Modular Modules](#modular-modules)
-* [Usage](#usage)
-  * [Modular Consumption](#modular-consumption)
-  * [Browser Consumption](#browser-consumption)
-  * [Updating the Modules](#updating-the-modules)
-  * [Running and Viewing Samples](#running-and-viewing-samples)
-* [Contribute](#contribute)
-* [Issues](#issues)
-* [Maintainers](#maintainers)
-* [license](#license)
+- [Webex JS SDK](#webex-js-sdk)
+  - [Installation](#installation)
+    - [Unified Modules](#unified-modules)
+    - [Modular Modules](#modular-modules)
+  - [Usage](#usage)
+    - [Module Consumption](#module-consumption)
+    - [Browser Consumption](#browser-consumption)
+    - [Updating the Modules](#updating-the-modules)
+    - [Running and Viewing Samples](#running-and-viewing-samples)
+  - [Contribute](#contribute)
+  - [Issues](#issues)
+  - [Maintainers](#maintainers)
+  - [License](#license)
 
 ## Installation
 
@@ -52,7 +53,7 @@ In addition to the module consumption via [NPMJS](https://www.npmjs.com/), these
 
 The available unified modules within this project are listed below:
 
-* [webex](./packages/webex/) - The primary webex unified module.
+- [webex](./packages/webex/) - The primary webex unified module.
 
 ### Modular Modules
 
@@ -67,6 +68,12 @@ yarn add {module}
 ```
 
 The available modular modules within this project are visible when inspecting the contents of the `./packages/@webex/` folder, as well as other published modules (see their `README.md` files) within the `./packages/` folder.
+
+Notable authorization-related modular packages:
+- [@webex/plugin-authorization](./packages/@webex/plugin-authorization/README.md) - Environment auto-loader that picks the correct auth implementation.
+- [@webex/plugin-authorization-browser](./packages/@webex/plugin-authorization-browser/README.md) - Browser (public client) OAuth flows (Implicit + Authorization Code).
+- [@webex/plugin-authorization-node](./packages/@webex/plugin-authorization-node/README.md) - Node.js (server/confidential client) authorization flows.
+- [@webex/plugin-authorization-browser-first-party](./packages/@webex/plugin-authorization-browser-first-party/README.md) - First-party Webex Web Client specific hardened Authorization Code + PKCE + device (QR) flow implementation (internal use).
 
 ## Usage
 
@@ -137,8 +144,8 @@ For detailed instructions on how to contribute, please refer to the [contributin
 
 Please reach out to our developer support team in regards to any issues you may be experiencing within the Webex JS SDK.
 
-* <https://developer.webex.com/support>
-* <devsupport@webex.com>
+- <https://developer.webex.com/support>
+- <devsupport@webex.com>
 
 ## Maintainers
 

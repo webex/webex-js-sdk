@@ -56,6 +56,7 @@ describe('plugin-mercury', () => {
         });
 
         webex.internal.metrics.submitClientMetrics = sinon.stub();
+        webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
         webex.trackingId = 'fakeTrackingId';
         webex.config.mercury = mercuryConfig.mercury;
 

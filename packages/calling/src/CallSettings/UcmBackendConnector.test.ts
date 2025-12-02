@@ -1,16 +1,20 @@
 import {LOGGER} from '../Logger/types';
+import log from '../Logger';
 import * as utils from '../common/Utils';
 import {
   FAILURE_MESSAGE,
   SUCCESS_MESSAGE,
   UCM_CONNECTOR_FILE,
   WEBEX_API_CONFIG_INT_URL,
+  WEBEX_API_CONFIG_FEDRAMP_URL,
 } from '../common/constants';
 import {getTestUtilsWebex} from '../common/testUtil';
 import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
 import {UcmBackendConnector} from './UcmBackendConnector';
 import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT} from './constants';
 import {CallForwardAlwaysSetting, CallForwardingSettingsUCM, IUcmBackendConnector} from './types';
+
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
 
 describe('Call Settings Client Tests for UcmBackendConnector', () => {
   const webex = getTestUtilsWebex();
@@ -62,6 +66,12 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       });
 
       webex.request.mockResolvedValue(responsePayload);
+
+      // Setup log spies
+      jest.spyOn(log, 'log').mockImplementation(() => {});
+      jest.spyOn(log, 'info').mockImplementation(() => {});
+      jest.spyOn(log, 'warn').mockImplementation(() => {});
+      jest.spyOn(log, 'error').mockImplementation(() => {});
     });
 
     it('Success: Get Call Forward Always setting when set to destination', async () => {
@@ -73,10 +83,25 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(true);
       expect(callForwardSetting.destination).toEqual('8004');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
+        headers: {},
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8001', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8001',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Success: Get Call Forward Always setting when set to voicemail', async () => {
@@ -88,10 +113,25 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(true);
       expect(callForwardSetting.destination).toEqual('VOICEMAIL');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
+        headers: {},
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8002', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8002',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Success: Get Call Forward Always setting when not set', async () => {
@@ -103,10 +143,25 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(false);
       expect(callForwardSetting.destination).toBeFalsy();
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
+        headers: {},
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8003', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8003',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Success: Get Call Forward Always setting when directory num matching with e16number and set to destination', async () => {
@@ -118,10 +173,25 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(true);
       expect(callForwardSetting.destination).toEqual('8007');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
+        headers: {},
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8006', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8006',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Failure: Get Call Forward Always setting fails', async () => {
@@ -137,14 +207,30 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.statusCode).toEqual(503);
       expect(response.message).toEqual(FAILURE_MESSAGE);
       expect(response.data.error).toEqual('Unable to establish a connection with the server');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
+        headers: {},
       });
-      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(responsePayload, {
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledTimes(1);
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(responsePayload, {
         file: UCM_CONNECTOR_FILE,
         method: callSettingsClient.getCallForwardAlwaysSetting.name,
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8002', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.error).toHaveBeenCalledWith(
+        `Failed to get call forward always setting: ${JSON.stringify(responsePayload)}`,
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
+      expect(log.log).not.toHaveBeenCalled();
     });
 
     it('Failure: Get Call Forward Always setting fails - wrong directoryNumber', async () => {
@@ -153,10 +239,18 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.statusCode).toEqual(404);
       expect(response.message).toEqual(FAILURE_MESSAGE);
       expect(response.data.error).toEqual('Directory Number is not assigned to the user');
-      expect(webex.request).toBeCalledOnceWith({
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,
+        headers: {},
       });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8005', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     it('Failure: Get Call Forward Always setting fails when no directoryNumberProvided', async () => {
@@ -165,11 +259,17 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.statusCode).toEqual(400);
       expect(response.message).toEqual(FAILURE_MESSAGE);
       expect(response.data.error).toEqual('Directory Number is mandatory for UCM backend');
-      expect(webex.request).not.toBeCalled();
+      expect(webex.request).not.toHaveBeenCalled();
+
+      expect(log.info).toHaveBeenCalledWith('invoking', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.error).not.toHaveBeenCalled();
     });
 
     describe('Unsupported methods return failure', () => {
-      const unsupportedMethods: string[] = [
+      const unsupportedMethods = [
         'getCallWaitingSetting',
         'getDoNotDisturbSetting',
         'setDoNotDisturbSetting',
@@ -185,8 +285,85 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
         expect(response.statusCode).toEqual(501);
         expect(response.message).toEqual(FAILURE_MESSAGE);
         expect(response.data.error).toEqual('Method is not implemented at the backend');
-        expect(webex.request).not.toBeCalled();
+        expect(webex.request).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('FedRAMP Call Forward Always test', () => {
+    let callSettingsClient: IUcmBackendConnector;
+    const MOCK_AUTH_TOKEN = 'mockAuthToken';
+    const callForwardPayload: CallForwardingSettingsUCM = {
+      callForwarding: {
+        always: [
+          {
+            dn: '8001',
+            destination: '8004',
+            destinationVoicemailEnabled: false,
+            e164Number: '+14922999903',
+          },
+        ],
+      },
+    };
+
+    const callForwardingUriFedRamp = `${WEBEX_API_CONFIG_FEDRAMP_URL}/${PEOPLE_ENDPOINT}/${userId}/${CF_ENDPOINT.toLowerCase()}?${ORG_ENDPOINT}=${orgId}`;
+
+    beforeAll(() => {
+      webex.config.fedramp = true;
+      webex.credentials.getUserToken.mockResolvedValue(MOCK_AUTH_TOKEN);
+      callSettingsClient = new UcmBackendConnector(webex, {level: LOGGER.INFO}, true);
+    });
+
+    afterAll(() => {
+      webex.config.fedramp = false;
+    });
+
+    beforeEach(() => {
+      const responsePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: callForwardPayload,
+      });
+
+      webex.request.mockClear();
+      webex.request.mockResolvedValue(responsePayload);
+
+      // Setup log spies
+      jest.spyOn(log, 'log').mockImplementation(() => {});
+      jest.spyOn(log, 'info').mockImplementation(() => {});
+      jest.spyOn(log, 'warn').mockImplementation(() => {});
+      jest.spyOn(log, 'error').mockImplementation(() => {});
+    });
+
+    it('Success: Get Call Forward Always setting with FedRAMP URL and authorization header', async () => {
+      const response = await callSettingsClient.getCallForwardAlwaysSetting('8001');
+
+      const callForwardSetting = response.data.callSetting as CallForwardAlwaysSetting;
+
+      expect(response.statusCode).toEqual(200);
+      expect(response.message).toEqual(SUCCESS_MESSAGE);
+      expect(callForwardSetting.enabled).toEqual(true);
+      expect(callForwardSetting.destination).toEqual('8004');
+      expect(webex.request).toHaveBeenCalledTimes(1);
+      expect(webex.request).toHaveBeenCalledWith({
+        method: HTTP_METHODS.GET,
+        uri: callForwardingUriFedRamp,
+        headers: {
+          authorization: MOCK_AUTH_TOKEN,
+        },
+      });
+
+      expect(log.info).toHaveBeenCalledWith('invoking with 8001', {
+        file: UCM_CONNECTOR_FILE,
+        method: 'getCallForwardAlwaysSetting',
+      });
+      expect(log.log).toHaveBeenCalledWith(
+        'Successfully retrieved call forward always setting for directory number: 8001',
+        {
+          file: UCM_CONNECTOR_FILE,
+          method: 'getCallForwardAlwaysSetting',
+        }
+      );
+      expect(log.error).not.toHaveBeenCalled();
     });
   });
 });

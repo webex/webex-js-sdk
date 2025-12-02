@@ -14,6 +14,7 @@ enum Control {
   viewTheParticipantList = 'viewTheParticipantList',
   annotation = 'annotation',
   rdc = 'rdc',
+  pollingQA = 'pollingQA',
 }
 
 export {Control, Setting};

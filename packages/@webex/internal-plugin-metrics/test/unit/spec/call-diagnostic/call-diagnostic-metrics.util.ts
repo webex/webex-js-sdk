@@ -327,6 +327,7 @@ describe('internal-plugin-metrics', () => {
         {
           joinTimes: {
             downloadTime: undefined,
+            pageJmt: undefined,
           },
         },
       ],
@@ -338,6 +339,7 @@ describe('internal-plugin-metrics', () => {
             meetingInfoReqResp: undefined,
             refreshCaptchaServiceReqResp: undefined,
             downloadIntelligenceModelsReqResp: undefined,
+            clickToInterstitialWithUserDelay: undefined,
           },
         },
       ],
@@ -366,6 +368,8 @@ describe('internal-plugin-metrics', () => {
             totalJmt: undefined,
             clientJmt: undefined,
             downloadTime: undefined,
+            clickToInterstitialWithUserDelay:   undefined,
+            totalJMTWithUserDelay: undefined,
           },
         },
       ],
@@ -402,6 +406,8 @@ describe('internal-plugin-metrics', () => {
             interstitialToMediaOKJMT: undefined,
             callInitMediaEngineReady: undefined,
             stayLobbyTime: undefined,
+            totalMediaJMTWithUserDelay: undefined,
+            totalJMTWithUserDelay: undefined,
           },
         },
       ],

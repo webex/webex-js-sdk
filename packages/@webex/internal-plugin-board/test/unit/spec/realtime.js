@@ -47,6 +47,11 @@ describe('plugin-board', () => {
         metrics: {
           submitClientMetrics: sinon.stub(),
         },
+        newMetrics: {
+          callDiagnosticMetrics: {
+            setMercuryConnectedStatus: sinon.stub(),
+          },
+        },
       });
 
       registrationRes = {

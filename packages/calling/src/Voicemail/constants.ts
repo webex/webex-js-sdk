@@ -27,3 +27,27 @@ export const NEW_MESSAGES = 'newMessages';
 export const OLD_MESSAGES = 'oldMessages';
 export const NEW_URGENT_MESSAGES = 'newUrgentMessages';
 export const OLD_URGENT_MESSAGES = 'oldUrgentMessages';
+/**
+ * Method names for logging
+ */
+export const METHODS = {
+  INIT: 'init',
+  GET_SDK_CONNECTOR: 'getSDKConnector',
+  GET_USER_ID: 'getUserId',
+  GET_BW_TOKEN: 'getBwToken',
+  SET_XSI_VOICE_MESSAGE_URI: 'setXsiVoiceMessageURI',
+  GET_VOICEMAIL_LIST: 'getVoicemailList',
+  GET_VOICEMAIL_CONTENT: 'getVoicemailContent',
+  GET_VOICEMAIL_SUMMARY: 'getVoicemailSummary',
+  VOICEMAIL_MARK_AS_READ: 'voicemailMarkAsRead',
+  VOICEMAIL_MARK_AS_UNREAD: 'voicemailMarkAsUnread',
+  DELETE_VOICEMAIL: 'deleteVoicemail',
+  GET_VM_TRANSCRIPT: 'getVMTranscript',
+  RESOLVE_CONTACT: 'resolveContact',
+  GET_VOICEMAIL_CONTENT_UCM: 'getVoicemailContentUcm',
+  RETURN_UCM_PROMISE: 'returnUcmPromise',
+  INITIALIZE_BACKEND_CONNECTOR: 'initializeBackendConnector',
+  SUBMIT_METRIC: 'submitMetric',
+  GET_AUTH_HEADERS: 'getAuthHeaders',
+  SET_UCM_VOICE_MESSAGE_BASE_URI: 'setUcmVoiceMessageBaseURI',
+};

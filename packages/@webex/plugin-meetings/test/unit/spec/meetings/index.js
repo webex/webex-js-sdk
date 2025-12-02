@@ -3,10 +3,6 @@
  */
 import 'jsdom-global/register';
 
-// Polyfill for crypto: https://github.com/jsdom/jsdom/issues/1612#issuecomment-663210638
-import {Crypto} from '@peculiar/webcrypto';
-global.crypto = new Crypto();
-
 import Device from '@webex/internal-plugin-device';
 import {CatalogDetails} from '@webex/internal-plugin-device';
 import Mercury from '@webex/internal-plugin-mercury';
@@ -189,6 +185,7 @@ describe('plugin-meetings', () => {
           },
           callDiagnosticMetrics: {
             clearErrorCache: sinon.stub(),
+            clearEventLimits: sinon.stub(),
           },
         },
       });
@@ -409,6 +406,19 @@ describe('plugin-meetings', () => {
         it('should update meetings to disable audio main dtx', () => {
           webex.meetings._toggleDisableAudioMainDtx(true);
           assert.equal(webex.meetings.config.experimental.disableAudioMainDtx, true);
+        });
+      });
+    });
+
+    describe('#_toggleEnableAudioTwccForMultistream', () => {
+      it('should have _toggleEnableAudioTwccForMultistream', () => {
+        assert.equal(typeof webex.meetings._toggleEnableAudioTwccForMultistream, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings to enable audio twcc support', () => {
+          webex.meetings._toggleEnableAudioTwccForMultistream(true);
+          assert.equal(webex.meetings.config.enableAudioTwccForMultistream, true);
         });
       });
     });
@@ -680,11 +690,9 @@ describe('plugin-meetings', () => {
           assert.deepEqual(result.options, {
             mode: 'BLUR',
             blurStrength: 'STRONG',
-            generator: 'worker',
             quality: 'LOW',
             authToken: 'fake_token',
             mirror: false,
-            canvasResolutionScaling: 1,
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
@@ -1085,6 +1093,7 @@ describe('plugin-meetings', () => {
         const FAKE_USE_RANDOM_DELAY = true;
         const correlationId = 'my-correlationId';
         const sessionCorrelationId = 'my-session-correlationId';
+        const classificationId = 'my-classificationId';
         const callStateForMetrics = {
           sessionCorrelationId: 'my-session-correlationId2',
           correlationId: 'my-correlationId2',
@@ -1105,7 +1114,8 @@ describe('plugin-meetings', () => {
             callStateForMetrics,
             undefined,
             undefined,
-            sessionCorrelationId
+            sessionCorrelationId,
+            classificationId
           );
           assert.calledOnceWithExactly(fakeMeeting.updateCallStateForMetrics, {
             ...callStateForMetrics,
@@ -1184,6 +1194,13 @@ describe('plugin-meetings', () => {
           await checkCallCreateMeeting(
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, undefined, true, callStateForMetrics],
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, callStateForMetrics, true]
+          );
+        });
+
+        it('calls createMeeting with classificationId and returns its promise', async () => {
+          await checkCallCreateMeeting(
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, undefined, true, callStateForMetrics, undefined, undefined, undefined, classificationId],
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, callStateForMetrics, true, undefined, undefined, classificationId],
           );
         });
 
@@ -1703,6 +1720,7 @@ describe('plugin-meetings', () => {
               {file: 'meetings', function: 'fetchMeetingInfo'},
               'meeting:meetingInfoAvailable'
             );
+            assert.equal(webex.meetings.meetingCollection.get(meeting.id), meeting);
           };
 
           it('creates the meeting from a successful meeting info fetch promise testing', async () => {

@@ -13,9 +13,11 @@ require('@webex/plugin-authorization');
 // url interceptor
 require('@webex/internal-plugin-calendar');
 require('@webex/internal-plugin-device');
+require('@webex/internal-plugin-dss');
 require('@webex/internal-plugin-presence');
 require('@webex/internal-plugin-support');
 require('@webex/internal-plugin-llm');
+require('@webex/internal-plugin-task');
 require('@webex/plugin-attachment-actions');
 require('@webex/plugin-device-manager');
 require('@webex/plugin-logger');
@@ -28,7 +30,7 @@ require('@webex/plugin-teams');
 require('@webex/plugin-team-memberships');
 require('@webex/plugin-webhooks');
 require('@webex/plugin-encryption');
-require('@webex/plugin-cc');
+require('@webex/contact-center');
 
 const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;

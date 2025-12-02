@@ -11,12 +11,14 @@ export enum ERROR_LAYER {
 export enum ERROR_TYPE {
   CALL_ERROR = 'call_error',
   DEFAULT = 'default_error',
+  BAD_REQUEST = 'bad_request',
   FORBIDDEN_ERROR = 'forbidden',
   NOT_FOUND = 'not_found',
   REGISTRATION_ERROR = 'registration_error',
   SERVICE_UNAVAILABLE = 'service_unavailable',
   TIMEOUT = 'timeout',
   TOKEN_ERROR = 'token_error',
+  TOO_MANY_REQUESTS = 'too_many_requests',
   SERVER_ERROR = 'server_error',
 }
 

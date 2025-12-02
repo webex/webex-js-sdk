@@ -1,5 +1,9 @@
-const { startServer, stopServer } = require('@webex/legacy-tools');
+const {
+  startServer, stopServer, findWorkspaceRoot, getServerPath,
+} = require('@webex/legacy-tools');
 const { exec } = require('child_process');
+const path = require('path');
+const fs = require('fs');
 
 describe('Test Server Integration Tests', () => {
   let child;
@@ -39,4 +43,81 @@ describe('Test Server Integration Tests', () => {
       });
     }).catch(fail);
   }, 10000);
+});
+
+describe('Workspace Detection Tests', () => {
+  describe('findWorkspaceRoot', () => {
+    it('should find workspace root from current directory', () => {
+      const workspaceRoot = findWorkspaceRoot();
+
+      expect(workspaceRoot).toBeDefined();
+      expect(typeof workspaceRoot).toBe('string');
+
+      // Verify it contains package.json with workspaces
+      const packageJsonPath = path.join(workspaceRoot, 'package.json');
+
+      expect(fs.existsSync(packageJsonPath)).toBe(true);
+
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+
+      expect(packageJson.workspaces).toBeDefined();
+    });
+
+    it('should find workspace root from a subdirectory', () => {
+      const subdirectory = path.join(process.cwd(), 'packages', 'legacy', 'tools');
+      const workspaceRoot = findWorkspaceRoot(subdirectory);
+
+      expect(workspaceRoot).toBeDefined();
+      expect(typeof workspaceRoot).toBe('string');
+
+      // Should not be the same as the subdirectory
+      expect(workspaceRoot).not.toBe(subdirectory);
+
+      // Verify it contains package.json with workspaces
+      const packageJsonPath = path.join(workspaceRoot, 'package.json');
+
+      expect(fs.existsSync(packageJsonPath)).toBe(true);
+
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+
+      expect(packageJson.workspaces).toBeDefined();
+    });
+
+    it('should throw error when workspace root cannot be found', () => {
+      const tempDir = '/tmp/nonexistent/path';
+
+      expect(() => {
+        findWorkspaceRoot(tempDir);
+      }).toThrow(new Error('Could not find workspace root with package.json containing workspaces field'));
+    });
+  });
+
+  describe('getServerPath', () => {
+    it('should return correct server path', () => {
+      const serverPath = getServerPath();
+
+      expect(serverPath).toBeDefined();
+      expect(typeof serverPath).toBe('string');
+      expect(serverPath).toContain('packages/@webex/test-helper-server');
+      expect(path.isAbsolute(serverPath)).toBe(true);
+    });
+
+    it('should return correct server path from custom start path', () => {
+      const subdirectory = path.join(process.cwd(), 'packages', 'legacy');
+      const serverPath = getServerPath(subdirectory);
+
+      expect(serverPath).toBeDefined();
+      expect(typeof serverPath).toBe('string');
+      expect(serverPath).toContain('packages/@webex/test-helper-server');
+      expect(path.isAbsolute(serverPath)).toBe(true);
+    });
+
+    it('should throw error when workspace root cannot be found', () => {
+      const tempDir = '/tmp/nonexistent/path';
+
+      expect(() => {
+        getServerPath(tempDir);
+      }).toThrow(new Error('Could not find workspace root with package.json containing workspaces field'));
+    });
+  });
 });
