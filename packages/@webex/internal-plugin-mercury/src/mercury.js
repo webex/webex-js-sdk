@@ -277,7 +277,15 @@ const Mercury = WebexPlugin.extend({
       .getFeature('developer', 'web-high-availability')
       .then((haMessagingEnabled) => {
         if (haMessagingEnabled) {
-          return this.webex.internal.services.convertUrlToPriorityHostUrl(webSocketUrl);
+          let highPrioritySocketUrl;
+          try {
+            highPrioritySocketUrl =
+              this.webex.internal.services.convertUrlToPriorityHostUrl(webSocketUrl);
+          } catch (e) {
+            this.logger.warn(`${this.namespace}: error converting to high priority url`, e);
+          }
+
+          return highPrioritySocketUrl || webSocketUrl;
         }
 
         return webSocketUrl;

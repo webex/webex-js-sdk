@@ -936,6 +936,24 @@ describe('plugin-mercury', () => {
             ._prepareUrl()
             .then((wsUrl) => assert.match(wsUrl, /example-2.com/));
         });
+        it('uses high priority url instead of provided webSocketUrl', () => {
+          webex.internal.feature.getFeature.onCall(0).returns(Promise.resolve(true));
+          webex.internal.services.convertUrlToPriorityHostUrl = sinon
+            .stub()
+            .returns(Promise.resolve('ws://example-2.com'));
+          return webex.internal.mercury
+            ._prepareUrl('ws://provided.com')
+            .then((wsUrl) => assert.match(wsUrl, /example-2.com/));
+        });
+        it('uses provided webSocketUrl if can not get high priority url', () => {
+          webex.internal.feature.getFeature.onCall(0).returns(Promise.resolve(true));
+          webex.internal.services.convertUrlToPriorityHostUrl = sinon
+            .stub()
+            .returns(new Promise((resolve, reject) => reject(new Error('fail'))));
+          return webex.internal.mercury
+            ._prepareUrl('ws://provided.com')
+            .then((wsUrl) => assert.match(wsUrl, /provided.com/));
+        });
       });
 
       describe("when 'web-shared-socket' is enabled", () => {
