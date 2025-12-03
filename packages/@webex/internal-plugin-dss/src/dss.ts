@@ -14,7 +14,6 @@ import type {
   LookupDetailOptions,
   LookupOptions,
   LookupByEmailOptions,
-  LookupByPhoneNumbersOptions,
   SearchPlaceOptions,
 } from './types';
 import {
@@ -367,21 +366,31 @@ const DSS = WebexPlugin.extend({
   },
 
   /**
-   * Retrieves basic information about entities by phone numbers
-   * @param {Object} options
-   * @param {string[]} options.phoneNumbers Array of phone numbers to lookup (max 5)
-   * @returns {Promise<RequestResult>} Resolves with {resultArray, foundArray, notFoundArray}
-   * @throws {Error} when more than 5 phone numbers provided
-   * @throws {DssTimeoutError} when server does not respond in the specified timeframe
+   * Retrieves basic information about entities by phone numbers within an organization.
+   * Supports up to 5 phone numbers per request. For larger batches, client should chunk
+   * requests into groups of 5.
+   * @param {string[]} phoneNumbers - Array of phone numbers to lookup in E.164 format (max 5)
+   * @returns {Promise<RequestResult>} Resolves with object containing:
+   *   - resultArray: Array of matched entities
+   *   - foundArray: Array of phone numbers that were found
+   *   - notFoundArray: Array of phone numbers that were not found
+   * @throws {Error} When more than 5 phone numbers provided
+   * @throws {DssTimeoutError} When server does not respond in the specified timeframe
+   * @example
+   * const result = await webex.internal.dss.lookupByPhoneNumbers(['+15551234567']);
+   * console.log('Found:', result.foundArray);
+   * console.log('Entities:', result.resultArray);
    */
-  lookupByPhoneNumbers(options: LookupByPhoneNumbersOptions): Promise<RequestResult> {
-    const {phoneNumbers} = options;
-
+  lookupByPhoneNumbers(phoneNumbers: string[]): Promise<RequestResult> {
     if (!phoneNumbers || phoneNumbers.length === 0) {
       return Promise.resolve({resultArray: [], foundArray: [], notFoundArray: []});
     }
 
     if (phoneNumbers.length > 5) {
+      this.logger.error(
+        `DSS->lookupByPhoneNumbers#ERROR, Maximum of 5 phone numbers allowed, received: ${phoneNumbers.length}`
+      );
+
       return Promise.reject(
         new Error(
           `lookupByPhoneNumbers accepts a maximum of 5 phone numbers. Received: ${phoneNumbers.length}. Please batch requests on the client side if needed.`
@@ -399,6 +408,12 @@ const DSS = WebexPlugin.extend({
       params: {
         [LOOKUP_REQUEST_KEY]: phoneNumbers,
       },
+    }).catch((error) => {
+      this.logger.error(
+        `DSS->lookupByPhoneNumbers#ERROR, Phone number lookup failure, ${error.message}`
+      );
+
+      return Promise.reject(error);
     });
   },
 
