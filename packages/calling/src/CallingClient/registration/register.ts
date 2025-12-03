@@ -56,6 +56,7 @@ import {
   METHODS,
   URL_ENDPOINT,
   RECONNECT_ON_FAILURE_UTIL,
+  FAILOVER_CACHE_PREFIX,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -67,8 +68,6 @@ export class Registration implements IRegistration {
   private sdkConnector: ISDKConnector;
 
   private webex: WebexSDK;
-
-  private static readonly FAILOVER_CACHE_PREFIX = 'webex-calling-failover-state';
 
   private userId = '';
 
@@ -132,7 +131,7 @@ export class Registration implements IRegistration {
   }
 
   private getFailoverCacheKey(): string {
-    return `${Registration.FAILOVER_CACHE_PREFIX}.${this.userId || 'unknown'}`;
+    return `${FAILOVER_CACHE_PREFIX}.${this.userId || 'unknown'}`;
   }
 
   private saveFailoverState(failoverState: FailoverCacheState): void {
@@ -150,15 +149,37 @@ export class Registration implements IRegistration {
     try {
       localStorage.removeItem(this.getFailoverCacheKey());
     } catch {
-      // ignore
+      log.warn('Clearing failover state from localStorage failed', {
+        file: REGISTRATION_FILE,
+        method: 'clearFailoverState',
+      });
     }
   }
 
-  private resumeFailover(failoverState: FailoverCacheState): void {
-    const currentTime = Math.floor(Date.now() / 1000);
-    const newElapsed = failoverState.timeElapsed + (currentTime - failoverState.retryScheduledTime);
+  private async resumeFailover(): Promise<boolean> {
+    try {
+      const cachedState = localStorage.getItem(this.getFailoverCacheKey());
+      const failoverState = cachedState
+        ? (JSON.parse(cachedState) as FailoverCacheState)
+        : undefined;
+      if (failoverState && !this.isDeviceRegistered()) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const newElapsed =
+          failoverState.timeElapsed + (currentTime - failoverState.retryScheduledTime);
 
-    this.startFailoverTimer(failoverState.attempt, newElapsed);
+        this.clearFailoverState();
+        await this.startFailoverTimer(failoverState.attempt, newElapsed);
+
+        return true;
+      }
+    } catch (error) {
+      log.warn(`No failover state found in cache`, {
+        file: REGISTRATION_FILE,
+        method: 'triggerRegistration',
+      });
+    }
+
+    return false;
   }
 
   public getActiveMobiusUrl(): string {
@@ -738,21 +759,10 @@ export class Registration implements IRegistration {
    * Registration is attempted with primary and backup until it succeeds or the list is exhausted
    */
   public async triggerRegistration() {
-    // Resume only if a failover was previously scheduled
-    try {
-      const raw = localStorage.getItem(this.getFailoverCacheKey());
-      const failoverState = raw ? (JSON.parse(raw) as FailoverCacheState) : undefined;
-      if (failoverState && !this.isDeviceRegistered()) {
-        this.resumeFailover(failoverState);
-
-        return;
-      }
-    } catch (error) {
-      log.warn(`No failover state found in cache`, {
-        file: REGISTRATION_FILE,
-        method: 'triggerRegistration',
-      });
+    if (await this.resumeFailover()) {
+      return;
     }
+
     if (this.primaryMobiusUris.length > 0) {
       const abort = await this.attemptRegistrationWithServers(
         REGISTRATION_UTIL,

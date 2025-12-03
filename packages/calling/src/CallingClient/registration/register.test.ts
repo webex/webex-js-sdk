@@ -937,7 +937,7 @@ describe('Registration Tests', () => {
       await reg.triggerRegistration();
 
       // A failover timer should be scheduled; verify localStorage contains state
-      const key = `webex-calling-failover-state.${webex.internal.device.userId}`;
+      const key = `wxc-failover-state.${webex.internal.device.userId}`;
       const raw = localStorage.getItem(key);
       expect(raw).toBeTruthy();
       const state = JSON.parse(raw as string);
@@ -953,7 +953,7 @@ describe('Registration Tests', () => {
 
     it('resumes failover from localStorage on triggerRegistration', async () => {
       jest.useFakeTimers();
-      const key = `webex-calling-failover-state.${webex.internal.device.userId}`;
+      const key = `wxc-failover-state.${webex.internal.device.userId}`;
       const now = Math.floor(Date.now() / 1000);
       // Seed a cached state indicating a retry should have already occurred 5s ago
       localStorage.setItem(
@@ -1445,6 +1445,7 @@ describe('Registration Tests', () => {
       expect(reg.webWorker).toBeUndefined();
       expect(reconnectSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
 
+      localStorage.clear();
       webex.request.mockResolvedValueOnce(successPayload);
       await reg.triggerRegistration();
       await flushPromises();
@@ -1489,6 +1490,7 @@ describe('Registration Tests', () => {
       expect(reg.webWorker).toBeUndefined();
       expect(handleErrorSpy).toBeCalledTimes(3);
 
+      localStorage.clear();
       await reg.triggerRegistration();
       await flushPromises();
       expect(reg.webWorker).toBeDefined();
