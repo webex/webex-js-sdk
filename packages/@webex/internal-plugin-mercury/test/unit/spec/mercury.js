@@ -949,7 +949,7 @@ describe('plugin-mercury', () => {
           webex.internal.feature.getFeature.onCall(0).returns(Promise.resolve(true));
           webex.internal.services.convertUrlToPriorityHostUrl = sinon
             .stub()
-            .returns(new Promise((resolve, reject) => reject(new Error('fail'))));
+            .returns(Promise.reject(new Error('fail')));
           return webex.internal.mercury
             ._prepareUrl('ws://provided.com')
             .then((wsUrl) => assert.match(wsUrl, /provided.com/));
