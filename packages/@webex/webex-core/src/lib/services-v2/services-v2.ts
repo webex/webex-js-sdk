@@ -138,6 +138,22 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Check is valid host from services list.
+   * @param {string} host
+   * @returns {Boolean}
+   */
+  isValidHost(host: string): boolean {
+    const services: Array<Service> = this._services || [];
+
+    return services.some((service) => {
+      return service.serviceUrls.some((serviceUrl) => {
+        const serviceHost = serviceUrl?.baseUrl && new URL(serviceUrl.baseUrl)?.host;
+
+        return serviceHost === host;
+      });
+    });
+  },
+  /**
    * saves all the services from the pre and post catalog service
    * @param {ActiveServices} activeServices
    * @returns {void}

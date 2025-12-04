@@ -284,6 +284,17 @@ const Mercury = WebexPlugin.extend({
           } catch (e) {
             this.logger.warn(`${this.namespace}: error converting to high priority url`, e);
           }
+          if (!highPrioritySocketUrl) {
+            const hostFromUrl = url.parse(webSocketUrl, true)?.host;
+            const isValidHost = this.webex.internal.services.isValidHost(hostFromUrl);
+            if (!isValidHost) {
+              this.logger.error(
+                `${this.namespace}: host ${hostFromUrl} is not a valid host from host catalog`
+              );
+
+              return '';
+            }
+          }
 
           return highPrioritySocketUrl || webSocketUrl;
         }

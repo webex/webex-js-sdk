@@ -188,6 +188,16 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Check is valid host from the legacy host catalog.
+   * @param {string} host
+   * @returns {Boolean}
+   */
+  isValidHost(host) {
+    const hostCatalog = this._hostCatalog || {};
+
+    return !!hostCatalog[host]?.length;
+  },
+  /**
    * Merge provided active cluster mappings into current state.
    * @param {Record<string,string>} activeServices
    * @returns {void}
