@@ -854,7 +854,7 @@ describe('plugin-dss', () => {
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
-          params: {phoneNumbers: ['+15551234567']},
+          params: ['+15551234567'],
           bodyParams: {lookupValues: ['+15551234567']},
         });
 
@@ -878,7 +878,7 @@ describe('plugin-dss', () => {
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
-          params: {phoneNumbers: ['+15551234567', '+442012345678', '+33123456789']},
+          params: ['+15551234567', '+442012345678', '+33123456789'],
           bodyParams: {lookupValues: ['+15551234567', '+442012345678', '+33123456789']},
         });
 
@@ -908,7 +908,7 @@ describe('plugin-dss', () => {
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
-          params: {phoneNumbers: ['+15551234567', '+442012345678']},
+          params: ['+15551234567', '+442012345678'],
           bodyParams: {lookupValues: ['+15551234567', '+442012345678']},
         });
 
@@ -940,7 +940,7 @@ describe('plugin-dss', () => {
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
-          params: {phoneNumbers},
+          params: phoneNumbers,
           bodyParams: {lookupValues: phoneNumbers},
         });
 
@@ -970,7 +970,7 @@ describe('plugin-dss', () => {
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
-          params: {phoneNumbers},
+          params: phoneNumbers,
           bodyParams: {lookupValues: phoneNumbers},
         });
 
@@ -1009,7 +1009,7 @@ describe('plugin-dss', () => {
         const {promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
-          params: {phoneNumbers: ['+15551234567']},
+          params: ['+15551234567'],
           bodyParams: {lookupValues: ['+15551234567']},
         });
 
@@ -1030,7 +1030,7 @@ describe('plugin-dss', () => {
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
-          params: {phoneNumbers: ['+15551234567']},
+          params: ['+15551234567'],
           bodyParams: {lookupValues: ['+15551234567']},
         });
 
@@ -1051,7 +1051,7 @@ describe('plugin-dss', () => {
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
-          params: {phoneNumbers: ['+15551234567', '+442012345678']},
+          params: ['+15551234567', '+442012345678'],
           bodyParams: {lookupValues: ['+15551234567', '+442012345678']},
         });
 
