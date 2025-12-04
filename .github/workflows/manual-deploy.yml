@@ -145,7 +145,7 @@ jobs:
         run: yarn run build:script
 
       - name: Deploy Packages
-        run: yarn workspaces foreach --all --verbose run deploy:npm --access public --tag latest
+        run: echo"yarn workspaces foreach --all --verbose run deploy:npm --access public --tag latest"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
