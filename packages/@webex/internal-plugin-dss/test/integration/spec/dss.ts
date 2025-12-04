@@ -46,9 +46,7 @@ describe('plugin-dss', function () {
           '+15551234567', // Replace with actual numbers from your org
         ];
 
-        const result = await webex.internal.dss.lookupByPhoneNumbers({
-          phoneNumbers,
-        });
+        const result = await webex.internal.dss.lookupByPhoneNumbers(phoneNumbers);
 
         // Assertions
         assert.isDefined(result);
@@ -69,9 +67,7 @@ describe('plugin-dss', function () {
           '+15559876543',
         ];
 
-        const result = await webex.internal.dss.lookupByPhoneNumbers({
-          phoneNumbers,
-        });
+        const result = await webex.internal.dss.lookupByPhoneNumbers(phoneNumbers);
 
         assert.isDefined(result);
         assert.isArray(result.resultArray);
@@ -86,9 +82,7 @@ describe('plugin-dss', function () {
           '+19999999999', // Definitely not in directory
         ];
 
-        const result = await webex.internal.dss.lookupByPhoneNumbers({
-          phoneNumbers,
-        });
+        const result = await webex.internal.dss.lookupByPhoneNumbers(phoneNumbers);
 
         assert.isDefined(result);
         assert.equal(result.resultArray.length, 0, 'Should find no entities');
@@ -106,7 +100,7 @@ describe('plugin-dss', function () {
         ];
 
         try {
-          await webex.internal.dss.lookupByPhoneNumbers({phoneNumbers});
+          await webex.internal.dss.lookupByPhoneNumbers(phoneNumbers);
           assert.fail('Should have thrown an error');
         } catch (error) {
           assert.include(

@@ -761,9 +761,7 @@ describe('plugin-dss', () => {
 
     describe('#lookupByPhoneNumbers', () => {
       it('returns empty arrays for empty input', async () => {
-        const result = await webex.internal.dss.lookupByPhoneNumbers({
-          phoneNumbers: [],
-        });
+        const result = await webex.internal.dss.lookupByPhoneNumbers([]);
 
         expect(result).to.deep.equal({
           resultArray: [],
@@ -783,7 +781,7 @@ describe('plugin-dss', () => {
         ];
 
         return assert.isRejected(
-          webex.internal.dss.lookupByPhoneNumbers({phoneNumbers}),
+          webex.internal.dss.lookupByPhoneNumbers(phoneNumbers),
           Error,
           'lookupByPhoneNumbers accepts a maximum of 5 phone numbers. Received: 6. Please batch requests on the client side if needed.'
         );
@@ -799,9 +797,7 @@ describe('plugin-dss', () => {
           })
         );
 
-        const result = await webex.internal.dss.lookupByPhoneNumbers({
-          phoneNumbers: ['+15551234567'],
-        });
+        const result = await webex.internal.dss.lookupByPhoneNumbers(['+15551234567']);
 
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {
@@ -831,9 +827,10 @@ describe('plugin-dss', () => {
           })
         );
 
-        const result = await webex.internal.dss.lookupByPhoneNumbers({
-          phoneNumbers: ['+15551234567', '+442012345678'],
-        });
+        const result = await webex.internal.dss.lookupByPhoneNumbers([
+          '+15551234567',
+          '+442012345678',
+        ]);
 
         expect(webex.internal.dss._request.getCall(0).args).to.deep.equal([
           {

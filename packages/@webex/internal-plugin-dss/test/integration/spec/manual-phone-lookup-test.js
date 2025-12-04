@@ -82,16 +82,14 @@ async function testPhoneLookup() {
       const startTime = Date.now();
 
       try {
-        const result = await webex.internal.dss.lookupByPhoneNumbers({
-          phoneNumbers: batch,
-        });
+        const result = await webex.internal.dss.lookupByPhoneNumbers(batch);
 
         const duration = Date.now() - startTime;
         log(`\n⏱️  Response time: ${duration}ms`, colors.yellow);
 
         // Display results
         log('\n📋 Results:', colors.bright);
-        log(`  Total entities found: ${result.resultArray.length}`, colors.green);
+        log(`  Total entities found: ${result.resultArray?.length || 0}`, colors.green);
         log(`  Phone numbers found: ${result.foundArray?.length || 0}`, colors.green);
         log(`  Phone numbers not found: ${result.notFoundArray?.length || 0}`, colors.yellow);
 
@@ -137,6 +135,11 @@ async function testPhoneLookup() {
             
             log(`    Type: ${entity.type || 'N/A'}`);
           });
+        } else {
+          log('\n💡 No entities found. Make sure:', colors.yellow);
+          log('   1. Phone numbers are in E.164 format (e.g., +15551234567)', colors.yellow);
+          log('   2. The numbers belong to users in your Webex organization', colors.yellow);
+          log('   3. Your access token has proper permissions', colors.yellow);
         }
 
         // Display raw response (optional, can be verbose)
@@ -147,7 +150,7 @@ async function testPhoneLookup() {
 
       } catch (error) {
         log(`\n❌ Batch ${i + 1} failed: ${error.message}`, colors.red);
-        if (error.stack) {
+        if (error.stack && process.env.DEBUG) {
           log(`\nStack trace:\n${error.stack}`, colors.red);
         }
       }
@@ -155,12 +158,17 @@ async function testPhoneLookup() {
 
     // Cleanup
     log('\n🧹 Cleaning up...', colors.blue);
-    await webex.internal.dss.unregister();
-    log('✅ DSS plugin unregistered', colors.green);
+    try {
+      await webex.internal.dss.unregister();
+      log('✅ DSS plugin unregistered', colors.green);
+    } catch (cleanupError) {
+      // Ignore cleanup errors (Mercury socket may already be closed)
+      log('⚠️  Cleanup warning (can be ignored): ' + cleanupError.message, colors.yellow);
+    }
 
   } catch (error) {
     log(`\n❌ Test failed: ${error.message}`, colors.red);
-    if (error.stack) {
+    if (error.stack && process.env.DEBUG) {
       log(`\nStack trace:\n${error.stack}`, colors.red);
     }
     process.exit(1);
