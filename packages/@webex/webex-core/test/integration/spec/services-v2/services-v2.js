@@ -750,7 +750,7 @@ describe('webex-core', () => {
 
       const getActivationRequest = (requestStub) => {
         const requests = requestStub.args.filter(
-          ([request]) => request.service === 'license' && request.resource === 'users/activations'
+          ([request]) => request.service === 'user-onboarding' && request.resource === 'users/activations'
         );
 
         assert.strictEqual(requests.length, 1);

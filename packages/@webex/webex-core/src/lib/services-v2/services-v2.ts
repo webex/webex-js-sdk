@@ -511,7 +511,7 @@ const Services = WebexPlugin.extend({
 
           // Send the user activation request to the **License** service.
           return this.request({
-            service: 'license',
+            service: 'user-onboarding',
             resource: 'users/activations',
             method: 'POST',
             headers: {
