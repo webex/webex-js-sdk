@@ -11,7 +11,7 @@
     "directory": "packages/@webex/internal-plugin-search"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browserify": {
     "transform": [

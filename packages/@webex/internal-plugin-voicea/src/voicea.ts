@@ -10,6 +10,7 @@ import {
   TURN_ON_CAPTION_STATUS,
   TOGGLE_MANUAL_CAPTION_STATUS,
   DEFAULT_SPOKEN_LANGUAGE,
+  LANGUAGE_ASSIGNMENT,
 } from './constants';
 // eslint-disable-next-line no-unused-vars
 import {
@@ -43,6 +44,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   private toggleManualCaptionStatus: string;
 
   private currentSpokenLanguage?: string;
+
+  private spokenLanguages: string[] = [];
 
   /**
    * @param {Object} e
@@ -197,6 +200,13 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         });
         break;
 
+      case TRANSCRIPTION_TYPE.LANGUAGE_DETECTED:
+        // @ts-ignore
+        if (this.spokenLanguages.includes(voiceaPayload.language)) {
+          this.setSpokenLanguage(voiceaPayload.language, LANGUAGE_ASSIGNMENT.AUTO);
+        }
+        break;
+
       default:
         break;
     }
@@ -233,6 +243,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       currentSpokenLanguage: this.currentSpokenLanguage,
     };
 
+    this.spokenLanguages = voiceaPayload?.ASR?.spoken_languages ?? [];
     // @ts-ignore
     this.trigger(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, voiceaLanguageOptions);
   };
@@ -268,9 +279,13 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   /**
    * Set Spoken Language for the meeting
    * @param {string} languageCode
+   * @param {"DEFAULT" | "AUTO" | "MANUAL"} languageAssignment
    * @returns {Promise}
    */
-  public setSpokenLanguage = (languageCode: string): Promise<void> =>
+  public setSpokenLanguage = (
+    languageCode: string,
+    languageAssignment = LANGUAGE_ASSIGNMENT.DEFAULT
+  ): Promise<void> =>
     // @ts-ignore
     this.request({
       method: 'PUT',
@@ -279,6 +294,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       body: {
         transcribe: {
           spokenLanguage: languageCode,
+          languageAssignment,
         },
       },
     }).then(() => {

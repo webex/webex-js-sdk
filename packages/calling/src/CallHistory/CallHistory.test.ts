@@ -96,7 +96,13 @@ describe('Call history tests', () => {
       'invoking with days=7, limit=2000, sort=ASC, sortBy=startTime',
       {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
     );
-    expect(errorSpy).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      `Failed to get call history: ${JSON.stringify(failurePayload)}`,
+      {
+        file: CALL_HISTORY_FILE,
+        method: METHODS.GET_CALL_HISTORY_DATA,
+      }
+    );
     expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -117,7 +123,13 @@ describe('Call history tests', () => {
       'invoking with days=0, limit=0, sort=ASC, sortBy=startTime',
       {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
     );
-    expect(errorSpy).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      `Failed to get call history: ${JSON.stringify(failurePayload)}`,
+      {
+        file: CALL_HISTORY_FILE,
+        method: METHODS.GET_CALL_HISTORY_DATA,
+      }
+    );
     expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -299,7 +311,10 @@ describe('Call history tests', () => {
         },
         methodDetails
       );
-      expect(errorSpy).toHaveBeenCalled();
+      expect(errorSpy).toBeCalledWith(
+        expect.stringContaining('Failed to update missed calls'),
+        methodDetails
+      );
       expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -593,10 +608,13 @@ describe('Call history tests', () => {
         },
         methodDetails
       );
-      expect(errorSpy).toHaveBeenCalledWith(expect.any(Error), {
-        file: CALL_HISTORY_FILE,
-        method: METHODS.DELETE_CALL_HISTORY_RECORDS,
-      });
+      expect(errorSpy).toBeCalledWith(
+        expect.stringContaining('Failed to delete call history records'),
+        {
+          file: CALL_HISTORY_FILE,
+          method: METHODS.DELETE_CALL_HISTORY_RECORDS,
+        }
+      );
       expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -622,6 +640,80 @@ describe('Call history tests', () => {
         methodDetails
       );
       expect(uploadLogsSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('URL construction for shared sessions based on calling backend', () => {
+    let webexRequestSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      webexRequestSpy = jest.spyOn(webex, 'request').mockResolvedValue({
+        statusCode: 200,
+        body: {
+          statusCode: 200,
+          userSessions: [],
+        },
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should include includeSharedSessions=true for WXC backend', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.WXC);
+
+      await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      const callArgs = webexRequestSpy.mock.calls[0][0];
+      expect(callArgs.uri).toContain('&includeSharedSessions=true');
+      expect(callArgs.method).toBe(HTTP_METHODS.GET);
+      expect(callArgs.service).toBe('janus');
+    });
+
+    it('should NOT include includeSharedSessions for UCM backend', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+
+      await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      const callArgs = webexRequestSpy.mock.calls[0][0];
+      expect(callArgs.uri).not.toContain('includeSharedSessions');
+      expect(callArgs.method).toBe(HTTP_METHODS.GET);
+      expect(callArgs.service).toBe('janus');
+    });
+
+    it('should NOT include includeSharedSessions for BWRKS backend', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.BWRKS);
+
+      await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      const callArgs = webexRequestSpy.mock.calls[0][0];
+      expect(callArgs.uri).not.toContain('includeSharedSessions');
+      expect(callArgs.method).toBe(HTTP_METHODS.GET);
+      expect(callArgs.service).toBe('janus');
+    });
+
+    it('should NOT include includeSharedSessions for unknown/other backends', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue('OTHER_BACKEND' as any);
+
+      await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      const callArgs = webexRequestSpy.mock.calls[0][0];
+      expect(callArgs.uri).not.toContain('includeSharedSessions');
+      expect(callArgs.method).toBe(HTTP_METHODS.GET);
+      expect(callArgs.service).toBe('janus');
+    });
+
+    it('should construct URL correctly with base parameters for all backends', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.WXC);
+
+      await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      const callArgs = webexRequestSpy.mock.calls[0][0];
+      expect(callArgs.uri).toMatch(
+        /.*\/history\/userSessions.*limit=10.*includeNewSessionTypes=true.*sort=DESC.*/
+      );
+      expect(callArgs.uri).toContain('&includeSharedSessions=true');
     });
   });
 });

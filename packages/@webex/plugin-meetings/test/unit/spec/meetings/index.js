@@ -3,10 +3,6 @@
  */
 import 'jsdom-global/register';
 
-// Polyfill for crypto: https://github.com/jsdom/jsdom/issues/1612#issuecomment-663210638
-import {Crypto} from '@peculiar/webcrypto';
-global.crypto = new Crypto();
-
 import Device from '@webex/internal-plugin-device';
 import {CatalogDetails} from '@webex/internal-plugin-device';
 import Mercury from '@webex/internal-plugin-mercury';
@@ -694,11 +690,9 @@ describe('plugin-meetings', () => {
           assert.deepEqual(result.options, {
             mode: 'BLUR',
             blurStrength: 'STRONG',
-            generator: 'worker',
             quality: 'LOW',
             authToken: 'fake_token',
             mirror: false,
-            canvasResolutionScaling: 1,
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
@@ -920,7 +914,11 @@ describe('plugin-meetings', () => {
                 'LOCUS_ID'
               );
               assert.calledWith(initialSetup, {
-                url: url1,
+                trigger: 'get-loci-response',
+                locus: {
+                  url: url1,
+                },
+                hashTreeMessage: undefined
               });
             });
           });
@@ -1421,21 +1419,53 @@ describe('plugin-meetings', () => {
             );
             assert.calledOnce(initialSetup);
             assert.calledWith(initialSetup, {
-              id: uuid1,
-              replaces: [
-                {
-                  locusUrl: 'http:locusUrl',
+              trigger: 'locus-message',
+              locus: {
+                id: uuid1,
+                replaces: [
+                  {
+                    locusUrl: 'http:locusUrl',
+                  },
+                ],
+                self: {
+                  callBackInfo: {
+                    callbackAddress: uri1,
+                  },
+                  devices: [],
                 },
-              ],
-              self: {
-                callBackInfo: {
-                  callbackAddress: uri1,
+                info: {
+                  webExMeetingId,
                 },
-                devices: [],
               },
+              hashTreeMessage: undefined
+            });
+          });
+          it('should setup the meeting from a hash tree event', async () => {
+            const locus = {
+              id: uuid1,
+              self: {},
               info: {
                 webExMeetingId,
               },
+            };
+            const hashTreeMessage = {something: 'hashTreeData'};
+            await webex.meetings.handleLocusEvent({
+              locus,
+              eventType: 'locus.state_message',
+              locusUrl: url1,
+              stateElementsMessage: hashTreeMessage,
+            });
+            assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+            assert.calledWith(
+              webex.meetings.meetingCollection.getByKey,
+              'meetingNumber',
+              webExMeetingId
+            );
+            assert.calledOnce(initialSetup);
+            assert.calledWith(initialSetup, {
+              trigger: 'locus-message',
+              locus,
+              hashTreeMessage,
             });
           });
           it('should setup the meeting by difference event without replaces', async () => {
@@ -1464,16 +1494,20 @@ describe('plugin-meetings', () => {
             );
             assert.calledOnce(initialSetup);
             assert.calledWith(initialSetup, {
-              id: uuid1,
-              self: {
-                callBackInfo: {
-                  callbackAddress: uri1,
+              trigger: 'locus-message',
+              locus: {
+                id: uuid1,
+                self: {
+                  callBackInfo: {
+                    callbackAddress: uri1,
+                  },
+                  devices: [],
                 },
-                devices: [],
+                info: {
+                  webExMeetingId,
+                },
               },
-              info: {
-                webExMeetingId,
-              },
+              hashTreeMessage: undefined
             });
           });
 
@@ -1536,16 +1570,20 @@ describe('plugin-meetings', () => {
             );
             assert.calledOnce(initialSetup);
             assert.calledWith(initialSetup, {
-              id: uuid1,
-              self: {
-                callBackInfo: {
-                  callbackAddress: uri1,
+              trigger: 'locus-message',
+              locus: {
+                id: uuid1,
+                self: {
+                  callBackInfo: {
+                    callbackAddress: uri1,
+                  },
+                  devices: [],
                 },
-                devices: [],
+                info: {
+                  webExMeetingId,
+                },
               },
-              info: {
-                webExMeetingId,
-              },
+              hashTreeMessage: undefined
             });
           });
 
@@ -3093,6 +3131,7 @@ describe('plugin-meetings', () => {
           },
         });
         assert.calledWith(webex.meetings.handleLocusEvent, {
+          eventType: LOCUSEVENT.SDK_NO_EVENT,
           locus: breakoutLocus,
           locusUrl: breakoutLocus.url,
         });

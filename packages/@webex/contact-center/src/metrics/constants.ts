@@ -37,7 +37,6 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @property {string} TASK_HOLD_FAILED - Event name for failed task hold.
  * @property {string} TASK_RESUME_SUCCESS - Event name for successful task resume.
  * @property {string} TASK_RESUME_FAILED - Event name for failed task resume.
- *
  * @property {string} TASK_CONSULT_START_SUCCESS - Event name for successful consult start.
  * @property {string} TASK_CONSULT_START_FAILED - Event name for failed consult start.
  * @property {string} TASK_CONSULT_END_SUCCESS - Event name for successful consult end.
@@ -50,6 +49,8 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @property {string} TASK_PAUSE_RECORDING_FAILED - Event name for failed pause of recording.
  * @property {string} TASK_ACCEPT_CONSULT_SUCCESS - Event name for successful consult acceptance.
  * @property {string} TASK_ACCEPT_CONSULT_FAILED - Event name for failed consult acceptance.
+ * @property {string} TASK_AUTO_ANSWER_SUCCESS - Event name for successful auto-answer.
+ * @property {string} TASK_AUTO_ANSWER_FAILED - Event name for failed auto-answer.
  *
  * @property {string} TASK_CONFERENCE_START_SUCCESS - Event name for successful conference start.
  * @property {string} TASK_CONFERENCE_START_FAILED - Event name for failed conference start.
@@ -68,6 +69,9 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  *
  * @property {string} AGENT_DEVICE_TYPE_UPDATE_SUCCESS - Event name for successful agent device type update.
  * @property {string} AGENT_DEVICE_TYPE_UPDATE_FAILED - Event name for failed agent device type update.
+ *
+ * @property {string} OUTDIAL_ANI_EP_FETCH_SUCCESS - Event name for successful outdial ANI entries fetch.
+ * @property {string} OUTDIAL_ANI_EP_FETCH_FAILED - Event name for failed outdial ANI entries fetch.
  *
  * @readonly
  */
@@ -115,6 +119,8 @@ export const METRIC_EVENT_NAMES = {
   TASK_PAUSE_RECORDING_FAILED: 'Task Pause Recording Failed',
   TASK_ACCEPT_CONSULT_SUCCESS: 'Task Accept Consult Success',
   TASK_ACCEPT_CONSULT_FAILED: 'Task Accept Consult Failed',
+  TASK_AUTO_ANSWER_SUCCESS: 'Task Auto Answer Success',
+  TASK_AUTO_ANSWER_FAILED: 'Task Auto Answer Failed',
 
   // Conference Tasks
   TASK_CONFERENCE_START_SUCCESS: 'Task Conference Start Success',
@@ -149,6 +155,10 @@ export const METRIC_EVENT_NAMES = {
   // Queue API Events
   QUEUE_FETCH_SUCCESS: 'Queue Fetch Success',
   QUEUE_FETCH_FAILED: 'Queue Fetch Failed',
+
+  // Outdial ANI Entries API Events
+  OUTDIAL_ANI_EP_FETCH_SUCCESS: 'Outdial ANI Entries Fetch Success',
+  OUTDIAL_ANI_EP_FETCH_FAILED: 'Outdial ANI Entries Fetch Failed',
 } as const;
 
 /**
