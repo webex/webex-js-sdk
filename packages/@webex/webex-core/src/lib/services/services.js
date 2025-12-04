@@ -512,7 +512,7 @@ const Services = WebexPlugin.extend({
           // Send the user activation request to the **License** service.
           return this.request({
             service: 'user-onboarding',
-            resource: 'users/activations',
+            resource: 'api/v1/users/activations',
             method: 'POST',
             headers: {
               accept: 'application/json',
