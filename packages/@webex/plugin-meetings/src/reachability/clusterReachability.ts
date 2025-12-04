@@ -1,13 +1,13 @@
-import LoggerProxy from '../common/logs/logger-proxy';
 import {ClusterNode} from './request';
 import EventsScope from '../common/events/events-scope';
 
 import {Enum} from '../constants';
-import {ClusterReachabilityResult, NatType} from './reachability.types';
 import {
-  ReachabilityPeerConnection,
+  ClusterReachabilityResult,
+  NatType,
   ReachabilityPeerConnectionEvents,
-} from './reachabilityPeerConnection';
+} from './reachability.types';
+import {ReachabilityPeerConnection} from './reachabilityPeerConnection';
 
 // data for the Events.resultReady event
 export type ResultEventData = {
@@ -56,13 +56,21 @@ export class ClusterReachability extends EventsScope {
     this.name = name;
     this.isVideoMesh = clusterInfo.isVideoMesh;
 
-    this.reachabilityPeerConnection = new ReachabilityPeerConnection(clusterInfo, name);
+    this.reachabilityPeerConnection = new ReachabilityPeerConnection(name, clusterInfo);
 
+    this.setupReachabilityPeerConnectionEventListeners();
+  }
+
+  /**
+   * Sets up event listeners for the ReachabilityPeerConnection instance
+   * @returns {void}
+   */
+  private setupReachabilityPeerConnectionEventListeners() {
     this.reachabilityPeerConnection.on(ReachabilityPeerConnectionEvents.resultReady, (data) => {
       this.emit(
         {
           file: 'clusterReachability',
-          function: 'onResultReady',
+          function: 'setupReachabilityPeerConnectionEventListeners',
         },
         Events.resultReady,
         data
@@ -75,7 +83,7 @@ export class ClusterReachability extends EventsScope {
         this.emit(
           {
             file: 'clusterReachability',
-            function: 'onClientMediaIpsUpdated',
+            function: 'setupReachabilityPeerConnectionEventListeners',
           },
           Events.clientMediaIpsUpdated,
           data
@@ -87,7 +95,7 @@ export class ClusterReachability extends EventsScope {
       this.emit(
         {
           file: 'clusterReachability',
-          function: 'onNatTypeUpdated',
+          function: 'setupReachabilityPeerConnectionEventListeners',
         },
         Events.natTypeUpdated,
         data

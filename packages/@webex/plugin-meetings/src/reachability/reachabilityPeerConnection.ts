@@ -5,20 +5,13 @@ import {ClusterNode} from './request';
 import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 import EventsScope from '../common/events/events-scope';
 
-import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
-import {ClusterReachabilityResult, NatType} from './reachability.types';
-
-/**
- * Events emitted by ReachabilityPeerConnection
- */
-export const ReachabilityPeerConnectionEvents = {
-  resultReady: 'resultReady', // emitted when successfully reached over a protocol
-  clientMediaIpsUpdated: 'clientMediaIpsUpdated', // emitted when new public IPs are found
-  natTypeUpdated: 'natTypeUpdated', // emitted when NAT type is determined
-  reachedSubnets: 'reachedSubnets', // emitted when server IP (subnet) is discovered
-} as const;
-
-export type ReachabilityPeerConnectionEvents = Enum<typeof ReachabilityPeerConnectionEvents>;
+import {CONNECTION_STATE, ICE_GATHERING_STATE} from '../constants';
+import {
+  ClusterReachabilityResult,
+  NatType,
+  Protocol,
+  ReachabilityPeerConnectionEvents,
+} from './reachability.types';
 
 /**
  * A class to handle RTCPeerConnection lifecycle and ICE candidate gathering for reachability checks.
@@ -28,7 +21,7 @@ export class ReachabilityPeerConnection extends EventsScope {
   public numUdpUrls: number;
   public numTcpUrls: number;
   public numXTlsUrls: number;
-  private pc?: RTCPeerConnection;
+  private pc: RTCPeerConnection | null;
   private defer: Defer;
   private startTimestamp: number;
   private srflxIceCandidates: RTCIceCandidate[] = [];
@@ -38,10 +31,10 @@ export class ReachabilityPeerConnection extends EventsScope {
 
   /**
    * Constructor for ReachabilityPeerConnection
-   * @param {ClusterNode} clusterInfo information about the media cluster
    * @param {string} clusterName name of the cluster
+   * @param {ClusterNode} clusterInfo information about the media cluster
    */
-  constructor(clusterInfo: ClusterNode, clusterName: string) {
+  constructor(clusterName: string, clusterInfo: ClusterNode) {
     super();
     this.clusterName = clusterName;
     this.numUdpUrls = clusterInfo.udp.length;
@@ -113,9 +106,9 @@ export class ReachabilityPeerConnection extends EventsScope {
   /**
    * Creates an RTCPeerConnection
    * @param {ClusterNode} clusterInfo information about the media cluster
-   * @returns {RTCPeerConnection|undefined} peerConnection
+   * @returns {RTCPeerConnection|null} peerConnection
    */
-  private createPeerConnection(clusterInfo: ClusterNode) {
+  private createPeerConnection(clusterInfo: ClusterNode): RTCPeerConnection | null {
     try {
       const config = ReachabilityPeerConnection.buildPeerConnectionConfig(clusterInfo);
 
@@ -128,7 +121,7 @@ export class ReachabilityPeerConnection extends EventsScope {
         peerConnectionError
       );
 
-      return undefined;
+      return null;
     }
   }
 
@@ -180,35 +173,36 @@ export class ReachabilityPeerConnection extends EventsScope {
    * @param {string} publicIp
    * @returns {void}
    */
-  private addPublicIp(protocol: 'udp' | 'tcp' | 'xtls', publicIp?: string | null) {
+  private addPublicIp(protocol: Protocol, publicIp?: string | null) {
+    if (!publicIp) {
+      return;
+    }
+
     const result = this.result[protocol];
+    let ipAdded = false;
 
-    if (publicIp) {
-      let ipAdded = false;
-
-      if (result.clientMediaIPs) {
-        if (!result.clientMediaIPs.includes(publicIp)) {
-          result.clientMediaIPs.push(publicIp);
-          ipAdded = true;
-        }
-      } else {
-        result.clientMediaIPs = [publicIp];
+    if (result.clientMediaIPs) {
+      if (!result.clientMediaIPs.includes(publicIp)) {
+        result.clientMediaIPs.push(publicIp);
         ipAdded = true;
       }
+    } else {
+      result.clientMediaIPs = [publicIp];
+      ipAdded = true;
+    }
 
-      if (ipAdded) {
-        this.emit(
-          {
-            file: 'reachabilityPeerConnection',
-            function: 'addPublicIp',
-          },
-          ReachabilityPeerConnectionEvents.clientMediaIpsUpdated,
-          {
-            protocol,
-            clientMediaIPs: result.clientMediaIPs,
-          }
-        );
-      }
+    if (ipAdded) {
+      this.emit(
+        {
+          file: 'reachabilityPeerConnection',
+          function: 'addPublicIp',
+        },
+        ReachabilityPeerConnectionEvents.clientMediaIpsUpdated,
+        {
+          protocol,
+          clientMediaIPs: result.clientMediaIPs,
+        }
+      );
     }
   }
 
@@ -239,7 +233,7 @@ export class ReachabilityPeerConnection extends EventsScope {
    * @returns {void}
    */
   private saveResult(
-    protocol: 'udp' | 'tcp' | 'xtls',
+    protocol: Protocol,
     latency: number,
     publicIp?: string | null,
     serverIp?: string | null
@@ -290,11 +284,11 @@ export class ReachabilityPeerConnection extends EventsScope {
   }
 
   /**
-   * Determines NAT Type.
-   * @param {RTCIceCandidate} candidate
+   * Determines NAT type by analyzing server reflexive candidate patterns
+   * @param {RTCIceCandidate} candidate server reflexive candidate
    * @returns {void}
    */
-  private determineNatType(candidate: RTCIceCandidate) {
+  private determineNatTypeForSrflxCandidate(candidate: RTCIceCandidate) {
     this.srflxIceCandidates.push(candidate);
 
     if (this.srflxIceCandidates.length > 1) {
@@ -314,7 +308,7 @@ export class ReachabilityPeerConnection extends EventsScope {
           this.emit(
             {
               file: 'reachabilityPeerConnection',
-              function: 'determineNatType',
+              function: 'determineNatTypeForSrflxCandidate',
             },
             ReachabilityPeerConnectionEvents.natTypeUpdated,
             {
@@ -348,15 +342,12 @@ export class ReachabilityPeerConnection extends EventsScope {
             const stunServerUrlRegex = /stun:([\d.]+):\d+/;
 
             const match = (e.candidate as any).url.match(stunServerUrlRegex);
-            if (match) {
-              // eslint-disable-next-line prefer-destructuring
-              serverIp = match[1];
-            }
+            serverIp = match && match[1];
           }
 
           this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp);
 
-          this.determineNatType(e.candidate);
+          this.determineNatTypeForSrflxCandidate(e.candidate);
         }
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
