@@ -280,3 +280,173 @@ footer .copyright {
     color: #ff7f0e;
     display: inline;
 }
+
+/* ============================================
+   VERSION COMPARISON STYLES
+   ============================================ */
+
+/* Mode Toggle Buttons */
+.mode-toggle {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.mode-toggle button {
+    flex: 1;
+    padding: 12px 20px;
+    border: 2px solid #00bceb;
+    background-color: white;
+    color: #00bceb;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.mode-toggle button:hover {
+    background-color: #e6f7fb;
+}
+
+.mode-toggle button.active {
+    background-color: #00bceb;
+    color: white;
+}
+
+/* Hide utility class */
+.hide {
+    display: none !important;
+}
+
+/* Comparison Form */
+#comparison-form {
+    margin-top: 20px;
+}
+
+/* Comparison Results Table */
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 14px;
+}
+
+.comparison-table th,
+.comparison-table td {
+    padding: 12px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+.comparison-table th {
+    background-color: #00bceb;
+    color: white;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.comparison-table tbody tr {
+    transition: background-color 0.2s;
+}
+
+.comparison-table tbody tr:hover {
+    background-color: #f5f5f5 !important;
+}
+
+/* Color Coding for Changes */
+.comparison-table tr.version-changed {
+    background-color: #fff3cd; /* Yellow - version changed */
+    border-left: 4px solid #ffc107;
+}
+
+.comparison-table tr.only-in-a {
+    background-color: #f8d7da; /* Red - removed in B */
+    border-left: 4px solid #dc3545;
+}
+
+.comparison-table tr.only-in-b {
+    background-color: #d4edda; /* Green - added in B */
+    border-left: 4px solid #28a745;
+}
+
+.comparison-table tr.unchanged {
+    background-color: #ffffff; /* White - no change */
+}
+
+/* Comparison Summary */
+.comparison-summary {
+    background: linear-gradient(135deg, #e7f3ff 0%, #f0f9ff 100%);
+    padding: 25px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 5px solid #00bceb;
+}
+
+.comparison-summary h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #00bceb;
+    font-size: 1.5em;
+}
+
+.summary-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.stat-item {
+    padding: 10px 20px;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+}
+
+.stat-item.changed {
+    border-left: 4px solid #ffc107;
+}
+
+.stat-item.unchanged {
+    border-left: 4px solid #6c757d;
+}
+
+.stat-item.added {
+    border-left: 4px solid #28a745;
+}
+
+.stat-item.removed {
+    border-left: 4px solid #dc3545;
+}
+
+.stat-item strong {
+    font-size: 1.2em;
+    color: #333;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .mode-toggle {
+        flex-direction: column;
+    }
+    
+    .mode-toggle button {
+        width: 100%;
+    }
+    
+    .summary-stats {
+        flex-direction: column;
+    }
+    
+    .comparison-table {
+        font-size: 12px;
+    }
+    
+    .comparison-table th,
+    .comparison-table td {
+        padding: 8px 5px;
+    }
+}

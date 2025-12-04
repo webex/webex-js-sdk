@@ -56,6 +56,12 @@ Handlebars.registerHelper('convertDate', function(timestamp) {
 // Util Methods
 const populateFormFieldsFromURL = async () => {
     const queryParams = new URLSearchParams(window.location.search);
+    
+    // Skip single-view URL handling if comparison parameters are present
+    if (queryParams.has('compare') || (queryParams.has('versionA') && queryParams.has('versionB'))) {
+        return; // Comparison mode will handle these parameters
+    }
+    
     const searchParams = {
         stable_version: queryParams.get('stable_version'),
         package: queryParams.get('package'),
@@ -460,3 +466,435 @@ window.onhashchange = () => {
 };
 
 populateVersions();
+
+/* ============================================
+   VERSION COMPARISON FUNCTIONALITY
+   ============================================ */
+
+// Global state for comparison mode
+let comparisonMode = false;
+
+/**
+ * Extract all packages from a version changelog
+ * @param {Object} changelog - The changelog JSON for a version
+ * @returns {Object} - Map of {packageName: latestVersion}
+ */
+const extractPackagesFromVersion = (changelog) => {
+    const packageMap = {};
+    
+    for (const packageName in changelog) {
+        if (!changelog.hasOwnProperty(packageName)) continue;
+        
+        const packageVersions = changelog[packageName];
+        const versionKeys = Object.keys(packageVersions);
+        
+        if (versionKeys.length === 0) continue;
+        
+        // Find the latest version by published_date
+        let latestVersion = versionKeys[0];
+        let latestDate = packageVersions[versionKeys[0]].published_date || 0;
+        
+        versionKeys.forEach(version => {
+            const publishedDate = packageVersions[version].published_date || 0;
+            if (publishedDate > latestDate) {
+                latestDate = publishedDate;
+                latestVersion = version;
+            }
+        });
+        
+        packageMap[packageName] = latestVersion;
+    }
+    
+    return packageMap;
+};
+
+/**
+ * Compare packages between two versions
+ * @param {Object} packagesA - {packageName: version} for version A
+ * @param {Object} packagesB - {packageName: version} for version B
+ * @returns {Object} - Comparison results with statistics
+ */
+const comparePackages = (packagesA, packagesB) => {
+    const allPackageNames = new Set([
+        ...Object.keys(packagesA),
+        ...Object.keys(packagesB)
+    ]);
+    
+    const packages = [];
+    let changedCount = 0;
+    let unchangedCount = 0;
+    let onlyInACount = 0;
+    let onlyInBCount = 0;
+    
+    allPackageNames.forEach(packageName => {
+        const versionA = packagesA[packageName];
+        const versionB = packagesB[packageName];
+        
+        let status, changeClass;
+        
+        if (versionA && versionB) {
+            if (versionA === versionB) {
+                status = 'Unchanged';
+                changeClass = 'unchanged';
+                unchangedCount++;
+            } else {
+                status = 'Version Changed';
+                changeClass = 'version-changed';
+                changedCount++;
+            }
+        } else if (versionA && !versionB) {
+            status = 'Removed';
+            changeClass = 'only-in-a';
+            onlyInACount++;
+        } else if (!versionA && versionB) {
+            status = 'Added';
+            changeClass = 'only-in-b';
+            onlyInBCount++;
+        }
+        
+        packages.push({
+            packageName,
+            versionA: versionA || 'N/A',
+            versionB: versionB || 'N/A',
+            status,
+            changeClass
+        });
+    });
+    
+    // Sort packages alphabetically
+    packages.sort((a, b) => a.packageName.localeCompare(b.packageName));
+    
+    return {
+        packages,
+        totalPackages: allPackageNames.size,
+        changedCount,
+        unchangedCount,
+        onlyInACount,
+        onlyInBCount
+    };
+};
+
+/**
+ * Perform version comparison
+ * @param {string} versionA - Base version
+ * @param {string} versionB - Target version
+ */
+const performVersionComparison = async (versionA, versionB) => {
+    try {
+        const comparisonResults = document.getElementById('comparison-results');
+        comparisonResults.innerHTML = '<p style="text-align: center; padding: 20px;">Loading comparison...</p>';
+        comparisonResults.classList.remove('hide');
+        
+        // Fetch both changelogs in parallel
+        const [changelogA, changelogB] = await Promise.all([
+            fetch(versionPaths[versionA]).then(res => {
+                if (!res.ok) throw new Error(`Failed to fetch ${versionA}`);
+                return res.json();
+            }),
+            fetch(versionPaths[versionB]).then(res => {
+                if (!res.ok) throw new Error(`Failed to fetch ${versionB}`);
+                return res.json();
+            })
+        ]);
+        
+        // Extract and compare packages
+        const packagesA = extractPackagesFromVersion(changelogA);
+        const packagesB = extractPackagesFromVersion(changelogB);
+        const comparisonData = comparePackages(packagesA, packagesB);
+        
+        // Render results
+        displayComparison(versionA, versionB, comparisonData);
+        
+    } catch (error) {
+        console.error('Error performing version comparison:', error);
+        document.getElementById('comparison-results').innerHTML = 
+            `<div style="color: red; padding: 20px; background: #fee; border-radius: 5px;">
+                <strong>Error:</strong> Failed to compare versions. ${error.message}
+            </div>`;
+    }
+};
+
+/**
+ * Display comparison results
+ * @param {string} versionA - Base version
+ * @param {string} versionB - Target version
+ * @param {Object} comparisonData - Comparison results
+ */
+const displayComparison = (versionA, versionB, comparisonData) => {
+    const comparisonResults = document.getElementById('comparison-results');
+    
+    const comparisonTemplate = Handlebars.compile(
+        document.getElementById('comparison-template').innerHTML
+    );
+    
+    const html = comparisonTemplate({
+        versionA,
+        versionB,
+        ...comparisonData
+    });
+    
+    comparisonResults.innerHTML = html;
+    comparisonResults.classList.remove('hide');
+    
+    // Update URL with comparison parameters for permalinks
+    updateComparisonURL(versionA, versionB);
+    
+    // Show the copy link button and helper text
+    const copyLinkBtn = document.getElementById('copy-comparison-link');
+    const helperText = document.getElementById('comparison-helper');
+    if (copyLinkBtn) copyLinkBtn.classList.remove('hide');
+    if (helperText) helperText.classList.remove('hide');
+    
+    // Scroll to results smoothly
+    setTimeout(() => {
+        comparisonResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+};
+
+/**
+ * Update URL with comparison parameters for sharing/bookmarking
+ * @param {string} versionA - Base version
+ * @param {string} versionB - Target version
+ */
+const updateComparisonURL = (versionA, versionB) => {
+    const url = new URL(window.location);
+    
+    // Clear any single-view parameters
+    url.searchParams.delete('stable_version');
+    url.searchParams.delete('package');
+    url.searchParams.delete('version');
+    url.searchParams.delete('commitMessage');
+    url.searchParams.delete('commitHash');
+    
+    // Set comparison parameters
+    url.searchParams.set('compare', `${versionA}vs${versionB}`);
+    
+    // Update URL without reloading the page
+    window.history.pushState({}, '', url);
+};
+
+/**
+ * Parse and handle comparison URL parameters
+ * Supports formats: ?compare=3.9.0vs3.10.0 or ?versionA=3.9.0&versionB=3.10.0
+ */
+const handleComparisonURLParams = async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    let versionA = null;
+    let versionB = null;
+    
+    // Check for ?compare=AvB format
+    const compareParam = urlParams.get('compare');
+    if (compareParam && compareParam.includes('vs')) {
+        const versions = compareParam.split('vs');
+        versionA = versions[0]?.trim();
+        versionB = versions[1]?.trim();
+    }
+    
+    // Also support ?versionA=X&versionB=Y format
+    if (!versionA) versionA = urlParams.get('versionA');
+    if (!versionB) versionB = urlParams.get('versionB');
+    
+    // If comparison parameters are found, switch to comparison mode
+    if (versionA && versionB && versionA !== versionB) {
+        return { versionA, versionB, shouldCompare: true };
+    }
+    
+    return { shouldCompare: false };
+};
+
+/**
+ * Switch to comparison mode programmatically
+ * @param {string} versionA - Base version (optional)
+ * @param {string} versionB - Target version (optional)
+ */
+const switchToComparisonMode = (versionA = null, versionB = null) => {
+    const singleViewBtn = document.getElementById('single-view-btn');
+    const comparisonViewBtn = document.getElementById('comparison-view-btn');
+    const searchForm = document.getElementById('search-form');
+    const comparisonForm = document.getElementById('comparison-form');
+    const searchResults = document.getElementById('search-results');
+    
+    const versionASelect = document.getElementById('version-a-select');
+    const versionBSelect = document.getElementById('version-b-select');
+    
+    // Update mode
+    comparisonMode = true;
+    
+    // Update button states
+    if (comparisonViewBtn && singleViewBtn) {
+        comparisonViewBtn.classList.add('active', 'btn-primary');
+        comparisonViewBtn.classList.remove('btn-default');
+        singleViewBtn.classList.remove('active', 'btn-primary');
+        singleViewBtn.classList.add('btn-default');
+    }
+    
+    // Update form visibility
+    if (searchForm) searchForm.classList.add('hide');
+    if (comparisonForm) comparisonForm.classList.remove('hide');
+    if (searchResults) searchResults.classList.add('hide');
+    
+    // Populate version dropdowns
+    if (versionSelectDropdown && versionSelectDropdown.innerHTML) {
+        const options = versionSelectDropdown.innerHTML;
+        if (versionASelect) versionASelect.innerHTML = options;
+        if (versionBSelect) versionBSelect.innerHTML = options;
+    }
+    
+    // Set selected versions if provided
+    if (versionA && versionASelect) versionASelect.value = versionA;
+    if (versionB && versionBSelect) versionBSelect.value = versionB;
+};
+
+/**
+ * Initialize comparison mode functionality
+ */
+const initializeComparisonMode = async () => {
+    const singleViewBtn = document.getElementById('single-view-btn');
+    const comparisonViewBtn = document.getElementById('comparison-view-btn');
+    const searchForm = document.getElementById('search-form');
+    const comparisonForm = document.getElementById('comparison-form');
+    const comparisonResults = document.getElementById('comparison-results');
+    const searchResults = document.getElementById('search-results');
+    
+    const versionASelect = document.getElementById('version-a-select');
+    const versionBSelect = document.getElementById('version-b-select');
+    
+    // Populate version dropdowns for comparison
+    const populateComparisonVersions = () => {
+        if (versionSelectDropdown && versionSelectDropdown.innerHTML) {
+            const options = versionSelectDropdown.innerHTML;
+            if (versionASelect) versionASelect.innerHTML = options;
+            if (versionBSelect) versionBSelect.innerHTML = options;
+        }
+    };
+    
+    // Single view mode
+    if (singleViewBtn) {
+        singleViewBtn.addEventListener('click', () => {
+            comparisonMode = false;
+            singleViewBtn.classList.add('active', 'btn-primary');
+            singleViewBtn.classList.remove('btn-default');
+            comparisonViewBtn.classList.remove('active', 'btn-primary');
+            comparisonViewBtn.classList.add('btn-default');
+            
+            if (searchForm) searchForm.classList.remove('hide');
+            if (comparisonForm) comparisonForm.classList.add('hide');
+            if (comparisonResults) comparisonResults.classList.add('hide');
+            if (searchResults) searchResults.classList.remove('hide');
+            
+            // Clear comparison URL parameters
+            const url = new URL(window.location);
+            url.searchParams.delete('compare');
+            url.searchParams.delete('versionA');
+            url.searchParams.delete('versionB');
+            window.history.pushState({}, '', url);
+        });
+    }
+    
+    // Comparison view mode
+    if (comparisonViewBtn) {
+        comparisonViewBtn.addEventListener('click', () => {
+            comparisonMode = true;
+            comparisonViewBtn.classList.add('active', 'btn-primary');
+            comparisonViewBtn.classList.remove('btn-default');
+            singleViewBtn.classList.remove('active', 'btn-primary');
+            singleViewBtn.classList.add('btn-default');
+            
+            if (searchForm) searchForm.classList.add('hide');
+            if (comparisonForm) comparisonForm.classList.remove('hide');
+            if (searchResults) searchResults.classList.add('hide');
+            
+            populateComparisonVersions();
+        });
+    }
+    
+    // Comparison form submit
+    if (comparisonForm) {
+        comparisonForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            
+            const versionA = versionASelect.value;
+            const versionB = versionBSelect.value;
+            
+            if (!versionA || !versionB) {
+                alert('Please select both versions to compare');
+                return;
+            }
+            
+            if (versionA === versionB) {
+                alert('Please select two different versions');
+                return;
+            }
+            
+            performVersionComparison(versionA, versionB);
+        });
+    }
+    
+    // Clear button
+    const clearBtn = document.getElementById('clear-comparison-button');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            if (versionASelect) versionASelect.value = '';
+            if (versionBSelect) versionBSelect.value = '';
+            if (comparisonResults) comparisonResults.classList.add('hide');
+            
+            // Hide copy link button and helper
+            const copyLinkBtn = document.getElementById('copy-comparison-link');
+            const helperText = document.getElementById('comparison-helper');
+            if (copyLinkBtn) copyLinkBtn.classList.add('hide');
+            if (helperText) helperText.classList.add('hide');
+            
+            // Clear URL parameters
+            const url = new URL(window.location);
+            url.searchParams.delete('compare');
+            url.searchParams.delete('versionA');
+            url.searchParams.delete('versionB');
+            window.history.pushState({}, '', url);
+        });
+    }
+    
+    // Copy comparison link button
+    const copyLinkBtn = document.getElementById('copy-comparison-link');
+    if (copyLinkBtn) {
+        copyLinkBtn.addEventListener('click', () => {
+            const currentURL = window.location.href;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(currentURL).then(() => {
+                // Visual feedback
+                const originalText = copyLinkBtn.textContent;
+                copyLinkBtn.textContent = '✓ Link Copied!';
+                copyLinkBtn.style.backgroundColor = '#28a745';
+                
+                setTimeout(() => {
+                    copyLinkBtn.textContent = originalText;
+                    copyLinkBtn.style.backgroundColor = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy link:', err);
+                alert('Failed to copy link. Please copy from the address bar.');
+            });
+        });
+    }
+    
+    // Check for comparison URL parameters on page load
+    const urlComparisonParams = await handleComparisonURLParams();
+    if (urlComparisonParams.shouldCompare) {
+        // Switch to comparison mode and trigger comparison
+        switchToComparisonMode(urlComparisonParams.versionA, urlComparisonParams.versionB);
+        
+        // Wait a bit for dropdowns to be populated
+        setTimeout(() => {
+            performVersionComparison(urlComparisonParams.versionA, urlComparisonParams.versionB);
+        }, 300);
+    }
+};
+
+// Wait for DOM to be ready, then initialize
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeComparisonMode);
+} else {
+    // DOM is already ready
+    initializeComparisonMode();
+}
