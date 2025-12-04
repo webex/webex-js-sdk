@@ -31,6 +31,7 @@ const MeetingUtil = {
 
     // First todo: add check for existance
     parsed.locus = response.body.locus;
+    parsed.dataSets = response.body.dataSets;
     parsed.mediaConnections = response.body.mediaConnections;
     parsed.locusUrl = parsed.locus.url;
     parsed.locusId = parsed.locus.url.split('/').pop();
