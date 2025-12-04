@@ -202,9 +202,12 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
       case TRANSCRIPTION_TYPE.LANGUAGE_DETECTED:
         // @ts-ignore
-        if (this.spokenLanguages.includes(voiceaPayload.language)) {
-          this.setSpokenLanguage(voiceaPayload.language, LANGUAGE_ASSIGNMENT.AUTO);
-        }
+        this.trigger(EVENT_TRIGGERS.LANGUAGE_DETECTED, {
+          languageCode: voiceaPayload.language,
+          languageAssignment: LANGUAGE_ASSIGNMENT.AUTO,
+          isInSpokenLanguages: this.spokenLanguages.includes(voiceaPayload.language),
+        });
+
         break;
 
       default:
