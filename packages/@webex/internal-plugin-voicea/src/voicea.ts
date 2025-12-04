@@ -287,7 +287,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public setSpokenLanguage = (
     languageCode: string,
-    languageAssignment = LANGUAGE_ASSIGNMENT.DEFAULT
+    languageAssignment?: 'DEFAULT' | 'AUTO' | 'MANUAL'
   ): Promise<void> =>
     // @ts-ignore
     this.request({
@@ -297,7 +297,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       body: {
         transcribe: {
           spokenLanguage: languageCode,
-          languageAssignment,
+          ...(languageAssignment && {languageAssignment}),
         },
       },
     }).then(() => {

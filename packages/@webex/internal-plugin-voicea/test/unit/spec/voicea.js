@@ -291,12 +291,35 @@ describe('plugin-voicea', () => {
     describe('#setSpokenLanguage', () => {
       it('sets spoken language', async () => {
         const languageCode = 'en';
-        let languageAssignment = 'DEFAULT';
         const triggerSpy = sinon.spy();
 
         voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
         voiceaService.listenToEvents();
         await voiceaService.setSpokenLanguage(languageCode);
+
+        assert.calledOnceWithExactly(triggerSpy, {languageCode});
+
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {
+              transcribe: {
+                spokenLanguage: languageCode,
+              }
+            },
+          })
+        );
+      });
+      it('sets spoken language with language assignment', async () => {
+        const languageCode = 'zh';
+        const languageAssignment = 'DEFAULT';
+        const triggerSpy = sinon.spy();
+
+        voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
+        voiceaService.listenToEvents();
+        await voiceaService.setSpokenLanguage(languageCode, languageAssignment);
 
         assert.calledOnceWithExactly(triggerSpy, {languageCode});
 
@@ -314,6 +337,7 @@ describe('plugin-voicea', () => {
           })
         );
       });
+
     });
 
     describe('#requestTurnOnCaptions', () => {
