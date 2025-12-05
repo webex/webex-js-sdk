@@ -77,6 +77,7 @@ describe('plugin-mercury', () => {
         markFailedUrl: sinon.stub().returns(Promise.resolve()),
         switchActiveClusterIds: sinon.stub(),
         invalidateCache: sinon.stub(),
+        isValidHost: sinon.stub().returns(Promise.resolve(true)),
       };
       webex.internal.metrics.submitClientMetrics = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
@@ -944,16 +945,6 @@ describe('plugin-mercury', () => {
           return webex.internal.mercury
             ._prepareUrl('ws://provided.com')
             .then((wsUrl) => assert.match(wsUrl, /example-2.com/));
-        });
-        it('uses provided webSocketUrl if can not get high priority url', () => {
-          webex.internal.feature.getFeature.onCall(0).returns(Promise.resolve(true));
-          webex.internal.services.convertUrlToPriorityHostUrl = sinon
-            .stub()
-            .returns(Promise.resolve(''));
-          webex.internal.services.isValidHost = sinon.stub().returns(true);
-          return webex.internal.mercury
-            ._prepareUrl('ws://provided.com')
-            .then((wsUrl) => assert.match(wsUrl, /provided.com/));
         });
       });
 

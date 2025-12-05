@@ -306,6 +306,9 @@ const Mercury = WebexPlugin.extend({
       })
       .then(() => this.webex.internal.feature.getFeature('developer', 'web-shared-mercury'))
       .then((webSharedMercury) => {
+        if (!webSocketUrl) {
+          return '';
+        }
         webSocketUrl = url.parse(webSocketUrl, true);
         Object.assign(webSocketUrl.query, {
           outboundWireFormat: 'text',
