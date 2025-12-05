@@ -331,6 +331,20 @@ describe('webex-core', () => {
 
         assert.deepEqual(result, [{some: 'value'}]);
       });
+      it('updates the catalog with empty hostmap', async () => {
+        const serviceGroup = 'postauth';
+        const hostmap = {};
+
+        services._formatReceivedHostmap = sinon.stub().returns({services : undefined});
+
+        catalog.updateServiceGroups = sinon.stub().returns(Promise.resolve([{some: 'value'}]));
+
+        const result = await services.updateCatalog(serviceGroup, hostmap);
+
+        assert.calledWith(services._formatReceivedHostmap, hostmap);
+
+        assert.calledWith(catalog.updateServiceGroups, serviceGroup, undefined);
+      });
     });
 
     describe('#_fetchNewServiceHostmap()', () => {
@@ -693,6 +707,61 @@ describe('webex-core', () => {
         const result = await services.invalidateCache(timestamp);
 
         assert.isUndefined(result);
+      });
+    });
+
+    describe('#getMobiusClusters', () => {
+      it('returns unique mobius entries derived from serviceUrls baseUrl', () => {
+        // Arrange: seed internal _services with mobius (including duplicate baseUrl)
+        services._services = [
+          {
+            "id": "urn:TEAM:us-east-2_a:mobius",
+            "serviceName": 'mobius',
+            "serviceUrls": [
+              {"baseUrl": 'https://mobius-us-east-2.prod.infra.webex.com/api/v1', "priority": 5},
+              {"baseUrl": 'https://mobius-eu-central-1.prod.infra.webex.com/api/v1', "priority": 10},
+              {"baseUrl": 'https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1', "priority": 15}, // duplicate
+            ],
+          },
+          {
+            "id": "urn:TEAM:ap-southeast-2_m:mobius",
+            "serviceName": "mobius",
+            "serviceUrls": [
+                {
+                    "baseUrl": "https://mobius-me-central-1.prod.infra.webex.com/api/v1",
+                    "priority": 5
+                },
+                {
+                    "baseUrl": "https://mobius-eu-central-1.prod.infra.webex.com/api/v1",
+                    "priority": 10
+                },
+                {
+                    "baseUrl": "https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1",
+                    "priority": 15
+                },
+            ],
+          },
+          // Non-mobius service should be ignored by getMobiusClusters
+          {
+            id: 'urn:TEAM:us-east-2_a:wdm',
+            serviceName: 'wdm',
+            serviceUrls: [{baseUrl: 'https://wdm-a.webex.com/api/v1', priority: 5}],
+          },
+        ];
+
+        // Act
+        const clusters = services.getMobiusClusters();
+
+        // Assert (v2 currently pushes baseUrl into host field and dedups by baseUrl)
+        assert.deepEqual(
+          clusters.map(({host, id, ttl, priority}) => ({host, id, ttl, priority})),
+          [
+            {host: 'mobius-us-east-2.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 5},
+            {host: 'mobius-eu-central-1.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 10},
+            {host: 'mobius-ap-southeast-2.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 15},
+            {host: 'mobius-me-central-1.prod.infra.webex.com', id: 'urn:TEAM:ap-southeast-2_m:mobius', ttl: 0, priority: 5},
+          ]
+        );
       });
     });
   });

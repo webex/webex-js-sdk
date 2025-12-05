@@ -153,5 +153,5 @@ export const serviceHostmapV2 = {
   services: formattedServiceHostmapV2,
   orgId: '3e0e410f-f83f-4ee4-ac32-12692e99355c',
   timestamp: '1745533341',
-  format: 'U2Cv2',
+  format: 'U2CV2',
 };

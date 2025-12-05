@@ -17,6 +17,7 @@ require('@webex/internal-plugin-dss');
 require('@webex/internal-plugin-presence');
 require('@webex/internal-plugin-support');
 require('@webex/internal-plugin-llm');
+require('@webex/internal-plugin-task');
 require('@webex/plugin-attachment-actions');
 require('@webex/plugin-device-manager');
 require('@webex/plugin-logger');

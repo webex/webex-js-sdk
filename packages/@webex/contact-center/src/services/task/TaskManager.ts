@@ -12,6 +12,14 @@ import LoggerProxy from '../../logger-proxy';
 import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
+import {
+  checkParticipantNotInInteraction,
+  getIsConferenceInProgress,
+  isParticipantInMainInteraction,
+  isPrimary,
+  isSecondaryEpDnAgent,
+  shouldAutoAnswerTask,
+} from './TaskUtils';
 
 /** @internal */
 export default class TaskManager extends EventEmitter {
@@ -29,6 +37,7 @@ export default class TaskManager extends EventEmitter {
   private static taskManager;
   private wrapupData: WrapupData;
   private agentId: string;
+  private webRtcEnabled: boolean;
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
@@ -64,6 +73,10 @@ export default class TaskManager extends EventEmitter {
    */
   public getAgentId(): string {
     return this.agentId;
+  }
+
+  public setWebRtcEnabled(webRtcEnabled: boolean) {
+    this.webRtcEnabled = webRtcEnabled;
   }
 
   private handleIncomingWebCall = (call: ICall) => {
@@ -122,14 +135,24 @@ export default class TaskManager extends EventEmitter {
                 method: METHODS.REGISTER_TASK_LISTENERS,
                 interactionId: payload.data.interactionId,
               });
+
+              // Check if auto-answer should happen for this task
+              const shouldAutoAnswer = shouldAutoAnswerTask(
+                payload.data,
+                this.agentId,
+                this.webCallingService.loginOption,
+                this.webRtcEnabled
+              );
+
               task = new Task(
                 this.contact,
                 this.webCallingService,
                 {
                   ...payload.data,
                   wrapUpRequired:
-                    payload.data.interaction?.participants?.[payload.data.agentId]?.isWrapUp ||
-                    false,
+                    payload.data.interaction?.participants?.[this.agentId]?.isWrapUp || false,
+                  isConferenceInProgress: getIsConferenceInProgress(payload.data),
+                  isAutoAnswering: shouldAutoAnswer, // Set flag before emitting
                 },
                 this.wrapupData,
                 this.agentId
@@ -160,13 +183,23 @@ export default class TaskManager extends EventEmitter {
               }
             }
             break;
-          case CC_EVENTS.AGENT_CONTACT_RESERVED:
+
+          case CC_EVENTS.AGENT_CONTACT_RESERVED: {
+            // Check if auto-answer should happen for this task
+            const shouldAutoAnswerReserved = shouldAutoAnswerTask(
+              payload.data,
+              this.agentId,
+              this.webCallingService.loginOption,
+              this.webRtcEnabled
+            );
+
             task = new Task(
               this.contact,
               this.webCallingService,
               {
                 ...payload.data,
                 isConsulted: false,
+                isAutoAnswering: shouldAutoAnswerReserved, // Set flag before emitting
               },
               this.wrapupData,
               this.agentId
@@ -181,6 +214,7 @@ export default class TaskManager extends EventEmitter {
               this.emit(TASK_EVENTS.TASK_INCOMING, task);
             }
             break;
+          }
           case CC_EVENTS.AGENT_OFFER_CONTACT:
             // We don't have to emit any event here since this will be result of promise.
             task = this.updateTaskData(task, payload.data);
@@ -190,17 +224,29 @@ export default class TaskManager extends EventEmitter {
               interactionId: payload.data?.interactionId,
             });
             this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, task);
+
+            // Handle auto-answer for offer contact
+            this.handleAutoAnswer(task);
             break;
           case CC_EVENTS.AGENT_OUTBOUND_FAILED:
-            // We don't have to emit any event here since this will be result of promise.
-            if (task.data) {
-              this.removeTaskFromCollection(task);
+            if (task) {
+              task = this.updateTaskData(task, payload.data);
+              this.metricsManager.trackEvent(
+                METRIC_EVENT_NAMES.TASK_OUTDIAL_FAILED,
+                {
+                  ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
+                  taskId: payload.data.interactionId,
+                  reason: payload.data.reasonCode || payload.data.reason,
+                },
+                ['behavioral', 'operational']
+              );
+              LoggerProxy.log(`Agent outbound failed for task`, {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              });
+              task.emit(TASK_EVENTS.TASK_OUTDIAL_FAILED, payload.data.reason ?? 'UNKNOWN_REASON');
             }
-            LoggerProxy.log(`Agent outbound failed for task`, {
-              module: TASK_MANAGER_FILE,
-              method: METHODS.REGISTER_TASK_LISTENERS,
-              interactionId: payload.data?.interactionId,
-            });
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
             task = this.updateTaskData(task, payload.data);
@@ -239,13 +285,23 @@ export default class TaskManager extends EventEmitter {
             break;
           }
           case CC_EVENTS.CONTACT_ENDED:
-            task = this.updateTaskData(task, {
-              ...payload.data,
-              wrapUpRequired: payload.data.interaction.state !== 'new',
-            });
-            this.handleTaskCleanup(task);
-            task.emit(TASK_EVENTS.TASK_END, task);
+            // Update task data
+            if (task) {
+              task = this.updateTaskData(task, {
+                ...payload.data,
+                wrapUpRequired:
+                  payload.data.interaction.state !== 'new' &&
+                  !isSecondaryEpDnAgent(payload.data.interaction),
+              });
 
+              // Handle cleanup based on whether task should be deleted
+              this.handleTaskCleanup(task);
+
+              task?.emit(TASK_EVENTS.TASK_END, task);
+            }
+            break;
+          case CC_EVENTS.CONTACT_MERGED:
+            task = this.handleContactMerged(task, payload.data);
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
             // As soon as the main interaction is held, we need to emit TASK_HOLD
@@ -283,6 +339,9 @@ export default class TaskManager extends EventEmitter {
               isConsulted: true, // This ensures that the task is marked as us being requested for a consult
             });
             task.emit(TASK_EVENTS.TASK_OFFER_CONSULT, task);
+
+            // Handle auto-answer for consult offer
+            this.handleAutoAnswer(task);
             break;
           case CC_EVENTS.AGENT_CONSULTING:
             // Received when agent is in an active consult state
@@ -358,18 +417,45 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED:
             // Conference ended - update task state and emit event
             task = this.updateTaskData(task, payload.data);
+            if (
+              !task ||
+              isPrimary(task, this.agentId) ||
+              isParticipantInMainInteraction(task, this.agentId)
+            ) {
+              LoggerProxy.log('Primary or main interaction participant leaving conference');
+            } else {
+              this.removeTaskFromCollection(task);
+            }
             task.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
             break;
-          case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
-            // Participant joined conference - update task state with participant information and emit event
-            task = this.updateTaskData(task, payload.data);
+          case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE: {
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferenceInProgress: getIsConferenceInProgress(payload.data),
+            });
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
             break;
-          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
+          }
+          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE: {
             // Conference ended - update task state and emit event
-            task = this.updateTaskData(task, payload.data);
+
+            task = this.updateTaskData(task, {
+              ...payload.data,
+              isConferenceInProgress: getIsConferenceInProgress(payload.data),
+            });
+            if (checkParticipantNotInInteraction(task, this.agentId)) {
+              if (
+                isParticipantInMainInteraction(task, this.agentId) ||
+                isPrimary(task, this.agentId)
+              ) {
+                LoggerProxy.log('Primary or main interaction participant leaving conference');
+              } else {
+                this.removeTaskFromCollection(task);
+              }
+            }
             task.emit(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
             break;
+          }
           case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED:
             // Conference exit failed - update task state and emit failure event
             task = this.updateTaskData(task, payload.data);
@@ -391,13 +477,10 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED, task);
             break;
-          case CC_EVENTS.CONSULTED_PARTICIPANT_MOVING:
-            // Participant is being moved/transferred - update task state with movement info
-            task = this.updateTaskData(task, payload.data);
-            break;
           case CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY:
             // Post-call activity for participant - update task state with activity details
             task = this.updateTaskData(task, payload.data);
+            task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
             break;
           default:
             break;
@@ -437,6 +520,54 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
+  /**
+   * Handles CONTACT_MERGED event logic
+   * @param task - The task to process
+   * @param taskData - The task data from the event payload
+   * @returns Updated or newly created task
+   * @private
+   */
+  private handleContactMerged(task: ITask, taskData: TaskData): ITask {
+    if (taskData.childInteractionId) {
+      // remove the child task from collection
+      this.removeTaskFromCollection(this.taskCollection[taskData.childInteractionId]);
+    }
+
+    if (this.taskCollection[taskData.interactionId]) {
+      LoggerProxy.log(`Got CONTACT_MERGED: Task already exists in collection`, {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.REGISTER_TASK_LISTENERS,
+        interactionId: taskData.interactionId,
+      });
+      // update the task data
+      task = this.updateTaskData(task, taskData);
+    } else {
+      // Case2 : Task is not present in taskCollection
+      LoggerProxy.log(`Got CONTACT_MERGED : Creating new task in taskManager`, {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.REGISTER_TASK_LISTENERS,
+        interactionId: taskData.interactionId,
+      });
+
+      task = new Task(
+        this.contact,
+        this.webCallingService,
+        {
+          ...taskData,
+          wrapUpRequired: taskData.interaction?.participants?.[this.agentId]?.isWrapUp || false,
+          isConferenceInProgress: getIsConferenceInProgress(taskData),
+        },
+        this.wrapupData,
+        this.agentId
+      );
+      this.taskCollection[taskData.interactionId] = task;
+    }
+
+    this.emit(TASK_EVENTS.TASK_MERGED, task);
+
+    return task;
+  }
+
   private removeTaskFromCollection(task: ITask) {
     if (task?.data?.interactionId) {
       delete this.taskCollection[task.data.interactionId];
@@ -448,7 +579,79 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
+  /**
+   * Handles auto-answer logic for incoming tasks
+   * Automatically accepts tasks when isAutoAnswering flag is set
+   * The flag is set during task creation based on:
+   * 1. WebRTC calls with auto-answer enabled in agent profile
+   * 2. Agent-initiated WebRTC outdial calls
+   * 3. Agent-initiated digital outbound (Email/SMS) without previous transfers
+   *
+   * @param task - The task to auto-answer
+   * @private
+   */
+  private async handleAutoAnswer(task: ITask): Promise<void> {
+    if (!task || !task.data || !task.data.isAutoAnswering) {
+      return;
+    }
+
+    LoggerProxy.info(`Auto-answering task`, {
+      module: TASK_MANAGER_FILE,
+      method: 'handleAutoAnswer',
+      interactionId: task.data.interactionId,
+    });
+
+    try {
+      await task.accept();
+      LoggerProxy.info(`Task auto-answered successfully`, {
+        module: TASK_MANAGER_FILE,
+        method: 'handleAutoAnswer',
+        interactionId: task.data.interactionId,
+      });
+
+      // Track successful auto-answer
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_SUCCESS,
+        {
+          taskId: task.data.interactionId,
+          mediaType: task.data.interaction.mediaType,
+          isAutoAnswered: true,
+        },
+        ['behavioral', 'operational']
+      );
+      // Emit task:autoAnswered event for widgets/UI to react
+      task.emit(TASK_EVENTS.TASK_AUTO_ANSWERED, task);
+    } catch (error) {
+      // Reset isAutoAnswering flag on failure
+      task.updateTaskData({...task.data, isAutoAnswering: false});
+      LoggerProxy.error(`Failed to auto-answer task`, {
+        module: TASK_MANAGER_FILE,
+        method: 'handleAutoAnswer',
+        interactionId: task.data.interactionId,
+        error,
+      });
+
+      // Track auto-answer failure
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_FAILED,
+        {
+          taskId: task.data.interactionId,
+          mediaType: task.data.interaction.mediaType,
+          error: error?.message || 'Unknown error',
+          isAutoAnswered: false,
+        },
+        ['behavioral', 'operational']
+      );
+    }
+  }
+
+  /**
+   * Handles cleanup of task resources including Desktop/WebRTC call cleanup and task removal
+   * @param task - The task to clean up
+   * @private
+   */
   private handleTaskCleanup(task: ITask) {
+    // Clean up Desktop/WebRTC calling resources for browser-based telephony tasks
     if (
       this.webCallingService.loginOption === LoginOption.BROWSER &&
       task.data.interaction.mediaType === 'telephony'
@@ -456,9 +659,16 @@ export default class TaskManager extends EventEmitter {
       task.unregisterWebCallListeners();
       this.webCallingService.cleanUpCall();
     }
-    if (task.data.interaction.state === 'new') {
-      // Only remove tasks in 'new' state immediately. For other states,
-      // retain tasks until they complete wrap-up, unless the task disconnected before being answered.
+
+    const isOutdial = task.data.interaction.outboundType === 'OUTDIAL';
+    const isNew = task.data.interaction.state === 'new';
+    const needsWrapUp = task.data.agentsPendingWrapUp?.length > 0;
+
+    // For OUTDIAL: only remove if NOT terminated (user-declined, no wrap-up follows)
+    // If terminated, keep task for wrap-up flow (CONTACT_ENDED → AGENT_WRAPUP)
+    // For non-OUTDIAL: remove if state is 'new'
+    // Always remove if secondary EpDn agent
+    if ((isNew && !(isOutdial && needsWrapUp)) || isSecondaryEpDnAgent(task.data.interaction)) {
       this.removeTaskFromCollection(task);
     }
   }

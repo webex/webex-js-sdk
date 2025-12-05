@@ -119,6 +119,10 @@ export default class RedirectInterceptor extends Interceptor {
         options.uri = options.uri.replace(/(?<=https:\/\/)[^/]+/, response.body.data.siteFullUrl);
       }
 
+      if (options.resource === 'preJoin' && options.service === 'webex-appapi-service') {
+        options.headers.authorization = false;
+      }
+
       this.webex.logger.warn('redirect: url redirects needed to', options.uri);
       options.$redirectCount += 1;
       if (options.$redirectCount > this.webex.config.maxLocusRedirects) {

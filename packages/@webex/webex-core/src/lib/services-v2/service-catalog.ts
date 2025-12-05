@@ -119,7 +119,7 @@ const ServiceCatalog = AmpState.extend({
     // declare namespaces outside of loop
     let existingService: IServiceDetail | undefined;
 
-    serviceDetails.forEach((service) => {
+    serviceDetails?.forEach((service) => {
       existingService = this._getServiceDetail(service.id, serviceGroup);
 
       if (existingService) {
@@ -311,15 +311,21 @@ const ServiceCatalog = AmpState.extend({
   ) {
     const currentServiceDetails = this.serviceGroups[serviceGroup];
 
-    const unusedServicesDetails = currentServiceDetails.filter((serviceDetail) =>
-      serviceDetails.every(({id}) => id !== serviceDetail.id)
+    const unusedServicesDetails = currentServiceDetails?.filter((serviceDetail) =>
+      serviceDetails?.every(({id}) => id !== serviceDetail.id)
     );
 
     this._unloadServiceDetails(serviceGroup, unusedServicesDetails);
 
-    serviceDetails.forEach((serviceObj) => {
+    serviceDetails?.forEach((serviceObj) => {
       const serviceDetail = this._getServiceDetail(serviceObj.id, serviceGroup);
+      serviceObj?.serviceUrls?.sort((a, b) => {
+        if (a.priority < 0 && b.priority < 0) return 0;
+        if (a.priority < 0) return 1;
+        if (b.priority < 0) return -1;
 
+        return a.priority - b.priority;
+      });
       if (serviceDetail) {
         serviceDetail.serviceUrls = serviceObj.serviceUrls || [];
       } else {

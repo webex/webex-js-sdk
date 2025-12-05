@@ -49,6 +49,8 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @property {string} TASK_PAUSE_RECORDING_FAILED - Event name for failed pause of recording.
  * @property {string} TASK_ACCEPT_CONSULT_SUCCESS - Event name for successful consult acceptance.
  * @property {string} TASK_ACCEPT_CONSULT_FAILED - Event name for failed consult acceptance.
+ * @property {string} TASK_AUTO_ANSWER_SUCCESS - Event name for successful auto-answer.
+ * @property {string} TASK_AUTO_ANSWER_FAILED - Event name for failed auto-answer.
  *
  * @property {string} TASK_CONFERENCE_START_SUCCESS - Event name for successful conference start.
  * @property {string} TASK_CONFERENCE_START_FAILED - Event name for failed conference start.
@@ -117,6 +119,8 @@ export const METRIC_EVENT_NAMES = {
   TASK_PAUSE_RECORDING_FAILED: 'Task Pause Recording Failed',
   TASK_ACCEPT_CONSULT_SUCCESS: 'Task Accept Consult Success',
   TASK_ACCEPT_CONSULT_FAILED: 'Task Accept Consult Failed',
+  TASK_AUTO_ANSWER_SUCCESS: 'Task Auto Answer Success',
+  TASK_AUTO_ANSWER_FAILED: 'Task Auto Answer Failed',
 
   // Conference Tasks
   TASK_CONFERENCE_START_SUCCESS: 'Task Conference Start Success',

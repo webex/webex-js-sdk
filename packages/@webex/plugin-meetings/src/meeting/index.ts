@@ -30,6 +30,7 @@ import {
   NetworkQualityMonitor,
   StatsMonitor,
   StatsMonitorEventNames,
+  InboundAudioIssueSubTypes,
 } from '@webex/internal-media-core';
 
 import {
@@ -57,6 +58,7 @@ import {
   NoMediaEstablishedYetError,
   UserNotJoinedError,
   AddMediaFailed,
+  SdpResponseTimeoutError,
 } from '../common/errors/webex-errors';
 
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -4251,6 +4253,8 @@ export default class Meeting extends StatelessWebexPlugin {
           isLocalRecordingStarted: MeetingUtil.isLocalRecordingStarted(this.userDisplayHints),
           isLocalRecordingStopped: MeetingUtil.isLocalRecordingStopped(this.userDisplayHints),
           isLocalRecordingPaused: MeetingUtil.isLocalRecordingPaused(this.userDisplayHints),
+          isLocalStreamingStarted: MeetingUtil.isLocalStreamingStarted(this.userDisplayHints),
+          isLocalStreamingStopped: MeetingUtil.isLocalStreamingStopped(this.userDisplayHints),
           isManualCaptionActive: MeetingUtil.isManualCaptionActive(this.userDisplayHints),
           isSaveTranscriptsEnabled: MeetingUtil.isSaveTranscriptsEnabled(this.userDisplayHints),
           isSpokenLanguageAutoDetectionEnabled: MeetingUtil.isSpokenLanguageAutoDetectionEnabled(
@@ -7453,7 +7457,7 @@ export default class Meeting extends StatelessWebexPlugin {
         } seconds`
       );
 
-      const error = new Error('Timed out waiting for REMOTE SDP ANSWER');
+      const error = new SdpResponseTimeoutError();
 
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
@@ -10044,5 +10048,32 @@ export default class Meeting extends StatelessWebexPlugin {
       meetingUuid,
       displayName
     );
+  }
+
+  /**
+   * Call out a SIP participant to a meeting
+   * @param {string} address - The SIP address or phone number
+   * @param {string} displayName - The display name for the participant
+   * @param {string} [correlationId] - Optional correlation ID
+   * @returns {Promise} Promise that resolves when the call-out is initiated
+   */
+  sipCallOut(address: string, displayName: string) {
+    return this.meetingRequest.sipCallOut(
+      this.meetingInfo.meetingId,
+      this.meetingInfo.meetingId,
+      address,
+      displayName
+    );
+  }
+
+  /**
+   * Cancel an ongoing SIP call-out
+   * @param {string} participantId - The participant ID to cancel
+   * @returns {Promise} Promise that resolves when the call-out is cancelled
+   * @public
+   * @memberof Meetings
+   */
+  cancelSipCallOut(participantId: string) {
+    return this.meetingRequest.cancelSipCallOut(participantId);
   }
 }
