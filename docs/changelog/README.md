@@ -66,7 +66,10 @@ open /Users/vinvivek/Desktop/webex-Changelog/webex-js-sdk/docs/changelog/index.h
 
 ### 2. **Version Comparison (New Feature)** 🆕
 - Select two SDK versions to compare
-- See side-by-side package lists
+- See comprehensive comparison including:
+  - **Package versions** comparison table
+  - **All commits** between the two versions
+  - **Summary statistics**
 - Color-coded differences:
   - 🟡 **Yellow**: Version changed between the two releases
   - 🔴 **Red**: Package removed in the target version
@@ -77,6 +80,12 @@ open /Users/vinvivek/Desktop/webex-Changelog/webex-js-sdk/docs/changelog/index.h
   - Number of changed packages
   - Number of unchanged packages
   - Packages added/removed
+  - **Total commits** (NEW!)
+- **Commit Details** (NEW!):
+  - View all unique commits between versions
+  - See which packages each commit affected
+  - Links to GitHub for commit details
+  - Collapsible section to manage screen space
 
 ---
 
@@ -183,6 +192,17 @@ changelog/
 
 ## 🐛 Troubleshooting
 
+### Issue: Comparison not showing packages
+**Solution**: Use the diagnostic tools!
+
+**Quick Debug:**
+1. Open browser console (F12)
+2. Perform a comparison
+3. Check console for detailed debug logs
+4. Or use: `open http://localhost:8000/test-comparison.html`
+
+See **DEBUG_INSTRUCTIONS.md** for detailed debugging guide.
+
 ### Issue: JSON files not loading
 **Solution**: Make sure you're using a local web server (not opening the HTML file directly)
 
@@ -197,6 +217,32 @@ changelog/
 ```bash
 python3 -m http.server 8080
 ```
+
+---
+
+## 🔍 Debugging Tools
+
+### Test Page
+**Location:** `test-comparison.html`
+
+Automated diagnostic page that checks:
+- ✅ Data file loading
+- ✅ Version paths population  
+- ✅ Template existence
+- ✅ Function availability
+
+**Usage:**
+```bash
+open http://localhost:8000/test-comparison.html
+```
+
+### Debug Logging
+Comprehensive console logging is enabled in `app.js`:
+- Tracks comparison execution step-by-step
+- Logs data at each stage
+- Shows detailed error messages
+
+**See:** `DEBUG_INSTRUCTIONS.md` for complete guide
 
 ---
 

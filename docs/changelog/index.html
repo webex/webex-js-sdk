@@ -253,10 +253,49 @@
           <span class="stat-item unchanged">Unchanged: <strong>{{unchangedCount}}</strong></span>
           <span class="stat-item added">Added in {{versionB}}: <strong>{{onlyInBCount}}</strong></span>
           <span class="stat-item removed">Removed in {{versionB}}: <strong>{{onlyInACount}}</strong></span>
+          <span class="stat-item commits">Total Commits: <strong>{{totalCommits}}</strong></span>
         </div>
       </div>
 
+      <!-- All Commits Section -->
+      {{#if commits}}
+      {{#if (gt commits.length 0)}}
+      <div class="commits-section">
+        <div class="commits-header">
+          <h4>📝 All Commits Between {{versionA}} and {{versionB}}</h4>
+          <button type="button" class="btn btn-sm btn-default" onclick="toggleCommits()">
+            <span id="toggle-commits-text">Show Commits</span>
+          </button>
+        </div>
+        <div class="commits-list hide" id="commits-list">
+          <div class="commits-count-info">
+            Found {{commits.length}} unique commits across changed/added packages
+          </div>
+          <ul class="commits-ul">
+            {{#each commits}}
+            <li class="commit-item">
+              <div class="commit-message">{{{github_linking this.message 'message'}}}</div>
+              <div class="commit-meta">
+                <span class="commit-hash">{{{github_linking this.hash 'hash'}}}</span>
+                <span class="commit-packages">
+                  {{#if (gt this.packageCount 1)}}
+                    <span class="package-badge">{{this.packageCount}} packages</span>
+                  {{else}}
+                    <span class="package-badge">{{this.packages.[0]}}</span>
+                  {{/if}}
+                </span>
+              </div>
+            </li>
+            {{/each}}
+          </ul>
+        </div>
+      </div>
+      {{/if}}
+      {{/if}}
+
+      <!-- Package Comparison Table -->
       <div class="table-wrapper">
+        <h4 style="margin-top: 30px; margin-bottom: 15px;">📦 Package Versions</h4>
         <table class="comparison-table">
           <thead>
             <tr>

@@ -427,6 +427,127 @@ footer .copyright {
     color: #333;
 }
 
+/* Commits Section Styling */
+.commits-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.commits-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.commits-header h4 {
+    margin: 0;
+    color: #333;
+    font-size: 1.3em;
+}
+
+.commits-count-info {
+    background: #f0f9ff;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    color: #0066cc;
+    font-size: 0.95em;
+}
+
+.commits-ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.commit-item {
+    padding: 15px;
+    margin-bottom: 10px;
+    background: #f9f9f9;
+    border-left: 4px solid #00bceb;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.commit-item:hover {
+    background: #f0f9ff;
+    transform: translateX(3px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.commit-message {
+    font-size: 0.95em;
+    color: #333;
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.commit-message a {
+    color: #00bceb;
+    text-decoration: none;
+}
+
+.commit-message a:hover {
+    text-decoration: underline;
+}
+
+.commit-meta {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.commit-hash {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+    color: #666;
+    background: white;
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid #ddd;
+}
+
+.commit-hash a {
+    color: #666;
+    text-decoration: none;
+}
+
+.commit-hash a:hover {
+    color: #00bceb;
+}
+
+.commit-packages {
+    font-size: 0.85em;
+}
+
+.package-badge {
+    background: #e7f3ff;
+    color: #0066cc;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.9em;
+    border: 1px solid #b3d9ff;
+}
+
+.stat-item.commits {
+    border-left: 4px solid #9c27b0;
+}
+
+/* Button styling */
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.9em;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .mode-toggle {
@@ -448,5 +569,21 @@ footer .copyright {
     .comparison-table th,
     .comparison-table td {
         padding: 8px 5px;
+    }
+    
+    .commits-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .commits-ul {
+        max-height: 400px;
+    }
+    
+    .commit-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
     }
 }

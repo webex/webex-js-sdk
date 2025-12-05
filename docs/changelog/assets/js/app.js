@@ -52,6 +52,10 @@ Handlebars.registerHelper('convertDate', function(timestamp) {
     return `${new Date(timestamp).toDateString()} ${new Date(timestamp).toTimeString()}`;
 });
 
+Handlebars.registerHelper('gt', function(a, b) {
+    return a > b;
+});
+
 
 // Util Methods
 const populateFormFieldsFromURL = async () => {
@@ -461,6 +465,21 @@ const copyToClipboard = (copyButton) => {
     },2000);
 }
 
+const toggleCommits = () => {
+    const commitsList = document.getElementById('commits-list');
+    const toggleText = document.getElementById('toggle-commits-text');
+    
+    if (commitsList && toggleText) {
+        if (commitsList.classList.contains('hide')) {
+            commitsList.classList.remove('hide');
+            toggleText.textContent = 'Hide Commits';
+        } else {
+            commitsList.classList.add('hide');
+            toggleText.textContent = 'Show Commits';
+        }
+    }
+}
+
 window.onhashchange = () => {
     populateVersions();
 };
@@ -512,15 +531,18 @@ const extractPackagesFromVersion = (changelog) => {
  * Compare packages between two versions
  * @param {Object} packagesA - {packageName: version} for version A
  * @param {Object} packagesB - {packageName: version} for version B
+ * @param {Object} changelogA - Full changelog data for version A
+ * @param {Object} changelogB - Full changelog data for version B
  * @returns {Object} - Comparison results with statistics
  */
-const comparePackages = (packagesA, packagesB) => {
+const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     const allPackageNames = new Set([
         ...Object.keys(packagesA),
         ...Object.keys(packagesB)
     ]);
     
     const packages = [];
+    const allCommits = new Map(); // hash -> {message, packages: Set()}
     let changedCount = 0;
     let unchangedCount = 0;
     let onlyInACount = 0;
@@ -541,6 +563,20 @@ const comparePackages = (packagesA, packagesB) => {
                 status = 'Version Changed';
                 changeClass = 'version-changed';
                 changedCount++;
+                
+                // Collect commits from version B for changed packages
+                if (changelogB[packageName] && changelogB[packageName][versionB]) {
+                    const commits = changelogB[packageName][versionB].commits || {};
+                    Object.entries(commits).forEach(([hash, message]) => {
+                        if (!allCommits.has(hash)) {
+                            allCommits.set(hash, {
+                                message,
+                                packages: new Set()
+                            });
+                        }
+                        allCommits.get(hash).packages.add(packageName);
+                    });
+                }
             }
         } else if (versionA && !versionB) {
             status = 'Removed';
@@ -550,6 +586,20 @@ const comparePackages = (packagesA, packagesB) => {
             status = 'Added';
             changeClass = 'only-in-b';
             onlyInBCount++;
+            
+            // Collect commits from newly added packages
+            if (changelogB[packageName] && changelogB[packageName][versionB]) {
+                const commits = changelogB[packageName][versionB].commits || {};
+                Object.entries(commits).forEach(([hash, message]) => {
+                    if (!allCommits.has(hash)) {
+                        allCommits.set(hash, {
+                            message,
+                            packages: new Set()
+                        });
+                    }
+                    allCommits.get(hash).packages.add(packageName);
+                });
+            }
         }
         
         packages.push({
@@ -564,9 +614,21 @@ const comparePackages = (packagesA, packagesB) => {
     // Sort packages alphabetically
     packages.sort((a, b) => a.packageName.localeCompare(b.packageName));
     
+    // Convert commits Map to array for template
+    const commitsList = Array.from(allCommits.entries()).map(([hash, data]) => ({
+        hash,
+        message: data.message,
+        packageCount: data.packages.size,
+        packages: Array.from(data.packages).sort()
+    }));
+    
+    console.log(`Collected ${commitsList.length} unique commits`);
+    
     return {
         packages,
+        commits: commitsList,
         totalPackages: allPackageNames.size,
+        totalCommits: commitsList.length,
         changedCount,
         unchangedCount,
         onlyInACount,
@@ -581,6 +643,9 @@ const comparePackages = (packagesA, packagesB) => {
  */
 const performVersionComparison = async (versionA, versionB) => {
     try {
+        console.log('Starting comparison:', versionA, 'vs', versionB);
+        console.log('Version paths:', versionPaths);
+        
         const comparisonResults = document.getElementById('comparison-results');
         comparisonResults.innerHTML = '<p style="text-align: center; padding: 20px;">Loading comparison...</p>';
         comparisonResults.classList.remove('hide');
@@ -597,19 +662,33 @@ const performVersionComparison = async (versionA, versionB) => {
             })
         ]);
         
+        console.log('Changelogs fetched successfully');
+        console.log('Changelog A packages:', Object.keys(changelogA).length);
+        console.log('Changelog B packages:', Object.keys(changelogB).length);
+        
         // Extract and compare packages
         const packagesA = extractPackagesFromVersion(changelogA);
         const packagesB = extractPackagesFromVersion(changelogB);
-        const comparisonData = comparePackages(packagesA, packagesB);
+        
+        console.log('Extracted packages A:', Object.keys(packagesA).length);
+        console.log('Extracted packages B:', Object.keys(packagesB).length);
+        
+        const comparisonData = comparePackages(packagesA, packagesB, changelogA, changelogB);
+        
+        console.log('Comparison data:', comparisonData);
+        console.log('Total packages in comparison:', comparisonData.packages?.length || 0);
+        console.log('Total commits collected:', comparisonData.totalCommits || 0);
         
         // Render results
         displayComparison(versionA, versionB, comparisonData);
         
     } catch (error) {
         console.error('Error performing version comparison:', error);
+        console.error('Error stack:', error.stack);
         document.getElementById('comparison-results').innerHTML = 
             `<div style="color: red; padding: 20px; background: #fee; border-radius: 5px;">
                 <strong>Error:</strong> Failed to compare versions. ${error.message}
+                <br><br><small>Check browser console for details (F12)</small>
             </div>`;
     }
 };
@@ -621,34 +700,63 @@ const performVersionComparison = async (versionA, versionB) => {
  * @param {Object} comparisonData - Comparison results
  */
 const displayComparison = (versionA, versionB, comparisonData) => {
+    console.log('Displaying comparison with data:', {
+        versionA,
+        versionB,
+        packageCount: comparisonData.packages?.length,
+        totalPackages: comparisonData.totalPackages,
+        changedCount: comparisonData.changedCount
+    });
+    
     const comparisonResults = document.getElementById('comparison-results');
     
-    const comparisonTemplate = Handlebars.compile(
-        document.getElementById('comparison-template').innerHTML
-    );
+    if (!comparisonResults) {
+        console.error('comparison-results element not found!');
+        return;
+    }
     
-    const html = comparisonTemplate({
+    const templateElement = document.getElementById('comparison-template');
+    if (!templateElement) {
+        console.error('comparison-template element not found!');
+        return;
+    }
+    
+    const comparisonTemplate = Handlebars.compile(templateElement.innerHTML);
+    
+    const templateData = {
         versionA,
         versionB,
         ...comparisonData
-    });
+    };
     
-    comparisonResults.innerHTML = html;
-    comparisonResults.classList.remove('hide');
+    console.log('Template data:', templateData);
     
-    // Update URL with comparison parameters for permalinks
-    updateComparisonURL(versionA, versionB);
-    
-    // Show the copy link button and helper text
-    const copyLinkBtn = document.getElementById('copy-comparison-link');
-    const helperText = document.getElementById('comparison-helper');
-    if (copyLinkBtn) copyLinkBtn.classList.remove('hide');
-    if (helperText) helperText.classList.remove('hide');
-    
-    // Scroll to results smoothly
-    setTimeout(() => {
-        comparisonResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
+    try {
+        const html = comparisonTemplate(templateData);
+        console.log('Generated HTML length:', html.length);
+        
+        comparisonResults.innerHTML = html;
+        comparisonResults.classList.remove('hide');
+        
+        // Update URL with comparison parameters for permalinks
+        updateComparisonURL(versionA, versionB);
+        
+        // Show the copy link button and helper text
+        const copyLinkBtn = document.getElementById('copy-comparison-link');
+        const helperText = document.getElementById('comparison-helper');
+        if (copyLinkBtn) copyLinkBtn.classList.remove('hide');
+        if (helperText) helperText.classList.remove('hide');
+        
+        // Scroll to results smoothly
+        setTimeout(() => {
+            comparisonResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+        
+        console.log('Comparison displayed successfully');
+    } catch (error) {
+        console.error('Error rendering template:', error);
+        comparisonResults.innerHTML = `<div style="color: red; padding: 20px;">Error rendering comparison: ${error.message}</div>`;
+    }
 };
 
 /**
