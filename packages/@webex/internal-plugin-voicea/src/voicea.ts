@@ -200,13 +200,18 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         });
         break;
 
-      case TRANSCRIPTION_TYPE.LANGUAGE_DETECTED:
-        // @ts-ignore
-        if (this.spokenLanguages.includes(voiceaPayload.language)) {
-          this.setSpokenLanguage(voiceaPayload.language, LANGUAGE_ASSIGNMENT.AUTO);
-        }
-        break;
+      case TRANSCRIPTION_TYPE.LANGUAGE_DETECTED: {
+        const isInSpokenLanguages = this.spokenLanguages.includes(voiceaPayload.language);
 
+        if (isInSpokenLanguages) {
+          // @ts-ignore
+          this.trigger(EVENT_TRIGGERS.LANGUAGE_DETECTED, {
+            languageCode: voiceaPayload.language,
+          });
+        }
+
+        break;
+      }
       default:
         break;
     }
@@ -284,7 +289,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public setSpokenLanguage = (
     languageCode: string,
-    languageAssignment = LANGUAGE_ASSIGNMENT.DEFAULT
+    languageAssignment?: 'DEFAULT' | 'AUTO' | 'MANUAL'
   ): Promise<void> =>
     // @ts-ignore
     this.request({
@@ -294,7 +299,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       body: {
         transcribe: {
           spokenLanguage: languageCode,
-          languageAssignment,
+          ...(languageAssignment && {languageAssignment}),
         },
       },
     }).then(() => {
