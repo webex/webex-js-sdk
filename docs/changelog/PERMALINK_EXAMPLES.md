@@ -10,10 +10,7 @@ This document provides examples of comparison permalink URLs that you can use to
 ```
 http://localhost:8000/?compare=3.9.0vs3.10.0
 ```
-**What it shows:** 
-- Package version changes between v3.9.0 and v3.10.0
-- All commits included in the release
-- Summary statistics
+**What it shows:** Changes between v3.9.0 and v3.10.0
 
 #### Major Version Jump
 ```

@@ -52,6 +52,10 @@ Handlebars.registerHelper('convertDate', function(timestamp) {
     return `${new Date(timestamp).toDateString()} ${new Date(timestamp).toTimeString()}`;
 });
 
+Handlebars.registerHelper('substring', function(str, start, end) {
+    return str ? str.substring(start, end) : '';
+});
+
 Handlebars.registerHelper('gt', function(a, b) {
     return a > b;
 });
@@ -468,14 +472,17 @@ const copyToClipboard = (copyButton) => {
 const toggleCommits = () => {
     const commitsList = document.getElementById('commits-list');
     const toggleText = document.getElementById('toggle-commits-text');
+    const toggleIcon = document.querySelector('.toggle-icon');
     
     if (commitsList && toggleText) {
         if (commitsList.classList.contains('hide')) {
             commitsList.classList.remove('hide');
             toggleText.textContent = 'Hide Commits';
+            if (toggleIcon) toggleIcon.textContent = '▼';
         } else {
             commitsList.classList.add('hide');
             toggleText.textContent = 'Show Commits';
+            if (toggleIcon) toggleIcon.textContent = '▶';
         }
     }
 }
@@ -528,12 +535,12 @@ const extractPackagesFromVersion = (changelog) => {
 };
 
 /**
- * Compare packages between two versions
+ * Compare packages between two versions and collect all commits
  * @param {Object} packagesA - {packageName: version} for version A
  * @param {Object} packagesB - {packageName: version} for version B
  * @param {Object} changelogA - Full changelog data for version A
  * @param {Object} changelogB - Full changelog data for version B
- * @returns {Object} - Comparison results with statistics
+ * @returns {Object} - Comparison results with statistics and commits
  */
 const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     const allPackageNames = new Set([
@@ -542,7 +549,7 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     ]);
     
     const packages = [];
-    const allCommits = new Map(); // hash -> {message, packages: Set()}
+    const allCommits = new Map(); // hash -> {message, packages: Set(), timestamp}
     let changedCount = 0;
     let unchangedCount = 0;
     let onlyInACount = 0;
@@ -566,12 +573,16 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
                 
                 // Collect commits from version B for changed packages
                 if (changelogB[packageName] && changelogB[packageName][versionB]) {
-                    const commits = changelogB[packageName][versionB].commits || {};
+                    const versionData = changelogB[packageName][versionB];
+                    const commits = versionData.commits || {};
+                    const publishedDate = versionData.published_date || 0;
+                    
                     Object.entries(commits).forEach(([hash, message]) => {
                         if (!allCommits.has(hash)) {
                             allCommits.set(hash, {
                                 message,
-                                packages: new Set()
+                                packages: new Set(),
+                                timestamp: publishedDate
                             });
                         }
                         allCommits.get(hash).packages.add(packageName);
@@ -587,14 +598,18 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
             changeClass = 'only-in-b';
             onlyInBCount++;
             
-            // Collect commits from newly added packages
+            // Collect commits from newly added packages in version B
             if (changelogB[packageName] && changelogB[packageName][versionB]) {
-                const commits = changelogB[packageName][versionB].commits || {};
+                const versionData = changelogB[packageName][versionB];
+                const commits = versionData.commits || {};
+                const publishedDate = versionData.published_date || 0;
+                
                 Object.entries(commits).forEach(([hash, message]) => {
                     if (!allCommits.has(hash)) {
                         allCommits.set(hash, {
                             message,
-                            packages: new Set()
+                            packages: new Set(),
+                            timestamp: publishedDate
                         });
                     }
                     allCommits.get(hash).packages.add(packageName);
@@ -614,15 +629,16 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     // Sort packages alphabetically
     packages.sort((a, b) => a.packageName.localeCompare(b.packageName));
     
-    // Convert commits Map to array for template
+    // Convert commits Map to array and sort by timestamp (newest first)
     const commitsList = Array.from(allCommits.entries()).map(([hash, data]) => ({
         hash,
         message: data.message,
         packageCount: data.packages.size,
-        packages: Array.from(data.packages).sort()
-    }));
+        packages: Array.from(data.packages).sort(),
+        timestamp: data.timestamp
+    })).sort((a, b) => b.timestamp - a.timestamp);
     
-    console.log(`Collected ${commitsList.length} unique commits`);
+    console.log(`Collected ${commitsList.length} unique commits between versions`);
     
     return {
         packages,

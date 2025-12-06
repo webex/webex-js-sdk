@@ -68,7 +68,7 @@ open /Users/vinvivek/Desktop/webex-Changelog/webex-js-sdk/docs/changelog/index.h
 - Select two SDK versions to compare
 - See comprehensive comparison including:
   - **Package versions** comparison table
-  - **All commits** between the two versions
+  - **All commits** between the two versions 📝 (NEW!)
   - **Summary statistics**
 - Color-coded differences:
   - 🟡 **Yellow**: Version changed between the two releases
