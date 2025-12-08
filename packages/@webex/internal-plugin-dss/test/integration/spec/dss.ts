@@ -54,11 +54,9 @@ describe('plugin-dss', function () {
         assert.isArray(result.foundArray);
         assert.isArray(result.notFoundArray);
 
-        console.log('Lookup Results:', {
-          found: result.foundArray,
-          notFound: result.notFoundArray,
-          entities: result.resultArray,
-        });
+        // Verify we got results for the phone numbers we queried
+        const totalResults = result.foundArray.length + result.notFoundArray.length;
+        assert.equal(totalResults, phoneNumbers.length, 'Should account for all phone numbers');
       });
 
       skipInNode(it)('should handle multiple phone numbers', async () => {
@@ -71,22 +69,25 @@ describe('plugin-dss', function () {
 
         assert.isDefined(result);
         assert.isArray(result.resultArray);
+        assert.isArray(result.foundArray);
+        assert.isArray(result.notFoundArray);
         
-        // Check that we got some results
+        // Verify all phone numbers are accounted for
         const totalResults = result.foundArray.length + result.notFoundArray.length;
         assert.equal(totalResults, phoneNumbers.length, 'Should account for all phone numbers');
       });
 
       skipInNode(it)('should handle unknown phone numbers gracefully', async () => {
         phoneNumbers = [
-          '+19999999999', // Definitely not in directory
+          '+19999999999', // Unknown phone number not in directory
         ];
 
         const result = await webex.internal.dss.lookupByPhoneNumbers(phoneNumbers);
 
         assert.isDefined(result);
-        assert.equal(result.resultArray.length, 0, 'Should find no entities');
-        assert.equal(result.notFoundArray.length, 1, 'Should mark as not found');
+        assert.deepEqual(result.resultArray, [], 'Should find no entities');
+        assert.deepEqual(result.foundArray, [], 'Should have no found numbers');
+        assert.deepEqual(result.notFoundArray, phoneNumbers, 'Should mark as not found');
       });
 
       it('should reject when more than 5 phone numbers provided', async () => {
