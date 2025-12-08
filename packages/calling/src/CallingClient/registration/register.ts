@@ -16,7 +16,7 @@ import {ICallManager} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
 import log from '../../Logger';
-import {IRegistration} from './types';
+import {FailoverCacheState, IRegistration} from './types';
 import SDKConnector from '../../SDKConnector';
 import {
   ALLOWED_SERVICES,
@@ -56,6 +56,7 @@ import {
   METHODS,
   URL_ENDPOINT,
   RECONNECT_ON_FAILURE_UTIL,
+  FAILOVER_CACHE_PREFIX,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -127,6 +128,58 @@ export class Registration implements IRegistration {
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
+  }
+
+  private getFailoverCacheKey(): string {
+    return `${FAILOVER_CACHE_PREFIX}.${this.userId || 'unknown'}`;
+  }
+
+  private saveFailoverState(failoverState: FailoverCacheState): void {
+    try {
+      localStorage.setItem(this.getFailoverCacheKey(), JSON.stringify(failoverState));
+    } catch (error) {
+      log.warn(`Storing failover state in cache failed with error: ${String(error)}`, {
+        file: REGISTRATION_FILE,
+        method: 'saveFailoverState',
+      });
+    }
+  }
+
+  private clearFailoverState(): void {
+    try {
+      localStorage.removeItem(this.getFailoverCacheKey());
+    } catch {
+      log.warn('Clearing failover state from localStorage failed', {
+        file: REGISTRATION_FILE,
+        method: 'clearFailoverState',
+      });
+    }
+  }
+
+  private async resumeFailover(): Promise<boolean> {
+    try {
+      const cachedState = localStorage.getItem(this.getFailoverCacheKey());
+      const failoverState = cachedState
+        ? (JSON.parse(cachedState) as FailoverCacheState)
+        : undefined;
+      if (failoverState && !this.isDeviceRegistered()) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const newElapsed =
+          failoverState.timeElapsed + (currentTime - failoverState.retryScheduledTime);
+
+        this.clearFailoverState();
+        await this.startFailoverTimer(failoverState.attempt, newElapsed);
+
+        return true;
+      }
+    } catch (error) {
+      log.warn(`No failover state found in cache`, {
+        file: REGISTRATION_FILE,
+        method: 'triggerRegistration',
+      });
+    }
+
+    return false;
   }
 
   public getActiveMobiusUrl(): string {
@@ -346,6 +399,13 @@ export class Registration implements IRegistration {
         interval = Math.max(interval, this.retryAfter);
       }
 
+      this.saveFailoverState({
+        attempt,
+        timeElapsed,
+        retryScheduledTime: scheduledTime,
+        serverType: 'primary',
+      });
+
       setTimeout(async () => {
         await this.mutex.runExclusive(async () => {
           abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL);
@@ -361,9 +421,17 @@ export class Registration implements IRegistration {
         loggerContext
       );
     } else if (this.backupMobiusUris.length) {
+      this.saveFailoverState({
+        attempt,
+        timeElapsed,
+        retryScheduledTime: Math.floor(Date.now() / 1000),
+        serverType: 'backup',
+      });
+
       log.info('Failing over to backup servers.', loggerContext);
       this.failoverImmediately = false;
       abort = await this.attemptRegistrationWithServers(FAILOVER_UTIL, this.backupMobiusUris);
+
       if (!abort && !this.isDeviceRegistered()) {
         interval = this.getRegRetryInterval();
 
@@ -691,6 +759,10 @@ export class Registration implements IRegistration {
    * Registration is attempted with primary and backup until it succeeds or the list is exhausted
    */
   public async triggerRegistration() {
+    if (await this.resumeFailover()) {
+      return;
+    }
+
     if (this.primaryMobiusUris.length > 0) {
       const abort = await this.attemptRegistrationWithServers(
         REGISTRATION_UTIL,
@@ -745,6 +817,7 @@ export class Registration implements IRegistration {
         });
         // eslint-disable-next-line no-await-in-loop
         const resp = await this.postRegistration(url);
+        this.clearFailoverState();
         this.deviceInfo = resp.body as IDeviceInfo;
         this.registrationStatus = RegistrationStatus.ACTIVE;
         this.setActiveMobiusUrl(url);
@@ -950,6 +1023,7 @@ export class Registration implements IRegistration {
 
     this.clearKeepaliveTimer();
     this.setStatus(RegistrationStatus.INACTIVE);
+    this.clearFailoverState();
   }
 
   /**
