@@ -9084,9 +9084,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-cc@workspace:*, @webex/plugin-cc@workspace:packages/@webex/plugin-cc":
+"@webex/plugin-cc@workspace:*, @webex/plugin-cc@workspace:packages/@webex/contact-center":
   version: 0.0.0-use.local
-  resolution: "@webex/plugin-cc@workspace:packages/@webex/plugin-cc"
+  resolution: "@webex/plugin-cc@workspace:packages/@webex/contact-center"
   dependencies:
     "@babel/preset-typescript": 7.22.11
     "@types/jest": 27.4.1
