@@ -13,9 +13,10 @@ import {
   ConsultTransferPayLoad,
   CONSULT_TRANSFER_DESTINATION_TYPE,
   TASK_CHANNEL_TYPE,
+  TASK_EVENTS,
   VOICE_VARIANT,
 } from '../types';
-import Task from '../Task';
+import Task, {TaskRuntimeOptions} from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
@@ -25,15 +26,21 @@ export default class Voice extends Task implements IVoice {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
-    callOptions: VoiceUIControlOptions = {}
+    callOptions: VoiceUIControlOptions = {},
+    runtimeOptions: TaskRuntimeOptions = {}
   ) {
-    super(contact, data, {
-      channelType: TASK_CHANNEL_TYPE.VOICE,
-      isEndTaskEnabled: callOptions.isEndTaskEnabled ?? true,
-      isEndConsultEnabled: callOptions.isEndConsultEnabled ?? true,
-      voiceVariant: callOptions.voiceVariant ?? VOICE_VARIANT.PSTN,
-      isRecordingEnabled: callOptions.isRecordingEnabled ?? true,
-    });
+    super(
+      contact,
+      data,
+      {
+        channelType: TASK_CHANNEL_TYPE.VOICE,
+        isEndTaskEnabled: callOptions.isEndTaskEnabled ?? true,
+        isEndConsultEnabled: callOptions.isEndConsultEnabled ?? true,
+        voiceVariant: callOptions.voiceVariant ?? VOICE_VARIANT.PSTN,
+        isRecordingEnabled: callOptions.isRecordingEnabled ?? true,
+      },
+      runtimeOptions
+    );
   }
 
   /**
@@ -626,5 +633,32 @@ export default class Voice extends Task implements IVoice {
       );
       throw detailedError;
     }
+  }
+
+  protected override getChannelSpecificActionOverrides() {
+    const baseOverrides = super.getChannelSpecificActionOverrides();
+
+    return {
+      ...baseOverrides,
+      emitTaskHold: this.createEmitSelfAction(TASK_EVENTS.TASK_HOLD, {updateTaskData: true}),
+      emitTaskResume: this.createEmitSelfAction(TASK_EVENTS.TASK_RESUME, {updateTaskData: true}),
+      emitTaskRecordingStarted: this.createEmitSelfAction(TASK_EVENTS.TASK_RECORDING_STARTED, {
+        updateTaskData: true,
+      }),
+      emitTaskRecordingPaused: this.createEmitSelfAction(TASK_EVENTS.TASK_RECORDING_PAUSED, {
+        updateTaskData: true,
+      }),
+      emitTaskRecordingPauseFailed: this.createEmitSelfAction(
+        TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED,
+        {updateTaskData: true}
+      ),
+      emitTaskRecordingResumed: this.createEmitSelfAction(TASK_EVENTS.TASK_RECORDING_RESUMED, {
+        updateTaskData: true,
+      }),
+      emitTaskRecordingResumeFailed: this.createEmitSelfAction(
+        TASK_EVENTS.TASK_RECORDING_RESUME_FAILED,
+        {updateTaskData: true}
+      ),
+    };
   }
 }

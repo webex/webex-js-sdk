@@ -19,7 +19,7 @@ import {TaskEvent, TaskState} from './constants';
 import {TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
 
-type TaskActionsMap = ActionFunctionMap<
+export type TaskActionsMap = ActionFunctionMap<
   TaskContext,
   TaskEventPayload,
   never,
@@ -122,6 +122,10 @@ export function createInitialContext(
 ): TaskContext {
   const baseContext: TaskContext = {
     taskData: null,
+    acceptInitiated: false,
+    holdInitiated: false,
+    transferInitiated: false,
+    conferenceInitiated: false,
     consultInitiator: false,
     consultDestination: null,
     consultDestinationAgentJoined: false,
@@ -159,7 +163,13 @@ export const actions: TaskActionsMap = {
    * Initialize task with offer data
    */
   initializeTask: assign(({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
-    return deriveTaskDataUpdates(context, getTaskDataFromEvent(event));
+    return {
+      acceptInitiated: false,
+      holdInitiated: false,
+      transferInitiated: false,
+      conferenceInitiated: false,
+      ...deriveTaskDataUpdates(context, getTaskDataFromEvent(event)),
+    };
   }),
 
   /**
@@ -174,6 +184,59 @@ export const actions: TaskActionsMap = {
    */
   setConsultInitiator: assign({
     consultInitiator: true,
+  }),
+
+  /**
+   * Track accept flow state
+   */
+  setAcceptInitiated: assign({
+    acceptInitiated: true,
+  }),
+
+  /**
+   * Track hold flow state
+   */
+  setHoldInitiated: assign({
+    holdInitiated: true,
+  }),
+
+  /**
+   * Track transfer flow state
+   */
+  handleTransferInit: assign({
+    transferInitiated: true,
+  }),
+
+  finalizeTransfer: assign({
+    transferInitiated: false,
+  }),
+
+  /**
+   * Handle consult-phase callbacks
+   */
+  handleConsultAccept: assign({
+    consultDestinationAgentJoined: true,
+  }),
+
+  handleConsultCompletion: assign({
+    consultDestinationAgentJoined: true,
+  }),
+
+  handleConsultFailed: assign({
+    consultDestination: null,
+    consultDestinationAgentJoined: false,
+  }),
+
+  handleConferenceInit: assign({
+    conferenceInitiated: true,
+  }),
+
+  handleConferenceStarted: assign({
+    conferenceInitiated: false,
+  }),
+
+  handleConferenceFailed: assign({
+    conferenceInitiated: false,
   }),
 
   /**
@@ -237,6 +300,7 @@ export const actions: TaskActionsMap = {
   clearConsultState: assign({
     consultDestination: null,
     consultDestinationAgentJoined: false,
+    conferenceInitiated: false,
   }),
 
   /**
@@ -282,6 +346,7 @@ export const actions: TaskActionsMap = {
           media: updatedMedia,
         },
       },
+      holdInitiated: false,
     };
   }),
 
@@ -299,6 +364,31 @@ export const actions: TaskActionsMap = {
   cleanupResources: () => {
     return undefined;
   },
+
+  /**
+   * Placeholder emitters that get overridden by consumers when needed
+   * These are invoked by the state machine to trigger task events
+   */
+  emitTaskHydrate: () => undefined,
+  emitTaskOfferContact: () => undefined,
+  emitTaskAssigned: () => undefined,
+  emitTaskHold: () => undefined,
+  emitTaskResume: () => undefined,
+  emitTaskEnd: () => undefined,
+  emitTaskOfferConsult: () => undefined,
+  emitTaskConsultCreated: () => undefined,
+  emitTaskConsulting: () => undefined,
+  emitTaskConsultAccepted: () => undefined,
+  emitTaskConsultEnd: () => undefined,
+  emitTaskConsultQueueCancelled: () => undefined,
+  emitTaskConsultQueueFailed: () => undefined,
+  emitTaskReject: () => undefined,
+  emitTaskRecordingStarted: () => undefined,
+  emitTaskRecordingPaused: () => undefined,
+  emitTaskRecordingPauseFailed: () => undefined,
+  emitTaskRecordingResumed: () => undefined,
+  emitTaskRecordingResumeFailed: () => undefined,
+  emitTaskWrappedup: () => undefined,
 };
 
 /**

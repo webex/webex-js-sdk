@@ -9071,6 +9071,7 @@ __metadata:
     prettier: 2.5.1
     typedoc: ^0.25.0
     typescript: 5.4.5
+    uuid: ^3.3.2
     xstate: 5.24.0
   languageName: unknown
   linkType: soft

@@ -252,6 +252,54 @@ describe('TaskManager', () => {
     expect(taskManager.getAllTasks()).toHaveProperty(payload.data.interactionId);
   });
 
+  it('should send mapped events through the state machine without duplicate updates', () => {
+    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+    const task = taskManager.getTask(taskId);
+    const updateSpy = jest.spyOn(task, 'updateTaskData');
+    const sendSpy = jest.spyOn(taskManager as any, 'sendEventToStateMachine');
+    const cleanupSpy = jest.spyOn(taskManager as any, 'handleTaskCleanup');
+
+    const assignFailedPayload = {
+      data: {
+        ...initalPayload.data,
+        type: CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED,
+        reason: 'ASSIGN_FAILED',
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(assignFailedPayload));
+
+    expect(sendSpy).toHaveBeenCalled();
+    const [, , , stateMachineEvent] = sendSpy.mock.calls[sendSpy.mock.calls.length - 1];
+    expect(stateMachineEvent).toEqual({
+      type: TaskEvent.ASSIGN_FAILED,
+      taskData: assignFailedPayload.data,
+    });
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(cleanupSpy).toHaveBeenCalledWith(task);
+  });
+
+  it('should update task data directly when no state machine mapping exists', () => {
+    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+    const task = taskManager.getTask(taskId);
+    const updateSpy = jest.spyOn(task, 'updateTaskData');
+    const sendSpy = jest.spyOn(taskManager as any, 'sendEventToStateMachine');
+
+    const participantMovedPayload = {
+      data: {
+        ...initalPayload.data,
+        type: CC_EVENTS.CONSULTED_PARTICIPANT_MOVING,
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(participantMovedPayload));
+
+    expect(sendSpy).toHaveBeenCalled();
+    const [, , , stateMachineEvent] = sendSpy.mock.calls[sendSpy.mock.calls.length - 1];
+    expect(stateMachineEvent).toBeUndefined();
+    expect(updateSpy).toHaveBeenCalledWith(participantMovedPayload.data);
+  });
+
   it('should return task by ID', () => {
     const taskId = 'task123';
     const mockTask = {

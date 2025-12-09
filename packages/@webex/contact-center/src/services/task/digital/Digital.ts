@@ -2,19 +2,28 @@ import {CC_FILE, METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import routingContact from '../contact';
 import {IDigital, TaskResponse, TaskData, TASK_CHANNEL_TYPE} from '../types';
-import Task from '../Task';
+import Task, {TaskRuntimeOptions} from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 
 export default class Digital extends Task implements IDigital {
-  constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
-    super(contact, data, {
-      channelType: TASK_CHANNEL_TYPE.DIGITAL,
-      isEndTaskEnabled: true,
-      isEndConsultEnabled: false,
-      isRecordingEnabled: false,
-    });
+  constructor(
+    contact: ReturnType<typeof routingContact>,
+    data: TaskData,
+    runtimeOptions: TaskRuntimeOptions = {}
+  ) {
+    super(
+      contact,
+      data,
+      {
+        channelType: TASK_CHANNEL_TYPE.DIGITAL,
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: false,
+        isRecordingEnabled: false,
+      },
+      runtimeOptions
+    );
   }
 
   /**

@@ -8,7 +8,7 @@
 import {setup} from 'xstate';
 import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
 import {TaskState, TaskEvent} from './constants';
-import {actions, createInitialContext} from './actions';
+import {actions, createInitialContext, TaskActionsMap} from './actions';
 
 type TaskActionConfigMap = {[K in keyof typeof actions]: undefined};
 
@@ -40,15 +40,32 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
     context: createInitialContext(uiControlConfig, TaskState.IDLE),
     on: {
       [TaskEvent.RECORDING_STARTED]: {
-        actions: ['updateTaskData'],
+        actions: ['updateTaskData', 'emitTaskRecordingStarted'],
+      },
+      [TaskEvent.HYDRATE]: {
+        actions: ['updateTaskData', 'emitTaskHydrate'],
+      },
+      [TaskEvent.CTQ_CANCEL]: {
+        actions: ['updateTaskData', 'emitTaskConsultQueueCancelled'],
+      },
+      [TaskEvent.CTQ_CANCEL_FAILED]: {
+        actions: ['updateTaskData', 'emitTaskConsultQueueFailed'],
       },
     },
     states: {
       [TaskState.IDLE]: {
         on: {
+          [TaskEvent.TASK_INCOMING]: {
+            target: TaskState.OFFERED,
+            actions: ['initializeTask'],
+          },
           [TaskEvent.OFFER]: {
             target: TaskState.OFFERED,
             actions: ['initializeTask'],
+          },
+          [TaskEvent.OFFER_CONTACT]: {
+            target: TaskState.OFFERED,
+            actions: ['initializeTask', 'emitTaskOfferContact'],
           },
           [TaskEvent.OFFER_CONSULT]: {
             target: TaskState.OFFERED_CONSULT,
@@ -59,42 +76,85 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.OFFERED]: {
         on: {
+          [TaskEvent.TASK_OFFERED]: {
+            actions: ['updateTaskData', 'emitTaskOfferContact'],
+          },
+          [TaskEvent.ACCEPT_INITIATED]: {
+            actions: ['setAcceptInitiated'],
+          },
           [TaskEvent.ACCEPT]: {
             target: TaskState.CONNECTED,
           },
           [TaskEvent.ASSIGN]: {
             target: TaskState.CONNECTED,
-            actions: ['updateTaskData'],
+            actions: ['updateTaskData', 'emitTaskAssigned'],
+          },
+          [TaskEvent.DECLINE]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
           [TaskEvent.RONA]: {
             target: TaskState.TERMINATED,
-            actions: ['markEnded'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
           [TaskEvent.END]: {
             target: TaskState.TERMINATED,
-            actions: ['markEnded'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
+          },
+          [TaskEvent.ASSIGN_FAILED]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
+          },
+          [TaskEvent.INVITE_FAILED]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
+          },
+          [TaskEvent.OUTBOUND_FAILED]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
+          },
+          [TaskEvent.CONSULT_ACCEPTED]: {
+            target: TaskState.CONSULTING,
+            actions: ['updateTaskData', 'handleConsultAccept', 'emitTaskConsultAccepted'],
           },
         },
       },
 
       [TaskState.OFFERED_CONSULT]: {
+        entry: ['emitTaskOfferConsult'],
         on: {
+          [TaskEvent.ACCEPT_INITIATED]: {
+            actions: ['setAcceptInitiated'],
+          },
           [TaskEvent.ACCEPT]: {
             target: TaskState.CONSULTING,
+            actions: ['emitTaskConsultAccepted'],
+          },
+          [TaskEvent.CONSULT_ACCEPTED]: {
+            target: TaskState.CONSULTING,
+            actions: ['emitTaskConsultAccepted'],
           },
           [TaskEvent.RONA]: {
             target: TaskState.TERMINATED,
-            actions: ['markEnded'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
           [TaskEvent.END]: {
             target: TaskState.TERMINATED,
-            actions: ['markEnded'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
+          },
+          [TaskEvent.DECLINE]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
         },
       },
 
       [TaskState.CONNECTED]: {
         on: {
+          [TaskEvent.HOLD_INITIATED]: {
+            target: TaskState.HOLD_INITIATING,
+            actions: ['setHoldInitiated'],
+          },
           [TaskEvent.HOLD]: {
             target: TaskState.HOLD_INITIATING,
           },
@@ -104,24 +164,36 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.CONSULT_CREATED]: {
             target: TaskState.CONSULTING,
-            actions: ['updateTaskData', 'setConsultInitiator'],
+            actions: ['updateTaskData', 'setConsultInitiator', 'emitTaskConsultCreated'],
+          },
+          [TaskEvent.CONSULT_ACCEPTED]: {
+            target: TaskState.CONSULTING,
+            actions: ['updateTaskData', 'handleConsultAccept', 'emitTaskConsultAccepted'],
           },
           [TaskEvent.TRANSFER]: {
             target: TaskState.WRAPPING_UP,
+            actions: ['handleTransferInit'],
+          },
+          [TaskEvent.TRANSFER_SUCCESS]: {
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+          },
+          [TaskEvent.TRANSFER_FAILED]: {
+            actions: ['updateTaskData', 'finalizeTransfer'],
           },
           [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['markEnded'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
           [TaskEvent.CONTACT_ENDED]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['markEnded'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
           [TaskEvent.PAUSE_RECORDING]: {
-            actions: ['setRecordingState'],
+            actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingPaused'],
           },
           [TaskEvent.RESUME_RECORDING]: {
-            actions: ['setRecordingState'],
+            actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingResumed'],
           },
         },
       },
@@ -130,7 +202,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         on: {
           [TaskEvent.HOLD_SUCCESS]: {
             target: TaskState.HELD,
-            actions: ['setHoldState'],
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
           },
           [TaskEvent.HOLD_FAILED]: {
             target: TaskState.CONNECTED,
@@ -140,6 +212,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.HELD]: {
         on: {
+          [TaskEvent.UNHOLD_INITIATED]: {
+            target: TaskState.RESUME_INITIATING,
+          },
           [TaskEvent.UNHOLD]: {
             target: TaskState.RESUME_INITIATING,
           },
@@ -149,10 +224,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.TRANSFER]: {
             target: TaskState.WRAPPING_UP,
+            actions: ['handleTransferInit'],
+          },
+          [TaskEvent.TRANSFER_SUCCESS]: {
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+          },
+          [TaskEvent.TRANSFER_FAILED]: {
+            actions: ['updateTaskData', 'finalizeTransfer'],
           },
           [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['markEnded'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
         },
       },
@@ -161,7 +244,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         on: {
           [TaskEvent.UNHOLD_SUCCESS]: {
             target: TaskState.CONNECTED,
-            actions: ['setHoldState'],
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
           },
           [TaskEvent.UNHOLD_FAILED]: {
             target: TaskState.HELD,
@@ -173,9 +256,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         on: {
           [TaskEvent.CONSULT_SUCCESS]: {
             target: TaskState.CONSULTING,
+            actions: ['handleConsultCompletion'],
           },
           [TaskEvent.CONSULT_FAILED]: {
             target: TaskState.CONNECTED,
+            actions: ['updateTaskData', 'handleConsultFailed'],
           },
         },
       },
@@ -183,20 +268,23 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
       [TaskState.CONSULTING]: {
         on: {
           [TaskEvent.CONSULTING_ACTIVE]: {
-            actions: ['setConsultAgentJoined'],
+            actions: ['updateTaskData', 'setConsultAgentJoined', 'emitTaskConsulting'],
           },
           [TaskEvent.START_CONFERENCE]: {
             target: TaskState.CONFERENCING,
+            actions: ['handleConferenceInit'],
           },
           [TaskEvent.MERGE_TO_CONFERENCE]: {
             target: TaskState.CONFERENCING,
+            actions: ['handleConferenceInit'],
           },
           [TaskEvent.CONFERENCE_START]: {
             target: TaskState.CONFERENCING,
+            actions: ['handleConferenceStarted'],
           },
           [TaskEvent.CONSULT_END]: {
             target: TaskState.CONNECTED,
-            actions: ['clearConsultState'],
+            actions: ['clearConsultState', 'emitTaskConsultEnd'],
           },
           [TaskEvent.CONSULT_TRANSFER]: {
             target: TaskState.WRAPPING_UP,
@@ -204,43 +292,56 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.TRANSFER]: {
             target: TaskState.WRAPPING_UP,
+            actions: ['handleTransferInit'],
+          },
+          [TaskEvent.TRANSFER_SUCCESS]: {
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+          },
+          [TaskEvent.TRANSFER_FAILED]: {
+            actions: ['updateTaskData', 'finalizeTransfer'],
           },
           [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['markEnded', 'clearConsultState'],
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
           },
           [TaskEvent.CONTACT_ENDED]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['markEnded', 'clearConsultState'],
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
           },
         },
       },
 
       [TaskState.CONFERENCING]: {
         on: {
+          [TaskEvent.CONSULT]: {
+            target: TaskState.CONSULT_INITIATING,
+            actions: ['setConsultInitiator', 'setConsultDestination'],
+          },
           [TaskEvent.EXIT_CONFERENCE]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['markEnded'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
           [TaskEvent.TRANSFER_CONFERENCE]: {
             target: TaskState.WRAPPING_UP,
           },
           [TaskEvent.CONFERENCE_END]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['markEnded'],
+            actions: ['updateTaskData', 'markEnded', 'handleConferenceFailed', 'emitTaskEnd'],
           },
           [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['markEnded'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
           [TaskEvent.CONTACT_ENDED]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['markEnded'],
+            actions: ['updateTaskData', 'markEnded', 'handleConferenceFailed', 'emitTaskEnd'],
           },
         },
       },
 
       [TaskState.WRAPPING_UP]: {
+        entry: ['emitTaskEnd'],
         on: {
           [TaskEvent.WRAPUP]: {
             target: TaskState.COMPLETED,
@@ -248,12 +349,16 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.AUTO_WRAPUP]: {
             target: TaskState.COMPLETED,
           },
+          [TaskEvent.WRAPUP_COMPLETE]: {
+            target: TaskState.COMPLETED,
+            actions: ['updateTaskData'],
+          },
         },
       },
 
       [TaskState.COMPLETED]: {
         type: 'final' as const,
-        entry: ['cleanupResources'],
+        entry: ['cleanupResources', 'emitTaskWrappedup'],
       },
 
       [TaskState.TERMINATED]: {
@@ -272,10 +377,16 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
  * @param uiControlConfig - UI control configuration
  * @returns StateMachine instance for task management
  */
-export function createTaskStateMachine(uiControlConfig: UIControlConfig) {
-  return taskStateMachineSetup
-    .createMachine(getTaskStateMachineConfig(uiControlConfig))
-    .provide({actions});
+export function createTaskStateMachine(
+  uiControlConfig: UIControlConfig,
+  options?: {actions?: Partial<TaskActionsMap>}
+) {
+  return taskStateMachineSetup.createMachine(getTaskStateMachineConfig(uiControlConfig)).provide({
+    actions: {
+      ...actions,
+      ...(options?.actions ?? {}),
+    },
+  });
 }
 
 export type TaskStateMachine = ReturnType<typeof createTaskStateMachine>;

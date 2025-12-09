@@ -31,8 +31,18 @@ import {
   getDefaultUIControls,
   haveUIControlsChanged,
 } from './state-machine/uiControlsComputer';
+import type {TaskActionsMap} from './state-machine/actions';
 
 type CallId = string;
+
+export interface TaskActionCallbacks {
+  onTaskHydrated?: (task: ITask, taskData: TaskData) => void;
+  onTaskOffered?: (task: ITask, taskData: TaskData) => void;
+}
+
+export interface TaskRuntimeOptions {
+  actionCallbacks?: TaskActionCallbacks;
+}
 
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
@@ -44,16 +54,19 @@ export default abstract class Task extends EventEmitter implements ITask {
   private lastState?: TaskState;
   protected currentUiControls: TaskUIControls;
   protected uiControlConfig: UIControlConfig;
+  protected actionCallbacks?: TaskActionCallbacks;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
-    uiControlConfig: UIControlConfig
+    uiControlConfig: UIControlConfig,
+    runtimeOptions: TaskRuntimeOptions = {}
   ) {
     super();
     this.contact = contact;
     this.data = data;
     this.uiControlConfig = uiControlConfig;
+    this.actionCallbacks = runtimeOptions.actionCallbacks;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
     this.currentUiControls = getDefaultUIControls();
@@ -167,7 +180,9 @@ export default abstract class Task extends EventEmitter implements ITask {
    * Initialize the state machine
    */
   private initializeStateMachine(): void {
-    const machine: TaskStateMachine = createTaskStateMachine(this.uiControlConfig);
+    const machine: TaskStateMachine = createTaskStateMachine(this.uiControlConfig, {
+      actions: this.getStateMachineActionOverrides(),
+    });
 
     this.stateMachineService = createActor(machine);
 
@@ -231,6 +246,119 @@ export default abstract class Task extends EventEmitter implements ITask {
       this.stateMachineService.stop();
       this.stateMachineService = undefined;
     }
+  }
+
+  private extractTaskDataFromEvent(event?: TaskEventPayload): TaskData | undefined {
+    if (!event || typeof event !== 'object') {
+      return undefined;
+    }
+
+    if ('taskData' in event) {
+      return (event as {taskData?: TaskData}).taskData;
+    }
+
+    return undefined;
+  }
+
+  private updateTaskFromEvent(event?: TaskEventPayload): void {
+    const taskData = this.extractTaskDataFromEvent(event);
+    if (taskData) {
+      this.updateTaskData(taskData);
+    }
+  }
+
+  protected getStateMachineActionOverrides(): Partial<TaskActionsMap> {
+    return {
+      ...this.getCommonActionOverrides(),
+      ...this.getChannelSpecificActionOverrides(),
+    };
+  }
+
+  protected getChannelSpecificActionOverrides(): Partial<TaskActionsMap> {
+    return {};
+  }
+
+  protected createEmitSelfAction(
+    taskEvent: TASK_EVENTS,
+    {updateTaskData = false}: {updateTaskData?: boolean} = {}
+  ) {
+    return ({event}: {event: TaskEventPayload}) => {
+      if (updateTaskData) {
+        this.updateTaskFromEvent(event);
+      }
+      this.emit(taskEvent, this);
+    };
+  }
+
+  private getCommonActionOverrides(): Partial<TaskActionsMap> {
+    return {
+      emitTaskHydrate: ({event}: {event: TaskEventPayload}) => {
+        const taskData = this.extractTaskDataFromEvent(event);
+        if (!taskData) {
+          return;
+        }
+        if (this.actionCallbacks?.onTaskHydrated) {
+          this.actionCallbacks.onTaskHydrated(this, taskData);
+        } else {
+          this.updateTaskData(taskData);
+          this.emit(TASK_EVENTS.TASK_HYDRATE, this);
+        }
+      },
+      emitTaskOfferContact: ({event}: {event: TaskEventPayload}) => {
+        const taskData = this.extractTaskDataFromEvent(event);
+        if (!taskData) {
+          return;
+        }
+        if (this.actionCallbacks?.onTaskOffered) {
+          this.actionCallbacks.onTaskOffered(this, taskData);
+        } else {
+          this.updateTaskData(taskData);
+          this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, this);
+        }
+      },
+      emitTaskAssigned: this.createEmitSelfAction(TASK_EVENTS.TASK_ASSIGNED, {
+        updateTaskData: true,
+      }),
+      emitTaskEnd: this.createEmitSelfAction(TASK_EVENTS.TASK_END, {updateTaskData: true}),
+      emitTaskOfferConsult: this.createEmitSelfAction(TASK_EVENTS.TASK_OFFER_CONSULT, {
+        updateTaskData: true,
+      }),
+      emitTaskConsultCreated: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_CREATED, {
+        updateTaskData: true,
+      }),
+      emitTaskConsulting: ({event}: {event: TaskEventPayload}) => {
+        this.updateTaskFromEvent(event);
+        if (this.data.isConsulted) {
+          this.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, this);
+        } else {
+          this.emit(TASK_EVENTS.TASK_CONSULTING, this);
+        }
+      },
+      emitTaskConsultAccepted: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_ACCEPTED),
+      emitTaskConsultEnd: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_END, {
+        updateTaskData: true,
+      }),
+      emitTaskConsultQueueCancelled: this.createEmitSelfAction(
+        TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED,
+        {
+          updateTaskData: true,
+        }
+      ),
+      emitTaskConsultQueueFailed: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED, {
+        updateTaskData: true,
+      }),
+      emitTaskReject: ({event}: {event: TaskEventPayload}) => {
+        this.updateTaskFromEvent(event);
+        const reason =
+          event && typeof event === 'object' && 'reason' in event
+            ? (event as {reason?: string}).reason
+            : undefined;
+        this.emit(TASK_EVENTS.TASK_REJECT, reason);
+      },
+      emitTaskWrappedup: this.createEmitSelfAction(TASK_EVENTS.TASK_WRAPPEDUP, {
+        updateTaskData: true,
+      }),
+    };
   }
 
   private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
