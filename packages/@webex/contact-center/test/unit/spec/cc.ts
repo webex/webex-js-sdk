@@ -139,6 +139,7 @@ describe('webex.cc', () => {
       webCallingService: undefined,
       webSocketManager: mockWebSocketManager,
       task: undefined,
+      setConfigFlags: jest.fn(),
       setWrapupData: jest.fn(),
       setAgentId: jest.fn(),
       registerIncomingCallEvent: jest.fn(),

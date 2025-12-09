@@ -1,13 +1,7 @@
 import EventEmitter from 'events';
 import {CALL_EVENT_KEYS, LocalMicrophoneStream} from '@webex/calling';
 import {CallId} from '@webex/calling/dist/types/common/types';
-import {
-  generateTaskErrorObject,
-  calculateDestAgentId,
-  calculateDestType,
-  deriveConsultTransferDestinationType,
-  getDestinationAgentId,
-} from '../core/Utils';
+import {generateTaskErrorObject, calculateDestAgentId, calculateDestType} from '../core/Utils';
 import {Failure} from '../core/GlobalTypes';
 import {LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
@@ -1429,35 +1423,31 @@ export default class Task extends EventEmitter implements IOldTask {
   public async consultTransfer(
     consultTransferPayload?: ConsultTransferPayLoad
   ): Promise<TaskResponse> {
-    try {
-      // Get the destination agent ID using custom logic from participants data
-      const destAgentId = getDestinationAgentId(
-        this.data.interaction?.participants,
-        this.data.agentId
-      );
+    // Get the destination agent ID using custom logic from participants data
+    const destAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
 
-      // Resolve the target id (queue consult transfers go to the accepted agent)
-      if (!destAgentId) {
-        throw new Error('No agent has accepted this queue consult yet');
+    // Resolve the target id (queue consult transfers go to the accepted agent)
+    if (!destAgentId) {
+      throw new Error('No agent has accepted this queue consult yet');
+    }
+
+    LoggerProxy.info(
+      `Initiating consult transfer to ${consultTransferPayload?.to || destAgentId}`,
+      {
+        module: TASK_FILE,
+        method: METHODS.CONSULT_TRANSFER,
+        interactionId: this.data.interactionId,
       }
+    );
 
-      LoggerProxy.info(
-        `Initiating consult transfer to ${consultTransferPayload?.to || destAgentId}`,
-        {
-          module: TASK_FILE,
-          method: METHODS.CONSULT_TRANSFER,
-          interactionId: this.data.interactionId,
-        }
-      );
-      // Obtain payload based on desktop logic using TaskData
-      const finalDestinationType = deriveConsultTransferDestinationType(this.data);
-
-      // By default we always use the computed destAgentId as the target id
-      const consultTransferRequest: ConsultTransferPayLoad = {
-        to: destAgentId,
-        destinationType: finalDestinationType,
-      };
-
+    // Derive destination type from the participant's type property
+    const destType = calculateDestType(this.data.interaction, this.agentId);
+    // By default we always use the computed destAgentId as the target id
+    const consultTransferRequest: ConsultTransferPayLoad = {
+      to: destAgentId,
+      destinationType: destType,
+    };
+    try {
       const result = await this.contact.consultTransfer({
         interactionId: this.data.interactionId,
         data: consultTransferRequest,
@@ -1495,17 +1485,12 @@ export default class Task extends EventEmitter implements IOldTask {
         errorData: err.data?.errorData,
         reasonCode: err.data?.reasonCode,
       };
-      const failedDestinationType = deriveConsultTransferDestinationType(this.data);
-      const failedDestAgentId = getDestinationAgentId(
-        this.data.interaction?.participants,
-        this.data.agentId
-      );
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
           taskId: this.data.interactionId,
-          destination: failedDestAgentId || '',
-          destinationType: failedDestinationType,
+          destination: destAgentId || '',
+          destinationType: destType,
           isConsultTransfer: true,
           error: error.toString(),
           ...taskErrorProps,

@@ -557,4 +557,73 @@ describe('Utils', () => {
     });
   });
 
+  describe('calculateDestType', () => {
+    const currentAgentId = 'current-agent-123';
+
+    it('should return DIALNUMBER when pType is DN', () => {
+      const interaction: any = {
+        media: {
+          consult: {
+            mType: 'consult',
+            participants: [currentAgentId, 'dest-agent-456'],
+          },
+        },
+        participants: {
+          [currentAgentId]: { type: 'Agent', pType: 'Agent' },
+          'dest-agent-456': { type: 'Agent', pType: 'DN', id: 'dest-agent-456' },
+        },
+      };
+
+      const result = Utils.calculateDestType(interaction, currentAgentId);
+      expect(result).toBe('dialNumber');
+    });
+
+    it('should return ENTRYPOINT when pType is EP-DN', () => {
+      const interaction: any = {
+        media: {
+          consult: {
+            mType: 'consult',
+            participants: [currentAgentId, 'dest-agent-456'],
+          },
+        },
+        participants: {
+          [currentAgentId]: { type: 'Agent', pType: 'Agent' },
+          'dest-agent-456': { type: 'Agent', pType: 'EP-DN', id: 'dest-agent-456' },
+        },
+      };
+
+      const result = Utils.calculateDestType(interaction, currentAgentId);
+      expect(result).toBe('entryPoint');
+    });
+
+    it('should return lowercase pType for other types', () => {
+      const interaction: any = {
+        media: {
+          consult: {
+            mType: 'consult',
+            participants: [currentAgentId, 'dest-agent-456'],
+          },
+        },
+        participants: {
+          [currentAgentId]: { type: 'Agent', pType: 'Agent' },
+          'dest-agent-456': { type: 'Agent', pType: 'Agent', id: 'dest-agent-456' },
+        },
+      };
+
+      const result = Utils.calculateDestType(interaction, currentAgentId);
+      expect(result).toBe('agent');
+    });
+
+    it('should return agent when no destination agent found', () => {
+      const interaction: any = {
+        media: {},
+        participants: {
+          [currentAgentId]: { type: 'Agent', pType: 'Agent' },
+        },
+      };
+
+      const result = Utils.calculateDestType(interaction, currentAgentId);
+      expect(result).toBe('agent');
+    });
+  });
 });
