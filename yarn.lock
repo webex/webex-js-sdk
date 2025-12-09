@@ -7279,7 +7279,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/babel-config-legacy@workspace:*, @webex/babel-config-legacy@workspace:^, @webex/babel-config-legacy@workspace:packages/legacy/babel":
+"@webex/babel-config-legacy@workspace:*, @webex/babel-config-legacy@workspace:packages/legacy/babel":
   version: 0.0.0-use.local
   resolution: "@webex/babel-config-legacy@workspace:packages/legacy/babel"
   dependencies:
@@ -7598,7 +7598,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/eslint-config-legacy@workspace:*, @webex/eslint-config-legacy@workspace:^, @webex/eslint-config-legacy@workspace:packages/legacy/eslint":
+"@webex/eslint-config-legacy@workspace:*, @webex/eslint-config-legacy@workspace:packages/legacy/eslint":
   version: 0.0.0-use.local
   resolution: "@webex/eslint-config-legacy@workspace:packages/legacy/eslint"
   dependencies:
@@ -7856,7 +7856,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-conversation@workspace:*, @webex/internal-plugin-conversation@workspace:^, @webex/internal-plugin-conversation@workspace:packages/@webex/internal-plugin-conversation":
+"@webex/internal-plugin-conversation@workspace:*, @webex/internal-plugin-conversation@workspace:packages/@webex/internal-plugin-conversation":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-conversation@workspace:packages/@webex/internal-plugin-conversation"
   dependencies:
@@ -7888,7 +7888,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-device@workspace:*, @webex/internal-plugin-device@workspace:^, @webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device":
+"@webex/internal-plugin-device@workspace:*, @webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device"
   dependencies:
@@ -7968,7 +7968,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-encryption@workspace:*, @webex/internal-plugin-encryption@workspace:^, @webex/internal-plugin-encryption@workspace:packages/@webex/internal-plugin-encryption":
+"@webex/internal-plugin-encryption@workspace:*, @webex/internal-plugin-encryption@workspace:packages/@webex/internal-plugin-encryption":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-encryption@workspace:packages/@webex/internal-plugin-encryption"
   dependencies:
@@ -8297,19 +8297,19 @@ __metadata:
   resolution: "@webex/internal-plugin-task@workspace:packages/@webex/internal-plugin-task"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-encryption": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-retry": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-retry": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -8424,7 +8424,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/jest-config-legacy@workspace:*, @webex/jest-config-legacy@workspace:^, @webex/jest-config-legacy@workspace:packages/legacy/jest":
+"@webex/jest-config-legacy@workspace:*, @webex/jest-config-legacy@workspace:packages/legacy/jest":
   version: 0.0.0-use.local
   resolution: "@webex/jest-config-legacy@workspace:packages/legacy/jest"
   dependencies:
@@ -8480,7 +8480,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/legacy-tools@workspace:*, @webex/legacy-tools@workspace:^, @webex/legacy-tools@workspace:packages/legacy/tools":
+"@webex/legacy-tools@workspace:*, @webex/legacy-tools@workspace:packages/legacy/tools":
   version: 0.0.0-use.local
   resolution: "@webex/legacy-tools@workspace:packages/legacy/tools"
   dependencies:
@@ -9262,7 +9262,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-chai@workspace:*, @webex/test-helper-chai@workspace:^, @webex/test-helper-chai@workspace:packages/@webex/test-helper-chai":
+"@webex/test-helper-chai@workspace:*, @webex/test-helper-chai@workspace:packages/@webex/test-helper-chai":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-chai@workspace:packages/@webex/test-helper-chai"
   dependencies:
@@ -9325,7 +9325,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-mocha@workspace:*, @webex/test-helper-mocha@workspace:^, @webex/test-helper-mocha@workspace:packages/@webex/test-helper-mocha":
+"@webex/test-helper-mocha@workspace:*, @webex/test-helper-mocha@workspace:packages/@webex/test-helper-mocha":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-mocha@workspace:packages/@webex/test-helper-mocha"
   dependencies:
@@ -9362,7 +9362,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-mock-webex@workspace:*, @webex/test-helper-mock-webex@workspace:^, @webex/test-helper-mock-webex@workspace:packages/@webex/test-helper-mock-webex":
+"@webex/test-helper-mock-webex@workspace:*, @webex/test-helper-mock-webex@workspace:packages/@webex/test-helper-mock-webex":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-mock-webex@workspace:packages/@webex/test-helper-mock-webex"
   dependencies:
@@ -9401,7 +9401,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-retry@workspace:*, @webex/test-helper-retry@workspace:^, @webex/test-helper-retry@workspace:packages/@webex/test-helper-retry":
+"@webex/test-helper-retry@workspace:*, @webex/test-helper-retry@workspace:packages/@webex/test-helper-retry":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-retry@workspace:packages/@webex/test-helper-retry"
   dependencies:
@@ -9453,7 +9453,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-test-users@workspace:*, @webex/test-helper-test-users@workspace:^, @webex/test-helper-test-users@workspace:packages/@webex/test-helper-test-users":
+"@webex/test-helper-test-users@workspace:*, @webex/test-helper-test-users@workspace:packages/@webex/test-helper-test-users":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-test-users@workspace:packages/@webex/test-helper-test-users"
   dependencies:
@@ -9577,7 +9577,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/webex-core@workspace:*, @webex/webex-core@workspace:^, @webex/webex-core@workspace:packages/@webex/webex-core":
+"@webex/webex-core@workspace:*, @webex/webex-core@workspace:packages/@webex/webex-core":
   version: 0.0.0-use.local
   resolution: "@webex/webex-core@workspace:packages/@webex/webex-core"
   dependencies:

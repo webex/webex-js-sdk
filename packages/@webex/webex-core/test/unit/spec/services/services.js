@@ -868,6 +868,57 @@ describe('webex-core', () => {
         );
       });
     });
+    describe('#isValidHost', () => {
+      beforeEach(() => {
+        // Setting up a mock host catalog
+          services._hostCatalog = {
+            "audit-ci-m.wbx2.com": [
+              {
+                  "host": "audit-ci-m.wbx2.com",
+                  "ttl": -1,
+                  "priority": 5,
+                  "id": "urn:IDENTITY:PA61:adminAudit"
+              },
+              {
+                  "host": "audit-ci-m.wbx2.com",
+                  "ttl": -1,
+                  "priority": 5,
+                  "id": "urn:IDENTITY:PA61:adminAuditV2"
+              }
+            ],
+            "mercury-connection-partition0-r.wbx2.com": [
+                {
+                    "host": "mercury-connection-partition0-r.wbx2.com",
+                    "ttl": -1,
+                    "priority": 5,
+                    "id": "urn:TEAM:us-west-2_r:mercuryConnectionPartition0"
+                }
+            ],
+            "empty.com": []
+          };
+      });
+      afterAll(() => {
+        // Clean up the mock host catalog
+        services._hostCatalog = {};
+      });
+      it('returns true if the host is in the host catalog', () => {
+        assert.isTrue(services.isValidHost('mercury-connection-partition0-r.wbx2.com'));
+      });
+
+      it('returns false if the host is not in the host catalog or has an empty entry list', () => {
+        assert.isFalse(services.isValidHost('test.com'));
+        assert.isFalse(services.isValidHost(''));
+        assert.isFalse(services.isValidHost(null));
+        assert.isFalse(services.isValidHost(undefined));
+        assert.isFalse(services.isValidHost('empty.com'));
+      });
+
+      it('returns false for non-string inputs', () => {
+        assert.isFalse(services.isValidHost(123));
+        assert.isFalse(services.isValidHost({}));
+        assert.isFalse(services.isValidHost([]));
+      });
+    });
   });
 });
 /* eslint-enable no-underscore-dangle */
