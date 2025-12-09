@@ -1,10 +1,9 @@
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
-import Task from './Task';
 import Voice from './voice/Voice';
 import WebRTC from './voice/WebRTC';
 import Digital from './digital/Digital';
-import {MEDIA_CHANNEL, TaskData} from './types';
+import {ITask, MEDIA_CHANNEL, TaskData} from './types';
 import {ConfigFlags} from '../../types';
 import {WrapupData} from '../config/types';
 
@@ -16,12 +15,12 @@ export default class TaskFactory {
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    configFlags: ConfigFlags,
+    configFlags?: ConfigFlags,
     wrapupData?: WrapupData,
     agentId?: string
-  ): Task {
+  ): ITask {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
-    const {isEndCallEnabled, isEndConsultEnabled} = configFlags;
+    const {isEndCallEnabled, isEndConsultEnabled} = configFlags || {};
 
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:

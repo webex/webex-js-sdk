@@ -133,11 +133,18 @@ export default class TaskManager extends EventEmitter {
                 this.configFlags,
                 this.wrapupData,
                 this.agentId
-              ) as unknown as ITask;
+              );
               this.taskCollection[payload.data.interactionId] = task;
+              // Emit appropriate event based on task state
+              if (payload.data.interaction.state === 'new') {
+                this.emit(TASK_EVENTS.TASK_INCOMING, task);
+              } else {
+                this.emit(TASK_EVENTS.TASK_HYDRATE, task);
+              }
+            } else {
+              // Task already exists, just update data without emitting TASK_HYDRATE
+              this.updateTaskData(task, payload.data);
             }
-            this.updateTaskData(task, payload.data);
-            this.emit(TASK_EVENTS.TASK_HYDRATE, task);
             break;
 
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
@@ -148,7 +155,7 @@ export default class TaskManager extends EventEmitter {
               this.configFlags,
               this.wrapupData,
               this.agentId
-            ) as unknown as ITask;
+            );
             this.taskCollection[payload.data.interactionId] = task;
             // for telephony in-browser we wait for incoming call, else fire immediately
             if (
@@ -204,15 +211,41 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
           case CC_EVENTS.CONTACT_ENDED:
-          case CC_EVENTS.AGENT_INVITE_FAILED:
             this.updateTaskData(task, {
               ...payload.data,
               wrapUpRequired: payload.data.interaction.state !== 'new',
             });
             this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_END, task);
-
             break;
+          case CC_EVENTS.AGENT_INVITE_FAILED:
+          case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED: {
+            const isInviteFailed = payload.data.type === CC_EVENTS.AGENT_INVITE_FAILED;
+            const metricName = isInviteFailed
+              ? METRIC_EVENT_NAMES.AGENT_INVITE_FAILED
+              : METRIC_EVENT_NAMES.AGENT_CONTACT_ASSIGN_FAILED;
+            this.metricsManager.trackEvent(
+              metricName,
+              {
+                ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
+                taskId: payload.data.interactionId,
+                reason: payload.data.reason,
+              },
+              ['behavioral', 'operational']
+            );
+            // Only INVITE_FAILED needs wrapUpRequired logic
+            if (isInviteFailed) {
+              this.updateTaskData(task, {
+                ...payload.data,
+                wrapUpRequired: payload.data.interaction?.state !== 'new',
+              });
+            } else {
+              this.updateTaskData(task, payload.data);
+            }
+            this.handleTaskCleanup(task);
+            task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
+            break;
+          }
           case CC_EVENTS.CONTACT_MERGED:
             task = this.handleContactMerged(task, payload.data);
             break;
@@ -224,7 +257,7 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT_UNHELD:
             // As soon as the main interaction is unheld, we need to emit TASK_RESUME
             this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_UNHOLD, task);
+            task.emit(TASK_EVENTS.TASK_RESUME, task);
             break;
           case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
             this.updateTaskData(task, {

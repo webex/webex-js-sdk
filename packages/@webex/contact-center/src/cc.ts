@@ -700,13 +700,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           body: this.getConnectionConfig(),
         })
         .then(async (data: WelcomeEvent) => {
-          const configFlags: ConfigFlags = {
-            isEndCallEnabled: this.agentConfig.isEndCallEnabled,
-            isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
-            webRtcEnabled: this.agentConfig.webRtcEnabled,
-            autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
-          };
-          this.taskManager.setConfigFlags(configFlags);
           const agentId = data.agentId;
           const orgId = this.$webex.credentials.getOrgId();
           this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
@@ -714,6 +707,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             module: CC_FILE,
             method: METHODS.CONNECT_WEBSOCKET,
           });
+
+          const configFlags: ConfigFlags = {
+            isEndCallEnabled: this.agentConfig.isEndCallEnabled,
+            isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
+            webRtcEnabled: this.agentConfig.webRtcEnabled,
+            autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
+          };
+          this.taskManager.setConfigFlags(configFlags);
           // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
           this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
           this.taskManager.setAgentId(this.agentConfig.agentId);
