@@ -64,7 +64,15 @@ open /Users/vinvivek/Desktop/webex-Changelog/webex-js-sdk/docs/changelog/index.h
 - Search by commit hash
 - View all packages released with a specific version
 
-### 2. **Version Comparison (New Feature)** 🆕
+### 2. **Package-Level Comparison** 🆕 (NEW!)
+- Compare **two specific package versions** within same stable release
+- Perfect for comparing "next" versions (e.g., `3.10.0-next.5` vs `3.10.0-next.12`)
+- See commits, changes, and related packages for each version
+- Side-by-side comparison view
+- Works with same package (different versions) or different packages
+- **Only 2 packages** - clean and focused comparison
+
+### 3. **Version Comparison (Stable Versions)** 🆕
 - Select two SDK versions to compare
 - See comprehensive comparison including:
   - **Package versions** comparison table

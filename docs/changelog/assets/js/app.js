@@ -52,10 +52,6 @@ Handlebars.registerHelper('convertDate', function(timestamp) {
     return `${new Date(timestamp).toDateString()} ${new Date(timestamp).toTimeString()}`;
 });
 
-Handlebars.registerHelper('substring', function(str, start, end) {
-    return str ? str.substring(start, end) : '';
-});
-
 Handlebars.registerHelper('gt', function(a, b) {
     return a > b;
 });
@@ -177,6 +173,11 @@ const doStableVersionChange = async ({stable_version}) => {
         // Fetch the changelog and populate package names
         await fetchChangelog(versionPaths[stable_version]);
         populatePackageNames(currentChangelog);
+        
+        // Populate package comparison dropdowns
+        populatePackageDropdownForComparison('pkg1-select');
+        populatePackageDropdownForComparison('pkg2-select');
+        
         updateFormState();
         if(versionInput.value.trim() !== ''){
             validateVersionInput({version: versionInput.value});
@@ -472,19 +473,122 @@ const copyToClipboard = (copyButton) => {
 const toggleCommits = () => {
     const commitsList = document.getElementById('commits-list');
     const toggleText = document.getElementById('toggle-commits-text');
-    const toggleIcon = document.querySelector('.toggle-icon');
     
     if (commitsList && toggleText) {
         if (commitsList.classList.contains('hide')) {
             commitsList.classList.remove('hide');
             toggleText.textContent = 'Hide Commits';
-            if (toggleIcon) toggleIcon.textContent = '▼';
         } else {
             commitsList.classList.add('hide');
             toggleText.textContent = 'Show Commits';
-            if (toggleIcon) toggleIcon.textContent = '▶';
         }
     }
+}
+
+/**
+ * Copy comparison link to clipboard
+ * Global function that can be called from HTML or JS
+ */
+const copyComparisonLink = () => {
+    const currentURL = window.location.href;
+    const copyLinkBtn = document.getElementById('copy-comparison-link');
+    
+    console.log('Copying URL:', currentURL);
+    
+    // Try modern clipboard API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(currentURL)
+            .then(() => {
+                console.log('URL copied successfully via Clipboard API');
+                showCopySuccess(copyLinkBtn);
+            })
+            .catch(err => {
+                console.error('Clipboard API failed:', err);
+                // Fallback to old method
+                fallbackCopyToClipboard(currentURL, copyLinkBtn);
+            });
+    } else {
+        console.log('Clipboard API not available, using fallback');
+        // Fallback for older browsers
+        fallbackCopyToClipboard(currentURL, copyLinkBtn);
+    }
+}
+
+/**
+ * Show success feedback on copy button
+ */
+const showCopySuccess = (button) => {
+    if (!button) return;
+    
+    const originalText = button.innerHTML;
+    button.innerHTML = '✓ Link Copied!';
+    button.style.backgroundColor = '#28a745';
+    button.style.borderColor = '#28a745';
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.style.backgroundColor = '';
+        button.style.borderColor = '';
+    }, 2000);
+}
+
+/**
+ * Fallback copy method for browsers without Clipboard API
+ */
+const fallbackCopyToClipboard = (text, button) => {
+    // Create temporary input element
+    const tempInput = document.createElement('input');
+    tempInput.style.position = 'fixed';
+    tempInput.style.opacity = '0';
+    tempInput.value = text;
+    document.body.appendChild(tempInput);
+    
+    // Select and copy
+    tempInput.select();
+    tempInput.setSelectionRange(0, 99999); // For mobile devices
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            console.log('URL copied successfully via fallback method');
+            showCopySuccess(button);
+        } else {
+            console.error('execCommand copy failed');
+            showCopyError(button);
+        }
+    } catch (err) {
+        console.error('Fallback copy failed:', err);
+        showCopyError(button);
+    }
+    
+    // Remove temporary input
+    document.body.removeChild(tempInput);
+}
+
+/**
+ * Show error feedback
+ */
+const showCopyError = (button) => {
+    if (!button) {
+        alert('Could not copy link. Please copy manually from the address bar.');
+        return;
+    }
+    
+    const originalText = button.innerHTML;
+    button.innerHTML = '❌ Copy Failed';
+    button.style.backgroundColor = '#dc3545';
+    button.style.borderColor = '#dc3545';
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.style.backgroundColor = '';
+        button.style.borderColor = '';
+    }, 2000);
+    
+    // Also show alert with instructions
+    setTimeout(() => {
+        alert('Could not copy link automatically.\n\nPlease copy manually from the address bar:\n' + window.location.href);
+    }, 100);
 }
 
 window.onhashchange = () => {
@@ -492,6 +596,319 @@ window.onhashchange = () => {
 };
 
 populateVersions();
+
+/* ============================================
+   PACKAGE-LEVEL COMPARISON FUNCTIONALITY
+   ============================================ */
+
+/**
+ * Populate package dropdown for comparison
+ * @param {string} selectId - ID of the select element
+ */
+const populatePackageDropdownForComparison = (selectId) => {
+    const selectElement = document.getElementById(selectId);
+    
+    if (!selectElement) {
+        console.warn(`Package dropdown element '${selectId}' not found`);
+        return;
+    }
+    
+    const stableVersion = versionSelectDropdown.value;
+    
+    if (!stableVersion) {
+        selectElement.disabled = true;
+        selectElement.innerHTML = '<option value="">Select a stable version first</option>';
+        console.log(`${selectId}: No stable version selected`);
+        return;
+    }
+    
+    if (!currentChangelog) {
+        selectElement.disabled = true;
+        selectElement.innerHTML = '<option value="">Loading packages...</option>';
+        console.log(`${selectId}: Changelog not loaded yet for version ${stableVersion}`);
+        return;
+    }
+    
+    // Get all packages for selected stable version
+    let packages = Object.keys(currentChangelog);
+    console.log(`${selectId}: Populating with ${packages.length} packages for version ${stableVersion}`);
+    
+    // Prioritize certain packages
+    let specialPackages = ['webex', '@webex/calling'];
+    let filteredPackages = packages.filter(pkg => !specialPackages.includes(pkg));
+    filteredPackages.sort();
+    
+    let sortedPackages = [...specialPackages.filter(pkg => packages.includes(pkg)), ...filteredPackages];
+    
+    let optionsHtml = '<option value="">Select package...</option>';
+    sortedPackages.forEach(pkg => {
+        optionsHtml += `<option value="${pkg}">${pkg}</option>`;
+    });
+    
+    selectElement.innerHTML = optionsHtml;
+    selectElement.disabled = false;
+    console.log(`${selectId}: Successfully populated with packages`);
+};
+
+/**
+ * Populate version dropdown for selected package
+ * @param {string} packageName - Selected package name
+ * @param {string} versionSelectId - ID of version select element
+ */
+const populatePackageVersionsForComparison = (packageName, versionSelectId) => {
+    const versionSelect = document.getElementById(versionSelectId);
+    
+    if (!versionSelect) {
+        console.warn(`Version select element '${versionSelectId}' not found`);
+        return;
+    }
+    
+    if (!packageName) {
+        versionSelect.disabled = true;
+        versionSelect.innerHTML = '<option value="">Select package first</option>';
+        console.log(`${versionSelectId}: No package selected`);
+        return;
+    }
+    
+    if (!currentChangelog || !currentChangelog[packageName]) {
+        versionSelect.disabled = true;
+        versionSelect.innerHTML = '<option value="">Package data not found</option>';
+        console.warn(`${versionSelectId}: No data found for package ${packageName}`);
+        return;
+    }
+    
+    // Get all versions for this package
+    const versions = Object.keys(currentChangelog[packageName])
+        .sort((a, b) => {
+            // Sort by published_date (newest first)
+            const dateA = currentChangelog[packageName][a].published_date || 0;
+            const dateB = currentChangelog[packageName][b].published_date || 0;
+            return dateB - dateA;
+        });
+    
+    console.log(`${versionSelectId}: Populating ${versions.length} versions for package ${packageName}`);
+    
+    let optionsHtml = '<option value="">Select version...</option>';
+    versions.forEach(version => {
+        const date = currentChangelog[packageName][version].published_date;
+        const dateStr = date ? new Date(date).toLocaleDateString() : '';
+        optionsHtml += `<option value="${version}">${version} ${dateStr ? '(' + dateStr + ')' : ''}</option>`;
+    });
+    
+    versionSelect.innerHTML = optionsHtml;
+    versionSelect.disabled = false;
+    console.log(`${versionSelectId}: Successfully populated with versions`);
+};
+
+/**
+ * Check if compare button should be enabled
+ */
+const checkEnablePackageCompareButton = () => {
+    const btn = document.getElementById('pkg-compare-btn');
+    if (!btn) return;
+    
+    const pkg1 = document.getElementById('pkg1-select')?.value;
+    const pkg1Ver = document.getElementById('pkg1-version-select')?.value;
+    const pkg2 = document.getElementById('pkg2-select')?.value;
+    const pkg2Ver = document.getElementById('pkg2-version-select')?.value;
+    
+    const isReady = !!(pkg1 && pkg1Ver && pkg2 && pkg2Ver);
+    btn.disabled = !isReady;
+    
+    if (isReady) {
+        console.log('Compare button enabled:', {pkg1: `${pkg1}@${pkg1Ver}`, pkg2: `${pkg2}@${pkg2Ver}`});
+    }
+};
+
+/**
+ * Compare two package versions
+ */
+const comparePackageVersions = () => {
+    const pkg1Name = document.getElementById('pkg1-select').value;
+    const pkg1Version = document.getElementById('pkg1-version-select').value;
+    const pkg2Name = document.getElementById('pkg2-select').value;
+    const pkg2Version = document.getElementById('pkg2-version-select').value;
+    
+    if (!pkg1Name || !pkg1Version || !pkg2Name || !pkg2Version) {
+        alert('Please select both packages and their versions');
+        return;
+    }
+    
+    const pkg1Data = currentChangelog[pkg1Name]?.[pkg1Version];
+    const pkg2Data = currentChangelog[pkg2Name]?.[pkg2Version];
+    
+    if (!pkg1Data || !pkg2Data) {
+        alert('Could not find package data');
+        return;
+    }
+    
+    console.log('Comparing packages:', {
+        pkg1: `${pkg1Name}@${pkg1Version}`,
+        pkg2: `${pkg2Name}@${pkg2Version}`
+    });
+    
+    // Prepare data for display
+    const comparisonData = {
+        package1: {
+            name: pkg1Name,
+            version: pkg1Version,
+            published_date: pkg1Data.published_date,
+            commitCount: Object.keys(pkg1Data.commits || {}).length,
+            commits: Object.entries(pkg1Data.commits || {}).map(([hash, message]) => ({
+                hash,
+                message
+            })),
+            alongWith: pkg1Data.alongWith
+        },
+        package2: {
+            name: pkg2Name,
+            version: pkg2Version,
+            published_date: pkg2Data.published_date,
+            commitCount: Object.keys(pkg2Data.commits || {}).length,
+            commits: Object.entries(pkg2Data.commits || {}).map(([hash, message]) => ({
+                hash,
+                message
+            })),
+            alongWith: pkg2Data.alongWith
+        }
+    };
+    
+    // Display comparison
+    displayPackageComparison(comparisonData);
+};
+
+/**
+ * Display package comparison results
+ * @param {Object} comparisonData - Comparison data
+ */
+const displayPackageComparison = (comparisonData) => {
+    const resultsDiv = document.getElementById('package-compare-results');
+    if (!resultsDiv) {
+        console.error('package-compare-results element not found');
+        return;
+    }
+    
+    const templateElement = document.getElementById('package-comparison-template');
+    if (!templateElement) {
+        console.error('package-comparison-template element not found');
+        return;
+    }
+    
+    const packageComparisonTemplate = Handlebars.compile(templateElement.innerHTML);
+    
+    try {
+        const html = packageComparisonTemplate(comparisonData);
+        resultsDiv.innerHTML = html;
+        resultsDiv.classList.remove('hide');
+        
+        // Scroll to results
+        setTimeout(() => {
+            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+        
+        console.log('Package comparison displayed successfully');
+    } catch (error) {
+        console.error('Error rendering package comparison template:', error);
+        resultsDiv.innerHTML = `<div style="color: red; padding: 20px;">Error rendering comparison: ${error.message}</div>`;
+    }
+};
+
+/**
+ * Initialize package comparison functionality
+ */
+const initializePackageComparison = () => {
+    console.log('Initializing package comparison...');
+    
+    // When stable version changes, populate package dropdowns
+    if (versionSelectDropdown) {
+        versionSelectDropdown.addEventListener('change', () => {
+            populatePackageDropdownForComparison('pkg1-select');
+            populatePackageDropdownForComparison('pkg2-select');
+            // Reset version dropdowns
+            const pkg1Ver = document.getElementById('pkg1-version-select');
+            const pkg2Ver = document.getElementById('pkg2-version-select');
+            if (pkg1Ver) {
+                pkg1Ver.innerHTML = '<option value="">Select package first</option>';
+                pkg1Ver.disabled = true;
+            }
+            if (pkg2Ver) {
+                pkg2Ver.innerHTML = '<option value="">Select package first</option>';
+                pkg2Ver.disabled = true;
+            }
+            checkEnablePackageCompareButton();
+        });
+    }
+    
+    // When package 1 changes, populate its versions
+    const pkg1Select = document.getElementById('pkg1-select');
+    if (pkg1Select) {
+        pkg1Select.addEventListener('change', (e) => {
+            populatePackageVersionsForComparison(e.target.value, 'pkg1-version-select');
+            checkEnablePackageCompareButton();
+        });
+    }
+    
+    // When package 2 changes, populate its versions
+    const pkg2Select = document.getElementById('pkg2-select');
+    if (pkg2Select) {
+        pkg2Select.addEventListener('change', (e) => {
+            populatePackageVersionsForComparison(e.target.value, 'pkg2-version-select');
+            checkEnablePackageCompareButton();
+        });
+    }
+    
+    // Enable button when both versions selected
+    const pkg1VerSelect = document.getElementById('pkg1-version-select');
+    const pkg2VerSelect = document.getElementById('pkg2-version-select');
+    if (pkg1VerSelect) pkg1VerSelect.addEventListener('change', checkEnablePackageCompareButton);
+    if (pkg2VerSelect) pkg2VerSelect.addEventListener('change', checkEnablePackageCompareButton);
+    
+    // Compare button
+    const compareForm = document.getElementById('package-compare-form');
+    if (compareForm) {
+        compareForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            comparePackageVersions();
+        });
+    }
+    
+    // Clear button
+    const clearBtn = document.getElementById('pkg-clear-btn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            const pkg1Select = document.getElementById('pkg1-select');
+            const pkg2Select = document.getElementById('pkg2-select');
+            const pkg1Ver = document.getElementById('pkg1-version-select');
+            const pkg2Ver = document.getElementById('pkg2-version-select');
+            const results = document.getElementById('package-compare-results');
+            
+            if (pkg1Select) pkg1Select.value = '';
+            if (pkg2Select) pkg2Select.value = '';
+            if (pkg1Ver) {
+                pkg1Ver.value = '';
+                pkg1Ver.disabled = true;
+                pkg1Ver.innerHTML = '<option value="">Select package first</option>';
+            }
+            if (pkg2Ver) {
+                pkg2Ver.value = '';
+                pkg2Ver.disabled = true;
+                pkg2Ver.innerHTML = '<option value="">Select package first</option>';
+            }
+            if (results) results.classList.add('hide');
+            
+            checkEnablePackageCompareButton();
+        });
+    }
+    
+    console.log('Package comparison initialized');
+};
+
+// Initialize package comparison when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePackageComparison);
+} else {
+    initializePackageComparison();
+}
 
 /* ============================================
    VERSION COMPARISON FUNCTIONALITY
@@ -535,12 +952,12 @@ const extractPackagesFromVersion = (changelog) => {
 };
 
 /**
- * Compare packages between two versions and collect all commits
+ * Compare packages between two versions
  * @param {Object} packagesA - {packageName: version} for version A
  * @param {Object} packagesB - {packageName: version} for version B
  * @param {Object} changelogA - Full changelog data for version A
  * @param {Object} changelogB - Full changelog data for version B
- * @returns {Object} - Comparison results with statistics and commits
+ * @returns {Object} - Comparison results with statistics
  */
 const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     const allPackageNames = new Set([
@@ -549,7 +966,7 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     ]);
     
     const packages = [];
-    const allCommits = new Map(); // hash -> {message, packages: Set(), timestamp}
+    const allCommits = new Map(); // hash -> {message, packages: Set()}
     let changedCount = 0;
     let unchangedCount = 0;
     let onlyInACount = 0;
@@ -573,16 +990,12 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
                 
                 // Collect commits from version B for changed packages
                 if (changelogB[packageName] && changelogB[packageName][versionB]) {
-                    const versionData = changelogB[packageName][versionB];
-                    const commits = versionData.commits || {};
-                    const publishedDate = versionData.published_date || 0;
-                    
+                    const commits = changelogB[packageName][versionB].commits || {};
                     Object.entries(commits).forEach(([hash, message]) => {
                         if (!allCommits.has(hash)) {
                             allCommits.set(hash, {
                                 message,
-                                packages: new Set(),
-                                timestamp: publishedDate
+                                packages: new Set()
                             });
                         }
                         allCommits.get(hash).packages.add(packageName);
@@ -598,18 +1011,14 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
             changeClass = 'only-in-b';
             onlyInBCount++;
             
-            // Collect commits from newly added packages in version B
+            // Collect commits from newly added packages
             if (changelogB[packageName] && changelogB[packageName][versionB]) {
-                const versionData = changelogB[packageName][versionB];
-                const commits = versionData.commits || {};
-                const publishedDate = versionData.published_date || 0;
-                
+                const commits = changelogB[packageName][versionB].commits || {};
                 Object.entries(commits).forEach(([hash, message]) => {
                     if (!allCommits.has(hash)) {
                         allCommits.set(hash, {
                             message,
-                            packages: new Set(),
-                            timestamp: publishedDate
+                            packages: new Set()
                         });
                     }
                     allCommits.get(hash).packages.add(packageName);
@@ -629,16 +1038,15 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     // Sort packages alphabetically
     packages.sort((a, b) => a.packageName.localeCompare(b.packageName));
     
-    // Convert commits Map to array and sort by timestamp (newest first)
+    // Convert commits Map to array for template
     const commitsList = Array.from(allCommits.entries()).map(([hash, data]) => ({
         hash,
         message: data.message,
         packageCount: data.packages.size,
-        packages: Array.from(data.packages).sort(),
-        timestamp: data.timestamp
-    })).sort((a, b) => b.timestamp - a.timestamp);
+        packages: Array.from(data.packages).sort()
+    }));
     
-    console.log(`Collected ${commitsList.length} unique commits between versions`);
+    console.log(`Collected ${commitsList.length} unique commits`);
     
     return {
         packages,
@@ -760,8 +1168,15 @@ const displayComparison = (versionA, versionB, comparisonData) => {
         // Show the copy link button and helper text
         const copyLinkBtn = document.getElementById('copy-comparison-link');
         const helperText = document.getElementById('comparison-helper');
-        if (copyLinkBtn) copyLinkBtn.classList.remove('hide');
-        if (helperText) helperText.classList.remove('hide');
+        if (copyLinkBtn) {
+            copyLinkBtn.classList.remove('hide');
+            console.log('Copy link button shown');
+        } else {
+            console.warn('Copy link button not found in DOM');
+        }
+        if (helperText) {
+            helperText.classList.remove('hide');
+        }
         
         // Scroll to results smoothly
         setTimeout(() => {
@@ -978,28 +1393,13 @@ const initializeComparisonMode = async () => {
         });
     }
     
-    // Copy comparison link button
+    // Copy comparison link button - backup event listener
+    // (Primary method is onclick in HTML, this is a fallback)
     const copyLinkBtn = document.getElementById('copy-comparison-link');
     if (copyLinkBtn) {
-        copyLinkBtn.addEventListener('click', () => {
-            const currentURL = window.location.href;
-            
-            // Copy to clipboard
-            navigator.clipboard.writeText(currentURL).then(() => {
-                // Visual feedback
-                const originalText = copyLinkBtn.textContent;
-                copyLinkBtn.textContent = '✓ Link Copied!';
-                copyLinkBtn.style.backgroundColor = '#28a745';
-                
-                setTimeout(() => {
-                    copyLinkBtn.textContent = originalText;
-                    copyLinkBtn.style.backgroundColor = '';
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy link:', err);
-                alert('Failed to copy link. Please copy from the address bar.');
-            });
-        });
+        // Remove any existing listeners and add new one
+        copyLinkBtn.addEventListener('click', copyComparisonLink);
+        console.log('Copy link button event listener attached');
     }
     
     // Check for comparison URL parameters on page load
