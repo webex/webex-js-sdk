@@ -277,7 +277,26 @@ const Mercury = WebexPlugin.extend({
       .getFeature('developer', 'web-high-availability')
       .then((haMessagingEnabled) => {
         if (haMessagingEnabled) {
-          return this.webex.internal.services.convertUrlToPriorityHostUrl(webSocketUrl);
+          let highPrioritySocketUrl;
+          try {
+            highPrioritySocketUrl =
+              this.webex.internal.services.convertUrlToPriorityHostUrl(webSocketUrl);
+          } catch (e) {
+            this.logger.warn(`${this.namespace}: error converting to high priority url`, e);
+          }
+          if (!highPrioritySocketUrl) {
+            const hostFromUrl = url.parse(webSocketUrl, true)?.host;
+            const isValidHost = this.webex.internal.services.isValidHost(hostFromUrl);
+            if (!isValidHost) {
+              this.logger.error(
+                `${this.namespace}: host ${hostFromUrl} is not a valid host from host catalog`
+              );
+
+              return '';
+            }
+          }
+
+          return highPrioritySocketUrl || webSocketUrl;
         }
 
         return webSocketUrl;
@@ -287,6 +306,9 @@ const Mercury = WebexPlugin.extend({
       })
       .then(() => this.webex.internal.feature.getFeature('developer', 'web-shared-mercury'))
       .then((webSharedMercury) => {
+        if (!webSocketUrl) {
+          return '';
+        }
         webSocketUrl = url.parse(webSocketUrl, true);
         Object.assign(webSocketUrl.query, {
           outboundWireFormat: 'text',
