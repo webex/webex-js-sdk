@@ -166,7 +166,6 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_RESUME = 'task:resume',
-  TASK_UNHOLD = 'task:unhold',
 
   /**
    * Triggered when a consultation session ends

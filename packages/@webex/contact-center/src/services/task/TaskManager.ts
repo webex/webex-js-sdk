@@ -11,15 +11,14 @@ import {ConfigFlags, LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
-import TaskFactory from './TaskFactory';
-import WebRTC from './voice/WebRTC';
 import {
   checkParticipantNotInInteraction,
   getIsConferenceInProgress,
   isParticipantInMainInteraction,
   isPrimary,
 } from './TaskUtils';
-
+import TaskFactory from './TaskFactory';
+import WebRTC from './voice/WebRTC';
 /** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -37,7 +36,11 @@ export default class TaskManager extends EventEmitter {
   private configFlags?: ConfigFlags;
   private wrapupData: WrapupData;
   private agentId: string;
-
+  /**
+   * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
+   * @param webCallingService - Webrtc Service Layer
+   * @param webSocketManager - Websocket Manager to maintain websocket connection and keepalives
+   */
   constructor(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
@@ -52,6 +55,27 @@ export default class TaskManager extends EventEmitter {
 
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
+  }
+
+  /**
+   * Set config flags for task creation
+   */
+  public setConfigFlags(configFlags: ConfigFlags) {
+    this.configFlags = configFlags;
+  }
+
+  /**
+   * Set wrapup configuration data
+   */
+  public setWrapupData(wrapupData: WrapupData) {
+    this.wrapupData = wrapupData;
+  }
+
+  /**
+   * Set agent ID for task operations
+   */
+  public setAgentId(agentId: string) {
+    this.agentId = agentId;
   }
 
   private handleIncomingWebCall = (call: ICall) => {
@@ -70,27 +94,6 @@ export default class TaskManager extends EventEmitter {
     }
     this.call = call;
   };
-
-  /**
-   * Inject agent profile after instantiation
-   */
-  public setConfigFlags(configFlags: ConfigFlags): void {
-    this.configFlags = configFlags;
-  }
-
-  /**
-   * Set wrapup configuration data
-   */
-  public setWrapupData(wrapupData: WrapupData): void {
-    this.wrapupData = wrapupData;
-  }
-
-  /**
-   * Set agent ID for participant checks
-   */
-  public setAgentId(agentId: string): void {
-    this.agentId = agentId;
-  }
 
   public registerIncomingCallEvent() {
     this.webCallingService.on(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
@@ -117,9 +120,21 @@ export default class TaskManager extends EventEmitter {
         });
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
-            if (!task) {
-              // Re-create task if it does not exist
-              // This can happen when the task is created after the event is received (multi session)
+            // Case1 : Task is already present in taskCollection
+            if (this.taskCollection[payload.data.interactionId]) {
+              LoggerProxy.log(`Got AGENT_CONTACT: Task already exists in collection`, {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              });
+              break;
+            } else if (!this.taskCollection[payload.data.interactionId]) {
+              // Case2 : Task is not present in taskCollection
+              LoggerProxy.log(`Got AGENT_CONTACT : Creating new task in taskManager`, {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              });
               task = TaskFactory.createTask(
                 this.contact,
                 this.webCallingService,
@@ -135,15 +150,29 @@ export default class TaskManager extends EventEmitter {
                 this.agentId
               );
               this.taskCollection[payload.data.interactionId] = task;
-              // Emit appropriate event based on task state
+              // Condition 1: The state is=new i.e it is a incoming task
               if (payload.data.interaction.state === 'new') {
+                LoggerProxy.log(
+                  `Got AGENT_CONTACT for a task with state=new, sending TASK_INCOMING event`,
+                  {
+                    module: TASK_MANAGER_FILE,
+                    method: METHODS.REGISTER_TASK_LISTENERS,
+                    interactionId: payload.data.interactionId,
+                  }
+                );
                 this.emit(TASK_EVENTS.TASK_INCOMING, task);
               } else {
+                // Condition 2: The state is anything else i.e the task was connected
+                LoggerProxy.log(
+                  `Got AGENT_CONTACT for a task with state=${payload.data.interaction.state}, sending TASK_HYDRATE event`,
+                  {
+                    module: TASK_MANAGER_FILE,
+                    method: METHODS.REGISTER_TASK_LISTENERS,
+                    interactionId: payload.data.interactionId,
+                  }
+                );
                 this.emit(TASK_EVENTS.TASK_HYDRATE, task);
               }
-            } else {
-              // Task already exists, just update data without emitting TASK_HYDRATE
-              this.updateTaskData(task, payload.data);
             }
             break;
 
@@ -197,9 +226,28 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
-            this.updateTaskData(task, payload.data);
+          case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED:
+          case CC_EVENTS.AGENT_INVITE_FAILED: {
+            // Map event types to their corresponding metric names
+            const eventTypeToMetricMap: Record<string, keyof typeof METRIC_EVENT_NAMES> = {
+              [CC_EVENTS.AGENT_CONTACT_OFFER_RONA]: 'AGENT_RONA',
+              [CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED]: 'AGENT_CONTACT_ASSIGN_FAILED',
+              [CC_EVENTS.AGENT_INVITE_FAILED]: 'AGENT_INVITE_FAILED',
+            };
+            const metricEventName = eventTypeToMetricMap[payload.data.type] || 'AGENT_RONA';
+
+            // Only INVITE_FAILED needs wrapUpRequired logic
+            if (payload.data.type === CC_EVENTS.AGENT_INVITE_FAILED) {
+              this.updateTaskData(task, {
+                ...payload.data,
+                wrapUpRequired: payload.data.interaction?.state !== 'new',
+              });
+            } else {
+              this.updateTaskData(task, payload.data);
+            }
+
             this.metricsManager.trackEvent(
-              METRIC_EVENT_NAMES.AGENT_RONA,
+              METRIC_EVENT_NAMES[metricEventName],
               {
                 ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
                 taskId: payload.data.interactionId,
@@ -210,6 +258,7 @@ export default class TaskManager extends EventEmitter {
             this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             break;
+          }
           case CC_EVENTS.CONTACT_ENDED:
             this.updateTaskData(task, {
               ...payload.data,
@@ -218,34 +267,6 @@ export default class TaskManager extends EventEmitter {
             this.handleTaskCleanup(task);
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
-          case CC_EVENTS.AGENT_INVITE_FAILED:
-          case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED: {
-            const isInviteFailed = payload.data.type === CC_EVENTS.AGENT_INVITE_FAILED;
-            const metricName = isInviteFailed
-              ? METRIC_EVENT_NAMES.AGENT_INVITE_FAILED
-              : METRIC_EVENT_NAMES.AGENT_CONTACT_ASSIGN_FAILED;
-            this.metricsManager.trackEvent(
-              metricName,
-              {
-                ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
-                taskId: payload.data.interactionId,
-                reason: payload.data.reason,
-              },
-              ['behavioral', 'operational']
-            );
-            // Only INVITE_FAILED needs wrapUpRequired logic
-            if (isInviteFailed) {
-              this.updateTaskData(task, {
-                ...payload.data,
-                wrapUpRequired: payload.data.interaction?.state !== 'new',
-              });
-            } else {
-              this.updateTaskData(task, payload.data);
-            }
-            this.handleTaskCleanup(task);
-            task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
-            break;
-          }
           case CC_EVENTS.CONTACT_MERGED:
             task = this.handleContactMerged(task, payload.data);
             break;
@@ -288,6 +309,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONSULTING:
             // Received when agent is in an active consult state
+            // TODO: Check if we can use backend consult state instead of isConsulted
             this.updateTaskData(task, payload.data);
             if (task.data.isConsulted) {
               // Fire only if you are the agent who received the consult request
@@ -317,10 +339,7 @@ export default class TaskManager extends EventEmitter {
             task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED, task);
             break;
           case CC_EVENTS.AGENT_WRAPUP:
-            this.updateTaskData(task, {
-              ...payload.data,
-              wrapUpRequired: true,
-            });
+            this.updateTaskData(task, {...payload.data, wrapUpRequired: true});
             task.emit(TASK_EVENTS.TASK_END, task);
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
@@ -412,6 +431,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED:
             // Conference was transferred - update task state and emit transfer success event
+            // Note: Backend should provide hasLeft and wrapUpRequired status
             this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONFERENCE_TRANSFERRED, task);
             break;
@@ -419,6 +439,10 @@ export default class TaskManager extends EventEmitter {
             // Conference transfer failed - update task state with error details and emit failure event
             this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED, task);
+            break;
+          case CC_EVENTS.CONSULTED_PARTICIPANT_MOVING:
+            // Participant is being moved/transferred - update task state with movement info
+            this.updateTaskData(task, payload.data);
             break;
           case CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY:
             // Post-call activity for participant - update task state with activity details

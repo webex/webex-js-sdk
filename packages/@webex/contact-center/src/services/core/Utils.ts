@@ -344,3 +344,54 @@ export const deriveConsultTransferDestinationType = (
 
   return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
 };
+
+/**
+ * Gets the destination agent ID from participants.
+ * Finds a participant who is not the current agent and is an agent type.
+ *
+ * @param participants - The participants object from interaction
+ * @param agentId - The current agent's ID
+ * @returns The destination agent ID, or undefined if none found
+ */
+export const getDestinationAgentId = (
+  participants: Interaction['participants'] | undefined,
+  agentId: string
+): string | undefined => {
+  if (!participants) {
+    return undefined;
+  }
+
+  // Find a participant who is not the current agent and is an agent type
+  const destParticipantId = Object.keys(participants).find((participantId) => {
+    const participant = participants[participantId];
+
+    return (
+      participantId !== agentId &&
+      participant?.pType !== 'Customer' &&
+      participant?.pType !== 'Supervisor' &&
+      participant?.pType !== 'VVA' &&
+      !participant?.hasLeft
+    );
+  });
+
+  return destParticipantId;
+};
+
+/**
+ * Builds the parameter data for consult conference operations.
+ * Used for conference-related API calls.
+ *
+ * @param taskData - The task data containing interaction details
+ * @param agentId - The current agent's ID
+ * @returns Object containing conference parameters
+ */
+export const buildConsultConferenceParamData = (
+  taskData: TaskData,
+  agentId: string
+): {destAgentId: string | undefined} => {
+  const destAgentId = getDestinationAgentId(taskData.interaction?.participants, agentId);
+
+  return {
+    destAgentId,
+  };
+};

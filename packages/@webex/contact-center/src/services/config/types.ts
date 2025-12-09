@@ -65,6 +65,8 @@ export const CC_TASK_EVENTS = {
   AGENT_CONFERENCE_TRANSFER_FAILED: 'AgentConferenceTransferFailed',
   /** Event emitted for post-call activity by participant */
   PARTICIPANT_POST_CALL_ACTIVITY: 'ParticipantPostCallActivity',
+  /** Event emitted when consulted participant is being moved/transferred */
+  CONSULTED_PARTICIPANT_MOVING: 'ConsultedParticipantMoving',
   /** Event emitted when contact is blind transferred */
   AGENT_BLIND_TRANSFERRED: 'AgentBlindTransferred',
   /** Event emitted when blind transfer fails */
