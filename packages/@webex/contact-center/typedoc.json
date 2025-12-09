@@ -24,7 +24,7 @@
   "categoryOrder": ["Core", "Services", "Classes", "Interfaces", "Enum", "Types", "*"],
   "navigationLinks": {
     "Home": "/",
-    "NPM": "http://npmjs.com/package/@webex/plugin-cc",
+    "NPM": "http://npmjs.com/package/@webex/contact-center",
     "GitHub": "https://github.com/webex/webex-js-sdk"
   },
   "searchInComments": true,

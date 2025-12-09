@@ -49,3 +49,4 @@ export const WEBEX_API_PROD = 'https://webexapis.com';
 export const WEBEX_API_BTS = 'https://integration.webexapis.com';
 export const WEBEX_API_CONFIG_INT_URL = `${WEBEX_API_BTS}/v1/uc/config`;
 export const WEBEX_API_CONFIG_PROD_URL = `${WEBEX_API_PROD}/v1/uc/config`;
+export const METHOD_START_MESSAGE = 'invoking';

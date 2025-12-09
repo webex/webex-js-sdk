@@ -1,0 +1,232 @@
+/* Cisco Branding Colors */
+:root {
+  --cisco-blue: #02C8FF;
+  --medium-blue: #0A60FF;
+  --midnight-blue: #07182D;
+  --white: #FFFFFF;
+  --magenta: #FF007F;
+  --orange: #FF9000;
+  --light-gray: #f8f9fa;
+  --medium-gray: #e9ecef;
+  --dark-gray: #343a40;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--light-gray);
+  color: var(--midnight-blue);
+  padding-top: 70px;
+  /* Account for fixed navbar */
+}
+
+.navbar-default {
+  background-color: var(--midnight-blue);
+  border-bottom: 1px solid var(--cisco-blue);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-default .navbar-brand {
+  color: var(--cisco-blue);
+  font-weight: bold;
+}
+
+.navbar-default .navbar-nav>li>a {
+  color: var(--white);
+  font-weight: 500;
+}
+
+.navbar-default .navbar-nav>li>a:hover,
+.navbar-default .navbar-nav>li>a:focus {
+  color: var(--cisco-blue);
+}
+
+main>.container {
+  padding-top: 30px;
+  padding-bottom: 30px;
+}
+
+.col-md-3 {
+  /* Style for each content column to look like a card */
+  background-color: var(--white);
+  padding: 25px;
+  margin-bottom: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  border-top: 4px solid var(--medium-blue);
+}
+
+.col-md-3:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.08);
+  border-top-color: var(--cisco-blue);
+}
+
+.page-header {
+  /* General styling for all headers */
+  border-bottom: 2px solid var(--cisco-blue);
+  padding-bottom: 10px;
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--midnight-blue);
+}
+
+.list-group-item {
+  border-color: var(--medium-gray);
+  border-radius: 4px !important;
+  /* Override Bootstrap's default for consistency */
+  margin-bottom: 8px;
+  font-size: 15px;
+  transition: all 0.2s ease-in-out;
+  color: var(--midnight-blue);
+}
+
+.list-group-item:last-child {
+  margin-bottom: 0;
+}
+
+.list-group-item:hover {
+  background-color: var(--light-gray);
+  color: var(--medium-blue);
+  transform: translateX(5px);
+  border-left: 3px solid var(--cisco-blue);
+}
+
+/* Alternate list item styling for visual interest */
+.list-group-item:nth-child(odd):hover {
+  border-left-color: var(--magenta);
+}
+
+.list-group-item:nth-child(even):hover {
+  border-left-color: var(--orange);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--medium-blue), var(--cisco-blue));
+  border: none;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 5px;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background: linear-gradient(135deg, var(--cisco-blue), var(--medium-blue));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(10, 96, 255, 0.3);
+}
+
+/* Documentation section styling */
+.docs-section {
+  background: linear-gradient(170deg, var(--midnight-blue), var(--dark-gray));
+  color: var(--white);
+  padding: 40px 0;
+  margin-top: 30px;
+  border-radius: 8px;
+}
+
+.docs-section h2 {
+  color: var(--cisco-blue);
+  margin-bottom: 20px;
+}
+
+.docs-section .list-group-item {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.docs-section .list-group-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--cisco-blue);
+}
+
+/* Feature highlights */
+.feature-item {
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  background-color: var(--white);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid var(--cisco-blue);
+  transition: transform 0.2s ease;
+}
+
+.feature-item:hover {
+  transform: translateX(5px);
+}
+
+.feature-item h3 {
+  color: var(--midnight-blue);
+  font-size: 18px;
+  margin-top: 0;
+}
+
+/* API Documentation specific */
+.api-docs {
+  border-top: 4px solid var(--magenta);
+}
+
+/* Sample Apps specific */
+.sample-apps {
+  border-top: 4px solid var(--orange);
+}
+
+/* Labs specific */
+.labs {
+  border-top: 4px solid var(--cisco-blue);
+}
+
+footer {
+  margin-top: 40px;
+  padding: 30px 0;
+  background-color: var(--midnight-blue);
+  color: var(--white);
+  text-align: center;
+  border-top: 5px solid var(--cisco-blue);
+}
+
+footer .copyright {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Link styling */
+a {
+  color: var(--medium-blue);
+  transition: color 0.2s ease;
+}
+
+a:hover, a:focus {
+  color: var(--cisco-blue);
+  text-decoration: none;
+}
+
+/* Contribution section - as requested, not a separate section but styled nicely */
+.contribution-section {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: var(--white);
+  border-radius: 8px;
+  border-left: 4px solid var(--orange);
+}
+
+.contribution-section h3 {
+  color: var(--midnight-blue);
+  margin-top: 0;
+}
+
+/* Mobile responsiveness tweaks */
+@media (max-width: 768px) {
+  .col-md-3 {
+    margin-bottom: 15px;
+  }
+  
+  .docs-section {
+    padding: 20px 0;
+  }
+}

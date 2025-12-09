@@ -22,6 +22,8 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @property {string} WEBSOCKET_REGISTER_SUCCESS - Event name for successful websocket registration.
  * @property {string} WEBSOCKET_REGISTER_FAILED - Event name for failed websocket registration.
  * @property {string} AGENT_RONA - Event name for agent RONA (Ring No Answer).
+ * @property {string} AGENT_CONTACT_ASSIGN_FAILED - Event name for failed agent contact assignment.
+ * @property {string} AGENT_INVITE_FAILED - Event name for failed agent invite.
  *
  * @property {string} TASK_ACCEPT_SUCCESS - Event name for successful task acceptance.
  * @property {string} TASK_ACCEPT_FAILED - Event name for failed task acceptance.
@@ -35,7 +37,6 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @property {string} TASK_HOLD_FAILED - Event name for failed task hold.
  * @property {string} TASK_RESUME_SUCCESS - Event name for successful task resume.
  * @property {string} TASK_RESUME_FAILED - Event name for failed task resume.
- *
  * @property {string} TASK_CONSULT_START_SUCCESS - Event name for successful consult start.
  * @property {string} TASK_CONSULT_START_FAILED - Event name for failed consult start.
  * @property {string} TASK_CONSULT_END_SUCCESS - Event name for successful consult end.
@@ -49,6 +50,13 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  * @property {string} TASK_ACCEPT_CONSULT_SUCCESS - Event name for successful consult acceptance.
  * @property {string} TASK_ACCEPT_CONSULT_FAILED - Event name for failed consult acceptance.
  *
+ * @property {string} TASK_CONFERENCE_START_SUCCESS - Event name for successful conference start.
+ * @property {string} TASK_CONFERENCE_START_FAILED - Event name for failed conference start.
+ * @property {string} TASK_CONFERENCE_END_SUCCESS - Event name for successful conference end.
+ * @property {string} TASK_CONFERENCE_END_FAILED - Event name for failed conference end.
+ * @property {string} TASK_CONFERENCE_TRANSFER_SUCCESS - Event name for successful conference transfer.
+ * @property {string} TASK_CONFERENCE_TRANSFER_FAILED - Event name for failed conference transfer.
+ *
  * @property {string} TASK_OUTDIAL_SUCCESS - Event name for successful outdial task.
  * @property {string} TASK_OUTDIAL_FAILED - Event name for failed outdial task.
  *
@@ -59,6 +67,9 @@ type Enum<T extends Record<string, unknown>> = T[keyof T];
  *
  * @property {string} AGENT_DEVICE_TYPE_UPDATE_SUCCESS - Event name for successful agent device type update.
  * @property {string} AGENT_DEVICE_TYPE_UPDATE_FAILED - Event name for failed agent device type update.
+ *
+ * @property {string} OUTDIAL_ANI_EP_FETCH_SUCCESS - Event name for successful outdial ANI entries fetch.
+ * @property {string} OUTDIAL_ANI_EP_FETCH_FAILED - Event name for failed outdial ANI entries fetch.
  *
  * @readonly
  */
@@ -76,6 +87,8 @@ export const METRIC_EVENT_NAMES = {
   WEBSOCKET_REGISTER_SUCCESS: 'Websocket Register Success',
   WEBSOCKET_REGISTER_FAILED: 'Websocket Register Failed',
   AGENT_RONA: 'Agent RONA',
+  AGENT_CONTACT_ASSIGN_FAILED: 'Agent Contact Assign Failed',
+  AGENT_INVITE_FAILED: 'Agent Invite Failed',
 
   // Basic Tasks
   TASK_ACCEPT_SUCCESS: 'Task Accept Success',
@@ -105,6 +118,14 @@ export const METRIC_EVENT_NAMES = {
   TASK_ACCEPT_CONSULT_SUCCESS: 'Task Accept Consult Success',
   TASK_ACCEPT_CONSULT_FAILED: 'Task Accept Consult Failed',
 
+  // Conference Tasks
+  TASK_CONFERENCE_START_SUCCESS: 'Task Conference Start Success',
+  TASK_CONFERENCE_START_FAILED: 'Task Conference Start Failed',
+  TASK_CONFERENCE_END_SUCCESS: 'Task Conference End Success',
+  TASK_CONFERENCE_END_FAILED: 'Task Conference End Failed',
+  TASK_CONFERENCE_TRANSFER_SUCCESS: 'Task Conference Transfer Success',
+  TASK_CONFERENCE_TRANSFER_FAILED: 'Task Conference Transfer Failed',
+
   TASK_OUTDIAL_SUCCESS: 'Task Outdial Success',
   TASK_OUTDIAL_FAILED: 'Task Outdial Failed',
 
@@ -115,6 +136,24 @@ export const METRIC_EVENT_NAMES = {
 
   AGENT_DEVICE_TYPE_UPDATE_SUCCESS: 'Agent Device Type Update Success',
   AGENT_DEVICE_TYPE_UPDATE_FAILED: 'Agent Device Type Update Failed',
+  // WebSocket message events
+  WEBSOCKET_EVENT_RECEIVED: 'Websocket Event Received',
+
+  // EntryPoint API Events
+  ENTRYPOINT_FETCH_SUCCESS: 'Entrypoint Fetch Success',
+  ENTRYPOINT_FETCH_FAILED: 'Entrypoint Fetch Failed',
+
+  // AddressBook API Events
+  ADDRESSBOOK_FETCH_SUCCESS: 'AddressBook Fetch Success',
+  ADDRESSBOOK_FETCH_FAILED: 'AddressBook Fetch Failed',
+
+  // Queue API Events
+  QUEUE_FETCH_SUCCESS: 'Queue Fetch Success',
+  QUEUE_FETCH_FAILED: 'Queue Fetch Failed',
+
+  // Outdial ANI Entries API Events
+  OUTDIAL_ANI_EP_FETCH_SUCCESS: 'Outdial ANI Entries Fetch Success',
+  OUTDIAL_ANI_EP_FETCH_FAILED: 'Outdial ANI Entries Fetch Failed',
 } as const;
 
 /**

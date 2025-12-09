@@ -221,7 +221,7 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#cancelSIPInvite', () => {
+    describe('#cancelInviteByMemberId', () => {
       const memberId = uuid.v4();
       it('sends a PUT to the locus endpoint', async () => {
         const options = {
@@ -231,7 +231,7 @@ describe('plugin-meetings', () => {
           locusUrl: url1,
         };
 
-        await membersRequest.cancelSIPInvite(options);
+        await membersRequest.cancelInviteByMemberId(options);
 
         checkRequest({
           method: 'PUT',
@@ -426,6 +426,61 @@ describe('plugin-meetings', () => {
           body: {
             aliasValue,
             requestingParticipantId,
+          },
+        });
+      });
+
+      it('sends a POST request to the locus endpoint with suffix empty string', async () => {
+        const locusUrl = url1;
+        const memberId = 'test1';
+        const requestingParticipantId = 'test2';
+        const aliasValue = 'alias';
+
+        const options = {
+          memberId,
+          requestingParticipantId,
+          alias: aliasValue,
+          locusUrl,
+          suffix: '',
+        };
+
+        await membersRequest.editDisplayNameMember(options);
+
+        checkRequest({
+          method: 'POST',
+          uri: `${locusUrl}/participant/${memberId}/alias`,
+          body: {
+            aliasValue,
+            requestingParticipantId,
+            suffixValue: '',
+          },
+        });
+      });
+
+      it('sends a POST request to the locus endpoint with suffixValue', async () => {
+        const locusUrl = url1;
+        const memberId = 'test1';
+        const requestingParticipantId = 'test2';
+        const aliasValue = 'alias';
+        const suffixValue = 'suffix';
+
+        const options = {
+          memberId,
+          requestingParticipantId,
+          alias: aliasValue,
+          locusUrl,
+          suffix: suffixValue,
+        };
+
+        await membersRequest.editDisplayNameMember(options);
+
+        checkRequest({
+          method: 'POST',
+          uri: `${locusUrl}/participant/${memberId}/alias`,
+          body: {
+            aliasValue,
+            requestingParticipantId,
+            suffixValue,
           },
         });
       });

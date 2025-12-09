@@ -1,14 +1,15 @@
 import EventEmitter from 'events';
 import {CALL_EVENT_KEYS, LocalMicrophoneStream} from '@webex/calling';
 import {CallId} from '@webex/calling/dist/types/common/types';
-import {getErrorDetails} from '../core/Utils';
+import {generateTaskErrorObject, calculateDestAgentId, calculateDestType} from '../core/Utils';
+import {Failure} from '../core/GlobalTypes';
 import {LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
-import {METHODS} from './constants';
+import {METHODS, KEYS_TO_NOT_DELETE} from './constants';
 import routingContact from './contact';
 import LoggerProxy from '../../logger-proxy';
 import {
-  IOldTask,
+  ITask,
   TaskResponse,
   TaskData,
   TaskId,
@@ -19,51 +20,214 @@ import {
   ConsultEndPayload,
   TransferPayLoad,
   DESTINATION_TYPE,
-  CONSULT_TRANSFER_DESTINATION_TYPE,
   ConsultTransferPayLoad,
   MEDIA_CHANNEL,
 } from './types';
 import WebCallingService from '../WebCallingService';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
-import {Failure} from '../core/GlobalTypes';
+import AutoWrapup from './AutoWrapup';
+import {WrapupData} from '../config/types';
 
 /**
  * Task class represents a contact center task/interaction that can be managed by an agent.
- * This class provides all the necessary methods to manage tasks in a contact center enivornment, handling various call control operations and task lifecycle management.
+ * This class provides all the necessary methods to manage tasks in a contact center environment,
+ * handling various call control operations and task lifecycle management.
+ *
+ * - Task Lifecycle Management:
+ *   - {@link accept} - Accept incoming task
+ *   - {@link decline} - Decline incoming task
+ *   - {@link end} - End active task
+ * - Media Controls:
+ *   - {@link toggleMute} - Mute/unmute microphone for voice tasks
+ *   - {@link hold} - Place task on hold
+ *   - {@link resume} - Resume held task
+ * - Recording Controls:
+ *   - {@link pauseRecording} - Pause task recording
+ *   - {@link resumeRecording} - Resume paused recording
+ * - Task Transfer & Consultation:
+ *   - {@link consult} - Initiate consultation with another agent/queue
+ *   - {@link endConsult} - End ongoing consultation
+ *   - {@link transfer} - Transfer task to another agent/queue
+ *   - {@link consultTransfer} - Transfer after consultation
+ * - Task Completion:
+ *   - {@link wrapup} - Complete task wrap-up
+ *
+ * Key events emitted by Task instances (see {@link TASK_EVENTS} for details):
+ *
+ * - Task Lifecycle:
+ *   - task:incoming — New task is being offered
+ *   - task:assigned — Task assigned to agent
+ *   - task:unassigned — Task unassigned from agent
+ *   - task:end — Task has ended
+ *   - task:wrapup — Task entered wrap-up state
+ *   - task:wrappedup — Task wrap-up completed
+ *   - task:rejected — Task was rejected/unanswered
+ *   - task:hydrate — Task data populated
+ *
+ * - Media & Controls:
+ *   - task:media — Voice call media track received
+ *   - task:hold — Task placed on hold
+ *   - task:unhold — Task resumed from hold
+ *
+ * - Consultation & Transfer:
+ *   - task:consultCreated — Consultation initiated
+ *   - task:consulting — Consultation in progress
+ *   - task:consultAccepted — Consultation accepted
+ *   - task:consultEnd — Consultation ended
+ *   - task:consultQueueCancelled — Queue consultation cancelled
+ *   - task:consultQueueFailed — Queue consultation failed
+ *   - task:offerConsult — Consultation offered
+ *   - task:offerContact — New contact offered
+ *
+ * - Recording:
+ *   - task:recordingPaused — Recording paused
+ *   - task:recordingPauseFailed — Recording pause failed
+ *   - task:recordingResumed — Recording resumed
+ *   - task:recordingResumeFailed — Recording resume failed
+ *
  * @implements {ITask}
  * @example
  * ```typescript
+ * // 1. Initialize task
  * const task = new Task(contact, webCallingService, taskData);
+ *
+ * // 2. Set up event listeners
+ * task.on('task:media', (track) => {
+ *   // Handle voice call media
+ *   const audioElement = document.getElementById('remote-audio');
+ *   audioElement.srcObject = new MediaStream([track]);
+ * });
+ *
+ * task.on('task:hold', () => {
+ *   console.log('Task is on hold');
+ *   // Update UI to show hold state
+ * });
+ *
+ * task.on('task:end', () => {
+ *   console.log('Task ended');
+ *   if (task.data.wrapUpRequired) {
+ *     // Show wrap-up form
+ *   }
+ * });
+ *
+ * // 3. Example task operations
+ * await task.accept(); // Accept incoming task
+ * await task.hold();   // Place on hold
+ * await task.resume(); // Resume from hold
+ * await task.end();    // End task
+ *
+ * // 4. Handle wrap-up if required
+ * await task.wrapup({
+ *   auxCodeId: 'RESOLVED',
+ *   wrapUpReason: 'Customer issue resolved'
+ * });
  * ```
  */
 
-export default class Task extends EventEmitter implements IOldTask {
+export default class Task extends EventEmitter implements ITask {
   private contact: ReturnType<typeof routingContact>;
   private localAudioStream: LocalMicrophoneStream;
   private webCallingService: WebCallingService;
   public data: TaskData;
   private metricsManager: MetricsManager;
   public webCallMap: Record<TaskId, CallId>;
+  private wrapupData: WrapupData;
+  public autoWrapup?: AutoWrapup;
+  private agentId: string;
 
   /**
-   * Creates a new Task instance
+   * Creates a new Task instance which provides the following features:
    * @param contact - The routing contact service instance
    * @param webCallingService - The web calling service instance
    * @param data - Initial task data
+   * @param wrapupData - Wrap-up configuration data
    */
-  constructor(
+  public constructor(
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
-    data: TaskData
+    data: TaskData,
+    wrapupData: WrapupData,
+    agentId: string
   ) {
     super();
     this.contact = contact;
     this.data = data;
     this.webCallingService = webCallingService;
     this.webCallMap = {};
+    this.wrapupData = wrapupData;
     this.metricsManager = MetricsManager.getInstance();
     this.registerWebCallListeners();
+    this.setupAutoWrapupTimer();
+    this.agentId = agentId;
+  }
+
+  /**
+   * Sets up the automatic wrap-up timer if wrap-up is required
+   * @private
+   */
+  private setupAutoWrapupTimer() {
+    if (
+      this.data.wrapUpRequired && // only when wrapup required
+      !this.autoWrapup && // if autoWrapup is not already set
+      this.wrapupData && // wrapupData is not defined
+      this.wrapupData.wrapUpProps // wrapUpProps is defined
+    ) {
+      const wrapUpProps = this.wrapupData.wrapUpProps;
+      if (!wrapUpProps || wrapUpProps.autoWrapup === false) {
+        LoggerProxy.info(`Auto wrap-up is not required for this task`, {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+          interactionId: this.data.interactionId,
+        });
+
+        return;
+      }
+      const defaultWrapupReason =
+        wrapUpProps.wrapUpReasonList?.find((r) => r.isDefault) ?? wrapUpProps.wrapUpReasonList?.[0];
+      if (!defaultWrapupReason) {
+        LoggerProxy.error('No wrap-up reason configured', {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+        });
+
+        return;
+      }
+      const intervalMs = wrapUpProps.autoWrapupInterval;
+      if (!intervalMs || intervalMs <= 0) {
+        LoggerProxy.error(`Invalid auto wrap-up interval: ${intervalMs}`, {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+        });
+      }
+      this.autoWrapup = new AutoWrapup(intervalMs, wrapUpProps.allowCancelAutoWrapup);
+      this.autoWrapup.start(async () => {
+        LoggerProxy.info(`Auto wrap-up timer triggered`, {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+          interactionId: this.data.interactionId,
+        });
+        await this.wrapup({
+          wrapUpReason: defaultWrapupReason.name,
+          auxCodeId: defaultWrapupReason.id,
+        });
+      });
+    }
+  }
+
+  /**
+   * Cancels the automatic wrap-up timer if it's running
+   * @public - Public so it can be called externally when needed
+   * Note: This is supported only in single session mode. Not supported in multi-session mode.
+   */
+  public cancelAutoWrapupTimer() {
+    this.autoWrapup?.clear();
+    this.autoWrapup = undefined;
+    LoggerProxy.info(`Auto wrap-up timer cancelled`, {
+      module: TASK_FILE,
+      method: METHODS.CANCEL_AUTO_WRAPUP_TIMER,
+      interactionId: this.data?.interactionId,
+    });
   }
 
   /**
@@ -89,13 +253,23 @@ export default class Task extends EventEmitter implements IOldTask {
     this.webCallingService.off(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleRemoteMedia);
   }
 
-  public updateTaskData = (updatedData: TaskData, shouldOverwrite = false): IOldTask => {
+  public updateTaskData = (updatedData: TaskData, shouldOverwrite = false) => {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
+    this.setupAutoWrapupTimer();
 
     return this;
   };
 
   private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
+    // Remove keys from oldData that are not in newData,
+    // except for keys explicitly marked to be preserved.
+    Object.keys(oldData).forEach((key) => {
+      if (!(key in newData) && !KEYS_TO_NOT_DELETE.includes(key as string)) {
+        delete oldData[key];
+      }
+    });
+
+    // Merge or update keys from newData
     Object.keys(newData).forEach((key) => {
       if (newData[key] && typeof newData[key] === 'object' && !Array.isArray(newData[key])) {
         oldData[key] = this.reconcileData({...oldData[key]}, newData[key]);
@@ -109,12 +283,33 @@ export default class Task extends EventEmitter implements IOldTask {
 
   /**
    * Agent accepts the incoming task.
+   * After accepting, the task will emit task:assigned event and for voice calls,
+   * a task:media event with the audio stream.
    *
    * @returns Promise<TaskResponse>
-   * @throws Error
+   * @throws Error if accepting task fails or media requirements not met
    * @example
    * ```typescript
-   * task.accept().then(()=>{}).catch(()=>{})
+   * // Set up event handlers before accepting
+   * task.on(TASK_EVENTS.TASK_ASSIGNED, () => {
+   *   console.log('Task assigned, ID:', task.data.interactionId);
+   *   // Update UI to show active task
+   * });
+   *
+   * // For voice calls, handle media
+   * task.on(TASK_EVENTS.TASK_MEDIA, (track) => {
+   *   const audioElement = document.getElementById('remote-audio');
+   *   audioElement.srcObject = new MediaStream([track]);
+   * });
+   *
+   * // Accept the task
+   * try {
+   *   await task.accept();
+   *   console.log('Successfully accepted task');
+   * } catch (error) {
+   *   console.error('Failed to accept task:', error);
+   *   // Handle error (e.g., show error message to agent)
+   * }
    * ```
    */
   public async accept(): Promise<TaskResponse> {
@@ -174,27 +369,40 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return Promise.resolve(); // TODO: reject for extension as part of refactor
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.ACCEPT, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.ACCEPT, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_ACCEPT_FAILED,
         {
           taskId: this.data.interactionId,
           error: error.toString(),
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details as Failure),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw err;
     }
   }
 
   /**
-   * Agent can mute/unmute the webrtc task.
+   * Agent can mute/unmute their microphone during a WebRTC task.
+   * This method toggles between muted and unmuted states for the local audio stream.
+   *
    * @returns Promise<void> - Resolves when mute/unmute operation completes
-   * @throws Error
+   * @throws Error if toggling mute state fails or audio stream is not available
    * @example
    * ```typescript
-   * task.toggleMute().then(()=>{}).catch(()=>{})
+   * // Toggle mute state
+   * task.toggleMute()
+   *   .then(() => console.log('Mute state toggled successfully'))
+   *   .catch(error => console.error('Failed to toggle mute:', error));
    * ```
    */
   public async toggleMute() {
@@ -218,19 +426,23 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return Promise.resolve();
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.TOGGLE_MUTE, TASK_FILE);
-      throw detailedError;
+      const err = generateTaskErrorObject(error, METHODS.TOGGLE_MUTE, TASK_FILE);
+      throw err;
     }
   }
 
   /**
-   * Declines the incoming webrtc task.
+   * Declines the incoming task. This will reject the task and notify the routing system.
+   * For voice calls, this is equivalent to declining the incoming call.
    *
    * @returns Promise<TaskResponse>
-   * @throws Error
+   * @throws Error if the decline operation fails
    * @example
    * ```typescript
-   * task.decline().then(()=>{}).catch(()=>{})
+   * // Decline an incoming task
+   * task.decline()
+   *   .then(() => console.log('Task declined successfully'))
+   *   .catch(error => console.error('Failed to decline task:', error));
    * ```
    */
   public async decline(): Promise<TaskResponse> {
@@ -262,30 +474,64 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return Promise.resolve();
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.DECLINE, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.DECLINE, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_DECLINE_FAILED,
         {
           taskId: this.data.interactionId,
           error: error.toString(),
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral']
       );
-      throw detailedError;
+      throw err;
     }
   }
 
   /**
    * Puts the current task/interaction on hold.
+   * Emits task:hold event when successful. For voice tasks, this mutes the audio.
+   *
+   * @param mediaResourceId - Optional media resource ID to use for the hold operation. If not provided, uses the task's current mediaResourceId
    * @returns Promise<TaskResponse>
-   * @throws Error
+   * @throws Error if hold operation fails
    * @example
    * ```typescript
-   * task.hold().then(()=>{}).catch(()=>{})
+   * // Set up hold event handler
+   * task.on(TASK_EVENTS.TASK_HOLD, () => {
+   *   console.log('Task is now on hold');
+   *   // Update UI to show hold state (e.g., enable resume button, show hold indicator)
+   *   document.getElementById('resume-btn').disabled = false;
+   *   document.getElementById('hold-indicator').style.display = 'block';
+   * });
+   *
+   * // Place task on hold
+   * try {
+   *   await task.hold();
+   *   console.log('Successfully placed task on hold');
+   * } catch (error) {
+   *   console.error('Failed to place task on hold:', error);
+   *   // Handle error (e.g., show error message, reset UI state)
+   * }
+   *
+   * // Place task on hold with custom mediaResourceId
+   * try {
+   *   await task.hold('custom-media-resource-id');
+   *   console.log('Successfully placed task on hold with custom mediaResourceId');
+   * } catch (error) {
+   *   console.error('Failed to place task on hold:', error);
+   * }
    * ```
-   * */
-  public async hold(): Promise<TaskResponse> {
+   */
+  public async hold(mediaResourceId?: string): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Holding task`, {
         module: TASK_FILE,
@@ -298,9 +544,11 @@ export default class Task extends EventEmitter implements IOldTask {
         METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
       ]);
 
+      const effectiveMediaResourceId = mediaResourceId ?? this.data.mediaResourceId;
+
       const response = await this.contact.hold({
         interactionId: this.data.interactionId,
-        data: {mediaResourceId: this.data.mediaResourceId},
+        data: {mediaResourceId: effectiveMediaResourceId},
       });
 
       this.metricsManager.trackEvent(
@@ -308,7 +556,7 @@ export default class Task extends EventEmitter implements IOldTask {
         {
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
           taskId: this.data.interactionId,
-          mediaResourceId: this.data.mediaResourceId,
+          mediaResourceId: effectiveMediaResourceId,
         },
         ['operational', 'behavioral']
       );
@@ -322,31 +570,67 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.HOLD, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.HOLD, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
+      const effectiveMediaResourceId = mediaResourceId ?? this.data.mediaResourceId;
+
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
         {
           taskId: this.data.interactionId,
-          mediaResourceId: this.data.mediaResourceId,
+          mediaResourceId: effectiveMediaResourceId,
           error: error.toString(),
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral']
       );
-      throw detailedError;
+      throw err;
     }
   }
 
   /**
    * Resumes the task/interaction that was previously put on hold.
+   * Emits task:resume event when successful. For voice tasks, this restores the audio.
+   *
+   * @param mediaResourceId - Optional media resource ID to use for the resume operation. If not provided, uses the task's current mediaResourceId from interaction media
    * @returns Promise<TaskResponse>
-   * @throws Error
+   * @throws Error if resume operation fails
    * @example
    * ```typescript
-   * task.resume().then(()=>{}).catch(()=>{})
+   * // Set up resume event handler
+   * task.on(TASK_EVENTS.TASK_RESUME, () => {
+   *   console.log('Task resumed from hold');
+   *   // Update UI to show active state
+   *   document.getElementById('hold-btn').disabled = false;
+   *   document.getElementById('hold-indicator').style.display = 'none';
+   * });
+   *
+   * // Resume task from hold
+   * try {
+   *   await task.resume();
+   *   console.log('Successfully resumed task from hold');
+   * } catch (error) {
+   *   console.error('Failed to resume task:', error);
+   *   // Handle error (e.g., show error message)
+   * }
+   *
+   * // Resume task from hold with custom mediaResourceId
+   * try {
+   *   await task.resume('custom-media-resource-id');
+   *   console.log('Successfully resumed task from hold with custom mediaResourceId');
+   * } catch (error) {
+   *   console.error('Failed to resume task:', error);
+   * }
    * ```
    */
-  public async resume(): Promise<TaskResponse> {
+  public async resume(mediaResourceId?: string): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Resuming task`, {
         module: TASK_FILE,
@@ -354,7 +638,9 @@ export default class Task extends EventEmitter implements IOldTask {
         interactionId: this.data.interactionId,
       });
       const {mainInteractionId} = this.data.interaction;
-      const {mediaResourceId} = this.data.interaction.media[mainInteractionId];
+      const defaultMediaResourceId =
+        this.data.interaction.media[mainInteractionId]?.mediaResourceId;
+      const effectiveMediaResourceId = mediaResourceId ?? defaultMediaResourceId;
 
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_RESUME_SUCCESS,
@@ -363,7 +649,7 @@ export default class Task extends EventEmitter implements IOldTask {
 
       const response = await this.contact.unHold({
         interactionId: this.data.interactionId,
-        data: {mediaResourceId},
+        data: {mediaResourceId: effectiveMediaResourceId},
       });
 
       this.metricsManager.trackEvent(
@@ -371,7 +657,7 @@ export default class Task extends EventEmitter implements IOldTask {
         {
           taskId: this.data.interactionId,
           mainInteractionId,
-          mediaResourceId,
+          mediaResourceId: effectiveMediaResourceId,
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
         },
         ['operational', 'behavioral']
@@ -386,32 +672,77 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.RESUME, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.RESUME, TASK_FILE);
       const mainInteractionId = this.data.interaction?.mainInteractionId;
+      const defaultMediaResourceId = mainInteractionId
+        ? this.data.interaction.media[mainInteractionId]?.mediaResourceId
+        : '';
+      const effectiveMediaResourceId = mediaResourceId ?? defaultMediaResourceId;
+
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_RESUME_FAILED,
         {
           taskId: this.data.interactionId,
           mainInteractionId,
-          mediaResourceId: mainInteractionId
-            ? this.data.interaction.media[mainInteractionId].mediaResourceId
-            : '',
+          mediaResourceId: effectiveMediaResourceId,
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral']
       );
-      throw detailedError;
+      throw err;
     }
   }
 
   /**
    * Ends the task/interaction with the customer.
+   * Emits task:end event when successful. If task requires wrap-up,
+   * this will be indicated in the task:end event data.
+   *
    * @returns Promise<TaskResponse>
-   * @throws Error
+   * @throws Error if ending task fails
    * @example
    * ```typescript
-   * task.end().then(()=>{}).catch(()=>{})
-   *  ```
+   * // Set up task end event handler
+   * task.on(TASK_EVENTS.TASK_END, (data) => {
+   *   console.log('Task ended:', task.data.interactionId);
+   *
+   *   if (data.wrapUpRequired) {
+   *     // Show wrap-up form
+   *     showWrapupForm();
+   *   } else {
+   *     // Clean up and prepare for next task
+   *     cleanupTask();
+   *   }
+   * });
+   *
+   * // End the task
+   * try {
+   *   await task.end();
+   *   console.log('Task end request successful');
+   * } catch (error) {
+   *   console.error('Failed to end task:', error);
+   *   // Handle error (e.g., show error message, retry option)
+   * }
+   *
+   * function showWrapupForm() {
+   *   // Show wrap-up UI with required codes
+   *   document.getElementById('wrapup-form').style.display = 'block';
+   * }
+   *
+   * function cleanupTask() {
+   *   // Reset UI state
+   *   document.getElementById('active-task').style.display = 'none';
+   *   document.getElementById('controls').style.display = 'none';
+   * }
+   * ```
    */
   public async end(): Promise<TaskResponse> {
     try {
@@ -446,31 +777,72 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.END, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.END, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_END_FAILED,
         {
           taskId: this.data.interactionId,
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw err;
     }
   }
 
   /**
    * Wraps up the task/interaction with the customer.
-   * @param wrapupPayload - WrapupPayLoad containing auxCodeId and wrapUpReason
+   * This is called after task:end event if wrapUpRequired is true.
+   * Emits task:wrappedup event when successful.
+   *
+   * @param wrapupPayload - WrapupPayLoad containing:
+   *   - auxCodeId: Required ID for the wrap-up code
+   *   - wrapUpReason: Required description of wrap-up reason
    * @returns Promise<TaskResponse>
-   * @throws Error - Throws if task data is unavailable, auxCodeId is missing, or wrapUpReason is missing
+   * @throws Error if task data is unavailable, auxCodeId is missing, or wrapUpReason is missing
    * @example
    * ```typescript
-   * task.wrapup(wrapupPayload).then(()=>{}).catch(()=>{})
+   * // Set up wrap-up events
+   * task.on(TASK_EVENTS.TASK_WRAPUP, () => {
+   *   console.log('Task ready for wrap-up');
+   *   // Show wrap-up form
+   *   document.getElementById('wrapup-form').style.display = 'block';
+   * });
+   *
+   * task.on(TASK_EVENTS.TASK_WRAPPEDUP, () => {
+   *   console.log('Task wrap-up completed');
+   *   // Clean up UI
+   *   document.getElementById('wrapup-form').style.display = 'none';
+   * });
+   *
+   * // Submit wrap-up
+   * try {
+   *   const wrapupPayload = {
+   *     auxCodeId: selectedCode, // e.g., 'ISSUE_RESOLVED'
+   *     wrapUpReason: 'Customer issue resolved successfully'
+   *   };
+   *   await task.wrapup(wrapupPayload);
+   *   console.log('Successfully submitted wrap-up');
+   * } catch (error) {
+   *   console.error('Failed to submit wrap-up:', error);
+   *   // Handle validation errors
+   *   if (error.message.includes('required')) {
+   *     // Show validation error to agent
+   *   }
+   * }
    * ```
    */
   public async wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {
     try {
+      this.cancelAutoWrapupTimer();
       LoggerProxy.info(`Wrapping up task`, {
         module: TASK_FILE,
         method: METHODS.WRAPUP,
@@ -517,28 +889,59 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return response;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.WRAPUP, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.WRAPUP, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_WRAPUP_FAILED,
         {
           taskId: this.data.interactionId,
           wrapUpCode: wrapupPayload.auxCodeId,
           wrapUpReason: wrapupPayload.wrapUpReason,
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw err;
     }
   }
 
   /**
    * Pauses the recording for the current voice task.
+   * Emits task:recordingPaused event when successful.
+   *
    * @returns Promise<TaskResponse>
-   * @throws Error
+   * @throws Error if pause recording fails
    * @example
    * ```typescript
-   * task.pauseRecording().then(()=>{}).catch(()=>{});
+   * // Set up recording events
+   * task.on(TASK_EVENTS.TASK_RECORDING_PAUSED, () => {
+   *   console.log('Recording paused');
+   *   // Update UI to show recording paused state
+   *   document.getElementById('recording-status').textContent = 'Recording Paused';
+   *   document.getElementById('pause-recording-btn').style.display = 'none';
+   *   document.getElementById('resume-recording-btn').style.display = 'block';
+   * });
+   *
+   * task.on(TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED, (error) => {
+   *   console.error('Failed to pause recording:', error);
+   *   // Show error to agent
+   * });
+   *
+   * // Pause recording
+   * try {
+   *   await task.pauseRecording();
+   *   console.log('Pause recording request sent');
+   * } catch (error) {
+   *   console.error('Error sending pause recording request:', error);
+   *   // Handle error
+   * }
    * ```
    */
   public async pauseRecording(): Promise<TaskResponse> {
@@ -574,28 +977,63 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.PAUSE_RECORDING, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.PAUSE_RECORDING, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_PAUSE_RECORDING_FAILED,
         {
           taskId: this.data.interactionId,
           error: error.toString(),
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw err;
     }
   }
 
   /**
    * Resumes the recording for the voice task that was previously paused.
-   * @param resumeRecordingPayload - Configuration for resuming recording, defaults to {autoResumed: false}
+   * Emits task:recordingResumed event when successful.
+   *
+   * @param resumeRecordingPayload - Configuration for resuming recording:
+   *   - autoResumed: Indicates if resume was automatic (defaults to false)
    * @returns Promise<TaskResponse>
-   * @throws Error
+   * @throws Error if resume recording fails
    * @example
    * ```typescript
-   * task.resumeRecording(resumeRecordingPayload).then(()=>{}).catch(()=>{});
+   * // Set up recording resume events
+   * task.on(TASK_EVENTS.TASK_RECORDING_RESUMED, () => {
+   *   console.log('Recording resumed');
+   *   // Update UI to show active recording state
+   *   document.getElementById('recording-status').textContent = 'Recording Active';
+   *   document.getElementById('pause-recording-btn').style.display = 'block';
+   *   document.getElementById('resume-recording-btn').style.display = 'none';
+   * });
+   *
+   * task.on(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, (error) => {
+   *   console.error('Failed to resume recording:', error);
+   *   // Show error to agent
+   * });
+   *
+   * // Resume recording
+   * try {
+   *   const resumePayload = {
+   *     autoResumed: false // Set to true if triggered by system
+   *   };
+   *   await task.resumeRecording(resumePayload);
+   *   console.log('Resume recording request sent');
+   * } catch (error) {
+   *   console.error('Error sending resume recording request:', error);
+   *   // Handle error
+   * }
    * ```
    */
   public async resumeRecording(
@@ -638,34 +1076,61 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.RESUME_RECORDING, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.RESUME_RECORDING, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_RESUME_RECORDING_FAILED,
         {
           taskId: this.data.interactionId,
           error: error.toString(),
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw err;
     }
   }
 
   /**
-   * Consults another agent or queue on an onngoing task for further assistance.
-   * @param consultPayload - ConsultPayload containing destination and destinationType
-   * @returns Promise<TaskResponse>
-   * @throws Error
+   * Consults another agent or queue on an ongoing task for further assistance.
+   * During consultation, the original customer is typically placed on hold while
+   * the agent seeks guidance from another agent or queue.
+   *
+   * @param consultPayload - Configuration for the consultation containing:
+   *   - to: ID of the agent or queue to consult with
+   *   - destinationType: Type of destination (AGENT, QUEUE, etc.)
+   *   - holdParticipants: Whether to hold other participants (defaults to true)
+   * @returns Promise<TaskResponse> - Resolves with consultation result
+   * @throws Error if consultation fails or invalid parameters provided
    * @example
    * ```typescript
+   * // Consult with another agent
    * const consultPayload = {
-   *   destination: 'myBuddyAgentId',
+   *   to: 'agentId123',
    *   destinationType: DESTINATION_TYPE.AGENT,
-   * }
-   * task.consult(consultPayload).then(()=>{}).catch(()=>{});
+   *   holdParticipants: true
+   * };
+   * task.consult(consultPayload)
+   *   .then(response => console.log('Consultation started successfully'))
+   *   .catch(error => console.error('Failed to start consultation:', error));
+   *
+   * // Consult with a queue
+   * const queueConsultPayload = {
+   *   to: 'salesQueue123',
+   *   destinationType: DESTINATION_TYPE.QUEUE
+   * };
+   * task.consult(queueConsultPayload)
+   *   .then(response => console.log('Queue consultation started'))
+   *   .catch(error => console.error('Failed to start queue consultation:', error));
    * ```
-   * */
+   */
   public async consult(consultPayload: ConsultPayload): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Starting consult`, {
@@ -704,7 +1169,14 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.CONSULT, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
         {
@@ -712,26 +1184,46 @@ export default class Task extends EventEmitter implements IOldTask {
           destination: consultPayload.to,
           destinationType: consultPayload.destinationType,
           error: error.toString(),
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw err;
     }
   }
 
   /**
-   * Ends the consult session in progress for a task.
-   * @param consultEndPayload
-   * @returns Promise<TaskResponse>
-   * @throws Error
+   * Ends an ongoing consultation session for the task.
+   * This terminates the consultation while maintaining the original customer connection.
+   *
+   * @param consultEndPayload - Configuration for ending the consultation containing:
+   *   - isConsult: Must be true to indicate this is a consultation end
+   *   - taskId: ID of the task being consulted on
+   *   - queueId: (Optional) Queue ID if this was a queue consultation
+   *   - isSecondaryEpDnAgent: (Optional) Indicates if this involves a secondary entry point
+   * @returns Promise<TaskResponse> - Resolves when consultation is ended
+   * @throws Error if ending consultation fails or invalid parameters provided
    * @example
    * ```typescript
+   * // End a direct agent consultation
    * const consultEndPayload = {
-   *  isConsult: true,
-   *  queueId: 'myQueueId',
-   * }
-   * task.endConsult(consultEndPayload).then(()=>{}).catch(()=>{});
+   *   isConsult: true,
+   *   taskId: 'task123'
+   * };
+   * task.endConsult(consultEndPayload)
+   *   .then(response => console.log('Consultation ended successfully'))
+   *   .catch(error => console.error('Failed to end consultation:', error));
+   *
+   * // End a queue consultation
+   * const queueConsultEndPayload = {
+   *   isConsult: true,
+   *   taskId: 'task123',
+   *   queueId: 'queue123'
+   * };
+   * task.endConsult(queueConsultEndPayload)
+   *   .then(response => console.log('Queue consultation ended'))
+   *   .catch(error => console.error('Failed to end queue consultation:', error));
    * ```
    */
   public async endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse> {
@@ -770,32 +1262,56 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.END_CONSULT, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.END_CONSULT, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
         {
           taskId: this.data.interactionId,
           error: error.toString(),
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw err;
     }
   }
 
   /**
-   * Transfer the task to an agent dierctly or to the queue.
-   * @param transferPayload - Transfer configuration containing destination and destination type
-   * @returns Promise<TaskResponse>
-   * @throws Error
+   * Transfer the task to an agent directly or to a queue.
+   * This is a blind transfer that immediately redirects the task to the specified destination.
+   *
+   * @param transferPayload - Transfer configuration containing:
+   *   - to: ID of the agent or queue to transfer to
+   *   - destinationType: Type of destination (AGENT, QUEUE, etc.)
+   * @returns Promise<TaskResponse> - Resolves when transfer is completed
+   * @throws Error if transfer fails or invalid parameters provided
    * @example
    * ```typescript
-   * const transferPayload = {
-   *  to: 'myQueueId',
-   *  destinationType: 'queue',
-   * }
-   * task.transfer(transferPayload).then(()=>{}).catch(()=>{});
+   * // Transfer to a queue
+   * const queueTransferPayload = {
+   *   to: 'salesQueue123',
+   *   destinationType: DESTINATION_TYPE.QUEUE
+   * };
+   * task.transfer(queueTransferPayload)
+   *   .then(response => console.log('Task transferred to queue successfully'))
+   *   .catch(error => console.error('Failed to transfer to queue:', error));
+   *
+   * // Transfer to an agent
+   * const agentTransferPayload = {
+   *   to: 'agentId123',
+   *   destinationType: DESTINATION_TYPE.AGENT
+   * };
+   * task.transfer(agentTransferPayload)
+   *   .then(response => console.log('Task transferred to agent successfully'))
+   *   .catch(error => console.error('Failed to transfer to agent:', error));
    * ```
    */
   public async transfer(transferPayload: TransferPayLoad): Promise<TaskResponse> {
@@ -845,7 +1361,14 @@ export default class Task extends EventEmitter implements IOldTask {
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.TRANSFER, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.TRANSFER, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
@@ -854,91 +1377,404 @@ export default class Task extends EventEmitter implements IOldTask {
           destinationType: transferPayload.destinationType,
           isConsultTransfer: false,
           error: error.toString(),
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw err;
     }
   }
 
   /**
-   * Transfer the task to the consulted agent or queue.
-   * @param consultTransferPayload - Consult transfer configuration containing destination and destinationType
-   * @returns Promise<TaskResponse>
-   * @throws Error
+   * Transfer the task to the party that was consulted.
+   * This completes a consultative transfer where the agent first consulted with the target
+   * before transferring the task. For queue consultations, the transfer is automatically
+   * directed to the agent who accepted the consultation.
+   *
+   * @param consultTransferPayload - Configuration for the consultation transfer containing:
+   *   - to: ID of the agent or queue to transfer to
+   *   - destinationType: Type of destination (AGENT, QUEUE, etc. from CONSULT_TRANSFER_DESTINATION_TYPE)
+   * @returns Promise<TaskResponse> - Resolves when consultation transfer is completed
+   * @throws Error if transfer fails, no agent has accepted a queue consultation, or other validation errors
    * @example
    * ```typescript
-   * const consultTransferPayload = {
-   * destination: 'anotherAgentId | queueId',
-   * destinationType: 'agent | queue',
-   * }
-   * task.consultTransfer(consultTransferPayload).then(()=>{}).catch(()=>{});
+   * // Complete consultation transfer to an agent
+   * const agentConsultTransfer = {
+   *   to: 'agentId123',
+   *   destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT
+   * };
+   * task.consultTransfer(agentConsultTransfer)
+   *   .then(response => console.log('Consultation transfer to agent completed'))
+   *   .catch(error => console.error('Failed to complete agent consultation transfer:', error));
+   *
+   * // Complete consultation transfer to a queue agent
+   * const queueConsultTransfer = {
+   *   to: 'queue123',
+   *   destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE
+   * };
+   * task.consultTransfer(queueConsultTransfer)
+   *   .then(response => console.log('Consultation transfer to queue agent completed'))
+   *   .catch(error => console.error('Failed to complete queue consultation transfer:', error));
    * ```
-   * */
+   */
   public async consultTransfer(
-    consultTransferPayload: ConsultTransferPayLoad
+    consultTransferPayload?: ConsultTransferPayLoad
   ): Promise<TaskResponse> {
-    try {
-      LoggerProxy.info(`Initiating consult transfer to ${consultTransferPayload.to}`, {
+    // Get the destination agent ID using custom logic from participants data
+    const destAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
+
+    // Resolve the target id (queue consult transfers go to the accepted agent)
+    if (!destAgentId) {
+      throw new Error('No agent has accepted this queue consult yet');
+    }
+
+    LoggerProxy.info(
+      `Initiating consult transfer to ${consultTransferPayload?.to || destAgentId}`,
+      {
         module: TASK_FILE,
         method: METHODS.CONSULT_TRANSFER,
         interactionId: this.data.interactionId,
-      });
-
-      // For queue destinations, use the destAgentId from task data
-      if (consultTransferPayload.destinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
-        if (!this.data.destAgentId) {
-          throw new Error('No agent has accepted this queue consult yet');
-        }
-
-        // Override the destination with the agent who accepted the queue consult
-        consultTransferPayload = {
-          to: this.data.destAgentId,
-          destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
-        };
       }
+    );
 
+    // Derive destination type from the participant's type property
+    const destType = calculateDestType(this.data.interaction, this.agentId);
+    // By default we always use the computed destAgentId as the target id
+    const consultTransferRequest: ConsultTransferPayLoad = {
+      to: destAgentId,
+      destinationType: destType,
+    };
+    try {
       const result = await this.contact.consultTransfer({
         interactionId: this.data.interactionId,
-        data: consultTransferPayload,
+        data: consultTransferRequest,
       });
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_SUCCESS,
         {
           taskId: this.data.interactionId,
-          destination: consultTransferPayload.to,
-          destinationType: consultTransferPayload.destinationType,
+          destination: consultTransferRequest.to,
+          destinationType: consultTransferRequest.destinationType,
           isConsultTransfer: true,
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
         },
         ['operational', 'behavioral', 'business']
       );
 
-      LoggerProxy.log(`Consult transfer completed successfully to ${consultTransferPayload.to}`, {
-        module: TASK_FILE,
-        method: METHODS.CONSULT_TRANSFER,
-        trackingId: result.trackingId,
-        interactionId: this.data.interactionId,
-      });
+      LoggerProxy.log(
+        `Consult transfer completed successfully to ${consultTransferPayload?.to || destAgentId}`,
+        {
+          module: TASK_FILE,
+          method: METHODS.CONSULT_TRANSFER,
+          trackingId: result.trackingId,
+          interactionId: this.data.interactionId,
+        }
+      );
 
       return result;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT_TRANSFER, TASK_FILE);
+      const err = generateTaskErrorObject(error, METHODS.CONSULT_TRANSFER, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
         {
           taskId: this.data.interactionId,
-          destination: consultTransferPayload.to,
-          destinationType: consultTransferPayload.destinationType,
+          destination: destAgentId || '',
+          destinationType: destType,
           isConsultTransfer: true,
           error: error.toString(),
+          ...taskErrorProps,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
         ['operational', 'behavioral', 'business']
       );
-      throw detailedError;
+      throw err;
+    }
+  }
+
+  /**
+   * Starts a consultation conference by merging the consultation call with the main call
+   *
+   * Creates a three-way conference between the agent, customer, and consulted party
+   * Extracts required consultation data from the current task data
+   * On success, emits a `task:conferenceStarted` event
+   *
+   * @returns Promise<TaskResponse> - Response from the consultation conference API
+   * @throws Error if the operation fails or if consultation data is invalid
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   await task.consultConference();
+   *   console.log('Conference started successfully');
+   * } catch (error) {
+   *   console.error('Failed to start conference:', error);
+   * }
+   * ```
+   */
+  public async consultConference(): Promise<TaskResponse> {
+    // Get the destination agent ID dynamically from participants
+    // This handles multi-party conference scenarios, CBT (Capacity Based Team), and EP-DN cases
+    const destAgentId = calculateDestAgentId(this.data.interaction, this.agentId);
+
+    // Validate that we have a destination agent (for queue consult scenarios)
+    if (!destAgentId) {
+      throw new Error('No agent has accepted this queue consult yet');
+    }
+
+    // Get the destination agent ID for fetching destination type
+    // This helps determine the correct participant type for CBT (Capacity Based Team) and EP-DN scenarios
+    const destAgentType = calculateDestType(this.data.interaction, this.agentId);
+
+    // Extract consultation conference data from task data (used in both try and catch)
+    const consultationData = {
+      agentId: this.agentId,
+      to: destAgentId,
+      destinationType: destAgentType || this.data.destinationType || 'agent',
+    };
+
+    try {
+      LoggerProxy.info(`Initiating consult conference to ${destAgentId}`, {
+        module: TASK_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      const response = await this.contact.consultConference({
+        interactionId: this.data.interactionId,
+        data: consultationData,
+      });
+
+      // Track success metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          destination: consultationData.to,
+          destinationType: consultationData.destinationType,
+          agentId: consultationData.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Consult conference started successfully`, {
+        module: TASK_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      const err = generateTaskErrorObject(error, METHODS.CONSULT_CONFERENCE, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED,
+        {
+          taskId: this.data.interactionId,
+          destination: consultationData.to,
+          destinationType: consultationData.destinationType,
+          agentId: consultationData.agentId,
+          error: error.toString(),
+          ...taskErrorProps,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to start consult conference`, {
+        module: TASK_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw err;
+    }
+  }
+
+  /**
+   * Exits the current conference by removing the agent from the conference call
+   *
+   * Exits the agent from the conference, leaving the customer and consulted party connected
+   * On success, emits a `task:conferenceEnded` event
+   *
+   * @returns Promise<TaskResponse> - Response from the conference exit API
+   * @throws Error if the operation fails or if no active conference exists
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   await task.exitConference();
+   *   console.log('Successfully exited conference');
+   * } catch (error) {
+   *   console.error('Failed to exit conference:', error);
+   * }
+   * ```
+   */
+  public async exitConference(): Promise<TaskResponse> {
+    try {
+      LoggerProxy.info(`Exiting consult conference`, {
+        module: TASK_FILE,
+        method: METHODS.EXIT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      // Validate that interaction ID exists
+      if (!this.data.interactionId) {
+        throw new Error('Invalid interaction ID');
+      }
+
+      const response = await this.contact.exitConference({
+        interactionId: this.data.interactionId,
+      });
+
+      // Track success metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_END_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Consult conference exited successfully`, {
+        module: TASK_FILE,
+        method: METHODS.EXIT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      const err = generateTaskErrorObject(error, METHODS.EXIT_CONFERENCE, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
+
+      // Track failure metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_END_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...taskErrorProps,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to exit consult conference`, {
+        module: TASK_FILE,
+        method: METHODS.EXIT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw err;
+    }
+  }
+
+  /**
+   * Transfers the current conference to another agent
+   *
+   * Moves the entire conference (including all participants) to a new agent,
+   * while the current agent exits and goes to wrapup
+   * On success, the current agent receives `task:conferenceEnded` event
+   *
+   * @returns Promise<TaskResponse> - Response from the conference transfer API
+   * @throws Error if the operation fails or if no active conference exists
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   await task.transferConference();
+   *   console.log('Conference transferred successfully');
+   * } catch (error) {
+   *   console.error('Failed to transfer conference:', error);
+   * }
+   * ```
+   */
+  public async transferConference(): Promise<TaskResponse> {
+    try {
+      LoggerProxy.info(`Transferring conference`, {
+        module: TASK_FILE,
+        method: METHODS.TRANSFER_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      // Validate that interaction ID exists
+      if (!this.data.interactionId) {
+        throw new Error('Invalid interaction ID');
+      }
+
+      const response = await this.contact.conferenceTransfer({
+        interactionId: this.data.interactionId,
+      });
+
+      // Track success metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Conference transferred successfully`, {
+        module: TASK_FILE,
+        method: METHODS.TRANSFER_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      const err = generateTaskErrorObject(error, METHODS.TRANSFER_CONFERENCE, TASK_FILE);
+      const taskErrorProps = {
+        trackingId: err.data?.trackingId,
+        errorMessage: err.data?.message,
+        errorType: err.data?.errorType,
+        errorData: err.data?.errorData,
+        reasonCode: err.data?.reasonCode,
+      };
+
+      // Track failure metrics (following consultTransfer pattern)
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
+        {
+          taskId: this.data.interactionId,
+          error: error.toString(),
+          ...taskErrorProps,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to transfer conference`, {
+        module: TASK_FILE,
+        method: METHODS.TRANSFER_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw err;
     }
   }
 }

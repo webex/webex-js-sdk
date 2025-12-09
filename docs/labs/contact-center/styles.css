@@ -1,0 +1,193 @@
+/* Main layout */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    line-height: 1.6;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    color: #333;
+}
+
+h1 {
+    color: #00a6d6;
+    border-bottom: 2px solid #00a6d6;
+    padding-bottom: 0.5em;
+}
+
+h2 {
+    color: #015c7a;
+    margin-top: 2em;
+}
+
+/* Sections */
+section {
+    background: #fff;
+    margin: 20px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+section {
+    /* Use SLDS padding utilities */
+    padding: var(--slds-c-section-spacing-block-start, 1rem) var(--slds-c-section-spacing-inline-end, 1rem) var(--slds-c-section-spacing-block-end, 1rem) var(--slds-c-section-spacing-inline-start, 1rem);
+}
+
+/* Code examples */
+pre {
+    margin: 1em 0;
+    overflow: auto;
+}
+
+code {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+}
+
+pre code.example {
+    display: block;
+    padding: 1em;
+    background: #f8f9fa;
+    border-left: 4px solid #00a6d6;
+    color: #333;
+    line-height: 1.4;
+}
+
+/* Form elements */
+input[type="text"],
+select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 5px 0;
+    font-size: 14px;
+    width: 300px;
+}
+
+button {
+    background: #00a6d6;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin: 5px;
+    transition: background-color 0.2s;
+}
+
+button:hover:not(:disabled) {
+    background: #015c7a;
+}
+
+button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* Fieldsets */
+fieldset {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    margin: 10px 0;
+}
+
+legend {
+    color: #015c7a;
+    font-weight: bold;
+    padding: 0 10px;
+}
+
+/* Console log */
+#log {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 13px;
+    margin-top: 10px;
+}
+
+/* Success/Error states */
+.success {
+    color: #28a745;
+}
+
+.error {
+    color: #dc3545;
+}
+
+/* Helper classes using SLDS utilities */
+.slds-hide {
+    display: none !important;
+}
+
+.slds-grid {
+    display: flex;
+    gap: 1rem;
+}
+
+/* Call controls */
+.call-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.call-controls button {
+    flex: 1;
+}
+
+/* Documentation notes */
+.api-note {
+    background: #e8f5e9;
+    border-left: 4px solid #28a745;
+    padding: 1em;
+    margin: 1em 0;
+    border-radius: 0 4px 4px 0;
+}
+
+/* Responsive design using SLDS responsive utilities */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    input[type="text"],
+    select {
+        width: 100%;
+    }
+
+    .slds-grid {
+        flex-direction: column;
+    }
+
+    .call-controls {
+        flex-direction: column;
+    }
+
+    /* Use SLDS responsive utilities */
+    .slds-hide_small {
+        display: none !important;
+    }
+
+    .slds-show_small {
+        display: block !important;
+    }
+}
+
+/* Additional SLDS utilities */
+.slds-m-around_medium {
+    margin: 1rem;
+}
+
+.slds-p-around_medium {
+    padding: 1rem;
+}
+
+.slds-media_responsive {
+    display: block;
+    width: 100%;
+}

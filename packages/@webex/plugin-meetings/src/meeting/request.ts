@@ -32,6 +32,7 @@ import {
   BrbOptions,
   ToggleReactionsOptions,
   PostMeetingDataConsentOptions,
+  SynchronizeVideoLayout,
 } from './request.type';
 import MeetingUtil from './util';
 import {AnnotationInfo} from '../annotation/annotation.types';
@@ -886,6 +887,44 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
+   * Extend the current meeting duration.
+   *
+   * @param {Object} params - Parameters for extending the meeting.
+   * @param {string} params.meetingInstanceId - The unique ID of the meeting instance.
+   * @param {string} params.participantId - The ID of the participant requesting the extension.
+   * @param {number} params.extensionMinutes - The number of minutes to extend the meeting by.
+   * @param {string} params.meetingPolicyUrl - The base URL for meeting policy service (dynamic, from locus links)
+   * @returns {Promise<any>} A promise that resolves with the server response.
+   */
+  extendMeeting({
+    meetingInstanceId,
+    participantId,
+    extensionMinutes,
+    meetingPolicyUrl,
+  }: {
+    meetingInstanceId: string;
+    participantId: string;
+    extensionMinutes: number;
+    meetingPolicyUrl: string;
+  }) {
+    if (!meetingPolicyUrl) {
+      return Promise.reject(new Error('meetingPolicyUrl is required'));
+    }
+    const uri = `${meetingPolicyUrl}/continueMeeting`;
+
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri,
+      body: {
+        meetingInstanceId,
+        requestParticipantId: participantId,
+        extensionMinutes,
+      },
+    });
+  }
+
+  /**
    * Make a network request to enable or disable reactions.
    * @param {boolean} options.enable - determines if we need to enable or disable.
    * @param {locusUrl} options.locusUrl
@@ -968,5 +1007,123 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         },
       },
     });
+  }
+
+  /**
+   * Synchronize the stage for a meeting
+   *
+   * @param {LocusUrl} locusUrl The locus URL
+   * @param {SetStageVideoLayout} videoLayout The video layout to synchronize
+   * @returns {Promise} The locus request
+   */
+  synchronizeStage(locusUrl: string, videoLayout: SynchronizeVideoLayout) {
+    return this.locusDeltaRequest({
+      method: HTTP_VERBS.PATCH,
+      uri: `${locusUrl}/${CONTROLS}`,
+      body: {videoLayout},
+    });
+  }
+
+  /**
+   * Sends a request to notify the host of a meeting.
+   * @param {string} siteFullUrl - The site URL.
+   * @param {string} locusId - The locus ID.
+   * @param {string} meetingUuid - The meeting UUID.
+   * @param {Array<string>} displayName - The display names to notify the host about.
+   * @returns {Promise}
+   */
+  notifyHost(siteFullUrl: string, locusId: string, meetingUuid: string, displayName: string[]) {
+    // @ts-ignore
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri: `https://${siteFullUrl}/wbxappapi/v1/meetings/${meetingUuid}/notifyhost`,
+      body: {
+        displayName,
+        size: displayName?.length,
+      },
+      headers: {
+        locusId,
+      },
+    });
+  }
+
+  /**
+   * Call out to a SIP participant
+   *
+   * @param {any} meetingId - The meeting ID.
+   * @param {any} meetingNumber - The meeting number.
+   * @param {string} address - The SIP address to call out.
+   * @param {string} displayName - The display name for the participant.
+   * @returns {Promise} The API response
+   */
+  public async sipCallOut(meetingId, meetingNumber, address, displayName) {
+    const body: any = {
+      meetingId,
+      meetingNumber,
+      address,
+      displayName,
+    };
+    try {
+      // @ts-ignore
+      const response = await this.request({
+        method: HTTP_VERBS.POST,
+        service: 'hydra',
+        resource: 'meetingParticipants/callout',
+        body,
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      LoggerProxy.logger.info('Meetings:request#sipCallOut --> SIP call-out successful', response);
+
+      return response.body;
+    } catch (err) {
+      LoggerProxy.logger.error(
+        `Meetings:request#sipCallOut --> Error calling out SIP participant, error ${JSON.stringify(
+          err
+        )}`
+      );
+      throw err;
+    }
+  }
+
+  /**
+   * Cancel an ongoing SIP call-out
+   *
+   * @param {string} participantId - The ID of the participant whose SIP call-out should be cancelled.
+   * @returns {Promise} The API response
+   */
+  public async cancelSipCallOut(participantId) {
+    const body = {
+      participantId,
+    };
+
+    try {
+      // @ts-ignore
+      const response = await this.request({
+        method: HTTP_VERBS.POST,
+        service: 'hydra',
+        resource: 'meetingParticipants/cancelCallout',
+        body,
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      LoggerProxy.logger.info(
+        'Meetings:request#cancelSipCallOut --> SIP call-out cancelled successfully',
+        response
+      );
+
+      return response.body;
+    } catch (err) {
+      LoggerProxy.logger.error(
+        `Meetings:request#cancelSipCallOut --> Error cancelling SIP participant call-out, error ${JSON.stringify(
+          err
+        )}`
+      );
+      throw err;
+    }
   }
 }

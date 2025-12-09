@@ -1,7 +1,7 @@
 import {CC_FILE, METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import {IDigital, TaskResponse, TaskData} from '../types';
-import {CC_EVENTS} from '../../config/types';
+import {CC_EVENTS, WrapupData} from '../../config/types';
 import Task from '../Task';
 import routingContact from '../contact';
 import LoggerProxy from '../../../logger-proxy';
@@ -9,8 +9,13 @@ import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 
 export default class Digital extends Task implements IDigital {
-  constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
-    super(contact, data);
+  constructor(
+    contact: ReturnType<typeof routingContact>,
+    data: TaskData,
+    wrapupData?: WrapupData,
+    agentId?: string
+  ) {
+    super(contact, data, wrapupData, agentId);
     this.updateTaskUiControls({accept: [true, true]});
   }
 

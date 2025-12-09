@@ -780,6 +780,9 @@ describe('plugin-dss', () => {
               queryString: 'query',
               resultSize: 100,
               requestedTypes: ['PERSON', 'ROBOT'],
+              includePersonalDevices: undefined,
+              includeCommonAreaPhones: undefined,
+              includeOnlyPairableDevices: undefined,
             },
           },
         ]);
@@ -799,6 +802,9 @@ describe('plugin-dss', () => {
             requestedTypes: ['PERSON', 'ROBOT'],
             resultSize: 100,
             queryString: 'query',
+            includePersonalDevices: undefined,
+            includeCommonAreaPhones: undefined,
+            includeOnlyPairableDevices: undefined,
           },
         });
 
@@ -829,6 +835,9 @@ describe('plugin-dss', () => {
             requestedTypes: ['PERSON', 'ROBOT'],
             resultSize: 100,
             queryString: 'query',
+            includePersonalDevices: undefined,
+            includeCommonAreaPhones: undefined,
+            includeOnlyPairableDevices: undefined,
           },
         });
 
@@ -858,6 +867,9 @@ describe('plugin-dss', () => {
             requestedTypes: ['PERSON', 'ROBOT'],
             resultSize: 100,
             queryString: 'query',
+            includePersonalDevices: undefined,
+            includeCommonAreaPhones: undefined,
+            includeOnlyPairableDevices: undefined,
           },
         });
 
@@ -889,6 +901,9 @@ describe('plugin-dss', () => {
             requestedTypes: ['PERSON', 'ROBOT'],
             resultSize: 100,
             queryString: 'query',
+            includePersonalDevices: undefined,
+            includeCommonAreaPhones: undefined,
+            includeOnlyPairableDevices: undefined,
           },
         });
 
@@ -910,6 +925,37 @@ describe('plugin-dss', () => {
             '\n Resource: /search/orgid/userOrgId/entities' +
             '\n Params: {"queryString":"query","resultSize":100,"requestedTypes":["PERSON","ROBOT"]}'
         );
+      });
+
+      it('passes optional flags correctly to _request', async () => {
+        webex.internal.device.orgId = 'userOrgId';
+        webex.internal.dss._request = sinon
+          .stub()
+          .returns(Promise.resolve({resultArray: 'optional return'}));
+
+        const result = await webex.internal.dss.search({
+          requestedTypes: ['ROOM'],
+          resultSize: 50,
+          queryString: 'test-query',
+          includeCommonAreaPhones: true,
+          includeOnlyPairableDevices: false,
+          includePersonalDevices: true,
+        });
+
+        expect(webex.internal.dss._request.getCall(0).args[0]).to.deep.equal({
+          dataPath: 'directoryEntities',
+          resource: '/search/orgid/userOrgId/entities',
+          params: {
+            queryString: 'test-query',
+            resultSize: 50,
+            requestedTypes: ['ROOM'],
+            includeCommonAreaPhones: true,
+            includeOnlyPairableDevices: false,
+            includePersonalDevices: true,
+          },
+        });
+
+        expect(result).to.equal('optional return');
       });
     });
 

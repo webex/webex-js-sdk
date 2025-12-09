@@ -12,6 +12,7 @@ export const DEFAULT_LOCAL_CALL_ID = 'DefaultLocalId';
 export const DEFAULT_REHOMING_INTERVAL_MAX = 120;
 export const DEFAULT_REHOMING_INTERVAL_MIN = 60;
 export const DEFAULT_SESSION_TIMER = 1000 * 60 * 10;
+export const MAX_CALL_KEEPALIVE_RETRY_COUNT = 4;
 export const DEVICES_ENDPOINT_RESOURCE = 'devices';
 export const DISCOVERY_URL = 'https://ds.ciscospark.com/v1/region';
 export const DUMMY_METRICS = {
@@ -45,7 +46,7 @@ export const DUMMY_MOBIUS_URL = 'https://mobius.aintgen-a-1.int.infra.webex.com/
 export const IP_ENDPOINT = 'myip';
 export const INITIAL_SEQ_NUMBER = 1;
 export const MEDIA_ENDPOINT_RESOURCE = 'media';
-export const NETWORK_FLAP_TIMEOUT = 2000;
+export const NETWORK_FLAP_TIMEOUT = 5000;
 export const CALL_HOLD_SERVICE = 'callhold';
 export const CALL_TRANSFER_SERVICE = 'calltransfer';
 export const HOLD_ENDPOINT = 'hold';
@@ -61,7 +62,7 @@ export const WEB_AGENT = '(web)';
 export const WEBEX = 'webex';
 export const WEBEX_WEB_CLIENT = 'webex-web-client';
 export const CALLER_ID_FILE = 'CallerId';
-export const UTILS_FILE = 'utils';
+export const UTILS_FILE = 'src/common/Utils.ts';
 export const CALLING_CLIENT_FILE = 'CallingClient';
 export const LINE_FILE = 'line';
 export const CALL_FILE = 'call';
@@ -105,16 +106,16 @@ export const BASE_REG_RETRY_TIMER_VAL_IN_SEC = 30;
 export const SEC_TO_MSEC_MFACTOR = 1000;
 export const MINUTES_TO_SEC_MFACTOR = 60;
 export const REG_RANDOM_T_FACTOR_UPPER_LIMIT = 10000;
-export const REG_TRY_BACKUP_TIMER_VAL_IN_SEC = 1200;
-export const REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC = 114;
+export const REG_TRY_BACKUP_TIMER_VAL_IN_SEC = 114;
 export const REG_FAILBACK_429_MAX_RETRIES = 5;
-export const REGISTER_UTIL = 'registerDevice';
+export const RETRY_TIMER_UPPER_LIMIT = 60;
+export const REGISTRATION_UTIL = 'triggerRegistration';
+export const REGISTER_UTIL = 'attemptRegistrationWithServers';
 export const GET_MOBIUS_SERVERS_UTIL = 'getMobiusServers';
 export const KEEPALIVE_UTIL = 'startKeepaliveTimer';
 export const FAILBACK_UTIL = 'executeFailback';
-export const FAILBACK_429_RETRY_UTIL = 'scheduleFailback429Retry';
+export const REG_429_RETRY_UTIL = 'handle429Retry';
 export const FAILOVER_UTIL = 'startFailoverTimer';
-export const NETWORK_CHANGE_DETECTION_UTIL = 'detectNetworkChange';
 export const CALLS_CLEARED_HANDLER_UTIL = 'callsClearedHandler';
 export const RECONNECT_UTIL = 'reconnectOnFailure';
 export const NOISE_REDUCTION_EFFECT = 'noise-reduction-effect';
@@ -123,3 +124,107 @@ export const MOBIUS_EU_PROD = 'mobius-eu-central-1.prod.infra.webex.com';
 export const MOBIUS_US_INT = 'mobius-us-east-1.int.infra.webex.com';
 export const MOBIUS_EU_INT = 'mobius-eu-central-1.int.infra.webex.com';
 export const ICE_CANDIDATES_TIMEOUT = 3000;
+// Define constants for method names
+export const METHODS = {
+  CONSTRUCTOR: 'constructor',
+  CREATE_CALL: 'createCall',
+  HANDLE_INCOMING_CALL_SETUP: 'handleIncomingCallSetup',
+  HANDLE_OUTGOING_CALL_SETUP: 'handleOutgoingCallSetup',
+  HANDLE_CALL_HOLD: 'handleCallHold',
+  HANDLE_CALL_RESUME: 'handleCallResume',
+  HANDLE_INCOMING_CALL_PROGRESS: 'handleIncomingCallProgress',
+  HANDLE_INCOMING_ROAP_OFFER_REQUEST: 'handleIncomingRoapOfferRequest',
+  HANDLE_OUTGOING_CALL_ALERTING: 'handleOutgoingCallAlerting',
+  HANDLE_INCOMING_CALL_CONNECT: 'handleIncomingCallConnect',
+  HANDLE_OUTGOING_CALL_CONNECT: 'handleOutgoingCallConnect',
+  HANDLE_INCOMING_CALL_DISCONNECT: 'handleIncomingCallDisconnect',
+  HANDLE_OUTGOING_CALL_DISCONNECT: 'handleOutgoingCallDisconnect',
+  HANDLE_CALL_ESTABLISHED: 'handleCallEstablished',
+  HANDLE_UNKNOWN_STATE: 'handleUnknownState',
+  HANDLE_TIMEOUT: 'handleTimeout',
+  GET_EMITTER_CALLBACK: 'getEmitterCallback',
+  HANDLE_ROAP_ESTABLISHED: 'handleRoapEstablished',
+  HANDLE_ROAP_ERROR: 'handleRoapError',
+  HANDLE_OUTGOING_ROAP_OFFER: 'handleOutgoingRoapOffer',
+  HANDLE_OUTGOING_ROAP_ANSWER: 'handleOutgoingRoapAnswer',
+  HANDLE_INCOMING_ROAP_OFFER: 'handleIncomingRoapOffer',
+  HANDLE_INCOMING_ROAP_ANSWER: 'handleIncomingRoapAnswer',
+  INIT: 'init',
+  FORCE_SEND_STATS_REPORT: 'forceSendStatsReport',
+  UPDATE_ACTIVE_MOBIUS: 'updateActiveMobius',
+  DEQUEUE_WS_EVENTS: 'dequeueWsEvents',
+  GET_CALL: 'getCall',
+  GET_ACTIVE_CALLS: 'getActiveCalls',
+  UPDATE_LINE: 'updateLine',
+  GET_LINE_ID: 'getLineId',
+  INIT_MEDIA_CONNECTION: 'initMediaConnection',
+  GET_DIRECTION: 'getDirection',
+  GET_CALL_ID: 'getCallId',
+  GET_CORRELATION_ID: 'getCorrelationId',
+  SEND_CALL_STATE_MACHINE_EVT: 'sendCallStateMachineEvt',
+  SEND_MEDIA_STATE_MACHINE_EVT: 'sendMediaStateMachineEvt',
+  SET_CALL_ID: 'setCallId',
+  SET_DISCONNECT_REASON: 'setDisconnectReason',
+  GET_DISCONNECT_REASON: 'getDisconnectReason',
+  ANSWER: 'answer',
+  DIAL: 'dial',
+  POST: 'post',
+  PATCH: 'patch',
+  POST_SS_REQUEST: 'postSSRequest',
+  POST_STATUS: 'postStatus',
+  COMPLETE_TRANSFER: 'completeTransfer',
+  GET_CALL_STATS: 'getCallStats',
+  POST_MEDIA: 'postMedia',
+  MEDIA_ROAP_EVENTS_LISTENER: 'mediaRoapEventsListener',
+  MEDIA_TRACK_LISTENER: 'mediaTrackListener',
+  ON_EFFECT_ENABLED: 'onEffectEnabled',
+  ON_EFFECT_DISABLED: 'onEffectDisabled',
+  UPDATE_TRACK: 'updateTrack',
+  REGISTER_EFFECT_LISTENER: 'registerEffectListener',
+  UNREGISTER_LISTENERS: 'unregisterListeners',
+  REGISTER_LISTENERS: 'registerListeners',
+  DELETE: 'delete',
+  SUBMIT_CALL_ERROR_METRIC: 'submitCallErrorMetric',
+  HANDLE_MID_CALL_EVENT: 'handleMidCallEvent',
+  GET_CALLER_INFO: 'getCallerInfo',
+  END: 'end',
+  DO_HOLD_RESUME: 'doHoldResume',
+  START_CALLER_ID_RESOLUTION: 'startCallerIdResolution',
+  SEND_DIGIT: 'sendDigit',
+  MUTE: 'mute',
+  IS_MUTED: 'isMuted',
+  IS_CONNECTED: 'isConnected',
+  IS_HELD: 'isHeld',
+  UPDATE_MEDIA: 'updateMedia',
+  SET_BROADWORKS_CORRELATION_INFO: 'setBroadworksCorrelationInfo',
+  GET_BROADWORKS_CORRELATION_INFO: 'getBroadworksCorrelationInfo',
+  GET_CALL_RTP_STATS: 'getCallRtpStats',
+  REGISTER: 'register',
+  DEREGISTER: 'deregister',
+  DELETE_REGISTRATION: 'deleteRegistration',
+  NORMALIZE_LINE: 'normalizeLine',
+  LINE_EMITTER: 'lineEmitter',
+  GET_LOGGING_LEVEL: 'getLoggingLevel',
+  GET_ACTIVE_MOBIUS_URL: 'getActiveMobiusUrl',
+  GET_STATUS: 'getStatus',
+  GET_DEVICE_ID: 'getDeviceId',
+  MAKE_CALL: 'makeCall',
+  INCOMING_CALL_LISTENER: 'incomingCallListener',
+  SET_MOBIUS_SERVERS: 'setMobiusServers',
+  HANDLE_CONNECTION_RESTORATION: 'handleConnectionRestoration',
+  RECONNECT_ON_FAILURE: 'reconnectOnFailure',
+  MERCURY_OFFLINE: 'handleMercuryOffline',
+  MERCURY_ONLINE: 'handleMercuryOnline',
+  NETWORK_OFFLINE: 'handleNetworkOffline',
+  NETWORK_ONLINE: 'handleNetworkOnline',
+  GET_CLIENT_REGION_INFO: 'getClientRegionInfo',
+  GET_MOBIUS_SERVERS: 'getMobiusServers',
+  REGISTER_CALLS_CLEARED_LISTENER: 'registerCallsClearedListener',
+  CALLS_CLEARED_HANDLER: 'callsClearedHandler',
+  REGISTER_SESSIONS_LISTENER: 'registerSessionsListener',
+  CREATE_LINE: 'createLine',
+  GET_LINES: 'getLines',
+  UPLOAD_LOGS: 'uploadLogs',
+  GET_SDK_CONNECTOR: 'getSDKConnector',
+  GET_CONNECTED_CALL: 'getConnectedCall',
+};

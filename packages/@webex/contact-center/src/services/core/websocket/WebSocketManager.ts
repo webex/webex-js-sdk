@@ -178,10 +178,6 @@ export class WebSocketManager extends EventEmitter {
         issueReason = 'WebSocket auto close timed out. Forcefully closed websocket.';
       } else {
         const onlineStatus = navigator.onLine;
-        LoggerProxy.info(`[WebSocketStatus] | desktop online status is ${onlineStatus}`, {
-          module: WEB_SOCKET_MANAGER_FILE,
-          method: METHODS.WEB_SOCKET_ON_CLOSE_HANDLER,
-        });
         issueReason = !onlineStatus
           ? 'network issue'
           : 'missing keepalive from either desktop or notif service';

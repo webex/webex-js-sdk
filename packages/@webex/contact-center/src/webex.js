@@ -53,13 +53,13 @@ const Webex = WebexCore.extend({
  * The merged configuration governs various SDK behaviors, such as authorization, logging, and CC-specific settings.
  *
  * @example <caption>Basic Usage</caption>
- * import Webex from '@webex/plugin-cc';
+ * import Webex from '@webex/contact-center';
  *
  * // Initialize Webex SDK with default configuration
  * const webex = Webex.init();
  *
  * @example <caption>Custom Configuration</caption>
- * import Webex from '@webex/plugin-cc';
+ * import Webex from '@webex/contact-center';
  *
  * const customConfig = {
  *   logger: {

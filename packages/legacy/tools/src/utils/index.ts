@@ -3,6 +3,8 @@ import Karma from './karma';
 import {
   startServer,
   stopServer,
+  findWorkspaceRoot,
+  getServerPath,
 } from './server';
 import Mocha from './mocha';
 
@@ -12,4 +14,6 @@ export {
   Mocha,
   startServer,
   stopServer,
+  findWorkspaceRoot,
+  getServerPath,
 };

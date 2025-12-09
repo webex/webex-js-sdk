@@ -1,7 +1,7 @@
 {
   "name": "@webex/plugin-meetings",
   "description": "",
-  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
+  "license": "Cisco's General Terms (https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html)",
   "contributors": [
     "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
     "Arun Ganeshan <arungane@cisco.com>",
@@ -19,7 +19,7 @@
     "directory": "packages/@webex/plugin-meetings"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browserify": {
     "transform": [
@@ -43,7 +43,6 @@
     "@webex/eslint-config-legacy": "workspace:*",
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
-    "@webex/plugin-meetings": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
     "@webex/test-helper-chai": "workspace:*",
     "@webex/test-helper-mocha": "workspace:*",
@@ -62,8 +61,8 @@
   },
   "dependencies": {
     "@webex/common": "workspace:*",
-    "@webex/event-dictionary-ts": "^1.0.1753",
-    "@webex/internal-media-core": "2.16.0",
+    "@webex/event-dictionary-ts": "^1.0.1930",
+    "@webex/internal-media-core": "2.20.3",
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",
@@ -76,7 +75,7 @@
     "@webex/plugin-people": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
     "@webex/ts-sdp": "^1.8.1",
-    "@webex/web-capabilities": "^1.4.0",
+    "@webex/web-capabilities": "^1.7.1",
     "@webex/webex-core": "workspace:*",
     "ampersand-collection": "^2.0.2",
     "bowser": "^2.11.0",

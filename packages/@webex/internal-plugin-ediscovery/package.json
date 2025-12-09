@@ -15,7 +15,7 @@
     "directory": "packages/@webex/ediscovery"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browserify": {
     "transform": [

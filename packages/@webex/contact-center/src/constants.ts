@@ -53,4 +53,5 @@ export const METHODS = {
   REJECT: 'reject',
   TRANSFER_CALL: 'transferCall',
   COMPLETE_TRANSFER: 'completeTransfer',
+  GET_OUTDIAL_ANI_ENTRIES: 'getOutdialAniEntries',
 };

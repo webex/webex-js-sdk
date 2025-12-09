@@ -129,6 +129,18 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'agent_rona',
     verb: 'set',
   },
+  [METRIC_EVENT_NAMES.AGENT_CONTACT_ASSIGN_FAILED]: {
+    product,
+    agent: 'service',
+    target: 'agent_contact_assign',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.AGENT_INVITE_FAILED]: {
+    product,
+    agent: 'service',
+    target: 'agent_invite',
+    verb: 'fail',
+  },
 
   // Added Task events
   [METRIC_EVENT_NAMES.TASK_ACCEPT_SUCCESS]: {
@@ -290,6 +302,44 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     verb: 'fail',
   },
 
+  // Conference Tasks
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_start',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_start',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_END_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_end',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_END_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_end',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_transfer',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_conference_transfer',
+    verb: 'fail',
+  },
+
   // upload logs
   [METRIC_EVENT_NAMES.UPLOAD_LOGS_SUCCESS]: {
     product,
@@ -315,6 +365,62 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     product,
     agent: 'user',
     target: 'agent_device_type_update',
+    verb: 'fail',
+  },
+
+  // EntryPoint API Events
+  [METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'entrypoint_fetch',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.ENTRYPOINT_FETCH_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'entrypoint_fetch',
+    verb: 'fail',
+  },
+
+  // AddressBook API Events
+  [METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'addressbook_fetch',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.ADDRESSBOOK_FETCH_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'addressbook_fetch',
+    verb: 'fail',
+  },
+
+  // Queue API Events
+  [METRIC_EVENT_NAMES.QUEUE_FETCH_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'queue_fetch',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.QUEUE_FETCH_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'queue_fetch',
+    verb: 'fail',
+  },
+
+  // Outdial ANI API Events
+  [METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'outdial_ani_ep_fetch',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.OUTDIAL_ANI_EP_FETCH_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'outdial_ani_ep_fetch',
     verb: 'fail',
   },
 };

@@ -5,6 +5,7 @@ const packages = [
   '@webex/helper-html',
   '@webex/helper-image',
   '@webex/http-core',
+  '@webex/internal-plugin-ai-assistant',
   '@webex/internal-plugin-avatar',
   '@webex/internal-plugin-board',
   '@webex/internal-plugin-calendar',

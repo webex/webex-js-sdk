@@ -38,8 +38,15 @@ interface IInMeetingActions {
   isClosedCaptionActive?: boolean;
   canStartManualCaption?: boolean;
   canStopManualCaption?: boolean;
+  isLocalRecordingStarted?: boolean;
+  isLocalRecordingStopped?: boolean;
+  isLocalRecordingPaused?: boolean;
+  isLocalStreamingStarted?: boolean;
+  isLocalStreamingStopped?: boolean;
+
   isManualCaptionActive?: boolean;
   isSaveTranscriptsEnabled?: boolean;
+  isSpokenLanguageAutoDetectionEnabled?: boolean;
   isWebexAssistantActive?: boolean;
   canViewCaptionPanel?: boolean;
   isRealTimeTranslationEnabled?: boolean;
@@ -87,6 +94,7 @@ interface IInMeetingActions {
   canDoVideo?: boolean;
   canAnnotate?: boolean;
   canUseVoip?: boolean;
+  showAutoEndMeetingWarning?: boolean;
   supportHQV?: boolean;
   supportHDV?: boolean;
   canShareWhiteBoard?: boolean;
@@ -107,6 +115,8 @@ interface IInMeetingActions {
   canEnableRemoteDesktopControl?: boolean;
   canDisableRemoteDesktopControl?: boolean;
   canMoveToLobby?: boolean;
+  canEnablePollingQA?: boolean;
+  canDisablePollingQA?: boolean;
 }
 
 /**
@@ -171,9 +181,21 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canStopManualCaption = null;
 
+  isLocalRecordingStopped = null;
+
+  isLocalRecordingStarted = null;
+
+  isLocalRecordingPaused = null;
+
   isManualCaptionActive = null;
 
+  isLocalStreamingStarted = null;
+
+  isLocalStreamingStopped = null;
+
   isSaveTranscriptsEnabled = null;
+
+  isSpokenLanguageAutoDetectionEnabled = null;
 
   isWebexAssistantActive = null;
 
@@ -269,6 +291,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canUseVoip = null;
 
+  showAutoEndMeetingWarning = null;
+
   supportHQV = null;
 
   enforceVirtualBackground = null;
@@ -309,6 +333,10 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canMoveToLobby = null;
 
+  canEnablePollingQA = null;
+
+  canDisablePollingQA = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -341,9 +369,15 @@ export default class InMeetingActions implements IInMeetingActions {
     canStopTranscribing: this.canStopTranscribing,
     isClosedCaptionActive: this.isClosedCaptionActive,
     canStartManualCaption: this.canStartManualCaption,
+    isLocalRecordingStarted: this.isLocalRecordingStarted,
+    isLocalRecordingStopped: this.isLocalRecordingStopped,
+    isLocalRecordingPaused: this.isLocalRecordingPaused,
+    isLocalStreamingStarted: this.isLocalStreamingStarted,
+    isLocalStreamingStopped: this.isLocalStreamingStopped,
     canStopManualCaption: this.canStopManualCaption,
     isManualCaptionActive: this.isManualCaptionActive,
     isSaveTranscriptsEnabled: this.isSaveTranscriptsEnabled,
+    isSpokenLanguageAutoDetectionEnabled: this.isSpokenLanguageAutoDetectionEnabled,
     isWebexAssistantActive: this.isWebexAssistantActive,
     canViewCaptionPanel: this.canViewCaptionPanel,
     isRealTimeTranslationEnabled: this.isRealTimeTranslationEnabled,
@@ -382,6 +416,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canShareFile: this.canShareFile,
     canShareApplication: this.canShareApplication,
     canShareCamera: this.canShareCamera,
+    showAutoEndMeetingWarning: this.showAutoEndMeetingWarning,
     canShareDesktop: this.canShareDesktop,
     canShareContent: this.canShareContent,
     canTransferFile: this.canTransferFile,
@@ -411,6 +446,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canEnableRemoteDesktopControl: this.canEnableRemoteDesktopControl,
     canDisableRemoteDesktopControl: this.canDisableRemoteDesktopControl,
     canMoveToLobby: this.canMoveToLobby,
+    canEnablePollingQA: this.canEnablePollingQA,
+    canDisablePollingQA: this.canDisablePollingQA,
   });
 
   /**

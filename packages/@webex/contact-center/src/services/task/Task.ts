@@ -10,13 +10,20 @@ import {
   TaskButtonControl,
   TaskUIControls,
   DESTINATION_TYPE,
+  ConsultEndPayload,
+  ConsultPayload,
+  ConsultTransferPayLoad,
+  ResumeRecordingPayload,
 } from './types';
-import {CC_FILE} from '../../constants';
+import {METHODS} from './constants';
+import {CC_FILE, TASK_FILE} from '../../constants';
 import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import LoggerProxy from '../../logger-proxy';
+import AutoWrapup from './AutoWrapup';
+import {WrapupData} from '../config/types';
 
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
@@ -24,14 +31,150 @@ export default abstract class Task extends EventEmitter implements ITask {
   public data: TaskData;
   public webCallMap: Record<TaskId, CallId>;
   public taskUiControls: TaskUIControls;
+  protected wrapupData?: WrapupData;
+  public autoWrapup?: AutoWrapup;
+  protected agentId?: string;
 
-  constructor(contact: ReturnType<typeof routingContact>, data: TaskData) {
+  constructor(
+    contact: ReturnType<typeof routingContact>,
+    data: TaskData,
+    wrapupData?: WrapupData,
+    agentId?: string
+  ) {
     super();
     this.contact = contact;
     this.data = data;
+    this.wrapupData = wrapupData;
+    this.agentId = agentId;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
     this.initialiseUIControls();
+    this.setupAutoWrapupTimer();
+  }
+
+  unregisterWebCallListeners(): void {
+    throw new Error('Method not implemented.');
+  }
+
+  decline(): Promise<TaskResponse> {
+    throw new Error('Method not implemented.');
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  hold(mediaResourceId?: string): Promise<TaskResponse> {
+    throw new Error('Method not implemented.');
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  resume(mediaResourceId?: string): Promise<TaskResponse> {
+    throw new Error('Method not implemented.');
+  }
+
+  pauseRecording(): Promise<TaskResponse> {
+    throw new Error('Method not implemented.');
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse> {
+    throw new Error('Method not implemented.');
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  consult(consultPayload: ConsultPayload): Promise<TaskResponse> {
+    throw new Error('Method not implemented.');
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse> {
+    throw new Error('Method not implemented.');
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  consultTransfer(consultTransferPayload?: ConsultTransferPayLoad): Promise<TaskResponse> {
+    throw new Error('Method not implemented.');
+  }
+
+  consultConference(): Promise<TaskResponse> {
+    throw new Error('Method not implemented.');
+  }
+
+  exitConference(): Promise<TaskResponse> {
+    throw new Error('Method not implemented.');
+  }
+
+  transferConference(): Promise<TaskResponse> {
+    throw new Error('Method not implemented.');
+  }
+
+  toggleMute(): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * Sets up the automatic wrap-up timer if wrap-up is required
+   */
+  protected setupAutoWrapupTimer(): void {
+    if (
+      this.data.wrapUpRequired &&
+      !this.autoWrapup &&
+      this.wrapupData &&
+      this.wrapupData.wrapUpProps
+    ) {
+      const wrapUpProps = this.wrapupData.wrapUpProps;
+      if (!wrapUpProps || wrapUpProps.autoWrapup === false) {
+        LoggerProxy.info(`Auto wrap-up is not required for this task`, {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+          interactionId: this.data.interactionId,
+        });
+
+        return;
+      }
+      const defaultWrapupReason =
+        wrapUpProps.wrapUpReasonList?.find((r) => r.isDefault) ?? wrapUpProps.wrapUpReasonList?.[0];
+      if (!defaultWrapupReason) {
+        LoggerProxy.error('No wrap-up reason configured', {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+        });
+
+        return;
+      }
+      const intervalMs = wrapUpProps.autoWrapupInterval;
+      if (!intervalMs || intervalMs <= 0) {
+        LoggerProxy.error(`Invalid auto wrap-up interval: ${intervalMs}`, {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+        });
+
+        return;
+      }
+      this.autoWrapup = new AutoWrapup(intervalMs, wrapUpProps.allowCancelAutoWrapup);
+      this.autoWrapup.start(async () => {
+        LoggerProxy.info(`Auto wrap-up timer triggered`, {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+          interactionId: this.data.interactionId,
+        });
+        await this.wrapup({
+          wrapUpReason: defaultWrapupReason.name,
+          auxCodeId: defaultWrapupReason.id,
+        });
+      });
+    }
+  }
+
+  /**
+   * Cancels the automatic wrap-up timer if it's running
+   */
+  public cancelAutoWrapupTimer(): void {
+    this.autoWrapup?.clear();
+    this.autoWrapup = undefined;
+    LoggerProxy.info(`Auto wrap-up timer cancelled`, {
+      module: TASK_FILE,
+      method: METHODS.CANCEL_AUTO_WRAPUP_TIMER,
+      interactionId: this.data?.interactionId,
+    });
   }
 
   private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
@@ -101,15 +244,15 @@ export default abstract class Task extends EventEmitter implements ITask {
    * This method is used to update the task data.
    * @param updatedData - TaskData
    * @param shouldOverwrite - boolean
-   * @returns Task
    * @example
    * ```typescript
    * task.updateTaskData(updatedData, true);
    * ```
    */
-  public updateTaskData(updatedData: TaskData, shouldOverwrite = false) {
+  public updateTaskData(updatedData: TaskData, shouldOverwrite = false): void {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
     this.setUIControls();
+    this.setupAutoWrapupTimer();
   }
 
   public abstract accept(): Promise<TaskResponse>;
@@ -242,6 +385,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * ```
    */
   public async wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {
+    this.cancelAutoWrapupTimer();
     LoggerProxy.log(`Starting task wrapup for taskId:${this.data.interactionId}`, {
       module: 'Task',
       method: 'wrapup',

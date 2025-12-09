@@ -1,6 +1,7 @@
 import {CallId} from '@webex/calling/dist/types/common/types';
 import EventEmitter from 'events';
 import {Msg} from '../core/GlobalTypes';
+import AutoWrapup from './AutoWrapup';
 
 /**
  * Unique identifier for a task in the contact center system
@@ -158,12 +159,13 @@ export enum TASK_EVENTS {
    * Triggered when a task is resumed from hold
    * @example
    * ```typescript
-   * task.on(TASK_EVENTS.TASK_UNHOLD, (task: ITask) => {
+   * task.on(TASK_EVENTS.TASK_RESUME, (task: ITask) => {
    *   console.log('Task resumed from hold:', task.data.interactionId);
    *   // Update UI to show active state
    * });
    * ```
    */
+  TASK_RESUME = 'task:resume',
   TASK_UNHOLD = 'task:unhold',
 
   /**
@@ -369,6 +371,150 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_OFFER_CONTACT = 'task:offerContact',
+
+  /**
+   * Triggered when a conference is being established
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_ESTABLISHING, (task: ITask) => {
+   *   console.log('Conference establishing:', task.data.interactionId);
+   *   // Handle conference setup in progress
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_ESTABLISHING = 'task:conferenceEstablishing',
+
+  /**
+   * Triggered when a conference is started successfully
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_STARTED, (task: ITask) => {
+   *   console.log('Conference started:', task.data.interactionId);
+   *   // Handle conference start
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_STARTED = 'task:conferenceStarted',
+
+  /**
+   * Triggered when a conference fails to start
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_FAILED, (task: ITask) => {
+   *   console.log('Conference failed:', task.data.interactionId);
+   *   // Handle conference failure
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_FAILED = 'task:conferenceFailed',
+
+  /**
+   * Triggered when a conference is ended successfully
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_ENDED, (task: ITask) => {
+   *   console.log('Conference ended:', task.data.interactionId);
+   *   // Handle conference end
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_ENDED = 'task:conferenceEnded',
+
+  /**
+   * Triggered when a participant joins the conference
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_PARTICIPANT_JOINED, (task: ITask) => {
+   *   console.log('Participant joined conference:', task.data.interactionId);
+   *   // Handle participant joining
+   * });
+   * ```
+   */
+  TASK_PARTICIPANT_JOINED = 'task:participantJoined',
+
+  /**
+   * Triggered when a participant leaves the conference
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_PARTICIPANT_LEFT, (task: ITask) => {
+   *   console.log('Participant left conference:', task.data.interactionId);
+   *   // Handle participant leaving
+   * });
+   * ```
+   */
+  TASK_PARTICIPANT_LEFT = 'task:participantLeft',
+
+  /**
+   * Triggered when conference transfer is successful
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_TRANSFERRED, (task: ITask) => {
+   *   console.log('Conference transferred:', task.data.interactionId);
+   *   // Handle successful conference transfer
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_TRANSFERRED = 'task:conferenceTransferred',
+
+  /**
+   * Triggered when conference transfer fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED, (task: ITask) => {
+   *   console.log('Conference transfer failed:', task.data.interactionId);
+   *   // Handle failed conference transfer
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_TRANSFER_FAILED = 'task:conferenceTransferFailed',
+
+  /**
+   * Triggered when ending a conference fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CONFERENCE_END_FAILED, (task: ITask) => {
+   *   console.log('Conference end failed:', task.data.interactionId);
+   *   // Handle failed conference end
+   * });
+   * ```
+   */
+  TASK_CONFERENCE_END_FAILED = 'task:conferenceEndFailed',
+
+  /**
+   * Triggered when participant exit from conference fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_PARTICIPANT_LEFT_FAILED, (task: ITask) => {
+   *   console.log('Participant failed to leave conference:', task.data.interactionId);
+   *   // Handle failed participant exit
+   * });
+   * ```
+   */
+  TASK_PARTICIPANT_LEFT_FAILED = 'task:participantLeftFailed',
+
+  /**
+   * Triggered when a contact is merged
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_MERGED, (task: ITask) => {
+   *   console.log('Contact merged:', task.data.interactionId);
+   *   // Handle contact merge
+   * });
+   * ```
+   */
+  TASK_MERGED = 'task:merged',
+
+  /**
+   * Triggered when a participant enters post-call activity state
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, (task: ITask) => {
+   *   console.log('Participant in post-call activity:', task.data.interactionId);
+   *   // Handle post-call activity
+   * });
+   * ```
+   */
+  TASK_POST_CALL_ACTIVITY = 'task:postCallActivity',
 }
 
 /**
@@ -612,6 +758,8 @@ export type TaskData = {
   isConsulted?: boolean;
   /** Indicates if the task is in conference state */
   isConferencing: boolean;
+  /** Indicates if a conference is currently in progress (2+ active agents) */
+  isConferenceInProgress?: boolean;
   /** Identifier of agent who last updated the task */
   updatedBy?: string;
   /** Type of destination for transfer/consult */
@@ -634,6 +782,8 @@ export type TaskData = {
   isWebCallMute?: boolean;
   /** Identifier for reservation interaction */
   reservationInteractionId?: string;
+  /** Identifier for the reserved agent channel (used for campaign tasks) */
+  reservedAgentChannelId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
 };
@@ -930,6 +1080,8 @@ export type DialerPayload = {
   mediaType: 'telephony' | 'chat' | 'social' | 'email';
   /** The outbound type for the task */
   outboundType: 'OUTDIAL' | 'CALLBACK' | 'EXECUTE_FLOW';
+  /** The Outdial ANI number that will be used while making a call to the customer.  */
+  origin: string;
 };
 
 /**
@@ -975,7 +1127,286 @@ export type ContactCleanupData = {
 export type TaskResponse = AgentContact | Error | void;
 
 /**
- * Represents an interface for managing task related operations.
+ * Interface for managing task-related operations in the contact center
+ * Extends EventEmitter to support event-driven task updates
+ */
+export interface ITask extends EventEmitter {
+  /**
+   * Event data received in the Contact Center events.
+   * Contains detailed task information including interaction details, media resources,
+   * and participant data as defined in {@link TaskData}
+   */
+  data: TaskData;
+
+  /**
+   * Map associating tasks with their corresponding call identifiers.
+   */
+  webCallMap: Record<TaskId, CallId>;
+
+  /**
+   * Auto-wrapup timer for the task
+   * This is used to automatically wrap up tasks after a specified duration
+   * as defined in {@link AutoWrapup}
+   */
+  autoWrapup?: AutoWrapup;
+
+  /**
+   * Cancels the auto-wrapup timer for the task.
+   * This method stops the auto-wrapup process if it is currently active.
+   * Note: This is supported only in single session mode. Not supported in multi-session mode.
+   * @returns void
+   */
+  cancelAutoWrapupTimer(): void;
+
+  /**
+   * Deregisters all web call event listeners.
+   * Used when cleaning up task resources.
+   * @ignore
+   */
+  unregisterWebCallListeners(): void;
+
+  /**
+   * Updates the task data with new information
+   * @param newData - Updated task data to apply, must conform to {@link TaskData} structure
+   * @returns Updated task instance
+   * @ignore
+   */
+  updateTaskData(newData: TaskData): void;
+
+  /**
+   * Answers or accepts an incoming task.
+   * Once accepted, the task will be assigned to the agent and trigger a {@link TASK_EVENTS.TASK_ASSIGNED} event.
+   * The response will contain updated agent contact information as defined in {@link AgentContact}.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.accept();
+   * ```
+   */
+  accept(): Promise<TaskResponse>;
+
+  /**
+   * Declines an incoming task for Browser Login
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.decline();
+   * ```
+   */
+  decline(): Promise<TaskResponse>;
+
+  /**
+   * Places the current task on hold.
+   * @param mediaResourceId - Optional media resource ID to use for the hold operation. If not provided, uses the task's current mediaResourceId
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * // Hold with default mediaResourceId
+   * await task.hold();
+   *
+   * // Hold with custom mediaResourceId
+   * await task.hold('custom-media-resource-id');
+   * ```
+   */
+  hold(mediaResourceId?: string): Promise<TaskResponse>;
+
+  /**
+   * Resumes a task that was previously on hold.
+   * @param mediaResourceId - Optional media resource ID to use for the resume operation. If not provided, uses the task's current mediaResourceId from interaction media
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * // Resume with default mediaResourceId
+   * await task.resume();
+   *
+   * // Resume with custom mediaResourceId
+   * await task.resume('custom-media-resource-id');
+   * ```
+   */
+  resume(mediaResourceId?: string): Promise<TaskResponse>;
+
+  /**
+   * Ends/terminates the current task.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.end();
+   * ```
+   */
+  end(): Promise<TaskResponse>;
+
+  /**
+   * Initiates wrap-up process for the task with specified details.
+   * @param wrapupPayload - Wrap-up details including reason and auxiliary code
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.wrapup({
+   *   wrapUpReason: "Customer issue resolved",
+   *   auxCodeId: "RESOLVED"
+   * });
+   * ```
+   */
+  wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse>;
+
+  /**
+   * Pauses the recording for current task.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.pauseRecording();
+   * ```
+   */
+  pauseRecording(): Promise<TaskResponse>;
+
+  /**
+   * Resumes a previously paused recording.
+   * @param resumeRecordingPayload - Parameters for resuming the recording
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.resumeRecording({
+   *   autoResumed: false
+   * });
+   * ```
+   */
+  resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse>;
+
+  /**
+   * Initiates a consultation with another agent or queue.
+   * @param consultPayload - Consultation details including destination and type
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.consult({ to: "agentId", destinationType: "agent" });
+   * ```
+   */
+  consult(consultPayload: ConsultPayload): Promise<TaskResponse>;
+
+  /**
+   * Ends an ongoing consultation.
+   * @param consultEndPayload - Details for ending the consultation
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.endConsult({ isConsult: true, taskId: "taskId" });
+   * ```
+   */
+  endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse>;
+
+  /**
+   * Transfers the task to another agent or queue.
+   * @param transferPayload - Transfer details including destination and type
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.transfer({ to: "queueId", destinationType: "queue" });
+   * ```
+   */
+  transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>;
+
+  /**
+   * Transfers the task after consultation.
+   * @param consultTransferPayload - Details for consult transfer (optional)
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.consultTransfer({ to: "agentId", destinationType: "agent" });
+   * ```
+   */
+  consultTransfer(consultTransferPayload?: ConsultTransferPayLoad): Promise<TaskResponse>;
+
+  /**
+   * Initiates a consult conference (merge consult call with main call).
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.consultConference();
+   * ```
+   */
+  consultConference(): Promise<TaskResponse>;
+
+  /**
+   * Exits from an ongoing conference.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.exitConference();
+   * ```
+   */
+  exitConference(): Promise<TaskResponse>;
+
+  /**
+   * Transfers the conference to another participant.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.transferConference();
+   * ```
+   */
+  transferConference(): Promise<TaskResponse>;
+
+  /**
+   * Toggles mute/unmute for the local audio stream during a WebRTC task.
+   * @returns Promise<void>
+   * @example
+   * ```typescript
+   * await task.toggleMute();
+   * ```
+   */
+  toggleMute(): Promise<void>;
+}
+
+/**
+ * Represents a button control with visibility and enabled states.
+ * Used to manage UI button states in task controls.
+ */
+export class TaskButtonControl {
+  public visible: boolean;
+  public enabled: boolean;
+  constructor(visible = false, enabled = true) {
+    this.visible = visible;
+    this.enabled = enabled;
+  }
+
+  /**
+   * Sets the visibility of the button control.
+   * @param visible - Indicates whether the button control is visible or not.
+   */
+  setVisiblity(visible: boolean) {
+    this.visible = visible;
+  }
+
+  /**
+   * Sets the enabled state of the button control.
+   * @param enabled - Indicates whether the button control is enabled or not.
+   */
+  setEnabled(enabled: boolean) {
+    this.enabled = enabled;
+  }
+}
+
+/**
+ * Interface defining UI controls for a task.
+ * Each property represents a button control for different task actions.
+ */
+export interface TaskUIControls {
+  accept: TaskButtonControl;
+  decline: TaskButtonControl;
+  hold: TaskButtonControl;
+  mute: TaskButtonControl;
+  transfer: TaskButtonControl;
+  consult: TaskButtonControl;
+  consultTransfer: TaskButtonControl;
+  recording: TaskButtonControl;
+  end: TaskButtonControl;
+  conference: TaskButtonControl;
+  endConsult: TaskButtonControl;
+  wrapup: TaskButtonControl;
+}
+
+/**
+ * Legacy task interface - maintained for backward compatibility.
  */
 export interface IOldTask extends EventEmitter {
   /**
@@ -1095,71 +1526,7 @@ export interface IOldTask extends EventEmitter {
 }
 
 /**
- * Represents an interface for managing general task operations.
- * Extends IOldTask with UI controls and core task actions.
- */
-export interface ITask extends EventEmitter {
-  /**
-   * Event data received in the CC events
-   */
-  data: TaskData;
-  /**
-   * Map of task with call
-   */
-  webCallMap: Record<TaskId, CallId>;
-  /**
-   * Object which holds the task UI controls (buttons visibility and enabled/disabled state)
-   */
-  taskUiControls: TaskUIControls;
-  /**
-   *
-   * @param newData - TaskData
-   * @returns void
-   */
-  updateTaskData(newData: TaskData);
-  /**
-   * Answers/accepts the incoming task
-   *
-   * @example
-   * ```
-   * task.accept();
-   * ```
-   */
-  accept(): Promise<TaskResponse>;
-  /**
-   * This is used to end the task.
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```
-   * task.end();
-   * ```
-   */
-  end(): Promise<TaskResponse>;
-  /**
-   * This is used to transfer the task.
-   * @param transferPayload
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```
-   * task.transfer(data);
-   * ```
-   */
-  transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>;
-  /**
-   * This is used to wrap up the task.
-   * @param wrapupPayload
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```
-   * task.wrapup(data);
-   * ```
-   */
-  wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse>;
-}
-
-/**
- * Represents an interface for voice-specific tasks.
- * Extends ITask with methods for hold, resume, and consult.
+ * Voice task interface extending ITask with voice-specific methods.
  */
 export interface IVoice extends ITask {
   /**
@@ -1185,25 +1552,18 @@ export interface IVoice extends ITask {
 }
 
 /**
- * Represents a digital task interface.
- * Alias for ITask to indicate digital-only tasks.
- */
-export type IDigital = ITask;
-
-/**
- * Represents an interface for WebRTC tasks.
- * Extends IVoice with methods for mute, decline, and unregister web call listeners.
+ * WebRTC task interface extending IVoice with WebRTC-specific methods.
  */
 export interface IWebRTC extends IVoice {
   /**
    * This method is used to mute/unmute the call.
-   * @returns Promise<TaskResponse>
+   * @returns Promise<void>
    * @example
    * ```typescript
    * task.toggleMute();
    * ```
    */
-  toggleMute(): Promise<TaskResponse>;
+  toggleMute(): Promise<void>;
   /**
    * Decline the incoming task for Browser Login
    *
@@ -1225,50 +1585,6 @@ export interface IWebRTC extends IVoice {
 }
 
 /**
- * Represents the class which holds the task button controls.
+ * Digital task type - alias for ITask.
  */
-export class TaskButtonControl {
-  public visible: boolean;
-  public enabled: boolean;
-  constructor(visible = false, enabled = true) {
-    this.visible = visible;
-    this.enabled = enabled;
-  }
-
-  /**
-   *
-   * @param visible - Indicates whether the button control is visible or not.
-   *
-   * This method sets the visibility.
-   * If `visible` is true, the button will be shown;
-   */
-  setVisiblity(visible: boolean) {
-    this.visible = visible;
-  }
-
-  /**
-   *
-   * @param enabled - Indicates whether the button control is enabled or not.
-   *
-   * This method sets the enabled state of the button control.
-   * If `enabled` is true, the button will be enabled; otherwise, it will be disabled.
-   */
-  setEnabled(enabled: boolean) {
-    this.enabled = enabled;
-  }
-}
-
-export interface TaskUIControls {
-  accept: TaskButtonControl;
-  decline: TaskButtonControl;
-  hold: TaskButtonControl;
-  mute: TaskButtonControl;
-  transfer: TaskButtonControl;
-  consult: TaskButtonControl;
-  consultTransfer: TaskButtonControl;
-  recording: TaskButtonControl;
-  end: TaskButtonControl;
-  conference: TaskButtonControl;
-  endConsult: TaskButtonControl;
-  wrapup: TaskButtonControl;
-}
+export type IDigital = ITask;

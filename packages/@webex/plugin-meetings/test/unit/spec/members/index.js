@@ -32,58 +32,7 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 describe('plugin-meetings', () => {
   let webex;
   let url1;
-  const fakeMembersCollection = {
-    test1: {
-      namespace: 'Meetings',
-      participant: {
-        state: 'JOINED',
-        type: 'USER',
-        person: {
-          id: '6eb08f8b-bf69-3251-a126-b161bead2d21',
-          phoneNumber: '+18578675309',
-          isExternal: true,
-          primaryDisplayString: '+18578675309',
-        },
-        devices: [
-          {
-            url: 'https://fakeURL.com',
-            deviceType: 'SIP',
-            state: 'JOINED',
-            intents: [null],
-            correlationId: '1234',
-            provisionalUrl: 'dialout:///fake',
-            isSparkPstn: true,
-          },
-          {
-            url: 'dialout:///fakeagain',
-            deviceType: 'PROVISIONAL',
-            state: 'JOINED',
-            intents: [null],
-            correlationId: '4321',
-            isVideoCallback: false,
-            clientUrl: 'https://fakeURL',
-            provisionalType: 'DIAL_OUT_ONLY',
-            dialingStatus: 'SUCCESS',
-          },
-        ],
-        status: {
-          audioStatus: 'SENDRECV',
-          videoStatus: 'INACTIVE',
-        },
-        id: 'abc-123-abc-123',
-        guest: true,
-        resourceGuest: false,
-        moderator: false,
-        panelist: false,
-        moveToLobbyNotAllowed: true,
-        deviceUrl: 'https://fakeDeviceurl',
-      },
-      id: 'abc-123-abc-123',
-      status: 'IN_MEETING',
-      type: 'MEETING',
-      isModerator: false,
-    },
-  };
+  let fakeMembersCollection;
 
   describe('members', () => {
     const sandbox = sinon.createSandbox();
@@ -92,6 +41,65 @@ describe('plugin-meetings', () => {
     let membersRequestSpy;
 
     beforeEach(() => {
+      fakeMembersCollection = {
+        test1: {
+          associatedUsers: new Set(),
+          namespace: 'Meetings',
+          participant: {
+            state: 'JOINED',
+            type: 'USER',
+            person: {
+              id: '6eb08f8b-bf69-3251-a126-b161bead2d21',
+              phoneNumber: '+18578675309',
+              isExternal: true,
+              primaryDisplayString: '+18578675309',
+            },
+            devices: [
+              {
+                url: 'https://fakeURL.com',
+                deviceType: 'SIP',
+                state: 'JOINED',
+                intents: [null],
+                correlationId: '1234',
+                provisionalUrl: 'dialout:///fake',
+                isSparkPstn: true,
+              },
+              {
+                url: 'dialout:///fakeagain',
+                deviceType: 'PROVISIONAL',
+                state: 'JOINED',
+                intents: [null],
+                correlationId: '4321',
+                isVideoCallback: false,
+                clientUrl: 'https://fakeURL',
+                provisionalType: 'DIAL_OUT_ONLY',
+                dialingStatus: 'SUCCESS',
+              },
+            ],
+            status: {
+              audioStatus: 'SENDRECV',
+              videoStatus: 'INACTIVE',
+            },
+            id: 'test1',
+            guest: true,
+            resourceGuest: false,
+            moderator: false,
+            panelist: false,
+            moveToLobbyNotAllowed: true,
+            deviceUrl: 'https://fakeDeviceurl',
+            url: 'fake participant url for test1',
+          },
+          id: 'test1',
+          status: 'IN_MEETING',
+          type: 'USER',
+          isModerator: false,
+          isHost: false,
+          isSelf: false,
+          isContentSharing: false,
+          pairedWith: {},
+        },
+      };
+
       webex = new MockWebex({
         children: {
           meetings: Meetings,
@@ -156,6 +164,67 @@ describe('plugin-meetings', () => {
         const members = createMembers({url: false});
 
         assert.isRejected(members.addMember({email: 'test@cisco.com'}));
+      });
+
+      it('should accept valid SIP email addresses', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: 'sip:test@cisco.com'});
+        
+        assert.calledOnce(MembersUtil.isInvalidInvitee);
+        assert.isFalse(MembersUtil.isInvalidInvitee({email: 'sip:test@cisco.com'}), 'SIP email should be valid');
+      });
+
+      it('should skip email validation if skipEmailValidation is true', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: '8618578675309', skipEmailValidation: true});
+        
+        assert.notCalled(MembersUtil.isInvalidInvitee);
+      });
+
+      it('should not skip email validation if skipEmailValidation is not equal true', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: '86185786@ds.com'});
+        
+        assert.called(MembersUtil.isInvalidInvitee);
+      });
+
+      it('should accept valid phone with isInternalNumber', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({phoneNumber: '+8618578675309', isInternalNumber: false});
+        
+        assert.calledOnce(MembersUtil.isInvalidInvitee);
+        assert.isFalse(MembersUtil.isInvalidInvitee({ phoneNumber: '+8618578675309', isInternalNumber: false }));
+        assert.isTrue(MembersUtil.isInvalidInvitee({ phoneNumber: '18578675309', isInternalNumber: false }));
+        assert.isFalse(MembersUtil.isInvalidInvitee({phoneNumber: '18578675309', isInternalNumber: true}));
+        assert.isTrue(MembersUtil.isInvalidInvitee({phoneNumber: '+8618578675309', isInternalNumber: true}));
+      });
+
+      it('should not crash if params is undefined', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        try {
+          await members.addMember(undefined);
+        } catch (err) {
+          assert.instanceOf(err, ParameterError);
+
+          assert.equal(err.message, 'The invitee must be defined with either a valid email, emailAddress or phoneNumber property.');
+        }
+              
+        assert.called(MembersUtil.isInvalidInvitee);
       });
     });
 
@@ -251,9 +320,18 @@ describe('plugin-meetings', () => {
           EVENT_TRIGGERS.MEMBERS_CLEAR,
           {}
         );
+        sinon.restore();
       });
     });
     describe('#locusParticipantsUpdate', () => {
+      beforeEach(() => {
+        sinon.stub(Trigger, 'trigger');
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
       it('should send member update event with session info', () => {
         const members = createMembers({url: url1});
         const fakePayload = {
@@ -274,11 +352,147 @@ describe('plugin-meetings', () => {
           },
           EVENT_TRIGGERS.MEMBERS_UPDATE,
           {
-            delta: {added: [], updated: []},
+            delta: {added: [], updated: [], removedIds: []},
             full: {},
             isReplace: true,
           }
         );
+      });
+
+      it('should handle participants being removed', () => {
+        const members = createMembers({url: url1});
+
+        // setup the collection with a fake member
+        members.membersCollection.setAll(fakeMembersCollection);
+        assert.equal(Object.keys(members.membersCollection.getAll()).length, 1);
+
+        // remove the member
+        members.locusParticipantsUpdate({
+          participants: [],
+          removedParticipantIds: ['test1'],
+        });
+
+        assert.equal(Object.keys(members.membersCollection.getAll()).length, 0);
+
+        // check that the event was emitted
+        assert.calledWith(
+          Trigger.trigger,
+          members,
+          {
+            file: 'members',
+            function: 'locusParticipantsUpdate',
+          },
+          EVENT_TRIGGERS.MEMBERS_UPDATE,
+          {
+            delta: {added: [], updated: [], removedIds: ['test1']},
+            full: {},
+            isReplace: false,
+          }
+        );
+      });
+
+      describe('handles members with paired devices correctly', () => {
+        const runCheck = (propsForUpdate, expectedPropsOnPairedMember) => {
+          const members = createMembers({url: url1});
+
+          const DEVICE_PARTICIPANT_URL = 'fake participant url for test2';
+
+          members.membersCollection.setAll(fakeMembersCollection);
+
+          // simulate a locus update with a member that has a paired device
+          members.locusParticipantsUpdate({
+            ...propsForUpdate,
+            participants: [
+              {
+                id: 'test1',
+                type: 'USER',
+                person: {},
+                devices: [
+                  {
+                    intents: [
+                      {
+                        type: 'OBSERVE',
+                        associatedWith: DEVICE_PARTICIPANT_URL,
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                id: 'test2',
+                type: 'RESOURCE_ROOM',
+                person: {},
+                devices: [
+                  {
+                    state: 'JOINED',
+                    intents: [null],
+                  },
+                ],
+                url: DEVICE_PARTICIPANT_URL,
+              },
+            ],
+          });
+
+          let member = members.membersCollection.get('test1');
+          assert.isDefined(member.pairedWith);
+          assert.strictEqual(member.pairedWith.participantUrl, DEVICE_PARTICIPANT_URL);
+          assert.strictEqual(member.pairedWith.memberId, 'test2');
+
+          let pairedDeviceMember = members.membersCollection.get('test2');
+          assert(pairedDeviceMember.associatedUsers.has(member.id));
+          assert.strictEqual(pairedDeviceMember.associatedUser, member.id);
+          assert.strictEqual(pairedDeviceMember.associatedUsers.size, 1);
+
+          assert.strictEqual(
+            pairedDeviceMember.isPairedWithSelf,
+            expectedPropsOnPairedMember.isPairedWithSelf
+          );
+          assert.strictEqual(pairedDeviceMember.isHost, expectedPropsOnPairedMember.isHost);
+
+          // now simulate the user and paired device leaving the meeting
+          members.locusParticipantsUpdate({
+            ...propsForUpdate,
+            participants: [
+              {
+                id: 'test1',
+                type: 'USER',
+                person: {},
+                devices: [],
+              },
+              {
+                id: 'test2',
+                type: 'RESOURCE_ROOM',
+                person: {},
+                devices: [],
+              },
+            ],
+          });
+
+          // and check that all the relevant properties were reset
+          member = members.membersCollection.get('test1');
+          assert.isDefined(member.pairedWith);
+          assert.isUndefined(member.pairedWith.participantUrl);
+          assert.isUndefined(member.pairedWith.memberId);
+
+          pairedDeviceMember = members.membersCollection.get('test2');
+          assert.strictEqual(pairedDeviceMember.associatedUser, null);
+          assert.strictEqual(pairedDeviceMember.associatedUsers.size, 0);
+
+          assert.strictEqual(pairedDeviceMember.isPairedWithSelf, false);
+          assert.strictEqual(pairedDeviceMember.isHost, false);
+        };
+
+        it('sets the right properties when a member has a paired device', () => {
+          runCheck({}, {isPairedWithSelf: false, isHost: false});
+        });
+
+        it('sets the right properties when a member has a paired device (isSelf)', () => {
+          runCheck({selfId: 'test1'}, {isPairedWithSelf: true, isHost: false});
+        });
+
+        it('sets the right properties when a member has a paired device (isHost)', () => {
+          runCheck({hostId: 'test1'}, {isPairedWithSelf: false, isHost: true});
+        });
       });
     });
     describe('#sendDialPadKey', () => {
@@ -342,29 +556,38 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#cancelSIPInvite', () => {
+    describe('#cancelInviteByMemberId', () => {
       const memberId = uuid.v4();
-      it('should invoke cancelSIPInviteOptions from MembersUtil when cancelSIPInvite is called with valid params', async () => {
-        sandbox.spy(MembersUtil, 'cancelSIPInviteOptions');
+      it('should invoke cancelInviteByMemberIdOptions from MembersUtil when cancelInviteByMemberId is called with valid params', async () => {
+        sandbox.spy(MembersUtil, 'cancelInviteByMemberIdOptions');
 
         const members = createMembers({url: url1});
 
-        await members.cancelSIPInvite({memberId});
-        assert.calledOnce(MembersUtil.cancelSIPInviteOptions);
+        await members.cancelInviteByMemberId({memberId});
+        assert.calledOnce(MembersUtil.cancelInviteByMemberIdOptions);
+      });
+
+      it('should invoke cancelInviteByMemberIdOptions from MembersUtil when cancelInviteByMemberId is called with isInternalNumber', async () => {
+        sandbox.spy(MembersUtil, 'cancelInviteByMemberIdOptions');
+
+        const members = createMembers({url: url1});
+
+        await members.cancelInviteByMemberId({memberId, isInternalNumber: true});
+        assert.calledOnce(MembersUtil.cancelInviteByMemberIdOptions);
       });
 
       it('should throw a rejection if there is no locus url', async () => {
         const members = createMembers({url: false});
 
-        assert.isRejected(members.cancelSIPInvite({memberId}));
+        assert.isRejected(members.cancelInviteByMemberId({memberId}));
       });
       
       it('should throw a rejection if memberId is not provided', async () => {
         const members = createMembers({url: url1});
 
-        assert.isRejected(members.cancelSIPInvite({}));
-        assert.isRejected(members.cancelSIPInvite({memberId: null}));
-        assert.isRejected(members.cancelSIPInvite({memberId: undefined}));
+        assert.isRejected(members.cancelInviteByMemberId({}));
+        assert.isRejected(members.cancelInviteByMemberId({memberId: null}));
+        assert.isRejected(members.cancelInviteByMemberId({memberId: undefined}));
       });
     });
 
@@ -791,7 +1014,8 @@ describe('plugin-meetings', () => {
         expectedMemberId,
         expectedRequestingParticipantId,
         expectedAlias,
-        expectedLocusUrl
+        expectedLocusUrl,
+        expectedSuffix
       ) => {
         await assert.isFulfilled(resultPromise);
         assert.calledOnceWithExactly(
@@ -799,13 +1023,15 @@ describe('plugin-meetings', () => {
           expectedMemberId,
           expectedRequestingParticipantId,
           expectedAlias,
-          expectedLocusUrl
+          expectedLocusUrl,
+          expectedSuffix
         );
         assert.calledOnceWithExactly(spies.editDisplayNameMember, {
           memberId: expectedMemberId,
           requestingParticipantId: expectedRequestingParticipantId,
           alias: expectedAlias,
           locusUrl: expectedLocusUrl,
+          suffix: expectedSuffix,
         });
         assert.strictEqual(resultPromise, spies.editDisplayNameMember.getCall(0).returnValue);
       };
@@ -835,6 +1061,31 @@ describe('plugin-meetings', () => {
       });
 
       it('should make the correct request when called with respective parameters', async () => {
+        const requestingParticipantId = uuid.v4();
+        const memberId = uuid.v4();
+        const alias = 'aliasName';
+        const suffix = 'suffixName';
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.editDisplayName(
+          memberId,
+          requestingParticipantId,
+          alias,
+          suffix
+        );
+
+        await checkValid(
+          resultPromise,
+          spies,
+          memberId,
+          requestingParticipantId,
+          alias,
+          url1,
+          suffix
+        );
+      });
+
+      it('should make the correct request when called with respective parameters - no suffix', async () => {
         const requestingParticipantId = uuid.v4();
         const memberId = uuid.v4();
         const alias = 'aliasName';
