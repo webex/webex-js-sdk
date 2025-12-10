@@ -1154,9 +1154,7 @@ const Services = WebexPlugin.extend({
             cached.env.fedramp === currentEnv.fedramp &&
             cached.env.u2cDiscoveryUrl === currentEnv.u2cDiscoveryUrl;
           if (!sameEnv) {
-            if (this.logger && this.logger.info) {
-              this.logger.info('services: skipping cache warm due to environment mismatch');
-            }
+            this.logger.info('services: skipping cache warm due to environment mismatch');
 
             return false;
           }
@@ -1169,28 +1167,22 @@ const Services = WebexPlugin.extend({
 
       // Helper: compute intended preauth selection based on current context
       const getIntendedPreauthSelection = () => {
-        try {
-          if (this.webex.credentials?.canAuthorize) {
-            if (currentOrgId) {
-              return {
-                selectionType: 'orgId',
-                selectionValue: currentOrgId,
-              };
-            }
-          }
-        } catch (e) {
-          // ignore
-        }
-        const emailConfig = this.webex.config && this.webex.config.email;
-        try {
-          if (typeof emailConfig === 'string' && emailConfig.trim()) {
+        if (this.webex.credentials?.canAuthorize) {
+          if (currentOrgId) {
             return {
-              selectionType: 'emailhash',
-              selectionValue: sha256(emailConfig.toLowerCase()).toString(),
+              selectionType: 'orgId',
+              selectionValue: currentOrgId,
             };
           }
-        } catch (e) {
-          // ignore invalid email config, fall through to proximity mode
+        }
+
+        const emailConfig = this.webex.config && this.webex.config.email;
+
+        if (typeof emailConfig === 'string' && emailConfig.trim()) {
+          return {
+            selectionType: 'emailhash',
+            selectionValue: sha256(emailConfig.toLowerCase()).toString(),
+          };
         }
 
         // fall back to proximity mode when no orgId or email available
@@ -1260,7 +1252,7 @@ const Services = WebexPlugin.extend({
         window.localStorage.removeItem(CATALOG_CACHE_KEY_V1);
       }
     } catch (e) {
-      // ignore
+      this.logger.warn('services: error clearing catalog cache', e);
     }
 
     return Promise.resolve();

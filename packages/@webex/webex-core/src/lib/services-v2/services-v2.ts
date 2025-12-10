@@ -261,11 +261,11 @@ const Services = WebexPlugin.extend({
             if (key) {
               selectionMeta = {
                 selectionType: key,
-                selectionValue: (formattedQuery as any)[key],
+                selectionValue: formattedQuery[key],
               };
             }
           } catch {
-            // ignore
+            this.logger.warn('services: error building selection meta');
           }
         }
         this._cacheCatalog(serviceGroup, serviceHostMap, selectionMeta);
@@ -1015,7 +1015,7 @@ const Services = WebexPlugin.extend({
         (window as any).localStorage.setItem(CATALOG_CACHE_KEY_V2, JSON.stringify(updated));
       }
     } catch {
-      // ignore cache errors
+      this.logger.warn('services: error caching catalog');
     }
   },
 
@@ -1047,7 +1047,7 @@ const Services = WebexPlugin.extend({
         try {
           this.clearCatalogCache();
         } catch {
-          // ignore
+          this.logger.warn('services: error clearing catalog cache');
         }
 
         return false;
@@ -1063,7 +1063,7 @@ const Services = WebexPlugin.extend({
           }
         }
       } catch {
-        // ignore orgId check errors
+        this.logger.warn('services: error checking orgId');
       }
 
       // Ensure cached environment matches current environment
@@ -1079,8 +1079,8 @@ const Services = WebexPlugin.extend({
             return false;
           }
         }
-      } catch {
-        // ignore env check errors
+      } catch (e) {
+        this.logger.warn('services: error checking environment', e);
       }
 
       const catalog = this._getCatalog();
@@ -1088,28 +1088,22 @@ const Services = WebexPlugin.extend({
 
       // Helper: compute intended preauth selection based on current context
       const getIntendedPreauthSelection = () => {
-        try {
-          if (this.webex.credentials?.canAuthorize) {
-            if (currentOrgId) {
-              return {selectionType: 'orgId', selectionValue: currentOrgId};
-            }
+        if (this.webex.credentials?.canAuthorize) {
+          if (currentOrgId) {
+            return {selectionType: 'orgId', selectionValue: currentOrgId};
           }
-        } catch {
-          // ignore
         }
-        const emailConfig = this.webex.config && this.webex.config.email;
-        try {
-          if (typeof emailConfig === 'string' && emailConfig.trim()) {
-            return {
-              selectionType: 'emailhash',
-              selectionValue: sha256(emailConfig.toLowerCase()).toString(),
-            };
-          }
-        } catch {
-          // ignore invalid email config, fall through to proximity mode
-        }
-        // fall back to proximity mode when no orgId or email available
 
+        const emailConfig = this.webex.config && this.webex.config.email;
+
+        if (typeof emailConfig === 'string' && emailConfig.trim()) {
+          return {
+            selectionType: 'emailhash',
+            selectionValue: sha256(emailConfig.toLowerCase()).toString(),
+          };
+        }
+
+        // fall back to proximity mode when no orgId or email available
         return {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'};
       };
 
@@ -1164,7 +1158,7 @@ const Services = WebexPlugin.extend({
         (window as any).localStorage.removeItem(CATALOG_CACHE_KEY_V2);
       }
     } catch {
-      // ignore
+      this.logger.warn('services: error clearing catalog cache');
     }
 
     return Promise.resolve();
@@ -1330,7 +1324,7 @@ const Services = WebexPlugin.extend({
     // wait for webex instance to be ready before attempting
     // to update the service catalogs
     this.listenToOnce(this.webex, 'ready', async () => {
-      const warmed = await (this as any)._loadCatalogFromCache();
+      const warmed = await this._loadCatalogFromCache();
       if (warmed) {
         catalog.isReady = true;
 

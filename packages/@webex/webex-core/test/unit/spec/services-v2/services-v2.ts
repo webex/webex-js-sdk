@@ -907,7 +907,7 @@ describe('webex-core', () => {
         const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
 
         // Act
-        const warmed = await (services as any)._loadCatalogFromCache();
+        const warmed = await services._loadCatalogFromCache();
 
         // Assert
         assert.isTrue(warmed);
@@ -915,7 +915,7 @@ describe('webex-core', () => {
           spy.calledWith('preauth', [], '1'),
           'expected preauth to be warmed when selection matches'
         );
-        (spy as any).restore && (spy as any).restore();
+        spy.restore && spy.restore();
       });
 
       it('does not warm preauth when selection meta is proximity mode', async () => {
@@ -936,7 +936,7 @@ describe('webex-core', () => {
         const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
 
         // Act
-        const warmed = await (services as any)._loadCatalogFromCache();
+        const warmed = await services._loadCatalogFromCache();
 
         // Assert: overall warm-up succeeds, but preauth is skipped
         assert.isTrue(warmed);
@@ -944,7 +944,7 @@ describe('webex-core', () => {
           spy.calledWith('preauth', sinon.match.any, sinon.match.any),
           'expected preauth not to be warmed for proximity mode'
         );
-        (spy as any).restore && (spy as any).restore();
+        spy.restore && spy.restore();
       });
 
       it('does not warm preauth when selection meta mismatches intended selection', async () => {
@@ -968,14 +968,14 @@ describe('webex-core', () => {
         );
         const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
 
-        const warmed = await (services as any)._loadCatalogFromCache();
+        const warmed = await services._loadCatalogFromCache();
 
         assert.isTrue(warmed);
         assert.isFalse(
           spy.calledWith('preauth', sinon.match.any, sinon.match.any),
           'expected preauth not to be warmed on selection mismatch'
         );
-        (spy as any).restore && (spy as any).restore();
+        spy.restore && spy.restore();
       });
 
       it('skips warm entirely when environment fingerprint mismatches', async () => {
@@ -995,11 +995,11 @@ describe('webex-core', () => {
         );
         const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
 
-        const warmed = await (services as any)._loadCatalogFromCache();
+        const warmed = await services._loadCatalogFromCache();
 
         assert.isFalse(warmed, 'env mismatch should skip warm and return false');
-        assert.isFalse((spy as any).called, 'no group should be warmed on env mismatch');
-        (spy as any).restore && (spy as any).restore();
+        assert.isFalse(spy.called, 'no group should be warmed on env mismatch');
+        spy.restore && spy.restore();
       });
     });
   });
