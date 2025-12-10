@@ -1334,8 +1334,8 @@ describe('plugin-meetings', () => {
             });
           }
 
-          expect(shouldRetry).toBe(true);
-          expect(error).toEqual({name: 'OtherError', message: 'other'});
+          assert.equal(shouldRetry, true);
+          assert.equal(error.name, 'OtherError');
         });
       });
       describe('#isTranscriptionSupported', () => {

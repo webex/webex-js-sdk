@@ -179,7 +179,15 @@ export const isSdpOfferCreationError = (rawError: any) => {
   return false;
 };
 
+/**
+ * Checks if the given error is a browser media error by its name.
+ * Returns true if the error name matches any known browser media error name in the mapping.
+ *
+ * @param {Object} rawError - The error object to check.
+ * @returns {boolean} True if the error is a browser media error, false otherwise.
+ */
 export const isBrowserMediaError = (rawError) => {
+  // eslint-disable-next-line no-use-before-define
   if (isBrowserMediaErrorName(rawError.name)) {
     return true;
   }
@@ -187,6 +195,13 @@ export const isBrowserMediaError = (rawError) => {
   return false;
 };
 
+/**
+ * Returns the client error code mapped to the given browser media error name.
+ * If the error name is not found in the mapping, returns undefined.
+ *
+ * @param {Object} rawError - The error object containing the error name.
+ * @returns {string|undefined} The mapped client error code, or undefined if not found.
+ */
 export const getBrowserMediaErrorCode = (rawError) => {
   return BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name];
 };
