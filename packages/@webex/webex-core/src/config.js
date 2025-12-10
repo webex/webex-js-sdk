@@ -20,6 +20,14 @@ export default {
   fedramp: process.env.ENABLE_FEDRAMP || false,
   services: {
     /**
+     * When true, uses the user-onboarding service for user activation.
+     * When false (default), uses the license service.
+     *
+     * @type {boolean}
+     */
+    useUserOnboardingServiceForActivations: false,
+
+    /**
      * A list of services that are available prior to catalog collection.
      *
      * @type {Object}

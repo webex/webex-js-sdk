@@ -870,6 +870,58 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#isValidHost', () => {
+      beforeEach(() => {
+        // Setting up a mock host catalog
+          services._hostCatalog = {
+            "audit-ci-m.wbx2.com": [
+              {
+                  "host": "audit-ci-m.wbx2.com",
+                  "ttl": -1,
+                  "priority": 5,
+                  "id": "urn:IDENTITY:PA61:adminAudit"
+              },
+              {
+                  "host": "audit-ci-m.wbx2.com",
+                  "ttl": -1,
+                  "priority": 5,
+                  "id": "urn:IDENTITY:PA61:adminAuditV2"
+              }
+            ],
+            "mercury-connection-partition0-r.wbx2.com": [
+                {
+                    "host": "mercury-connection-partition0-r.wbx2.com",
+                    "ttl": -1,
+                    "priority": 5,
+                    "id": "urn:TEAM:us-west-2_r:mercuryConnectionPartition0"
+                }
+            ],
+            "empty.com": []
+          };
+      });
+      afterAll(() => {
+        // Clean up the mock host catalog
+        services._hostCatalog = {};
+      });
+      it('returns true if the host is in the host catalog', () => {
+        assert.isTrue(services.isValidHost('mercury-connection-partition0-r.wbx2.com'));
+      });
+
+      it('returns false if the host is not in the host catalog or has an empty entry list', () => {
+        assert.isFalse(services.isValidHost('test.com'));
+        assert.isFalse(services.isValidHost(''));
+        assert.isFalse(services.isValidHost(null));
+        assert.isFalse(services.isValidHost(undefined));
+        assert.isFalse(services.isValidHost('empty.com'));
+      });
+
+      it('returns false for non-string inputs', () => {
+        assert.isFalse(services.isValidHost(123));
+        assert.isFalse(services.isValidHost({}));
+        assert.isFalse(services.isValidHost([]));
+      });
+    });
+
     describe('U2C catalog cache behavior', () => {
       let webex;
       let services;
@@ -1081,6 +1133,11 @@ describe('webex-core', () => {
           canAuthorize: true,
           getOrgId: sinon.stub().returns('urn:EXAMPLE:org'),
         };
+        // set current env to match cached env
+        services.webex.config = services.webex.config || {};
+        services.webex.config.services = services.webex.config.services || {discovery: {}};
+        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
         // cache with matching orgId selection
         window.localStorage.setItem(
           CATALOG_CACHE_KEY_V1,
@@ -1179,6 +1236,7 @@ describe('webex-core', () => {
         assert.isFalse(catalog.status.postauth.ready);
       });
     });
+    
   });
 });
 /* eslint-enable no-underscore-dangle */

@@ -168,6 +168,104 @@ describe('webex-core', () => {
             uri: 'http://newlocus.example.com',
           });
         });
+
+        it('removes authorization header when redirecting preJoin request to webex-appapi-service', () => {
+          const response = {
+            statusCode: 404,
+            headers: {},
+            body: {
+              code: 404100,
+              data: {
+                siteFullUrl: 'newlocus.example.com'
+              },
+            },
+          };
+
+          const options = {
+            $redirectCount: 0,
+            uri: 'https://test.webex.com/meet/v1/preJoin',
+            resource: 'preJoin',
+            service: 'webex-appapi-service',
+            headers: {
+              authorization: 'Bearer token123',
+            },
+          };
+
+          interceptor.onResponse(options, response);
+          sinon.assert.calledWith(webex.request, sinon.match({
+            $redirectCount: 1,
+            uri: 'https://newlocus.example.com/meet/v1/preJoin',
+            resource: 'preJoin',
+            service: 'webex-appapi-service',
+            headers: {
+              authorization: false,
+            },
+          }));
+        });
+
+        it('keeps authorization header for non-preJoin requests on appapi redirect', () => {
+          const response = {
+            statusCode: 404,
+            headers: {},
+            body: {
+              code: 404100,
+              data: {
+                siteFullUrl: 'newlocus.example.com'
+              },
+            },
+          };
+
+          const options = {
+            $redirectCount: 0,
+            uri: 'https://test.webex.com/meet/v1/join',
+            resource: 'join',
+            service: 'webex-appapi-service',
+            headers: {
+              authorization: 'Bearer token123',
+            },
+          };
+
+          interceptor.onResponse(options, response);
+          sinon.assert.calledWith(webex.request, sinon.match({
+            $redirectCount: 1,
+            uri: 'https://newlocus.example.com/meet/v1/join',
+            headers: {
+              authorization: 'Bearer token123',
+            },
+          }));
+        });
+
+        it('keeps authorization header for preJoin requests to non-webex-appapi-service', () => {
+          const response = {
+            statusCode: 404,
+            headers: {},
+            body: {
+              code: 404100,
+              data: {
+                siteFullUrl: 'newlocus.example.com'
+              },
+            },
+          };
+
+          const options = {
+            $redirectCount: 0,
+            uri: 'https://test.webex.com/meet/v1/preJoin',
+            resource: 'preJoin',
+            service: 'other-service',
+            headers: {
+              authorization: 'Bearer token123',
+            },
+          };
+
+          interceptor.onResponse(options, response);
+          sinon.assert.calledWith(webex.request, sinon.match({
+            $redirectCount: 1,
+            uri: 'https://newlocus.example.com/meet/v1/preJoin',
+            headers: {
+              authorization: 'Bearer token123',
+            },
+          }));
+        });
       });
     });
   });

@@ -166,6 +166,7 @@ describe('Registration Tests', () => {
     jest.clearAllTimers();
     jest.clearAllMocks();
     jest.useRealTimers();
+    localStorage.clear();
   });
 
   it('verify successful registration', async () => {
@@ -927,6 +928,55 @@ describe('Registration Tests', () => {
   });
 
   describe('Registration failover tests', () => {
+    it('persists failover state in localStorage when primary retry is scheduled', async () => {
+      jest.useFakeTimers();
+      // Force initial registration to fail to schedule failover
+      webex.request.mockRejectedValueOnce(failurePayload);
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.IDLE);
+      await reg.triggerRegistration();
+
+      // A failover timer should be scheduled; verify localStorage contains state
+      const key = `wxc-failover-state.${webex.internal.device.userId}`;
+      const raw = localStorage.getItem(key);
+      expect(raw).toBeTruthy();
+      const state = JSON.parse(raw as string);
+      expect(state).toEqual(
+        expect.objectContaining({
+          attempt: 1,
+          timeElapsed: 0,
+          retryScheduledTime: expect.any(Number),
+          serverType: 'primary',
+        })
+      );
+    });
+
+    it('resumes failover from localStorage on triggerRegistration', async () => {
+      jest.useFakeTimers();
+      const key = `wxc-failover-state.${webex.internal.device.userId}`;
+      const now = Math.floor(Date.now() / 1000);
+      // Seed a cached state indicating a retry should have already occurred 5s ago
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          attempt: 3,
+          timeElapsed: 12,
+          retryScheduledTime: now - 5,
+          serverType: 'primary',
+        })
+      );
+
+      const failoverSpy = jest.spyOn(reg as any, 'startFailoverTimer');
+
+      webex.request.mockResolvedValueOnce(successPayload);
+      await reg.triggerRegistration();
+
+      expect(failoverSpy).toHaveBeenCalledTimes(1);
+      const [attemptArg, timeElapsedArg] = failoverSpy.mock.calls[0];
+      expect(attemptArg).toBe(3);
+      expect(timeElapsedArg).toBeGreaterThanOrEqual(12);
+    });
+
     it('verify unreachable primary with reachable backup servers', async () => {
       jest.useFakeTimers();
       // try the primary twice and register successfully with backup servers
@@ -1395,6 +1445,7 @@ describe('Registration Tests', () => {
       expect(reg.webWorker).toBeUndefined();
       expect(reconnectSpy).toBeCalledOnceWith(RECONNECT_ON_FAILURE_UTIL);
 
+      localStorage.clear();
       webex.request.mockResolvedValueOnce(successPayload);
       await reg.triggerRegistration();
       await flushPromises();
@@ -1439,6 +1490,7 @@ describe('Registration Tests', () => {
       expect(reg.webWorker).toBeUndefined();
       expect(handleErrorSpy).toBeCalledTimes(3);
 
+      localStorage.clear();
       await reg.triggerRegistration();
       await flushPromises();
       expect(reg.webWorker).toBeDefined();

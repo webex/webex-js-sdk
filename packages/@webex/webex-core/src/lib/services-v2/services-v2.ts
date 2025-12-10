@@ -142,6 +142,22 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Check is valid host from services list.
+   * @param {string} host
+   * @returns {Boolean}
+   */
+  isValidHost(host: string): boolean {
+    const services: Array<Service> = this._services || [];
+
+    return services.some((service) => {
+      return service.serviceUrls.some((serviceUrl) => {
+        const serviceHost = serviceUrl?.baseUrl && new URL(serviceUrl.baseUrl)?.host;
+
+        return serviceHost === host;
+      });
+    });
+  },
+  /**
    * saves all the services from the pre and post catalog service
    * @param {ActiveServices} activeServices
    * @returns {void}
@@ -252,7 +268,7 @@ const Services = WebexPlugin.extend({
             // ignore
           }
         }
-        (this as any)._cacheCatalog(serviceGroup, serviceHostMap, selectionMeta);
+        this._cacheCatalog(serviceGroup, serviceHostMap, selectionMeta);
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
       })
@@ -529,10 +545,14 @@ const Services = WebexPlugin.extend({
             ({countryCode, timezone} = clientRegionInfo);
           }
 
-          // Send the user activation request to the **License** service.
+          // Send the user activation request.
+          // Use user-onboarding service if configured, otherwise use license service.
+          const useUserOnboarding =
+            this.webex.config.services?.useUserOnboardingServiceForActivations;
+
           return this.request({
-            service: 'license',
-            resource: 'users/activations',
+            service: useUserOnboarding ? 'user-onboarding' : 'license',
+            resource: useUserOnboarding ? 'api/v1/users/activations' : 'users/activations',
             method: 'POST',
             headers: {
               accept: 'application/json',
@@ -947,20 +967,14 @@ const Services = WebexPlugin.extend({
     hostMap: ServiceHostmap,
     meta?: {selectionType: string; selectionValue: string}
   ): Promise<void> {
+    let current: {orgId?: string; env?: {fedramp?: boolean; u2cDiscoveryUrl?: string}} = {};
+    let orgId: string | undefined;
     try {
       // Respect calling.cacheU2C toggle; if disabled, skip writing cache
-      try {
-        if (
-          (this as any)?.webex?.config?.calling &&
-          (this as any).webex.config.calling.cacheU2C === false
-        ) {
-          return;
-        }
-      } catch {
-        // ignore
+      if (this.webex.config?.calling && this.webex.config.calling.cacheU2C === false) {
+        return;
       }
 
-      let current: any = {};
       try {
         const raw =
           typeof window !== 'undefined' && (window as any).localStorage
@@ -971,9 +985,8 @@ const Services = WebexPlugin.extend({
         current = {};
       }
 
-      let orgId: string | undefined;
       try {
-        const {credentials} = (this as any).webex;
+        const {credentials} = this.webex;
         orgId = credentials.getOrgId();
       } catch {
         orgId = current.orgId;
@@ -982,8 +995,8 @@ const Services = WebexPlugin.extend({
       // Capture environment fingerprint to invalidate cache across env changes
       let env: {fedramp?: boolean; u2cDiscoveryUrl?: string} | undefined;
       try {
-        const fedramp = !!(this as any)?.webex?.config?.fedramp;
-        const u2cDiscoveryUrl = (this as any)?.webex?.config?.services?.discovery?.u2c;
+        const fedramp = !!this.webex.config?.fedramp;
+        const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
         env = {fedramp, u2cDiscoveryUrl};
       } catch {
         env = current.env;
@@ -1012,17 +1025,11 @@ const Services = WebexPlugin.extend({
    * @returns {Promise<boolean>} true if cache was loaded, false otherwise
    */
   async _loadCatalogFromCache(): Promise<boolean> {
+    let currentOrgId: string | undefined;
     try {
       // Respect calling.cacheU2C toggle; if disabled, skip using cache
-      try {
-        if (
-          (this as any)?.webex?.config?.calling &&
-          (this as any).webex.config.calling.cacheU2C === false
-        ) {
-          return false;
-        }
-      } catch {
-        // ignore
+      if (this.webex.config?.calling && this.webex.config.calling.cacheU2C === false) {
+        return false;
       }
 
       if (typeof window === 'undefined' || !(window as any).localStorage) {
@@ -1038,7 +1045,7 @@ const Services = WebexPlugin.extend({
       const cachedAt = Number(cached.cachedAt) || 0;
       if (!cachedAt || Date.now() - cachedAt > CATALOG_TTL_MS) {
         try {
-          (this as any).clearCatalogCache();
+          this.clearCatalogCache();
         } catch {
           // ignore
         }
@@ -1048,9 +1055,9 @@ const Services = WebexPlugin.extend({
 
       // If authorized, ensure cached org matches
       try {
-        if ((this as any).webex.credentials?.canAuthorize) {
-          const {credentials} = (this as any).webex;
-          const currentOrgId = credentials.getOrgId();
+        if (this.webex.credentials?.canAuthorize) {
+          const {credentials} = this.webex;
+          currentOrgId = credentials.getOrgId();
           if (cached.orgId && cached.orgId !== currentOrgId) {
             return false;
           }
@@ -1061,8 +1068,8 @@ const Services = WebexPlugin.extend({
 
       // Ensure cached environment matches current environment
       try {
-        const fedramp = !!(this as any)?.webex?.config?.fedramp;
-        const u2cDiscoveryUrl = (this as any)?.webex?.config?.services?.discovery?.u2c;
+        const fedramp = !!this.webex.config?.fedramp;
+        const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
         const currentEnv = {fedramp, u2cDiscoveryUrl};
         if (cached.env) {
           const sameEnv =
@@ -1082,16 +1089,15 @@ const Services = WebexPlugin.extend({
       // Helper: compute intended preauth selection based on current context
       const getIntendedPreauthSelection = () => {
         try {
-          if ((this as any).webex.credentials?.canAuthorize) {
-            const orgId = (this as any).webex.credentials.getOrgId();
-            if (orgId) {
-              return {selectionType: 'orgId', selectionValue: orgId};
+          if (this.webex.credentials?.canAuthorize) {
+            if (currentOrgId) {
+              return {selectionType: 'orgId', selectionValue: currentOrgId};
             }
           }
         } catch {
           // ignore
         }
-        const emailConfig = (this as any).webex.config && (this as any).webex.config.email;
+        const emailConfig = this.webex.config && this.webex.config.email;
         try {
           if (typeof emailConfig === 'string' && emailConfig.trim()) {
             return {
