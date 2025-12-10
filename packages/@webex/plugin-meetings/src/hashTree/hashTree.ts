@@ -195,7 +195,7 @@ class HashTree {
 
   /**
    * Updates multiple items in the hash tree.
-   * This method can handle both adding and removing items based on the `operation` flag.
+   * This method can handle both updating and removing items based on the `operation` flag.
    *
    * @param {object[]} itemUpdates An array of objects containing `operation` flag and the `item` to update.
    * @returns {boolean[]} An array of booleans indicating success for each operation.
@@ -238,6 +238,10 @@ class HashTree {
    * @returns {void}
    */
   computeLeafHash(index: number) {
+    if (index < 0 || index >= this.numLeaves) {
+      // nothing to do
+      return;
+    }
     const leafContent = this.leaves[index];
 
     const totalItemsCount = Object.keys(leafContent).reduce((count, type) => {

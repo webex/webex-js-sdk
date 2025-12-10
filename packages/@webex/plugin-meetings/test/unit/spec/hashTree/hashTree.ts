@@ -137,7 +137,6 @@ describe('HashTree', () => {
     expect(hashTree.putItems(items)).to.deep.equal([false]);
   });
 
-
   it('should have correct root hash after putting one item', () => {
     const leafData: LeafDataItem[] = [{type: 'participant', id: 1, version: 10}]; // bucket 1 (1 % 2 = 1)
     const numLeaves = 2;
@@ -224,6 +223,127 @@ describe('HashTree', () => {
     expect(hashTree.removeItems(items)).to.deep.equal([false]);
   });
 
+  it('updateItems should update and remove multiple items correctly', () => {
+    const initialItems: LeafDataItem[] = [
+      {type: 'participant', id: 1, version: 1}, // bucket 1
+      {type: 'self', id: 2, version: 1}, // bucket 0
+      {type: 'locus', id: 3, version: 1}  // bucket 1
+    ];
+    const hashTree = new HashTree(initialItems, 2);
+    expect(hashTree.getTotalItemCount()).to.equal(3);
+
+    const updates: any = [
+      {operation: 'update', item: {type: 'participant', id: 1, version: 2}}, // update existing
+      {operation: 'remove', item: {type: 'locus', id: 3, version: 1}}, // remove existing
+      {operation: 'update', item: {type: 'mediashare', id: 4, version: 1}}, // add new (bucket 0)
+      {operation: 'remove', item: {type: 'participant', id: 99, version: 1}} // remove non-existent
+    ];
+
+    const results = hashTree.updateItems(updates);
+    
+    expect(results).to.deep.equal([true, true, true, false]);
+    expect(hashTree.getTotalItemCount()).to.equal(3); // participant (updated), self (unchanged), mediashare (added); locus removed
+    
+    // Verify the updates
+    expect(hashTree.leaves[1]['participant'][1].version).to.equal(2); // updated
+    expect(hashTree.leaves[0]['self'][2]).to.deep.equal({type: 'self', id: 2, version: 1}); // unchanged
+    expect(hashTree.leaves[0]['mediashare'][4]).to.deep.equal({type: 'mediashare', id: 4, version: 1}); // added
+    expect(hashTree.leaves[1]['locus']).to.be.undefined; // removed
+    
+    // Verify hashes were updated
+    expect(hashTree.leafHashes[0]).to.not.equal(EMPTY_HASH);
+    expect(hashTree.leafHashes[1]).to.not.equal(EMPTY_HASH);
+  });
+
+  it('updateItems should return array of false for tree with 0 leaves', () => {
+    const hashTree = new HashTree([], 0);
+    const updates: any = [
+      {operation: 'update', item: {type: 'participant', id: 1, version: 1}},
+      {operation: 'remove', item: {type: 'self', id: 2, version: 1}}
+    ];
+    expect(hashTree.updateItems(updates)).to.deep.equal([false, false]);
+  });
+
+  it('updateItems should handle empty updates array', () => {
+    const hashTree = new HashTree([{type: 'participant', id: 1, version: 1}], 2);
+    const results = hashTree.updateItems([]);
+    expect(results).to.deep.equal([]);
+    expect(hashTree.getTotalItemCount()).to.equal(1);
+  });
+
+  it('updateItems should only update hashes for affected leaves', () => {
+    const hashTree = new HashTree([], 4);
+    const initialHash0 = hashTree.leafHashes[0];
+    const initialHash1 = hashTree.leafHashes[1];
+    const initialHash2 = hashTree.leafHashes[2];
+    const initialHash3 = hashTree.leafHashes[3];
+
+    const updates: any = [
+      {operation: 'update', item: {type: 'participant', id: 1, version: 1}} // bucket 1
+    ];
+
+    hashTree.updateItems(updates);
+
+    // Only leaf 1 should have changed hash
+    expect(hashTree.leafHashes[0]).to.equal(initialHash0);
+    expect(hashTree.leafHashes[1]).to.not.equal(initialHash1);
+    expect(hashTree.leafHashes[2]).to.equal(initialHash2);
+    expect(hashTree.leafHashes[3]).to.equal(initialHash3);
+  });
+
+  it('updateItems should respect version control for updates', () => {
+    const hashTree = new HashTree([{type: 'participant', id: 1, version: 5}], 2);
+    
+    const updates: any = [
+      {operation: 'update', item: {type: 'participant', id: 1, version: 4}}, // older version
+      {operation: 'update', item: {type: 'participant', id: 1, version: 5}}, // same version
+      {operation: 'update', item: {type: 'participant', id: 1, version: 6}}  // newer version
+    ];
+
+    const results = hashTree.updateItems(updates);
+    expect(results).to.deep.equal([false, false, true]);
+    expect(hashTree.leaves[1]['participant'][1].version).to.equal(6);
+  });
+
+  it('updateItems should respect version control for removes', () => {
+    const hashTree = new HashTree([{type: 'participant', id: 1, version: 5}], 2);
+    
+    // Try to remove with older version - should fail
+    let updates: any = [
+      {operation: 'remove', item: {type: 'participant', id: 1, version: 4}}
+    ];
+    let results = hashTree.updateItems(updates);
+    expect(results).to.deep.equal([false]);
+    expect(hashTree.getTotalItemCount()).to.equal(1); // still there
+
+    // Try with same version - should succeed
+    updates = [
+      {operation: 'remove', item: {type: 'participant', id: 1, version: 5}}
+    ];
+    results = hashTree.updateItems(updates);
+    expect(results).to.deep.equal([true]);
+    expect(hashTree.getTotalItemCount()).to.equal(0);
+  });
+
+  it('updateItems should handle multiple operations on same leaf efficiently', () => {
+    const hashTree = new HashTree([], 2);
+    
+    const updates: any = [
+      {operation: 'update', item: {type: 'participant', id: 1, version: 1}}, // bucket 1
+      {operation: 'update', item: {type: 'self', id: 3, version: 1}}, // bucket 1
+      {operation: 'update', item: {type: 'locus', id: 5, version: 1}}  // bucket 1
+    ];
+
+    const results = hashTree.updateItems(updates);
+    expect(results).to.deep.equal([true, true, true]);
+    expect(hashTree.getTotalItemCount()).to.equal(3);
+    
+    // All items should be in leaf 1
+    expect(hashTree.leaves[1]['participant'][1]).to.exist;
+    expect(hashTree.leaves[1]['self'][3]).to.exist;
+    expect(hashTree.leaves[1]['locus'][5]).to.exist;
+  });
+
   it('returns the correct root hash for an empty tree (0 leaves)', () => {
     const hashTree = new HashTree([], 0);
     expect(hashTree.getRootHash()).to.equal(EMPTY_HASH);
@@ -239,6 +359,69 @@ describe('HashTree', () => {
     const hashTree = new HashTree([], 4);
     // This hash is from the original test.
     expect(hashTree.getRootHash()).to.equal('b5df9b92242752424d87053a14e6222d');
+  });
+
+  describe('getTotalItemCount', () => {
+    it('should return 0 for an empty tree', () => {
+      const tree = new HashTree([], 4);
+      expect(tree.getTotalItemCount()).to.equal(0);
+    });
+
+    it('should return 0 for a tree with 0 leaves', () => {
+      const tree = new HashTree([], 0);
+      expect(tree.getTotalItemCount()).to.equal(0);
+    });
+
+    it('should return correct count for a tree with single item', () => {
+      const tree = new HashTree([{type: 'participant', id: 1, version: 1}], 2);
+      expect(tree.getTotalItemCount()).to.equal(1);
+    });
+
+    it('should return correct count for multiple items in different leaves', () => {
+      const items: LeafDataItem[] = [
+        {type: 'participant', id: 0, version: 1}, // leaf 0
+        {type: 'self', id: 1, version: 1},        // leaf 1
+        {type: 'locus', id: 2, version: 1},       // leaf 0
+        {type: 'mediashare', id: 3, version: 1}   // leaf 1
+      ];
+      const tree = new HashTree(items, 2);
+      expect(tree.getTotalItemCount()).to.equal(4);
+    });
+
+    it('should return correct count for multiple items of different types in same leaf', () => {
+      const items: LeafDataItem[] = [
+        {type: 'participant', id: 1, version: 1}, // leaf 1
+        {type: 'self', id: 3, version: 1},        // leaf 1
+        {type: 'locus', id: 5, version: 1}        // leaf 1
+      ];
+      const tree = new HashTree(items, 2);
+      expect(tree.getTotalItemCount()).to.equal(3);
+    });
+
+    it('should maintain correct count after resize', () => {
+      const items: LeafDataItem[] = [
+        {type: 'participant', id: 0, version: 1},
+        {type: 'self', id: 1, version: 1},
+        {type: 'locus', id: 2, version: 1}
+      ];
+      const tree = new HashTree(items, 2);
+      expect(tree.getTotalItemCount()).to.equal(3);
+      
+      tree.resize(4);
+      expect(tree.getTotalItemCount()).to.equal(3); // Count should remain same after resize
+    });
+
+    it('should return 0 after resizing to 0 leaves', () => {
+      const items: LeafDataItem[] = [
+        {type: 'participant', id: 1, version: 1},
+        {type: 'self', id: 2, version: 1}
+      ];
+      const tree = new HashTree(items, 2);
+      expect(tree.getTotalItemCount()).to.equal(2);
+      
+      tree.resize(0);
+      expect(tree.getTotalItemCount()).to.equal(0);
+    });
   });
 
   describe('getLeafData', () => {
@@ -393,6 +576,12 @@ describe('HashTree', () => {
   });
 
   describe('computeTreeHashes', () => {
+    it('should return [EMPTY_HASH] for tree with 0 leaves', () => {
+      const hashTree = new HashTree([], 0);
+      const hashes = hashTree.computeTreeHashes();
+      expect(hashes).to.deep.equal([EMPTY_HASH]);
+    });
+
     it('should compute correct hashes for a known set of leaf hashes', () => {
       const leafHashes = [
         'aefa055a9b82c4c4ae10ac8ed1f61a30',
@@ -444,6 +633,11 @@ describe('HashTree', () => {
 
       expect(leafHash.startsWith('0')).to.be.true;
       expect(leafHash).equal('0525d6616d0f20119293c0bf2c818e8a');
+    });
+    it('should not crash for invalid leaf index', () => {
+      const hashTree = new HashTree([], 2);
+      expect(() => hashTree.computeLeafHash(-1)).to.not.throw();
+      expect(() => hashTree.computeLeafHash(2)).to.not.throw();
     });
   });
 });
