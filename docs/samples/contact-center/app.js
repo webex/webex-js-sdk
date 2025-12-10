@@ -678,6 +678,7 @@ async function initiateTransfer() {
   try {
     await currentTask.transfer(transferPayload);
     console.log('Transfer initiated successfully');
+    transferOptionsElm.style.display = 'none';
   } catch (error) {
     console.error('Failed to initiate transfer', error);
     alert('Failed to initiate transfer');
