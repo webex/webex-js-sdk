@@ -449,6 +449,9 @@ class HashTreeParser {
         `HashTreeParser#handleLocusUpdate --> ${this.debugId} received hash tree update without dataSets`
       );
     }
+    for (const dataSet of dataSets) {
+      this.updateDataSetInfo(dataSet);
+    }
     const updatedObjects: HashTreeObject[] = [];
 
     // first, analyze the locus object to extract the hash tree objects' htMeta and data from it

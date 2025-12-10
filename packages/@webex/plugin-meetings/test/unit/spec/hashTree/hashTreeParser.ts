@@ -439,6 +439,12 @@ describe('HashTreeParser', () => {
         },
       ],
     });
+
+    // verify that sync timers are set for visible datasets
+    expect(hashTreeParser.dataSets.main.timer).to.not.be.undefined;
+    expect(hashTreeParser.dataSets.self.timer).to.not.be.undefined;
+    // and not for invisible dataset
+    expect(hashTreeParser.dataSets.invisible.timer).to.be.undefined;
   };
 
   describe('#initializeFromMessage', () => {
@@ -562,6 +568,11 @@ describe('HashTreeParser', () => {
         {type: 'participant', id: 14, version: 310},
         {type: 'participant', id: 15, version: 311},
       ]);
+
+      // check that the datasets metadata has been updated
+      expect(parser.dataSets.main.version).to.equal(1100);
+      expect(parser.dataSets.self.version).to.equal(2100);
+      expect(parser.dataSets['atd-unmuted'].version).to.equal(3100);
 
       assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
         updatedObjects: [
