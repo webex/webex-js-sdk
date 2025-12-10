@@ -71,6 +71,7 @@ const initiateConsultDialog = document.querySelector('#initiate-consult-dialog')
 const agentMultiLoginAlert = document.querySelector('#agentMultiLoginAlert');
 const consultTransferBtn = document.querySelector('#consult-transfer');
 const transferElm = document.getElementById('transfer');
+const transferOptionsElm = document.querySelector('#transfer-options');
 const conferenceToggleBtn = document.querySelector('#conference-toggle');
 const timerElm = document.querySelector('#timerDisplay');
 const engageElm = document.querySelector('#engageWidget');
@@ -648,6 +649,16 @@ async function handleQueueConsult(consultPayload) {
   }
 }
 
+
+// Function to toggle transfer options visibility
+function toggleTransferOptions() {
+  if (transferOptionsElm.style.display === 'none') {
+    transferOptionsElm.style.display = 'block';
+    onTransferTypeSelectionChanged(); // Refresh the destination options
+  } else {
+    transferOptionsElm.style.display = 'none';
+  }
+}
 
 // Function to initiate transfer
 async function initiateTransfer() {
@@ -1986,14 +1997,14 @@ function expandAll() {
 function holdResumeCall() {
   if (holdResumeElm.innerText === 'Hold') {
     holdResumeElm.disabled = true;
-    currentTask.hold().then(() => {
+    currentTask.holdResume().then(() => {
       console.info('Call held successfully');
     }).catch((error) => {
       console.error('Failed to hold the call', error);
     });
   } else {
     holdResumeElm.disabled = true;
-    currentTask.resume().then(() => {
+    currentTask.holdResume().then(() => {
       console.info('Call resumed successfully');
     }).catch((error) => {
       console.error('Failed to resume the call', error);
