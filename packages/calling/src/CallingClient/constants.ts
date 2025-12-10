@@ -113,6 +113,7 @@ export const REGISTRATION_UTIL = 'triggerRegistration';
 export const REGISTER_UTIL = 'attemptRegistrationWithServers';
 export const GET_MOBIUS_SERVERS_UTIL = 'getMobiusServers';
 export const KEEPALIVE_UTIL = 'startKeepaliveTimer';
+export const RECONNECT_ON_FAILURE_UTIL = 'reconnectOnFailure';
 export const FAILBACK_UTIL = 'executeFailback';
 export const REG_429_RETRY_UTIL = 'handle429Retry';
 export const FAILOVER_UTIL = 'startFailoverTimer';
@@ -123,6 +124,7 @@ export const MOBIUS_US_PROD = 'mobius-us-east-1.prod.infra.webex.com';
 export const MOBIUS_EU_PROD = 'mobius-eu-central-1.prod.infra.webex.com';
 export const MOBIUS_US_INT = 'mobius-us-east-1.int.infra.webex.com';
 export const MOBIUS_EU_INT = 'mobius-eu-central-1.int.infra.webex.com';
+export const FAILOVER_CACHE_PREFIX = 'wxc-failover-state';
 export const ICE_CANDIDATES_TIMEOUT = 3000;
 // Define constants for method names
 export const METHODS = {
