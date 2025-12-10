@@ -109,7 +109,8 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     rules: [
       {
         test: /\.(js|tsx|ts)$/,
-        include: [/packages/],
+        // transpile our local packages and the xxh3-ts package in node_modules
+        include: [/packages/, path.resolve(__dirname, 'node_modules/xxh3-ts')],
         use: {
           loader: 'babel-loader',
         },
