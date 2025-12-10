@@ -179,6 +179,18 @@ export const isSdpOfferCreationError = (rawError: any) => {
   return false;
 };
 
+export const isBrowserMediaError = (rawError) => {
+  if (isBrowserMediaErrorName(rawError.name)) {
+    return true;
+  }
+
+  return false;
+};
+
+export const getBrowserMediaErrorCode = (rawError) => {
+  return BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name];
+};
+
 /**
  * MDN Media Devices getUserMedia() method returns a name if it errs
  * Documentation can be found here: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia

@@ -1316,6 +1316,27 @@ describe('plugin-meetings', () => {
             })
           );
         });
+
+        it('should not handle non-browser media error', () => {
+          let shouldRetry = true;
+          let error = {name: 'OtherError', message: 'other'};
+
+          if (CallDiagnosticUtils.isBrowserMediaError(error)) {
+            shouldRetry = false;
+            error = merge({
+              error: {
+                body: {
+                  errorCode: CallDiagnosticUtils.getBrowserMediaErrorCode(error),
+                  message: error?.message,
+                  name: error?.name,
+                },
+              },
+            });
+          }
+
+          expect(shouldRetry).toBe(true);
+          expect(error).toEqual({name: 'OtherError', message: 'other'});
+        });
       });
       describe('#isTranscriptionSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {

@@ -685,4 +685,30 @@ describe('internal-plugin-metrics', () => {
       });
     });
   });
+
+  describe('isBrowserMediaError', () => {
+    it('should return true if error name is in BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP', () => {
+      const errorName = Object.keys(BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP)[0];
+      const error = {name: errorName};
+      expect(isBrowserMediaError(error)).toBe(true);
+    });
+
+    it('should return false if error name is not in BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP', () => {
+      const error = {name: 'SomeOtherError'};
+      expect(isBrowserMediaError(error)).toBe(false);
+    });
+  });
+
+  describe('getBrowserMediaErrorCode', () => {
+    it('should return correct error code for known error name', () => {
+      const errorName = Object.keys(BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP)[0];
+      const error = {name: errorName};
+      expect(getBrowserMediaErrorCode(error)).toBe(BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[errorName]);
+    });
+
+    it('should return undefined for unknown error name', () => {
+      const error = {name: 'UnknownError'};
+      expect(getBrowserMediaErrorCode(error)).toBeUndefined();
+    });
+  });
 });
