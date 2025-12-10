@@ -733,7 +733,7 @@ export default class LocusInfo extends EventsScope {
             data.updatedObjects.map((o) => ({
               type: o.htMeta.elementId.type,
               id: o.htMeta.elementId.id,
-              hasData: o.data !== undefined,
+              hasData: o.data,
             }))
           )}`
         );
