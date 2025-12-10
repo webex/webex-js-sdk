@@ -1026,23 +1026,20 @@ const Services = WebexPlugin.extend({
    *
    */
   async _cacheCatalog(serviceGroup, hostMap, meta) {
+    let current = {};
+    let env;
+    let orgId;
     try {
       // Respect calling.cacheU2C toggle; if disabled, skip writing cache
-      try {
-        if (this?.webex?.config?.calling && this.webex.config.calling.cacheU2C === false) {
-          if (this.logger && this.logger.info) {
-            this.logger.info(
-              `services: skipping cache write for ${serviceGroup} due to config.calling.cacheU2C=false`
-            );
-          }
+      if (this.webex.config?.calling && this.webex.config.calling.cacheU2C === false) {
+        this.logger.info(
+          `services: skipping cache write for ${serviceGroup} due to config.calling.cacheU2C=false`
+        );
 
-          return;
-        }
-      } catch (e) {
-        // ignore
+        return;
       }
+
       // Persist to localStorage to survive browser refresh
-      let current = {};
       try {
         const raw =
           typeof window !== 'undefined' && window.localStorage
@@ -1052,7 +1049,7 @@ const Services = WebexPlugin.extend({
       } catch (e) {
         current = {};
       }
-      let orgId;
+
       try {
         const {credentials} = this.webex;
         orgId = credentials.getOrgId();
@@ -1061,10 +1058,9 @@ const Services = WebexPlugin.extend({
       }
 
       // Capture environment fingerprint to invalidate cache across env changes
-      let env;
       try {
-        const fedramp = !!this?.webex?.config?.fedramp;
-        const u2cDiscoveryUrl = this?.webex?.config?.services?.discovery?.u2c;
+        const fedramp = !!this.webex.config?.fedramp;
+        const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
         env = {fedramp, u2cDiscoveryUrl};
       } catch (e) {
         env = current.env;
@@ -1092,21 +1088,15 @@ const Services = WebexPlugin.extend({
    * @returns {Promise<boolean>} true if cache was loaded, false otherwise
    */
   async _loadCatalogFromCache() {
+    let currentOrgId;
     try {
       // Respect calling.cacheU2C toggle; if disabled, skip using cache
-      try {
-        if (this?.webex?.config?.calling && this.webex.config.calling.cacheU2C === false) {
-          if (this.logger && this.logger.info) {
-            this.logger.info(
-              'services: skipping cache warm-up due to config.calling.cacheU2C=false'
-            );
-          }
+      if (this.webex.config?.calling && this.webex.config.calling.cacheU2C === false) {
+        this.logger.info('services: skipping cache warm-up due to config.calling.cacheU2C=false');
 
-          return false;
-        }
-      } catch (e) {
-        // ignore
+        return false;
       }
+
       if (typeof window === 'undefined' || !window.localStorage) {
         return false;
       }
@@ -1131,19 +1121,19 @@ const Services = WebexPlugin.extend({
       try {
         if (this.webex.credentials?.canAuthorize) {
           const {credentials} = this.webex;
-          const currentOrgId = credentials.getOrgId();
+          currentOrgId = credentials.getOrgId();
           if (cached.orgId && cached.orgId !== currentOrgId) {
             return false;
           }
         }
       } catch (e) {
-        // ignore orgId check errors
+        this.logger.warn('services: error checking orgId', e);
       }
 
       // Ensure cached environment matches current environment
       try {
-        const fedramp = !!this?.webex?.config?.fedramp;
-        const u2cDiscoveryUrl = this?.webex?.config?.services?.discovery?.u2c;
+        const fedramp = !!this.webex.config?.fedramp;
+        const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
         const currentEnv = {fedramp, u2cDiscoveryUrl};
         if (cached.env) {
           const sameEnv =
@@ -1158,7 +1148,7 @@ const Services = WebexPlugin.extend({
           }
         }
       } catch (e) {
-        // ignore env check errors
+        this.logger.warn('services: error checking environment', e);
       }
 
       const catalog = this._getCatalog();
@@ -1167,11 +1157,10 @@ const Services = WebexPlugin.extend({
       const getIntendedPreauthSelection = () => {
         try {
           if (this.webex.credentials?.canAuthorize) {
-            const orgId = this.webex.credentials.getOrgId();
-            if (orgId) {
+            if (currentOrgId) {
               return {
                 selectionType: 'orgId',
-                selectionValue: orgId,
+                selectionValue: currentOrgId,
               };
             }
           }
@@ -1212,9 +1201,7 @@ const Services = WebexPlugin.extend({
         if (g === 'preauth' && meta) {
           // For proximity-based selection, always fetch fresh to respect IP/region changes
           if (meta.selectionType === 'mode') {
-            if (this.logger && this.logger.info) {
-              this.logger.info('services: skipping preauth cache warm for proximity mode');
-            }
+            this.logger.info('services: skipping preauth cache warm for proximity mode');
 
             return;
           }
@@ -1226,9 +1213,7 @@ const Services = WebexPlugin.extend({
             intended.selectionValue === meta.selectionValue;
 
           if (!matches) {
-            if (this.logger && this.logger.info) {
-              this.logger.info('services: skipping preauth cache warm due to selection mismatch');
-            }
+            this.logger.info('services: skipping preauth cache warm due to selection mismatch');
 
             return;
           }

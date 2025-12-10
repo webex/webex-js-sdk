@@ -1043,6 +1043,141 @@ describe('webex-core', () => {
         assert.isTrue(fetchSpy.called, 'forceRefresh should bypass cache short-circuit');
         fetchSpy.restore();
       });
+
+      it('stores selection metadata and env on cache write for preauth', async () => {
+        const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
+        // arrange config for env fingerprint
+        services.webex.config = services.webex.config || {};
+        services.webex.config.services = services.webex.config.services || {discovery: {}};
+        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+
+        // write cache with meta
+        await services._cacheCatalog(
+          'preauth',
+          {serviceLinks: {}, hostCatalog: {}},
+          {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'}
+        );
+
+        const raw = window.localStorage.getItem(CATALOG_CACHE_KEY_V1);
+        assert.isString(raw);
+        const parsed = JSON.parse(raw);
+        assert.equal(parsed.orgId, undefined, 'orgId not set without credentials');
+        assert.deepEqual(parsed.env, {
+          fedramp: false,
+          u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1',
+        });
+        assert.isObject(parsed.preauth);
+        assert.deepEqual(parsed.preauth.meta, {
+          selectionType: 'orgId',
+          selectionValue: 'urn:EXAMPLE:org',
+        });
+      });
+
+      it('warms preauth from cache when selection meta matches intended orgId', async () => {
+        const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
+        // stub credentials
+        services.webex.credentials = {
+          canAuthorize: true,
+          getOrgId: sinon.stub().returns('urn:EXAMPLE:org'),
+        };
+        // cache with matching orgId selection
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V1,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            preauth: {
+              hostMap: {serviceLinks: {}, hostCatalog: {}},
+              meta: {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'},
+            },
+          })
+        );
+        // formatter returns at least one entry to mark ready
+        services._formatReceivedHostmap.restore && services._formatReceivedHostmap.restore();
+        sinon.stub(services, '_formatReceivedHostmap').callsFake(() => [
+          {name: 'hydra', defaultUrl: 'https://api.ciscospark.com/v1', hosts: []},
+        ]);
+
+        const warmed = await services._loadCatalogFromCache();
+        assert.isTrue(warmed);
+        assert.isTrue(catalog.status.preauth.ready, 'preauth should be warmed on match');
+      });
+
+      it('does not warm preauth when selection meta is proximity mode', async () => {
+        const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
+        // cache with proximity mode selection
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V1,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            preauth: {
+              hostMap: {serviceLinks: {}, hostCatalog: {}},
+              meta: {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'},
+            },
+          })
+        );
+        services._formatReceivedHostmap.restore && services._formatReceivedHostmap.restore();
+        sinon.stub(services, '_formatReceivedHostmap').callsFake(() => [
+          {name: 'hydra', defaultUrl: 'https://api.ciscospark.com/v1', hosts: []},
+        ]);
+
+        const warmed = await services._loadCatalogFromCache();
+        // function returns true if overall cache path succeeded; we only verify group readiness
+        assert.isFalse(catalog.status.preauth.ready, 'preauth should not warm for proximity mode');
+      });
+
+      it('does not warm preauth when selection meta mismatches intended selection', async () => {
+        const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
+        // authorized with org X
+        services.webex.credentials = {
+          canAuthorize: true,
+          getOrgId: sinon.stub().returns('urn:EXAMPLE:org'),
+        };
+        // cache points to a different org
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V1,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            preauth: {
+              hostMap: {serviceLinks: {}, hostCatalog: {}},
+              meta: {selectionType: 'orgId', selectionValue: 'urn:DIFF:org'},
+            },
+          })
+        );
+        services._formatReceivedHostmap.restore && services._formatReceivedHostmap.restore();
+        sinon.stub(services, '_formatReceivedHostmap').callsFake(() => [
+          {name: 'hydra', defaultUrl: 'https://api.ciscospark.com/v1', hosts: []},
+        ]);
+
+        await services._loadCatalogFromCache();
+        assert.isFalse(catalog.status.preauth.ready, 'preauth should not warm on selection mismatch');
+      });
+
+      it('skips warming when environment fingerprint mismatches', async () => {
+        const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
+        // cached env differs from current env (different U2C URL)
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V1,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.other.com/u2c/api/v1'},
+            preauth: {hostMap: {serviceLinks: {}, hostCatalog: {}}, meta: {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'}},
+          })
+        );
+        // current env
+        services.webex.config = services.webex.config || {};
+        services.webex.config.services = services.webex.config.services || {discovery: {}};
+        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+
+        const warmed = await services._loadCatalogFromCache();
+        assert.isFalse(warmed, 'env mismatch should skip warm and return false');
+        assert.isFalse(catalog.status.preauth.ready);
+        assert.isFalse(catalog.status.postauth.ready);
+      });
     });
   });
 });
