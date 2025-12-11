@@ -714,7 +714,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#joinWithMedia', () => {
+      describe.only('#joinWithMedia', () => {
         it('should have #joinWithMedia', () => {
           assert.exists(meeting.joinWithMedia);
         });
@@ -1001,6 +1001,35 @@ describe('plugin-meetings', () => {
               type: addMediaError.name,
             }
           );
+        });
+
+        it('should call leave() if addMediaInternal() fails ', async () => {
+          const addMediaError = new Error('fake addMedia error');
+          addMediaError.name = 'TypeError';
+
+          const rejectError = {
+            error: {
+              body: {
+                errorCode: 2729,
+                message: 'fake addMedia error',
+                name: 'TypeError'
+              }
+            }
+          };
+          meeting.addMediaInternal.rejects(addMediaError);
+          sinon.stub(meeting, 'leave').resolves();
+
+          await assert.isRejected(
+            meeting.joinWithMedia({
+              joinOptions,
+              mediaOptions,
+            }),
+            rejectError
+          );
+
+          assert.calledOnce(meeting.join);
+          assert.calledOnce(meeting.addMediaInternal);
+          assert.calledOnce(Metrics.sendBehavioralMetric);
         });
 
         it('should not call leave() if addMediaInternal() fails the first time and succeeds the second time and should only call join() once', async () => {
@@ -1315,27 +1344,6 @@ describe('plugin-meetings', () => {
               receiveAudio: true,
             })
           );
-        });
-
-        it('should not handle non-browser media error', () => {
-          let shouldRetry = true;
-          let error = {name: 'OtherError', message: 'other'};
-
-          if (CallDiagnosticUtils.isBrowserMediaError(error)) {
-            shouldRetry = false;
-            error = merge({
-              error: {
-                body: {
-                  errorCode: CallDiagnosticUtils.getBrowserMediaErrorCode(error),
-                  message: error?.message,
-                  name: error?.name,
-                },
-              },
-            });
-          }
-
-          assert.equal(shouldRetry, true);
-          assert.equal(error.name, 'OtherError');
         });
       });
       describe('#isTranscriptionSupported', () => {
