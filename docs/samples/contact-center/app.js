@@ -931,13 +931,16 @@ async function startOutdial() {
   try {
     console.log('Making an outdial call');
     console.log('Destination:', destination);
-    console.log('Selected ANI:', selectedAni || 'None selected');
+    console.log('Selected ANI:', selectedAni || 'None selected, using default ANI');
     
     // Use selected ANI as the origin parameter
     if (selectedAni) {
       await webex.cc.startOutdial(destination, selectedAni);
       console.log('Outdial call initiated successfully with ANI:', selectedAni);
-    } 
+    } else {
+      await webex.cc.startOutdial(destination);
+      console.log('Outdial call initiated successfully with default ANI');
+    }
     
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
