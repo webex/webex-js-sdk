@@ -8867,6 +8867,7 @@ __metadata:
     typescript: ^4.7.4
     uuid: ^3.3.2
     webrtc-adapter: ^8.1.2
+    xxh3-ts: ^2.0.1
   languageName: unknown
   linkType: soft
 
@@ -34902,6 +34903,15 @@ __metadata:
   version: 4.0.2
   resolution: "xtend@npm:4.0.2"
   checksum: ac5dfa738b21f6e7f0dd6e65e1b3155036d68104e67e5d5d1bde74892e327d7e5636a076f625599dc394330a731861e87343ff184b0047fef1360a7ec0a5a36a
+  languageName: node
+  linkType: hard
+
+"xxh3-ts@npm:^2.0.1":
+  version: 2.0.1
+  resolution: "xxh3-ts@npm:2.0.1"
+  peerDependencies:
+    buffer: ^6
+  checksum: 9ca7c512e9e5164b630da93262dc61a32615ffd3bc381b0e062797384592cc39a4ed40e76d54fa7d0797c9aa46afd96b88a98f7edf628dd1455823b5112ce239
   languageName: node
   linkType: hard
 
