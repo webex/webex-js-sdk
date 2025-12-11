@@ -704,7 +704,7 @@ async function initiateConsultTransfer() {
     if (currentTask.data.isConferenceInProgress) {
       await currentTask.transferConference();
     } else {
-      await currentTask.consultTransfer(consultTransferPayload);
+      await currentTask.transfer(consultTransferPayload);
       console.log('Consult transfer initiated successfully');
     }
   } catch (error) {
