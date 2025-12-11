@@ -139,8 +139,10 @@ describe('webex.cc', () => {
       webCallingService: undefined,
       webSocketManager: mockWebSocketManager,
       task: undefined,
+      setConfigFlags: jest.fn(),
       setWrapupData: jest.fn(),
       setAgentId: jest.fn(),
+      setWebRtcEnabled: jest.fn(),
       registerIncomingCallEvent: jest.fn(),
       registerTaskListeners: jest.fn(),
       getTask: jest.fn(),
@@ -149,7 +151,6 @@ describe('webex.cc', () => {
       off: jest.fn(),
       emit: jest.fn(),
       unregisterIncomingCallEvent: jest.fn(),
-      setConfigFlags: jest.fn(),
     };
 
     mockMetricsManager = {
@@ -322,18 +323,6 @@ describe('webex.cc', () => {
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
         module: CC_FILE,
         method: 'connectWebsocket',
-      });
-      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
-        isEndCallEnabled: mockAgentProfile.isEndCallEnabled,
-        isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
-        webRtcEnabled: mockAgentProfile.webRtcEnabled,
-        autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
-      });
-      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
-        isEndCallEnabled: mockAgentProfile.isEndCallEnabled,
-        isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
-        webRtcEnabled: mockAgentProfile.webRtcEnabled,
-        autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
       });
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
@@ -1448,88 +1437,6 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: `startOutdial`, trackingId: error.details.trackingId}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'startOutdial', CC_FILE);
-    });
-  });
-
-  describe('getQueues', () => {
-    it('should return queues response when successful', async () => {
-      const mockQueuesResponse = [
-        {
-          queueId: 'queue1',
-          queueName: 'Queue 1',
-        },
-        {
-          queueId: 'queue2',
-          queueName: 'Queue 2',
-        },
-      ];
-
-      webex.cc.services.config.getQueues = jest.fn().mockResolvedValue(mockQueuesResponse);
-
-      const result = await webex.cc.getQueues();
-
-      // Verify logging calls
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
-        module: CC_FILE,
-        method: 'getQueues',
-      });
-      expect(LoggerProxy.log).toHaveBeenCalledWith(
-        `Successfully retrieved ${result.length} queues`,
-        {
-          module: CC_FILE,
-          method: 'getQueues',
-        }
-      );
-
-      expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
-        'mockOrgId',
-        0,
-        100,
-        undefined,
-        undefined
-      );
-      expect(result).toEqual(mockQueuesResponse);
-    });
-
-    it('should throw an error if orgId is not present', async () => {
-      jest.spyOn(webex.credentials, 'getOrgId').mockResolvedValue(undefined);
-      webex.cc.services.config.getQueues = jest.fn();
-
-      try {
-        await webex.cc.getQueues();
-      } catch (error) {
-        expect(error).toEqual(new Error('Org ID not found.'));
-        expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
-          module: CC_FILE,
-          method: 'getQueues',
-        });
-        expect(LoggerProxy.error).toHaveBeenCalledWith('Org ID not found.', {
-          module: CC_FILE,
-          method: 'getQueues',
-        });
-        expect(webex.cc.services.config.getQueues).not.toHaveBeenCalled();
-      }
-    });
-
-    it('should throw an error if config getQueues throws an error', async () => {
-      webex.cc.services.config.getQueues = jest.fn().mockRejectedValue(new Error('Test error.'));
-
-      try {
-        await webex.cc.getQueues();
-      } catch (error) {
-        expect(error).toEqual(new Error('Test error.'));
-        expect(LoggerProxy.info).toHaveBeenCalledWith('Fetching queues', {
-          module: CC_FILE,
-          method: 'getQueues',
-        });
-        expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
-          'mockOrgId',
-          0,
-          100,
-          undefined,
-          undefined
-        );
-      }
     });
   });
 

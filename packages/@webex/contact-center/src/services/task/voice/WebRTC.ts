@@ -5,7 +5,7 @@ import routingContact from '../contact';
 import {TaskData, TaskResponse, TASK_EVENTS, IWebRTC} from '../types';
 import Voice from './Voice';
 import WebCallingService from '../../WebCallingService';
-import {CC_EVENTS} from '../../config/types';
+import {CC_EVENTS, WrapupData} from '../../config/types';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import LoggerProxy from '../../../logger-proxy';
@@ -18,9 +18,11 @@ export default class WebRTC extends Voice implements IWebRTC {
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    callOptions: {isEndCallEnabled?: boolean; isEndConsultEnabled?: boolean} = {}
+    wrapupData?: WrapupData,
+    agentId?: string
   ) {
-    super(contact, data, callOptions);
+    // WebRTC always has buttons enabled by default, so we don't need callOptions
+    super(contact, data, wrapupData, agentId, {isEndCallEnabled: true, isEndConsultEnabled: true});
     this.updateTaskUiControls({accept: [true, true], decline: [true, true]});
     this.webCallingService = webCallingService;
     this.registerWebCallListeners();

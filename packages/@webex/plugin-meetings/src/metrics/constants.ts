@@ -87,6 +87,8 @@ const BEHAVIORAL_METRICS = {
   VERIFY_REGISTRATION_ID_ERROR: 'js_sdk_verify_registrationId_error',
   JOIN_FORBIDDEN_ERROR: 'js_sdk_join_forbidden_error',
   MEDIA_ISSUE_DETECTED: 'js_sdk_media_issue_detected',
+  LOCUS_CLASSIC_VS_HASH_TREE_MISMATCH: 'js_sdk_locus_classic_vs_hash_tree_mismatch',
+  LOCUS_HASH_TREE_UNSUPPORTED_OPERATION: 'js_sdk_locus_hash_tree_unsupported_operation',
 };
 
 export {BEHAVIORAL_METRICS as default};

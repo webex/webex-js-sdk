@@ -657,3 +657,64 @@ export const workspaceResponse = [
     },
   },
 ];
+
+export const scheduleMeetingResponse = [
+  {
+    eventType: 'assistant-api.response',
+    sequence: 1,
+    finished: true,
+    clientRequestId: 'test-request-id',
+    responseId: 'b6893a00-c6cc-11f0-adb9-f9fe7ea2ec69',
+    responseType: 'response',
+    response: {
+      sessionId: 'a64345a0-c6cc-11f0-8c21-a7bce84cd4be',
+      sessionUrl:
+        'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/a64345a0-c6cc-11f0-8c21-a7bce84cd4be',
+      messageId: 'b688c4d0-c6cc-11f0-adb9-f9fe7ea2ec69',
+      messageUrl:
+        'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/a64345a0-c6cc-11f0-8c21-a7bce84cd4be/messages/b688c4d0-c6cc-11f0-adb9-f9fe7ea2ec69',
+      responseId: 'b6893a00-c6cc-11f0-adb9-f9fe7ea2ec69',
+      responseUrl:
+        'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/a64345a0-c6cc-11f0-8c21-a7bce84cd4be/messages/b6893a00-c6cc-11f0-adb9-f9fe7ea2ec69',
+      content: {
+        name: 'schedule_meeting',
+        type: 'json',
+        encryptionKeyUrl: 'kms://kms-cisco.wbx2.com/keys/dd6053f0-a1b3-428d-8104-317527d73630',
+        parameters: {
+          commentary: 'schedule_meeting_encrypted_commentary',
+        },
+        value: {
+          results: {
+            category: 'schedule_meeting',
+            data: {
+              success: true,
+              status: 'created',
+              attendees: [
+                {
+                  email: 'schedule_meeting_encrypted_email_0',
+                  status: 'available',
+                },
+                {
+                  email: 'schedule_meeting_encrypted_email_1',
+                  status: 'available',
+                },
+              ],
+              startTime: '2025-11-26T09:00:00Z',
+              duration: '1800000',
+              title: 'schedule_meeting_encrypted_title',
+              description: 'schedule_meeting_encrypted_description',
+              timeZone: 'Europe/London',
+              inScopeReply: 'schedule_meeting_encrypted_inScopeReply',
+              meetingLink: 'schedule_meeting_encrypted_meetingLink',
+              schedulerUUID: '21e53358f00b46bda778d9e7124f6f1e',
+              meetingUUID: '920eab08068b4382a31d26ddecc9ec8b',
+              meetingId: '837dc916-2259-6c04-9b51-d4dcfc7c4557',
+            },
+          },
+        },
+      },
+      createdAt: '2025-11-21T11:25:01.670071069Z',
+      creator: {role: 'assistant'},
+    },
+  },
+];

@@ -1,11 +1,11 @@
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
-import Task from './Task';
 import Voice from './voice/Voice';
 import WebRTC from './voice/WebRTC';
 import Digital from './digital/Digital';
-import {MEDIA_CHANNEL, TaskData} from './types';
+import {ITask, MEDIA_CHANNEL, TaskData} from './types';
 import {ConfigFlags} from '../../types';
+import {WrapupData} from '../config/types';
 
 export default class TaskFactory {
   /**
@@ -15,18 +15,20 @@ export default class TaskFactory {
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    configFlags: ConfigFlags
-  ): Task {
+    configFlags?: ConfigFlags,
+    wrapupData?: WrapupData,
+    agentId?: string
+  ): ITask {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
-    const {isEndCallEnabled, isEndConsultEnabled} = configFlags;
+    const {isEndCallEnabled, isEndConsultEnabled} = configFlags || {};
 
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:
         if (webCallingService.loginOption === 'BROWSER') {
-          return new WebRTC(contact, webCallingService, data);
+          return new WebRTC(contact, webCallingService, data, wrapupData, agentId);
         }
 
-        return new Voice(contact, data, {
+        return new Voice(contact, data, wrapupData, agentId, {
           isEndCallEnabled,
           isEndConsultEnabled,
         });
@@ -34,7 +36,7 @@ export default class TaskFactory {
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
       case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(contact, data);
+        return new Digital(contact, data, wrapupData, agentId);
 
       default:
         throw new Error(`Unknown media type: ${mediaType}`);

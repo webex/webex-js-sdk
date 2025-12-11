@@ -13,7 +13,7 @@ import {
   CONSULT_TRANSFER_DESTINATION_TYPE,
 } from '../types';
 import Task from '../Task';
-import {CC_EVENTS} from '../../config/types';
+import {CC_EVENTS, WrapupData} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
@@ -25,9 +25,11 @@ export default class Voice extends Task implements IVoice {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
+    wrapupData?: WrapupData,
+    agentId?: string,
     callOptions: {isEndCallEnabled?: boolean; isEndConsultEnabled?: boolean} = {}
   ) {
-    super(contact, data);
+    super(contact, data, wrapupData, agentId);
     // apply defaults when no explicit setting provided
     this.isEndCallEnabled = callOptions.isEndCallEnabled ?? true;
     this.isEndConsultEnabled = callOptions.isEndConsultEnabled ?? true;

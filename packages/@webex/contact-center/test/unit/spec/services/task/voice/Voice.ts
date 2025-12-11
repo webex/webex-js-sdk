@@ -35,7 +35,7 @@ describe('Voice Task', () => {
   } as unknown as TaskData;
 
   it('hides end and endConsult when disabled', () => {
-    const voice = new Voice(dummyContact, baseData, {
+    const voice = new Voice(dummyContact, baseData, undefined, undefined, {
       isEndCallEnabled: false,
       isEndConsultEnabled: false,
     });
@@ -45,7 +45,7 @@ describe('Voice Task', () => {
   });
 
   it('calls contact.hold when media is not held', async () => {
-    const voice = new Voice(dummyContact, baseData as any, {});
+    const voice = new Voice(dummyContact, baseData as any, undefined, undefined, {});
     await voice.holdResume();
     expect(dummyContact.hold).toHaveBeenCalledWith({
       interactionId: 'int1',
@@ -61,7 +61,7 @@ describe('Voice Task', () => {
         media: { 'media1': { mediaResourceId: 'media1', isHold: true }},
       },
     } as any;
-    const voice = new Voice(dummyContact, heldData, {});
+    const voice = new Voice(dummyContact, heldData, undefined, undefined, {});
     await voice.holdResume();
     expect(dummyContact.unHold).toHaveBeenCalledWith({
       interactionId: 'int1',
@@ -70,7 +70,7 @@ describe('Voice Task', () => {
   });
 
   it('pauseRecording() calls contact.pauseRecording', async () => {
-    const voice = new Voice(dummyContact, baseData, {
+    const voice = new Voice(dummyContact, baseData, undefined, undefined, {
       isEndCallEnabled: true,
       isEndConsultEnabled: true,
     });
@@ -79,7 +79,7 @@ describe('Voice Task', () => {
   });
 
   it('resumeRecording() with no payload defaults to autoResumed false', async () => {
-    const voice = new Voice(dummyContact, baseData, {
+    const voice = new Voice(dummyContact, baseData, undefined, undefined, {
       isEndCallEnabled: true,
       isEndConsultEnabled: true,
     });
@@ -91,7 +91,7 @@ describe('Voice Task', () => {
   });
 
   it('consult() calls contact.consult with payload', async () => {
-    const voice = new Voice(dummyContact, baseData, {
+    const voice = new Voice(dummyContact, baseData, undefined, undefined, {
       isEndCallEnabled: true,
       isEndConsultEnabled: true,
     });
@@ -132,7 +132,7 @@ describe('Voice Task', () => {
         ...baseData,
         interaction: { ...baseData.interaction, state: 'consulting' },
       };
-      const voice = new Voice(dummyContact, dataWithState as any, {
+      const voice = new Voice(dummyContact, dataWithState as any, undefined, undefined, {
         isEndCallEnabled: true,
         isEndConsultEnabled: true,
       });
@@ -195,7 +195,7 @@ describe('Voice Task', () => {
   describe('UI controls for AGENT_CONTACT_ASSIGNED', () => {
     it('shows main controls and hides accept/decline on AGENT_CONTACT_ASSIGNED', () => {
       const data: any = { ...baseData, type: CC_EVENTS.AGENT_CONTACT_ASSIGNED };
-      const voice = new Voice(dummyContact, data, {
+      const voice = new Voice(dummyContact, data, undefined, undefined, {
         isEndCallEnabled: true,
         isEndConsultEnabled: false,
       });
@@ -222,7 +222,7 @@ describe('Voice Task', () => {
         isConsulted: opts.isConsulted,
         destAgentId: opts.destAgentId,
       };
-      const voice = new Voice(dummyContact, data, {
+      const voice = new Voice(dummyContact, data, undefined, undefined, {
         isEndCallEnabled: opts.endCall ?? true,
         isEndConsultEnabled: opts.endConsult ?? true,
       });
@@ -368,7 +368,7 @@ describe('Voice Task', () => {
         },
         isConsulted: opts.isConsulted || false,
       };
-      const voice = new Voice(dummyContact, data, {
+      const voice = new Voice(dummyContact, data, undefined, undefined, {
         isEndCallEnabled: opts.endCall ?? true,
         isEndConsultEnabled: opts.endConsult ?? true,
       });

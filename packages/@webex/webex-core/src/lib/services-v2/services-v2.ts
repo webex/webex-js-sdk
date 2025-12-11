@@ -14,6 +14,7 @@ import {
   Service,
   ServiceHostmap,
   ServiceGroup,
+  ServiceHost,
 } from './types';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
@@ -104,6 +105,54 @@ const Services = WebexPlugin.extend({
     return catalog.markFailedServiceUrl(url);
   },
 
+  /**
+   * Get all Mobius cluster host entries from the v2 services list.
+   * @returns {Array<ServiceHost>} - An array of `ServiceHost` objects.
+   */
+  getMobiusClusters(): Array<ServiceHost> {
+    const clusters: Array<ServiceHost> = [];
+    const services: Array<Service> = this._services || [];
+
+    services
+      .filter(
+        (service) =>
+          service?.serviceName === 'mobius' &&
+          Array.isArray(service.serviceUrls) &&
+          service.serviceUrls.length > 0
+      )
+      .forEach((service) => {
+        service.serviceUrls.forEach((serviceUrl) => {
+          const modifiedHost = serviceUrl.baseUrl.replace('https://', '').replace('/api/v1', '');
+          if (!clusters.find((c) => c && c.host === modifiedHost)) {
+            clusters.push({
+              host: modifiedHost,
+              priority: serviceUrl.priority,
+              id: service.id,
+              ttl: 0,
+            });
+          }
+        });
+      });
+
+    return clusters;
+  },
+
+  /**
+   * Check is valid host from services list.
+   * @param {string} host
+   * @returns {Boolean}
+   */
+  isValidHost(host: string): boolean {
+    const services: Array<Service> = this._services || [];
+
+    return services.some((service) => {
+      return service.serviceUrls.some((serviceUrl) => {
+        const serviceHost = serviceUrl?.baseUrl && new URL(serviceUrl.baseUrl)?.host;
+
+        return serviceHost === host;
+      });
+    });
+  },
   /**
    * saves all the services from the pre and post catalog service
    * @param {ActiveServices} activeServices
@@ -476,10 +525,14 @@ const Services = WebexPlugin.extend({
             ({countryCode, timezone} = clientRegionInfo);
           }
 
-          // Send the user activation request to the **License** service.
+          // Send the user activation request.
+          // Use user-onboarding service if configured, otherwise use license service.
+          const useUserOnboarding =
+            this.webex.config.services?.useUserOnboardingServiceForActivations;
+
           return this.request({
-            service: 'license',
-            resource: 'users/activations',
+            service: useUserOnboarding ? 'user-onboarding' : 'license',
+            resource: useUserOnboarding ? 'api/v1/users/activations' : 'users/activations',
             method: 'POST',
             headers: {
               accept: 'application/json',
@@ -512,7 +565,7 @@ const Services = WebexPlugin.extend({
   updateCatalog(serviceGroup: ServiceGroup, hostMap: ServiceHostmap): Promise<void> {
     const catalog = this._getCatalog();
 
-    const serviceHostMap = this._formatReceivedHostmap(hostMap);
+    const serviceHostMap = this._formatReceivedHostmap(hostMap || {});
 
     return catalog.updateServiceGroups(
       serviceGroup,
@@ -757,7 +810,7 @@ const Services = WebexPlugin.extend({
   _formatReceivedHostmap({services, activeServices, timestamp, orgId, format}) {
     const formattedHostmap: ServiceHostmap = {
       activeServices,
-      services: services.map((service) => this._formatHostMapEntry(service)),
+      services: services?.map((service) => this._formatHostMapEntry(service)),
       timestamp,
       orgId,
       format,
@@ -924,7 +977,7 @@ const Services = WebexPlugin.extend({
 
     return this.webex.internal.newMetrics.callDiagnosticLatencies
       .measureLatency(() => this.request(requestObject), 'internal.get.u2c.time')
-      .then(({body}) => this._formatReceivedHostmap(body));
+      .then(({body}) => this._formatReceivedHostmap(body || {}));
   },
 
   /**

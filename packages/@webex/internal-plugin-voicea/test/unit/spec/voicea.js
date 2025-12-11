@@ -291,12 +291,35 @@ describe('plugin-voicea', () => {
     describe('#setSpokenLanguage', () => {
       it('sets spoken language', async () => {
         const languageCode = 'en';
-        let languageAssignment = 'DEFAULT';
         const triggerSpy = sinon.spy();
 
         voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
         voiceaService.listenToEvents();
         await voiceaService.setSpokenLanguage(languageCode);
+
+        assert.calledOnceWithExactly(triggerSpy, {languageCode});
+
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {
+              transcribe: {
+                spokenLanguage: languageCode,
+              }
+            },
+          })
+        );
+      });
+      it('sets spoken language with language assignment', async () => {
+        const languageCode = 'zh';
+        const languageAssignment = 'DEFAULT';
+        const triggerSpy = sinon.spy();
+
+        voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
+        voiceaService.listenToEvents();
+        await voiceaService.setSpokenLanguage(languageCode, languageAssignment);
 
         assert.calledOnceWithExactly(triggerSpy, {languageCode});
 
@@ -314,6 +337,7 @@ describe('plugin-voicea', () => {
           })
         );
       });
+
     });
 
     describe('#requestTurnOnCaptions', () => {
@@ -883,25 +907,41 @@ describe('plugin-voicea', () => {
         });
       });
 
-      it('processes a language detected', async () => {
-        voiceaService.on(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, triggerSpy);
+      it('processes a language detected if language is in spoken languages', async () => {
+        voiceaService.on(EVENT_TRIGGERS.LANGUAGE_DETECTED, triggerSpy);
 
         const voiceaPayload = {
           id: '9bc51440-1a22-7c81-6add-4b6ff7b59f7c',
           meeting: 'fd5bd0fc-06fb-4fd1-982b-554c4368f101',
           type: 'language_detected',
-          language: 'pl'
+          language: 'en',
+          translation: {
+            allowed_languages: ['af', 'am'],
+            max_languages: 5,
+          },
+          ASR: {
+            spoken_languages: ['en', 'pl'],
+          },
+
+          version: 'v2',
         };
 
-        // eslint-disable-next-line no-underscore-dangle
+          const spy = sinon.spy();
+
+        voiceaService.on(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, spy);
+        voiceaService.listenToEvents();
+        voiceaService.processAnnouncementMessage(voiceaPayload);
+
+          // eslint-disable-next-line no-underscore-dangle
         await voiceaService.webex.internal.llm._emit('event:relay.event', {
           headers: {from: 'ws'},
           data: {relayType: 'voicea.transcription', voiceaPayload},
         });
 
         assert.calledOnceWithExactly(functionSpy, voiceaPayload);
-
-        assert.calledOnceWithExactly(triggerSpy, {languageCode: 'pl'});
+        assert.calledOnceWithExactly(triggerSpy, {
+            languageCode: 'en',
+        });
       });
 
     });

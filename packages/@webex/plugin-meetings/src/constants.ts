@@ -347,7 +347,7 @@ export const EVENT_TRIGGERS = {
   MEETING_SELF_LEFT: 'meeting:self:left',
   NETWORK_QUALITY: 'network:quality',
   MEDIA_NEGOTIATED: 'media:negotiated',
-  MEDIA_INBOUND_AUDIO_ISSUE_DETECTED: 'media:inboundAudio:issueDetected',
+  MEDIA_INBOUND_AUDIO_ISSUE_DETECTED: 'media:inboundAudio:issueDetected', // event.data: InboundAudioIssueEvent
   // the following events apply only to multistream media connections
   ACTIVE_SPEAKER_CHANGED: 'media:activeSpeakerChanged',
   REMOTE_VIDEO_SOURCE_COUNT_CHANGED: 'media:remoteVideoSourceCountChanged',
@@ -793,7 +793,19 @@ export const LOCUSEVENT = {
   RECORDING_STOPPED: 'locus.recording_stopped',
 
   SELF_CHANGED: 'locus.self_changed',
-};
+
+  HASH_TREE_DATA_UPDATED: 'locus.state_message',
+
+  // events generated internally by SDK
+  SDK_LOCUS_FROM_SYNC_MEETINGS: 'jsSdk.locus_from_sync_meetings', // generated for each meeting from response to GET /loci Locus API call
+  SDK_NO_EVENT: 'jsSdk.no_event', // used in cases where eventType is irrelevant
+} as const;
+
+export type LOCUSEVENT = Enum<typeof LOCUSEVENT>;
+
+// HASH_TREE_DATA_UPDATED event can come over Mercury (so it's listed above with other Mercury events),
+// but also over LLM as an event like this:
+export const LOCUS_LLM_EVENT = `event:${LOCUSEVENT.HASH_TREE_DATA_UPDATED}`;
 
 export const MEDIA_TRACK_CONSTRAINT = {
   CURSOR: {

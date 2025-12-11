@@ -289,6 +289,18 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'task_accept_consult',
     verb: 'fail',
   },
+  [METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'task_auto_answer',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'task_auto_answer',
+    verb: 'fail',
+  },
   [METRIC_EVENT_NAMES.TASK_OUTDIAL_SUCCESS]: {
     product,
     agent: 'user',

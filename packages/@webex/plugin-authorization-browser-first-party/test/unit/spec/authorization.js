@@ -14,6 +14,7 @@ import {base64, patterns} from '@webex/common';
 import {merge, times} from 'lodash';
 import CryptoJS from 'crypto-js';
 import Authorization from '@webex/plugin-authorization-browser-first-party';
+import {Events} from '../../../src';
 
 // Necessary to require lodash this way in order to stub the method
 const lodash = require('lodash');
@@ -424,6 +425,48 @@ describe('plugin-authorization-browser-first-party', () => {
 
         return p.then(() => assert.isFalse(webex.authorization.isAuthenticating));
       });
+
+      it('Emits an event containing indicating login is initiating', () => {
+        const webex = makeWebex();
+
+        const emitSpy = sinon.spy(webex.authorization.eventEmitter, 'emit');
+        sinon.stub(webex.authorization, 'initiateAuthorizationCodeGrant').returns(Promise.resolve());
+
+        return webex.authorization.initiateLogin().then(() => {
+          assert.calledOnceWithExactly(emitSpy, Events.login, {
+            eventType: 'initiateLogin',
+            data: { hasEmail: false, hasState: false },
+          });
+        });
+      });
+
+      it('Emits an event containing information about email', () => {
+        const webex = makeWebex();
+
+        const emitSpy = sinon.spy(webex.authorization.eventEmitter, 'emit');
+        sinon.stub(webex.authorization, 'initiateAuthorizationCodeGrant').returns(Promise.resolve());
+
+        return webex.authorization.initiateLogin({ email: 'test@abc.xyz' }).then(() => {
+          assert.calledOnceWithExactly(emitSpy, Events.login, {
+            eventType: 'initiateLogin',
+            data: { hasEmail: true, hasState: false },
+          });
+        });
+      });
+
+      it('Emits an event containing information about state', () => {
+        const webex = makeWebex();
+
+        const emitSpy = sinon.spy(webex.authorization.eventEmitter, 'emit');
+        sinon.stub(webex.authorization, 'initiateAuthorizationCodeGrant').returns(Promise.resolve());
+
+        return webex.authorization.initiateLogin({ state: {} }).then(() => {
+          assert.calledOnceWithExactly(emitSpy, Events.login, {
+            eventType: 'initiateLogin',
+            data: { hasEmail: false, hasState: true },
+          });
+        });
+      });
     });
 
     describe('#initiateAuthorizationCodeGrant()', () => {
@@ -474,14 +517,14 @@ describe('plugin-authorization-browser-first-party', () => {
         toolbar: 'no'
       };
 
-      return webex.authorization.initiateAuthorizationCodeGrant({ 
-        separateWindow: customWindow 
+      return webex.authorization.initiateAuthorizationCodeGrant({
+        separateWindow: customWindow
       }).then(() => {
         assert.called(webex.getWindow().open);
         const openCall = webex.getWindow().open.getCall(0);
         assert.equal(openCall.args[1], '_blank');
         assert.equal(
-        openCall.args[2], 
+        openCall.args[2],
         'width=800,height=600,menubar=no,toolbar=no'
         );
       });
@@ -491,7 +534,7 @@ describe('plugin-authorization-browser-first-party', () => {
       const webex = makeWebex();
       webex.getWindow().open = sinon.spy();
 
-      return webex.authorization.initiateAuthorizationCodeGrant({ 
+      return webex.authorization.initiateAuthorizationCodeGrant({
         separateWindow: true,
         state: {}
       }).then(() => {
@@ -499,6 +542,21 @@ describe('plugin-authorization-browser-first-party', () => {
         const url = webex.getWindow().open.getCall(0).args[0];
         assert.include(url, "https://idbrokerbts.webex.com/idb/oauth2/v1/authorize?response_type=code&separateWindow=true&client_id=fake&redirect_uri=http%3A%2F%2Fexample.com&scope=scope%3Aone");
       });
+      });
+
+      it('Emits an event containing the login url', () => {
+        const testLoginUrl = "https://test.example.com";
+        const webex = makeWebex();
+
+        sinon.stub(webex.credentials, 'buildLoginUrl').returns(testLoginUrl);
+        const emitSpy = sinon.spy(webex.authorization.eventEmitter, 'emit');
+
+        return webex.authorization.initiateAuthorizationCodeGrant().then(() => {
+          assert.calledOnceWithExactly(emitSpy, Events.login, {
+            eventType: 'redirectToLoginUrl',
+            data: { loginUrl: testLoginUrl },
+          });
+        });
       });
     });
 
@@ -770,7 +828,7 @@ describe('plugin-authorization-browser-first-party', () => {
         sinon.spy(webex.authorization, 'cancelQRCodePolling');
         const emitSpy = sinon.spy(webex.authorization.eventEmitter, 'emit');
         const credentialsSetSpy = sinon.spy(webex.credentials, 'set');
-        
+
         webex.authorization._startQRCodePolling(options);
         await clock.tickAsync(4000);
 
