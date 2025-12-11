@@ -10,6 +10,7 @@ import {
   NatTypeUpdatedEventData,
 } from '@webex/plugin-meetings/src/reachability/clusterReachability';
 import {ReachabilityPeerConnection} from '@webex/plugin-meetings/src/reachability/reachabilityPeerConnection';
+import {ReachabilityPeerConnectionEvents} from '@webex/plugin-meetings/src/reachability/reachability.types';
 
 describe('ClusterReachability', () => {
   let previousRTCPeerConnection;
@@ -92,6 +93,22 @@ describe('ClusterReachability', () => {
     assert.deepEqual(emittedEvents[Events.clientMediaIpsUpdated], []);
   });
 
+  it('should create separate peer connections when enablePerUdpUrlReachability is true', () => {
+    const perUdpClusterReachability = new ClusterReachability(
+      'testName',
+      {
+        isVideoMesh: false,
+        udp: ['stun:udp1', 'stun:udp2'],
+        tcp: ['stun:tcp1.webex.com'],
+        xtls: ['stun:xtls1.webex.com'],
+      },
+      true
+    );
+
+    assert.equal((perUdpClusterReachability as any).reachabilityPeerConnectionsForUdp.length, 2);
+    assert.instanceOf((perUdpClusterReachability as any).reachabilityPeerConnection, ReachabilityPeerConnection);
+  });
+
   describe('#event relaying', () => {
     let clock;
 
@@ -172,6 +189,44 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
     });
+
+    it('emits only the first successful UDP result when enablePerUdpUrlReachability is true', async () => {
+      const perUdpClusterReachability = new ClusterReachability(
+        'testName',
+        {
+          isVideoMesh: false,
+          udp: ['stun:udp1', 'stun:udp2'],
+          tcp: [],
+          xtls: [],
+        },
+        true
+      );
+
+      const udpEvents: ResultEventData[] = [];
+      perUdpClusterReachability.on(Events.resultReady, (data: ResultEventData) => {
+        udpEvents.push(data);
+      });
+
+      const udpRpc1 = (perUdpClusterReachability as any).reachabilityPeerConnectionsForUdp[0];
+      const udpRpc2 = (perUdpClusterReachability as any).reachabilityPeerConnectionsForUdp[1];
+
+      udpRpc1.emit({file: 'test', function: 'test'}, ReachabilityPeerConnectionEvents.resultReady, {
+        protocol: 'udp',
+        result: 'reachable',
+        latencyInMilliseconds: 50,
+        clientMediaIPs: ['1.1.1.1'],
+      });
+
+      udpRpc2.emit({file: 'test', function: 'test'}, ReachabilityPeerConnectionEvents.resultReady, {
+        protocol: 'udp',
+        result: 'reachable',
+        latencyInMilliseconds: 30,
+        clientMediaIPs: ['2.2.2.2'],
+      });
+
+      assert.equal(udpEvents.length, 1);
+      assert.equal(udpEvents[0].latencyInMilliseconds, 50);
+    });
   });
 
   describe('#subnet collection', () => {
@@ -236,6 +291,38 @@ describe('ClusterReachability', () => {
       assert.equal(clusterReachability.reachedSubnets.size, 3);
       assert.deepEqual(Array.from(clusterReachability.reachedSubnets), ['192.168.1.1', '10.0.0.1', '172.16.0.1']);
     });
+
+    it('collects reached subnets from all peer connections when enablePerUdpUrlReachability is true', async () => {
+      const perUdpClusterReachability = new ClusterReachability(
+        'testName',
+        {
+          isVideoMesh: false,
+          udp: ['stun:udp1', 'stun:udp2'],
+          tcp: ['stun:tcp1.webex.com'],
+          xtls: [],
+        },
+        true
+      );
+
+      const udpRpc1 = (perUdpClusterReachability as any).reachabilityPeerConnectionsForUdp[0];
+      const udpRpc2 = (perUdpClusterReachability as any).reachabilityPeerConnectionsForUdp[1];
+      const tcpTlsRpc = (perUdpClusterReachability as any).reachabilityPeerConnection;
+
+      udpRpc1.emit({file: 'test', function: 'test'}, ReachabilityPeerConnectionEvents.reachedSubnets, {
+        subnets: ['192.168.1.1'],
+      });
+      udpRpc2.emit({file: 'test', function: 'test'}, ReachabilityPeerConnectionEvents.reachedSubnets, {
+        subnets: ['10.0.0.1'],
+      });
+      tcpTlsRpc.emit({file: 'test', function: 'test'}, ReachabilityPeerConnectionEvents.reachedSubnets, {
+        subnets: ['172.16.0.1'],
+      });
+
+      assert.equal(perUdpClusterReachability.reachedSubnets.size, 3);
+      assert.isTrue(perUdpClusterReachability.reachedSubnets.has('192.168.1.1'));
+      assert.isTrue(perUdpClusterReachability.reachedSubnets.has('10.0.0.1'));
+      assert.isTrue(perUdpClusterReachability.reachedSubnets.has('172.16.0.1'));
+    });
   });
 
   describe('#delegation', () => {
@@ -276,6 +363,43 @@ describe('ClusterReachability', () => {
       assert.calledOnce(rpcStartStub);
       assert.calledOnce(rpcGetResultStub);
       assert.deepEqual(result, expectedResult);
+    });
+
+    it('delegates start() and abort() to all peer connections when enablePerUdpUrlReachability is true', async () => {
+      const perUdpClusterReachability = new ClusterReachability(
+        'testName',
+        {
+          isVideoMesh: false,
+          udp: ['stun:udp1', 'stun:udp2'],
+          tcp: ['stun:tcp1.webex.com'],
+          xtls: [],
+        },
+        true
+      );
+
+      const udpRpc1 = (perUdpClusterReachability as any).reachabilityPeerConnectionsForUdp[0];
+      const udpRpc2 = (perUdpClusterReachability as any).reachabilityPeerConnectionsForUdp[1];
+      const tcpTlsRpc = (perUdpClusterReachability as any).reachabilityPeerConnection;
+
+      const startStub1 = sinon.stub(udpRpc1, 'start').resolves({udp: {result: 'reachable'}});
+      const startStub2 = sinon.stub(udpRpc2, 'start').resolves({udp: {result: 'unreachable'}});
+      const startStubTcp = sinon.stub(tcpTlsRpc, 'start').resolves({tcp: {result: 'reachable'}});
+
+      const abortStub1 = sinon.stub(udpRpc1, 'abort');
+      const abortStub2 = sinon.stub(udpRpc2, 'abort');
+      const abortStubTcp = sinon.stub(tcpTlsRpc, 'abort');
+
+      await perUdpClusterReachability.start();
+
+      assert.calledOnce(startStub1);
+      assert.calledOnce(startStub2);
+      assert.calledOnce(startStubTcp);
+
+      perUdpClusterReachability.abort();
+
+      assert.calledOnce(abortStub1);
+      assert.calledOnce(abortStub2);
+      assert.calledOnce(abortStubTcp);
     });
   });
 
