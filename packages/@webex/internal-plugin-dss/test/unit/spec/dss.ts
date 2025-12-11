@@ -759,6 +759,262 @@ describe('plugin-dss', () => {
       });
     });
 
+    describe('#lookupByPhoneNumbers', () => {
+      // Test data constants
+      const PHONE_1 = '+15551234567';
+      const PHONE_2 = '+442012345678';
+      const PHONE_3 = '+33123456789';
+      const PHONE_BATCH = ['+15551111111', '+15552222222', '+15553333333', '+15554444444', '+15555555555'];
+      
+      const ENTITY_1 = {id: 'user1', displayName: 'John Doe', phoneNumbers: [PHONE_1]};
+      const ENTITY_2 = {id: 'user2', displayName: 'Jane Smith', phoneNumbers: [PHONE_2]};
+      const ENTITY_3 = {id: 'user3', phoneNumbers: [PHONE_3]};
+      
+      const EMPTY_RESULT = {
+        resultArray: [],
+        foundArray: [],
+        notFoundArray: [],
+      };
+
+      it('returns empty arrays for empty input', async () => {
+        const result = await webex.internal.dss.lookupByPhoneNumbers([]);
+
+        expect(result).to.deep.equal(EMPTY_RESULT);
+      });
+
+      it('rejects when more than 5 phone numbers provided', async () => {
+        const phoneNumbers = [...PHONE_BATCH, '+15556666666'];
+
+        return assert.isRejected(
+          webex.internal.dss.lookupByPhoneNumbers(phoneNumbers),
+          Error,
+          'lookupByPhoneNumbers accepts a maximum of 5 phone numbers. Received: 6. Please batch requests on the client side if needed.'
+        );
+      });
+
+      it('works correctly with single phone number found', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: [PHONE_1],
+          bodyParams: {lookupValues: [PHONE_1]},
+        });
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: [ENTITY_1],
+            entitiesFound: [PHONE_1],
+            entitiesNotFound: [],
+          })
+        );
+        const result = await promise;
+
+        expect(result).to.deep.equal({
+          resultArray: [ENTITY_1],
+          foundArray: [PHONE_1],
+          notFoundArray: [],
+        });
+      });
+
+      it('works correctly with multiple phone numbers, some found', async () => {
+        const phoneNumbers = [PHONE_1, PHONE_2, PHONE_3];
+        
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: phoneNumbers,
+          bodyParams: {lookupValues: phoneNumbers},
+        });
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: [ENTITY_1, ENTITY_2],
+            entitiesFound: [PHONE_1, PHONE_2],
+            entitiesNotFound: [PHONE_3],
+          })
+        );
+        const result = await promise;
+
+        expect(result).to.deep.equal({
+          resultArray: [ENTITY_1, ENTITY_2],
+          foundArray: [PHONE_1, PHONE_2],
+          notFoundArray: [PHONE_3],
+        });
+      });
+
+      it('works correctly with all phone numbers not found', async () => {
+        const phoneNumbers = [PHONE_1, PHONE_2];
+        
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: phoneNumbers,
+          bodyParams: {lookupValues: phoneNumbers},
+        });
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: [],
+            entitiesFound: [],
+            entitiesNotFound: phoneNumbers,
+          })
+        );
+        const result = await promise;
+
+        expect(result).to.deep.equal({
+          resultArray: [],
+          foundArray: [],
+          notFoundArray: phoneNumbers,
+        });
+      });
+
+      it('works correctly with exactly 5 phone numbers', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: PHONE_BATCH,
+          bodyParams: {lookupValues: PHONE_BATCH},
+        });
+
+        const entities = PHONE_BATCH.map((phone, index) => ({
+          id: `user${index + 1}`,
+          phoneNumbers: [phone],
+        }));
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {
+            entities,
+            entitiesFound: PHONE_BATCH,
+            entitiesNotFound: [],
+          })
+        );
+        const result = await promise;
+
+        expect(result.resultArray).to.have.lengthOf(5);
+        expect(result.foundArray).to.deep.equal(PHONE_BATCH);
+        expect(result.notFoundArray).to.deep.equal([]);
+      });
+
+      it('handles multiple sequences correctly', async () => {
+        const phoneNumbers = [PHONE_1, PHONE_2];
+
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: phoneNumbers,
+          bodyParams: {lookupValues: phoneNumbers},
+        });
+
+        // Send sequences out of order
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 1, false, 'lookupResult', {
+            entities: [ENTITY_2],
+            entitiesFound: [PHONE_2],
+          })
+        );
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 2, true, 'lookupResult', {
+            entities: [],
+            entitiesFound: [],
+            entitiesNotFound: [PHONE_3],
+          })
+        );
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, false, 'lookupResult', {
+            entities: [ENTITY_1],
+            entitiesFound: [PHONE_1],
+          })
+        );
+
+        const result = await promise;
+
+        expect(result.resultArray).to.deep.equal([ENTITY_1, ENTITY_2]);
+        expect(result.foundArray).to.deep.equal([PHONE_1, PHONE_2]);
+        expect(result.notFoundArray).to.deep.equal([PHONE_3]);
+      });
+
+      it('fails with default timeout when mercury does not respond', async () => {
+        const {promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: [PHONE_1],
+          bodyParams: {lookupValues: [PHONE_1]},
+        });
+
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
+        await clock.tickAsync(6000);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 6000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/phonenumbers' +
+            `\n Params: {"lookupValues":["${PHONE_1}"]}`
+        );
+      });
+
+      it('does not fail with timeout when mercury responds in time', async () => {
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: [PHONE_1],
+          bodyParams: {lookupValues: [PHONE_1]},
+        });
+
+        await clock.tickAsync(5999);
+
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, true, 'lookupResult', {
+            entities: [ENTITY_1],
+            entitiesFound: [PHONE_1],
+            entitiesNotFound: [],
+          })
+        );
+
+        return assert.isFulfilled(promise);
+      });
+
+      it('fails with timeout when request only partially resolved', async () => {
+        const phoneNumbers = [PHONE_1, PHONE_2];
+        
+        const {requestId, promise} = await testMakeRequest({
+          method: 'lookupByPhoneNumbers',
+          resource: '/lookup/orgid/userOrgId/phonenumbers',
+          params: phoneNumbers,
+          bodyParams: {lookupValues: phoneNumbers},
+        });
+
+        // Send sequence 2 with finished flag, but missing sequence 1
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 2, true, 'lookupResult', {
+            entities: [ENTITY_3],
+            entitiesFound: [PHONE_3],
+            entitiesNotFound: [],
+          })
+        );
+        mercuryCallbacks['event:directory.lookup'](
+          createData(requestId, 0, false, 'lookupResult', {
+            entities: [ENTITY_1],
+            entitiesFound: [PHONE_1],
+          })
+        );
+        // Missing sequence 1
+
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
+        await clock.tickAsync(6000);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 6000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/phonenumbers' +
+            `\n Params: {"lookupValues":["${PHONE_1}","${PHONE_2}"]}`
+        );
+      });
+    });
+
     describe('#search', () => {
       it('calls _request correctly', async () => {
         webex.internal.device.orgId = 'userOrgId';
@@ -1005,7 +1261,7 @@ describe('plugin-dss', () => {
 
       it('handles a request with foundPath correctly', async () => {
         webex.request = sinon.stub();
-        uuid.v4.returns('randomid');
+        uuidStub.returns('randomid');
         const promise = webex.internal.dss._request({
           resource: '/search/orgid/userOrgId/entities',
           params: {some: 'param'},
@@ -1053,7 +1309,7 @@ describe('plugin-dss', () => {
 
       it('handles a request with foundPath and notFoundPath correctly', async () => {
         webex.request = sinon.stub();
-        uuid.v4.returns('randomid');
+        uuidStub.returns('randomid');
         const promise = webex.internal.dss._request({
           resource: '/search/orgid/userOrgId/entities',
           params: {some: 'param'},
@@ -1212,6 +1468,7 @@ describe('plugin-dss', () => {
         expect(result).to.equal(response2);
       });
       // TODO - https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-518037
+      // @ts-ignore - it.skip is valid but not in type definitions
       it.skip('fails fails when mercury does not respond, later batches can still pass ok', async () => {
         // Batch 1
         const {
