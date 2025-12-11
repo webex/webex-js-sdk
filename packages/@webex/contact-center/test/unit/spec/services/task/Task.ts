@@ -199,3 +199,65 @@ describe('Task failure scenarios', () => {
     await expect(task.wrapup(payload)).rejects.toThrow('Error while performing wrapup');
   });
 });
+
+describe('Task base class stub methods', () => {
+  let task: DummyTask;
+  const dummyContact = {} as any;
+  const initialData = {interactionId: '123'} as unknown as TaskData;
+
+  beforeEach(() => {
+    task = new DummyTask(dummyContact, initialData);
+  });
+
+  it('unregisterWebCallListeners throws not implemented error', () => {
+    expect(() => task.unregisterWebCallListeners()).toThrow('Method not implemented.');
+  });
+
+  it('decline throws not implemented error', () => {
+    expect(() => task.decline()).toThrow('Method not implemented.');
+  });
+
+  it('hold throws not implemented error', () => {
+    expect(() => task.hold()).toThrow('Method not implemented.');
+  });
+
+  it('resume throws not implemented error', () => {
+    expect(() => task.resume()).toThrow('Method not implemented.');
+  });
+
+  it('pauseRecording throws not implemented error', () => {
+    expect(() => task.pauseRecording()).toThrow('Method not implemented.');
+  });
+
+  it('resumeRecording throws not implemented error', () => {
+    expect(() => task.resumeRecording({} as any)).toThrow('Method not implemented.');
+  });
+
+  it('consult throws not implemented error', () => {
+    expect(() => task.consult({} as any)).toThrow('Method not implemented.');
+  });
+
+  it('endConsult throws not implemented error', () => {
+    expect(() => task.endConsult({} as any)).toThrow('Method not implemented.');
+  });
+
+  it('consultTransfer throws not implemented error', () => {
+    expect(() => task.consultTransfer()).toThrow('Method not implemented.');
+  });
+
+  it('consultConference throws not implemented error', () => {
+    expect(() => task.consultConference()).toThrow('Method not implemented.');
+  });
+
+  it('exitConference throws not implemented error', () => {
+    expect(() => task.exitConference()).toThrow('Method not implemented.');
+  });
+
+  it('transferConference throws not implemented error', () => {
+    expect(() => task.transferConference()).toThrow('Method not implemented.');
+  });
+
+  it('toggleMute throws not implemented error', () => {
+    expect(() => task.toggleMute()).toThrow('Method not implemented.');
+  });
+});

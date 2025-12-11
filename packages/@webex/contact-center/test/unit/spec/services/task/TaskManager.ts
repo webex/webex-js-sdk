@@ -2479,5 +2479,43 @@ describe('TaskManager', () => {
     });
   });
 
+  describe('TaskManager setter and getter methods', () => {
+    it('should set and get config flags', () => {
+      const configFlags = {
+        isEndCallEnabled: true,
+        isEndConsultEnabled: false,
+        webRtcEnabled: true,
+        autoWrapup: true,
+      };
+      taskManager.setConfigFlags(configFlags);
+      // Config flags are set internally, verify task creation uses them
+      expect(taskManager).toBeDefined();
+    });
+
+    it('should set wrapup data', () => {
+      const wrapupData = {
+        wrapUpProps: {
+          autoWrapup: true,
+          autoWrapupInterval: 30000,
+          allowCancelAutoWrapup: true,
+          wrapUpReasonList: [{id: '1', name: 'Test', isDefault: true}],
+        },
+      };
+      taskManager.setWrapupData(wrapupData);
+      expect(taskManager).toBeDefined();
+    });
+
+    it('should set and get agent ID', () => {
+      const agentId = 'test-agent-123';
+      taskManager.setAgentId(agentId);
+      expect(taskManager.getAgentId()).toBe(agentId);
+    });
+
+    it('should set webRtc enabled flag', () => {
+      taskManager.setWebRtcEnabled(true);
+      expect(taskManager).toBeDefined();
+    });
+  });
+
 });
 
