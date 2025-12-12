@@ -1433,5 +1433,82 @@ describe('plugin-meetings', () => {
         });
       });
     });
+
+    describe('#parseLocusJoin', () => {
+      let response;
+
+      beforeEach(() => {
+        response = {
+          body: {
+            locus: {
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/12345',
+              self: {
+                id: 'selfId123',
+              },
+            },
+            dataSets: [{name: 'dataset1', url: 'http://dataset.com'}],
+            mediaConnections: [
+              {mediaId: 'mediaId456'},
+              {someOtherField: 'value'},
+            ],
+          },
+        };
+      });
+
+      it('works as expected', () => {
+        const result = MeetingUtil.parseLocusJoin(response);
+
+        assert.deepEqual(result, {
+          locus: response.body.locus,
+          dataSets: response.body.dataSets,
+          mediaConnections: response.body.mediaConnections,
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/12345',
+          locusId: '12345',
+          selfId: 'selfId123',
+          mediaId: 'mediaId456',
+        });
+      });
+
+      it('extracts mediaId from the last mediaConnection that has it', () => {
+        response.body.mediaConnections = [
+          {someField: 'noMediaId'},
+          {mediaId: 'firstMediaId'},
+          {mediaId: 'secondMediaId'},
+        ];
+
+        const result = MeetingUtil.parseLocusJoin(response);
+
+        // Note: the implementation uses forEach which doesn't break,
+        // so it will use the last mediaId found, not the first
+        assert.equal(result.mediaId, 'secondMediaId');
+      });
+
+      it('handles empty mediaConnections array', () => {
+        response.body.mediaConnections = [];
+
+        const result = MeetingUtil.parseLocusJoin(response);
+
+        assert.deepEqual(result, {
+          locus: response.body.locus,
+          dataSets: response.body.dataSets,
+          mediaConnections: [],
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/12345',
+          locusId: '12345',
+          selfId: 'selfId123',
+        });
+        assert.isUndefined(result.mediaId);
+      });
+
+      it('handles mediaConnections without mediaId', () => {
+        response.body.mediaConnections = [
+          {someField: 'value1'},
+          {anotherField: 'value2'},
+        ];
+
+        const result = MeetingUtil.parseLocusJoin(response);
+
+        assert.isUndefined(result.mediaId);
+      });
+    });
   });
 });
