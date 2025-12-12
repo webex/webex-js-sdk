@@ -7,7 +7,7 @@ import {registerPlugin} from '../../webex-core';
 import Credentials from './credentials';
 
 registerPlugin('credentials', Credentials, {
-  proxies: ['canAuthorize', 'canMakeRequests', 'canRefresh', 'servicesReady'],
+  proxies: ['canAuthorize', 'canRefresh'],
 });
 
 export {default as Credentials} from './credentials';
