@@ -38,6 +38,12 @@ const Credentials = WebexPlugin.extend({
         return Boolean((this.supertoken && this.supertoken.canAuthorize) || this.canRefresh);
       },
     },
+    canMakeRequests: {
+      deps: ['canAuthorize', 'servicesReady'],
+      fn() {
+        return Boolean(this.canAuthorize && this.servicesReady);
+      },
+    },
     canRefresh: {
       deps: ['supertoken', 'supertoken.canRefresh'],
       fn() {
@@ -89,6 +95,17 @@ const Credentials = WebexPlugin.extend({
      * @type {boolean}
      */
     ready: {
+      default: false,
+      type: 'boolean',
+    },
+    /**
+     * Becomes `true` once services initialization has run.
+     * Resets to `false` on logout/token invalidation.
+     * @instance
+     * @memberof Credentials
+     * @type {boolean}
+     */
+    servicesReady: {
       default: false,
       type: 'boolean',
     },
@@ -424,6 +441,16 @@ const Credentials = WebexPlugin.extend({
     this.webex.once('loaded', () => {
       this.ready = true;
     });
+
+    // Listen for services initialization events after storage is loaded.
+    // Services will emit 'services:initialized' when its init completes.
+    this.listenToOnce(this.webex, 'loaded', () => {
+      if (this.webex.internal.services) {
+        this.listenTo(this.webex.internal.services, 'services:initialized', () => {
+          this.servicesReady = true;
+        });
+      }
+    });
   },
 
   @oneFlight
@@ -461,6 +488,9 @@ const Credentials = WebexPlugin.extend({
     }
 
     this.logger.info('credentials: finished removing tokens');
+
+    // Reset servicesReady state on logout
+    this.servicesReady = false;
 
     // Return a promise to give the storage layer a tick or two to clear
     // localStorage
