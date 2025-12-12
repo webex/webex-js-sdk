@@ -1,4 +1,7 @@
 const cli = {
+  banner: {
+    js: '#!/usr/bin/env node',
+  },
   bundle: true,
   entryPoints: [
     './src/main.ts',
