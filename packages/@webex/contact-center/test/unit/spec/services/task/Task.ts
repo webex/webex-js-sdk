@@ -1,5 +1,5 @@
 import Task from '../../../../../src/services/task/Task';
-import {TaskData, DESTINATION_TYPE} from '../../../../../src/services/task/types';
+import {TaskData, DESTINATION_TYPE, TASK_EVENTS} from '../../../../../src/services/task/types';
 import {TaskEvent} from '../../../../../src/services/task/state-machine';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import {createTaskData} from './taskTestUtils';
@@ -121,6 +121,26 @@ describe('Task (base class)', () => {
     ]);
 
     transitionTask.stateMachineService?.stop();
+  });
+
+  it('emits task:wrapup when wrap-up is required', () => {
+    const overrides = (task as any).getStateMachineActionOverrides();
+    const emitSpy = jest.spyOn(task, 'emit');
+
+    task.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
+    overrides.emitTaskWrapup({event: {type: TaskEvent.END}});
+
+    expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WRAPUP, task);
+  });
+
+  it('does not emit task:wrapup when wrap-up is not required', () => {
+    const overrides = (task as any).getStateMachineActionOverrides();
+    const emitSpy = jest.spyOn(task, 'emit');
+
+    task.updateTaskData(createTaskData({wrapUpRequired: false}) as TaskData);
+    overrides.emitTaskWrapup({event: {type: TaskEvent.END}});
+
+    expect(emitSpy).not.toHaveBeenCalledWith(TASK_EVENTS.TASK_WRAPUP, task);
   });
 
 });

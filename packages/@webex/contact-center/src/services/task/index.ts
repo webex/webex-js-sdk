@@ -1,11 +1,10 @@
 import EventEmitter from 'events';
 import {CALL_EVENT_KEYS, LocalMicrophoneStream} from '@webex/calling';
-import {CallId} from '@webex/calling/dist/types/common/types';
 import {
   generateTaskErrorObject,
-  deriveConsultTransferDestinationType,
-  getDestinationAgentId,
   buildConsultConferenceParamData,
+  getDestinationAgentId,
+  deriveConsultTransferDestinationType,
 } from '../core/Utils';
 import {LoginOption} from '../../types';
 import {TASK_FILE} from '../../constants';
@@ -24,8 +23,9 @@ import {
   ConsultPayload,
   ConsultEndPayload,
   TransferPayLoad,
-  DESTINATION_TYPE,
   ConsultTransferPayLoad,
+  CallId,
+  DESTINATION_TYPE,
   MEDIA_CHANNEL,
 } from './types';
 import WebCallingService from '../WebCallingService';

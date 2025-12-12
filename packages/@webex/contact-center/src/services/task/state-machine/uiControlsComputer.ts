@@ -60,9 +60,11 @@ function computeVoiceUIControls(
     currentState === TaskState.OFFERED || currentState === TaskState.OFFERED_CONSULT;
   const isConnected = currentState === TaskState.CONNECTED;
   const isHeld = currentState === TaskState.HELD;
-  const isConsulting = currentState === TaskState.CONSULTING;
+  const isTransferInitiating = currentState === TaskState.TRANSFER_INITIATING;
+  const isConfInitiating = currentState === TaskState.CONF_INITIATING;
+  const isConsulting = currentState === TaskState.CONSULTING || isConfInitiating;
   const isConferencing = currentState === TaskState.CONFERENCING;
-  const isWrappingUp = currentState === TaskState.WRAPPING_UP;
+  const isWrappingUp = currentState === TaskState.WRAPPING_UP || isTransferInitiating;
   const taskData = context.taskData ?? fallbackTaskData ?? null;
   const isConsultedAgent = Boolean(taskData?.isConsulted);
   const isTerminated = taskData?.interaction?.isTerminated ?? false;
@@ -184,7 +186,8 @@ function computeDigitalUIControls(
 ): TaskUIControls {
   const isOffered = currentState === TaskState.OFFERED;
   const isConnected = currentState === TaskState.CONNECTED;
-  const isWrappingUp = currentState === TaskState.WRAPPING_UP;
+  const isWrappingUp =
+    currentState === TaskState.WRAPPING_UP || currentState === TaskState.TRANSFER_INITIATING;
   const taskData = context.taskData ?? fallbackTaskData ?? null;
   const isTerminated = taskData?.interaction?.isTerminated ?? false;
 

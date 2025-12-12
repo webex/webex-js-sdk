@@ -33,6 +33,22 @@ type RecordingStateUpdate = Partial<
   Pick<TaskContext, 'recordingControlsAvailable' | 'recordingInProgress'>
 >;
 
+const determineConsultInitiator = (taskData?: TaskData): boolean | undefined => {
+  const participants = taskData?.interaction?.participants;
+  const destAgentId = taskData?.destAgentId;
+
+  if (!participants || !destAgentId) {
+    return undefined;
+  }
+
+  const participant = participants[destAgentId];
+  if (!participant || participant.isConsulted === undefined) {
+    return undefined;
+  }
+
+  return !participant.isConsulted;
+};
+
 const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate => {
   const callProcessingDetails = taskData?.interaction?.callProcessingDetails;
 
@@ -89,10 +105,19 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
  */
 const deriveTaskDataUpdates = (_context: TaskContext, taskData: TaskData | undefined) =>
   taskData
-    ? {
-        taskData,
-        ...deriveRecordingState(taskData),
-      }
+    ? (() => {
+        const updates: Partial<TaskContext> = {
+          taskData,
+          ...deriveRecordingState(taskData),
+        };
+
+        const consultInitiator = determineConsultInitiator(taskData);
+        if (consultInitiator !== undefined) {
+          updates.consultInitiator = consultInitiator;
+        }
+
+        return updates;
+      })()
     : {};
 
 const getTaskDataFromEvent = (event?: TaskEventPayload): TaskData | undefined =>
@@ -369,6 +394,7 @@ export const actions: TaskActionsMap = {
    * Placeholder emitters that get overridden by consumers when needed
    * These are invoked by the state machine to trigger task events
    */
+  emitTaskIncoming: () => undefined,
   emitTaskHydrate: () => undefined,
   emitTaskOfferContact: () => undefined,
   emitTaskAssigned: () => undefined,
@@ -383,6 +409,7 @@ export const actions: TaskActionsMap = {
   emitTaskConsultQueueCancelled: () => undefined,
   emitTaskConsultQueueFailed: () => undefined,
   emitTaskReject: () => undefined,
+  emitTaskWrapup: () => undefined,
   emitTaskRecordingStarted: () => undefined,
   emitTaskRecordingPaused: () => undefined,
   emitTaskRecordingPauseFailed: () => undefined,

@@ -1,5 +1,5 @@
 import {CC_FILE, METHODS} from '../../../constants';
-import {getErrorDetails} from '../../core/Utils';
+import {buildConsultConferenceParamData, getErrorDetails} from '../../core/Utils';
 import routingContact from '../contact';
 import {
   ConsultPayload,
@@ -11,6 +11,7 @@ import {
   VoiceUIControlOptions,
   TransferPayLoad,
   ConsultTransferPayLoad,
+  consultConferencePayloadData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
   TASK_CHANNEL_TYPE,
   TASK_EVENTS,
@@ -631,6 +632,83 @@ export default class Voice extends Task implements IVoice {
         },
         ['operational', 'behavioral', 'business']
       );
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Start a consult conference, merging main and consult calls.
+   */
+  public async consultConference(): Promise<TaskResponse> {
+    const consultationData: consultConferencePayloadData = {
+      agentId: this.data.agentId,
+      destinationType: this.data.destinationType || 'agent',
+      destAgentId: this.data.destAgentId,
+    };
+
+    try {
+      LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
+        module: CC_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      const paramsDataForConferenceV2 = buildConsultConferenceParamData(
+        consultationData,
+        this.data.interactionId
+      );
+
+      const response = await this.contact.consultConference({
+        interactionId: paramsDataForConferenceV2.interactionId,
+        data: paramsDataForConferenceV2.data,
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          destination: paramsDataForConferenceV2.data.to,
+          destinationType: paramsDataForConferenceV2.data.destinationType,
+          agentId: paramsDataForConferenceV2.data.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Consult conference started successfully`, {
+        module: CC_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT_CONFERENCE, CC_FILE);
+
+      const failedParamsData = buildConsultConferenceParamData(
+        consultationData,
+        this.data.interactionId
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED,
+        {
+          taskId: this.data.interactionId,
+          destination: failedParamsData.data.to,
+          destinationType: failedParamsData.data.destinationType,
+          agentId: failedParamsData.data.agentId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to start consult conference`, {
+        module: CC_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
       throw detailedError;
     }
   }

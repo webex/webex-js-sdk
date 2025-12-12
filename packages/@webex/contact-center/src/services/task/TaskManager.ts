@@ -6,7 +6,7 @@ import WebCallingService from '../WebCallingService';
 import {ITask, MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {METHODS} from './constants';
-import {CC_EVENTS, CC_TASK_EVENTS, WrapupData} from '../config/types';
+import {CC_EVENTS, WrapupData} from '../config/types';
 import {ConfigFlags, LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import MetricsManager from '../../metrics/MetricsManager';
@@ -15,7 +15,7 @@ import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
 import {TaskEvent, type TaskEventPayload} from './state-machine';
 import {normalizeTaskData} from './taskDataNormalizer';
-import type {TaskActionCallbacks, TaskRuntimeOptions} from './Task';
+import type {TaskRuntimeOptions} from './Task';
 
 type WebSocketPayload = TaskData & {
   type: CC_EVENTS | string;
@@ -82,7 +82,7 @@ export default class TaskManager extends EventEmitter {
   private wrapupData: WrapupData;
   private agentId: string;
   private configFlags?: ConfigFlags;
-  private taskActionCallbacks: TaskActionCallbacks;
+  private readonly defaultTaskRuntimeOptions: TaskRuntimeOptions = {};
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
@@ -99,7 +99,6 @@ export default class TaskManager extends EventEmitter {
     this.webSocketManager = webSocketManager;
     this.taskCollection = {};
     this.metricsManager = MetricsManager.getInstance();
-    this.taskActionCallbacks = this.createTaskActionCallbacks();
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
   }
@@ -133,7 +132,13 @@ export default class TaskManager extends EventEmitter {
         method: METHODS.HANDLE_INCOMING_WEB_CALL,
         interactionId: currentTask.data.interactionId,
       });
-      this.emit(TASK_EVENTS.TASK_INCOMING, currentTask);
+
+      // Send TASK_INCOMING to state machine - it will emit on the task object
+      this.sendEventToStateMachine(
+        CC_EVENTS.AGENT_CONTACT_RESERVED,
+        currentTask.data as WebSocketPayload,
+        currentTask
+      );
     }
     this.call = call;
   };
@@ -207,6 +212,7 @@ export default class TaskManager extends EventEmitter {
         };
 
       case CC_EVENTS.AGENT_CONSULTING:
+        // use context to figure out if its initatiore or the receiver using consultInitiator from context
         return {
           type: TaskEvent.CONSULTING_ACTIVE,
           consultDestinationAgentJoined: true,
@@ -224,6 +230,9 @@ export default class TaskManager extends EventEmitter {
 
       case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
         return {type: TaskEvent.CTQ_CANCEL_FAILED, taskData: payload};
+
+      case CC_EVENTS.AGENT_CONSULT_TRANSFERRED:
+        return {type: TaskEvent.TRANSFER_SUCCESS, taskData: payload};
 
       case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
       case CC_EVENTS.AGENT_WRAPUP:
@@ -301,6 +310,7 @@ export default class TaskManager extends EventEmitter {
         module: TASK_MANAGER_FILE,
         method: 'sendEventToStateMachine',
         interactionId: payload.interactionId,
+        agentId: this.agentId,
       });
 
       // Send event to task's state machine using the protected method
@@ -367,6 +377,7 @@ export default class TaskManager extends EventEmitter {
         module: TASK_MANAGER_FILE,
         method: 'parseWebSocketMessage',
         error,
+        agentId: this.agentId,
       });
 
       return null;
@@ -465,6 +476,7 @@ export default class TaskManager extends EventEmitter {
       this.getTaskRuntimeOptions()
     );
 
+    this.setupTaskListeners(task);
     this.taskCollection[payload.interactionId] = task;
 
     // For telephony in-browser, we need to wait for the incoming call event
@@ -500,6 +512,7 @@ export default class TaskManager extends EventEmitter {
         this.configFlags,
         this.getTaskRuntimeOptions()
       );
+      this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
     }
 
@@ -520,6 +533,7 @@ export default class TaskManager extends EventEmitter {
         module: TASK_MANAGER_FILE,
         method: 'handleOutboundFailed',
         interactionId: payload?.interactionId,
+        agentId: this.agentId,
       });
 
       return {task, shouldRemoveFromCollection: true};
@@ -578,6 +592,13 @@ export default class TaskManager extends EventEmitter {
     const {task} = context;
 
     if (task) {
+      LoggerProxy.log('Contact ended event processed', {
+        module: TASK_MANAGER_FILE,
+        method: 'handleContactEnded',
+        interactionId: task.data?.interactionId,
+        agentId: this.agentId,
+      });
+
       return {task, shouldCleanupTask: true};
     }
 
@@ -594,7 +615,14 @@ export default class TaskManager extends EventEmitter {
     const {task, wasConsultedTask} = context;
 
     if (task && wasConsultedTask) {
+      LoggerProxy.log('Consult ended event processed', {
+        module: TASK_MANAGER_FILE,
+        method: 'handleConsultEnded',
+        interactionId: task.data?.interactionId,
+        agentId: this.agentId,
+      });
       // End state for task if we were offered the consult
+
       return {task, shouldRemoveFromCollection: true};
     }
 
@@ -614,6 +642,13 @@ export default class TaskManager extends EventEmitter {
     const {task} = context;
 
     if (task) {
+      LoggerProxy.log('Wrap-up complete event processed', {
+        module: TASK_MANAGER_FILE,
+        method: 'handleWrapupComplete',
+        interactionId: task.data?.interactionId,
+        agentId: this.agentId,
+      });
+
       return {
         task,
         shouldCancelAutoWrapup: true,
@@ -670,11 +705,6 @@ export default class TaskManager extends EventEmitter {
     if (!task) return;
 
     const {eventType, payload, stateMachineEvent} = context;
-
-    // Emit task-specific events for backward compatibility
-    if (Object.values(CC_TASK_EVENTS).includes(eventType as any)) {
-      task.emit(eventType as any, payload);
-    }
 
     // Send event to state machine - this will trigger all TASK_EVENTS emissions
     // including TASK_INCOMING which is now handled via the state machine callbacks
@@ -739,31 +769,29 @@ export default class TaskManager extends EventEmitter {
   }
 
   private getTaskRuntimeOptions(): TaskRuntimeOptions {
-    return {
-      actionCallbacks: this.taskActionCallbacks,
-    };
+    return this.defaultTaskRuntimeOptions;
   }
 
-  private createTaskActionCallbacks(): TaskActionCallbacks {
-    return {
-      onTaskHydrated: (task, taskData) => {
-        if (taskData) {
-          this.updateTaskData(task, taskData);
-        }
-        this.emit(TASK_EVENTS.TASK_HYDRATE, task);
-      },
-      onTaskOffered: (task, taskData) => {
-        LoggerProxy.log(`Agent offer contact received for task`, {
-          module: TASK_MANAGER_FILE,
-          method: METHODS.REGISTER_TASK_LISTENERS,
-          interactionId: taskData?.interactionId,
-        });
-        if (taskData) {
-          this.updateTaskData(task, taskData);
-        }
-        this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, task);
-      },
-    };
+  /**
+   * Setup listeners for task events that need to be bubbled up to TaskManager
+   * This replaces the previous callback injection pattern
+   */
+  private setupTaskListeners(task: ITask): void {
+    // Listen for TASK_INCOMING and re-emit so webex.cc can notify consumers
+    task.on(TASK_EVENTS.TASK_INCOMING, (t: ITask) => {
+      LoggerProxy.log(`Task incoming event received`, {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.REGISTER_TASK_LISTENERS,
+        interactionId: t.data?.interactionId,
+      });
+      this.emit(TASK_EVENTS.TASK_INCOMING, t);
+    });
+
+    // Listen for TASK_HYDRATE on the task and re-emit on TaskManager
+    task.on(TASK_EVENTS.TASK_HYDRATE, (t: ITask) => {
+      // Task data is already updated by the task itself before emitting
+      this.emit(TASK_EVENTS.TASK_HYDRATE, t);
+    });
   }
 
   private removeTaskFromCollection(task: ITask) {

@@ -150,6 +150,9 @@ interface TaskEventPayloadMap {
   [TaskEvent.CONFERENCE_START]: BaseEvent<TaskEvent.CONFERENCE_START> & {
     participants?: ConferenceParticipant[];
   };
+  [TaskEvent.CONFERENCE_FAILED]: BaseEvent<TaskEvent.CONFERENCE_FAILED> & {
+    reason?: string;
+  };
   [TaskEvent.CONFERENCE_END]: BaseEvent<TaskEvent.CONFERENCE_END>;
   [TaskEvent.TRANSFER_CONFERENCE]: BaseEvent<TaskEvent.TRANSFER_CONFERENCE> & {agentId?: string};
   [TaskEvent.PARTICIPANT_JOIN]: BaseEvent<TaskEvent.PARTICIPANT_JOIN> & {

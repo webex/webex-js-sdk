@@ -13,6 +13,7 @@ import {
   TaskUIControls,
 } from './types';
 import {CC_FILE} from '../../constants';
+import {TASK_FILE} from './constants';
 import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
@@ -33,16 +34,11 @@ import {
 } from './state-machine/uiControlsComputer';
 import type {TaskActionsMap} from './state-machine/actions';
 
-type CallId = string;
-
-export interface TaskActionCallbacks {
-  onTaskHydrated?: (task: ITask, taskData: TaskData) => void;
-  onTaskOffered?: (task: ITask, taskData: TaskData) => void;
-}
-
 export interface TaskRuntimeOptions {
-  actionCallbacks?: TaskActionCallbacks;
+  actionOverrides?: Partial<TaskActionsMap>;
 }
+
+type CallId = string;
 
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
@@ -54,7 +50,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   private lastState?: TaskState;
   protected currentUiControls: TaskUIControls;
   protected uiControlConfig: UIControlConfig;
-  protected actionCallbacks?: TaskActionCallbacks;
+  protected runtimeOptions: TaskRuntimeOptions;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -66,10 +62,10 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.contact = contact;
     this.data = data;
     this.uiControlConfig = uiControlConfig;
-    this.actionCallbacks = runtimeOptions.actionCallbacks;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
     this.currentUiControls = getDefaultUIControls();
+    this.runtimeOptions = runtimeOptions;
     this.initializeStateMachine();
   }
 
@@ -192,6 +188,8 @@ export default abstract class Task extends EventEmitter implements ITask {
       LoggerProxy.log(`State machine transition: ${previousState || 'N/A'} -> ${currentState}`, {
         module: CC_FILE,
         method: 'onTransition',
+        // @ts-ignore - snapshot may include event detail depending on XState version
+        eventType: (snapshot as any)?.event?.type,
       });
       this.lastState = currentState;
       this.state = snapshot;
@@ -209,6 +207,11 @@ export default abstract class Task extends EventEmitter implements ITask {
    */
   protected sendStateMachineEvent(event: TaskEventPayload): void {
     if (this.stateMachineService) {
+      LoggerProxy.log(`Sending state machine event: ${event?.type}`, {
+        module: CC_FILE,
+        method: 'sendStateMachineEvent',
+        interactionId: this.data?.interactionId,
+      });
       this.stateMachineService.send(event);
     }
   }
@@ -248,7 +251,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     }
   }
 
-  private extractTaskDataFromEvent(event?: TaskEventPayload): TaskData | undefined {
+  private static extractTaskDataFromEvent(event?: TaskEventPayload): TaskData | undefined {
     if (!event || typeof event !== 'object') {
       return undefined;
     }
@@ -261,7 +264,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   private updateTaskFromEvent(event?: TaskEventPayload): void {
-    const taskData = this.extractTaskDataFromEvent(event);
+    const taskData = Task.extractTaskDataFromEvent(event);
     if (taskData) {
       this.updateTaskData(taskData);
     }
@@ -275,7 +278,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   protected getChannelSpecificActionOverrides(): Partial<TaskActionsMap> {
-    return {};
+    return this.runtimeOptions.actionOverrides ?? {};
   }
 
   protected createEmitSelfAction(
@@ -286,36 +289,26 @@ export default abstract class Task extends EventEmitter implements ITask {
       if (updateTaskData) {
         this.updateTaskFromEvent(event);
       }
+      LoggerProxy.info(`Emitting task event ${taskEvent}`, {
+        module: TASK_FILE,
+        method: 'emitTaskEvent',
+        interactionId: this.data?.interactionId,
+      });
       this.emit(taskEvent, this);
     };
   }
 
   private getCommonActionOverrides(): Partial<TaskActionsMap> {
     return {
-      emitTaskHydrate: ({event}: {event: TaskEventPayload}) => {
-        const taskData = this.extractTaskDataFromEvent(event);
-        if (!taskData) {
-          return;
-        }
-        if (this.actionCallbacks?.onTaskHydrated) {
-          this.actionCallbacks.onTaskHydrated(this, taskData);
-        } else {
-          this.updateTaskData(taskData);
-          this.emit(TASK_EVENTS.TASK_HYDRATE, this);
-        }
-      },
-      emitTaskOfferContact: ({event}: {event: TaskEventPayload}) => {
-        const taskData = this.extractTaskDataFromEvent(event);
-        if (!taskData) {
-          return;
-        }
-        if (this.actionCallbacks?.onTaskOffered) {
-          this.actionCallbacks.onTaskOffered(this, taskData);
-        } else {
-          this.updateTaskData(taskData);
-          this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, this);
-        }
-      },
+      emitTaskIncoming: this.createEmitSelfAction(TASK_EVENTS.TASK_INCOMING, {
+        updateTaskData: true,
+      }),
+      emitTaskHydrate: this.createEmitSelfAction(TASK_EVENTS.TASK_HYDRATE, {
+        updateTaskData: true,
+      }),
+      emitTaskOfferContact: this.createEmitSelfAction(TASK_EVENTS.TASK_OFFER_CONTACT, {
+        updateTaskData: true,
+      }),
       emitTaskAssigned: this.createEmitSelfAction(TASK_EVENTS.TASK_ASSIGNED, {
         updateTaskData: true,
       }),
@@ -354,6 +347,16 @@ export default abstract class Task extends EventEmitter implements ITask {
             ? (event as {reason?: string}).reason
             : undefined;
         this.emit(TASK_EVENTS.TASK_REJECT, reason);
+      },
+      emitTaskWrapup: () => {
+        if (this.data?.wrapUpRequired) {
+          LoggerProxy.info(`Emitting task event ${TASK_EVENTS.TASK_WRAPUP}`, {
+            module: TASK_FILE,
+            method: 'emitTaskEvent',
+            interactionId: this.data?.interactionId,
+          });
+          this.emit(TASK_EVENTS.TASK_WRAPUP, this);
+        }
       },
       emitTaskWrappedup: this.createEmitSelfAction(TASK_EVENTS.TASK_WRAPPEDUP, {
         updateTaskData: true,

@@ -1,6 +1,6 @@
 /* eslint-disable import/no-cycle */
 // eslint-disable-next-line import/no-unresolved
-import {CallId} from '@webex/calling/dist/types/common/types';
+import type {CallId as WebexCallId} from '@webex/calling/dist/types/common/types';
 import EventEmitter from 'events';
 import type {AnyActorRef} from 'xstate';
 import {Msg} from '../core/GlobalTypes';
@@ -1252,6 +1252,15 @@ export type TransferPayload = {
 };
 
 /**
+ * Options for configuring transfer behavior
+ * @public
+ */
+export type TransferOptions = {
+  /** Additional transfer configuration options */
+  [key: string]: unknown;
+};
+
+/**
  * API payload for ending a consultation
  * This is the actual payload that is sent to the developer API
  * @public
@@ -1599,18 +1608,7 @@ export interface ITask extends EventEmitter {
    * await task.transfer({ to: "queueId", destinationType: "queue" });
    * ```
    */
-  transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>;
-
-  /**
-   * Transfers the task after consultation.
-   * @param consultTransferPayload - Details for consult transfer (optional)
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```typescript
-   * await task.consultTransfer({ to: "agentId", destinationType: "agent" });
-   * ```
-   */
-  consultTransfer(consultTransferPayload?: ConsultTransferPayLoad): Promise<TaskResponse>;
+  transfer(transferPayload: TransferPayLoad, options?: TransferOptions): Promise<TaskResponse>;
 
   /**
    * Initiates a consult conference (merge consult call with main call).
@@ -1731,3 +1729,4 @@ export type IOldTask = ITask;
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface IWebRTC {}
+export type CallId = WebexCallId;

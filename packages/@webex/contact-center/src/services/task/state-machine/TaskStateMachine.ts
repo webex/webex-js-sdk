@@ -55,52 +55,71 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
     states: {
       [TaskState.IDLE]: {
         on: {
+          // AgentContactReserved (applicable for direct incoming/consult/transfer/outdial)
           [TaskEvent.TASK_INCOMING]: {
             target: TaskState.OFFERED,
-            actions: ['initializeTask'],
+            actions: ['initializeTask', 'emitTaskIncoming'],
           },
+          // Some legacy payloads immediately send an OFFER without the reserved event
           [TaskEvent.OFFER]: {
             target: TaskState.OFFERED,
             actions: ['initializeTask'],
           },
+          // AgentContactOffer with enriched payload (WebexCC WebRTC flow)
           [TaskEvent.OFFER_CONTACT]: {
             target: TaskState.OFFERED,
-            actions: ['initializeTask', 'emitTaskOfferContact'],
+            actions: ['initializeTask', 'emitTaskOfferContact', 'emitTaskIncoming'],
           },
+          // AgentConsultOffer for the receiver side of consults
           [TaskEvent.OFFER_CONSULT]: {
             target: TaskState.OFFERED_CONSULT,
-            actions: ['initializeTask'],
+            actions: ['initializeTask', 'emitTaskOfferConsult'],
+          },
+          // Consult receivers can get AgentContactAssigned immediately after consult end
+          [TaskEvent.ASSIGN]: {
+            target: TaskState.CONNECTED,
+            actions: ['updateTaskData', 'emitTaskAssigned'],
           },
         },
       },
 
       [TaskState.OFFERED]: {
         on: {
+          // AgentContactOffer
           [TaskEvent.TASK_OFFERED]: {
-            actions: ['updateTaskData', 'emitTaskOfferContact'],
+            actions: ['updateTaskData', 'emitTaskOfferContact', 'emitTaskIncoming'],
           },
+          // Local intermediate state for ACCEPT button click
           [TaskEvent.ACCEPT_INITIATED]: {
             actions: ['setAcceptInitiated'],
           },
+          // Local ACCEPT event that keeps the task in offered state until ASSIGN arrives
           [TaskEvent.ACCEPT]: {
             target: TaskState.CONNECTED,
           },
+          // AgentContactAssigned
           [TaskEvent.ASSIGN]: {
             target: TaskState.CONNECTED,
             actions: ['updateTaskData', 'emitTaskAssigned'],
           },
-          [TaskEvent.DECLINE]: {
-            target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
-          },
+          // AgentOfferContactRONA
           [TaskEvent.RONA]: {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
+          // ContactEnded (customer can end call before connect or via agent softphone decline)
           [TaskEvent.END]: {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
+          // Local intermediate state for DECLINE event -- irrespective of API call, clean up
+          [TaskEvent.DECLINE]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
+          },
+          // This needs to be handled for all assign failed scenarios (contact, buddy)
+          // [AgentContactAssignFailed, AgentConsultFailed, AgentCtqFailed, AgentBlindTransferFailed,
+          //  AgentVTeamTransferFailed, AgentConsultTransferFailed]
           [TaskEvent.ASSIGN_FAILED]: {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
@@ -113,9 +132,14 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
+          // AgentConsultOffer, AgentConsulting
           [TaskEvent.CONSULT_ACCEPTED]: {
             target: TaskState.CONSULTING,
             actions: ['updateTaskData', 'handleConsultAccept', 'emitTaskConsultAccepted'],
+          },
+          [TaskEvent.OFFER_CONSULT]: {
+            target: TaskState.OFFERED_CONSULT,
+            actions: ['updateTaskData', 'emitTaskOfferConsult'],
           },
         },
       },
@@ -123,17 +147,33 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
       [TaskState.OFFERED_CONSULT]: {
         entry: ['emitTaskOfferConsult'],
         on: {
+          // Local intermediate state for ACCEPT button click
           [TaskEvent.ACCEPT_INITIATED]: {
             actions: ['setAcceptInitiated'],
           },
+          // AgentConsultAccepted from receiver accept button
           [TaskEvent.ACCEPT]: {
             target: TaskState.CONSULTING,
             actions: ['emitTaskConsultAccepted'],
           },
+          // AgentConsultAccepted from backend (consulting agent accepted)
           [TaskEvent.CONSULT_ACCEPTED]: {
             target: TaskState.CONSULTING,
-            actions: ['emitTaskConsultAccepted'],
+            actions: ['updateTaskData', 'handleConsultAccept', 'emitTaskConsultAccepted'],
           },
+          // AgentConsultingActive tells the consulted agent that the initiator is live
+          [TaskEvent.CONSULTING_ACTIVE]: [
+            {
+              guard: ({context}: {context: TaskContext}) => !context.consultInitiator,
+              target: TaskState.CONSULTING,
+              actions: [
+                'updateTaskData',
+                'setConsultAgentJoined',
+                'emitTaskConsultAccepted',
+                'emitTaskConsulting',
+              ],
+            },
+          ],
           [TaskEvent.RONA]: {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
@@ -151,29 +191,32 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.CONNECTED]: {
         on: {
+          // Click of hold button
           [TaskEvent.HOLD_INITIATED]: {
             target: TaskState.HOLD_INITIATING,
             actions: ['setHoldInitiated'],
           },
-          [TaskEvent.HOLD]: {
-            target: TaskState.HOLD_INITIATING,
-          },
+          // Click of the consult button
           [TaskEvent.CONSULT]: {
             target: TaskState.CONSULT_INITIATING,
             actions: ['setConsultInitiator', 'setConsultDestination'],
           },
+          // AgentConsultCreated event confirms the consult request
           [TaskEvent.CONSULT_CREATED]: {
             target: TaskState.CONSULTING,
             actions: ['updateTaskData', 'setConsultInitiator', 'emitTaskConsultCreated'],
           },
+          // AgentConsultAccepted for instant consult scenarios (direct assign of receiver)
           [TaskEvent.CONSULT_ACCEPTED]: {
             target: TaskState.CONSULTING,
             actions: ['updateTaskData', 'handleConsultAccept', 'emitTaskConsultAccepted'],
           },
+          // Click of the transfer button
           [TaskEvent.TRANSFER]: {
-            target: TaskState.WRAPPING_UP,
+            target: TaskState.TRANSFER_INITIATING,
             actions: ['handleTransferInit'],
           },
+          // Back-end may still send transfer responses even if we did not enter the interim state
           [TaskEvent.TRANSFER_SUCCESS]: {
             target: TaskState.WRAPPING_UP,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
@@ -181,11 +224,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.TRANSFER_FAILED]: {
             actions: ['updateTaskData', 'finalizeTransfer'],
           },
-          [TaskEvent.END]: {
+          // AgentContactEnded Event
+          [TaskEvent.CONTACT_ENDED]: {
             target: TaskState.WRAPPING_UP,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
-          [TaskEvent.CONTACT_ENDED]: {
+          [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
@@ -200,30 +244,36 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.HOLD_INITIATING]: {
         on: {
+          // AgentContactHeld Event
           [TaskEvent.HOLD_SUCCESS]: {
             target: TaskState.HELD,
             actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
           },
+          // AgentContactHoldFailed Event
           [TaskEvent.HOLD_FAILED]: {
             target: TaskState.CONNECTED,
+            actions: ['updateTaskData'],
           },
         },
       },
 
       [TaskState.HELD]: {
         on: {
+          // Click of the unhold button
           [TaskEvent.UNHOLD_INITIATED]: {
             target: TaskState.RESUME_INITIATING,
           },
           [TaskEvent.UNHOLD]: {
             target: TaskState.RESUME_INITIATING,
           },
+          // Click of the consult button
           [TaskEvent.CONSULT]: {
             target: TaskState.CONSULT_INITIATING,
             actions: ['setConsultInitiator', 'setConsultDestination'],
           },
+          // Click of the transfer button
           [TaskEvent.TRANSFER]: {
-            target: TaskState.WRAPPING_UP,
+            target: TaskState.TRANSFER_INITIATING,
             actions: ['handleTransferInit'],
           },
           [TaskEvent.TRANSFER_SUCCESS]: {
@@ -232,6 +282,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.TRANSFER_FAILED]: {
             actions: ['updateTaskData', 'finalizeTransfer'],
+          },
+          [TaskEvent.CONTACT_ENDED]: {
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
           [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
@@ -242,10 +296,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.RESUME_INITIATING]: {
         on: {
+          // AgentContactUnheld
           [TaskEvent.UNHOLD_SUCCESS]: {
             target: TaskState.CONNECTED,
             actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
           },
+          // AgentContactUnHoldFailed
           [TaskEvent.UNHOLD_FAILED]: {
             target: TaskState.HELD,
           },
@@ -254,44 +310,63 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.CONSULT_INITIATING]: {
         on: {
+          // AgentContactHeld update while consult is placing the primary leg on hold
+          [TaskEvent.HOLD_SUCCESS]: {
+            actions: ['updateTaskData'],
+          },
+          // AgentContactHoldFailed (consult attempt failed to hold main call)
+          [TaskEvent.HOLD_FAILED]: {
+            target: TaskState.CONNECTED,
+            actions: ['updateTaskData', 'handleConsultFailed'],
+          },
+          // AgentConsultCreated
+          [TaskEvent.CONSULT_CREATED]: {
+            target: TaskState.CONSULTING,
+            actions: ['updateTaskData', 'setConsultInitiator', 'emitTaskConsultCreated'],
+          },
+          // AgentConsulting
           [TaskEvent.CONSULT_SUCCESS]: {
             target: TaskState.CONSULTING,
             actions: ['handleConsultCompletion'],
           },
+          // AgentConsultFailed, API Failures, AgentCtqFailed
           [TaskEvent.CONSULT_FAILED]: {
-            target: TaskState.CONNECTED,
+            target: TaskState.HELD,
             actions: ['updateTaskData', 'handleConsultFailed'],
+          },
+          // AgentCtqCancelled Event
+          [TaskEvent.CTQ_CANCEL]: {
+            target: TaskState.HELD,
+            actions: ['clearConsultState'],
           },
         },
       },
 
       [TaskState.CONSULTING]: {
         on: {
+          // AgentConsultingActive updates consulted agent arrival
           [TaskEvent.CONSULTING_ACTIVE]: {
             actions: ['updateTaskData', 'setConsultAgentJoined', 'emitTaskConsulting'],
           },
-          [TaskEvent.START_CONFERENCE]: {
-            target: TaskState.CONFERENCING,
-            actions: ['handleConferenceInit'],
-          },
-          [TaskEvent.MERGE_TO_CONFERENCE]: {
-            target: TaskState.CONFERENCING,
-            actions: ['handleConferenceInit'],
-          },
-          [TaskEvent.CONFERENCE_START]: {
-            target: TaskState.CONFERENCING,
-            actions: ['handleConferenceStarted'],
-          },
-          [TaskEvent.CONSULT_END]: {
-            target: TaskState.CONNECTED,
-            actions: ['clearConsultState', 'emitTaskConsultEnd'],
+          // AgentConsultEnded
+          [TaskEvent.CONSULT_END]: [
+            {
+              guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
+              target: TaskState.HELD,
+              actions: ['clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              target: TaskState.IDLE,
+              actions: ['clearConsultState', 'emitTaskConsultEnd'],
+            },
+          ],
+          // Transfer buttons while in consulting
+          [TaskEvent.TRANSFER]: {
+            target: TaskState.TRANSFER_INITIATING,
+            actions: ['handleTransferInit'],
           },
           [TaskEvent.CONSULT_TRANSFER]: {
-            target: TaskState.WRAPPING_UP,
-            actions: ['clearConsultState'],
-          },
-          [TaskEvent.TRANSFER]: {
-            target: TaskState.WRAPPING_UP,
+            target: TaskState.TRANSFER_INITIATING,
             actions: ['handleTransferInit'],
           },
           [TaskEvent.TRANSFER_SUCCESS]: {
@@ -301,13 +376,76 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.TRANSFER_FAILED]: {
             actions: ['updateTaskData', 'finalizeTransfer'],
           },
+          // AgentContactAssigned - receiver side becomes connected to customer
+          [TaskEvent.ASSIGN]: {
+            target: TaskState.CONNECTED,
+            actions: ['updateTaskData'],
+          },
+          // AgentContactEnded depending on initiator vs receiver
+          [TaskEvent.CONTACT_ENDED]: [
+            {
+              guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+            },
+          ],
           [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
             actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
           },
-          [TaskEvent.CONTACT_ENDED]: {
+          // Local intermediate state for merge to conference button click
+          [TaskEvent.START_CONFERENCE]: {
+            target: TaskState.CONF_INITIATING,
+            actions: ['handleConferenceInit'],
+          },
+          [TaskEvent.MERGE_TO_CONFERENCE]: {
+            target: TaskState.CONF_INITIATING,
+            actions: ['handleConferenceInit'],
+          },
+          // AgentConsultConferenced, ParticipantJoinedConference
+          [TaskEvent.CONFERENCE_START]: {
+            target: TaskState.CONFERENCING,
+            actions: ['handleConferenceStarted'],
+          },
+          // AgentConsultConferenceFailed
+          [TaskEvent.CONFERENCE_FAILED]: {
+            target: TaskState.CONSULTING,
+            actions: ['handleConferenceFailed'],
+          },
+        },
+      },
+
+      [TaskState.TRANSFER_INITIATING]: {
+        entry: ['clearConsultState'],
+        on: {
+          // AgentBlindTransferred, AgentVTeamTransferred, AgentConsultTransferred
+          [TaskEvent.TRANSFER_SUCCESS]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+          },
+          // AgentBlindTransferFailed, AgentVTeamTransferFailed, AgentConsultTransferFailed
+          [TaskEvent.TRANSFER_FAILED]: {
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+          },
+        },
+      },
+
+      [TaskState.CONF_INITIATING]: {
+        on: {
+          // AgentConsultConferenced, ParticipantJoinedConference
+          [TaskEvent.CONFERENCE_START]: {
+            target: TaskState.CONFERENCING,
+            actions: ['handleConferenceStarted'],
+          },
+          // AgentConsultConferenceFailed
+          [TaskEvent.CONFERENCE_FAILED]: {
+            target: TaskState.CONSULTING,
+            actions: ['handleConferenceFailed'],
           },
         },
       },
@@ -318,37 +456,64 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.CONSULT_INITIATING,
             actions: ['setConsultInitiator', 'setConsultDestination'],
           },
-          [TaskEvent.EXIT_CONFERENCE]: {
-            target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
-          },
-          [TaskEvent.TRANSFER_CONFERENCE]: {
-            target: TaskState.WRAPPING_UP,
-          },
+          // ParticpantLeftConference (host leaves ends conference)
+          [TaskEvent.EXIT_CONFERENCE]: [
+            {
+              guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['clearConsultState'],
+            },
+          ],
+          // AgentConferenceTransferred
+          [TaskEvent.TRANSFER_CONFERENCE]: [
+            {
+              guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['clearConsultState'],
+            },
+          ],
+          // AgentConferenceEnded
           [TaskEvent.CONFERENCE_END]: {
-            target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'handleConferenceFailed', 'emitTaskEnd'],
+            target: TaskState.CONNECTED,
+            actions: ['clearConsultState'],
           },
+          [TaskEvent.CONTACT_ENDED]: [
+            {
+              guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['clearConsultState'],
+            },
+          ],
           [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
-          },
-          [TaskEvent.CONTACT_ENDED]: {
-            target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'handleConferenceFailed', 'emitTaskEnd'],
           },
         },
       },
 
       [TaskState.WRAPPING_UP]: {
-        entry: ['emitTaskEnd'],
+        entry: ['emitTaskEnd', 'emitTaskWrapup'],
         on: {
+          // AgentWrapup Event
           [TaskEvent.WRAPUP]: {
             target: TaskState.COMPLETED,
           },
           [TaskEvent.AUTO_WRAPUP]: {
             target: TaskState.COMPLETED,
           },
+          // AgentWrappedup Event
           [TaskEvent.WRAPUP_COMPLETE]: {
             target: TaskState.COMPLETED,
             actions: ['updateTaskData'],

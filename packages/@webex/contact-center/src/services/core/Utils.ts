@@ -4,12 +4,13 @@ import {Failure, AugmentedError} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
 import {
-  TaskData,
-  ConsultTransferPayLoad,
   ConsultConferenceData,
   consultConferencePayloadData,
+  ConsultTransferDestinationType,
   CONSULT_TRANSFER_DESTINATION_TYPE,
+  DESTINATION_TYPE,
   Interaction,
+  TaskData,
 } from '../task/types';
 
 /**
@@ -25,28 +26,6 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
     trackingId: errObj?.headers?.trackingid || errObj?.headers?.TrackingID,
     msg: errObj?.body,
   };
-};
-
-/**
- * Checks if the destination type represents an entry point variant (EPDN or ENTRYPOINT).
- */
-const isEntryPointOrEpdn = (destAgentType?: string): boolean => {
-  return destAgentType === 'EPDN' || destAgentType === 'ENTRYPOINT';
-};
-
-/**
- * Determines if the task involves dialing a number based on the destination type.
- * Returns 'DIAL_NUMBER' for dial-related destinations, empty string otherwise.
- */
-const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => {
-  const destAgentType = taskData?.destinationType;
-
-  // Check if destination requires dialing: direct dial number or entry point variants
-  const isDialNumber = destAgentType === 'DN';
-  const isEntryPointVariant = isEntryPointOrEpdn(destAgentType);
-
-  // If the destination type is a dial number or an entry point variant, return 'DIAL_NUMBER'
-  return isDialNumber || isEntryPointVariant ? 'DIAL_NUMBER' : '';
 };
 
 export const isValidDialNumber = (input: string): boolean => {
@@ -218,18 +197,6 @@ export const createErrDetailsObject = (errObj: WebexRequestPayload) => {
 };
 
 /**
- * Derives the consult transfer destination type based on the provided task data.
- *
- * Logic parity with desktop behavior:
- * - If agent action is dialing a number (DN/EPDN/ENTRYPOINT):
- *   - ENTRYPOINT/EPDN map to ENTRYPOINT
- *   - DN maps to DIALNUMBER
- * - Otherwise defaults to AGENT
- *
- * @param taskData - The task data used to infer the agent action and destination type
- * @returns The normalized destination type to be used for consult transfer
- */
-/**
  * Checks if a participant type represents a non-customer participant.
  * Non-customer participants include agents, dial numbers, entry point dial numbers,
  * and entry points.
@@ -273,20 +240,6 @@ export const getDestinationAgentId = (
   return id;
 };
 
-export const deriveConsultTransferDestinationType = (
-  taskData?: TaskData
-): ConsultTransferPayLoad['destinationType'] => {
-  const agentActionType = getAgentActionTypeFromTask(taskData);
-
-  if (agentActionType === 'DIAL_NUMBER') {
-    return isEntryPointOrEpdn(taskData?.destinationType)
-      ? CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT
-      : CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
-  }
-
-  return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
-};
-
 /**
  * Builds consult conference parameter data using EXACT Agent Desktop logic.
  * This matches the Agent Desktop's consultConference implementation exactly.
@@ -311,20 +264,49 @@ export const buildConsultConferenceParamData = (
   // Agent Desktop destination type logic
   if ('destinationType' in dataPassed) {
     if (dataPassed.destinationType === 'DN') {
-      data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
+      data.destinationType = DESTINATION_TYPE.DIALNUMBER;
     } else if (dataPassed.destinationType === 'EP_DN') {
-      data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
+      data.destinationType = DESTINATION_TYPE.ENTRYPOINT;
     } else {
       // Keep the existing destinationType if it's something else (like "agent" or "Agent")
       // Convert "Agent" to lowercase for consistency
       data.destinationType = dataPassed.destinationType.toLowerCase();
     }
   } else {
-    data.destinationType = CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
+    data.destinationType = DESTINATION_TYPE.AGENT;
   }
 
   return {
     interactionId: interactionIdPassed,
     data,
   };
+};
+
+/**
+ * Derives the consult transfer destination type based on task data.
+ * This function determines the appropriate destination type for a consult transfer
+ * by examining the destination type stored in the task data.
+ *
+ * @param taskData - The task data containing destination information
+ * @returns The derived consult transfer destination type
+ * @public
+ */
+export const deriveConsultTransferDestinationType = (
+  taskData: TaskData
+): ConsultTransferDestinationType => {
+  const destType = taskData?.destinationType;
+
+  // Map destination types to consult transfer destination types
+  if (destType === 'DN' || destType === DESTINATION_TYPE.DIALNUMBER) {
+    return CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
+  }
+  if (destType === 'EP_DN' || destType === DESTINATION_TYPE.ENTRYPOINT) {
+    return CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
+  }
+  if (destType === DESTINATION_TYPE.QUEUE) {
+    return CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE;
+  }
+
+  // Default to agent if no specific type matches
+  return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
 };
