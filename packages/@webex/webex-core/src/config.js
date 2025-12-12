@@ -83,9 +83,6 @@ export default {
   metrics: {
     type: ['behavioral', 'operational'],
   },
-  /**
-   * Calling-specific configuration.
-   */
   calling: {
     /**
      * Controls whether U2C service catalogs should be cached and warmed from cache.

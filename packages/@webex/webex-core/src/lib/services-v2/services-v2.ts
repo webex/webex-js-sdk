@@ -971,7 +971,9 @@ const Services = WebexPlugin.extend({
     let orgId: string | undefined;
     try {
       // Respect calling.cacheU2C toggle; if disabled, skip writing cache
-      if (this.webex.config?.calling && this.webex.config.calling.cacheU2C === false) {
+      if (!this.webex.config?.calling?.cacheU2C) {
+        this.logger.info(`services: skipping cache write for ${serviceGroup} as per the config`);
+
         return;
       }
 
@@ -993,14 +995,10 @@ const Services = WebexPlugin.extend({
       }
 
       // Capture environment fingerprint to invalidate cache across env changes
-      let env: {fedramp?: boolean; u2cDiscoveryUrl?: string} | undefined;
-      try {
-        const fedramp = !!this.webex.config?.fedramp;
-        const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
-        env = {fedramp, u2cDiscoveryUrl};
-      } catch {
-        env = current.env;
-      }
+      let {env} = current;
+      const fedramp = !!this.webex?.config?.fedramp;
+      const u2cDiscoveryUrl = this.webex?.config?.services?.discovery?.u2c;
+      env = {fedramp, u2cDiscoveryUrl};
 
       const updated = {
         ...current,
@@ -1014,8 +1012,8 @@ const Services = WebexPlugin.extend({
       if (typeof window !== 'undefined' && (window as any).localStorage) {
         (window as any).localStorage.setItem(CATALOG_CACHE_KEY_V2, JSON.stringify(updated));
       }
-    } catch {
-      this.logger.warn('services: error caching catalog');
+    } catch (e) {
+      this.logger.warn('services: error caching catalog', e);
     }
   },
 
@@ -1028,14 +1026,18 @@ const Services = WebexPlugin.extend({
     let currentOrgId: string | undefined;
     try {
       // Respect calling.cacheU2C toggle; if disabled, skip using cache
-      if (this.webex.config?.calling && this.webex.config.calling.cacheU2C === false) {
+      if (!this.webex.config?.calling?.cacheU2C) {
+        this.logger.info('services: skipping cache warm-up as per the cache config');
+
         return false;
       }
 
-      if (typeof window === 'undefined' || !(window as any).localStorage) {
+      if (typeof window === 'undefined' || !window.localStorage) {
+        this.logger.info('services: skipping cache warm-up as no localStorage is available');
+
         return false;
       }
-      const raw = (window as any).localStorage.getItem(CATALOG_CACHE_KEY_V2);
+      const raw = window.localStorage.getItem(CATALOG_CACHE_KEY_V2);
       const cached = raw ? JSON.parse(raw) : undefined;
       if (!cached) {
         return false;
@@ -1044,11 +1046,7 @@ const Services = WebexPlugin.extend({
       // TTL enforcement
       const cachedAt = Number(cached.cachedAt) || 0;
       if (!cachedAt || Date.now() - cachedAt > CATALOG_TTL_MS) {
-        try {
-          this.clearCatalogCache();
-        } catch {
-          this.logger.warn('services: error clearing catalog cache');
-        }
+        this.clearCatalogCache();
 
         return false;
       }
@@ -1062,25 +1060,22 @@ const Services = WebexPlugin.extend({
             return false;
           }
         }
-      } catch {
-        this.logger.warn('services: error checking orgId');
+      } catch (e) {
+        this.logger.warn('services: error checking orgId', e);
       }
 
       // Ensure cached environment matches current environment
-      try {
-        const fedramp = !!this.webex.config?.fedramp;
-        const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
-        const currentEnv = {fedramp, u2cDiscoveryUrl};
-        if (cached.env) {
-          const sameEnv =
-            cached.env.fedramp === currentEnv.fedramp &&
-            cached.env.u2cDiscoveryUrl === currentEnv.u2cDiscoveryUrl;
-          if (!sameEnv) {
-            return false;
-          }
+
+      const fedramp = !!this.webex.config?.fedramp;
+      const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
+      const currentEnv = {fedramp, u2cDiscoveryUrl};
+      if (cached.env) {
+        const sameEnv =
+          cached.env.fedramp === currentEnv.fedramp &&
+          cached.env.u2cDiscoveryUrl === currentEnv.u2cDiscoveryUrl;
+        if (!sameEnv) {
+          return false;
         }
-      } catch (e) {
-        this.logger.warn('services: error checking environment', e);
       }
 
       const catalog = this._getCatalog();
@@ -1143,7 +1138,7 @@ const Services = WebexPlugin.extend({
       this.updateCredentialsConfig();
 
       return true;
-    } catch {
+    } catch (e) {
       return false;
     }
   },
@@ -1157,8 +1152,8 @@ const Services = WebexPlugin.extend({
       if (typeof window !== 'undefined' && (window as any).localStorage) {
         (window as any).localStorage.removeItem(CATALOG_CACHE_KEY_V2);
       }
-    } catch {
-      this.logger.warn('services: error clearing catalog cache');
+    } catch (e) {
+      this.logger.warn('services: error clearing catalog cache', e);
     }
 
     return Promise.resolve();

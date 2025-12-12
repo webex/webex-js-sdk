@@ -1041,14 +1041,11 @@ const Services = WebexPlugin.extend({
    */
   async _cacheCatalog(serviceGroup, hostMap, meta) {
     let current = {};
-    let env;
     let orgId;
     try {
       // Respect calling.cacheU2C toggle; if disabled, skip writing cache
-      if (this.webex.config?.calling && this.webex.config.calling.cacheU2C === false) {
-        this.logger.info(
-          `services: skipping cache write for ${serviceGroup} due to config.calling.cacheU2C=false`
-        );
+      if (!this.webex.config?.calling?.cacheU2C) {
+        this.logger.info(`services: skipping cache write for ${serviceGroup} as per the config`);
 
         return;
       }
@@ -1072,13 +1069,10 @@ const Services = WebexPlugin.extend({
       }
 
       // Capture environment fingerprint to invalidate cache across env changes
-      try {
-        const fedramp = !!this.webex.config?.fedramp;
-        const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
-        env = {fedramp, u2cDiscoveryUrl};
-      } catch (e) {
-        env = current.env;
-      }
+      let {env} = current;
+      const fedramp = !!this.webex?.config?.fedramp;
+      const u2cDiscoveryUrl = this.webex?.config?.services?.discovery?.u2c;
+      env = {fedramp, u2cDiscoveryUrl};
 
       const updated = {
         ...current,
@@ -1105,13 +1099,15 @@ const Services = WebexPlugin.extend({
     let currentOrgId;
     try {
       // Respect calling.cacheU2C toggle; if disabled, skip using cache
-      if (this.webex.config?.calling && this.webex.config.calling.cacheU2C === false) {
-        this.logger.info('services: skipping cache warm-up due to config.calling.cacheU2C=false');
+      if (!this.webex.config?.calling?.cacheU2C) {
+        this.logger.info('services: skipping cache warm-up as per the cache config');
 
         return false;
       }
 
       if (typeof window === 'undefined' || !window.localStorage) {
+        this.logger.info('services: skipping cache warm-up as no localStorage is available');
+
         return false;
       }
       const raw = window.localStorage.getItem(CATALOG_CACHE_KEY_V1);
@@ -1122,11 +1118,7 @@ const Services = WebexPlugin.extend({
       // TTL enforcement: clear if older than 24 hours
       const cachedAt = Number(cached.cachedAt) || 0;
       if (!cachedAt || Date.now() - cachedAt > CATALOG_TTL_MS) {
-        try {
-          this.clearCatalogCache();
-        } catch (e) {
-          this.logger.warn('services: error clearing catalog cache', e);
-        }
+        this.clearCatalogCache();
 
         return false;
       }
@@ -1145,22 +1137,19 @@ const Services = WebexPlugin.extend({
       }
 
       // Ensure cached environment matches current environment
-      try {
-        const fedramp = !!this.webex.config?.fedramp;
-        const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
-        const currentEnv = {fedramp, u2cDiscoveryUrl};
-        if (cached.env) {
-          const sameEnv =
-            cached.env.fedramp === currentEnv.fedramp &&
-            cached.env.u2cDiscoveryUrl === currentEnv.u2cDiscoveryUrl;
-          if (!sameEnv) {
-            this.logger.info('services: skipping cache warm due to environment mismatch');
 
-            return false;
-          }
+      const fedramp = !!this.webex.config?.fedramp;
+      const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
+      const currentEnv = {fedramp, u2cDiscoveryUrl};
+      if (cached.env) {
+        const sameEnv =
+          cached.env.fedramp === currentEnv.fedramp &&
+          cached.env.u2cDiscoveryUrl === currentEnv.u2cDiscoveryUrl;
+        if (!sameEnv) {
+          this.logger.info('services: skipping cache warm due to environment mismatch');
+
+          return false;
         }
-      } catch (e) {
-        this.logger.warn('services: error checking environment', e);
       }
 
       const catalog = this._getCatalog();
